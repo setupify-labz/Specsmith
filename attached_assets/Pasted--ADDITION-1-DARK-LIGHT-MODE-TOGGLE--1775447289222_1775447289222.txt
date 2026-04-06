@@ -1,0 +1,572 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 1 — DARK/LIGHT MODE TOGGLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Color palette (light mode):
+  - Background:       #F4F4FA
+  - Surface:          #FFFFFF
+  - Card:             #FFFFFF
+  - Card hover:       #F0F0FA
+  - Border:           #DDDDE8
+  - Accent primary:   #5A52EE
+  - Accent secondary: #0099CC
+  - Text primary:     #0A0A1A
+  - Text secondary:   #555566
+  - Text tertiary:    #888899
+
+Implementation:
+  - Moon/sun icon toggle button in navbar, right side before 
+    auth buttons
+  - Persisted to localStorage key "frameforge-theme"
+  - Default: dark mode
+  - All CSS color variables transition: 200ms ease on theme switch
+  - Use CSS custom properties on :root (dark) and 
+    [data-theme="light"] (light)
+  - Toggle animates: moon icon fades out, sun fades in (150ms)
+  - No flash of wrong theme on page load — read localStorage 
+    before first render and set data-theme on <html> immediately
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 2 — USER ACCOUNTS & SAVED BUILDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Auth system (localStorage mock — no real backend):
+  - Users stored in localStorage key "frameforge-users" as array
+  - Current session in localStorage key "frameforge-session"
+  - Passwords stored as plain string (this is mock/demo only)
+
+Auth pages:
+  /login  — Login page
+  /signup — Sign up page
+
+Login page:
+  - Email + password fields
+  - "Remember me" checkbox
+  - "Forgot password?" link (shows toast: "Password reset 
+    not available in demo")
+  - "Don't have an account? Sign up" link
+  - On success: redirect to /dashboard
+  - On fail: shake animation on form + red error message
+
+Sign up page:
+  - Username, email, password, confirm password fields
+  - All fields validated before submit:
+    - Username: 3-20 chars, alphanumeric + underscores only
+    - Email: valid format
+    - Password: min 8 chars, 1 number, 1 uppercase
+    - Confirm password: must match
+  - Inline validation errors appear on blur (not on submit)
+  - On success: auto-login + redirect to /dashboard
+
+Navbar changes when logged in:
+  - Replace "Sign In" button with avatar circle (first letter 
+    of username, purple background)
+  - Clicking avatar opens dropdown:
+    - "My Dashboard"
+    - "My Builds (N)"
+    - "Settings"
+    - Divider
+    - "Sign Out"
+
+Dashboard page (/dashboard):
+  - Header: "Welcome back, [username]"
+  - Stats row: Total Builds Saved | Builds Shared | 
+    Most Used GPU | Favorite Game
+  - "My Builds" grid (2 columns desktop, 1 mobile):
+    Each build card shows:
+      - Build name (editable inline on click)
+      - GPU + CPU names
+      - Total price
+      - Top FPS estimate (best game at 1080p High)
+      - Date saved
+      - Three buttons: Load into Builder | Share | Delete
+    Empty state: illustration + "No builds saved yet. 
+    Start building →" button
+  - "Recent Activity" feed (last 5 actions):
+    e.g. "Saved build 'My 4K Rig'" | "Shared 'Budget Beast'"
+
+Save build flow (in builder):
+  - Floating "Save Build" button appears in build summary 
+    panel once GPU + CPU are selected
+  - Click opens modal:
+    - "Build Name" text input (auto-filled: "My Build #N")
+    - "Notes" textarea (optional, max 200 chars)
+    - Save button
+  - If not logged in: modal says "Create a free account to 
+    save builds" with Sign Up + Login buttons
+  - On save: success toast slides in from bottom right:
+    "Build saved! View in Dashboard →"
+  - Max 20 saved builds per user — show warning at 18, 
+    block at 20 with prompt to delete old builds
+
+User settings page (/settings):
+  - Change username (must be unique)
+  - Change email
+  - Change password (current + new + confirm)
+  - Preferred resolution (default for FPS estimator)
+  - Preferred quality preset (default for FPS estimator)
+  - Delete account button (red, requires typing "DELETE" 
+    to confirm)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 3 — BUILD SHARING (SHAREABLE URL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+How it works:
+  - Encode entire build as base64 JSON string
+  - Share URL format: frameforge.gg/build?b={base64string}
+  - Visiting a share URL pre-loads that exact build into 
+    the builder automatically
+  - No server needed — all state in URL param
+
+Share button:
+  - In build summary panel + on dashboard build cards
+  - Clicking copies URL to clipboard
+  - Button text changes: "Share Build" → "Link Copied!" 
+    with checkmark icon (resets after 2.5s)
+  - Also shows QR code in a modal (use qrcode.react library)
+
+Shared build page:
+  - When visiting /build?b=... as a guest:
+    - Show read-only build summary at top
+    - FPS estimates for all 20 games
+    - Total price
+    - "Load this build" button → opens in builder
+    - "Save to my account" button → prompts login/signup
+  - Open Graph meta tags on share URLs:
+    - og:title: "[Build Name] — FrameForge"
+    - og:description: "[GPU] + [CPU] | Est. [X] FPS in 
+      Cyberpunk 2077 | $[price] total"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 4 — BOTTLENECK CHECKER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Location: Appears in build summary panel below part list,
+visible as soon as both GPU and CPU are selected.
+
+Algorithm:
+  gpu_score = gpu.benchmark_score
+  cpu_score = cpu.benchmark_score
+  ratio = gpu_score / cpu_score
+
+  if ratio > 1.4:
+    bottleneck = "CPU"
+    severity = ratio > 1.7 ? "severe" : "moderate"
+    pct = Math.round((ratio - 1) * 100)
+    message = "Your CPU is bottlenecking your GPU by ~{pct}%.
+               Your GPU is being held back. Consider upgrading
+               to a faster CPU to unlock full performance."
+
+  else if ratio < 0.72:
+    bottleneck = "GPU"
+    severity = ratio < 0.55 ? "severe" : "moderate"
+    pct = Math.round((1 - ratio) * 100)
+    message = "Your GPU is bottlenecking your CPU by ~{pct}%.
+               Your CPU is faster than your GPU can keep up 
+               with. Consider a stronger GPU for this build."
+
+  else:
+    bottleneck = "none"
+    message = "Great balance! Your CPU and GPU are 
+               well-matched for maximum performance."
+
+UI display:
+  - Card with title "Bottleneck Analysis"
+  - Horizontal balance bar:
+    - Left label: CPU score
+    - Right label: GPU score
+    - Bar fills from center — purple for CPU side, 
+      cyan for GPU side
+    - Ideal zone marker in center (small white tick)
+    - Bar animates on load: grows from center outward (600ms)
+  - Below bar: colored status badge
+    - Green "Balanced" if no bottleneck
+    - Amber "Moderate Bottleneck" if moderate
+    - Red "Severe Bottleneck" if severe
+  - Message text in muted color below badge
+  - "Fix it" suggestion button:
+    - If CPU bottleneck: "Upgrade CPU →" scrolls to CPU 
+      selector and highlights top 3 matching CPUs
+    - If GPU bottleneck: "Upgrade GPU →" scrolls to GPU 
+      selector and highlights top 3 matching GPUs
+    - Highlighted cards get a glowing purple border 
+      + "Recommended" badge for 3 seconds
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 5 — PRICE HISTORY / BEST TIME TO BUY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Note: Price history is simulated with realistic static data
+(no live API). Generate plausible 12-month price history 
+for every GPU and CPU using this pattern:
+
+Price history data format per part:
+  priceHistory: [
+    { month: "May 2024", price: 549 },
+    { month: "Jun 2024", price: 539 },
+    ... 12 entries total
+  ]
+
+Generation rules for mock data:
+  - Start at part's current price * 1.15 (was more expensive)
+  - Add realistic fluctuations: ±3-8% month to month
+  - Dip around November (Black Friday sale: -12%)
+  - Recover slightly in January
+  - End at current price
+  - Apply to all 50 GPUs and 50 CPUs
+
+Where it appears:
+  - On each GPU and CPU part card: small sparkline chart 
+    (Recharts LineChart, 80px tall, no axes, just the line)
+  - Sparkline color: green if price trended down overall, 
+    red if up, gray if flat (within 5%)
+  - Below sparkline: "↓ 8% over 12 months" or 
+    "↑ 3% over 12 months" in matching color
+
+Expanded price history modal:
+  - Click "Price History" link on any part card
+  - Opens modal with full 12-month line chart 
+    (Recharts, 300px tall, axes visible, tooltip on hover)
+  - Chart has reference line at current price labeled "Today"
+  - Below chart: 3 stats in a row:
+    - "12-Month Low: $X (November)"
+    - "12-Month High: $X (May)"
+    - "Price Trend: ↓ X% this year"
+  - "Best time to buy" badge:
+    - If current price is within 5% of 12-month low: 
+      green badge "Great time to buy!"
+    - If current price is within 5% of 12-month high: 
+      red badge "Price is high — consider waiting"
+    - Otherwise: gray badge "Average price"
+  - "Set Price Alert" button (mock — shows toast: 
+    "Price alerts coming soon!")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 6 — MORE COMPONENTS & PERIPHERALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add these new component categories to the builder
+after CPU Cooler:
+
+MONITORS (10 options):
+Fields: { id, name, brand, price_usd, size_inches, 
+  resolution, panel_type, refresh_rate_hz, 
+  response_time_ms, hdr, g_sync, freesync, release_year }
+
+- LG 27GP850-B: $299, 27", 1440p, IPS, 165Hz, 1ms, 
+  No HDR, No GSync, FreeSync, 2021
+- Samsung Odyssey G7 32": $499, 32", 1440p, VA, 240Hz, 
+  1ms, HDR600, GSync Compat, FreeSync, 2020
+- ASUS ROG Swift PG279QM: $699, 27", 1440p, IPS, 240Hz, 
+  1ms, HDR400, GSync, No FreeSync, 2021
+- LG 27GP950-B: $799, 27", 4K, IPS, 160Hz, 1ms, 
+  HDR600, GSync Compat, FreeSync, 2021
+- Samsung Odyssey Neo G9: $1,299, 49", 5120x1440p, 
+  VA, 240Hz, 1ms, HDR2000, GSync Compat, FreeSync, 2021
+- BenQ MOBIUZ EX2710Q: $349, 27", 1440p, IPS, 165Hz, 
+  1ms, HDR400, No GSync, FreeSync, 2021
+- AOC 24G2: $179, 24", 1080p, IPS, 144Hz, 1ms, 
+  No HDR, No GSync, FreeSync, 2020
+- Alienware AW2523HF: $329, 25", 1080p, IPS, 360Hz, 
+  0.5ms, No HDR, No GSync, FreeSync, 2022
+- LG 45GR95QE: $999, 45", 3440x1440p, OLED, 240Hz, 
+  0.03ms, HDR, GSync Compat, FreeSync, 2023
+- ASUS ROG Swift OLED PG27AQDM: $799, 27", 1440p, 
+  OLED, 240Hz, 0.03ms, HDR, GSync, FreeSync, 2023
+
+Display note in builder:
+  - After selecting monitor, show a "Resolution Match" 
+    indicator in build summary:
+    - If monitor is 4K but GPU tier < 7: amber warning 
+      "Your GPU may struggle at 4K on this monitor"
+    - If monitor is 1440p but GPU tier < 5: amber warning
+    - If monitor is 360Hz+ but GPU tier < 8: amber warning
+      "Your GPU may not reach this monitor's refresh rate 
+       in demanding games"
+
+KEYBOARDS (8 options):
+Fields: { id, name, brand, price_usd, switch_type, 
+  form_factor, rgb, wireless, release_year }
+
+- Logitech G Pro X TKL: $129, Mechanical (GX Blue/Red/Brown),
+  TKL, RGB, No, 2020
+- Razer BlackWidow V4 Pro: $229, Mechanical (Green/Yellow),
+  Full, RGB, Yes, 2023
+- Corsair K70 RGB MK.2: $159, Mechanical (Cherry MX), 
+  Full, RGB, No, 2018
+- SteelSeries Apex Pro: $199, Adjustable Mechanical, 
+  Full, RGB, No, 2019
+- Keychron Q2 Pro: $179, Mechanical (Gateron), 
+  75%, RGB, Yes, 2022
+- Logitech MX Keys: $109, Low-profile Scissor, 
+  Full, No RGB, Yes, 2019
+- Ducky One 3: $119, Mechanical (Cherry MX), 
+  TKL, RGB, No, 2021
+- ASUS ROG Azoth: $249, Mechanical (ROG NX), 
+  75%, RGB, Yes, 2023
+
+MICE (8 options):
+Fields: { id, name, brand, price_usd, dpi_max, 
+  weight_grams, wireless, rgb, buttons, release_year }
+
+- Logitech G502 X Plus: $159, 25600 DPI, 106g, 
+  Yes, RGB, 13 buttons, 2022
+- Razer DeathAdder V3 Pro: $149, 30000 DPI, 88g, 
+  Yes, No RGB, 6 buttons, 2022
+- SteelSeries Aerox 5 Wireless: $139, 18000 DPI, 74g, 
+  Yes, RGB, 9 buttons, 2022
+- Logitech G Pro X Superlight 2: $159, 32000 DPI, 60g, 
+  Yes, No RGB, 5 buttons, 2023
+- Corsair M75 Air: $129, 26000 DPI, 60g, 
+  Yes, RGB, 6 buttons, 2023
+- Razer Viper V3 Pro: $159, 35000 DPI, 54g, 
+  Yes, No RGB, 5 buttons, 2024
+- ASUS ROG Harpe Ace Extreme: $189, 36000 DPI, 54g,
+  Yes, No RGB, 5 buttons, 2023
+- Glorious Model O 2: $79, 26000 DPI, 59g, 
+  No, RGB, 6 buttons, 2023
+
+HEADSETS (6 options):
+Fields: { id, name, brand, price_usd, driver_mm, 
+  surround_sound, wireless, noise_cancelling, 
+  microphone, release_year }
+
+- SteelSeries Arctis Nova Pro Wireless: $349, 40mm, 
+  360° Spatial, Yes, ANC, Yes, 2022
+- Razer BlackShark V2 Pro: $179, 50mm, 
+  THX 7.1, Yes, No ANC, Yes, 2023
+- Logitech G Pro X 2 Lightspeed: $249, 50mm, 
+  DTS 7.1, Yes, No ANC, Yes, 2023
+- HyperX Cloud III Wireless: $149, 53mm, 
+  7.1 Virtual, Yes, No ANC, Yes, 2023
+- Corsair HS80 RGB Wireless: $129, 50mm, 
+  Dolby 7.1, Yes, No ANC, Yes, 2021
+- ASUS ROG Delta S: $149, 50mm, 
+  AI 7.1, No, No ANC, Yes, 2021
+
+Builder UI changes for peripherals:
+  - Add new "Peripherals" section at bottom of part 
+    selector, collapsible
+  - Peripherals are optional — no compatibility warnings
+  - Each peripheral category is its own sub-accordion
+  - Peripheral totals are included in overall build price
+  - Peripheral parts also get Amazon affiliate links
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADDITION 7 — DEEPER UI/UX SPECS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TYPOGRAPHY SCALE (exact values):
+  - Display:    48px / 700 / -0.02em letter-spacing
+  - H1:         36px / 700 / -0.01em
+  - H2:         28px / 600 / -0.01em
+  - H3:         22px / 600 / 0
+  - H4:         18px / 600 / 0
+  - Body large: 16px / 400 / 0.01em / line-height 1.7
+  - Body:       14px / 400 / 0.01em / line-height 1.6
+  - Small:      12px / 400 / 0.02em
+  - Mono:       13px / 400 / JetBrains Mono (Google Fonts)
+
+SPACING SYSTEM (8px base grid):
+  - xs:  4px
+  - sm:  8px
+  - md:  16px
+  - lg:  24px
+  - xl:  32px
+  - 2xl: 48px
+  - 3xl: 64px
+  - 4xl: 96px
+
+BORDER RADIUS:
+  - Buttons:      8px
+  - Cards:        12px
+  - Modals:       16px
+  - Badges/pills: 999px (fully rounded)
+  - Input fields: 8px
+
+SHADOWS (dark mode):
+  - Card default: 0 2px 8px rgba(0,0,0,0.4)
+  - Card hover:   0 8px 24px rgba(108,99,255,0.15)
+  - Modal:        0 24px 64px rgba(0,0,0,0.7)
+  - Glow accent:  0 0 20px rgba(108,99,255,0.3)
+
+EXACT COMPONENT SPECS:
+
+Navbar:
+  - Height: 64px
+  - Padding: 0 32px
+  - Border bottom: 1px solid var(--border)
+  - Backdrop blur: blur(12px)
+  - Background: rgba(10,10,15,0.85) dark / 
+                rgba(244,244,250,0.85) light
+  - Logo: 32px tall
+  - Nav links: 14px / 500 weight / 24px gap between
+  - Active link: accent color + 2px underline offset 6px
+  - CTA button: height 38px / padding 0 20px / 
+    border-radius 8px / gradient background
+
+Part cards:
+  - Width: 100% of column
+  - Padding: 16px
+  - Border: 1px solid var(--border)
+  - Border radius: 12px
+  - Hover: border-color transitions to accent primary,
+    box-shadow adds glow, translateY(-2px) — all 200ms ease
+  - Selected state: border 2px solid accent primary,
+    background tint rgba(108,99,255,0.08),
+    checkmark badge top-right corner (20px circle, 
+    green background, white check)
+  - Part name: 14px / 600 weight
+  - Price: 16px / 700 weight / accent color
+  - Specs text: 12px / secondary color
+  - Tier badge: pill, 10px font, 
+    gradient background matching tier level:
+    tier 1-3: gray, 4-5: blue, 6-7: purple, 
+    8-9: amber, 10: gold gradient
+
+Buttons:
+  Primary:
+    - Background: linear-gradient(135deg, #6C63FF, #00D4FF)
+    - Color: white
+    - Height: 44px
+    - Padding: 0 24px
+    - Font: 14px / 600
+    - Hover: brightness(1.1) + scale(1.02) — 150ms
+    - Active: scale(0.98)
+    - Disabled: opacity 0.4, cursor not-allowed
+
+  Secondary (outlined):
+    - Background: transparent
+    - Border: 1px solid var(--accent-primary)
+    - Color: var(--accent-primary)
+    - Same sizing as primary
+    - Hover: background rgba(108,99,255,0.1)
+
+  Danger:
+    - Background: rgba(255,23,68,0.12)
+    - Border: 1px solid #FF1744
+    - Color: #FF1744
+    - Hover: background rgba(255,23,68,0.2)
+
+  Icon button:
+    - Size: 36x36px / border-radius: 8px
+    - Hover: background var(--card-hover)
+
+Input fields:
+  - Height: 44px
+  - Padding: 0 16px
+  - Background: var(--surface)
+  - Border: 1px solid var(--border)
+  - Border radius: 8px
+  - Focus: border-color accent primary, 
+    box-shadow 0 0 0 3px rgba(108,99,255,0.15)
+  - Font: 14px / 400
+  - Placeholder: var(--text-tertiary)
+  - Error state: border-color danger, 
+    box-shadow 0 0 0 3px rgba(255,23,68,0.15)
+
+Modals:
+  - Max width: 560px
+  - Padding: 32px
+  - Border radius: 16px
+  - Backdrop: rgba(0,0,0,0.7) blur(4px)
+  - Animation: scale(0.95)+opacity(0) → 
+    scale(1)+opacity(1), 250ms cubic-bezier(0.34,1.56,0.64,1)
+  - Close button: top-right, 32x32px icon button
+  - Trap focus inside modal when open
+  - Close on backdrop click + Escape key
+
+Toast notifications:
+  - Position: bottom-right, 24px from edges
+  - Width: 320px
+  - Padding: 16px
+  - Border radius: 12px
+  - Border-left: 4px solid (green/amber/red/purple by type)
+  - Animation in: translateX(100%) → translateX(0), 300ms ease
+  - Animation out: translateX(110%) + opacity(0), 250ms ease
+  - Auto-dismiss: 4000ms
+  - Stack up to 3 toasts, older ones push up
+  - Types: success (green), warning (amber), 
+    error (red), info (purple)
+
+FPS Gauge:
+  - Semicircle SVG, 240px wide, 130px tall
+  - Colored arc segments:
+    0-29fps:   red    (#FF1744) — arc 0° to 72°
+    30-59fps:  amber  (#FFB300) — arc 72° to 144°
+    60-89fps:  green  (#00E676) — arc 144° to 216°
+    90-144fps: cyan   (#00D4FF) — arc 216° to 270°
+    144+fps:   purple (#6C63FF) — arc 270° to 360°
+  - Needle: thin line from center, rotates to FPS position
+  - Number: 48px / 700 weight, below center
+  - Label: "FPS Estimated" — 12px / secondary
+  - Needle animates from 0 to value: 
+    800ms cubic-bezier(0.34,1.2,0.64,1)
+
+MICRO-INTERACTIONS (implement all):
+  - Part selector accordion: chevron rotates 180° on open,
+    content slides down with height animation (300ms ease)
+  - "Select" button on part card: ripple effect on click
+    (white circle expands from click point, fades out 400ms)
+  - Build summary price: when price changes, number 
+    animates via countup (300ms)
+  - Compatibility warning: slides down from top of summary
+    panel, red left border, shake animation on appear
+  - FPS table rows: stagger-animate in (each row 50ms apart,
+    translateY(8px)+opacity(0) → normal)
+  - Bottleneck bar: grows from center outward on mount (600ms)
+  - Price sparkline: draws left to right on mount (500ms)
+  - "Copy link" button: checkmark morphs from copy icon 
+    (icon swap with 150ms crossfade)
+  - Avatar dropdown: scale(0.95)+opacity(0) → 
+    scale(1)+opacity(1), 150ms ease, origin top-right
+  - Page transitions: outgoing fades to opacity(0) (150ms),
+    incoming fades in from opacity(0) (200ms)
+  - Skeleton loading screens on all data-heavy sections:
+    animated shimmer gradient, matches card layout exactly
+  - Number badges (saved builds count): 
+    scale(1.4) → scale(1) bounce when count changes
+
+RESPONSIVE BREAKPOINTS (exact):
+  - Mobile:  375px — 767px
+  - Tablet:  768px — 1023px
+  - Desktop: 1024px — 1439px
+  - Wide:    1440px+
+
+  Builder page layout:
+  - Wide/Desktop: 2 columns (part selector 55% | summary 45%)
+  - Tablet: 2 columns (part selector 60% | summary 40%)
+  - Mobile: single column, summary panel becomes 
+    sticky bottom drawer (collapsed by default, 
+    tap to expand, shows part count + price + 
+    "View Summary" label when collapsed)
+
+  Navbar:
+  - Mobile: hamburger menu (3 lines → X morphs on open),
+    full-screen overlay menu slides in from right,
+    links are 20px / 600 weight / 56px tall tap targets
+
+  Part cards grid:
+  - Wide: 3 columns
+  - Desktop: 2 columns
+  - Tablet: 2 columns
+  - Mobile: 1 column
+
+LOADING STATES:
+  - Initial page load: FrameForge logo pulses (scale 
+    1→1.05→1, 1s loop) on splash screen, 
+    fades out after fonts + data ready
+  - Part list loading: 6 skeleton cards (shimmer animation)
+  - FPS calculation: gauge needle spins 1 full rotation
+    before landing on result
+  - Saving build: button shows spinner + "Saving..." text
+  - Shared build URL loading: full page skeleton
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FINAL ADDITIONS REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All 7 additions work seamlessly with original prompt
+- No feature from the original prompt is removed or changed
+- Price history data generated for all 50 GPUs + 50 CPUs
+- All peripheral affiliate links use same Amazon format
+- Shared URLs work without a backend (base64 encoding only)
+- Auth system works fully offline (localStorage only)
+- Dark/light mode persists across all pages and reloads
+- Bottleneck checker updates live as parts are swapped
+- All new animations respect 
+  prefers-reduced-motion: reduce

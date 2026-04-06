@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0A0A0F] border-t border-white/5 mt-20">
+    <footer style={{ backgroundColor: 'var(--ff-bg)', borderTop: '1px solid var(--ff-border)', marginTop: '5rem' }}>
       <div id="ad-footer" className="ad-slot mx-4 my-4" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -15,19 +15,21 @@ export default function Footer() {
                 <text x="20" y="26" textAnchor="middle" fill="url(#fhex)" fontSize="14" fontWeight="800" fontFamily="Inter">FF</text>
                 <defs>
                   <linearGradient id="fhex" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#6C63FF"/>
-                    <stop offset="1" stopColor="#00D4FF"/>
+                    <stop stopColor="var(--ff-accent)"/>
+                    <stop offset="1" stopColor="var(--ff-cyan)"/>
                   </linearGradient>
                 </defs>
               </svg>
-              <span className="font-bold text-lg text-white">Frame<span className="gradient-text">Forge</span></span>
+              <span className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>
+                Frame<span className="gradient-text">Forge</span>
+              </span>
             </Link>
-            <p className="text-[#8888AA] text-sm">Build it. Benchmark it. Own it.</p>
+            <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Build it. Benchmark it. Own it.</p>
           </div>
 
           {/* Links */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-3">Navigation</h4>
+            <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Navigation</h4>
             <div className="flex flex-col gap-2">
               {[
                 { to: '/', label: 'Home' },
@@ -36,11 +38,9 @@ export default function Footer() {
                 { to: '/compare', label: 'Compare' },
                 { to: '/about', label: 'About' },
               ].map(link => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="text-[#8888AA] hover:text-white text-sm transition-colors"
-                >
+                <Link key={link.to} to={link.to}
+                  className="text-sm transition-colors hover:opacity-80"
+                  style={{ color: 'var(--ff-text-2)' }}>
                   {link.label}
                 </Link>
               ))}
@@ -49,18 +49,18 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="text-white font-semibold text-sm mb-3">Disclosure</h4>
-            <p className="text-[#8888AA] text-xs leading-relaxed mb-3">
+            <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h4>
+            <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ff-text-2)' }}>
               As an Amazon Associate, FrameForge earns from qualifying purchases.
             </p>
-            <p className="text-[#8888AA] text-xs leading-relaxed">
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               FPS estimates are based on benchmark data and should be used as a guide only. Actual performance varies by driver version, game patch, and system configuration.
             </p>
           </div>
         </div>
 
-        <div className="border-t border-white/5 mt-8 pt-8 text-center">
-          <p className="text-[#8888AA] text-xs">© 2025 FrameForge. All rights reserved.</p>
+        <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>© 2025 FrameForge. All rights reserved.</p>
         </div>
       </div>
     </footer>

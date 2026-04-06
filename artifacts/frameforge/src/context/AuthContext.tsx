@@ -1,0 +1,216 @@
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  password: string;
+  preferredResolution: string;
+  preferredPreset: string;
+  createdAt: string;
+}
+
+export interface SavedBuild {
+  id: string;
+  name: string;
+  notes: string;
+  buildState: Record<string, string | null>;
+  savedAt: string;
+  sharedCount: number;
+}
+
+export interface Activity {
+  id: string;
+  message: string;
+  time: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  builds: SavedBuild[];
+  activity: Activity[];
+  login: (email: string, password: string) => boolean;
+  signup: (username: string, email: string, password: string) => boolean;
+  logout: () => void;
+  saveBuild: (name: string, notes: string, buildState: Record<string, string | null>) => boolean;
+  deleteBuild: (id: string) => void;
+  renameBuild: (id: string, name: string) => void;
+  shareBuild: (id: string) => void;
+  updateSettings: (data: Partial<User>) => boolean;
+  deleteAccount: () => void;
+  isEmailTaken: (email: string) => boolean;
+  isUsernameTaken: (username: string) => boolean;
+}
+
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
+function getUsers(): User[] {
+  try { return JSON.parse(localStorage.getItem('frameforge-users') || '[]'); } catch { return []; }
+}
+function setUsers(u: User[]) {
+  localStorage.setItem('frameforge-users', JSON.stringify(u));
+}
+function getSession(): User | null {
+  try { return JSON.parse(localStorage.getItem('frameforge-session') || 'null'); } catch { return null; }
+}
+function setSession(u: User | null) {
+  if (u) localStorage.setItem('frameforge-session', JSON.stringify(u));
+  else localStorage.removeItem('frameforge-session');
+}
+function getUserBuilds(userId: string): SavedBuild[] {
+  try { return JSON.parse(localStorage.getItem(`frameforge-builds-${userId}`) || '[]'); } catch { return []; }
+}
+function setUserBuilds(userId: string, builds: SavedBuild[]) {
+  localStorage.setItem(`frameforge-builds-${userId}`, JSON.stringify(builds));
+}
+function getUserActivity(userId: string): Activity[] {
+  try { return JSON.parse(localStorage.getItem(`frameforge-activity-${userId}`) || '[]'); } catch { return []; }
+}
+function addActivity(userId: string, message: string) {
+  const acts = getUserActivity(userId);
+  acts.unshift({ id: Date.now().toString(), message, time: new Date().toISOString() });
+  localStorage.setItem(`frameforge-activity-${userId}`, JSON.stringify(acts.slice(0, 20)));
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(getSession);
+  const [builds, setBuilds] = useState<SavedBuild[]>(() => {
+    const s = getSession();
+    return s ? getUserBuilds(s.id) : [];
+  });
+  const [activity, setActivity] = useState<Activity[]>(() => {
+    const s = getSession();
+    return s ? getUserActivity(s.id) : [];
+  });
+
+  const refreshBuilds = useCallback((u: User) => {
+    setBuilds(getUserBuilds(u.id));
+    setActivity(getUserActivity(u.id));
+  }, []);
+
+  const login = useCallback((email: string, password: string): boolean => {
+    const users = getUsers();
+    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (!found) return false;
+    setUser(found);
+    setSession(found);
+    setBuilds(getUserBuilds(found.id));
+    setActivity(getUserActivity(found.id));
+    return true;
+  }, []);
+
+  const signup = useCallback((username: string, email: string, password: string): boolean => {
+    const users = getUsers();
+    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) return false;
+    const newUser: User = {
+      id: Date.now().toString(),
+      username, email, password,
+      preferredResolution: '1080p',
+      preferredPreset: 'high',
+      createdAt: new Date().toISOString(),
+    };
+    setUsers([...users, newUser]);
+    setUser(newUser);
+    setSession(newUser);
+    setBuilds([]);
+    setActivity([]);
+    return true;
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setSession(null);
+    setBuilds([]);
+    setActivity([]);
+  }, []);
+
+  const saveBuild = useCallback((name: string, notes: string, buildState: Record<string, string | null>): boolean => {
+    if (!user) return false;
+    const current = getUserBuilds(user.id);
+    if (current.length >= 20) return false;
+    const newBuild: SavedBuild = {
+      id: Date.now().toString(),
+      name, notes, buildState,
+      savedAt: new Date().toISOString(),
+      sharedCount: 0,
+    };
+    const updated = [newBuild, ...current];
+    setUserBuilds(user.id, updated);
+    addActivity(user.id, `Saved build "${name}"`);
+    setBuilds(updated);
+    setActivity(getUserActivity(user.id));
+    return true;
+  }, [user]);
+
+  const deleteBuild = useCallback((id: string) => {
+    if (!user) return;
+    const updated = getUserBuilds(user.id).filter(b => b.id !== id);
+    setUserBuilds(user.id, updated);
+    setBuilds(updated);
+  }, [user]);
+
+  const renameBuild = useCallback((id: string, name: string) => {
+    if (!user) return;
+    const updated = getUserBuilds(user.id).map(b => b.id === id ? { ...b, name } : b);
+    setUserBuilds(user.id, updated);
+    setBuilds(updated);
+  }, [user]);
+
+  const shareBuild = useCallback((id: string) => {
+    if (!user) return;
+    const updated = getUserBuilds(user.id).map(b => b.id === id ? { ...b, sharedCount: b.sharedCount + 1 } : b);
+    setUserBuilds(user.id, updated);
+    const build = updated.find(b => b.id === id);
+    if (build) addActivity(user.id, `Shared build "${build.name}"`);
+    setBuilds(updated);
+    setActivity(getUserActivity(user.id));
+  }, [user]);
+
+  const updateSettings = useCallback((data: Partial<User>): boolean => {
+    if (!user) return false;
+    const users = getUsers();
+    if (data.username && users.find(u => u.id !== user.id && u.username.toLowerCase() === data.username!.toLowerCase())) return false;
+    if (data.email && users.find(u => u.id !== user.id && u.email.toLowerCase() === data.email!.toLowerCase())) return false;
+    const updated = { ...user, ...data };
+    setUsers(users.map(u => u.id === user.id ? updated : u));
+    setSession(updated);
+    setUser(updated);
+    return true;
+  }, [user]);
+
+  const deleteAccount = useCallback(() => {
+    if (!user) return;
+    const users = getUsers().filter(u => u.id !== user.id);
+    setUsers(users);
+    localStorage.removeItem(`frameforge-builds-${user.id}`);
+    localStorage.removeItem(`frameforge-activity-${user.id}`);
+    setSession(null);
+    setUser(null);
+    setBuilds([]);
+    setActivity([]);
+  }, [user]);
+
+  const isEmailTaken = useCallback((email: string) => {
+    return getUsers().some(u => u.email.toLowerCase() === email.toLowerCase());
+  }, []);
+
+  const isUsernameTaken = useCallback((username: string) => {
+    return getUsers().some(u => u.username.toLowerCase() === username.toLowerCase());
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{
+      user, builds, activity,
+      login, signup, logout,
+      saveBuild, deleteBuild, renameBuild, shareBuild,
+      updateSettings, deleteAccount,
+      isEmailTaken, isUsernameTaken,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  return useContext(AuthContext);
+}

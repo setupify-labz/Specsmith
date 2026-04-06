@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Cpu } from 'lucide-react';
+import { Menu, X, Cpu, Moon, Sun, LayoutDashboard, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -14,7 +16,12 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const { user, builds, logout } = useAuth();
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -22,36 +29,53 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => { setMenuOpen(false); setAvatarOpen(false); }, [location.pathname]);
+
   useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
+    const handler = (e: MouseEvent) => {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleLogout = () => { logout(); navigate('/'); };
+
+  const isDark = theme === 'dark';
 
   return (
     <>
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled ? 'bg-[#0A0A0F]/90 backdrop-blur-xl shadow-lg shadow-black/30 border-b border-white/5' : 'bg-transparent'
+          scrolled ? 'shadow-lg' : ''
         }`}
+        style={{
+          backgroundColor: scrolled
+            ? 'var(--ff-nav-bg)'
+            : 'transparent',
+          backdropFilter: scrolled ? 'blur(12px)' : undefined,
+          borderBottom: scrolled ? '1px solid var(--ff-border)' : undefined,
+        }}
       >
         <div id="ad-header" className="ad-slot hidden" style={{ minHeight: 0 }} />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 relative flex items-center justify-center">
-                <svg viewBox="0 0 40 46" fill="none" className="w-9 h-9">
-                  <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#hexGrad)" opacity="0.15"/>
-                  <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#hexGrad)" strokeWidth="1.5"/>
-                  <text x="20" y="26" textAnchor="middle" fill="url(#hexGrad)" fontSize="14" fontWeight="800" fontFamily="Inter">FF</text>
-                  <defs>
-                    <linearGradient id="hexGrad" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#6C63FF"/>
-                      <stop offset="1" stopColor="#00D4FF"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-              <span className="font-bold text-xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+            <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+              <svg viewBox="0 0 40 46" fill="none" className="w-8 h-8">
+                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#hexG)" opacity="0.15"/>
+                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#hexG)" strokeWidth="1.5"/>
+                <text x="20" y="26" textAnchor="middle" fill="url(#hexG)" fontSize="14" fontWeight="800" fontFamily="Inter">FF</text>
+                <defs>
+                  <linearGradient id="hexG" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="var(--ff-accent)"/>
+                    <stop offset="1" stopColor="var(--ff-cyan)"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span className="font-bold text-xl tracking-tight" style={{ color: 'var(--ff-text)' }}>
                 Frame<span className="gradient-text">Forge</span>
               </span>
             </Link>
@@ -62,30 +86,117 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    location.pathname === link.to
-                      ? 'text-white bg-white/10'
-                      : 'text-[#8888AA] hover:text-white hover:bg-white/5'
-                  }`}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+                  style={{
+                    color: location.pathname === link.to ? 'var(--ff-text)' : 'var(--ff-text-2)',
+                    backgroundColor: location.pathname === link.to ? 'var(--ff-card)' : 'transparent',
+                  }}
                 >
                   {link.label}
                 </Link>
               ))}
             </div>
 
-            {/* CTA + Mobile toggle */}
-            <div className="flex items-center gap-3">
-              <Link
-                to="/builder"
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
+            {/* Right side */}
+            <div className="flex items-center gap-2">
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg transition-all duration-200"
+                style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}
+                aria-label="Toggle theme"
               >
-                <Cpu size={15} />
-                Start Building
-              </Link>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={theme}
+                    initial={{ opacity: 0, rotate: -30 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: 30 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex"
+                  >
+                    {isDark ? <Moon size={17} /> : <Sun size={17} />}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
+
+              {/* Auth */}
+              {user ? (
+                <div ref={avatarRef} className="relative">
+                  <button
+                    onClick={() => setAvatarOpen(!avatarOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all"
+                    style={{ color: 'var(--ff-text)', backgroundColor: 'var(--ff-card)' }}
+                  >
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                      style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                      {user.username[0].toUpperCase()}
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium">{user.username}</span>
+                    <ChevronDown size={14} className={`transition-transform ${avatarOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
+                  </button>
+
+                  <AnimatePresence>
+                    {avatarOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-52 rounded-xl overflow-hidden shadow-2xl z-50"
+                        style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)', transformOrigin: 'top right' }}
+                      >
+                        {[
+                          { icon: <LayoutDashboard size={14} />, label: 'My Dashboard', to: '/dashboard' },
+                          { icon: <Cpu size={14} />, label: `My Builds (${builds.length})`, to: '/dashboard' },
+                          { icon: <Settings size={14} />, label: 'Settings', to: '/settings' },
+                        ].map(item => (
+                          <Link key={item.to + item.label} to={item.to}
+                            className="flex items-center gap-3 px-4 py-3 text-sm transition-colors"
+                            style={{ color: 'var(--ff-text)' }}
+                            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ff-card)')}
+                            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
+                            <span style={{ color: 'var(--ff-text-2)' }}>{item.icon}</span>
+                            {item.label}
+                          </Link>
+                        ))}
+                        <div style={{ borderTop: '1px solid var(--ff-border)' }} />
+                        <button onClick={handleLogout}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors text-left"
+                          style={{ color: '#FF1744' }}
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FF174410')}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
+                          <LogOut size={14} /> Sign Out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="hidden sm:flex px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    style={{ color: 'var(--ff-text-2)' }}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/builder"
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all hover:opacity-90 hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
+                  >
+                    <Cpu size={15} />
+                    Start Building
+                  </Link>
+                </>
+              )}
+
+              {/* Mobile hamburger */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="md:hidden p-2 rounded-lg text-[#8888AA] hover:text-white hover:bg-white/5 transition-colors"
+                className="md:hidden p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}
               >
                 {menuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -102,30 +213,43 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-16 left-0 right-0 z-40 bg-[#0A0A0F]/95 backdrop-blur-xl border-b border-white/5 md:hidden"
+            className="fixed top-16 left-0 right-0 z-40 md:hidden"
+            style={{ backgroundColor: 'var(--ff-nav-bg)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--ff-border)' }}
           >
             <div className="px-4 py-4 space-y-1">
               {navLinks.map(link => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === link.to
-                      ? 'text-white bg-white/10'
-                      : 'text-[#8888AA] hover:text-white hover:bg-white/5'
-                  }`}
+                  className="block px-4 py-3 rounded-lg text-base font-medium transition-colors"
+                  style={{
+                    color: location.pathname === link.to ? 'var(--ff-text)' : 'var(--ff-text-2)',
+                    backgroundColor: location.pathname === link.to ? 'var(--ff-card)' : 'transparent',
+                  }}
                 >
                   {link.label}
                 </Link>
               ))}
-              <Link
-                to="/builder"
-                className="flex items-center justify-center gap-2 mt-3 px-4 py-3 rounded-lg text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
-              >
-                <Cpu size={15} />
-                Start Building
-              </Link>
+              {user ? (
+                <>
+                  <Link to="/dashboard" className="block px-4 py-3 rounded-lg text-base font-medium"
+                    style={{ color: 'var(--ff-text)' }}>My Dashboard</Link>
+                  <Link to="/settings" className="block px-4 py-3 rounded-lg text-base font-medium"
+                    style={{ color: 'var(--ff-text)' }}>Settings</Link>
+                  <button onClick={handleLogout} className="block w-full text-left px-4 py-3 rounded-lg text-base font-medium"
+                    style={{ color: '#FF1744' }}>Sign Out</button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="block px-4 py-3 rounded-lg text-base font-medium"
+                    style={{ color: 'var(--ff-text-2)' }}>Sign In</Link>
+                  <Link to="/builder"
+                    className="flex items-center justify-center gap-2 mt-2 px-4 py-3 rounded-lg text-base font-semibold text-white"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    <Cpu size={16} /> Start Building
+                  </Link>
+                </>
+              )}
             </div>
           </motion.div>
         )}

@@ -1,0 +1,42 @@
+{
+  "monitors": [
+    {"id":"lg-27gp850","name":"LG 27GP850-B","brand":"LG","price_usd":299,"size_inches":27,"resolution":"1440p","panel_type":"IPS","refresh_rate_hz":165,"response_time_ms":1,"hdr":false,"g_sync":false,"freesync":true,"release_year":2021,"sponsored":false},
+    {"id":"samsung-og7-32","name":"Samsung Odyssey G7 32\"","brand":"Samsung","price_usd":499,"size_inches":32,"resolution":"1440p","panel_type":"VA","refresh_rate_hz":240,"response_time_ms":1,"hdr":"HDR600","g_sync":"GSync Compat","freesync":true,"release_year":2020,"sponsored":false},
+    {"id":"asus-pg279qm","name":"ASUS ROG Swift PG279QM","brand":"ASUS","price_usd":699,"size_inches":27,"resolution":"1440p","panel_type":"IPS","refresh_rate_hz":240,"response_time_ms":1,"hdr":"HDR400","g_sync":true,"freesync":false,"release_year":2021,"sponsored":true},
+    {"id":"lg-27gp950","name":"LG 27GP950-B","brand":"LG","price_usd":799,"size_inches":27,"resolution":"4K","panel_type":"IPS","refresh_rate_hz":160,"response_time_ms":1,"hdr":"HDR600","g_sync":"GSync Compat","freesync":true,"release_year":2021,"sponsored":false},
+    {"id":"samsung-neog9","name":"Samsung Odyssey Neo G9","brand":"Samsung","price_usd":1299,"size_inches":49,"resolution":"5120x1440p","panel_type":"VA","refresh_rate_hz":240,"response_time_ms":1,"hdr":"HDR2000","g_sync":"GSync Compat","freesync":true,"release_year":2021,"sponsored":false},
+    {"id":"benq-ex2710q","name":"BenQ MOBIUZ EX2710Q","brand":"BenQ","price_usd":349,"size_inches":27,"resolution":"1440p","panel_type":"IPS","refresh_rate_hz":165,"response_time_ms":1,"hdr":"HDR400","g_sync":false,"freesync":true,"release_year":2021,"sponsored":false},
+    {"id":"aoc-24g2","name":"AOC 24G2","brand":"AOC","price_usd":179,"size_inches":24,"resolution":"1080p","panel_type":"IPS","refresh_rate_hz":144,"response_time_ms":1,"hdr":false,"g_sync":false,"freesync":true,"release_year":2020,"sponsored":false},
+    {"id":"alienware-aw2523hf","name":"Alienware AW2523HF","brand":"Alienware","price_usd":329,"size_inches":25,"resolution":"1080p","panel_type":"IPS","refresh_rate_hz":360,"response_time_ms":0.5,"hdr":false,"g_sync":false,"freesync":true,"release_year":2022,"sponsored":false},
+    {"id":"lg-45gr95qe","name":"LG 45GR95QE","brand":"LG","price_usd":999,"size_inches":45,"resolution":"3440x1440p","panel_type":"OLED","refresh_rate_hz":240,"response_time_ms":0.03,"hdr":"OLED HDR","g_sync":"GSync Compat","freesync":true,"release_year":2023,"sponsored":true},
+    {"id":"asus-pg27aqdm","name":"ASUS ROG Swift OLED PG27AQDM","brand":"ASUS","price_usd":799,"size_inches":27,"resolution":"1440p","panel_type":"OLED","refresh_rate_hz":240,"response_time_ms":0.03,"hdr":"OLED HDR","g_sync":true,"freesync":true,"release_year":2023,"sponsored":false}
+  ],
+  "keyboards": [
+    {"id":"logi-gprox","name":"Logitech G Pro X TKL","brand":"Logitech","price_usd":129,"switch_type":"Mechanical (GX Blue/Red/Brown)","form_factor":"TKL","rgb":true,"wireless":false,"release_year":2020,"sponsored":false},
+    {"id":"razer-bwv4pro","name":"Razer BlackWidow V4 Pro","brand":"Razer","price_usd":229,"switch_type":"Mechanical (Green/Yellow)","form_factor":"Full","rgb":true,"wireless":true,"release_year":2023,"sponsored":false},
+    {"id":"corsair-k70mk2","name":"Corsair K70 RGB MK.2","brand":"Corsair","price_usd":159,"switch_type":"Mechanical (Cherry MX)","form_factor":"Full","rgb":true,"wireless":false,"release_year":2018,"sponsored":false},
+    {"id":"steelseries-apex-pro","name":"SteelSeries Apex Pro","brand":"SteelSeries","price_usd":199,"switch_type":"Adjustable Mechanical","form_factor":"Full","rgb":true,"wireless":false,"release_year":2019,"sponsored":true},
+    {"id":"keychron-q2pro","name":"Keychron Q2 Pro","brand":"Keychron","price_usd":179,"switch_type":"Mechanical (Gateron)","form_factor":"75%","rgb":true,"wireless":true,"release_year":2022,"sponsored":false},
+    {"id":"logi-mxkeys","name":"Logitech MX Keys","brand":"Logitech","price_usd":109,"switch_type":"Low-profile Scissor","form_factor":"Full","rgb":false,"wireless":true,"release_year":2019,"sponsored":false},
+    {"id":"ducky-one3","name":"Ducky One 3","brand":"Ducky","price_usd":119,"switch_type":"Mechanical (Cherry MX)","form_factor":"TKL","rgb":true,"wireless":false,"release_year":2021,"sponsored":false},
+    {"id":"asus-rog-azoth","name":"ASUS ROG Azoth","brand":"ASUS","price_usd":249,"switch_type":"Mechanical (ROG NX)","form_factor":"75%","rgb":true,"wireless":true,"release_year":2023,"sponsored":false}
+  ],
+  "mice": [
+    {"id":"logi-g502xplus","name":"Logitech G502 X Plus","brand":"Logitech","price_usd":159,"dpi_max":25600,"weight_grams":106,"wireless":true,"rgb":true,"buttons":13,"release_year":2022,"sponsored":false},
+    {"id":"razer-deathadderv3pro","name":"Razer DeathAdder V3 Pro","brand":"Razer","price_usd":149,"dpi_max":30000,"weight_grams":88,"wireless":true,"rgb":false,"buttons":6,"release_year":2022,"sponsored":false},
+    {"id":"steelseries-aerox5","name":"SteelSeries Aerox 5 Wireless","brand":"SteelSeries","price_usd":139,"dpi_max":18000,"weight_grams":74,"wireless":true,"rgb":true,"buttons":9,"release_year":2022,"sponsored":false},
+    {"id":"logi-gprox-sl2","name":"Logitech G Pro X Superlight 2","brand":"Logitech","price_usd":159,"dpi_max":32000,"weight_grams":60,"wireless":true,"rgb":false,"buttons":5,"release_year":2023,"sponsored":true},
+    {"id":"corsair-m75air","name":"Corsair M75 Air","brand":"Corsair","price_usd":129,"dpi_max":26000,"weight_grams":60,"wireless":true,"rgb":true,"buttons":6,"release_year":2023,"sponsored":false},
+    {"id":"razer-viperv3pro","name":"Razer Viper V3 Pro","brand":"Razer","price_usd":159,"dpi_max":35000,"weight_grams":54,"wireless":true,"rgb":false,"buttons":5,"release_year":2024,"sponsored":false},
+    {"id":"asus-harpe-ace","name":"ASUS ROG Harpe Ace Extreme","brand":"ASUS","price_usd":189,"dpi_max":36000,"weight_grams":54,"wireless":true,"rgb":false,"buttons":5,"release_year":2023,"sponsored":false},
+    {"id":"glorious-model-o2","name":"Glorious Model O 2","brand":"Glorious","price_usd":79,"dpi_max":26000,"weight_grams":59,"wireless":false,"rgb":true,"buttons":6,"release_year":2023,"sponsored":false}
+  ],
+  "headsets": [
+    {"id":"steelseries-arctis-nova-pro","name":"SteelSeries Arctis Nova Pro Wireless","brand":"SteelSeries","price_usd":349,"driver_mm":40,"surround_sound":"360° Spatial","wireless":true,"noise_cancelling":true,"microphone":true,"release_year":2022,"sponsored":false},
+    {"id":"razer-blackshark-v2pro","name":"Razer BlackShark V2 Pro","brand":"Razer","price_usd":179,"driver_mm":50,"surround_sound":"THX 7.1","wireless":true,"noise_cancelling":false,"microphone":true,"release_year":2023,"sponsored":false},
+    {"id":"logi-gprox2","name":"Logitech G Pro X 2 Lightspeed","brand":"Logitech","price_usd":249,"driver_mm":50,"surround_sound":"DTS 7.1","wireless":true,"noise_cancelling":false,"microphone":true,"release_year":2023,"sponsored":true},
+    {"id":"hyperx-cloud3w","name":"HyperX Cloud III Wireless","brand":"HyperX","price_usd":149,"driver_mm":53,"surround_sound":"7.1 Virtual","wireless":true,"noise_cancelling":false,"microphone":true,"release_year":2023,"sponsored":false},
+    {"id":"corsair-hs80","name":"Corsair HS80 RGB Wireless","brand":"Corsair","price_usd":129,"driver_mm":50,"surround_sound":"Dolby 7.1","wireless":true,"noise_cancelling":false,"microphone":true,"release_year":2021,"sponsored":false},
+    {"id":"asus-rog-delta-s","name":"ASUS ROG Delta S","brand":"ASUS","price_usd":149,"driver_mm":50,"surround_sound":"AI 7.1","wireless":false,"noise_cancelling":false,"microphone":true,"release_year":2021,"sponsored":false}
+  ]
+}

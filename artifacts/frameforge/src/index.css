@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -28,16 +28,20 @@
   --color-warning: #FFB300;
   --color-danger: #FF1744;
   --color-cyan: #00D4FF;
-  --color-surface: #13131A;
-  --color-card-dark: #1C1C26;
+  --color-surface: var(--ff-surface);
+  --color-card-dark: var(--ff-card);
 
   --font-sans: var(--app-font-sans);
+  --font-mono: 'JetBrains Mono', monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ═══════════════════════════════════════
+   FRAMEFORGE DESIGN SYSTEM — DARK (default)
+   ═══════════════════════════════════════ */
 :root {
   --background: 240 12% 5%;
   --foreground: 240 40% 95%;
@@ -60,6 +64,64 @@
   --destructive-foreground: 0 0% 100%;
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --radius: 0.625rem;
+
+  /* FrameForge custom tokens — dark */
+  --ff-bg:        #0A0A0F;
+  --ff-surface:   #13131A;
+  --ff-card:      #1C1C26;
+  --ff-card-hover:#222230;
+  --ff-border:    rgba(255,255,255,0.08);
+  --ff-text:      #F0F0FF;
+  --ff-text-2:    #8888AA;
+  --ff-text-3:    #555577;
+  --ff-accent:    #6C63FF;
+  --ff-cyan:      #00D4FF;
+  --ff-nav-bg:    rgba(10,10,15,0.88);
+  --ff-modal-bg:  rgba(0,0,0,0.75);
+  --ff-input-bg:  #13131A;
+  --ff-scrollbar: rgba(108,99,255,0.4);
+  --ff-transition: 200ms ease;
+}
+
+/* ═══════════════════════════════════════
+   FRAMEFORGE DESIGN SYSTEM — LIGHT
+   ═══════════════════════════════════════ */
+[data-theme="light"] {
+  --background: 0 0% 96%;
+  --foreground: 240 40% 5%;
+  --border: 240 10% 85%;
+  --input: 240 10% 85%;
+  --ring: 250 89% 58%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 40% 5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 40% 5%;
+  --primary: 250 89% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 10% 94%;
+  --secondary-foreground: 240 40% 20%;
+  --muted: 240 10% 92%;
+  --muted-foreground: 240 15% 45%;
+  --accent: 191 100% 40%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 350 100% 45%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* FrameForge custom tokens — light */
+  --ff-bg:        #F4F4FA;
+  --ff-surface:   #FFFFFF;
+  --ff-card:      #FFFFFF;
+  --ff-card-hover:#F0F0FA;
+  --ff-border:    rgba(0,0,20,0.1);
+  --ff-text:      #0A0A1A;
+  --ff-text-2:    #555566;
+  --ff-text-3:    #888899;
+  --ff-accent:    #5A52EE;
+  --ff-cyan:      #0099CC;
+  --ff-nav-bg:    rgba(244,244,250,0.88);
+  --ff-modal-bg:  rgba(0,0,0,0.5);
+  --ff-input-bg:  #F4F4FA;
+  --ff-scrollbar: rgba(90,82,238,0.4);
 }
 
 @layer base {
@@ -73,93 +135,186 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply antialiased;
     font-family: 'Inter', system-ui, sans-serif;
-    background-color: #0A0A0F;
-    color: #F0F0FF;
+    background-color: var(--ff-bg);
+    color: var(--ff-text);
+    transition: background-color var(--ff-transition), color var(--ff-transition);
   }
 }
 
 @layer utilities {
-  .bg-surface { background-color: #13131A; }
-  .bg-card-dark { background-color: #1C1C26; }
-  .text-secondary-custom { color: #8888AA; }
-  .border-subtle { border-color: rgba(255,255,255,0.08); }
+  /* Backgrounds */
+  .bg-surface   { background-color: var(--ff-surface); }
+  .bg-card-dark { background-color: var(--ff-card); }
+  .bg-ff-bg     { background-color: var(--ff-bg); }
 
+  /* Text */
+  .text-secondary-custom { color: var(--ff-text-2); }
+  .text-ff-primary       { color: var(--ff-text); }
+
+  /* Borders */
+  .border-subtle { border-color: var(--ff-border); }
+
+  /* Gradient */
   .gradient-text {
-    background: linear-gradient(135deg, #6C63FF, #00D4FF);
+    background: linear-gradient(135deg, var(--ff-accent), var(--ff-cyan));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-
   .gradient-bg {
-    background: linear-gradient(135deg, #6C63FF, #00D4FF);
+    background: linear-gradient(135deg, var(--ff-accent), var(--ff-cyan));
   }
 
-  .gradient-border {
-    position: relative;
-    border: 1px solid transparent;
-    background-clip: padding-box;
-  }
+  /* Glow */
+  .glow-purple { box-shadow: 0 0 20px rgba(108,99,255,0.3); }
+  .glow-cyan   { box-shadow: 0 0 20px rgba(0,212,255,0.3); }
 
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
-  }
-
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-  }
-
+  /* Card interactions */
   .card-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
-
   .card-hover:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(108, 99, 255, 0.25);
-    border-color: rgba(108, 99, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(108,99,255,0.15);
+    border-color: rgba(108,99,255,0.5) !important;
   }
-
   .selected-card {
-    border-color: #6C63FF !important;
-    box-shadow: 0 0 0 1px #6C63FF, 0 4px 20px rgba(108, 99, 255, 0.3);
+    border-color: var(--ff-accent) !important;
+    box-shadow: 0 0 0 1px var(--ff-accent), 0 4px 20px rgba(108,99,255,0.25);
+  }
+  .recommended-card {
+    border-color: var(--ff-accent) !important;
+    box-shadow: 0 0 0 2px var(--ff-accent), 0 0 20px rgba(108,99,255,0.4) !important;
+    animation: recommendPulse 1s ease-in-out 3;
+  }
+  @keyframes recommendPulse {
+    0%,100% { box-shadow: 0 0 0 2px var(--ff-accent), 0 0 20px rgba(108,99,255,0.4); }
+    50%      { box-shadow: 0 0 0 3px var(--ff-accent), 0 0 35px rgba(108,99,255,0.6); }
   }
 
-  .fps-low { color: #FF1744; }
-  .fps-medium { color: #FFB300; }
-  .fps-good { color: #00E676; }
+  /* FPS colors */
+  .fps-low       { color: #FF1744; }
+  .fps-medium    { color: #FFB300; }
+  .fps-good      { color: #00E676; }
   .fps-excellent { color: #00D4FF; }
 
+  /* Ad slots */
   .ad-slot {
     min-height: 90px;
-    background: rgba(255,255,255,0.02);
-    border: 1px dashed rgba(255,255,255,0.08);
+    background: rgba(128,128,128,0.04);
+    border: 1px dashed var(--ff-border);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
+  /* Input focus ring */
+  .ff-input {
+    height: 44px;
+    padding: 0 16px;
+    background-color: var(--ff-input-bg);
+    border: 1px solid var(--ff-border);
+    border-radius: 8px;
+    color: var(--ff-text);
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .ff-input:focus {
+    border-color: var(--ff-accent);
+    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
+  }
+  .ff-input.error {
+    border-color: #FF1744;
+    box-shadow: 0 0 0 3px rgba(255,23,68,0.12);
+  }
+  .ff-input::placeholder { color: var(--ff-text-3); }
+
+  /* Shake animation */
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    15%     { transform: translateX(-8px); }
+    30%     { transform: translateX(7px); }
+    45%     { transform: translateX(-6px); }
+    60%     { transform: translateX(5px); }
+    75%     { transform: translateX(-4px); }
+    90%     { transform: translateX(3px); }
+  }
+  .shake { animation: shake 0.5s ease-in-out; }
+
+  /* Ripple */
+  .ripple-container { position: relative; overflow: hidden; }
+  @keyframes ripple {
+    0%   { transform: scale(0); opacity: 0.5; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  /* Shimmer skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, var(--ff-card) 25%, var(--ff-card-hover) 50%, var(--ff-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Bottleneck bar animation */
+  @keyframes growCenter {
+    from { transform: scaleX(0); transform-origin: center; }
+    to   { transform: scaleX(1); transform-origin: center; }
+  }
+  .grow-center { animation: growCenter 0.6s ease-out forwards; }
+
+  /* Sparkline draw animation */
+  @keyframes drawLine {
+    from { stroke-dashoffset: 1000; }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  /* Count-up animation (JS driven) */
+  .count-up { transition: all 0.3s ease; }
+
+  /* Prefers reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-/* Animated gradient background for hero */
+/* Animated grid background */
 .animated-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(108, 99, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(108, 99, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(var(--ff-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ff-border) 1px, transparent 1px);
   background-size: 60px 60px;
   animation: gridMove 20s linear infinite;
 }
-
 @keyframes gridMove {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(60px, 60px); }
+  0%   { transform: translate(0,0); }
+  100% { transform: translate(60px,60px); }
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0A0A0F; }
-::-webkit-scrollbar-thumb { background: rgba(108, 99, 255, 0.4); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(108, 99, 255, 0.7); }
+::-webkit-scrollbar-track { background: var(--ff-bg); }
+::-webkit-scrollbar-thumb { background: var(--ff-scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ff-accent); }
+
+/* Transition for all theme-dependent elements */
+body, nav, .card-hover, input, textarea, select, button,
+[class*="bg-"], [class*="text-"], [class*="border-"] {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
