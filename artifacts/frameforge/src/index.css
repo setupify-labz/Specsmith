@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-success: #00E676;
+  --color-warning: #FFB300;
+  --color-danger: #FF1744;
+  --color-cyan: #00D4FF;
+  --color-surface: #13131A;
+  --color-card-dark: #1C1C26;
+
+  --font-sans: var(--app-font-sans);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: 240 12% 5%;
+  --foreground: 240 40% 95%;
+  --border: 240 10% 18%;
+  --input: 240 10% 18%;
+  --ring: 250 89% 70%;
+  --card: 240 14% 10%;
+  --card-foreground: 240 40% 95%;
+  --popover: 240 14% 10%;
+  --popover-foreground: 240 40% 95%;
+  --primary: 250 89% 70%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 12% 14%;
+  --secondary-foreground: 240 40% 80%;
+  --muted: 240 10% 16%;
+  --muted-foreground: 240 15% 55%;
+  --accent: 191 100% 50%;
+  --accent-foreground: 240 12% 5%;
+  --destructive: 350 100% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --app-font-sans: 'Inter', system-ui, sans-serif;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #0A0A0F;
+    color: #F0F0FF;
+  }
+}
+
+@layer utilities {
+  .bg-surface { background-color: #13131A; }
+  .bg-card-dark { background-color: #1C1C26; }
+  .text-secondary-custom { color: #8888AA; }
+  .border-subtle { border-color: rgba(255,255,255,0.08); }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #6C63FF, #00D4FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-bg {
+    background: linear-gradient(135deg, #6C63FF, #00D4FF);
+  }
+
+  .gradient-border {
+    position: relative;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(108, 99, 255, 0.3);
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  }
+
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(108, 99, 255, 0.25);
+    border-color: rgba(108, 99, 255, 0.5);
+  }
+
+  .selected-card {
+    border-color: #6C63FF !important;
+    box-shadow: 0 0 0 1px #6C63FF, 0 4px 20px rgba(108, 99, 255, 0.3);
+  }
+
+  .fps-low { color: #FF1744; }
+  .fps-medium { color: #FFB300; }
+  .fps-good { color: #00E676; }
+  .fps-excellent { color: #00D4FF; }
+
+  .ad-slot {
+    min-height: 90px;
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed rgba(255,255,255,0.08);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Animated gradient background for hero */
+.animated-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(108, 99, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 99, 255, 0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(60px, 60px); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0A0A0F; }
+::-webkit-scrollbar-thumb { background: rgba(108, 99, 255, 0.4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(108, 99, 255, 0.7); }
