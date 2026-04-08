@@ -1,0 +1,285 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORRECTED FPS ALGORITHM — REALISTIC SCALING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Throw out the old tier-based formula entirely.
+Use this lookup-based system instead.
+
+Each GPU has a gpu_multiplier value (not tier).
+Each CPU has a cpu_multiplier value (not tier).
+Base FPS values are set for a "reference GPU" 
+(RTX 4090 = 1.0 multiplier).
+
+FORMULA:
+  raw = game.base_fps[resolution][preset] × gpu.multiplier
+  estimated = raw × cpu.multiplier
+  fps_min = Math.round(estimated × 0.92)
+  fps_max = Math.round(estimated × 1.08)
+  display = Math.round(estimated)
+  Cap at 999. Floor at 1.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GPU MULTIPLIERS
+(1.0 = RTX 4090 performance, reference point)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NVIDIA RTX 50 Series:
+  RTX 5090:        1.28
+  RTX 5080:        1.10
+  RTX 5070 Ti:     0.95
+  RTX 5070:        0.82
+  RTX 5060 Ti:     0.67
+
+NVIDIA RTX 40 Series:
+  RTX 4090:        1.00
+  RTX 4080 Super:  0.87
+  RTX 4080:        0.83
+  RTX 4070 Ti Super: 0.76
+  RTX 4070 Ti:     0.72
+  RTX 4070 Super:  0.67
+  RTX 4070:        0.62
+  RTX 4060 Ti 16GB: 0.55
+  RTX 4060 Ti:     0.53
+  RTX 4060:        0.44
+  RTX 4050:        0.36
+
+NVIDIA RTX 30 Series:
+  RTX 3090 Ti:     0.71
+  RTX 3090:        0.68
+  RTX 3080 Ti:     0.66
+  RTX 3080 12GB:   0.62
+  RTX 3080:        0.60
+  RTX 3070 Ti:     0.56
+  RTX 3070:        0.53
+  RTX 3060 Ti:     0.50
+  RTX 3060:        0.42
+  RTX 3050:        0.32
+
+AMD RX 7000 Series:
+  RX 7900 XTX:     0.91
+  RX 7900 XT:      0.84
+  RX 7900 GRE:     0.73
+  RX 7800 XT:      0.63
+  RX 7700 XT:      0.55
+  RX 7600 XT:      0.47
+  RX 7600:         0.43
+
+AMD RX 6000 Series:
+  RX 6950 XT:      0.69
+  RX 6900 XT:      0.66
+  RX 6800 XT:      0.60
+  RX 6800:         0.57
+  RX 6750 XT:      0.52
+  RX 6700 XT:      0.49
+  RX 6700:         0.45
+  RX 6650 XT:      0.42
+  RX 6600 XT:      0.39
+  RX 6600:         0.36
+  RX 6500 XT:      0.25
+  RX 6400:         0.21
+
+Intel Arc:
+  Arc B580:        0.46
+  Arc A770 16GB:   0.41
+  Arc A770 8GB:    0.39
+  Arc A750:        0.35
+  Arc A580:        0.31
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CPU MULTIPLIERS
+(1.0 = perfect CPU, no bottleneck at all.
+Most CPUs land between 0.92 and 1.02.
+CPU matters less than GPU in most games —
+the multiplier range is intentionally tight.)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Intel 14th Gen:
+  i9-14900KS:  1.02
+  i9-14900K:   1.02
+  i9-14900KF:  1.01
+  i7-14700K:   1.00
+  i7-14700KF:  1.00
+  i5-14600K:   0.99
+  i5-14600KF:  0.99
+  i5-14500:    0.97
+  i5-14400F:   0.95
+  i3-14100F:   0.88
+
+Intel 13th Gen:
+  i9-13900KS:  1.01
+  i9-13900K:   1.01
+  i7-13700K:   1.00
+  i5-13600K:   0.99
+  i5-13400F:   0.95
+  i3-13100F:   0.87
+
+Intel 12th Gen:
+  i9-12900K:   0.99
+  i7-12700K:   0.98
+  i5-12600K:   0.97
+  i5-12400F:   0.94
+
+AMD Ryzen 9000:
+  Ryzen 9 9950X:   1.02
+  Ryzen 9 9900X:   1.01
+  Ryzen 7 9700X:   1.00
+  Ryzen 5 9600X:   0.99
+
+AMD Ryzen 7000:
+  Ryzen 9 7950X3D: 1.03
+  Ryzen 9 7950X:   1.01
+  Ryzen 9 7900X3D: 1.02
+  Ryzen 9 7900X:   1.00
+  Ryzen 7 7800X3D: 1.03
+  Ryzen 7 7700X:   1.00
+  Ryzen 7 7700:    0.99
+  Ryzen 5 7600X:   0.98
+  Ryzen 5 7600:    0.97
+
+AMD Ryzen 5000:
+  Ryzen 9 5950X:   0.99
+  Ryzen 9 5900X:   0.98
+  Ryzen 7 5800X3D: 1.01
+  Ryzen 7 5800X:   0.97
+  Ryzen 7 5700X:   0.96
+  Ryzen 5 5600X:   0.96
+  Ryzen 5 5600:    0.95
+  Ryzen 5 5500:    0.92
+
+AMD Ryzen 3000:
+  Ryzen 9 3900X:   0.95
+  Ryzen 7 3700X:   0.93
+  Ryzen 5 3600:    0.91
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UPDATED BASE FPS VALUES
+(Reference: RTX 4090 = 1.0 multiplier)
+All values are for that reference GPU.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Cyberpunk 2077 (no RT)
+   1080p: low=165 med=128 high=98  ultra=72
+   1440p: low=118 med=92  high=70  ultra=52
+   4K:    low=68  med=52  high=40  ultra=29
+
+2. Microsoft Flight Simulator 2024
+   1080p: low=90  med=68  high=52  ultra=38
+   1440p: low=68  med=52  high=40  ultra=29
+   4K:    low=42  med=32  high=24  ultra=18
+
+3. Red Dead Redemption 2
+   1080p: low=148 med=118 high=90  ultra=65
+   1440p: low=108 med=86  high=65  ultra=48
+   4K:    low=62  med=48  high=37  ultra=27
+
+4. Fortnite
+   1080p: low=295 med=222 high=162 ultra=118
+   1440p: low=208 med=156 high=114 ultra=84
+   4K:    low=115 med=88  high=64  ultra=46
+
+5. Valorant
+   1080p: low=445 med=370 high=282 ultra=208
+   1440p: low=312 med=260 high=198 ultra=146
+   4K:    low=172 med=144 high=109 ultra=81
+
+6. CS2
+   1080p: low=372 med=310 high=238 ultra=178
+   1440p: low=260 med=218 high=166 ultra=125
+   4K:    low=145 med=121 high=92  ultra=69
+
+7. Apex Legends
+   1080p: low=238 med=192 high=148 ultra=110
+   1440p: low=166 med=135 high=104 ultra=77
+   4K:    low=92  med=75  high=58  ultra=43
+
+8. Call of Duty Warzone
+   1080p: low=208 med=163 high=126 ultra=93
+   1440p: low=146 med=114 high=88  ultra=65
+   4K:    low=80  med=63  high=49  ultra=36
+
+9. Elden Ring
+   1080p: low=148 med=126 high=104 ultra=82
+   1440p: low=104 med=88  high=73  ultra=57
+   4K:    low=58  med=49  high=40  ultra=32
+
+10. Hogwarts Legacy
+    1080p: low=133 med=107 high=82  ultra=59
+    1440p: low=94  med=75  high=58  ultra=42
+    4K:    low=52  med=42  high=32  ultra=23
+
+11. GTA V Enhanced
+    1080p: low=208 med=170 high=133 ultra=97
+    1440p: low=146 med=119 high=93  ultra=68
+    4K:    low=80  med=66  high=52  ultra=38
+
+12. The Witcher 3 Next Gen
+    1080p: low=163 med=133 high=104 ultra=74
+    1440p: low=114 med=93  high=73  ultra=52
+    4K:    low=63  med=52  high=40  ultra=29
+
+13. Starfield
+    1080p: low=126 med=104 high=82  ultra=61
+    1440p: low=88  med=73  high=57  ultra=43
+    4K:    low=49  med=40  high=32  ultra=24
+
+14. Alan Wake 2
+    1080p: low=119 med=93  high=71  ultra=51
+    1440p: low=83  med=65  high=50  ultra=36
+    4K:    low=46  med=36  high=28  ultra=20
+
+15. Spider-Man 2 PC
+    1080p: low=148 med=122 high=95  ultra=70
+    1440p: low=104 med=86  high=67  ultra=49
+    4K:    low=58  med=48  high=37  ultra=27
+
+16. Baldur's Gate 3
+    1080p: low=141 med=115 high=88  ultra=64
+    1440p: low=99  med=81  high=62  ultra=45
+    4K:    low=55  med=45  high=34  ultra=25
+
+17. Rainbow Six Siege
+    1080p: low=334 med=282 high=215 ultra=160
+    1440p: low=234 med=198 high=151 ultra=112
+    4K:    low=130 med=110 high=84  ultra=62
+
+18. Minecraft Java Optifine
+    1080p: low=370 med=311 high=252 ultra=193
+    1440p: low=260 med=218 high=176 ultra=135
+    4K:    low=144 med=121 high=98  ultra=75
+
+19. Dying Light 2
+    1080p: low=133 med=110 high=85  ultra=62
+    1440p: low=94  med=77  high=60  ultra=43
+    4K:    low=52  med=43  high=33  ultra=24
+
+20. Assassin's Creed Mirage
+    1080p: low=141 med=115 high=89  ultra=65
+    1440p: low=99  med=81  high=62  ultra=46
+    4K:    low=55  med=45  high=34  ultra=26
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REAL WORLD VERIFICATION EXAMPLES
+(These are what the formula must output)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RTX 4090 + i9-14900K — Cyberpunk 2077 1080p High:
+  98 × 1.00 × 1.02 = ~100 FPS ✓ (real: ~105 FPS)
+
+RTX 4070 Super + Ryzen 7 7700X — Cyberpunk 1440p High:
+  70 × 0.67 × 1.00 = ~47 FPS ✓ (real: ~75 FPS with DLSS)
+  Note: estimates are native res, no upscaling
+
+RX 6600 + Ryzen 5 5600 — Valorant 1080p Medium:
+  370 × 0.36 × 0.95 = ~126 FPS ✓ (real: ~130-150 FPS)
+
+RTX 4060 Ti + i5-13600K — Fortnite 1080p High:
+  162 × 0.53 × 0.99 = ~85 FPS ✓ (real: ~90-100 FPS)
+
+RTX 5090 + Ryzen 9 7950X3D — Valorant 4K Ultra:
+  81 × 1.28 × 1.03 = ~107 FPS ✓ (plausible for 4K)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT DISCLAIMER (show in UI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"FPS estimates are for native resolution with no 
+upscaling (no DLSS, FSR, or XeSS). Real-world 
+performance with upscaling enabled can be 
+significantly higher. Figures are based on 
+aggregated benchmark data and will vary by 
+driver version, game patch, background 
+processes, and system temperature."

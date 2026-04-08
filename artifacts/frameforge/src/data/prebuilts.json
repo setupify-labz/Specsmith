@@ -3,9 +3,13 @@
     "id":"budget-beast",
     "name":"Budget Beast",
     "tagline":"Office & Light Gaming",
-    "description":"The perfect entry point for anyone wanting to game without breaking the bank. Handles esports titles at high framerates and AAA games at 1080p medium.",
-    "target_resolution":"1080p",
-    "estimated_price":517,
+    "description":"The perfect entry point for anyone wanting to game without breaking the bank. Handles esports titles at high framerates and AAA games at 1080p medium settings.",
+    "target_resolution":"1080p Medium",
+    "badge_color":"gray",
+    "fps_resolution":"1080p",
+    "fps_preset":"medium",
+    "fps_preview_games":["valorant","fortnite","cs2"],
+    "estimated_price":772,
     "parts":{
       "gpu":"rx6600",
       "cpu":"r5-5600",
@@ -15,20 +19,19 @@
       "psu":"crm750",
       "case":"nzxth510",
       "cooler":"cmh212"
-    },
-    "fps_preview":[
-      {"game":"Valorant","fps":162},
-      {"game":"Fortnite","fps":88},
-      {"game":"CS2 (Counter-Strike 2)","fps":120}
-    ]
+    }
   },
   {
     "id":"1080p-champion",
     "name":"1080p Champion",
-    "tagline":"60 FPS Everything at 1080p",
+    "tagline":"Smooth 60+ FPS in Every AAA Game",
     "description":"Built to deliver smooth 60+ FPS in every modern AAA game at 1080p high settings. Great value for mainstream gaming without sacrificing quality.",
-    "target_resolution":"1080p",
-    "estimated_price":833,
+    "target_resolution":"1080p High",
+    "badge_color":"blue",
+    "fps_resolution":"1080p",
+    "fps_preset":"high",
+    "fps_preview_games":["cyberpunk2077","eldenring","fortnite"],
+    "estimated_price":1282,
     "parts":{
       "gpu":"rtx4060ti",
       "cpu":"i5-13600k",
@@ -38,20 +41,19 @@
       "psu":"evga850",
       "case":"cor4000d",
       "cooler":"bqdrp4"
-    },
-    "fps_preview":[
-      {"game":"Cyberpunk 2077","fps":78},
-      {"game":"Elden Ring","fps":95},
-      {"game":"Fortnite","fps":145}
-    ]
+    }
   },
   {
     "id":"1440p-sweetspot",
     "name":"1440p Sweet Spot",
     "tagline":"Best Value for 1440p Gaming",
-    "description":"The ideal build for 1440p gaming with high settings. Delivers 60-100 FPS in demanding titles and crushes esports games. The recommended build for most gamers.",
-    "target_resolution":"1440p",
-    "estimated_price":1234,
+    "description":"The ideal build for 1440p gaming with high settings. Delivers 60–100 FPS in demanding titles and crushes esports games. The recommended build for most gamers.",
+    "target_resolution":"1440p High",
+    "badge_color":"purple",
+    "fps_resolution":"1440p",
+    "fps_preset":"high",
+    "fps_preview_games":["cyberpunk2077","eldenring","cs2"],
+    "estimated_price":1752,
     "parts":{
       "gpu":"rtx4070s",
       "cpu":"r7-7700x",
@@ -61,43 +63,41 @@
       "psu":"sea1000",
       "case":"lio11",
       "cooler":"corh100i"
-    },
-    "fps_preview":[
-      {"game":"Cyberpunk 2077","fps":95},
-      {"game":"Elden Ring","fps":110},
-      {"game":"CS2 (Counter-Strike 2)","fps":225}
-    ]
+    }
   },
   {
     "id":"4k-monster",
     "name":"4K Monster",
     "tagline":"Serious 4K Gaming",
-    "description":"A powerhouse designed for 4K gaming with high settings. Handles every modern title at 4K and dominates at 1440p. For the gamer who wants the best without compromise.",
-    "target_resolution":"4K",
-    "estimated_price":2023,
+    "description":"A powerhouse designed for 4K gaming with high settings. Handles every modern title at 4K and dominates at 1440p ultra. For the gamer who wants the best without compromise.",
+    "target_resolution":"4K High",
+    "badge_color":"amber",
+    "fps_resolution":"4k",
+    "fps_preset":"high",
+    "fps_preview_games":["cyberpunk2077","eldenring","valorant"],
+    "estimated_price":3082,
     "parts":{
       "gpu":"rtx4080s",
       "cpu":"r9-7950x3d",
       "motherboard":"x670ecross",
       "ram":"gz32ddr5",
       "storage":"wdblack2",
-      "psu":"corh150i",
+      "psu":"corhx1200",
       "case":"fdtorrent",
-      "cooler":"nzxtx63"
-    },
-    "fps_preview":[
-      {"game":"Cyberpunk 2077","fps":98},
-      {"game":"Elden Ring","fps":120},
-      {"game":"Valorant","fps":260}
-    ]
+      "cooler":"corh150i"
+    }
   },
   {
     "id":"ultimate-rig",
     "name":"Ultimate Rig",
-    "tagline":"No Compromises",
+    "tagline":"No Compromises — Creators & Enthusiasts",
     "description":"The absolute pinnacle of consumer PC gaming. Maximum FPS, maximum quality, maximum everything. For content creators, streamers, and enthusiasts who demand perfection.",
-    "target_resolution":"4K",
-    "estimated_price":3568,
+    "target_resolution":"4K Ultra",
+    "badge_color":"gold",
+    "fps_resolution":"4k",
+    "fps_preset":"ultra",
+    "fps_preview_games":["cyberpunk2077","eldenring","valorant"],
+    "estimated_price":4222,
     "parts":{
       "gpu":"rtx5090",
       "cpu":"r9-7950x3d",
@@ -107,11 +107,6 @@
       "psu":"tt1650",
       "case":"bqdbp900",
       "cooler":"corh150i"
-    },
-    "fps_preview":[
-      {"game":"Cyberpunk 2077","fps":185},
-      {"game":"Elden Ring","fps":220},
-      {"game":"Valorant","fps":500}
-    ]
+    }
   }
 ]

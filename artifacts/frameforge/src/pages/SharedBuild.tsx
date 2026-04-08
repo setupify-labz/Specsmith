@@ -3,14 +3,14 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
 import { decodeBuild } from '../lib/sharing';
-import { estimateFps, getAffiliateUrl } from '../lib/fps';
+import { estimateFpsForBuild, getAffiliateUrl } from '../lib/fps';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { useAuth } from '../context/AuthContext';
 
-interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; }
-interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; }
+interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; }
+interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; }
 interface Game { id: string; name: string; base_fps: Record<string, Record<string, number>>; }
 
 const gpus = gpuData as GPU[];
@@ -58,7 +58,7 @@ export default function SharedBuild() {
     if (!gpu || !cpu) return [];
     return games.map(g => ({
       name: g.name,
-      fps: estimateFps(gpu, cpu, g, '1080p', 'high'),
+      fps: estimateFpsForBuild(gpu, cpu, g, '1080p', 'high').estimated,
     })).sort((a, b) => b.fps - a.fps);
   }, [gpu, cpu]);
 

@@ -5,9 +5,9 @@
     "genre":"RPG",
     "year":2020,
     "base_fps":{
-      "1080p":{"low":220,"medium":170,"high":130,"ultra":95},
-      "1440p":{"low":160,"medium":120,"high":90,"ultra":68},
-      "4k":{"low":90,"medium":70,"high":52,"ultra":38}
+      "1080p":{"low":165,"medium":128,"high":98,"ultra":72},
+      "1440p":{"low":118,"medium":92,"high":70,"ultra":52},
+      "4k":{"low":68,"medium":52,"high":40,"ultra":29}
     }
   },
   {
@@ -16,9 +16,9 @@
     "genre":"Simulation",
     "year":2024,
     "base_fps":{
-      "1080p":{"low":120,"medium":90,"high":70,"ultra":50},
-      "1440p":{"low":90,"medium":68,"high":52,"ultra":38},
-      "4k":{"low":55,"medium":42,"high":32,"ultra":24}
+      "1080p":{"low":90,"medium":68,"high":52,"ultra":38},
+      "1440p":{"low":68,"medium":52,"high":40,"ultra":29},
+      "4k":{"low":42,"medium":32,"high":24,"ultra":18}
     }
   },
   {
@@ -27,9 +27,9 @@
     "genre":"Action-Adventure",
     "year":2019,
     "base_fps":{
-      "1080p":{"low":200,"medium":160,"high":120,"ultra":88},
-      "1440p":{"low":145,"medium":112,"high":84,"ultra":62},
-      "4k":{"low":80,"medium":62,"high":46,"ultra":34}
+      "1080p":{"low":148,"medium":118,"high":90,"ultra":65},
+      "1440p":{"low":108,"medium":86,"high":65,"ultra":48},
+      "4k":{"low":62,"medium":48,"high":37,"ultra":27}
     }
   },
   {
@@ -38,9 +38,9 @@
     "genre":"Battle Royale",
     "year":2017,
     "base_fps":{
-      "1080p":{"low":400,"medium":300,"high":220,"ultra":160},
-      "1440p":{"low":280,"medium":210,"high":155,"ultra":112},
-      "4k":{"low":155,"medium":118,"high":86,"ultra":62}
+      "1080p":{"low":295,"medium":222,"high":162,"ultra":118},
+      "1440p":{"low":208,"medium":156,"high":114,"ultra":84},
+      "4k":{"low":115,"medium":88,"high":64,"ultra":46}
     }
   },
   {
@@ -49,9 +49,9 @@
     "genre":"FPS",
     "year":2020,
     "base_fps":{
-      "1080p":{"low":600,"medium":500,"high":380,"ultra":280},
-      "1440p":{"low":420,"medium":350,"high":265,"ultra":195},
-      "4k":{"low":230,"medium":195,"high":145,"ultra":108}
+      "1080p":{"low":445,"medium":370,"high":282,"ultra":208},
+      "1440p":{"low":312,"medium":260,"high":198,"ultra":146},
+      "4k":{"low":172,"medium":144,"high":109,"ultra":81}
     }
   },
   {
@@ -60,9 +60,9 @@
     "genre":"FPS",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":500,"medium":420,"high":320,"ultra":240},
-      "1440p":{"low":350,"medium":295,"high":224,"ultra":168},
-      "4k":{"low":195,"medium":164,"high":124,"ultra":93}
+      "1080p":{"low":372,"medium":310,"high":238,"ultra":178},
+      "1440p":{"low":260,"medium":218,"high":166,"ultra":125},
+      "4k":{"low":145,"medium":121,"high":92,"ultra":69}
     }
   },
   {
@@ -71,9 +71,9 @@
     "genre":"Battle Royale",
     "year":2019,
     "base_fps":{
-      "1080p":{"low":320,"medium":260,"high":200,"ultra":148},
-      "1440p":{"low":224,"medium":182,"high":140,"ultra":103},
-      "4k":{"low":124,"medium":101,"high":77,"ultra":57}
+      "1080p":{"low":238,"medium":192,"high":148,"ultra":110},
+      "1440p":{"low":166,"medium":135,"high":104,"ultra":77},
+      "4k":{"low":92,"medium":75,"high":58,"ultra":43}
     }
   },
   {
@@ -82,9 +82,9 @@
     "genre":"Battle Royale",
     "year":2020,
     "base_fps":{
-      "1080p":{"low":280,"medium":220,"high":170,"ultra":125},
-      "1440p":{"low":196,"medium":154,"high":119,"ultra":88},
-      "4k":{"low":108,"medium":85,"high":65,"ultra":48}
+      "1080p":{"low":208,"medium":163,"high":126,"ultra":93},
+      "1440p":{"low":146,"medium":114,"high":88,"ultra":65},
+      "4k":{"low":80,"medium":63,"high":49,"ultra":36}
     }
   },
   {
@@ -93,9 +93,9 @@
     "genre":"Action RPG",
     "year":2022,
     "base_fps":{
-      "1080p":{"low":200,"medium":170,"high":140,"ultra":110},
-      "1440p":{"low":140,"medium":119,"high":98,"ultra":77},
-      "4k":{"low":78,"medium":66,"high":54,"ultra":42}
+      "1080p":{"low":148,"medium":126,"high":104,"ultra":82},
+      "1440p":{"low":104,"medium":88,"high":73,"ultra":57},
+      "4k":{"low":58,"medium":49,"high":40,"ultra":32}
     }
   },
   {
@@ -104,9 +104,9 @@
     "genre":"Action RPG",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":180,"medium":145,"high":110,"ultra":80},
-      "1440p":{"low":126,"medium":102,"high":77,"ultra":56},
-      "4k":{"low":70,"medium":57,"high":43,"ultra":31}
+      "1080p":{"low":133,"medium":107,"high":82,"ultra":59},
+      "1440p":{"low":94,"medium":75,"high":58,"ultra":42},
+      "4k":{"low":52,"medium":42,"high":32,"ultra":23}
     }
   },
   {
@@ -115,9 +115,9 @@
     "genre":"Action-Adventure",
     "year":2013,
     "base_fps":{
-      "1080p":{"low":280,"medium":230,"high":180,"ultra":130},
-      "1440p":{"low":196,"medium":161,"high":126,"ultra":91},
-      "4k":{"low":108,"medium":89,"high":70,"ultra":51}
+      "1080p":{"low":208,"medium":170,"high":133,"ultra":97},
+      "1440p":{"low":146,"medium":119,"high":93,"ultra":68},
+      "4k":{"low":80,"medium":66,"high":52,"ultra":38}
     }
   },
   {
@@ -126,9 +126,9 @@
     "genre":"RPG",
     "year":2015,
     "base_fps":{
-      "1080p":{"low":220,"medium":180,"high":140,"ultra":100},
-      "1440p":{"low":154,"medium":126,"high":98,"ultra":70},
-      "4k":{"low":85,"medium":70,"high":54,"ultra":39}
+      "1080p":{"low":163,"medium":133,"high":104,"ultra":74},
+      "1440p":{"low":114,"medium":93,"high":73,"ultra":52},
+      "4k":{"low":63,"medium":52,"high":40,"ultra":29}
     }
   },
   {
@@ -137,9 +137,9 @@
     "genre":"RPG",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":170,"medium":140,"high":110,"ultra":82},
-      "1440p":{"low":119,"medium":98,"high":77,"ultra":57},
-      "4k":{"low":66,"medium":54,"high":43,"ultra":32}
+      "1080p":{"low":126,"medium":104,"high":82,"ultra":61},
+      "1440p":{"low":88,"medium":73,"high":57,"ultra":43},
+      "4k":{"low":49,"medium":40,"high":32,"ultra":24}
     }
   },
   {
@@ -148,9 +148,9 @@
     "genre":"Action-Adventure",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":160,"medium":125,"high":95,"ultra":68},
-      "1440p":{"low":112,"medium":88,"high":67,"ultra":48},
-      "4k":{"low":62,"medium":49,"high":37,"ultra":27}
+      "1080p":{"low":119,"medium":93,"high":71,"ultra":51},
+      "1440p":{"low":83,"medium":65,"high":50,"ultra":36},
+      "4k":{"low":46,"medium":36,"high":28,"ultra":20}
     }
   },
   {
@@ -159,9 +159,9 @@
     "genre":"Action-Adventure",
     "year":2024,
     "base_fps":{
-      "1080p":{"low":200,"medium":165,"high":128,"ultra":94},
-      "1440p":{"low":140,"medium":116,"high":90,"ultra":66},
-      "4k":{"low":77,"medium":64,"high":50,"ultra":37}
+      "1080p":{"low":148,"medium":122,"high":95,"ultra":70},
+      "1440p":{"low":104,"medium":86,"high":67,"ultra":49},
+      "4k":{"low":58,"medium":48,"high":37,"ultra":27}
     }
   },
   {
@@ -170,9 +170,9 @@
     "genre":"RPG",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":190,"medium":155,"high":118,"ultra":86},
-      "1440p":{"low":133,"medium":109,"high":83,"ultra":60},
-      "4k":{"low":74,"medium":60,"high":46,"ultra":33}
+      "1080p":{"low":141,"medium":115,"high":88,"ultra":64},
+      "1440p":{"low":99,"medium":81,"high":62,"ultra":45},
+      "4k":{"low":55,"medium":45,"high":34,"ultra":25}
     }
   },
   {
@@ -181,9 +181,9 @@
     "genre":"FPS",
     "year":2015,
     "base_fps":{
-      "1080p":{"low":450,"medium":380,"high":290,"ultra":215},
-      "1440p":{"low":315,"medium":266,"high":203,"ultra":151},
-      "4k":{"low":175,"medium":148,"high":113,"ultra":84}
+      "1080p":{"low":334,"medium":282,"high":215,"ultra":160},
+      "1440p":{"low":234,"medium":198,"high":151,"ultra":112},
+      "4k":{"low":130,"medium":110,"high":84,"ultra":62}
     }
   },
   {
@@ -192,9 +192,9 @@
     "genre":"Sandbox",
     "year":2011,
     "base_fps":{
-      "1080p":{"low":500,"medium":420,"high":340,"ultra":260},
-      "1440p":{"low":350,"medium":294,"high":238,"ultra":182},
-      "4k":{"low":195,"medium":163,"high":132,"ultra":101}
+      "1080p":{"low":370,"medium":311,"high":252,"ultra":193},
+      "1440p":{"low":260,"medium":218,"high":176,"ultra":135},
+      "4k":{"low":144,"medium":121,"high":98,"ultra":75}
     }
   },
   {
@@ -203,9 +203,9 @@
     "genre":"Action-Adventure",
     "year":2022,
     "base_fps":{
-      "1080p":{"low":180,"medium":148,"high":114,"ultra":84},
-      "1440p":{"low":126,"medium":104,"high":80,"ultra":59},
-      "4k":{"low":70,"medium":58,"high":44,"ultra":33}
+      "1080p":{"low":133,"medium":110,"high":85,"ultra":62},
+      "1440p":{"low":94,"medium":77,"high":60,"ultra":43},
+      "4k":{"low":52,"medium":43,"high":33,"ultra":24}
     }
   },
   {
@@ -214,9 +214,9 @@
     "genre":"Action-Adventure",
     "year":2023,
     "base_fps":{
-      "1080p":{"low":190,"medium":155,"high":120,"ultra":88},
-      "1440p":{"low":133,"medium":109,"high":84,"ultra":62},
-      "4k":{"low":74,"medium":60,"high":47,"ultra":34}
+      "1080p":{"low":141,"medium":115,"high":89,"ultra":65},
+      "1440p":{"low":99,"medium":81,"high":62,"ultra":46},
+      "4k":{"low":55,"medium":45,"high":34,"ultra":26}
     }
   }
 ]

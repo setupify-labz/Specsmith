@@ -79,7 +79,9 @@
   --ff-nav-bg:    rgba(10,10,15,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.75);
   --ff-input-bg:  #13131A;
-  --ff-scrollbar: rgba(108,99,255,0.4);
+  --ff-scrollbar:  rgba(108,99,255,0.4);
+  --ff-accent-30:  rgba(108,99,255,0.3);
+  --ff-accent-10:  rgba(108,99,255,0.1);
   --ff-transition: 200ms ease;
 }
 
@@ -121,7 +123,9 @@
   --ff-nav-bg:    rgba(244,244,250,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.5);
   --ff-input-bg:  #F4F4FA;
-  --ff-scrollbar: rgba(90,82,238,0.4);
+  --ff-scrollbar:  rgba(90,82,238,0.4);
+  --ff-accent-30:  rgba(90,82,238,0.3);
+  --ff-accent-10:  rgba(90,82,238,0.1);
 }
 
 @layer base {
@@ -198,6 +202,7 @@
   .fps-low       { color: #FF1744; }
   .fps-medium    { color: #FFB300; }
   .fps-good      { color: #00E676; }
+  .fps-elite     { color: #6C63FF; }
   .fps-excellent { color: #00D4FF; }
 
   /* Ad slots */

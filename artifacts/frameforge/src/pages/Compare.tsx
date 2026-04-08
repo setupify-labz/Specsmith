@@ -120,8 +120,8 @@ export default function Compare() {
     if (!canCompare || !selectedGpuA || !selectedCpuA || !selectedGpuB || !selectedCpuB) return [];
     return games.map(g => {
       const base = g.base_fps[resolution][preset];
-      const fpsA = estimateFps(selectedGpuA.tier, selectedCpuA.tier, base).estimated;
-      const fpsB = estimateFps(selectedGpuB.tier, selectedCpuB.tier, base).estimated;
+      const fpsA = estimateFps((selectedGpuA as any).gpu_multiplier ?? selectedGpuA.tier / 10, (selectedCpuA as any).cpu_multiplier ?? selectedCpuA.tier / 10, base).estimated;
+      const fpsB = estimateFps((selectedGpuB as any).gpu_multiplier ?? selectedGpuB.tier / 10, (selectedCpuB as any).cpu_multiplier ?? selectedCpuB.tier / 10, base).estimated;
       return {
         game: g.name.length > 18 ? g.name.substring(0, 18) + '…' : g.name,
         fullGame: g.name,

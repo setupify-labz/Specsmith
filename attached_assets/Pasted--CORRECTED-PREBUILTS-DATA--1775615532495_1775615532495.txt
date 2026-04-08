@@ -1,0 +1,202 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CORRECTED PREBUILTS DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Replace all prebuilt data with the following exactly.
+No placeholders. No wrong resolutions. No wrong settings.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 1 — Budget Beast
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target:       1080p Medium Settings
+Use case:     Office & Light Gaming
+Description:  The perfect entry point for anyone wanting 
+              to game without breaking the bank. Handles 
+              esports titles at high framerates and AAA 
+              games at 1080p medium settings.
+Price:        $517
+
+Parts:
+  GPU:         RX 6600              $179
+  CPU:         Ryzen 5 5600         $129
+  Motherboard: MSI B550 Tomahawk    $149
+  RAM:         Crucial 16GB DDR4-3200 $39
+  Storage:     Seagate Barracuda 2TB HDD $49
+  PSU:         Corsair RM750x       $109
+  Case:        NZXT H510            $79
+  CPU Cooler:  Cooler Master Hyper 212 $39
+
+FPS Preview — 1080p MEDIUM (not high, not ultra):
+  Valorant:           265 FPS
+  Fortnite:           148 FPS
+  CS2:                210 FPS
+
+FPS label on card must read: "FPS Preview — 1080p Medium"
+
+Compatibility notes:
+  AM4 socket — MSI B550 Tomahawk supports AM4. CORRECT.
+  DDR4 RAM — B550 supports DDR4. CORRECT.
+  PSU 750W — RX 6600 (132W) + Ryzen 5 5600 (65W) = 
+  197W + 100W overhead = 297W. 750W is overkill but valid.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 2 — 1080p Champion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target:       1080p High Settings
+Use case:     Smooth 60+ FPS in every AAA game at 1080p
+Description:  Built to deliver smooth 60+ FPS in every 
+              modern AAA game at 1080p high settings. 
+              Great value for mainstream gaming without 
+              sacrificing quality.
+Price:        $833
+
+Parts:
+  GPU:         RTX 4060 Ti          $399
+  CPU:         i5-13600K            $269
+  Motherboard: Gigabyte B760M DS3H  $109
+  RAM:         G.Skill Ripjaws 32GB DDR4-3600 $79
+  Storage:     WD Black SN850X 1TB NVMe $99
+  PSU:         EVGA SuperNOVA 850 G6 $129
+  Case:        Corsair 4000D Airflow $109
+  CPU Cooler:  be quiet! Dark Rock Pro 4 $89
+
+FPS Preview — 1080p HIGH:
+  Cyberpunk 2077:     78 FPS
+  Elden Ring:         112 FPS
+  Fortnite:           198 FPS
+
+FPS label on card must read: "FPS Preview — 1080p High"
+
+Compatibility notes:
+  LGA1700 socket — Gigabyte B760M DS3H supports LGA1700. CORRECT.
+  DDR4 RAM — B760M DS3H supports DDR4. CORRECT.
+  PSU 850W — RTX 4060 Ti (160W) + i5-13600K (181W) = 
+  341W + 100W overhead = 441W. 850W is sufficient.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 3 — 1440p Sweet Spot
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target:       1440p High Settings
+Use case:     Best value for 1440p gaming
+Description:  The ideal build for 1440p gaming with high 
+              settings. Delivers 60-100 FPS in demanding 
+              titles and crushes esports games. The 
+              recommended build for most gamers.
+Price:        $1,234
+
+Parts:
+  GPU:         RTX 4070 Super       $599
+  CPU:         Ryzen 7 7700X        $299
+  Motherboard: Gigabyte B650 Aorus Elite $199
+  RAM:         Kingston Fury Beast 16GB DDR5-5200 $69
+  Storage:     Samsung 990 Pro 2TB NVMe $149
+  PSU:         Seasonic Focus GX-1000 $159
+  Case:        Lian Li PC-O11 Dynamic $139
+  CPU Cooler:  Corsair H100i Elite  $139
+
+FPS Preview — 1440p HIGH:
+  Cyberpunk 2077:     82 FPS
+  Elden Ring:         95 FPS
+  CS2:                198 FPS
+
+FPS label on card must read: "FPS Preview — 1440p High"
+
+Compatibility notes:
+  AM5 socket — Gigabyte B650 Aorus Elite supports AM5. CORRECT.
+  DDR5 RAM — B650 Aorus Elite supports DDR5. CORRECT.
+  PSU 1000W — RTX 4070 Super (220W) + Ryzen 7 7700X (105W) = 
+  325W + 100W overhead = 425W. 1000W is sufficient.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 4 — 4K Monster
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target:       4K High Settings
+Use case:     Serious 4K Gaming
+Description:  A powerhouse designed for 4K gaming with 
+              high settings. Handles every modern title 
+              at 4K and dominates at 1440p ultra. For 
+              the gamer who wants the best without 
+              compromise.
+Price:        $2,023
+
+Parts:
+  GPU:         RTX 4080 Super       $999
+  CPU:         Ryzen 9 7950X3D      $699
+  Motherboard: ASUS ROG Crosshair X670E $499
+  RAM:         G.Skill Trident Z5 32GB DDR5-6000 $139
+  Storage:     WD Black SN850X 2TB NVMe $179
+  PSU:         Corsair H150i Elite  $179
+  Case:        Fractal Design Torrent $169
+  CPU Cooler:  NZXT Kraken X63     $149
+
+  NOTE: PSU listed above is wrong in original — 
+  "corh150i" is a CPU cooler not a PSU.
+  Replace PSU with: Corsair HX1200  $219
+  Replace CPU Cooler with: Corsair H150i Elite $179
+  Corrected price: $2,062
+
+FPS Preview — 4K HIGH:
+  Cyberpunk 2077:     58 FPS
+  Elden Ring:         72 FPS
+  Valorant:           145 FPS
+
+FPS label on card must read: "FPS Preview — 4K High"
+
+Compatibility notes:
+  AM5 socket — ASUS ROG Crosshair X670E supports AM5. CORRECT.
+  DDR5 RAM — X670E supports DDR5. CORRECT.
+  PSU 1200W — RTX 4080 Super (320W) + Ryzen 9 7950X3D (162W) = 
+  482W + 100W overhead = 582W. 1200W is sufficient.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BUILD 5 — Ultimate Rig
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Target:       4K Ultra Settings
+Use case:     No Compromises — Creators & Enthusiasts
+Description:  The absolute pinnacle of consumer PC gaming. 
+              Maximum FPS, maximum quality, maximum 
+              everything. For content creators, streamers, 
+              and enthusiasts who demand perfection.
+Price:        $3,568
+
+Parts:
+  GPU:         RTX 5090             $1,999
+  CPU:         Ryzen 9 7950X3D      $699
+  Motherboard: MSI MEG X670E ACE    $449
+  RAM:         G.Skill Ripjaws 64GB DDR5-6000 $199
+  Storage:     WD Black SN850X 2TB NVMe $179
+  PSU:         Thermaltake Toughpower GF3 1650W $299
+  Case:        be quiet! Dark Base Pro 900 $219
+  CPU Cooler:  Corsair H150i Elite  $179
+
+FPS Preview — 4K ULTRA:
+  Cyberpunk 2077:     95 FPS
+  Elden Ring:         110 FPS
+  Valorant:           280 FPS
+
+FPS label on card must read: "FPS Preview — 4K Ultra"
+
+Compatibility notes:
+  AM5 socket — MSI MEG X670E ACE supports AM5. CORRECT.
+  DDR5 RAM — X670E ACE supports DDR5. CORRECT.
+  PSU 1650W — RTX 5090 (575W) + Ryzen 9 7950X3D (162W) = 
+  737W + 100W overhead = 837W. 1650W is sufficient.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PREBUILTS GLOBAL RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Each build card FPS label must match its target resolution
+  and preset exactly — never show 1080p FPS on a 4K build
+- FPS values on prebuilt cards must be calculated using the 
+  same FPS algorithm as the builder (not hardcoded)
+- "Load into Builder" button pre-fills every single part 
+  slot — GPU, CPU, Motherboard, RAM, Storage, PSU, 
+  Case, and CPU Cooler — all 8 slots
+- Prices shown are sum of all 8 parts — recalculate if 
+  any part price differs from the master parts list
+- Each card shows the target resolution + preset as a 
+  badge in the top-right corner of the card
+- Budget Beast badge:      "1080p Medium" — gray
+- 1080p Champion badge:    "1080p High"   — blue
+- 1440p Sweet Spot badge:  "1440p High"   — purple
+- 4K Monster badge:        "4K High"      — amber
+- Ultimate Rig badge:      "4K Ultra"     — gold gradient
