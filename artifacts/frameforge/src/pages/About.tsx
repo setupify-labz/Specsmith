@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Zap, Calculator, Shield, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 const sections = [
   {
@@ -60,6 +62,7 @@ Use FrameForge estimates as a starting point for your research, not a guarantee.
 ];
 
 export default function About() {
+  useSeo(getRouteMeta('/about'));
   return (
     <div className="min-h-screen pt-24 pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

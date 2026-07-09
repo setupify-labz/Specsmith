@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
@@ -8,6 +8,8 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { useAuth } from '../context/AuthContext';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -28,29 +30,17 @@ export default function SharedBuild() {
     return decodeBuild(decodeURIComponent(encoded));
   }, [encoded]);
 
-  useEffect(() => {
-    // Shared build links are ephemeral, user-generated snapshots (unbounded
-    // /build?b=... parameter space). Keep them out of search indexes and
-    // point crawlers back at the canonical /builder page instead.
-    const prevTitle = document.title;
-    document.title = decoded ? `${decoded.name} — FrameForge Shared Build` : 'Shared Build — FrameForge';
-
-    const robotsMeta = document.createElement('meta');
-    robotsMeta.name = 'robots';
-    robotsMeta.content = 'noindex, follow';
-    document.head.appendChild(robotsMeta);
-
-    const canonicalLink = document.createElement('link');
-    canonicalLink.rel = 'canonical';
-    canonicalLink.href = `${window.location.origin}/builder`;
-    document.head.appendChild(canonicalLink);
-
-    return () => {
-      document.title = prevTitle;
-      robotsMeta.remove();
-      canonicalLink.remove();
-    };
-  }, [decoded]);
+  // Shared build links are ephemeral, user-generated snapshots (unbounded
+  // /build?b=... parameter space). Keep them out of search indexes and
+  // point crawlers back at the canonical /builder page instead. The base
+  // /build shell still gets prerendered generic metadata (see entry-server
+  // + scripts/prerender.mjs) so bots that don't run JS still see a
+  // meaningful noindex'd title/description instead of the app shell.
+  const buildMeta = getRouteMeta('/build');
+  useSeo({
+    ...buildMeta,
+    title: decoded ? `${decoded.name} — FrameForge Shared Build` : buildMeta.title,
+  });
 
   if (!decoded) {
     return (

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, Zap, DollarSign, ChevronRight, Monitor } from 'lucide-react';
 import prebuilts from '../data/prebuilts.json';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 const stats = [
   { value: '50+', label: 'GPUs Tracked' },
@@ -36,6 +38,7 @@ const prebuiltHighlights = prebuilts.map(p => ({
 }));
 
 export default function Home() {
+  useSeo(getRouteMeta('/'));
   return (
     <div className="min-h-screen">
       {/* Hero */}

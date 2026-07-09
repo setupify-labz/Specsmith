@@ -8,6 +8,8 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import { estimateFps, getAffiliateUrl } from '../lib/fps';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 interface Prebuilt {
   id: string;
@@ -226,6 +228,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
 }
 
 export default function Prebuilts() {
+  useSeo(getRouteMeta('/prebuilts'));
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

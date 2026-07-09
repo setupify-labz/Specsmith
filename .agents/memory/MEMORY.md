@@ -1,0 +1,1 @@
+- [FrameForge SEO prerendering](frameforge-seo-prerender.md) — static SPA got build-time SSR prerendering for public routes; see for approach/constraints.

@@ -14,6 +14,8 @@ import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
 import { ChevronDown } from 'lucide-react';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -43,6 +45,7 @@ function getResolutionTier(res: string): number {
 }
 
 export default function Builder() {
+  useSeo(getRouteMeta('/builder'));
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
 

@@ -6,6 +6,8 @@ import { estimateFps } from '../lib/fps';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
+import { useSeo } from '../hooks/useSeo';
+import { getRouteMeta } from '../lib/seo';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -109,6 +111,7 @@ const DEFAULT_GPU_B = 'rx7800xt';
 const DEFAULT_CPU_B = 'r7-7700x';
 
 export default function Compare() {
+  useSeo(getRouteMeta('/compare'));
   const [gpuA, setGpuA] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_A) ? DEFAULT_GPU_A : gpus[0]?.id ?? null);
   const [cpuA, setCpuA] = useState<string | null>(cpus.some(c => c.id === DEFAULT_CPU_A) ? DEFAULT_CPU_A : cpus[0]?.id ?? null);
   const [gpuB, setGpuB] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_B) ? DEFAULT_GPU_B : gpus[1]?.id ?? null);
