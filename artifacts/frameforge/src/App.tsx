@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ThemeProvider } from './context/ThemeContext';
@@ -5,16 +6,17 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import Home from './pages/Home';
-import Builder from './pages/Builder';
-import Prebuilts from './pages/Prebuilts';
-import Compare from './pages/Compare';
-import About from './pages/About';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
-import Settings from './pages/Settings';
-import SharedBuild from './pages/SharedBuild';
+
+const Home = lazy(() => import('./pages/Home'));
+const Builder = lazy(() => import('./pages/Builder'));
+const Prebuilts = lazy(() => import('./pages/Prebuilts'));
+const Compare = lazy(() => import('./pages/Compare'));
+const About = lazy(() => import('./pages/About'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Settings = lazy(() => import('./pages/Settings'));
+const SharedBuild = lazy(() => import('./pages/SharedBuild'));
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -37,18 +39,20 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
-      <Routes>
-        <Route path="/"          element={<PageWrapper><Home /></PageWrapper>} />
-        <Route path="/builder"   element={<PageWrapper><Builder /></PageWrapper>} />
-        <Route path="/prebuilts" element={<PageWrapper><Prebuilts /></PageWrapper>} />
-        <Route path="/compare"   element={<PageWrapper><Compare /></PageWrapper>} />
-        <Route path="/about"     element={<PageWrapper><About /></PageWrapper>} />
-        <Route path="/login"     element={<PageWrapper><Login /></PageWrapper>} />
-        <Route path="/signup"    element={<PageWrapper><Signup /></PageWrapper>} />
-        <Route path="/dashboard" element={<PageWrapper><Dashboard /></PageWrapper>} />
-        <Route path="/settings"  element={<PageWrapper><Settings /></PageWrapper>} />
-        <Route path="/build"     element={<PageWrapper><SharedBuild /></PageWrapper>} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/"          element={<PageWrapper><Home /></PageWrapper>} />
+          <Route path="/builder"   element={<PageWrapper><Builder /></PageWrapper>} />
+          <Route path="/prebuilts" element={<PageWrapper><Prebuilts /></PageWrapper>} />
+          <Route path="/compare"   element={<PageWrapper><Compare /></PageWrapper>} />
+          <Route path="/about"     element={<PageWrapper><About /></PageWrapper>} />
+          <Route path="/login"     element={<PageWrapper><Login /></PageWrapper>} />
+          <Route path="/signup"    element={<PageWrapper><Signup /></PageWrapper>} />
+          <Route path="/dashboard" element={<PageWrapper><Dashboard /></PageWrapper>} />
+          <Route path="/settings"  element={<PageWrapper><Settings /></PageWrapper>} />
+          <Route path="/build"     element={<PageWrapper><SharedBuild /></PageWrapper>} />
+        </Routes>
+      </Suspense>
       <Footer />
     </>
   );
