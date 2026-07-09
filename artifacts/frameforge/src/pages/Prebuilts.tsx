@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Zap, ExternalLink } from 'lucide-react';
 import prebuiltsData from '../data/prebuilts.json';
@@ -132,7 +132,9 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: accentColor }} />
-              <h2 className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>{prebuilt.name}</h2>
+              <h2 className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>
+                <Link to={`/prebuilts/${prebuilt.id}`} className="hover:underline">{prebuilt.name}</Link>
+              </h2>
               {/* Resolution + Preset badge */}
               <span
                 className="text-xs font-bold px-2.5 py-1 rounded-full"
@@ -200,15 +202,24 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             ))}
           </div>
         </div>
-        <button
-          onClick={handleLoad}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 hover:scale-105 flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
-        >
-          <Zap size={16} />
-          Load into Builder
-          <ChevronRight size={14} />
-        </button>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <Link
+            to={`/prebuilts/${prebuilt.id}`}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+            style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+          >
+            View Details
+            <ChevronRight size={14} />
+          </Link>
+          <button
+            onClick={handleLoad}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
+          >
+            <Zap size={16} />
+            Load into Builder
+          </button>
+        </div>
       </div>
     </motion.div>
   );

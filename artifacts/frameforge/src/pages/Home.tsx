@@ -169,7 +169,7 @@ export default function Home() {
                 <p className="text-[#8888AA] text-xs mb-4">{p.tagline}</p>
                 <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
                 <Link
-                  to="/prebuilts"
+                  to={`/prebuilts/${p.id}`}
                   className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[#6C63FF] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
                 >
                   View Build <ChevronRight size={14} />

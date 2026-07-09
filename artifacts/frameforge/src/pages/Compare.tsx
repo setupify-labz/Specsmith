@@ -103,11 +103,16 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const presets: Preset[] = ['low', 'medium', 'high', 'ultra'];
 
+const DEFAULT_GPU_A = 'rtx4070';
+const DEFAULT_CPU_A = 'i5-13600k';
+const DEFAULT_GPU_B = 'rx7800xt';
+const DEFAULT_CPU_B = 'r7-7700x';
+
 export default function Compare() {
-  const [gpuA, setGpuA] = useState<string | null>(null);
-  const [cpuA, setCpuA] = useState<string | null>(null);
-  const [gpuB, setGpuB] = useState<string | null>(null);
-  const [cpuB, setCpuB] = useState<string | null>(null);
+  const [gpuA, setGpuA] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_A) ? DEFAULT_GPU_A : gpus[0]?.id ?? null);
+  const [cpuA, setCpuA] = useState<string | null>(cpus.some(c => c.id === DEFAULT_CPU_A) ? DEFAULT_CPU_A : cpus[0]?.id ?? null);
+  const [gpuB, setGpuB] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_B) ? DEFAULT_GPU_B : gpus[1]?.id ?? null);
+  const [cpuB, setCpuB] = useState<string | null>(cpus.some(c => c.id === DEFAULT_CPU_B) ? DEFAULT_CPU_B : cpus[1]?.id ?? null);
   const [resolution, setResolution] = useState<Resolution>('1080p');
   const [preset, setPreset] = useState<Preset>('high');
 
@@ -149,7 +154,7 @@ export default function Compare() {
             Build <span className="gradient-text">Comparison</span>
           </h1>
           <p className="text-[#8888AA] text-lg max-w-xl mx-auto">
-            Compare two GPU + CPU combinations side by side across 20 games.
+            Compare two GPU + CPU combinations side by side across 20 games. We've pre-loaded a sample matchup below — swap in any parts to compare your own builds.
           </p>
         </motion.div>
 

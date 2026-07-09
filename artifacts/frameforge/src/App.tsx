@@ -10,6 +10,7 @@ import Footer from './components/Footer';
 const Home = lazy(() => import('./pages/Home'));
 const Builder = lazy(() => import('./pages/Builder'));
 const Prebuilts = lazy(() => import('./pages/Prebuilts'));
+const PrebuiltDetail = lazy(() => import('./pages/PrebuiltDetail'));
 const Compare = lazy(() => import('./pages/Compare'));
 const About = lazy(() => import('./pages/About'));
 const Login = lazy(() => import('./pages/Login'));
@@ -44,6 +45,7 @@ function AppRoutes() {
           <Route path="/"          element={<PageWrapper><Home /></PageWrapper>} />
           <Route path="/builder"   element={<PageWrapper><Builder /></PageWrapper>} />
           <Route path="/prebuilts" element={<PageWrapper><Prebuilts /></PageWrapper>} />
+          <Route path="/prebuilts/:slug" element={<PageWrapper><PrebuiltDetail /></PageWrapper>} />
           <Route path="/compare"   element={<PageWrapper><Compare /></PageWrapper>} />
           <Route path="/about"     element={<PageWrapper><About /></PageWrapper>} />
           <Route path="/login"     element={<PageWrapper><Login /></PageWrapper>} />
