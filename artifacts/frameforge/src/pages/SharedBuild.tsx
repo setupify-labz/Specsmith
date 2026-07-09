@@ -9,9 +9,9 @@ import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { useAuth } from '../context/AuthContext';
 
-interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; }
-interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; }
-interface Game { id: string; name: string; base_fps: Record<string, Record<string, number>>; }
+interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
+interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
+interface Game { id: string; name: string; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 
 const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];

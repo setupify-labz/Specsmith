@@ -18,18 +18,18 @@ import { ChevronDown } from 'lucide-react';
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
 
-interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; sponsored?: boolean; }
-interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; sponsored?: boolean; }
-interface Motherboard { id: string; name: string; brand: string; price_usd: number; socket: string; supported_ram: string[]; form_factor: string; sponsored?: boolean; }
-interface RAM { id: string; name: string; brand: string; price_usd: number; type: string; capacity_gb: number; speed_mhz: number; sponsored?: boolean; }
-interface Storage { id: string; name: string; brand: string; price_usd: number; type: string; capacity_tb: number; speed_mbs: number; sponsored?: boolean; }
-interface PSU { id: string; name: string; brand: string; price_usd: number; wattage: number; rating: string; sponsored?: boolean; }
-interface Case { id: string; name: string; brand: string; price_usd: number; form_factor: string; motherboard_support: string[]; sponsored?: boolean; }
-interface Cooler { id: string; name: string; brand: string; price_usd: number; type: string; max_tdp_watts: number; sponsored?: boolean; }
-interface Monitor { id: string; name: string; brand: string; price_usd: number; size_inches: number; resolution: string; panel_type: string; refresh_rate_hz: number; response_time_ms: number; hdr: boolean | string; g_sync: boolean | string; freesync: boolean; release_year: number; }
-interface Keyboard { id: string; name: string; brand: string; price_usd: number; switch_type: string; form_factor: string; rgb: boolean; wireless: boolean; release_year: number; }
-interface Mouse { id: string; name: string; brand: string; price_usd: number; dpi_max: number; weight_grams: number; wireless: boolean; rgb: boolean; buttons: number; release_year: number; }
-interface Headset { id: string; name: string; brand: string; price_usd: number; driver_mm: number; surround_sound: string; wireless: boolean; noise_cancelling: boolean; microphone: boolean; release_year: number; }
+interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
+interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
+interface Motherboard { id: string; name: string; brand: string; price_usd: number; socket: string; supported_ram: string[]; form_factor: string; sponsored?: boolean; [key: string]: unknown; }
+interface RAM { id: string; name: string; brand: string; price_usd: number; type: string; capacity_gb: number; speed_mhz: number; sponsored?: boolean; [key: string]: unknown; }
+interface Storage { id: string; name: string; brand: string; price_usd: number; type: string; capacity_tb: number; speed_mbs: number; sponsored?: boolean; [key: string]: unknown; }
+interface PSU { id: string; name: string; brand: string; price_usd: number; wattage: number; rating: string; sponsored?: boolean; [key: string]: unknown; }
+interface Case { id: string; name: string; brand: string; price_usd: number; form_factor: string; motherboard_support: string[]; sponsored?: boolean; [key: string]: unknown; }
+interface Cooler { id: string; name: string; brand: string; price_usd: number; type: string; max_tdp_watts: number; sponsored?: boolean; [key: string]: unknown; }
+interface Monitor { id: string; name: string; brand: string; price_usd: number; size_inches: number; resolution: string; panel_type: string; refresh_rate_hz: number; response_time_ms: number; hdr: boolean | string; g_sync: boolean | string; freesync: boolean; release_year: number; [key: string]: unknown; }
+interface Keyboard { id: string; name: string; brand: string; price_usd: number; switch_type: string; form_factor: string; rgb: boolean; wireless: boolean; release_year: number; [key: string]: unknown; }
+interface Mouse { id: string; name: string; brand: string; price_usd: number; dpi_max: number; weight_grams: number; wireless: boolean; rgb: boolean; buttons: number; release_year: number; [key: string]: unknown; }
+interface Headset { id: string; name: string; brand: string; price_usd: number; driver_mm: number; surround_sound: string; wireless: boolean; noise_cancelling: boolean; microphone: boolean; release_year: number; [key: string]: unknown; }
 interface Game { id: string; name: string; genre: string; year: number; base_fps: Record<Resolution, Record<Preset, number>>; }
 
 const gpus = gpuData as GPU[];
@@ -91,12 +91,12 @@ export default function Builder() {
       const hz = selectedMonitor.refresh_rate_hz;
       const tier = selectedGpu.tier;
       if ((res === '4K' || res === '5120x1440p') && tier < 7) {
-        base.push({ type: 'warning', message: 'Your GPU may struggle at 4K on this monitor' });
+        base.push({ id: 'monitor-4k', type: 'warning', message: 'Your GPU may struggle at 4K on this monitor' });
       } else if (getResolutionTier(res) >= 2 && tier < 5) {
-        base.push({ type: 'warning', message: 'Your GPU may struggle at 1440p on this monitor' });
+        base.push({ id: 'monitor-1440p', type: 'warning', message: 'Your GPU may struggle at 1440p on this monitor' });
       }
       if (hz >= 360 && tier < 8) {
-        base.push({ type: 'warning', message: `Your GPU may not reach ${hz}Hz refresh rate in demanding games` });
+        base.push({ id: 'monitor-refresh', type: 'warning', message: `Your GPU may not reach ${hz}Hz refresh rate in demanding games` });
       }
     }
     return base;

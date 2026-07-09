@@ -13,13 +13,15 @@ type Preset = 'low' | 'medium' | 'high' | 'ultra';
 interface GPU {
   id: string; name: string; brand: string; series: string; price_usd: number;
   tier: number; vram_gb: number; tdp_watts: number; architecture: string;
-  release_year: number; benchmark_score: number; sponsored?: boolean;
+  release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean;
+  [key: string]: unknown;
 }
 interface CPU {
   id: string; name: string; brand: string; series: string; price_usd: number;
   tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number;
   tdp_watts: number; socket: string; supported_ram: string[]; release_year: number;
-  benchmark_score: number; sponsored?: boolean;
+  benchmark_score: number; cpu_multiplier: number; sponsored?: boolean;
+  [key: string]: unknown;
 }
 interface Game {
   id: string; name: string; genre: string; year: number;
@@ -120,8 +122,8 @@ export default function Compare() {
     if (!canCompare || !selectedGpuA || !selectedCpuA || !selectedGpuB || !selectedCpuB) return [];
     return games.map(g => {
       const base = g.base_fps[resolution][preset];
-      const fpsA = estimateFps((selectedGpuA as any).gpu_multiplier ?? selectedGpuA.tier / 10, (selectedCpuA as any).cpu_multiplier ?? selectedCpuA.tier / 10, base).estimated;
-      const fpsB = estimateFps((selectedGpuB as any).gpu_multiplier ?? selectedGpuB.tier / 10, (selectedCpuB as any).cpu_multiplier ?? selectedCpuB.tier / 10, base).estimated;
+      const fpsA = estimateFps(selectedGpuA.gpu_multiplier, selectedCpuA.cpu_multiplier, base).estimated;
+      const fpsB = estimateFps(selectedGpuB.gpu_multiplier, selectedCpuB.cpu_multiplier, base).estimated;
       return {
         game: g.name.length > 18 ? g.name.substring(0, 18) + '…' : g.name,
         fullGame: g.name,
