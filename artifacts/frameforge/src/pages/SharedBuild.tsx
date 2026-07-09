@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
@@ -27,6 +27,30 @@ export default function SharedBuild() {
     if (!encoded) return null;
     return decodeBuild(decodeURIComponent(encoded));
   }, [encoded]);
+
+  useEffect(() => {
+    // Shared build links are ephemeral, user-generated snapshots (unbounded
+    // /build?b=... parameter space). Keep them out of search indexes and
+    // point crawlers back at the canonical /builder page instead.
+    const prevTitle = document.title;
+    document.title = decoded ? `${decoded.name} — FrameForge Shared Build` : 'Shared Build — FrameForge';
+
+    const robotsMeta = document.createElement('meta');
+    robotsMeta.name = 'robots';
+    robotsMeta.content = 'noindex, follow';
+    document.head.appendChild(robotsMeta);
+
+    const canonicalLink = document.createElement('link');
+    canonicalLink.rel = 'canonical';
+    canonicalLink.href = `${window.location.origin}/builder`;
+    document.head.appendChild(canonicalLink);
+
+    return () => {
+      document.title = prevTitle;
+      robotsMeta.remove();
+      canonicalLink.remove();
+    };
+  }, [decoded]);
 
   if (!decoded) {
     return (
