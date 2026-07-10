@@ -63,6 +63,23 @@ export function getRouteMeta(path: string): RouteMeta {
   );
 }
 
+export interface PrebuiltMetaInput {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  target_resolution: string;
+  estimated_price: number;
+}
+
+export function getPrebuiltMeta(prebuilt: PrebuiltMetaInput): RouteMeta {
+  return {
+    path: `/prebuilts/${prebuilt.id}`,
+    title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | FrameForge`,
+    description: `${prebuilt.tagline}. ${prebuilt.description} Estimated total: $${prebuilt.estimated_price.toLocaleString()}. See full parts list and FPS benchmarks.`,
+  };
+}
+
 export function buildHeadTags(meta: RouteMeta): string {
   const url = meta.canonicalOverride ?? `${SITE_URL}${meta.path === '/' ? '/' : meta.path}`;
   const image = meta.image ?? DEFAULT_OG_IMAGE;

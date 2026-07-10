@@ -62,7 +62,8 @@ async function main() {
   await buildSsrBundle();
 
   const entryPath = path.join(ssrOutDir, 'entry-server.js');
-  const { render, getRouteMeta, PRERENDER_ROUTES } = await import(`${entryPath}?t=${Date.now()}`);
+  const { render, getRouteMeta, getPrerenderMeta, PRERENDER_ROUTES } = await import(`${entryPath}?t=${Date.now()}`);
+  const resolveMeta = getPrerenderMeta ?? getRouteMeta;
 
   for (const routePath of PRERENDER_ROUTES) {
     let appHtml;
@@ -73,7 +74,7 @@ async function main() {
       continue;
     }
 
-    const meta = getRouteMeta(routePath);
+    const meta = resolveMeta(routePath);
     const html = injectHead(template.replace('<!--app-html-->', appHtml), meta);
 
     const outFile =

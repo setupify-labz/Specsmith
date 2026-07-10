@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Zap, ExternalLink, ArrowLeft } from 'lucide-react';
@@ -8,6 +8,8 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import { estimateFps, getAffiliateUrl } from '../lib/fps';
+import { useSeo } from '../hooks/useSeo';
+import { getPrebuiltMeta } from '../lib/seo';
 
 interface Prebuilt {
   id: string;
@@ -82,42 +84,13 @@ export default function PrebuiltDetail() {
   const navigate = useNavigate();
   const prebuilt = prebuilts.find(p => p.id === slug);
 
-  useEffect(() => {
-    const prevTitle = document.title;
-    document.title = prebuilt
-      ? `${prebuilt.name} — ${prebuilt.tagline} | FrameForge Prebuilt PC`
-      : 'Prebuilt Not Found — FrameForge';
-
-    let metaDescription = document.querySelector('meta[name="description"]');
-    const createdMeta = !metaDescription;
-    if (!metaDescription) {
-      metaDescription = document.createElement('meta');
-      metaDescription.setAttribute('name', 'description');
-      document.head.appendChild(metaDescription);
-    }
-    const prevDescription = metaDescription.getAttribute('content');
-    if (prebuilt) {
-      metaDescription.setAttribute(
-        'content',
-        `${prebuilt.name}: ${prebuilt.description} Estimated price $${prebuilt.estimated_price.toLocaleString()}, targeting ${prebuilt.target_resolution}.`
-      );
-    }
-
-    const canonicalLink = document.createElement('link');
-    canonicalLink.rel = 'canonical';
-    canonicalLink.href = `${window.location.origin}/prebuilts/${slug}`;
-    document.head.appendChild(canonicalLink);
-
-    return () => {
-      document.title = prevTitle;
-      if (createdMeta) {
-        metaDescription?.remove();
-      } else if (prevDescription !== null) {
-        metaDescription?.setAttribute('content', prevDescription);
-      }
-      canonicalLink.remove();
-    };
-  }, [prebuilt, slug]);
+  const fallbackMeta = {
+    path: '/prebuilts',
+    title: 'Build Not Found | FrameForge',
+    description: 'This curated build could not be found. Browse all curated FrameForge PC builds instead.',
+    noindex: true,
+  };
+  useSeo(prebuilt ? getPrebuiltMeta(prebuilt) : fallbackMeta);
 
   const fpsRows = useMemo(() => {
     if (!prebuilt) return [];
