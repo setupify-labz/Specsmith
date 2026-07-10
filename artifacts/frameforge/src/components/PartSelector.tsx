@@ -50,6 +50,21 @@ export default function PartSelector({
     return result;
   }, [parts, search, sort, recommendedIds]);
 
+  // "Best Value" (highest benchmark-score/price ratio) and "Best Performance"
+  // (highest raw benchmark score) — one of each per category, GPU/CPU only.
+  const { bestValueId, bestPerformanceId } = useMemo(() => {
+    if (category !== 'gpu' && category !== 'cpu') return { bestValueId: null, bestPerformanceId: null };
+    const withScores = parts.filter(p => typeof p.benchmark_score === 'number' && p.price_usd > 0);
+    if (withScores.length === 0) return { bestValueId: null, bestPerformanceId: null };
+    const bestValue = withScores.reduce((best, p) =>
+      (p.benchmark_score! / p.price_usd) > (best.benchmark_score! / best.price_usd) ? p : best
+    );
+    const bestPerformance = withScores.reduce((best, p) =>
+      p.benchmark_score! > best.benchmark_score! ? p : best
+    );
+    return { bestValueId: bestValue.id, bestPerformanceId: bestPerformance.id };
+  }, [parts, category]);
+
   const selectedPart = parts.find(p => p.id === selectedId);
 
   return (
@@ -142,6 +157,11 @@ export default function PartSelector({
                       selected={part.id === selectedId}
                       sponsored={part.sponsored}
                       recommended={recommendedIds.includes(part.id)}
+                      badge={
+                        part.id === bestPerformanceId ? 'best-performance' :
+                        part.id === bestValueId ? 'best-value' :
+                        undefined
+                      }
                       specs={getSpecs(part)}
                       tier={part.tier}
                       showSparkline={showSparkline}

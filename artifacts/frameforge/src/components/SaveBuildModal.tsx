@@ -4,6 +4,7 @@ import { X, Save, LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import EmailCaptureModal from './EmailCaptureModal';
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [emailCaptureBuildId, setEmailCaptureBuildId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) setName(`My Build #${(builds.length + 1)}`);
@@ -27,11 +29,16 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
     if (!name.trim()) return;
     setSaving(true);
     await new Promise(r => setTimeout(r, 600));
+    const beforeIds = new Set(builds.map(b => b.id));
     const ok = saveBuild(name.trim(), notes.trim(), buildState);
     setSaving(false);
     if (ok) {
       showToast('Build saved!', 'success', { label: 'View in Dashboard', onClick: () => navigate('/dashboard') });
       onClose();
+      // Grab the newly created build's id (most recent, not present before save) to offer the optional email capture.
+      const savedBuilds = JSON.parse(localStorage.getItem(`frameforge-builds-${user?.id}`) || '[]') as { id: string }[];
+      const newBuild = savedBuilds.find(b => !beforeIds.has(b.id));
+      if (newBuild) setEmailCaptureBuildId(newBuild.id);
     } else if (builds.length >= 20) {
       showToast('You have reached the 20 build limit. Delete some builds first.', 'error');
     }
@@ -133,6 +140,11 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
           </motion.div>
         </motion.div>
       )}
+      <EmailCaptureModal
+        open={emailCaptureBuildId !== null}
+        onClose={() => setEmailCaptureBuildId(null)}
+        buildId={emailCaptureBuildId ?? ''}
+      />
     </AnimatePresence>
   );
 }

@@ -71,3 +71,7 @@ export function getFpsColorClass(fps: number): string {
 export function getAffiliateUrl(partName: string): string {
   return `https://www.amazon.com/s?k=${encodeURIComponent(partName)}&tag=frameforge-20`;
 }
+
+export function getNeweggUrl(partName: string): string {
+  return `https://www.newegg.com/p/pl?d=${encodeURIComponent(partName)}`;
+}

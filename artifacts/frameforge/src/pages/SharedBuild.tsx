@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
 import { decodeBuild } from '../lib/sharing';
-import { estimateFpsForBuild, getAffiliateUrl } from '../lib/fps';
+import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
@@ -121,7 +121,13 @@ export default function SharedBuild() {
                           {id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                         </span>
                         <a href={getAffiliateUrl(id)} target="_blank" rel="noopener noreferrer"
+                          title="Buy on Amazon"
                           style={{ color: 'var(--ff-accent)' }}>
+                          <ExternalLink size={11} />
+                        </a>
+                        <a href={getNeweggUrl(id)} target="_blank" rel="noopener noreferrer"
+                          title="Compare on Newegg"
+                          style={{ color: 'var(--ff-text-3)' }}>
                           <ExternalLink size={11} />
                         </a>
                       </div>

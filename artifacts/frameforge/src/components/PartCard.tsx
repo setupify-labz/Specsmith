@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Check, ExternalLink } from 'lucide-react';
-import { getAffiliateUrl } from '../lib/fps';
+import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import PriceSparkline from './PriceSparkline';
 
 interface PartCardProps {
@@ -10,6 +10,7 @@ interface PartCardProps {
   selected: boolean;
   sponsored?: boolean;
   recommended?: boolean;
+  badge?: 'best-value' | 'best-performance';
   specs: { label: string; value: string }[];
   tier?: number;
   showSparkline?: boolean;
@@ -35,8 +36,23 @@ const tierLabels: Record<number, string> = {
   4: 'Entry', 3: 'Budget', 2: 'Basic', 1: 'Legacy',
 };
 
+const badgeStyles: Record<'best-value' | 'best-performance', { label: string; background: string; color: string; border: string }> = {
+  'best-value': {
+    label: 'BEST VALUE',
+    background: '#00E67618',
+    color: '#00E676',
+    border: '1px solid #00E67650',
+  },
+  'best-performance': {
+    label: 'BEST PERFORMANCE',
+    background: 'linear-gradient(135deg, #FF6EC7, #FF3D9A)',
+    color: 'white',
+    border: 'none',
+  },
+};
+
 export default function PartCard({
-  id, name, price_usd, selected, sponsored, recommended, specs, tier, showSparkline, onSelect
+  id, name, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
 }: PartCardProps) {
   return (
     <motion.div
@@ -72,9 +88,19 @@ export default function PartCard({
           RECOMMENDED
         </span>
       )}
+      {badge && (
+        <span className="absolute top-3 left-3 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 tracking-wide"
+          style={{
+            background: badgeStyles[badge].background,
+            color: badgeStyles[badge].color,
+            border: badgeStyles[badge].border,
+          }}>
+          {badgeStyles[badge].label}
+        </span>
+      )}
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
         <div className="flex-1 min-w-0 pr-14">
           <h4 className="font-semibold text-sm leading-tight" style={{ color: 'var(--ff-text)' }}>{name}</h4>
           {tier !== undefined && (
@@ -101,16 +127,28 @@ export default function PartCard({
       {/* Price + Buy */}
       <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
         <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>${price_usd.toLocaleString()}</span>
-        <a
-          href={getAffiliateUrl(name)}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="flex items-center gap-1 text-xs font-medium transition-colors"
-          style={{ color: 'var(--ff-accent)' }}
-        >
-          Buy <ExternalLink size={11} />
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={getAffiliateUrl(name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1 text-xs font-medium transition-colors"
+            style={{ color: 'var(--ff-accent)' }}
+          >
+            Buy <ExternalLink size={11} />
+          </a>
+          <a
+            href={getNeweggUrl(name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex items-center gap-1 text-xs font-medium transition-colors"
+            style={{ color: 'var(--ff-text-2)' }}
+          >
+            Compare <ExternalLink size={11} />
+          </a>
+        </div>
       </div>
 
       {/* Price sparkline (only for GPU/CPU) */}

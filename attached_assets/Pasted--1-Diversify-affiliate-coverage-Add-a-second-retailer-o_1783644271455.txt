@@ -1,0 +1,12 @@
+#1 — Diversify affiliate coverage:
+
+"Add a second retailer option alongside the existing Amazon affiliate links. For each part card, add a 'Compare prices' or second 'Buy' link that searches Newegg using their standard search URL format with the part name, similar to how the Amazon link works now (no API integration needed, just a direct search link like Amazon's). Keep the existing Amazon link as the primary/first option, add Newegg as a secondary option. No backend changes needed — this should work exactly like the current Amazon links, just pointing to a second retailer."
+
+#2 — Email capture on build save:
+
+"When a user saves or shares a build, add an optional email capture step: a simple input asking 'Want us to email you this build?' with a Skip option clearly available — don't make it mandatory. Store submitted emails in the database (reuse whatever storage pattern the existing user accounts use). For now, just store the email and the build ID together — don't build actual email-sending yet, that's a separate feature for later. Make sure declining/skipping is just as easy as submitting, with no guilt-tripping copy."
+
+I added "don't build actual email-sending yet" on purpose — collecting emails and sending emails are two very different amounts of work (the second needs a whole email service integration), and there's no reason to pay for the expensive half before you have any real emails collected to send to.
+#3 — Best value / best performance auto-tags:
+
+"Add automatic badges to GPU and CPU cards based on data already in the part files: a 'Best Value' badge on the part with the best benchmark-score-per-dollar ratio in its category, and a 'Best Performance' badge on the highest benchmark score overall in its category. Only tag one 'Best Value' and one 'Best Performance' per category (GPU and CPU separately), not per price tier, so it's not over-applied. Style them distinctly from the existing 'Flagship'/'Sponsored' badges so they're not confused with each other."

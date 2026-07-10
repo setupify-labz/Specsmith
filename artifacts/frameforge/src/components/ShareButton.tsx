@@ -5,6 +5,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getShareUrl } from '../lib/sharing';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { hasDismissedEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
+import EmailCaptureModal from './EmailCaptureModal';
 
 interface Props {
   buildState: Record<string, string | null>;
@@ -16,6 +18,7 @@ interface Props {
 export default function ShareButton({ buildState, buildName, buildId, size = 'md' }: Props) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [emailCaptureOpen, setEmailCaptureOpen] = useState(false);
   const { showToast } = useToast();
   const { shareBuild } = useAuth();
 
@@ -25,7 +28,10 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      if (buildId) shareBuild(buildId);
+      if (buildId) {
+        shareBuild(buildId);
+        if (!hasDismissedEmailCapture()) setEmailCaptureOpen(true);
+      }
       setTimeout(() => setCopied(false), 2500);
     } catch {
       showToast('Failed to copy link', 'error');
@@ -110,6 +116,12 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EmailCaptureModal
+        open={emailCaptureOpen}
+        onClose={() => { dismissEmailCaptureForever(); setEmailCaptureOpen(false); }}
+        buildId={buildId ?? ''}
+      />
     </>
   );
 }

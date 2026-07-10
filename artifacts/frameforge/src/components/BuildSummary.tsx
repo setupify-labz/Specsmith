@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Zap, DollarSign, Save } from 'lucide-react';
-import { getAffiliateUrl } from '../lib/fps';
+import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import BottleneckChecker from './BottleneckChecker';
 import ShareButton from './ShareButton';
 import SaveBuildModal from './SaveBuildModal';
@@ -65,7 +65,13 @@ export default function BuildSummary({
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
                     <a href={getAffiliateUrl(p.name)} target="_blank" rel="noopener noreferrer"
+                      title="Buy on Amazon"
                       className="flex-shrink-0 transition-colors" style={{ color: 'var(--ff-accent)' }}>
+                      <ExternalLink size={10} />
+                    </a>
+                    <a href={getNeweggUrl(p.name)} target="_blank" rel="noopener noreferrer"
+                      title="Compare on Newegg"
+                      className="flex-shrink-0 transition-colors" style={{ color: 'var(--ff-text-3)' }}>
                       <ExternalLink size={10} />
                     </a>
                   </div>
