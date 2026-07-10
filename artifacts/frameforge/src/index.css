@@ -68,7 +68,7 @@
   --app-font-sans: 'Inter', system-ui, sans-serif;
   --radius: 0.625rem;
 
-  /* FrameForge custom tokens — dark */
+  /* SpecSmith custom tokens — dark */
   --ff-bg:        #0A0A0F;
   --ff-surface:   #13131A;
   --ff-card:      #1C1C26;
@@ -89,7 +89,7 @@
 }
 
 /* ═══════════════════════════════════════
-   FRAMEFORGE DESIGN SYSTEM — LIGHT
+   SPECSMITH DESIGN SYSTEM — LIGHT
    ═══════════════════════════════════════ */
 [data-theme="light"] {
   --background: 0 0% 96%;
@@ -112,7 +112,7 @@
   --destructive: 350 100% 45%;
   --destructive-foreground: 0 0% 100%;
 
-  /* FrameForge custom tokens — light */
+  /* SpecSmith custom tokens — light */
   --ff-bg:        #F4F4FA;
   --ff-surface:   #FFFFFF;
   --ff-card:      #FFFFFF;

@@ -12,7 +12,7 @@ export default function Footer() {
               <svg viewBox="0 0 40 46" fill="none" className="w-8 h-8">
                 <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#fhex)" opacity="0.15"/>
                 <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#fhex)" strokeWidth="1.5"/>
-                <text x="20" y="26" textAnchor="middle" fill="url(#fhex)" fontSize="14" fontWeight="800" fontFamily="Inter">FF</text>
+                <text x="20" y="26" textAnchor="middle" fill="url(#fhex)" fontSize="14" fontWeight="800" fontFamily="Inter">SS</text>
                 <defs>
                   <linearGradient id="fhex" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
                     <stop stopColor="var(--ff-accent)"/>
@@ -21,7 +21,7 @@ export default function Footer() {
                 </defs>
               </svg>
               <span className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>
-                Frame<span className="gradient-text">Forge</span>
+                Spec<span className="gradient-text">Smith</span>
               </span>
             </Link>
             <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Build it. Benchmark it. Own it.</p>
@@ -51,7 +51,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h4>
             <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ff-text-2)' }}>
-              As an Amazon Associate, FrameForge earns from qualifying purchases.
+              As an Amazon Associate, SpecSmith earns from qualifying purchases.
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               FPS estimates are based on benchmark data and should be used as a guide only. Actual performance varies by driver version, game patch, and system configuration.
@@ -60,7 +60,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>© 2025 FrameForge. All rights reserved.</p>
+          <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>© 2025 SpecSmith. All rights reserved.</p>
         </div>
       </div>
     </footer>

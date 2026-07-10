@@ -8,7 +8,7 @@ const sections = [
   {
     icon: <Calculator size={20} className="text-[#6C63FF]" />,
     title: 'How FPS Estimation Works',
-    content: `FrameForge uses a data-driven algorithm to estimate gaming performance based on two key components: your GPU tier and CPU tier. Each component is scored on a 1-10 tier scale based on benchmark data from thousands of real-world gaming tests.
+    content: `SpecSmith uses a data-driven algorithm to estimate gaming performance based on two key components: your GPU tier and CPU tier. Each component is scored on a 1-10 tier scale based on benchmark data from thousands of real-world gaming tests.
 
 The estimation formula works as follows:
 
@@ -34,7 +34,7 @@ For games, we benchmark at multiple quality presets and resolutions to capture t
   {
     icon: <Shield size={20} className="text-[#00E676]" />,
     title: 'Compatibility Checking',
-    content: `FrameForge checks three critical compatibility factors:
+    content: `SpecSmith checks three critical compatibility factors:
 
 Socket Compatibility: CPU socket must match motherboard socket. For example, Intel 12th/13th/14th Gen CPUs use LGA1700 and require an LGA1700 motherboard. AMD Ryzen 7000 series uses AM5, while Ryzen 5000 uses AM4.
 
@@ -57,7 +57,7 @@ PSU Wattage: The power supply must provide enough wattage for the GPU TDP + CPU 
 - Thermal throttling on poorly cooled systems
 - Background applications and OS overhead
 
-Use FrameForge estimates as a starting point for your research, not a guarantee. We recommend checking independent reviews for the specific hardware you're considering.`
+Use SpecSmith estimates as a starting point for your research, not a guarantee. We recommend checking independent reviews for the specific hardware you're considering.`
   }
 ];
 
@@ -73,10 +73,10 @@ export default function About() {
           className="text-center mb-16"
         >
           <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
-            About <span className="gradient-text">FrameForge</span>
+            About <span className="gradient-text">SpecSmith</span>
           </h1>
           <p className="text-[#8888AA] text-lg max-w-2xl mx-auto">
-            FrameForge exists to remove the guesswork from PC building. We believe everyone deserves to know exactly what performance they'll get before committing their hard-earned money.
+            SpecSmith exists to remove the guesswork from PC building. We believe everyone deserves to know exactly what performance they'll get before committing their hard-earned money.
           </p>
         </motion.div>
 

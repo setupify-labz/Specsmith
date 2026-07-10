@@ -67,7 +67,7 @@ export default function Navbar() {
               <svg viewBox="0 0 40 46" fill="none" className="w-8 h-8">
                 <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#hexG)" opacity="0.15"/>
                 <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#hexG)" strokeWidth="1.5"/>
-                <text x="20" y="26" textAnchor="middle" fill="url(#hexG)" fontSize="14" fontWeight="800" fontFamily="Inter">FF</text>
+                <text x="20" y="26" textAnchor="middle" fill="url(#hexG)" fontSize="14" fontWeight="800" fontFamily="Inter">SS</text>
                 <defs>
                   <linearGradient id="hexG" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
                     <stop stopColor="var(--ff-accent)"/>
@@ -76,7 +76,7 @@ export default function Navbar() {
                 </defs>
               </svg>
               <span className="font-bold text-xl tracking-tight" style={{ color: 'var(--ff-text)' }}>
-                Frame<span className="gradient-text">Forge</span>
+                Spec<span className="gradient-text">Smith</span>
               </span>
             </Link>
 

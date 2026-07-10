@@ -86,8 +86,8 @@ export default function PrebuiltDetail() {
 
   const fallbackMeta = {
     path: '/prebuilts',
-    title: 'Build Not Found | FrameForge',
-    description: 'This curated build could not be found. Browse all curated FrameForge PC builds instead.',
+    title: 'Build Not Found | SpecSmith',
+    description: 'This curated build could not be found. Browse all curated SpecSmith PC builds instead.',
     noindex: true,
   };
   useSeo(prebuilt ? getPrebuiltMeta(prebuilt) : fallbackMeta);

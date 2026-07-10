@@ -39,7 +39,7 @@ export default function SharedBuild() {
   const buildMeta = getRouteMeta('/build');
   useSeo({
     ...buildMeta,
-    title: decoded ? `${decoded.name} — FrameForge Shared Build` : buildMeta.title,
+    title: decoded ? `${decoded.name} — SpecSmith Shared Build` : buildMeta.title,
   });
 
   if (!decoded) {

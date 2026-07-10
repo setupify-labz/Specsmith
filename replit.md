@@ -2,7 +2,7 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Contains the FrameForge PC Builder + FPS Estimator web application.
+pnpm workspace monorepo using TypeScript. Contains the SpecSmith PC Builder + FPS Estimator web application.
 
 ## Stack
 
@@ -10,12 +10,12 @@ pnpm workspace monorepo using TypeScript. Contains the FrameForge PC Builder + F
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
-- **API framework**: Express 5 (api-server, currently unused by FrameForge)
-- **Database**: PostgreSQL + Drizzle ORM (unused by FrameForge — all data is local JSON)
+- **API framework**: Express 5 (api-server, currently unused by SpecSmith)
+- **Database**: PostgreSQL + Drizzle ORM (unused by SpecSmith — all data is local JSON)
 
-## FrameForge Application
+## SpecSmith Application
 
-A complete PC Builder + FPS Estimator web application at `artifacts/frameforge/`.
+A complete PC Builder + FPS Estimator web application at `artifacts/frameforge/` (branded as "SpecSmith"; the artifact/package directory name is kept as `frameforge` internally to avoid breaking workspace filters and workflow references).
 
 ### Tech Stack
 - React 18 + React Router v6
@@ -50,4 +50,4 @@ A complete PC Builder + FPS Estimator web application at `artifacts/frameforge/`
 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/frameforge run dev` — run FrameForge locally
+- `pnpm --filter @workspace/frameforge run dev` — run SpecSmith locally (package name kept as `frameforge`)

@@ -1,12 +1,12 @@
-# FrameForge
+# SpecSmith
 
-> FrameForge is a free PC Builder and FPS Estimator. Pick a GPU and CPU (plus motherboard, RAM, storage, PSU, case, and cooler), check part compatibility, and get estimated frames-per-second across popular games at common resolutions and quality presets.
+> SpecSmith is a free PC Builder and FPS Estimator. Pick a GPU and CPU (plus motherboard, RAM, storage, PSU, case, and cooler), check part compatibility, and get estimated frames-per-second across popular games at common resolutions and quality presets.
 
-FrameForge helps PC builders plan a compatible build and predict real-world gaming performance before buying parts. All component data (50 GPUs, 50 CPUs, 20 games) is curated and estimates are computed with a transparent tier-based algorithm explained on the About page.
+SpecSmith helps PC builders plan a compatible build and predict real-world gaming performance before buying parts. All component data (50 GPUs, 50 CPUs, 20 games) is curated and estimates are computed with a transparent tier-based algorithm explained on the About page.
 
 ## Primary pages
 
-- [Home](/): Overview of FrameForge, key stats, and featured prebuilt PCs.
+- [Home](/): Overview of SpecSmith, key stats, and featured prebuilt PCs.
 - [Builder](/builder): The main PC Builder and FPS Estimator tool — select parts, check compatibility, and see estimated FPS per game.
 - [Prebuilts](/prebuilts): Five curated, ready-to-buy PC build configurations across budget tiers.
 - [Compare](/compare): Side-by-side comparison of two builds with FPS and price charts.

@@ -1,5 +1,5 @@
 export const SITE_URL = 'https://frameforge.app';
-export const SITE_NAME = 'FrameForge';
+export const SITE_NAME = 'SpecSmith';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/opengraph.jpg`;
 
 export interface RouteMeta {
@@ -14,39 +14,39 @@ export interface RouteMeta {
 export const ROUTE_META: RouteMeta[] = [
   {
     path: '/',
-    title: 'FrameForge — Free PC Builder & FPS Estimator',
+    title: 'SpecSmith — Free PC Builder & FPS Estimator',
     description:
       'Build a compatible gaming PC and see estimated FPS across 20 games before you buy. Pick from 50+ GPUs and 50+ CPUs with live compatibility checks and real pricing.',
   },
   {
     path: '/builder',
-    title: 'PC Builder + FPS Estimator | FrameForge',
+    title: 'PC Builder + FPS Estimator | SpecSmith',
     description:
       'Pick your GPU, CPU, motherboard, RAM, storage, PSU, case, and cooler. Get instant compatibility checks and estimated FPS in 20 games at 1080p, 1440p, and 4K.',
   },
   {
     path: '/prebuilts',
-    title: 'Prebuilt Gaming PCs — 5 Curated Builds | FrameForge',
+    title: 'Prebuilt Gaming PCs — 5 Curated Builds | SpecSmith',
     description:
       'Browse five curated, ready-to-buy PC builds across budget, 1080p, 1440p, and 4K tiers, each with estimated FPS and total cost. Load any build straight into the Builder.',
   },
   {
     path: '/compare',
-    title: 'Compare PC Builds Side-by-Side | FrameForge',
+    title: 'Compare PC Builds Side-by-Side | SpecSmith',
     description:
       'Compare two PC builds head-to-head with FPS and price charts. See exactly which configuration gives you more performance per dollar before you buy.',
   },
   {
     path: '/about',
-    title: 'How FrameForge Estimates FPS | About',
+    title: 'How SpecSmith Estimates FPS | About',
     description:
-      'Learn how FrameForge\u2019s tier-based algorithm estimates gaming FPS from GPU and CPU benchmark data, and how we check socket, RAM, and PSU compatibility.',
+      'Learn how SpecSmith\u2019s tier-based algorithm estimates gaming FPS from GPU and CPU benchmark data, and how we check socket, RAM, and PSU compatibility.',
   },
   {
     path: '/build',
-    title: 'Shared Build — FrameForge',
+    title: 'Shared Build — SpecSmith',
     description:
-      'View a PC build shared from FrameForge, including parts, estimated FPS across popular games, and total cost. Open it in the Builder to customize it yourself.',
+      'View a PC build shared from SpecSmith, including parts, estimated FPS across popular games, and total cost. Open it in the Builder to customize it yourself.',
     noindex: true,
     canonicalOverride: `${SITE_URL}/builder`,
   },
@@ -58,7 +58,7 @@ export function getRouteMeta(path: string): RouteMeta {
       path,
       title: `${SITE_NAME}`,
       description:
-        'FrameForge is a free PC Builder and FPS Estimator for planning compatible gaming PCs.',
+        'SpecSmith is a free PC Builder and FPS Estimator for planning compatible gaming PCs.',
     }
   );
 }
@@ -75,7 +75,7 @@ export interface PrebuiltMetaInput {
 export function getPrebuiltMeta(prebuilt: PrebuiltMetaInput): RouteMeta {
   return {
     path: `/prebuilts/${prebuilt.id}`,
-    title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | FrameForge`,
+    title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | SpecSmith`,
     description: `${prebuilt.tagline}. ${prebuilt.description} Estimated total: $${prebuilt.estimated_price.toLocaleString()}. See full parts list and FPS benchmarks.`,
   };
 }
