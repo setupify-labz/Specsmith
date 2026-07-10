@@ -70,7 +70,7 @@ export default function Login() {
                 className={`ff-input pl-9 ${error ? 'error' : ''}`}
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder="you@example.com"
+                placeholder="name@example.com"
                 required
                 autoComplete="email"
               />

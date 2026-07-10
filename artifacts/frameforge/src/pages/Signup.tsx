@@ -133,8 +133,8 @@ export default function Signup() {
         <form onSubmit={handleSubmit} className="rounded-2xl p-8 space-y-4"
           style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
 
-          {renderField('username', 'Username', 'text', <User size={15} />, 'cool_gamer_42')}
-          {renderField('email', 'Email', 'email', <Mail size={15} />, 'you@example.com')}
+          {renderField('username', 'Username', 'text', <User size={15} />, 'username')}
+          {renderField('email', 'Email', 'email', <Mail size={15} />, 'name@example.com')}
           {renderField('password', 'Password', showPass ? 'text' : 'password', <Lock size={15} />, '••••••••',
             <button type="button" onClick={() => setShowPass(!showPass)} style={{ color: 'var(--ff-text-3)' }}>
               {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
