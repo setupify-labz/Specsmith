@@ -11,15 +11,28 @@ export interface FpsResult {
 
 /**
  * Core FPS formula.
- * raw = baseFps × gpuMultiplier × cpuMultiplier
+ *
+ * Uses a weighted interpolation between CPU and GPU multipliers based on
+ * how GPU-bound the game is (gpuBound 0→1).
+ *
+ *   gpuBound = 1.0 → result purely driven by gpuMultiplier
+ *   gpuBound = 0.0 → result purely driven by cpuMultiplier
+ *   gpuBound = 0.7 → 70% GPU, 30% CPU influence
+ *
+ * This produces realistic per-game variance: a stronger GPU wins in
+ * GPU-heavy titles (Cyberpunk, Alan Wake 2) while a stronger CPU wins
+ * in CPU-heavy titles (Valorant, CS2, Minecraft).
+ *
  * Capped [1, 999]. ±8% variance range.
  */
 export function estimateFps(
   gpuMultiplier: number,
   cpuMultiplier: number,
-  baseFps: number
+  baseFps: number,
+  gpuBound = 0.75
 ): FpsResult {
-  const estimated = Math.min(999, Math.max(1, Math.round(baseFps * gpuMultiplier * cpuMultiplier)));
+  const weighted = cpuMultiplier + gpuBound * (gpuMultiplier - cpuMultiplier);
+  const estimated = Math.min(999, Math.max(1, Math.round(baseFps * weighted)));
   const min = Math.round(estimated * 0.92);
   const max = Math.round(estimated * 1.08);
 
@@ -39,12 +52,14 @@ export interface BuildFpsCpu { cpu_multiplier: number; name: string; [key: strin
 export interface BuildFpsGame {
   id: string;
   name: string;
+  gpu_bound?: number;
   base_fps: Record<string, Record<string, number>>;
   [key: string]: unknown;
 }
 
 /**
  * Higher-level wrapper — pass full GPU, CPU, and Game objects.
+ * Automatically reads gpu_bound from the game for per-game variance.
  * Resolution key is normalised to lowercase before lookup.
  */
 export function estimateFpsForBuild(
@@ -57,7 +72,8 @@ export function estimateFpsForBuild(
   const resKey = resolution.toLowerCase() as Resolution;
   const presetKey = preset.toLowerCase() as Preset;
   const baseFps = game.base_fps[resKey]?.[presetKey] ?? 0;
-  return estimateFps(gpu.gpu_multiplier, cpu.cpu_multiplier, baseFps);
+  const gpuBound = game.gpu_bound ?? 0.75;
+  return estimateFps(gpu.gpu_multiplier, cpu.cpu_multiplier, baseFps, gpuBound);
 }
 
 export function getFpsColorClass(fps: number): string {

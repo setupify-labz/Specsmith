@@ -1,222 +1,542 @@
 [
   {
-    "id":"cyberpunk2077",
-    "name":"Cyberpunk 2077",
-    "genre":"RPG",
-    "year":2020,
-    "base_fps":{
-      "1080p":{"low":165,"medium":128,"high":98,"ultra":72},
-      "1440p":{"low":118,"medium":92,"high":70,"ultra":52},
-      "4k":{"low":68,"medium":52,"high":40,"ultra":29}
-    }
+    "id": "cyberpunk2077",
+    "name": "Cyberpunk 2077",
+    "genre": "RPG",
+    "year": 2020,
+    "base_fps": {
+      "1080p": {
+        "low": 165,
+        "medium": 128,
+        "high": 98,
+        "ultra": 72
+      },
+      "1440p": {
+        "low": 118,
+        "medium": 92,
+        "high": 70,
+        "ultra": 52
+      },
+      "4k": {
+        "low": 68,
+        "medium": 52,
+        "high": 40,
+        "ultra": 29
+      }
+    },
+    "gpu_bound": 0.88
   },
   {
-    "id":"msfs2024",
-    "name":"Microsoft Flight Simulator 2024",
-    "genre":"Simulation",
-    "year":2024,
-    "base_fps":{
-      "1080p":{"low":90,"medium":68,"high":52,"ultra":38},
-      "1440p":{"low":68,"medium":52,"high":40,"ultra":29},
-      "4k":{"low":42,"medium":32,"high":24,"ultra":18}
-    }
+    "id": "msfs2024",
+    "name": "Microsoft Flight Simulator 2024",
+    "genre": "Simulation",
+    "year": 2024,
+    "base_fps": {
+      "1080p": {
+        "low": 90,
+        "medium": 68,
+        "high": 52,
+        "ultra": 38
+      },
+      "1440p": {
+        "low": 68,
+        "medium": 52,
+        "high": 40,
+        "ultra": 29
+      },
+      "4k": {
+        "low": 42,
+        "medium": 32,
+        "high": 24,
+        "ultra": 18
+      }
+    },
+    "gpu_bound": 0.92
   },
   {
-    "id":"rdr2",
-    "name":"Red Dead Redemption 2",
-    "genre":"Action-Adventure",
-    "year":2019,
-    "base_fps":{
-      "1080p":{"low":148,"medium":118,"high":90,"ultra":65},
-      "1440p":{"low":108,"medium":86,"high":65,"ultra":48},
-      "4k":{"low":62,"medium":48,"high":37,"ultra":27}
-    }
+    "id": "rdr2",
+    "name": "Red Dead Redemption 2",
+    "genre": "Action-Adventure",
+    "year": 2019,
+    "base_fps": {
+      "1080p": {
+        "low": 148,
+        "medium": 118,
+        "high": 90,
+        "ultra": 65
+      },
+      "1440p": {
+        "low": 108,
+        "medium": 86,
+        "high": 65,
+        "ultra": 48
+      },
+      "4k": {
+        "low": 62,
+        "medium": 48,
+        "high": 37,
+        "ultra": 27
+      }
+    },
+    "gpu_bound": 0.82
   },
   {
-    "id":"fortnite",
-    "name":"Fortnite",
-    "genre":"Battle Royale",
-    "year":2017,
-    "base_fps":{
-      "1080p":{"low":295,"medium":222,"high":162,"ultra":118},
-      "1440p":{"low":208,"medium":156,"high":114,"ultra":84},
-      "4k":{"low":115,"medium":88,"high":64,"ultra":46}
-    }
+    "id": "fortnite",
+    "name": "Fortnite",
+    "genre": "Battle Royale",
+    "year": 2017,
+    "base_fps": {
+      "1080p": {
+        "low": 295,
+        "medium": 222,
+        "high": 162,
+        "ultra": 118
+      },
+      "1440p": {
+        "low": 208,
+        "medium": 156,
+        "high": 114,
+        "ultra": 84
+      },
+      "4k": {
+        "low": 115,
+        "medium": 88,
+        "high": 64,
+        "ultra": 46
+      }
+    },
+    "gpu_bound": 0.65
   },
   {
-    "id":"valorant",
-    "name":"Valorant",
-    "genre":"FPS",
-    "year":2020,
-    "base_fps":{
-      "1080p":{"low":445,"medium":370,"high":282,"ultra":208},
-      "1440p":{"low":312,"medium":260,"high":198,"ultra":146},
-      "4k":{"low":172,"medium":144,"high":109,"ultra":81}
-    }
+    "id": "valorant",
+    "name": "Valorant",
+    "genre": "FPS",
+    "year": 2020,
+    "base_fps": {
+      "1080p": {
+        "low": 445,
+        "medium": 370,
+        "high": 282,
+        "ultra": 208
+      },
+      "1440p": {
+        "low": 312,
+        "medium": 260,
+        "high": 198,
+        "ultra": 146
+      },
+      "4k": {
+        "low": 172,
+        "medium": 144,
+        "high": 109,
+        "ultra": 81
+      }
+    },
+    "gpu_bound": 0.45
   },
   {
-    "id":"cs2",
-    "name":"CS2 (Counter-Strike 2)",
-    "genre":"FPS",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":372,"medium":310,"high":238,"ultra":178},
-      "1440p":{"low":260,"medium":218,"high":166,"ultra":125},
-      "4k":{"low":145,"medium":121,"high":92,"ultra":69}
-    }
+    "id": "cs2",
+    "name": "CS2 (Counter-Strike 2)",
+    "genre": "FPS",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 372,
+        "medium": 310,
+        "high": 238,
+        "ultra": 178
+      },
+      "1440p": {
+        "low": 260,
+        "medium": 218,
+        "high": 166,
+        "ultra": 125
+      },
+      "4k": {
+        "low": 145,
+        "medium": 121,
+        "high": 92,
+        "ultra": 69
+      }
+    },
+    "gpu_bound": 0.48
   },
   {
-    "id":"apex",
-    "name":"Apex Legends",
-    "genre":"Battle Royale",
-    "year":2019,
-    "base_fps":{
-      "1080p":{"low":238,"medium":192,"high":148,"ultra":110},
-      "1440p":{"low":166,"medium":135,"high":104,"ultra":77},
-      "4k":{"low":92,"medium":75,"high":58,"ultra":43}
-    }
+    "id": "apex",
+    "name": "Apex Legends",
+    "genre": "Battle Royale",
+    "year": 2019,
+    "base_fps": {
+      "1080p": {
+        "low": 238,
+        "medium": 192,
+        "high": 148,
+        "ultra": 110
+      },
+      "1440p": {
+        "low": 166,
+        "medium": 135,
+        "high": 104,
+        "ultra": 77
+      },
+      "4k": {
+        "low": 92,
+        "medium": 75,
+        "high": 58,
+        "ultra": 43
+      }
+    },
+    "gpu_bound": 0.62
   },
   {
-    "id":"warzone",
-    "name":"Call of Duty: Warzone",
-    "genre":"Battle Royale",
-    "year":2020,
-    "base_fps":{
-      "1080p":{"low":208,"medium":163,"high":126,"ultra":93},
-      "1440p":{"low":146,"medium":114,"high":88,"ultra":65},
-      "4k":{"low":80,"medium":63,"high":49,"ultra":36}
-    }
+    "id": "warzone",
+    "name": "Call of Duty: Warzone",
+    "genre": "Battle Royale",
+    "year": 2020,
+    "base_fps": {
+      "1080p": {
+        "low": 208,
+        "medium": 163,
+        "high": 126,
+        "ultra": 93
+      },
+      "1440p": {
+        "low": 146,
+        "medium": 114,
+        "high": 88,
+        "ultra": 65
+      },
+      "4k": {
+        "low": 80,
+        "medium": 63,
+        "high": 49,
+        "ultra": 36
+      }
+    },
+    "gpu_bound": 0.72
   },
   {
-    "id":"eldenring",
-    "name":"Elden Ring",
-    "genre":"Action RPG",
-    "year":2022,
-    "base_fps":{
-      "1080p":{"low":148,"medium":126,"high":104,"ultra":82},
-      "1440p":{"low":104,"medium":88,"high":73,"ultra":57},
-      "4k":{"low":58,"medium":49,"high":40,"ultra":32}
-    }
+    "id": "eldenring",
+    "name": "Elden Ring",
+    "genre": "Action RPG",
+    "year": 2022,
+    "base_fps": {
+      "1080p": {
+        "low": 148,
+        "medium": 126,
+        "high": 104,
+        "ultra": 82
+      },
+      "1440p": {
+        "low": 104,
+        "medium": 88,
+        "high": 73,
+        "ultra": 57
+      },
+      "4k": {
+        "low": 58,
+        "medium": 49,
+        "high": 40,
+        "ultra": 32
+      }
+    },
+    "gpu_bound": 0.8
   },
   {
-    "id":"hogwarts",
-    "name":"Hogwarts Legacy",
-    "genre":"Action RPG",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":133,"medium":107,"high":82,"ultra":59},
-      "1440p":{"low":94,"medium":75,"high":58,"ultra":42},
-      "4k":{"low":52,"medium":42,"high":32,"ultra":23}
-    }
+    "id": "hogwarts",
+    "name": "Hogwarts Legacy",
+    "genre": "Action RPG",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 133,
+        "medium": 107,
+        "high": 82,
+        "ultra": 59
+      },
+      "1440p": {
+        "low": 94,
+        "medium": 75,
+        "high": 58,
+        "ultra": 42
+      },
+      "4k": {
+        "low": 52,
+        "medium": 42,
+        "high": 32,
+        "ultra": 23
+      }
+    },
+    "gpu_bound": 0.87
   },
   {
-    "id":"gtav",
-    "name":"GTA V (Enhanced)",
-    "genre":"Action-Adventure",
-    "year":2013,
-    "base_fps":{
-      "1080p":{"low":208,"medium":170,"high":133,"ultra":97},
-      "1440p":{"low":146,"medium":119,"high":93,"ultra":68},
-      "4k":{"low":80,"medium":66,"high":52,"ultra":38}
-    }
+    "id": "gtav",
+    "name": "GTA V (Enhanced)",
+    "genre": "Action-Adventure",
+    "year": 2013,
+    "base_fps": {
+      "1080p": {
+        "low": 208,
+        "medium": 170,
+        "high": 133,
+        "ultra": 97
+      },
+      "1440p": {
+        "low": 146,
+        "medium": 119,
+        "high": 93,
+        "ultra": 68
+      },
+      "4k": {
+        "low": 80,
+        "medium": 66,
+        "high": 52,
+        "ultra": 38
+      }
+    },
+    "gpu_bound": 0.58
   },
   {
-    "id":"witcher3",
-    "name":"The Witcher 3 (Next Gen)",
-    "genre":"RPG",
-    "year":2015,
-    "base_fps":{
-      "1080p":{"low":163,"medium":133,"high":104,"ultra":74},
-      "1440p":{"low":114,"medium":93,"high":73,"ultra":52},
-      "4k":{"low":63,"medium":52,"high":40,"ultra":29}
-    }
+    "id": "witcher3",
+    "name": "The Witcher 3 (Next Gen)",
+    "genre": "RPG",
+    "year": 2015,
+    "base_fps": {
+      "1080p": {
+        "low": 163,
+        "medium": 133,
+        "high": 104,
+        "ultra": 74
+      },
+      "1440p": {
+        "low": 114,
+        "medium": 93,
+        "high": 73,
+        "ultra": 52
+      },
+      "4k": {
+        "low": 63,
+        "medium": 52,
+        "high": 40,
+        "ultra": 29
+      }
+    },
+    "gpu_bound": 0.82
   },
   {
-    "id":"starfield",
-    "name":"Starfield",
-    "genre":"RPG",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":126,"medium":104,"high":82,"ultra":61},
-      "1440p":{"low":88,"medium":73,"high":57,"ultra":43},
-      "4k":{"low":49,"medium":40,"high":32,"ultra":24}
-    }
+    "id": "starfield",
+    "name": "Starfield",
+    "genre": "RPG",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 126,
+        "medium": 104,
+        "high": 82,
+        "ultra": 61
+      },
+      "1440p": {
+        "low": 88,
+        "medium": 73,
+        "high": 57,
+        "ultra": 43
+      },
+      "4k": {
+        "low": 49,
+        "medium": 40,
+        "high": 32,
+        "ultra": 24
+      }
+    },
+    "gpu_bound": 0.75
   },
   {
-    "id":"alanwake2",
-    "name":"Alan Wake 2",
-    "genre":"Action-Adventure",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":119,"medium":93,"high":71,"ultra":51},
-      "1440p":{"low":83,"medium":65,"high":50,"ultra":36},
-      "4k":{"low":46,"medium":36,"high":28,"ultra":20}
-    }
+    "id": "alanwake2",
+    "name": "Alan Wake 2",
+    "genre": "Action-Adventure",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 119,
+        "medium": 93,
+        "high": 71,
+        "ultra": 51
+      },
+      "1440p": {
+        "low": 83,
+        "medium": 65,
+        "high": 50,
+        "ultra": 36
+      },
+      "4k": {
+        "low": 46,
+        "medium": 36,
+        "high": 28,
+        "ultra": 20
+      }
+    },
+    "gpu_bound": 0.92
   },
   {
-    "id":"spiderman2",
-    "name":"Spider-Man 2 (PC)",
-    "genre":"Action-Adventure",
-    "year":2024,
-    "base_fps":{
-      "1080p":{"low":148,"medium":122,"high":95,"ultra":70},
-      "1440p":{"low":104,"medium":86,"high":67,"ultra":49},
-      "4k":{"low":58,"medium":48,"high":37,"ultra":27}
-    }
+    "id": "spiderman2",
+    "name": "Spider-Man 2 (PC)",
+    "genre": "Action-Adventure",
+    "year": 2024,
+    "base_fps": {
+      "1080p": {
+        "low": 148,
+        "medium": 122,
+        "high": 95,
+        "ultra": 70
+      },
+      "1440p": {
+        "low": 104,
+        "medium": 86,
+        "high": 67,
+        "ultra": 49
+      },
+      "4k": {
+        "low": 58,
+        "medium": 48,
+        "high": 37,
+        "ultra": 27
+      }
+    },
+    "gpu_bound": 0.85
   },
   {
-    "id":"bg3",
-    "name":"Baldur's Gate 3",
-    "genre":"RPG",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":141,"medium":115,"high":88,"ultra":64},
-      "1440p":{"low":99,"medium":81,"high":62,"ultra":45},
-      "4k":{"low":55,"medium":45,"high":34,"ultra":25}
-    }
+    "id": "bg3",
+    "name": "Baldur's Gate 3",
+    "genre": "RPG",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 141,
+        "medium": 115,
+        "high": 88,
+        "ultra": 64
+      },
+      "1440p": {
+        "low": 99,
+        "medium": 81,
+        "high": 62,
+        "ultra": 45
+      },
+      "4k": {
+        "low": 55,
+        "medium": 45,
+        "high": 34,
+        "ultra": 25
+      }
+    },
+    "gpu_bound": 0.72
   },
   {
-    "id":"r6siege",
-    "name":"Rainbow Six Siege",
-    "genre":"FPS",
-    "year":2015,
-    "base_fps":{
-      "1080p":{"low":334,"medium":282,"high":215,"ultra":160},
-      "1440p":{"low":234,"medium":198,"high":151,"ultra":112},
-      "4k":{"low":130,"medium":110,"high":84,"ultra":62}
-    }
+    "id": "r6siege",
+    "name": "Rainbow Six Siege",
+    "genre": "FPS",
+    "year": 2015,
+    "base_fps": {
+      "1080p": {
+        "low": 334,
+        "medium": 282,
+        "high": 215,
+        "ultra": 160
+      },
+      "1440p": {
+        "low": 234,
+        "medium": 198,
+        "high": 151,
+        "ultra": 112
+      },
+      "4k": {
+        "low": 130,
+        "medium": 110,
+        "high": 84,
+        "ultra": 62
+      }
+    },
+    "gpu_bound": 0.5
   },
   {
-    "id":"minecraft",
-    "name":"Minecraft (Java, Optifine)",
-    "genre":"Sandbox",
-    "year":2011,
-    "base_fps":{
-      "1080p":{"low":370,"medium":311,"high":252,"ultra":193},
-      "1440p":{"low":260,"medium":218,"high":176,"ultra":135},
-      "4k":{"low":144,"medium":121,"high":98,"ultra":75}
-    }
+    "id": "minecraft",
+    "name": "Minecraft (Java, Optifine)",
+    "genre": "Sandbox",
+    "year": 2011,
+    "base_fps": {
+      "1080p": {
+        "low": 370,
+        "medium": 311,
+        "high": 252,
+        "ultra": 193
+      },
+      "1440p": {
+        "low": 260,
+        "medium": 218,
+        "high": 176,
+        "ultra": 135
+      },
+      "4k": {
+        "low": 144,
+        "medium": 121,
+        "high": 98,
+        "ultra": 75
+      }
+    },
+    "gpu_bound": 0.4
   },
   {
-    "id":"dyinglight2",
-    "name":"Dying Light 2",
-    "genre":"Action-Adventure",
-    "year":2022,
-    "base_fps":{
-      "1080p":{"low":133,"medium":110,"high":85,"ultra":62},
-      "1440p":{"low":94,"medium":77,"high":60,"ultra":43},
-      "4k":{"low":52,"medium":43,"high":33,"ultra":24}
-    }
+    "id": "dyinglight2",
+    "name": "Dying Light 2",
+    "genre": "Action-Adventure",
+    "year": 2022,
+    "base_fps": {
+      "1080p": {
+        "low": 133,
+        "medium": 110,
+        "high": 85,
+        "ultra": 62
+      },
+      "1440p": {
+        "low": 94,
+        "medium": 77,
+        "high": 60,
+        "ultra": 43
+      },
+      "4k": {
+        "low": 52,
+        "medium": 43,
+        "high": 33,
+        "ultra": 24
+      }
+    },
+    "gpu_bound": 0.78
   },
   {
-    "id":"acmirage",
-    "name":"Assassin's Creed Mirage",
-    "genre":"Action-Adventure",
-    "year":2023,
-    "base_fps":{
-      "1080p":{"low":141,"medium":115,"high":89,"ultra":65},
-      "1440p":{"low":99,"medium":81,"high":62,"ultra":46},
-      "4k":{"low":55,"medium":45,"high":34,"ultra":26}
-    }
+    "id": "acmirage",
+    "name": "Assassin's Creed Mirage",
+    "genre": "Action-Adventure",
+    "year": 2023,
+    "base_fps": {
+      "1080p": {
+        "low": 141,
+        "medium": 115,
+        "high": 89,
+        "ultra": 65
+      },
+      "1440p": {
+        "low": 99,
+        "medium": 81,
+        "high": 62,
+        "ultra": 46
+      },
+      "4k": {
+        "low": 55,
+        "medium": 45,
+        "high": 34,
+        "ultra": 26
+      }
+    },
+    "gpu_bound": 0.74
   }
 ]

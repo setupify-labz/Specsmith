@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import PartSelector from '../components/PartSelector';
-import { estimateFps } from '../lib/fps';
+import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
@@ -27,6 +27,7 @@ interface CPU {
 }
 interface Game {
   id: string; name: string; genre: string; year: number;
+  gpu_bound?: number;
   base_fps: Record<Resolution, Record<Preset, number>>;
 }
 
@@ -129,9 +130,8 @@ export default function Compare() {
   const chartData = useMemo(() => {
     if (!canCompare || !selectedGpuA || !selectedCpuA || !selectedGpuB || !selectedCpuB) return [];
     return games.map(g => {
-      const base = g.base_fps[resolution][preset];
-      const fpsA = estimateFps(selectedGpuA.gpu_multiplier, selectedCpuA.cpu_multiplier, base).estimated;
-      const fpsB = estimateFps(selectedGpuB.gpu_multiplier, selectedCpuB.cpu_multiplier, base).estimated;
+      const fpsA = estimateFpsForBuild(selectedGpuA, selectedCpuA, g, resolution, preset).estimated;
+      const fpsB = estimateFpsForBuild(selectedGpuB, selectedCpuB, g, resolution, preset).estimated;
       return {
         game: g.name.length > 18 ? g.name.substring(0, 18) + '…' : g.name,
         fullGame: g.name,
