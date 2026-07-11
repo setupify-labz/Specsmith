@@ -12,7 +12,7 @@ const ThemeContext = createContext<ThemeContextType>({ theme: 'dark', toggleThem
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     try {
-      return (localStorage.getItem('frameforge-theme') as Theme) || 'dark';
+      return (localStorage.getItem('specsmith-theme') as Theme) || 'dark';
     } catch {
       return 'dark';
     }
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
-    localStorage.setItem('frameforge-theme', theme);
+    localStorage.setItem('specsmith-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');

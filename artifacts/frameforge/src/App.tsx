@@ -18,6 +18,7 @@ const Signup = lazy(() => import('./pages/Signup'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Settings = lazy(() => import('./pages/Settings'));
 const SharedBuild = lazy(() => import('./pages/SharedBuild'));
+const NotFound = lazy(() => import('./pages/not-found'));
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -53,6 +54,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<PageWrapper><Dashboard /></PageWrapper>} />
           <Route path="/settings"  element={<PageWrapper><Settings /></PageWrapper>} />
           <Route path="/build"     element={<PageWrapper><SharedBuild /></PageWrapper>} />
+          <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>
       <Footer />

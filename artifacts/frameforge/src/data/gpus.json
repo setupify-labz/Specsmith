@@ -10,7 +10,7 @@
     "tdp_watts": 575,
     "architecture": "Blackwell",
     "release_year": 2025,
-    "benchmark_score": 300,
+    "benchmark_score": 355,
     "gpu_multiplier": 1.28,
     "sponsored": false
   },
@@ -25,8 +25,8 @@
     "tdp_watts": 360,
     "architecture": "Blackwell",
     "release_year": 2025,
-    "benchmark_score": 260,
-    "gpu_multiplier": 0.93,
+    "benchmark_score": 252,
+    "gpu_multiplier": 0.9,
     "sponsored": true
   },
   {
@@ -415,8 +415,8 @@
     "tdp_watts": 315,
     "architecture": "RDNA3",
     "release_year": 2022,
-    "benchmark_score": 238,
-    "gpu_multiplier": 0.84,
+    "benchmark_score": 228,
+    "gpu_multiplier": 0.79,
     "sponsored": false
   },
   {

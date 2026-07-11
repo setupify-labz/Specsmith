@@ -18,4 +18,4 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-Sitemap: https://frameforge.app/sitemap.xml
+Sitemap: https://specsmithpc.com/sitemap.xml

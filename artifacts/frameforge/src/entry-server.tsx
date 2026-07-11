@@ -12,21 +12,10 @@ import PrebuiltDetail from './pages/PrebuiltDetail';
 import Compare from './pages/Compare';
 import About from './pages/About';
 import SharedBuild from './pages/SharedBuild';
-import prebuiltsData from './data/prebuilts.json';
+import { prebuilts } from './lib/prebuilts';
 import { getPrebuiltMeta, getRouteMeta, type RouteMeta } from './lib/seo';
 
-export { getRouteMeta, buildHeadTags } from './lib/seo';
-
-interface Prebuilt {
-  id: string;
-  name: string;
-  tagline: string;
-  description: string;
-  target_resolution: string;
-  estimated_price: number;
-}
-
-const prebuilts = prebuiltsData as Prebuilt[];
+export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
 
 const PAGES: Record<string, React.ComponentType> = {
   '/': Home,

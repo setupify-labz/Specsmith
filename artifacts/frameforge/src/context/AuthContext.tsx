@@ -45,31 +45,31 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 function getUsers(): User[] {
-  try { return JSON.parse(localStorage.getItem('frameforge-users') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('specsmith-users') || '[]'); } catch { return []; }
 }
 function setUsers(u: User[]) {
-  localStorage.setItem('frameforge-users', JSON.stringify(u));
+  localStorage.setItem('specsmith-users', JSON.stringify(u));
 }
 function getSession(): User | null {
-  try { return JSON.parse(localStorage.getItem('frameforge-session') || 'null'); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem('specsmith-session') || 'null'); } catch { return null; }
 }
 function setSession(u: User | null) {
-  if (u) localStorage.setItem('frameforge-session', JSON.stringify(u));
-  else localStorage.removeItem('frameforge-session');
+  if (u) localStorage.setItem('specsmith-session', JSON.stringify(u));
+  else localStorage.removeItem('specsmith-session');
 }
 function getUserBuilds(userId: string): SavedBuild[] {
-  try { return JSON.parse(localStorage.getItem(`frameforge-builds-${userId}`) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(`specsmith-builds-${userId}`) || '[]'); } catch { return []; }
 }
 function setUserBuilds(userId: string, builds: SavedBuild[]) {
-  localStorage.setItem(`frameforge-builds-${userId}`, JSON.stringify(builds));
+  localStorage.setItem(`specsmith-builds-${userId}`, JSON.stringify(builds));
 }
 function getUserActivity(userId: string): Activity[] {
-  try { return JSON.parse(localStorage.getItem(`frameforge-activity-${userId}`) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(`specsmith-activity-${userId}`) || '[]'); } catch { return []; }
 }
 function addActivity(userId: string, message: string) {
   const acts = getUserActivity(userId);
   acts.unshift({ id: Date.now().toString(), message, time: new Date().toISOString() });
-  localStorage.setItem(`frameforge-activity-${userId}`, JSON.stringify(acts.slice(0, 20)));
+  localStorage.setItem(`specsmith-activity-${userId}`, JSON.stringify(acts.slice(0, 20)));
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -182,8 +182,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const users = getUsers().filter(u => u.id !== user.id);
     setUsers(users);
-    localStorage.removeItem(`frameforge-builds-${user.id}`);
-    localStorage.removeItem(`frameforge-activity-${user.id}`);
+    localStorage.removeItem(`specsmith-builds-${user.id}`);
+    localStorage.removeItem(`specsmith-activity-${user.id}`);
     setSession(null);
     setUser(null);
     setBuilds([]);

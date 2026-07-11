@@ -224,7 +224,7 @@
     "name": "i9-13900KS",
     "brand": "Intel",
     "series": "13th Gen",
-    "price_usd": 549,
+    "price_usd": 579,
     "tier": 10,
     "cores": 24,
     "threads": 32,
@@ -304,7 +304,7 @@
     ],
     "release_year": 2022,
     "benchmark_score": 202,
-    "cpu_multiplier": 0.93,
+    "cpu_multiplier": 0.98,
     "sponsored": false
   },
   {

@@ -36,7 +36,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
       showToast('Build saved!', 'success', { label: 'View in Dashboard', onClick: () => navigate('/dashboard') });
       onClose();
       // Grab the newly created build's id (most recent, not present before save) to offer the optional email capture.
-      const savedBuilds = JSON.parse(localStorage.getItem(`frameforge-builds-${user?.id}`) || '[]') as { id: string }[];
+      const savedBuilds = JSON.parse(localStorage.getItem(`specsmith-builds-${user?.id}`) || '[]') as { id: string }[];
       const newBuild = savedBuilds.find(b => !beforeIds.has(b.id));
       if (newBuild) setEmailCaptureBuildId(newBuild.id);
     } else if (builds.length >= 20) {

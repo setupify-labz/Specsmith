@@ -2,66 +2,21 @@ import { useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Zap, ExternalLink } from 'lucide-react';
-import prebuiltsData from '../data/prebuilts.json';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
-import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
-import { estimateFps, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, type Prebuilt } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 
-interface Prebuilt {
-  id: string;
-  name: string;
-  tagline: string;
-  description: string;
-  target_resolution: string;
-  badge_color: string;
-  fps_resolution: string;
-  fps_preset: string;
-  fps_preview_games: string[];
-  estimated_price: number;
-  parts: Record<string, string>;
-}
-
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }
-interface Game { id: string; name: string; base_fps: Record<string, Record<string, number>>; }
+interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 
-const prebuilts = prebuiltsData as Prebuilt[];
 const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
-
-function getPartPrice(category: string, id: string): number {
-  if (category === 'gpu') return gpus.find(g => g.id === id)?.price_usd ?? 0;
-  if (category === 'cpu') return cpus.find(c => c.id === id)?.price_usd ?? 0;
-  if (category === 'motherboard') return (componentData.motherboards as any[]).find(m => m.id === id)?.price_usd ?? 0;
-  if (category === 'ram') return (componentData.ram as any[]).find(r => r.id === id)?.price_usd ?? 0;
-  if (category === 'storage') return (componentData.storage as any[]).find(s => s.id === id)?.price_usd ?? 0;
-  if (category === 'psu') return (componentData.psus as any[]).find(p => p.id === id)?.price_usd ?? 0;
-  if (category === 'case') return (componentData.cases as any[]).find(c => c.id === id)?.price_usd ?? 0;
-  if (category === 'cooler') return (componentData.coolers as any[]).find(c => c.id === id)?.price_usd ?? 0;
-  return 0;
-}
-
-function getPartName(category: string, id: string): string {
-  if (category === 'gpu') return gpus.find(g => g.id === id)?.name ?? id;
-  if (category === 'cpu') return cpus.find(c => c.id === id)?.name ?? id;
-  if (category === 'motherboard') return (componentData.motherboards as any[]).find(m => m.id === id)?.name ?? id;
-  if (category === 'ram') return (componentData.ram as any[]).find(r => r.id === id)?.name ?? id;
-  if (category === 'storage') return (componentData.storage as any[]).find(s => s.id === id)?.name ?? id;
-  if (category === 'psu') return (componentData.psus as any[]).find(p => p.id === id)?.name ?? id;
-  if (category === 'case') return (componentData.cases as any[]).find(c => c.id === id)?.name ?? id;
-  if (category === 'cooler') return (componentData.coolers as any[]).find(c => c.id === id)?.name ?? id;
-  return id;
-}
-
-const categoryLabels: Record<string, string> = {
-  gpu: 'GPU', cpu: 'CPU', motherboard: 'Motherboard', ram: 'RAM',
-  storage: 'Storage', psu: 'PSU', case: 'Case', cooler: 'CPU Cooler',
-};
 
 const BADGE_STYLES: Record<string, { bg: string; color: string; border: string }> = {
   gray:   { bg: 'rgba(136,136,170,0.12)', color: '#8888AA', border: 'rgba(136,136,170,0.3)' },
@@ -82,17 +37,14 @@ function useFpsPreview(prebuilt: Prebuilt) {
     return prebuilt.fps_preview_games.map(gameId => {
       const game = games.find(g => g.id === gameId);
       if (!game) return null;
-      const baseFps = game.base_fps[prebuilt.fps_resolution]?.[prebuilt.fps_preset] ?? 0;
-      const fps = estimateFps(gpu.gpu_multiplier, cpu.cpu_multiplier, baseFps).estimated;
+      const fps = estimateFpsForBuild(gpu, cpu, game, prebuilt.fps_resolution, prebuilt.fps_preset).estimated;
       return { game: game.name, fps };
     }).filter(Boolean) as { game: string; fps: number }[];
   }, [prebuilt]);
 }
 
 function useTotalPrice(prebuilt: Prebuilt): number {
-  return useMemo(() => {
-    return Object.entries(prebuilt.parts).reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0);
-  }, [prebuilt]);
+  return useMemo(() => getPrebuiltTotal(prebuilt), [prebuilt]);
 }
 
 function getFpsColor(fps: number): string {
@@ -214,7 +166,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             {fpsRows.map(fp => (
               <div key={fp.game} className="text-center">
                 <div className="text-xl font-black" style={{ color: getFpsColor(fp.fps) }}>{fp.fps}</div>
-                <div className="text-xs max-w-[80px] leading-tight" style={{ color: 'var(--ff-text-2)' }}>{fp.game}</div>
+                <div className="text-xs max-w-[80px] leading-tight truncate" title={fp.game} style={{ color: 'var(--ff-text-2)' }}>{fp.game}</div>
               </div>
             ))}
           </div>

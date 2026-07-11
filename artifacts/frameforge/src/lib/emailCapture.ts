@@ -5,11 +5,11 @@ export interface EmailCapture {
 }
 
 function getCaptures(): EmailCapture[] {
-  try { return JSON.parse(localStorage.getItem('frameforge-email-captures') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('specsmith-email-captures') || '[]'); } catch { return []; }
 }
 
 function setCaptures(captures: EmailCapture[]) {
-  localStorage.setItem('frameforge-email-captures', JSON.stringify(captures));
+  localStorage.setItem('specsmith-email-captures', JSON.stringify(captures));
 }
 
 export function saveEmailCapture(email: string, buildId: string): void {
@@ -18,7 +18,7 @@ export function saveEmailCapture(email: string, buildId: string): void {
   setCaptures(captures);
 }
 
-const DISMISSED_KEY = 'frameforge-email-capture-dismissed';
+const DISMISSED_KEY = 'specsmith-email-capture-dismissed';
 
 export function hasDismissedEmailCapture(): boolean {
   return localStorage.getItem(DISMISSED_KEY) === '1';

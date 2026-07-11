@@ -84,8 +84,13 @@ export function getFpsColorClass(fps: number): string {
   return 'fps-good';
 }
 
+// Placeholder tag until the SpecSmith Amazon Associates account is
+// approved — Amazon ignores unrecognized tags, so links keep working.
+// Replace with the real tag before monetization goes live.
+export const AMAZON_AFFILIATE_TAG = 'specsmithpc-20';
+
 export function getAffiliateUrl(partName: string): string {
-  return `https://www.amazon.com/s?k=${encodeURIComponent(partName)}&tag=frameforge-20`;
+  return `https://www.amazon.com/s?k=${encodeURIComponent(partName)}&tag=${AMAZON_AFFILIATE_TAG}`;
 }
 
 export function getNeweggUrl(partName: string): string {

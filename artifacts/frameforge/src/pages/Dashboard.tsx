@@ -80,10 +80,10 @@ export default function Dashboard() {
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Builds Saved', value: builds.length, icon: <Cpu size={18} />, color: 'var(--ff-accent)' },
-            { label: 'Builds Shared', value: totalShared, icon: <ExternalLink size={18} />, color: 'var(--ff-cyan)' },
-            { label: 'Most Used GPU', value: mostUsedGpu.replace(/-/g, ' ').toUpperCase().slice(0, 10), icon: <BarChart2 size={18} />, color: '#00E676' },
-            { label: 'Total Builds', value: `${builds.length}/20`, icon: <Zap size={18} />, color: '#FFB300' },
+            { label: 'Builds Saved', value: builds.length, icon: <Cpu size={18} />, color: 'var(--ff-accent)', truncate: false },
+            { label: 'Builds Shared', value: totalShared, icon: <ExternalLink size={18} />, color: 'var(--ff-cyan)', truncate: false },
+            { label: 'Most Used GPU', value: mostUsedGpu.replace(/-/g, ' ').toUpperCase(), icon: <BarChart2 size={18} />, color: '#00E676', truncate: true },
+            { label: 'Total Builds', value: `${builds.length}/20`, icon: <Zap size={18} />, color: '#FFB300', truncate: false },
           ].map(stat => (
             <div key={stat.label} className="rounded-xl p-4"
               style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
@@ -91,7 +91,7 @@ export default function Dashboard() {
                 {stat.icon}
                 <span className="text-xs font-medium" style={{ color: 'var(--ff-text-2)' }}>{stat.label}</span>
               </div>
-              <p className="text-xl font-black" style={{ color: 'var(--ff-text)' }}>{stat.value}</p>
+              <p className={`text-xl font-black${stat.truncate ? ' truncate' : ''}`} title={stat.truncate ? String(stat.value) : undefined} style={{ color: 'var(--ff-text)' }}>{stat.value}</p>
             </div>
           ))}
         </div>

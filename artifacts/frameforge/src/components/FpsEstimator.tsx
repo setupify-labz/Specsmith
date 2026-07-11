@@ -19,6 +19,10 @@ interface Props {
   gpu: GPU;
   cpu: CPU;
   games: Game[];
+  resolution: Resolution;
+  preset: Preset;
+  onResolutionChange: (r: Resolution) => void;
+  onPresetChange: (p: Preset) => void;
 }
 
 type FpsTarget = 60 | 144 | 240 | null;
@@ -47,10 +51,8 @@ function getTargetBadge(fps: number, target: FpsTarget): { icon: string; color: 
   return { icon: '✗', color: '#FF1744' };
 }
 
-export default function FpsEstimator({ gpu, cpu, games }: Props) {
+export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onResolutionChange, onPresetChange }: Props) {
   const [selectedGame, setSelectedGame] = useState<string>(games[0]?.id ?? '');
-  const [resolution, setResolution] = useState<Resolution>('1080p');
-  const [preset, setPreset] = useState<Preset>('high');
   const [fpsTarget, setFpsTarget] = useState<FpsTarget>(null);
 
   const currentGame = games.find(g => g.id === selectedGame);
@@ -125,7 +127,7 @@ export default function FpsEstimator({ gpu, cpu, games }: Props) {
           <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium" style={{ color: 'var(--ff-text-2)' }}>Resolution</label>
           <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--ff-border)' }}>
             {resolutions.map(r => (
-              <button key={r} onClick={() => setResolution(r)}
+              <button key={r} onClick={() => onResolutionChange(r)}
                 className="flex-1 py-2 text-xs font-semibold transition-colors"
                 style={toggleStyle(resolution === r)}>
                 {resLabels[r]}
@@ -139,7 +141,7 @@ export default function FpsEstimator({ gpu, cpu, games }: Props) {
           <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium" style={{ color: 'var(--ff-text-2)' }}>Quality</label>
           <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--ff-border)' }}>
             {presets.map(p => (
-              <button key={p} onClick={() => setPreset(p)}
+              <button key={p} onClick={() => onPresetChange(p)}
                 className="flex-1 py-2 text-xs font-semibold transition-colors"
                 style={toggleStyle(preset === p)}>
                 {presetLabels[p]}

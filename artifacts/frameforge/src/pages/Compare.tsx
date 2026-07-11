@@ -169,7 +169,7 @@ export default function Compare() {
             gpuId={gpuA} cpuId={cpuA}
             onGpuSelect={setGpuA} onCpuSelect={setCpuA}
           />
-          <div className="hidden lg:flex items-center justify-center">
+          <div className="relative hidden lg:flex items-center justify-center">
             <div className="w-px h-full bg-white/10" />
             <span className="absolute text-[#8888AA] text-sm font-bold bg-[#0A0A0F] px-2">VS</span>
           </div>
