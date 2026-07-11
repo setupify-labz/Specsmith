@@ -29,6 +29,7 @@ interface Game {
   id: string; name: string; genre: string; year: number;
   gpu_bound?: number;
   base_fps: Record<Resolution, Record<Preset, number>>;
+  [key: string]: unknown;
 }
 
 const gpus = gpuData as GPU[];

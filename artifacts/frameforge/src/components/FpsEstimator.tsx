@@ -12,6 +12,7 @@ interface Game {
   genre: string;
   gpu_bound?: number;
   base_fps: Record<Resolution, Record<Preset, number>>;
+  [key: string]: unknown;
 }
 
 interface Props {

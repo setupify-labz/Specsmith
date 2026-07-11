@@ -32,7 +32,7 @@ interface Monitor { id: string; name: string; brand: string; price_usd: number; 
 interface Keyboard { id: string; name: string; brand: string; price_usd: number; switch_type: string; form_factor: string; rgb: boolean; wireless: boolean; release_year: number; [key: string]: unknown; }
 interface Mouse { id: string; name: string; brand: string; price_usd: number; dpi_max: number; weight_grams: number; wireless: boolean; rgb: boolean; buttons: number; release_year: number; [key: string]: unknown; }
 interface Headset { id: string; name: string; brand: string; price_usd: number; driver_mm: number; surround_sound: string; wireless: boolean; noise_cancelling: boolean; microphone: boolean; release_year: number; [key: string]: unknown; }
-interface Game { id: string; name: string; genre: string; year: number; gpu_bound?: number; base_fps: Record<Resolution, Record<Preset, number>>; }
+interface Game { id: string; name: string; genre: string; year: number; gpu_bound?: number; base_fps: Record<Resolution, Record<Preset, number>>; [key: string]: unknown; }
 
 const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];

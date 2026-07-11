@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save } from 'lucide-react';
+import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
 import BottleneckChecker from './BottleneckChecker';
 import ShareButton from './ShareButton';
 import SaveBuildModal from './SaveBuildModal';
@@ -18,18 +19,52 @@ interface Props {
   onEstimateFps: () => void;
   canEstimate: boolean;
   compatibilityOk: boolean;
-  gpu?: { benchmark_score: number } | null;
-  cpu?: { benchmark_score: number } | null;
+  gpu?: { benchmark_score: number; name: string; gpu_multiplier: number } | null;
+  cpu?: { benchmark_score: number; name: string; cpu_multiplier: number } | null;
   buildState: Record<string, string | null>;
+  buildName?: string;
   onScrollToGpu?: () => void;
   onScrollToCpu?: () => void;
 }
 
 export default function BuildSummary({
   parts, totalCost, onEstimateFps, canEstimate, compatibilityOk,
-  gpu, cpu, buildState, onScrollToGpu, onScrollToCpu,
+  gpu, cpu, buildState, buildName, onScrollToGpu, onScrollToCpu,
 }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
+  const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
+
+  const cardOptions = {
+    buildName,
+    parts,
+    totalCost,
+    gpu: gpu ? { name: gpu.name, gpu_multiplier: gpu.gpu_multiplier } : null,
+    cpu: cpu ? { name: cpu.name, cpu_multiplier: cpu.cpu_multiplier } : null,
+  };
+
+  const handleDownload = async () => {
+    if (cardState !== 'idle') return;
+    setCardState('downloading');
+    try {
+      await downloadBuildCard(cardOptions);
+    } finally {
+      setCardState('idle');
+    }
+  };
+
+  const handleCopy = async () => {
+    if (cardState !== 'idle') return;
+    setCardState('copying');
+    try {
+      await copyBuildCardToClipboard(cardOptions);
+      setCardState('copied');
+      setTimeout(() => setCardState('idle'), 2000);
+    } catch {
+      setCardState('idle');
+    }
+  };
+
+  const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
 
   return (
     <>
@@ -124,6 +159,52 @@ export default function BuildSummary({
                 Save Build
               </button>
               <ShareButton buildState={buildState} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? '#00E676' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
             </motion.div>
           )}
         </div>
