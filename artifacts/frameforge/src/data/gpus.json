@@ -26,7 +26,7 @@
     "architecture": "Blackwell",
     "release_year": 2025,
     "benchmark_score": 260,
-    "gpu_multiplier": 1.1,
+    "gpu_multiplier": 0.93,
     "sponsored": true
   },
   {
@@ -41,7 +41,7 @@
     "architecture": "Blackwell",
     "release_year": 2025,
     "benchmark_score": 225,
-    "gpu_multiplier": 0.95,
+    "gpu_multiplier": 0.81,
     "sponsored": false
   },
   {
@@ -56,7 +56,7 @@
     "architecture": "Blackwell",
     "release_year": 2025,
     "benchmark_score": 195,
-    "gpu_multiplier": 0.82,
+    "gpu_multiplier": 0.70,
     "sponsored": false
   },
   {
@@ -71,7 +71,7 @@
     "architecture": "Blackwell",
     "release_year": 2025,
     "benchmark_score": 160,
-    "gpu_multiplier": 0.67,
+    "gpu_multiplier": 0.58,
     "sponsored": false
   },
   {
@@ -446,7 +446,7 @@
     "architecture": "RDNA3",
     "release_year": 2023,
     "benchmark_score": 178,
-    "gpu_multiplier": 0.58,
+    "gpu_multiplier": 0.66,
     "sponsored": false
   },
   {

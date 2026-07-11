@@ -646,7 +646,7 @@
     ],
     "release_year": 2022,
     "benchmark_score": 228,
-    "cpu_multiplier": 1.03,
+    "cpu_multiplier": 0.99,
     "sponsored": false
   },
   {

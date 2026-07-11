@@ -107,10 +107,10 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const presets: Preset[] = ['low', 'medium', 'high', 'ultra'];
 
-const DEFAULT_GPU_A = 'rtx4070';
+const DEFAULT_GPU_A = 'rtx4070ti';
 const DEFAULT_CPU_A = 'i5-13600k';
 const DEFAULT_GPU_B = 'rx7800xt';
-const DEFAULT_CPU_B = 'r7-7700x';
+const DEFAULT_CPU_B = 'r7-7800x3d';
 
 export default function Compare() {
   useSeo(getRouteMeta('/compare'));
