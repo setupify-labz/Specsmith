@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, Zap, DollarSign, ChevronRight, Monitor } from 'lucide-react';
-import prebuilts from '../data/prebuilts.json';
+import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 
@@ -34,7 +34,7 @@ const prebuiltHighlights = prebuilts.map(p => ({
   id: p.id,
   name: p.name,
   tagline: p.tagline,
-  price: p.estimated_price,
+  price: getPrebuiltTotal(p),
 }));
 
 export default function Home() {

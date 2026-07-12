@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, Check, X, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { getShareUrl } from '../lib/sharing';
+import { getShareUrl, type ShareView } from '../lib/sharing';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { hasDismissedEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
@@ -13,16 +13,17 @@ interface Props {
   buildName?: string;
   buildId?: string;
   size?: 'sm' | 'md';
+  view?: ShareView;
 }
 
-export default function ShareButton({ buildState, buildName, buildId, size = 'md' }: Props) {
+export default function ShareButton({ buildState, buildName, buildId, size = 'md', view }: Props) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [emailCaptureOpen, setEmailCaptureOpen] = useState(false);
   const { showToast } = useToast();
   const { shareBuild } = useAuth();
 
-  const url = getShareUrl(buildState, buildName);
+  const url = getShareUrl(buildState, buildName, view);
 
   const handleCopy = async () => {
     try {

@@ -2,7 +2,7 @@ kind = "web"
 previewPath = "/"
 title = "Specsmith"
 version = "1.0.0"
-id = "artifacts/frameforge"
+id = "artifacts/SpecSmith"
 router = "path"
 
 [[integratedSkills]]
@@ -19,7 +19,7 @@ run = "pnpm --filter @workspace/frameforge run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/frameforge", "run", "build" ]
-publicDir = "artifacts/frameforge/dist/public"
+publicDir = "artifacts/SpecSmith/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]

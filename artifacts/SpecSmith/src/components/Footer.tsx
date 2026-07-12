@@ -60,7 +60,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 pt-8 text-center" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>© 2025 SpecSmith. All rights reserved.</p>
+          <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>© {new Date().getFullYear()} SpecSmith. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -68,6 +68,8 @@ export default function Builder() {
 
   const { build, selectPart } = useBuilder(initialBuild as any);
   const [showFps, setShowFps] = useState(false);
+  const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
+  const [fpsPreset, setFpsPreset] = useState<Preset>('high');
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
   const gpuSectionRef = useRef<HTMLDivElement>(null);
@@ -300,6 +302,7 @@ export default function Builder() {
               gpu={selectedGpu}
               cpu={selectedCpu}
               buildState={buildState}
+              shareView={{ resolution: fpsResolution, preset: fpsPreset }}
               onScrollToGpu={handleScrollToGpu}
               onScrollToCpu={handleScrollToCpu}
             />
@@ -309,7 +312,11 @@ export default function Builder() {
         {/* FPS Estimator */}
         <AnimatePresence>
           {showFps && selectedGpu && selectedCpu && (
-            <FpsEstimator gpu={selectedGpu} cpu={selectedCpu} games={games} />
+            <FpsEstimator
+              gpu={selectedGpu} cpu={selectedCpu} games={games}
+              resolution={fpsResolution} preset={fpsPreset}
+              onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+            />
           )}
         </AnimatePresence>
       </div>

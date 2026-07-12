@@ -1,4 +1,5 @@
-import { estimateFps } from './fps';
+import { estimateFpsForBuild, type BuildFpsGame } from './fps';
+import gamesData from '../data/games.json';
 
 export interface BuildCardPart {
   label: string;
@@ -32,11 +33,13 @@ const C = {
   red:      '#FF1744',
 };
 
-const FEATURED_GAMES = [
-  { name: 'Cyberpunk 2077',       baseFps: 98,  gpuBound: 0.88, color: C.green },
-  { name: 'Valorant',             baseFps: 282, gpuBound: 0.45, color: C.accent },
-  { name: 'CS2',                  baseFps: 238, gpuBound: 0.48, color: C.cyan },
-];
+const games = gamesData as BuildFpsGame[];
+
+// FPS on the card is rendered at 1080p/High for these three games.
+const FEATURED_GAME_IDS = ['cyberpunk2077', 'valorant', 'cs2'];
+const FEATURED_GAMES = FEATURED_GAME_IDS
+  .map(id => games.find(g => g.id === id))
+  .filter((g): g is BuildFpsGame => !!g);
 
 const PRIORITY_LABELS = ['GPU', 'CPU', 'RAM', 'Storage', 'Motherboard', 'PSU', 'Case', 'Cooler'];
 
@@ -261,14 +264,14 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
 
     FEATURED_GAMES.forEach((game, i) => {
       const y = fpsY + i * fpsRowH;
-      const fps = estimateFps(gpu.gpu_multiplier, cpu.cpu_multiplier, game.baseFps, game.gpuBound).estimated;
+      const fps = estimateFpsForBuild(gpu, cpu, game, '1080p', 'high').estimated;
       const fpsColor = getFpsColor(fps);
 
       // Game name
       ctx.font = '500 12px system-ui, -apple-system, sans-serif';
       ctx.fillStyle = C.text;
       ctx.textAlign = 'left';
-      ctx.fillText(game.name, colRight, y + 4);
+      ctx.fillText(truncate(game.name, 26), colRight, y + 4);
 
       // FPS bar background
       const barY = y + 14;

@@ -1,7 +1,11 @@
+import { migrateLegacyStorage } from './lib/storage';
+
+migrateLegacyStorage();
+
 // No-flash theme: set data-theme before React renders
 (function() {
   try {
-    const t = localStorage.getItem('frameforge-theme');
+    const t = localStorage.getItem('specsmith-theme');
     if (t === 'light') {
       document.documentElement.setAttribute('data-theme', 'light');
     }

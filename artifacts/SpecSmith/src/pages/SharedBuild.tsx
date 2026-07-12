@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
 import { decodeBuild } from '../lib/sharing';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { getPartName, getPartPrice, categoryLabels } from '../lib/prebuilts';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
@@ -42,6 +43,20 @@ export default function SharedBuild() {
     title: decoded ? `${decoded.name} — SpecSmith Shared Build` : buildMeta.title,
   });
 
+  const gpu = decoded ? gpus.find(g => g.id === decoded.build.gpu) : undefined;
+  const cpu = decoded ? cpus.find(c => c.id === decoded.build.cpu) : undefined;
+  // Falls back to 1080p/high for share links created before the viewing
+  // resolution/preset was encoded.
+  const view = decoded?.view ?? { resolution: '1080p', preset: 'high' };
+
+  const fpsRows = useMemo(() => {
+    if (!gpu || !cpu) return [];
+    return games.map(g => ({
+      name: g.name,
+      fps: estimateFpsForBuild(gpu, cpu, g, view.resolution, view.preset).estimated,
+    })).sort((a, b) => b.fps - a.fps);
+  }, [gpu, cpu, view.resolution, view.preset]);
+
   if (!decoded) {
     return (
       <div className="min-h-screen pt-24 flex items-center justify-center px-4">
@@ -58,28 +73,12 @@ export default function SharedBuild() {
   }
 
   const { build, name } = decoded;
-  const gpu = gpus.find(g => g.id === build.gpu);
-  const cpu = cpus.find(c => c.id === build.cpu);
 
-  const partLabels: [string, string][] = [
-    ['GPU', build.gpu ?? ''], ['CPU', build.cpu ?? ''],
-    ['Motherboard', build.motherboard ?? ''], ['RAM', build.ram ?? ''],
-    ['Storage', build.storage ?? ''], ['PSU', build.psu ?? ''],
-    ['Case', build.case ?? ''], ['Cooler', build.cooler ?? ''],
-  ].filter(([, v]) => v) as [string, string][];
+  const partEntries = ['gpu', 'cpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'keyboard', 'mouse', 'headset']
+    .map(cat => [cat, build[cat] ?? ''] as [string, string])
+    .filter(([, id]) => id);
 
-  const fpsRows = useMemo(() => {
-    if (!gpu || !cpu) return [];
-    return games.map(g => ({
-      name: g.name,
-      fps: estimateFpsForBuild(gpu, cpu, g, '1080p', 'high').estimated,
-    })).sort((a, b) => b.fps - a.fps);
-  }, [gpu, cpu]);
-
-  const totalCost = partLabels.reduce((sum, [label]) => {
-    const p = label === 'GPU' ? gpu : label === 'CPU' ? cpu : null;
-    return sum + (p?.price_usd ?? 0);
-  }, 0);
+  const totalCost = partEntries.reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0);
 
   const loadInBuilder = () => {
     const qs = Object.entries(build).filter(([,v]) => v).map(([k,v]) => `${k}=${v}`).join('&');
@@ -112,20 +111,20 @@ export default function SharedBuild() {
                 style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Components</h2>
                 <div className="space-y-2">
-                  {partLabels.map(([label, id]) => (
-                    <div key={label} className="flex items-center justify-between py-2"
+                  {partEntries.map(([cat, id]) => (
+                    <div key={cat} className="flex items-center justify-between py-2"
                       style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{label}</span>
+                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{categoryLabels[cat] ?? cat}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>
-                          {id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                          {getPartName(cat, id)}
                         </span>
-                        <a href={getAffiliateUrl(id)} target="_blank" rel="noopener noreferrer"
+                        <a href={getAffiliateUrl(getPartName(cat, id))} target="_blank" rel="noopener noreferrer"
                           title="Buy on Amazon"
                           style={{ color: 'var(--ff-accent)' }}>
                           <ExternalLink size={11} />
                         </a>
-                        <a href={getNeweggUrl(id)} target="_blank" rel="noopener noreferrer"
+                        <a href={getNeweggUrl(getPartName(cat, id))} target="_blank" rel="noopener noreferrer"
                           title="Compare on Newegg"
                           style={{ color: 'var(--ff-text-3)' }}>
                           <ExternalLink size={11} />
@@ -142,7 +141,7 @@ export default function SharedBuild() {
                   style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                   <h2 className="font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
                     <Zap size={16} style={{ color: 'var(--ff-accent)' }} />
-                    FPS Estimates (1080p High)
+                    FPS Estimates ({view.resolution === '4k' ? '4K' : view.resolution} {view.preset.charAt(0).toUpperCase() + view.preset.slice(1)})
                   </h2>
                   <div className="space-y-2">
                     {fpsRows.map((row, i) => {

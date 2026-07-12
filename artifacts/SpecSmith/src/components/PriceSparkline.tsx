@@ -21,7 +21,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
 
   const trendColor = trend === 'down' ? '#00E676' : trend === 'up' ? '#FF1744' : '#8888AA';
   const TrendIcon = trend === 'down' ? TrendingDown : trend === 'up' ? TrendingUp : Minus;
-  const trendLabel = `${trend === 'down' ? '↓' : trend === 'up' ? '↑' : '—'} ${Math.abs(stats.trendPct)}% over 12 months`;
+  const trendLabel = `${trend === 'down' ? '↓' : trend === 'up' ? '↑' : '—'} ${Math.abs(stats.trendPct)}% est. 12-month trend`;
 
   return (
     <>
@@ -81,7 +81,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-base" style={{ color: 'var(--ff-text)' }}>{partName}</h3>
-                  <p className="text-xs" style={{ color: 'var(--ff-text-2)' }}>12-Month Price History</p>
+                  <p className="text-xs" style={{ color: 'var(--ff-text-2)' }}>12-Month Price Trend (estimated)</p>
                 </div>
                 <button
                   onClick={() => setModalOpen(false)}
@@ -153,17 +153,17 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
               <div className="flex items-center justify-between mt-4">
                 {stats.badge === 'great' && (
                   <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#00E67618', color: '#00E676', border: '1px solid #00E67640' }}>
-                    Great time to buy!
+                    Below typical price (est.)
                   </span>
                 )}
                 {stats.badge === 'high' && (
                   <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#FF174418', color: '#FF1744', border: '1px solid #FF174440' }}>
-                    Price is high — consider waiting
+                    Above typical price (est.)
                   </span>
                 )}
                 {stats.badge === 'average' && (
                   <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}>
-                    Average price
+                    Near typical price (est.)
                   </span>
                 )}
                 <button
@@ -174,6 +174,10 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
                   Set Price Alert
                 </button>
               </div>
+
+              <p className="text-[10px] mt-4 leading-relaxed" style={{ color: 'var(--ff-text-3)' }}>
+                Trend is a modeled estimate based on typical market seasonality for this part's current price — not actual retailer price history. Check retailers for real historical pricing before timing a purchase.
+              </p>
             </motion.div>
           </motion.div>
         )}

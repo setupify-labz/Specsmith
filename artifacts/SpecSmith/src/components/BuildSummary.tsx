@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import type { ShareView } from '../lib/sharing';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
 import BottleneckChecker from './BottleneckChecker';
 import ShareButton from './ShareButton';
@@ -23,13 +24,14 @@ interface Props {
   cpu?: { benchmark_score: number; name: string; cpu_multiplier: number } | null;
   buildState: Record<string, string | null>;
   buildName?: string;
+  shareView?: ShareView;
   onScrollToGpu?: () => void;
   onScrollToCpu?: () => void;
 }
 
 export default function BuildSummary({
   parts, totalCost, onEstimateFps, canEstimate, compatibilityOk,
-  gpu, cpu, buildState, buildName, onScrollToGpu, onScrollToCpu,
+  gpu, cpu, buildState, buildName, shareView, onScrollToGpu, onScrollToCpu,
 }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
   const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
@@ -158,7 +160,7 @@ export default function BuildSummary({
                 <Save size={14} />
                 Save Build
               </button>
-              <ShareButton buildState={buildState} size="sm" />
+              <ShareButton buildState={buildState} view={shareView} size="sm" />
             </motion.div>
           )}
 
