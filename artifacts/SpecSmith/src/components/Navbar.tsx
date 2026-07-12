@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Cpu, Moon, Sun, LayoutDashboard, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import Logo from './Logo';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -64,17 +65,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-              <svg viewBox="0 0 40 46" fill="none" className="w-8 h-8">
-                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#hexG)" opacity="0.15"/>
-                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#hexG)" strokeWidth="1.5"/>
-                <text x="20" y="26" textAnchor="middle" fill="url(#hexG)" fontSize="14" fontWeight="800" fontFamily="Inter">SS</text>
-                <defs>
-                  <linearGradient id="hexG" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="var(--ff-accent)"/>
-                    <stop offset="1" stopColor="var(--ff-cyan)"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <Logo size={32} className="w-8 h-8" />
               <span className="font-bold text-xl tracking-tight" style={{ color: 'var(--ff-text)' }}>
                 Spec<span className="gradient-text">Smith</span>
               </span>
