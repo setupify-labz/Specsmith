@@ -195,7 +195,7 @@ export function siteJsonLdGraph() {
         '@id': `${SITE_URL}/#organization`,
         name: SITE_NAME,
         url: SITE_URL,
-        logo: `${SITE_URL}/favicon.svg`,
+        logo: `${SITE_URL}/favicon-512.png`,
       },
       {
         '@type': 'WebSite',
