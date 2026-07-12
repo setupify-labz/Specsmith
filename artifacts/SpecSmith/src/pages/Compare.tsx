@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import PartSelector from '../components/PartSelector';
@@ -114,10 +115,21 @@ const DEFAULT_CPU_B = 'r7-7800x3d';
 
 export default function Compare() {
   useSeo(getRouteMeta('/compare'));
-  const [gpuA, setGpuA] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_A) ? DEFAULT_GPU_A : gpus[0]?.id ?? null);
-  const [cpuA, setCpuA] = useState<string | null>(cpus.some(c => c.id === DEFAULT_CPU_A) ? DEFAULT_CPU_A : cpus[0]?.id ?? null);
-  const [gpuB, setGpuB] = useState<string | null>(gpus.some(g => g.id === DEFAULT_GPU_B) ? DEFAULT_GPU_B : gpus[1]?.id ?? null);
-  const [cpuB, setCpuB] = useState<string | null>(cpus.some(c => c.id === DEFAULT_CPU_B) ? DEFAULT_CPU_B : cpus[1]?.id ?? null);
+  const [searchParams] = useSearchParams();
+  const initGpu = (param: string, fallback: string, altIndex: number) => {
+    const fromUrl = searchParams.get(param);
+    if (fromUrl && gpus.some(g => g.id === fromUrl)) return fromUrl;
+    return gpus.some(g => g.id === fallback) ? fallback : gpus[altIndex]?.id ?? null;
+  };
+  const initCpu = (param: string, fallback: string, altIndex: number) => {
+    const fromUrl = searchParams.get(param);
+    if (fromUrl && cpus.some(c => c.id === fromUrl)) return fromUrl;
+    return cpus.some(c => c.id === fallback) ? fallback : cpus[altIndex]?.id ?? null;
+  };
+  const [gpuA, setGpuA] = useState<string | null>(() => initGpu('gpuA', DEFAULT_GPU_A, 0));
+  const [cpuA, setCpuA] = useState<string | null>(() => initCpu('cpuA', DEFAULT_CPU_A, 0));
+  const [gpuB, setGpuB] = useState<string | null>(() => initGpu('gpuB', DEFAULT_GPU_B, 1));
+  const [cpuB, setCpuB] = useState<string | null>(() => initCpu('cpuB', DEFAULT_CPU_B, 1));
   const [resolution, setResolution] = useState<Resolution>('1080p');
   const [preset, setPreset] = useState<Preset>('high');
 

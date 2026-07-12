@@ -36,6 +36,7 @@ export default function Footer() {
                 { to: '/builder', label: 'Builder' },
                 { to: '/prebuilts', label: 'Prebuilts' },
                 { to: '/compare', label: 'Compare' },
+                { to: '/vs', label: 'GPU Comparisons' },
                 { to: '/about', label: 'About' },
               ].map(link => (
                 <Link key={link.to} to={link.to}

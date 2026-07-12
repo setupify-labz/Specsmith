@@ -56,6 +56,32 @@ function injectHead(html, meta, siteUrl, defaultOgImage) {
   return result;
 }
 
+// Sitemap is generated from PRERENDER_ROUTES so it can never drift from the
+// pages that actually exist. /build is excluded (noindex, unbounded URLs).
+function sitemapEntry(routePath) {
+  if (routePath === '/build') return null;
+  if (routePath === '/') return { changefreq: 'weekly', priority: '1.0' };
+  if (routePath === '/builder') return { changefreq: 'weekly', priority: '0.9' };
+  if (routePath === '/prebuilts') return { changefreq: 'weekly', priority: '0.8' };
+  if (routePath.startsWith('/prebuilts/')) return { changefreq: 'weekly', priority: '0.7' };
+  if (routePath === '/compare' || routePath === '/vs') return { changefreq: 'monthly', priority: '0.7' };
+  if (routePath.startsWith('/vs/')) return { changefreq: 'monthly', priority: '0.6' };
+  return { changefreq: 'monthly', priority: '0.5' };
+}
+
+function generateSitemap(routes, siteUrl) {
+  const urls = routes
+    .map((routePath) => {
+      const entry = sitemapEntry(routePath);
+      if (!entry) return null;
+      const loc = routePath === '/' ? `${siteUrl}/` : `${siteUrl}${routePath}`;
+      return `  <url>\n    <loc>${loc}</loc>\n    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`;
+    })
+    .filter(Boolean)
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+}
+
 async function main() {
   const template = await fs.readFile(path.join(publicDir, 'index.html'), 'utf-8');
 
@@ -86,6 +112,10 @@ async function main() {
     await fs.writeFile(outFile, html, 'utf-8');
     console.log(`[prerender] Wrote ${path.relative(root, outFile)}`);
   }
+
+  const sitemapFile = path.join(publicDir, 'sitemap.xml');
+  await fs.writeFile(sitemapFile, generateSitemap(PRERENDER_ROUTES, SITE_URL), 'utf-8');
+  console.log(`[prerender] Wrote ${path.relative(root, sitemapFile)} (${PRERENDER_ROUTES.length - 1} URLs)`);
 
   await fs.rm(ssrOutDir, { recursive: true, force: true });
 }

@@ -16,6 +16,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://specsmithpc.com/compare</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://specsmithpc.com/prebuilts/budget-beast</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -41,13 +56,103 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://specsmithpc.com/compare</loc>
+    <loc>https://specsmithpc.com/vs/rtx-4070-vs-rx-7800-xt</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://specsmithpc.com/about</loc>
+    <loc>https://specsmithpc.com/vs/rtx-4070-super-vs-rx-7800-xt</loc>
     <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4060-vs-rx-7600</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4060-ti-vs-rx-7700-xt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4080-super-vs-rx-7900-xtx</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4070-ti-super-vs-rx-7900-xt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-3080-vs-rx-6800-xt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-3070-vs-rx-6700-xt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4060-vs-arc-b580</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rx-7600-vs-arc-b580</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5090-vs-rtx-4090</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5080-vs-rtx-4090</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5080-vs-rtx-4080-super</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5070-ti-vs-rtx-4080</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5070-vs-rtx-4070-super</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-5060-ti-vs-rtx-4060-ti</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4060-vs-rtx-3060</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rtx-4060-ti-vs-rtx-3070</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rx-7900-gre-vs-rtx-4070-super</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://specsmithpc.com/vs/rx-6700-xt-vs-rtx-4060</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>
