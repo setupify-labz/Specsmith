@@ -64,14 +64,23 @@ export default function GpuMatchup() {
     );
   }
 
-  const winsA = rows.filter(r => r.fpsA > r.fpsB).length;
-  const winsB = rows.filter(r => r.fpsB > r.fpsA).length;
-  const avgA = Math.round(rows.reduce((s, r) => s + r.fpsA, 0) / rows.length);
-  const avgB = Math.round(rows.reduce((s, r) => s + r.fpsB, 0) / rows.length);
-  const overallWinner = avgA >= avgB ? gpuA : gpuB;
-  const valueA = gpuA.price_usd / avgA;
-  const valueB = gpuB.price_usd / avgB;
+  // A game only counts as "won" with a >2% margin — anything closer is
+  // inside this estimator's error bars. The overall verdict is derived
+  // from these win counts so the two cards can never contradict each other.
+  const WIN_MARGIN = 1.02;
+  const winsA = rows.filter(r => r.fpsA > r.fpsB * WIN_MARGIN).length;
+  const winsB = rows.filter(r => r.fpsB > r.fpsA * WIN_MARGIN).length;
+  const tooClose = rows.length - winsA - winsB;
+  const avgAF = rows.reduce((s, r) => s + r.fpsA, 0) / rows.length;
+  const avgBF = rows.reduce((s, r) => s + r.fpsB, 0) / rows.length;
+  // One decimal when the averages would round to look identical.
+  const fmtAvg = (v: number) => Math.abs(avgAF - avgBF) < 1 ? v.toFixed(1) : String(Math.round(v));
+  const valueA = gpuA.price_usd / avgAF;
+  const valueB = gpuB.price_usd / avgBF;
   const valueWinner = valueA <= valueB ? gpuA : gpuB;
+  const isTie = winsA === winsB;
+  const winner = winsA > winsB ? gpuA : gpuB;
+  const recommended = isTie ? valueWinner : winner;
 
   const specs: { label: string; a: string | number; b: string | number }[] = [
     { label: 'Price', a: `$${gpuA.price_usd}`, b: `$${gpuB.price_usd}` },
@@ -109,9 +118,18 @@ export default function GpuMatchup() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Trophy size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-accent)' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>Overall Winner ({resLabels[resolution]} High)</p>
-            <p className="text-lg font-black" style={{ color: overallWinner === gpuA ? COLORS.a : COLORS.b }}>{overallWinner.name}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>{avgA} vs {avgB} avg FPS</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>{isTie ? 'Overall Result' : 'Overall Winner'} ({resLabels[resolution]} High)</p>
+            {isTie ? (
+              <>
+                <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>Dead Heat</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>{fmtAvg(avgAF)} vs {fmtAvg(avgBF)} avg FPS — effectively equal</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-black" style={{ color: winner === gpuA ? COLORS.a : COLORS.b }}>{winner.name}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>{fmtAvg(avgAF)} vs {fmtAvg(avgBF)} avg FPS</p>
+              </>
+            )}
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Zap size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-cyan)' }} />
@@ -121,7 +139,7 @@ export default function GpuMatchup() {
               <span className="mx-2" style={{ color: 'var(--ff-text-3)' }}>—</span>
               <span style={{ color: COLORS.b }}>{winsB}</span>
             </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>of {rows.length} games{winsA + winsB < rows.length ? ` (${rows.length - winsA - winsB} tied)` : ''}</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>of {rows.length} games{tooClose > 0 ? ` · ${tooClose} too close to call` : ''}</p>
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <DollarSign size={18} className="mx-auto mb-2" style={{ color: '#00E676' }} />
@@ -166,15 +184,17 @@ export default function GpuMatchup() {
               <tbody>
                 {rows.map(r => {
                   const diff = r.fpsA - r.fpsB;
+                  const aWins = r.fpsA > r.fpsB * WIN_MARGIN;
+                  const bWins = r.fpsB > r.fpsA * WIN_MARGIN;
                   return (
                     <tr key={r.game} style={{ borderBottom: '1px solid var(--ff-border)' }}>
                       <td className="py-2 pr-4" style={{ color: 'var(--ff-text)' }}>{r.game}</td>
                       <td className="text-right py-2 px-4 font-bold"
-                        style={{ color: r.fpsA >= r.fpsB ? COLORS.a : 'var(--ff-text-2)' }}>{r.fpsA}</td>
+                        style={{ color: aWins ? COLORS.a : 'var(--ff-text-2)' }}>{r.fpsA}</td>
                       <td className="text-right py-2 px-4 font-bold"
-                        style={{ color: r.fpsB >= r.fpsA ? COLORS.b : 'var(--ff-text-2)' }}>{r.fpsB}</td>
+                        style={{ color: bWins ? COLORS.b : 'var(--ff-text-2)' }}>{r.fpsB}</td>
                       <td className="text-right py-2 pl-4 text-xs"
-                        style={{ color: diff > 0 ? COLORS.a : diff < 0 ? COLORS.b : 'var(--ff-text-3)' }}>
+                        style={{ color: aWins ? COLORS.a : bWins ? COLORS.b : 'var(--ff-text-3)' }}>
                         {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '='}
                       </td>
                     </tr>
@@ -235,10 +255,10 @@ export default function GpuMatchup() {
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Cpu size={15} /> Customize This Comparison
           </Link>
-          <Link to={`/builder?gpu=${overallWinner.id}`}
+          <Link to={`/builder?gpu=${recommended.id}`}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
-            Build with the {overallWinner.name} <ChevronRight size={14} />
+            Build with the {recommended.name}{isTie ? ' (better value)' : ''} <ChevronRight size={14} />
           </Link>
         </div>
 
