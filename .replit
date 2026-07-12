@@ -4,7 +4,7 @@ modules = ["nodejs-24"]
 id = "artifacts/api-server"
 
 [[artifacts]]
-id = "artifacts/frameforge"
+id = "artifacts/SpecSmith"
 
 [[artifacts]]
 id = "artifacts/mockup-sandbox"
