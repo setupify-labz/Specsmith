@@ -3,10 +3,21 @@ export interface PricePoint {
   price: number;
 }
 
-const MONTHS = [
-  'Apr 2024','May 2024','Jun 2024','Jul 2024','Aug 2024','Sep 2024',
-  'Oct 2024','Nov 2024','Dec 2024','Jan 2025','Feb 2025','Mar 2025',
-];
+// Rolling window ending at the current month, so the chart never shows
+// stale year labels. monthIdx is the 0-based calendar month, used to place
+// seasonal effects (Black Friday etc.) on the right actual months.
+function lastMonths(count: number): { label: string; monthIdx: number }[] {
+  const out: { label: string; monthIdx: number }[] = [];
+  const now = new Date();
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push({
+      label: `${d.toLocaleString('en-US', { month: 'short' })} ${d.getFullYear()}`,
+      monthIdx: d.getMonth(),
+    });
+  }
+  return out;
+}
 
 function seededRng(seed: number) {
   let s = seed;
@@ -26,20 +37,22 @@ function strToSeed(id: string): number {
 
 export function generatePriceHistory(currentPrice: number, partId: string): PricePoint[] {
   const rng = seededRng(strToSeed(partId));
+  const months = lastMonths(13);
   const history: PricePoint[] = [];
 
   let price = Math.round(currentPrice * 1.15);
 
   for (let i = 0; i < 12; i++) {
-    history.push({ month: MONTHS[i], price: Math.round(price) });
+    history.push({ month: months[i].label, price: Math.round(price) });
 
-    if (i === 6) {
+    const m = months[i].monthIdx;
+    if (m === 9) {
       // October — slight dip
       price *= 1 - 0.03 - rng() * 0.03;
-    } else if (i === 7) {
+    } else if (m === 10) {
       // November — Black Friday
       price *= 0.88;
-    } else if (i === 8) {
+    } else if (m === 11) {
       // December — slight recovery
       price *= 1 + 0.02 + rng() * 0.03;
     } else {
@@ -53,9 +66,9 @@ export function generatePriceHistory(currentPrice: number, partId: string): Pric
   }
 
   // Final price snaps to current
-  history.push({ month: 'Apr 2025', price: currentPrice });
+  history.push({ month: months[12].label, price: currentPrice });
 
-  return history.slice(0, 13);
+  return history;
 }
 
 export function getPriceStats(history: PricePoint[], currentPrice: number) {
