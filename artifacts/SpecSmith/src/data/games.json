@@ -6,22 +6,22 @@
     "year": 2020,
     "base_fps": {
       "1080p": {
-        "low": 165,
-        "medium": 128,
-        "high": 98,
-        "ultra": 72
+        "low": 242,
+        "medium": 188,
+        "high": 144,
+        "ultra": 106
       },
       "1440p": {
-        "low": 118,
-        "medium": 92,
-        "high": 70,
-        "ultra": 52
+        "low": 190,
+        "medium": 148,
+        "high": 113,
+        "ultra": 84
       },
       "4k": {
-        "low": 68,
-        "medium": 52,
-        "high": 40,
-        "ultra": 29
+        "low": 110,
+        "medium": 84,
+        "high": 65,
+        "ultra": 47
       }
     },
     "gpu_bound": 0.88
@@ -33,22 +33,22 @@
     "year": 2024,
     "base_fps": {
       "1080p": {
-        "low": 90,
-        "medium": 68,
-        "high": 52,
-        "ultra": 38
+        "low": 132,
+        "medium": 100,
+        "high": 77,
+        "ultra": 56
       },
       "1440p": {
-        "low": 68,
-        "medium": 52,
-        "high": 40,
-        "ultra": 29
+        "low": 115,
+        "medium": 88,
+        "high": 68,
+        "ultra": 49
       },
       "4k": {
-        "low": 42,
-        "medium": 32,
-        "high": 24,
-        "ultra": 18
+        "low": 87,
+        "medium": 66,
+        "high": 50,
+        "ultra": 37
       }
     },
     "gpu_bound": 0.92
@@ -60,22 +60,22 @@
     "year": 2019,
     "base_fps": {
       "1080p": {
-        "low": 148,
-        "medium": 118,
-        "high": 90,
-        "ultra": 65
+        "low": 252,
+        "medium": 201,
+        "high": 153,
+        "ultra": 111
       },
       "1440p": {
-        "low": 108,
-        "medium": 86,
-        "high": 65,
-        "ultra": 48
+        "low": 209,
+        "medium": 167,
+        "high": 126,
+        "ultra": 93
       },
       "4k": {
-        "low": 62,
-        "medium": 48,
-        "high": 37,
-        "ultra": 27
+        "low": 143,
+        "medium": 111,
+        "high": 86,
+        "ultra": 62
       }
     },
     "gpu_bound": 0.82
@@ -87,22 +87,22 @@
     "year": 2017,
     "base_fps": {
       "1080p": {
-        "low": 295,
-        "medium": 222,
-        "high": 162,
-        "ultra": 118
+        "low": 393,
+        "medium": 296,
+        "high": 216,
+        "ultra": 157
       },
       "1440p": {
-        "low": 208,
-        "medium": 156,
-        "high": 114,
-        "ultra": 84
+        "low": 328,
+        "medium": 246,
+        "high": 180,
+        "ultra": 133
       },
       "4k": {
-        "low": 115,
-        "medium": 88,
-        "high": 64,
-        "ultra": 46
+        "low": 194,
+        "medium": 149,
+        "high": 108,
+        "ultra": 78
       }
     },
     "gpu_bound": 0.65
@@ -114,22 +114,22 @@
     "year": 2020,
     "base_fps": {
       "1080p": {
-        "low": 445,
-        "medium": 370,
-        "high": 282,
-        "ultra": 208
+        "low": 619,
+        "medium": 515,
+        "high": 392,
+        "ultra": 289
       },
       "1440p": {
-        "low": 312,
-        "medium": 260,
-        "high": 198,
-        "ultra": 146
+        "low": 567,
+        "medium": 473,
+        "high": 360,
+        "ultra": 265
       },
       "4k": {
-        "low": 172,
-        "medium": 144,
-        "high": 109,
-        "ultra": 81
+        "low": 454,
+        "medium": 380,
+        "high": 288,
+        "ultra": 214
       }
     },
     "gpu_bound": 0.45
@@ -141,22 +141,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 372,
-        "medium": 310,
-        "high": 238,
-        "ultra": 178
+        "low": 633,
+        "medium": 528,
+        "high": 405,
+        "ultra": 303
       },
       "1440p": {
-        "low": 260,
-        "medium": 218,
-        "high": 166,
-        "ultra": 125
+        "low": 564,
+        "medium": 473,
+        "high": 360,
+        "ultra": 271
       },
       "4k": {
-        "low": 145,
-        "medium": 121,
-        "high": 92,
-        "ultra": 69
+        "low": 326,
+        "medium": 272,
+        "high": 207,
+        "ultra": 155
       }
     },
     "gpu_bound": 0.48
@@ -168,22 +168,22 @@
     "year": 2019,
     "base_fps": {
       "1080p": {
-        "low": 238,
-        "medium": 192,
-        "high": 148,
-        "ultra": 110
+        "low": 434,
+        "medium": 350,
+        "high": 270,
+        "ultra": 201
       },
       "1440p": {
-        "low": 166,
-        "medium": 135,
-        "high": 104,
-        "ultra": 77
+        "low": 402,
+        "medium": 327,
+        "high": 252,
+        "ultra": 187
       },
       "4k": {
-        "low": 92,
-        "medium": 75,
-        "high": 58,
-        "ultra": 43
+        "low": 257,
+        "medium": 209,
+        "high": 162,
+        "ultra": 120
       }
     },
     "gpu_bound": 0.62
@@ -195,22 +195,22 @@
     "year": 2020,
     "base_fps": {
       "1080p": {
-        "low": 208,
-        "medium": 163,
-        "high": 126,
-        "ultra": 93
+        "low": 342,
+        "medium": 268,
+        "high": 207,
+        "ultra": 153
       },
       "1440p": {
-        "low": 146,
-        "medium": 114,
-        "high": 88,
-        "ultra": 65
+        "low": 299,
+        "medium": 233,
+        "high": 180,
+        "ultra": 133
       },
       "4k": {
-        "low": 80,
-        "medium": 63,
-        "high": 49,
-        "ultra": 36
+        "low": 191,
+        "medium": 150,
+        "high": 117,
+        "ultra": 86
       }
     },
     "gpu_bound": 0.72
@@ -222,22 +222,22 @@
     "year": 2022,
     "base_fps": {
       "1080p": {
-        "low": 148,
-        "medium": 126,
-        "high": 104,
-        "ultra": 82
+        "low": 211,
+        "medium": 180,
+        "high": 149,
+        "ultra": 117
       },
       "1440p": {
-        "low": 104,
-        "medium": 88,
-        "high": 73,
-        "ultra": 57
+        "low": 164,
+        "medium": 139,
+        "high": 115,
+        "ultra": 90
       },
       "4k": {
-        "low": 58,
-        "medium": 49,
-        "high": 40,
-        "ultra": 32
+        "low": 94,
+        "medium": 79,
+        "high": 65,
+        "ultra": 52
       }
     },
     "gpu_bound": 0.8
@@ -249,22 +249,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 133,
-        "medium": 107,
-        "high": 82,
-        "ultra": 59
+        "low": 204,
+        "medium": 164,
+        "high": 126,
+        "ultra": 91
       },
       "1440p": {
-        "low": 94,
-        "medium": 75,
-        "high": 58,
-        "ultra": 42
+        "low": 168,
+        "medium": 134,
+        "high": 104,
+        "ultra": 75
       },
       "4k": {
-        "low": 52,
-        "medium": 42,
-        "high": 32,
-        "ultra": 23
+        "low": 102,
+        "medium": 83,
+        "high": 63,
+        "ultra": 45
       }
     },
     "gpu_bound": 0.87
@@ -276,22 +276,22 @@
     "year": 2013,
     "base_fps": {
       "1080p": {
-        "low": 208,
-        "medium": 170,
-        "high": 133,
-        "ultra": 97
+        "low": 253,
+        "medium": 207,
+        "high": 162,
+        "ultra": 118
       },
       "1440p": {
-        "low": 146,
-        "medium": 119,
-        "high": 93,
-        "ultra": 68
+        "low": 233,
+        "medium": 190,
+        "high": 149,
+        "ultra": 109
       },
       "4k": {
-        "low": 80,
-        "medium": 66,
-        "high": 52,
-        "ultra": 38
+        "low": 152,
+        "medium": 126,
+        "high": 99,
+        "ultra": 72
       }
     },
     "gpu_bound": 0.58
@@ -303,22 +303,22 @@
     "year": 2015,
     "base_fps": {
       "1080p": {
-        "low": 163,
-        "medium": 133,
-        "high": 104,
-        "ultra": 74
+        "low": 268,
+        "medium": 219,
+        "high": 171,
+        "ultra": 122
       },
       "1440p": {
-        "low": 114,
-        "medium": 93,
-        "high": 73,
-        "ultra": 52
+        "low": 225,
+        "medium": 183,
+        "high": 144,
+        "ultra": 103
       },
       "4k": {
-        "low": 63,
-        "medium": 52,
-        "high": 40,
-        "ultra": 29
+        "low": 142,
+        "medium": 117,
+        "high": 90,
+        "ultra": 65
       }
     },
     "gpu_bound": 0.82
@@ -330,22 +330,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 126,
-        "medium": 104,
-        "high": 82,
-        "ultra": 61
+        "low": 180,
+        "medium": 148,
+        "high": 117,
+        "ultra": 87
       },
       "1440p": {
-        "low": 88,
-        "medium": 73,
-        "high": 57,
-        "ultra": 43
+        "low": 153,
+        "medium": 127,
+        "high": 99,
+        "ultra": 75
       },
       "4k": {
-        "low": 49,
-        "medium": 40,
-        "high": 32,
-        "ultra": 24
+        "low": 103,
+        "medium": 84,
+        "high": 68,
+        "ultra": 51
       }
     },
     "gpu_bound": 0.75
@@ -357,22 +357,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 119,
-        "medium": 93,
-        "high": 71,
-        "ultra": 51
+        "low": 204,
+        "medium": 159,
+        "high": 122,
+        "ultra": 87
       },
       "1440p": {
-        "low": 83,
-        "medium": 65,
-        "high": 50,
-        "ultra": 36
+        "low": 149,
+        "medium": 117,
+        "high": 90,
+        "ultra": 65
       },
       "4k": {
-        "low": 46,
-        "medium": 36,
-        "high": 28,
-        "ultra": 20
+        "low": 81,
+        "medium": 64,
+        "high": 50,
+        "ultra": 35
       }
     },
     "gpu_bound": 0.92
@@ -384,22 +384,22 @@
     "year": 2024,
     "base_fps": {
       "1080p": {
-        "low": 148,
-        "medium": 122,
-        "high": 95,
-        "ultra": 70
+        "low": 196,
+        "medium": 162,
+        "high": 126,
+        "ultra": 93
       },
       "1440p": {
-        "low": 104,
-        "medium": 86,
-        "high": 67,
-        "ultra": 49
+        "low": 168,
+        "medium": 139,
+        "high": 108,
+        "ultra": 79
       },
       "4k": {
-        "low": 58,
-        "medium": 48,
-        "high": 37,
-        "ultra": 27
+        "low": 113,
+        "medium": 93,
+        "high": 72,
+        "ultra": 53
       }
     },
     "gpu_bound": 0.85
@@ -411,22 +411,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 141,
-        "medium": 115,
-        "high": 88,
-        "ultra": 64
+        "low": 231,
+        "medium": 188,
+        "high": 144,
+        "ultra": 105
       },
       "1440p": {
-        "low": 99,
-        "medium": 81,
-        "high": 62,
-        "ultra": 45
+        "low": 201,
+        "medium": 165,
+        "high": 126,
+        "ultra": 91
       },
       "4k": {
-        "low": 55,
-        "medium": 45,
-        "high": 34,
-        "ultra": 25
+        "low": 131,
+        "medium": 107,
+        "high": 81,
+        "ultra": 60
       }
     },
     "gpu_bound": 0.72
@@ -438,22 +438,22 @@
     "year": 2015,
     "base_fps": {
       "1080p": {
-        "low": 334,
-        "medium": 282,
-        "high": 215,
-        "ultra": 160
+        "low": 671,
+        "medium": 567,
+        "high": 432,
+        "ultra": 321
       },
       "1440p": {
-        "low": 234,
-        "medium": 198,
-        "high": 151,
-        "ultra": 112
+        "low": 558,
+        "medium": 472,
+        "high": 360,
+        "ultra": 267
       },
       "4k": {
-        "low": 130,
-        "medium": 110,
-        "high": 84,
-        "ultra": 62
+        "low": 306,
+        "medium": 259,
+        "high": 198,
+        "ultra": 146
       }
     },
     "gpu_bound": 0.5
@@ -465,22 +465,22 @@
     "year": 2011,
     "base_fps": {
       "1080p": {
-        "low": 370,
-        "medium": 311,
-        "high": 252,
-        "ultra": 193
+        "low": 529,
+        "medium": 444,
+        "high": 360,
+        "ultra": 276
       },
       "1440p": {
-        "low": 260,
-        "medium": 218,
-        "high": 176,
-        "ultra": 135
+        "low": 505,
+        "medium": 424,
+        "high": 342,
+        "ultra": 262
       },
       "4k": {
-        "low": 144,
-        "medium": 121,
-        "high": 98,
-        "ultra": 75
+        "low": 397,
+        "medium": 333,
+        "high": 270,
+        "ultra": 207
       }
     },
     "gpu_bound": 0.4
@@ -492,22 +492,22 @@
     "year": 2022,
     "base_fps": {
       "1080p": {
-        "low": 133,
-        "medium": 110,
-        "high": 85,
-        "ultra": 62
+        "low": 225,
+        "medium": 186,
+        "high": 144,
+        "ultra": 105
       },
       "1440p": {
-        "low": 94,
-        "medium": 77,
-        "high": 60,
-        "ultra": 43
+        "low": 176,
+        "medium": 144,
+        "high": 113,
+        "ultra": 81
       },
       "4k": {
-        "low": 52,
-        "medium": 43,
-        "high": 33,
-        "ultra": 24
+        "low": 99,
+        "medium": 82,
+        "high": 63,
+        "ultra": 46
       }
     },
     "gpu_bound": 0.78
@@ -519,22 +519,22 @@
     "year": 2023,
     "base_fps": {
       "1080p": {
-        "low": 141,
-        "medium": 115,
-        "high": 89,
-        "ultra": 65
+        "low": 257,
+        "medium": 209,
+        "high": 162,
+        "ultra": 118
       },
       "1440p": {
-        "low": 99,
-        "medium": 81,
-        "high": 62,
-        "ultra": 46
+        "low": 216,
+        "medium": 176,
+        "high": 135,
+        "ultra": 100
       },
       "4k": {
-        "low": 55,
-        "medium": 45,
-        "high": 34,
-        "ultra": 26
+        "low": 138,
+        "medium": 113,
+        "high": 86,
+        "ultra": 65
       }
     },
     "gpu_bound": 0.74
