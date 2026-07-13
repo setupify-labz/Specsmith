@@ -78,7 +78,7 @@ export default function Home() {
                 to="/prebuilts"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg border border-white/20 hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
               >
-                See Prebuilts
+                See Build Guides
                 <ChevronRight size={18} />
               </Link>
             </div>

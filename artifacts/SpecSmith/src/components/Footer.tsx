@@ -25,7 +25,7 @@ export default function Footer() {
               {[
                 { to: '/', label: 'Home' },
                 { to: '/builder', label: 'Builder' },
-                { to: '/prebuilts', label: 'Prebuilts' },
+                { to: '/prebuilts', label: 'Build Guides' },
                 { to: '/compare', label: 'Compare' },
                 { to: '/vs', label: 'GPU Comparisons' },
                 { to: '/about', label: 'About' },

@@ -65,7 +65,7 @@ export default function PrebuiltDetail() {
       <div className="min-h-screen pt-24 flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-2xl font-bold mb-2" style={{ color: 'var(--ff-text)' }}>Build not found</p>
-          <p className="text-sm mb-6" style={{ color: 'var(--ff-text-2)' }}>This prebuilt configuration doesn't exist.</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--ff-text-2)' }}>This build guide doesn't exist.</p>
           <Link to="/prebuilts" className="px-6 py-3 rounded-xl font-bold text-sm text-white"
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             Browse Curated Builds

@@ -29,9 +29,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/prebuilts',
-    title: 'Prebuilt Gaming PCs — 5 Curated Builds | SpecSmith',
+    title: 'Gaming PC Build Guides — 5 Curated Part Lists | SpecSmith',
     description:
-      'Browse five curated, ready-to-buy PC builds across budget, 1080p, 1440p, and 4K tiers, each with estimated FPS and total cost. Load any build straight into the Builder.',
+      'Five curated PC build guides across budget, 1080p, 1440p, and 4K tiers — full part lists with estimated FPS and total cost. Load any build straight into the Builder to customize it.',
   },
   {
     path: '/compare',
