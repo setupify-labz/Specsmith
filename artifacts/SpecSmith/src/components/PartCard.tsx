@@ -6,6 +6,7 @@ import PriceSparkline from './PriceSparkline';
 interface PartCardProps {
   id: string;
   name: string;
+  searchQuery?: string;
   price_usd: number;
   selected: boolean;
   sponsored?: boolean;
@@ -52,8 +53,9 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
+  id, name, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
 }: PartCardProps) {
+  const query = searchQuery ?? name;
   return (
     <motion.div
       layout
@@ -127,26 +129,26 @@ export default function PartCard({
       {/* Price + Buy */}
       <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
         <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>${price_usd.toLocaleString()}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <a
-            href={getAffiliateUrl(name)}
+            href={getAffiliateUrl(query)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs font-medium transition-colors"
-            style={{ color: 'var(--ff-accent)' }}
+            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+            style={{ color: 'var(--ff-accent)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
           >
-            Buy <ExternalLink size={11} />
+            Amazon <ExternalLink size={10} />
           </a>
           <a
-            href={getNeweggUrl(name)}
+            href={getNeweggUrl(query)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs font-medium transition-colors"
-            style={{ color: 'var(--ff-text-2)' }}
+            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+            style={{ color: '#FF9E1B', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
           >
-            Compare <ExternalLink size={11} />
+            Newegg <ExternalLink size={10} />
           </a>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import PartCard from './PartCard';
+import { buildPartQuery } from '../lib/fps';
 
 type SortKey = 'price' | 'performance' | 'value';
 
@@ -153,6 +154,7 @@ export default function PartSelector({
                       key={part.id}
                       id={part.id}
                       name={part.name}
+                      searchQuery={buildPartQuery(part.name, part.brand as string | undefined, category)}
                       price_usd={part.price_usd}
                       selected={part.id === selectedId}
                       sponsored={part.sponsored}

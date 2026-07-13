@@ -1,4 +1,5 @@
 import prebuiltsData from '../data/prebuilts.json';
+import { buildPartQuery } from './fps';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
@@ -52,6 +53,12 @@ export function getPartPrice(category: string, id: string): number {
 
 export function getPartName(category: string, id: string): string {
   return CATEGORY_LISTS[category]?.find(p => p.id === id)?.name ?? id;
+}
+
+export function getPartSearchQuery(category: string, id: string): string {
+  const part = CATEGORY_LISTS[category]?.find(p => p.id === id) as (PartRecord & { brand?: string }) | undefined;
+  if (!part) return id;
+  return buildPartQuery(part.name, part.brand, category);
 }
 
 export function getPrebuiltTotal(prebuilt: Prebuilt): number {

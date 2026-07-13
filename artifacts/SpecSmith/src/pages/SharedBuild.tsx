@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Cpu, ExternalLink, Zap, ArrowRight } from 'lucide-react';
 import { decodeBuild } from '../lib/sharing';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { getPartName, getPartPrice, categoryLabels } from '../lib/prebuilts';
+import { getPartName, getPartPrice, categoryLabels, getPartSearchQuery } from '../lib/prebuilts';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
@@ -119,15 +119,15 @@ export default function SharedBuild() {
                         <span className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>
                           {getPartName(cat, id)}
                         </span>
-                        <a href={getAffiliateUrl(getPartName(cat, id))} target="_blank" rel="noopener noreferrer"
-                          title="Buy on Amazon"
+                        <a href={getAffiliateUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
                           style={{ color: 'var(--ff-accent)' }}>
-                          <ExternalLink size={11} />
+                          Amazon <ExternalLink size={9} />
                         </a>
-                        <a href={getNeweggUrl(getPartName(cat, id))} target="_blank" rel="noopener noreferrer"
-                          title="Compare on Newegg"
-                          style={{ color: 'var(--ff-text-3)' }}>
-                          <ExternalLink size={11} />
+                        <a href={getNeweggUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
+                          style={{ color: '#FF9E1B' }}>
+                          Newegg <ExternalLink size={9} />
                         </a>
                       </div>
                     </div>

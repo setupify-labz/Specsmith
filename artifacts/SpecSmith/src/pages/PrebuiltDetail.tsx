@@ -6,7 +6,7 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels } from '../lib/prebuilts';
+import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getPrebuiltMeta } from '../lib/seo';
 
@@ -127,24 +127,24 @@ export default function PrebuiltDetail() {
                           <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent)' }}>${price}</span>
                           <div className="flex items-center gap-1.5">
                             <a
-                              href={getAffiliateUrl(name)}
+                              href={getAffiliateUrl(getPartSearchQuery(cat, id))}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Buy on Amazon"
-                              className="flex items-center gap-0.5 text-[10px] transition-colors"
-                              style={{ color: 'var(--ff-text-3)' }}
+                              className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
+                              style={{ color: 'var(--ff-accent)' }}
                             >
-                              <ExternalLink size={9} />
+                              Amazon <ExternalLink size={9} />
                             </a>
                             <a
-                              href={getNeweggUrl(name)}
+                              href={getNeweggUrl(getPartSearchQuery(cat, id))}
                               target="_blank"
                               rel="noopener noreferrer"
-                              title="Compare on Newegg"
-                              className="flex items-center gap-0.5 text-[10px] transition-colors"
-                              style={{ color: 'var(--ff-text-3)' }}
+                              title="Buy on Newegg"
+                              className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
+                              style={{ color: '#FF9E1B' }}
                             >
-                              <ExternalLink size={9} />
+                              Newegg <ExternalLink size={9} />
                             </a>
                           </div>
                         </div>

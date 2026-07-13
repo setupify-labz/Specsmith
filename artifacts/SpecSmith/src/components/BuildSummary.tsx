@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check } from 'lucide-react';
-import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { ShareView } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
@@ -102,15 +102,15 @@ export default function BuildSummary({
                   <span className="block text-[10px] uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{p.label}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
-                    <a href={getAffiliateUrl(p.name)} target="_blank" rel="noopener noreferrer"
+                    <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
                       title="Buy on Amazon"
-                      className="flex-shrink-0 transition-colors" style={{ color: 'var(--ff-accent)' }}>
-                      <ExternalLink size={10} />
+                      className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                      Amazon
                     </a>
-                    <a href={getNeweggUrl(p.name)} target="_blank" rel="noopener noreferrer"
-                      title="Compare on Newegg"
-                      className="flex-shrink-0 transition-colors" style={{ color: 'var(--ff-text-3)' }}>
-                      <ExternalLink size={10} />
+                    <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
+                      title="Buy on Newegg"
+                      className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: '#FF9E1B' }}>
+                      Newegg
                     </a>
                   </div>
                 </div>
