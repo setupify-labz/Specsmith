@@ -1,56 +1,460 @@
 {
   "motherboards": [
-    {"id":"z790e","name":"ASUS ROG Strix Z790-E","brand":"ASUS","price_usd":449,"socket":"LGA1700","supported_ram":["DDR5"],"form_factor":"ATX","sponsored":false},
-    {"id":"z790mag","name":"MSI MAG Z790 Tomahawk","brand":"MSI","price_usd":279,"socket":"LGA1700","supported_ram":["DDR5"],"form_factor":"ATX","sponsored":true},
-    {"id":"b760mds3h","name":"Gigabyte B760M DS3H","brand":"Gigabyte","price_usd":109,"socket":"LGA1700","supported_ram":["DDR4"],"form_factor":"mATX","sponsored":false},
-    {"id":"b660mpro","name":"ASRock B660M Pro RS","brand":"ASRock","price_usd":99,"socket":"LGA1700","supported_ram":["DDR4"],"form_factor":"mATX","sponsored":false},
-    {"id":"x670ecross","name":"ASUS ROG Crosshair X670E","brand":"ASUS","price_usd":499,"socket":"AM5","supported_ram":["DDR5"],"form_factor":"ATX","sponsored":false},
-    {"id":"x670emeg","name":"MSI MEG X670E ACE","brand":"MSI","price_usd":449,"socket":"AM5","supported_ram":["DDR5"],"form_factor":"ATX","sponsored":false},
-    {"id":"b650aorus","name":"Gigabyte B650 Aorus Elite","brand":"Gigabyte","price_usd":199,"socket":"AM5","supported_ram":["DDR5"],"form_factor":"ATX","sponsored":false},
-    {"id":"b650mrig","name":"ASRock B650M PG Riptide","brand":"ASRock","price_usd":139,"socket":"AM5","supported_ram":["DDR5"],"form_factor":"mATX","sponsored":false},
-    {"id":"b550f","name":"ASUS ROG Strix B550-F","brand":"ASUS","price_usd":179,"socket":"AM4","supported_ram":["DDR4"],"form_factor":"ATX","sponsored":false},
-    {"id":"b550tom","name":"MSI B550 Tomahawk","brand":"MSI","price_usd":149,"socket":"AM4","supported_ram":["DDR4"],"form_factor":"ATX","sponsored":false}
+    {
+      "id": "z790e",
+      "name": "ASUS ROG Strix Z790-E",
+      "brand": "ASUS",
+      "price_usd": 449,
+      "socket": "LGA1700",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "z790mag",
+      "name": "MSI MAG Z790 Tomahawk",
+      "brand": "MSI",
+      "price_usd": 279,
+      "socket": "LGA1700",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": true
+    },
+    {
+      "id": "b760mds3h",
+      "name": "Gigabyte B760M DS3H",
+      "brand": "Gigabyte",
+      "price_usd": 109,
+      "socket": "LGA1700",
+      "supported_ram": [
+        "DDR4"
+      ],
+      "form_factor": "mATX",
+      "sponsored": false
+    },
+    {
+      "id": "b660mpro",
+      "name": "ASRock B660M Pro RS",
+      "brand": "ASRock",
+      "price_usd": 99,
+      "socket": "LGA1700",
+      "supported_ram": [
+        "DDR4"
+      ],
+      "form_factor": "mATX",
+      "sponsored": false
+    },
+    {
+      "id": "x670ecross",
+      "name": "ASUS ROG Crosshair X670E",
+      "brand": "ASUS",
+      "price_usd": 499,
+      "socket": "AM5",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "x670emeg",
+      "name": "MSI MEG X670E ACE",
+      "brand": "MSI",
+      "price_usd": 449,
+      "socket": "AM5",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "b650aorus",
+      "name": "Gigabyte B650 Aorus Elite",
+      "brand": "Gigabyte",
+      "price_usd": 199,
+      "socket": "AM5",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "b650mrig",
+      "name": "ASRock B650M PG Riptide",
+      "brand": "ASRock",
+      "price_usd": 139,
+      "socket": "AM5",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "mATX",
+      "sponsored": false
+    },
+    {
+      "id": "b550f",
+      "name": "ASUS ROG Strix B550-F",
+      "brand": "ASUS",
+      "price_usd": 179,
+      "socket": "AM4",
+      "supported_ram": [
+        "DDR4"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "b550tom",
+      "name": "MSI B550 Tomahawk",
+      "brand": "MSI",
+      "price_usd": 149,
+      "socket": "AM4",
+      "supported_ram": [
+        "DDR4"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    }
   ],
   "ram": [
-    {"id":"cv16ddr4","name":"Corsair Vengeance 16GB DDR4-3200","brand":"Corsair","price_usd":45,"type":"DDR4","capacity_gb":16,"speed_mhz":3200,"sponsored":false},
-    {"id":"gr32ddr4","name":"G.Skill Ripjaws 32GB DDR4-3600","brand":"G.Skill","price_usd":79,"type":"DDR4","capacity_gb":32,"speed_mhz":3600,"sponsored":false},
-    {"id":"kf16ddr5","name":"Kingston Fury Beast 16GB DDR5-5200","brand":"Kingston","price_usd":69,"type":"DDR5","capacity_gb":16,"speed_mhz":5200,"sponsored":false},
-    {"id":"cd32ddr5","name":"Corsair Dominator 32GB DDR5-5600","brand":"Corsair","price_usd":119,"type":"DDR5","capacity_gb":32,"speed_mhz":5600,"sponsored":true},
-    {"id":"gz32ddr5","name":"G.Skill Trident Z5 32GB DDR5-6000","brand":"G.Skill","price_usd":139,"type":"DDR5","capacity_gb":32,"speed_mhz":6000,"sponsored":false},
-    {"id":"cr16ddr4","name":"Crucial 16GB DDR4-3200","brand":"Crucial","price_usd":39,"type":"DDR4","capacity_gb":16,"speed_mhz":3200,"sponsored":false},
-    {"id":"tg32ddr5","name":"TeamGroup T-Force 32GB DDR5-5200","brand":"TeamGroup","price_usd":99,"type":"DDR5","capacity_gb":32,"speed_mhz":5200,"sponsored":false},
-    {"id":"gz64ddr5","name":"G.Skill Ripjaws 64GB DDR5-6000","brand":"G.Skill","price_usd":199,"type":"DDR5","capacity_gb":64,"speed_mhz":6000,"sponsored":false}
+    {
+      "id": "cv16ddr4",
+      "name": "Corsair Vengeance 16GB DDR4-3200",
+      "brand": "Corsair",
+      "price_usd": 95,
+      "type": "DDR4",
+      "capacity_gb": 16,
+      "speed_mhz": 3200,
+      "sponsored": false
+    },
+    {
+      "id": "gr32ddr4",
+      "name": "G.Skill Ripjaws 32GB DDR4-3600",
+      "brand": "G.Skill",
+      "price_usd": 189,
+      "type": "DDR4",
+      "capacity_gb": 32,
+      "speed_mhz": 3600,
+      "sponsored": false
+    },
+    {
+      "id": "kf16ddr5",
+      "name": "Kingston Fury Beast 16GB DDR5-5200",
+      "brand": "Kingston",
+      "price_usd": 189,
+      "type": "DDR5",
+      "capacity_gb": 16,
+      "speed_mhz": 5200,
+      "sponsored": false
+    },
+    {
+      "id": "cd32ddr5",
+      "name": "Corsair Dominator 32GB DDR5-5600",
+      "brand": "Corsair",
+      "price_usd": 429,
+      "type": "DDR5",
+      "capacity_gb": 32,
+      "speed_mhz": 5600,
+      "sponsored": true
+    },
+    {
+      "id": "gz32ddr5",
+      "name": "G.Skill Trident Z5 32GB DDR5-6000",
+      "brand": "G.Skill",
+      "price_usd": 449,
+      "type": "DDR5",
+      "capacity_gb": 32,
+      "speed_mhz": 6000,
+      "sponsored": false
+    },
+    {
+      "id": "cr16ddr4",
+      "name": "Crucial 16GB DDR4-3200",
+      "brand": "Crucial",
+      "price_usd": 89,
+      "type": "DDR4",
+      "capacity_gb": 16,
+      "speed_mhz": 3200,
+      "sponsored": false
+    },
+    {
+      "id": "tg32ddr5",
+      "name": "TeamGroup T-Force 32GB DDR5-5200",
+      "brand": "TeamGroup",
+      "price_usd": 349,
+      "type": "DDR5",
+      "capacity_gb": 32,
+      "speed_mhz": 5200,
+      "sponsored": false
+    },
+    {
+      "id": "gz64ddr5",
+      "name": "G.Skill Ripjaws 64GB DDR5-6000",
+      "brand": "G.Skill",
+      "price_usd": 799,
+      "type": "DDR5",
+      "capacity_gb": 64,
+      "speed_mhz": 6000,
+      "sponsored": false
+    }
   ],
   "storage": [
-    {"id":"s870evo","name":"Samsung 870 EVO 1TB SSD","brand":"Samsung","price_usd":89,"type":"SATA SSD","capacity_tb":1,"speed_mbs":560,"sponsored":false},
-    {"id":"wdblack1","name":"WD Black SN850X 1TB NVMe","brand":"WD","price_usd":99,"type":"NVMe Gen4","capacity_tb":1,"speed_mbs":7300,"sponsored":true},
-    {"id":"s990pro2","name":"Samsung 990 Pro 2TB NVMe","brand":"Samsung","price_usd":149,"type":"NVMe Gen4","capacity_tb":2,"speed_mbs":7450,"sponsored":false},
-    {"id":"sgbar2","name":"Seagate Barracuda 2TB HDD","brand":"Seagate","price_usd":49,"type":"HDD","capacity_tb":2,"speed_mbs":220,"sponsored":false},
-    {"id":"cp3p1","name":"Crucial P3 Plus 1TB NVMe","brand":"Crucial","price_usd":69,"type":"NVMe Gen4","capacity_tb":1,"speed_mbs":5000,"sponsored":false},
-    {"id":"wdblack2","name":"WD Black SN850X 2TB NVMe","brand":"WD","price_usd":179,"type":"NVMe Gen4","capacity_tb":2,"speed_mbs":7300,"sponsored":false}
+    {
+      "id": "s870evo",
+      "name": "Samsung 870 EVO 1TB SSD",
+      "brand": "Samsung",
+      "price_usd": 159,
+      "type": "SATA SSD",
+      "capacity_tb": 1,
+      "speed_mbs": 560,
+      "sponsored": false
+    },
+    {
+      "id": "wdblack1",
+      "name": "WD Black SN850X 1TB NVMe",
+      "brand": "WD",
+      "price_usd": 199,
+      "type": "NVMe Gen4",
+      "capacity_tb": 1,
+      "speed_mbs": 7300,
+      "sponsored": true
+    },
+    {
+      "id": "s990pro2",
+      "name": "Samsung 990 Pro 2TB NVMe",
+      "brand": "Samsung",
+      "price_usd": 379,
+      "type": "NVMe Gen4",
+      "capacity_tb": 2,
+      "speed_mbs": 7450,
+      "sponsored": false
+    },
+    {
+      "id": "sgbar2",
+      "name": "Seagate Barracuda 2TB HDD",
+      "brand": "Seagate",
+      "price_usd": 59,
+      "type": "HDD",
+      "capacity_tb": 2,
+      "speed_mbs": 220,
+      "sponsored": false
+    },
+    {
+      "id": "cp3p1",
+      "name": "Crucial P3 Plus 1TB NVMe",
+      "brand": "Crucial",
+      "price_usd": 149,
+      "type": "NVMe Gen4",
+      "capacity_tb": 1,
+      "speed_mbs": 5000,
+      "sponsored": false
+    },
+    {
+      "id": "wdblack2",
+      "name": "WD Black SN850X 2TB NVMe",
+      "brand": "WD",
+      "price_usd": 349,
+      "type": "NVMe Gen4",
+      "capacity_tb": 2,
+      "speed_mbs": 7300,
+      "sponsored": false
+    }
   ],
   "psus": [
-    {"id":"crm750","name":"Corsair RM750x","brand":"Corsair","price_usd":109,"wattage":750,"rating":"80+ Gold","sponsored":false},
-    {"id":"evga850","name":"EVGA SuperNOVA 850 G6","brand":"EVGA","price_usd":129,"wattage":850,"rating":"80+ Gold","sponsored":false},
-    {"id":"sea1000","name":"Seasonic Focus GX-1000","brand":"Seasonic","price_usd":159,"wattage":1000,"rating":"80+ Gold","sponsored":true},
-    {"id":"bqdp1000","name":"be quiet! Dark Power 13 1000W","brand":"be quiet!","price_usd":199,"wattage":1000,"rating":"80+ Titanium","sponsored":false},
-    {"id":"corhx1200","name":"Corsair HX1200","brand":"Corsair","price_usd":219,"wattage":1200,"rating":"80+ Platinum","sponsored":false},
-    {"id":"tt1650","name":"Thermaltake Toughpower GF3 1650W","brand":"Thermaltake","price_usd":299,"wattage":1650,"rating":"80+ Gold","sponsored":false}
+    {
+      "id": "crm750",
+      "name": "Corsair RM750x",
+      "brand": "Corsair",
+      "price_usd": 109,
+      "wattage": 750,
+      "rating": "80+ Gold",
+      "sponsored": false
+    },
+    {
+      "id": "evga850",
+      "name": "EVGA SuperNOVA 850 G6",
+      "brand": "EVGA",
+      "price_usd": 129,
+      "wattage": 850,
+      "rating": "80+ Gold",
+      "sponsored": false
+    },
+    {
+      "id": "sea1000",
+      "name": "Seasonic Focus GX-1000",
+      "brand": "Seasonic",
+      "price_usd": 159,
+      "wattage": 1000,
+      "rating": "80+ Gold",
+      "sponsored": true
+    },
+    {
+      "id": "bqdp1000",
+      "name": "be quiet! Dark Power 13 1000W",
+      "brand": "be quiet!",
+      "price_usd": 199,
+      "wattage": 1000,
+      "rating": "80+ Titanium",
+      "sponsored": false
+    },
+    {
+      "id": "corhx1200",
+      "name": "Corsair HX1200",
+      "brand": "Corsair",
+      "price_usd": 219,
+      "wattage": 1200,
+      "rating": "80+ Platinum",
+      "sponsored": false
+    },
+    {
+      "id": "tt1650",
+      "name": "Thermaltake Toughpower GF3 1650W",
+      "brand": "Thermaltake",
+      "price_usd": 299,
+      "wattage": 1650,
+      "rating": "80+ Gold",
+      "sponsored": false
+    }
   ],
   "cases": [
-    {"id":"fdpopair","name":"Fractal Design Pop Air","brand":"Fractal Design","price_usd":89,"form_factor":"Mid Tower","motherboard_support":["ATX","mATX","ITX"],"sponsored":false},
-    {"id":"lio11","name":"Lian Li PC-O11 Dynamic","brand":"Lian Li","price_usd":139,"form_factor":"Mid Tower","motherboard_support":["ATX","mATX"],"sponsored":false},
-    {"id":"nzxth510","name":"NZXT H510","brand":"NZXT","price_usd":79,"form_factor":"Mid Tower","motherboard_support":["ATX","mATX","ITX"],"sponsored":false},
-    {"id":"cor4000d","name":"Corsair 4000D Airflow","brand":"Corsair","price_usd":109,"form_factor":"Mid Tower","motherboard_support":["ATX","mATX","ITX"],"sponsored":true},
-    {"id":"fdtorrent","name":"Fractal Design Torrent","brand":"Fractal Design","price_usd":169,"form_factor":"Mid Tower","motherboard_support":["ATX","mATX","ITX"],"sponsored":false},
-    {"id":"bqdbp900","name":"be quiet! Dark Base Pro 900","brand":"be quiet!","price_usd":219,"form_factor":"Full Tower","motherboard_support":["ATX","mATX","ITX","E-ATX"],"sponsored":false}
+    {
+      "id": "fdpopair",
+      "name": "Fractal Design Pop Air",
+      "brand": "Fractal Design",
+      "price_usd": 89,
+      "form_factor": "Mid Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX",
+        "ITX"
+      ],
+      "sponsored": false
+    },
+    {
+      "id": "lio11",
+      "name": "Lian Li PC-O11 Dynamic",
+      "brand": "Lian Li",
+      "price_usd": 139,
+      "form_factor": "Mid Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX"
+      ],
+      "sponsored": false
+    },
+    {
+      "id": "nzxth510",
+      "name": "NZXT H510",
+      "brand": "NZXT",
+      "price_usd": 79,
+      "form_factor": "Mid Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX",
+        "ITX"
+      ],
+      "sponsored": false
+    },
+    {
+      "id": "cor4000d",
+      "name": "Corsair 4000D Airflow",
+      "brand": "Corsair",
+      "price_usd": 109,
+      "form_factor": "Mid Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX",
+        "ITX"
+      ],
+      "sponsored": true
+    },
+    {
+      "id": "fdtorrent",
+      "name": "Fractal Design Torrent",
+      "brand": "Fractal Design",
+      "price_usd": 169,
+      "form_factor": "Mid Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX",
+        "ITX"
+      ],
+      "sponsored": false
+    },
+    {
+      "id": "bqdbp900",
+      "name": "be quiet! Dark Base Pro 900",
+      "brand": "be quiet!",
+      "price_usd": 219,
+      "form_factor": "Full Tower",
+      "motherboard_support": [
+        "ATX",
+        "mATX",
+        "ITX",
+        "E-ATX"
+      ],
+      "sponsored": false
+    }
   ],
   "coolers": [
-    {"id":"cmh212","name":"Cooler Master Hyper 212","brand":"Cooler Master","price_usd":39,"type":"Air","max_tdp_watts":150,"sponsored":false},
-    {"id":"noctd15","name":"Noctua NH-D15","brand":"Noctua","price_usd":99,"type":"Air","max_tdp_watts":250,"sponsored":false},
-    {"id":"bqdrp4","name":"be quiet! Dark Rock Pro 4","brand":"be quiet!","price_usd":89,"type":"Air","max_tdp_watts":250,"sponsored":false},
-    {"id":"corh100i","name":"Corsair H100i Elite","brand":"Corsair","price_usd":139,"type":"240mm AIO","max_tdp_watts":300,"sponsored":true},
-    {"id":"nzxtx63","name":"NZXT Kraken X63","brand":"NZXT","price_usd":149,"type":"280mm AIO","max_tdp_watts":300,"sponsored":false},
-    {"id":"corh150i","name":"Corsair H150i Elite","brand":"Corsair","price_usd":179,"type":"360mm AIO","max_tdp_watts":350,"sponsored":false}
+    {
+      "id": "cmh212",
+      "name": "Cooler Master Hyper 212",
+      "brand": "Cooler Master",
+      "price_usd": 39,
+      "type": "Air",
+      "max_tdp_watts": 150,
+      "sponsored": false
+    },
+    {
+      "id": "noctd15",
+      "name": "Noctua NH-D15",
+      "brand": "Noctua",
+      "price_usd": 99,
+      "type": "Air",
+      "max_tdp_watts": 250,
+      "sponsored": false
+    },
+    {
+      "id": "bqdrp4",
+      "name": "be quiet! Dark Rock Pro 4",
+      "brand": "be quiet!",
+      "price_usd": 89,
+      "type": "Air",
+      "max_tdp_watts": 250,
+      "sponsored": false
+    },
+    {
+      "id": "corh100i",
+      "name": "Corsair H100i Elite",
+      "brand": "Corsair",
+      "price_usd": 139,
+      "type": "240mm AIO",
+      "max_tdp_watts": 300,
+      "sponsored": true
+    },
+    {
+      "id": "nzxtx63",
+      "name": "NZXT Kraken X63",
+      "brand": "NZXT",
+      "price_usd": 149,
+      "type": "280mm AIO",
+      "max_tdp_watts": 300,
+      "sponsored": false
+    },
+    {
+      "id": "corh150i",
+      "name": "Corsair H150i Elite",
+      "brand": "Corsair",
+      "price_usd": 179,
+      "type": "360mm AIO",
+      "max_tdp_watts": 350,
+      "sponsored": false
+    }
   ]
 }
