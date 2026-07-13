@@ -9,6 +9,7 @@ import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, type Prebuilt } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import { PRICES_UPDATED } from '../lib/prices';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -215,7 +216,7 @@ export default function Prebuilts() {
           className="mb-8 rounded-xl px-4 py-3 text-xs text-center"
           style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
         >
-          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are estimated based on current market data.
+          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are estimates based on typical US street pricing — last updated {PRICES_UPDATED}.
         </motion.div>
 
         {/* Build cards */}

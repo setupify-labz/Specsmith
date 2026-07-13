@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import type { ShareView } from '../lib/sharing';
+import { PRICES_UPDATED } from '../lib/prices';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
 import BottleneckChecker from './BottleneckChecker';
 import ShareButton from './ShareButton';
@@ -127,6 +128,7 @@ export default function BuildSummary({
             <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>Total Cost</span>
             <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
           </div>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>Est. street pricing · updated {PRICES_UPDATED}</p>
         </div>
 
         {/* Action buttons */}

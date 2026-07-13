@@ -8,6 +8,7 @@ import type { Resolution, Preset } from '../lib/fps';
 import { getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { getMatchupMeta } from '../lib/seo';
+import { PRICES_UPDATED } from '../lib/prices';
 import { ExternalLink } from 'lucide-react';
 
 interface Game {
@@ -204,7 +205,7 @@ export default function GpuMatchup() {
             </table>
           </div>
           <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--ff-text-3)' }}>
-            Estimates assume native resolution with no upscaling (DLSS/FSR/XeSS) and a {cpu.name}. Real-world results vary by driver, game patch, and system configuration.
+            Estimates assume native resolution with no upscaling (DLSS/FSR/XeSS) and a {cpu.name}. Real-world results vary by driver, game patch, and system configuration. Prices are typical US street pricing, last updated {PRICES_UPDATED}.
           </p>
         </div>
 
