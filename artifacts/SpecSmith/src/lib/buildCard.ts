@@ -47,16 +47,51 @@ function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 }
 
-function drawHexagonPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+// The Anvil Chip mark, drawn in the same 64-unit space as Logo.tsx /
+// favicon.svg and scaled to `size` pixels at (x, y) top-left.
+function drawAnvilLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 64, size / 64);
+
+  const grad = ctx.createLinearGradient(10, 12, 56, 58);
+  grad.addColorStop(0, '#7C6BFF');
+  grad.addColorStop(1, C.cyan);
+
+  ctx.fillStyle = C.cyan;
+  ctx.fill(new Path2D('M24 3 L25.8 7.6 L30.5 9.5 L25.8 11.4 L24 16 L22.2 11.4 L17.5 9.5 L22.2 7.6 Z'));
+  ctx.globalAlpha = 0.85;
   ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 30);
-    const x = cx + r * Math.cos(angle);
-    const y = cy + r * Math.sin(angle);
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
+  ctx.arc(34, 6, 1.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = grad;
+  ctx.fill(new Path2D('M11 16 H38 C46 16 53.5 16.5 57.5 19.5 C55.5 24.5 47 28.5 40 30 H11 Q8 30 8 27 V19 Q8 16 11 16 Z'));
+  ctx.fill(new Path2D('M22 30 H40 C38.5 33.5 37 36.5 37 40 H27 C27 36.5 25.5 33.5 22 30 Z'));
+  ctx.beginPath();
+  ctx.roundRect(13, 40, 38, 13, 3);
+  ctx.fill();
+  for (const px of [17, 26.3, 35.6, 45]) {
+    ctx.beginPath();
+    ctx.roundRect(px, 53, 5, 6, 1.2);
+    ctx.fill();
   }
-  ctx.closePath();
+
+  ctx.strokeStyle = C.bg;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(19, 46.5);
+  ctx.lineTo(34, 46.5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(38.5, 46.5, 2.1, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
 }
 
 function drawGradientBar(ctx: CanvasRenderingContext2D, y: number, h: number) {
@@ -117,21 +152,8 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
   const PAD = 36;
   const headerY = 30;
 
-  // SS hexagon logo
-  const hx = PAD + 16, hy = headerY + 16, hr = 16;
-  const hexGrad = ctx.createLinearGradient(hx - hr, hy - hr, hx + hr, hy + hr);
-  hexGrad.addColorStop(0, C.accent);
-  hexGrad.addColorStop(1, C.cyan);
-  drawHexagonPath(ctx, hx, hy, hr);
-  ctx.fillStyle = hexGrad;
-  ctx.fill();
-
-  // "SS" text in hexagon
-  ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('SS', hx, hy + 0.5);
+  // Anvil Chip logo
+  drawAnvilLogo(ctx, PAD, headerY - 2, 36);
 
   // "SpecSmith" wordmark
   ctx.textAlign = 'left';

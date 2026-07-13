@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Logo from './Logo';
 
 export default function Footer() {
   return (
@@ -9,17 +10,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center gap-2 mb-3">
-              <svg viewBox="0 0 40 46" fill="none" className="w-8 h-8">
-                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" fill="url(#fhex)" opacity="0.15"/>
-                <path d="M20 2L37 11.5V28.5L20 38L3 28.5V11.5L20 2Z" stroke="url(#fhex)" strokeWidth="1.5"/>
-                <text x="20" y="26" textAnchor="middle" fill="url(#fhex)" fontSize="14" fontWeight="800" fontFamily="Inter">SS</text>
-                <defs>
-                  <linearGradient id="fhex" x1="3" y1="2" x2="37" y2="38" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="var(--ff-accent)"/>
-                    <stop offset="1" stopColor="var(--ff-cyan)"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <Logo size={32} className="w-8 h-8" />
               <span className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>
                 Spec<span className="gradient-text">Smith</span>
               </span>
