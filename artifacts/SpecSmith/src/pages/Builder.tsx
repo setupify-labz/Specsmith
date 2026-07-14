@@ -70,6 +70,11 @@ export default function Builder() {
   const [showFps, setShowFps] = useState(false);
   const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
   const [fpsPreset, setFpsPreset] = useState<Preset>('high');
+  const [customParts, setCustomParts] = useState<{ id: string; name: string; price: number }[]>([]);
+  const addCustomPart = (name: string, price: number) =>
+    setCustomParts(list => [...list, { id: `custom-${Date.now()}`, name, price }]);
+  const removeCustomPart = (id: string) =>
+    setCustomParts(list => list.filter(p => p.id !== id));
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
   const gpuSectionRef = useRef<HTMLDivElement>(null);
@@ -88,24 +93,43 @@ export default function Builder() {
   const selectedMouse = (peripheralData.mice as Mouse[]).find(m => m.id === (build as any).mouse) ?? null;
   const selectedHeadset = (peripheralData.headsets as Headset[]).find(h => h.id === (build as any).headset) ?? null;
 
-  const warnings = useMemo(() => {
-    const base = checkCompatibility({ gpu: selectedGpu, cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam, psu: selectedPsu });
-    // Monitor compatibility warnings
+  const compat = useMemo(() => {
+    const result = checkCompatibility({
+      gpu: selectedGpu, cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam,
+      psu: selectedPsu, case: selectedCase, cooler: selectedCooler,
+    });
+    // Monitor pairing warnings
     if (selectedMonitor && selectedGpu) {
       const res = selectedMonitor.resolution;
       const hz = selectedMonitor.refresh_rate_hz;
       const tier = selectedGpu.tier;
       if ((res === '4K' || res === '5120x1440p') && tier < 7) {
-        base.push({ id: 'monitor-4k', type: 'warning', message: 'Your GPU may struggle at 4K on this monitor' });
+        result.warnings.push({
+          id: 'monitor-4k', type: 'warning', confidence: 'likely',
+          title: 'GPU may struggle at this monitor\'s resolution',
+          detail: `${selectedMonitor.name} is ${res}, which is demanding — ${selectedGpu.name} will need lowered settings or upscaling to keep smooth frame rates there.`,
+          fix: 'Consider a stronger GPU, a 1440p monitor, or plan on using DLSS/FSR.',
+        });
       } else if (getResolutionTier(res) >= 2 && tier < 5) {
-        base.push({ id: 'monitor-1440p', type: 'warning', message: 'Your GPU may struggle at 1440p on this monitor' });
+        result.warnings.push({
+          id: 'monitor-1440p', type: 'warning', confidence: 'likely',
+          title: 'GPU may struggle at 1440p on this monitor',
+          detail: `${selectedGpu.name} is an entry-level card for ${res} — expect medium settings in demanding games.`,
+          fix: 'A mid-tier or better GPU pairs more comfortably with this monitor.',
+        });
       }
       if (hz >= 360 && tier < 8) {
-        base.push({ id: 'monitor-refresh', type: 'warning', message: `Your GPU may not reach ${hz}Hz refresh rate in demanding games` });
+        result.warnings.push({
+          id: 'monitor-refresh', type: 'warning', confidence: 'likely',
+          title: `GPU won't feed this ${hz}Hz monitor in most games`,
+          detail: `${hz}Hz only pays off when the GPU can produce ${hz}+ FPS — realistic for esports titles on this card, but not in demanding games.`,
+          fix: 'Fine if you mainly play esports titles; otherwise a high-end GPU makes better use of this panel.',
+        });
       }
     }
-    return base;
-  }, [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedMonitor]);
+    return result;
+  }, [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
+  const warnings = compat.warnings;
 
   const corePartsList = [
     selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: selectedGpu.price_usd },
@@ -125,7 +149,11 @@ export default function Builder() {
     selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: selectedHeadset.price_usd },
   ].filter(Boolean) as { label: string; name: string; price: number }[];
 
-  const summaryParts = [...corePartsList, ...peripheralPartsList];
+  const summaryParts = [
+    ...corePartsList,
+    ...peripheralPartsList,
+    ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: cp.price, customId: cp.id })),
+  ];
   const totalCost = summaryParts.reduce((sum, p) => sum + p.price, 0);
   const canEstimate = !!(selectedGpu && selectedCpu);
 
@@ -169,7 +197,7 @@ export default function Builder() {
         </motion.div>
 
         <div className="mb-6">
-          <CompatibilityBanner warnings={warnings} />
+          <CompatibilityBanner warnings={warnings} passed={compat.passed} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -303,6 +331,9 @@ export default function Builder() {
               cpu={selectedCpu}
               buildState={buildState}
               shareView={{ resolution: fpsResolution, preset: fpsPreset }}
+              customParts={customParts}
+              onAddCustomPart={addCustomPart}
+              onRemoveCustomPart={removeCustomPart}
               onScrollToGpu={handleScrollToGpu}
               onScrollToCpu={handleScrollToCpu}
             />

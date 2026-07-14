@@ -78,7 +78,9 @@ export default function SharedBuild() {
     .map(cat => [cat, build[cat] ?? ''] as [string, string])
     .filter(([, id]) => id);
 
-  const totalCost = partEntries.reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0);
+  const customParts = decoded.customParts;
+  const totalCost = partEntries.reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0)
+    + customParts.reduce((sum, c) => sum + c.price, 0);
 
   const loadInBuilder = () => {
     const qs = Object.entries(build).filter(([,v]) => v).map(([k,v]) => `${k}=${v}`).join('&');
@@ -129,6 +131,16 @@ export default function SharedBuild() {
                           style={{ color: '#FF9E1B' }}>
                           Newegg <ExternalLink size={9} />
                         </a>
+                      </div>
+                    </div>
+                  ))}
+                  {customParts.map((c, i) => (
+                    <div key={`custom-${i}`} className="flex items-center justify-between py-2"
+                      style={{ borderBottom: '1px solid var(--ff-border)' }}>
+                      <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>Custom</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>{c.name}</span>
+                        <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent)' }}>${c.price.toLocaleString()}</span>
                       </div>
                     </div>
                   ))}
