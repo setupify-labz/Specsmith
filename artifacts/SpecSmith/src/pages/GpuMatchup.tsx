@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, ChevronRight, Trophy, DollarSign, Cpu } from 'lucide-react';
 import gamesData from '../data/games.json';
-import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
 import { getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
@@ -236,11 +236,11 @@ export default function GpuMatchup() {
             {[gpuA, gpuB].map((g, i) => (
               <div key={g.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--ff-text-2)' }}>
                 <span className="font-semibold" style={{ color: i === 0 ? COLORS.a : COLORS.b }}>{g.name}:</span>
-                <a href={getAffiliateUrl(g.name)} target="_blank" rel="noopener noreferrer"
+                <a href={getAffiliateUrl(buildPartQuery(g.name, g.brand, 'gpu'))} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
                   Amazon <ExternalLink size={10} />
                 </a>
-                <a href={getNeweggUrl(g.name)} target="_blank" rel="noopener noreferrer"
+                <a href={getNeweggUrl(buildPartQuery(g.name, g.brand, 'gpu'))} target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-text-3)' }}>
                   Newegg <ExternalLink size={10} />
                 </a>

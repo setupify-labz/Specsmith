@@ -84,6 +84,34 @@ export function getFpsColorClass(fps: number): string {
   return 'fps-good';
 }
 
+const CATEGORY_SEARCH_TERMS: Record<string, string> = {
+  gpu: 'graphics card', cpu: 'processor', motherboard: 'motherboard',
+  ram: 'desktop memory', storage: '', psu: 'power supply',
+  case: 'PC case', cooler: 'CPU cooler', monitor: 'gaming monitor',
+  keyboard: '', mouse: '', headset: '',
+};
+
+/**
+ * Builds a retailer search query precise enough that the exact product is
+ * the top result — full brand/product-line prefix plus a category term
+ * (e.g. "RTX 4090" → "NVIDIA GeForce RTX 4090 graphics card").
+ */
+export function buildPartQuery(name: string, brand?: string, category?: string): string {
+  let full = name;
+  if (brand && !name.toLowerCase().includes(brand.toLowerCase())) {
+    if (category === 'gpu') {
+      const line = brand === 'NVIDIA' ? 'GeForce' : brand === 'AMD' ? 'Radeon' : '';
+      full = [brand, line, name].filter(Boolean).join(' ');
+    } else if (category === 'cpu') {
+      full = brand === 'Intel' ? `Intel Core ${name}` : `${brand} ${name}`;
+    } else {
+      full = `${brand} ${name}`;
+    }
+  }
+  const term = category ? CATEGORY_SEARCH_TERMS[category] ?? '' : '';
+  return term ? `${full} ${term}` : full;
+}
+
 // Placeholder tag until the SpecSmith Amazon Associates account is
 // approved — Amazon ignores unrecognized tags, so links keep working.
 // Replace with the real tag before monetization goes live.
