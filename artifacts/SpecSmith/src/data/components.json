@@ -333,7 +333,9 @@
         "mATX",
         "ITX"
       ],
-      "sponsored": false
+      "sponsored": false,
+      "gpu_clearance_mm": 405,
+      "cooler_clearance_mm": 170
     },
     {
       "id": "lio11",
@@ -345,7 +347,9 @@
         "ATX",
         "mATX"
       ],
-      "sponsored": false
+      "sponsored": false,
+      "gpu_clearance_mm": 420,
+      "cooler_clearance_mm": 155
     },
     {
       "id": "nzxth510",
@@ -358,7 +362,9 @@
         "mATX",
         "ITX"
       ],
-      "sponsored": false
+      "sponsored": false,
+      "gpu_clearance_mm": 381,
+      "cooler_clearance_mm": 165
     },
     {
       "id": "cor4000d",
@@ -371,7 +377,9 @@
         "mATX",
         "ITX"
       ],
-      "sponsored": true
+      "sponsored": true,
+      "gpu_clearance_mm": 360,
+      "cooler_clearance_mm": 170
     },
     {
       "id": "fdtorrent",
@@ -384,7 +392,9 @@
         "mATX",
         "ITX"
       ],
-      "sponsored": false
+      "sponsored": false,
+      "gpu_clearance_mm": 461,
+      "cooler_clearance_mm": 188
     },
     {
       "id": "bqdbp900",
@@ -398,7 +408,9 @@
         "ITX",
         "E-ATX"
       ],
-      "sponsored": false
+      "sponsored": false,
+      "gpu_clearance_mm": 472,
+      "cooler_clearance_mm": 185
     }
   ],
   "coolers": [
@@ -409,7 +421,8 @@
       "price_usd": 39,
       "type": "Air",
       "max_tdp_watts": 150,
-      "sponsored": false
+      "sponsored": false,
+      "height_mm": 157
     },
     {
       "id": "noctd15",
@@ -418,7 +431,8 @@
       "price_usd": 99,
       "type": "Air",
       "max_tdp_watts": 250,
-      "sponsored": false
+      "sponsored": false,
+      "height_mm": 165
     },
     {
       "id": "bqdrp4",
@@ -427,7 +441,8 @@
       "price_usd": 89,
       "type": "Air",
       "max_tdp_watts": 250,
-      "sponsored": false
+      "sponsored": false,
+      "height_mm": 163
     },
     {
       "id": "corh100i",

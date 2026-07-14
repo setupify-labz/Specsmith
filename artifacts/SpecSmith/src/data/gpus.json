@@ -12,7 +12,8 @@
     "release_year": 2025,
     "benchmark_score": 355,
     "gpu_multiplier": 1.28,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 336
   },
   {
     "id": "rtx5080",
@@ -27,7 +28,8 @@
     "release_year": 2025,
     "benchmark_score": 252,
     "gpu_multiplier": 0.9,
-    "sponsored": true
+    "sponsored": true,
+    "length_mm": 330
   },
   {
     "id": "rtx5070ti",
@@ -42,7 +44,8 @@
     "release_year": 2025,
     "benchmark_score": 225,
     "gpu_multiplier": 0.81,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 310
   },
   {
     "id": "rtx5070",
@@ -57,7 +60,8 @@
     "release_year": 2025,
     "benchmark_score": 195,
     "gpu_multiplier": 0.7,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 290
   },
   {
     "id": "rtx5060ti",
@@ -72,7 +76,8 @@
     "release_year": 2025,
     "benchmark_score": 160,
     "gpu_multiplier": 0.58,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 245
   },
   {
     "id": "rtx4090",
@@ -87,7 +92,8 @@
     "release_year": 2022,
     "benchmark_score": 280,
     "gpu_multiplier": 1,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 336
   },
   {
     "id": "rtx4080s",
@@ -102,7 +108,8 @@
     "release_year": 2024,
     "benchmark_score": 245,
     "gpu_multiplier": 0.87,
-    "sponsored": true
+    "sponsored": true,
+    "length_mm": 322
   },
   {
     "id": "rtx4080",
@@ -117,7 +124,8 @@
     "release_year": 2022,
     "benchmark_score": 235,
     "gpu_multiplier": 0.83,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 320
   },
   {
     "id": "rtx4070tis",
@@ -132,7 +140,8 @@
     "release_year": 2024,
     "benchmark_score": 215,
     "gpu_multiplier": 0.76,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 310
   },
   {
     "id": "rtx4070ti",
@@ -147,7 +156,8 @@
     "release_year": 2022,
     "benchmark_score": 205,
     "gpu_multiplier": 0.72,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 305
   },
   {
     "id": "rtx4070s",
@@ -162,7 +172,8 @@
     "release_year": 2024,
     "benchmark_score": 190,
     "gpu_multiplier": 0.67,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 267
   },
   {
     "id": "rtx4070",
@@ -177,7 +188,8 @@
     "release_year": 2022,
     "benchmark_score": 175,
     "gpu_multiplier": 0.65,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 244
   },
   {
     "id": "rtx4060ti16",
@@ -192,7 +204,8 @@
     "release_year": 2023,
     "benchmark_score": 155,
     "gpu_multiplier": 0.55,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 242
   },
   {
     "id": "rtx4060ti",
@@ -207,7 +220,8 @@
     "release_year": 2023,
     "benchmark_score": 148,
     "gpu_multiplier": 0.53,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 240
   },
   {
     "id": "rtx4060",
@@ -222,7 +236,8 @@
     "release_year": 2023,
     "benchmark_score": 125,
     "gpu_multiplier": 0.44,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 210
   },
   {
     "id": "rtx4050",
@@ -237,7 +252,8 @@
     "release_year": 2023,
     "benchmark_score": 100,
     "gpu_multiplier": 0.36,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 180
   },
   {
     "id": "rtx3090ti",
@@ -252,7 +268,8 @@
     "release_year": 2022,
     "benchmark_score": 200,
     "gpu_multiplier": 0.71,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 336
   },
   {
     "id": "rtx3090",
@@ -267,7 +284,8 @@
     "release_year": 2020,
     "benchmark_score": 190,
     "gpu_multiplier": 0.68,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 320
   },
   {
     "id": "rtx3080ti",
@@ -282,7 +300,8 @@
     "release_year": 2021,
     "benchmark_score": 185,
     "gpu_multiplier": 0.66,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 320
   },
   {
     "id": "rtx308012",
@@ -297,7 +316,8 @@
     "release_year": 2021,
     "benchmark_score": 175,
     "gpu_multiplier": 0.62,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 305
   },
   {
     "id": "rtx3080",
@@ -312,7 +332,8 @@
     "release_year": 2020,
     "benchmark_score": 168,
     "gpu_multiplier": 0.6,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 305
   },
   {
     "id": "rtx3070ti",
@@ -327,7 +348,8 @@
     "release_year": 2021,
     "benchmark_score": 158,
     "gpu_multiplier": 0.56,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 270
   },
   {
     "id": "rtx3070",
@@ -342,7 +364,8 @@
     "release_year": 2020,
     "benchmark_score": 150,
     "gpu_multiplier": 0.53,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 242
   },
   {
     "id": "rtx3060ti",
@@ -357,7 +380,8 @@
     "release_year": 2020,
     "benchmark_score": 140,
     "gpu_multiplier": 0.5,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 242
   },
   {
     "id": "rtx3060",
@@ -372,7 +396,8 @@
     "release_year": 2021,
     "benchmark_score": 118,
     "gpu_multiplier": 0.42,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 235
   },
   {
     "id": "rtx3050",
@@ -387,7 +412,8 @@
     "release_year": 2022,
     "benchmark_score": 90,
     "gpu_multiplier": 0.32,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 200
   },
   {
     "id": "rx7900xtx",
@@ -402,7 +428,8 @@
     "release_year": 2022,
     "benchmark_score": 255,
     "gpu_multiplier": 0.91,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 320
   },
   {
     "id": "rx7900xt",
@@ -417,7 +444,8 @@
     "release_year": 2022,
     "benchmark_score": 228,
     "gpu_multiplier": 0.79,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 300
   },
   {
     "id": "rx7900gre",
@@ -432,7 +460,8 @@
     "release_year": 2023,
     "benchmark_score": 205,
     "gpu_multiplier": 0.73,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 280
   },
   {
     "id": "rx7800xt",
@@ -447,7 +476,8 @@
     "release_year": 2023,
     "benchmark_score": 178,
     "gpu_multiplier": 0.66,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 280
   },
   {
     "id": "rx7700xt",
@@ -462,7 +492,8 @@
     "release_year": 2023,
     "benchmark_score": 155,
     "gpu_multiplier": 0.55,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 250
   },
   {
     "id": "rx7600xt",
@@ -477,7 +508,8 @@
     "release_year": 2024,
     "benchmark_score": 132,
     "gpu_multiplier": 0.47,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 240
   },
   {
     "id": "rx7600",
@@ -492,7 +524,8 @@
     "release_year": 2023,
     "benchmark_score": 122,
     "gpu_multiplier": 0.43,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 220
   },
   {
     "id": "rx6950xt",
@@ -507,7 +540,8 @@
     "release_year": 2022,
     "benchmark_score": 195,
     "gpu_multiplier": 0.69,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 310
   },
   {
     "id": "rx6900xt",
@@ -522,7 +556,8 @@
     "release_year": 2020,
     "benchmark_score": 185,
     "gpu_multiplier": 0.66,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 300
   },
   {
     "id": "rx6800xt",
@@ -537,7 +572,8 @@
     "release_year": 2020,
     "benchmark_score": 170,
     "gpu_multiplier": 0.6,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 290
   },
   {
     "id": "rx6800",
@@ -552,7 +588,8 @@
     "release_year": 2020,
     "benchmark_score": 160,
     "gpu_multiplier": 0.57,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 267
   },
   {
     "id": "rx6750xt",
@@ -567,7 +604,8 @@
     "release_year": 2022,
     "benchmark_score": 148,
     "gpu_multiplier": 0.52,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 250
   },
   {
     "id": "rx6700xt",
@@ -582,7 +620,8 @@
     "release_year": 2021,
     "benchmark_score": 140,
     "gpu_multiplier": 0.49,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 240
   },
   {
     "id": "rx6700",
@@ -597,7 +636,8 @@
     "release_year": 2022,
     "benchmark_score": 128,
     "gpu_multiplier": 0.45,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 230
   },
   {
     "id": "rx6650xt",
@@ -612,7 +652,8 @@
     "release_year": 2022,
     "benchmark_score": 120,
     "gpu_multiplier": 0.42,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 220
   },
   {
     "id": "rx6600xt",
@@ -627,7 +668,8 @@
     "release_year": 2021,
     "benchmark_score": 112,
     "gpu_multiplier": 0.39,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 210
   },
   {
     "id": "rx6600",
@@ -642,7 +684,8 @@
     "release_year": 2021,
     "benchmark_score": 102,
     "gpu_multiplier": 0.36,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 190
   },
   {
     "id": "rx6500xt",
@@ -657,7 +700,8 @@
     "release_year": 2022,
     "benchmark_score": 72,
     "gpu_multiplier": 0.25,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 180
   },
   {
     "id": "rx6400",
@@ -672,7 +716,8 @@
     "release_year": 2022,
     "benchmark_score": 62,
     "gpu_multiplier": 0.21,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 165
   },
   {
     "id": "arca770-16",
@@ -687,7 +732,8 @@
     "release_year": 2022,
     "benchmark_score": 115,
     "gpu_multiplier": 0.41,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 280
   },
   {
     "id": "arca770-8",
@@ -702,7 +748,8 @@
     "release_year": 2022,
     "benchmark_score": 110,
     "gpu_multiplier": 0.39,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 270
   },
   {
     "id": "arca750",
@@ -717,7 +764,8 @@
     "release_year": 2022,
     "benchmark_score": 100,
     "gpu_multiplier": 0.35,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 270
   },
   {
     "id": "arca580",
@@ -732,7 +780,8 @@
     "release_year": 2023,
     "benchmark_score": 90,
     "gpu_multiplier": 0.31,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 260
   },
   {
     "id": "arcb580",
@@ -747,6 +796,7 @@
     "release_year": 2024,
     "benchmark_score": 130,
     "gpu_multiplier": 0.46,
-    "sponsored": false
+    "sponsored": false,
+    "length_mm": 245
   }
 ]

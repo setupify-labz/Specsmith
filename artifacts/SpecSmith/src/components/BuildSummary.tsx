@@ -13,6 +13,13 @@ interface SummaryPart {
   label: string;
   name: string;
   price: number;
+  customId?: string;
+}
+
+export interface CustomPart {
+  id: string;
+  name: string;
+  price: number;
 }
 
 interface Props {
@@ -26,16 +33,37 @@ interface Props {
   buildState: Record<string, string | null>;
   buildName?: string;
   shareView?: ShareView;
+  customParts?: CustomPart[];
+  onAddCustomPart?: (name: string, price: number) => void;
+  onRemoveCustomPart?: (id: string) => void;
   onScrollToGpu?: () => void;
   onScrollToCpu?: () => void;
 }
 
 export default function BuildSummary({
   parts, totalCost, onEstimateFps, canEstimate, compatibilityOk,
-  gpu, cpu, buildState, buildName, shareView, onScrollToGpu, onScrollToCpu,
+  gpu, cpu, buildState, buildName, shareView,
+  customParts = [], onAddCustomPart, onRemoveCustomPart,
+  onScrollToGpu, onScrollToCpu,
 }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
   const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
+  const [taxPct, setTaxPct] = useState('');
+
+  const taxRate = parseFloat(taxPct);
+  const taxValid = !isNaN(taxRate) && taxRate > 0 && taxRate < 30;
+
+  const submitCustomPart = () => {
+    const price = parseFloat(customPrice);
+    if (!customName.trim() || isNaN(price) || price < 0) return;
+    onAddCustomPart?.(customName.trim(), Math.round(price));
+    setCustomName('');
+    setCustomPrice('');
+    setCustomOpen(false);
+  };
 
   const cardOptions = {
     buildName,
@@ -91,7 +119,7 @@ export default function BuildSummary({
             )}
             {parts.map(p => (
               <motion.div
-                key={p.label}
+                key={p.customId ?? p.label}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
@@ -102,16 +130,27 @@ export default function BuildSummary({
                   <span className="block text-[10px] uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{p.label}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
-                    <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
-                      title="Buy on Amazon"
-                      className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
-                      Amazon
-                    </a>
-                    <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
-                      title="Buy on Newegg"
-                      className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: '#FF9E1B' }}>
-                      Newegg
-                    </a>
+                    {p.customId ? (
+                      <button onClick={() => onRemoveCustomPart?.(p.customId!)}
+                        title="Remove custom part"
+                        className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80"
+                        style={{ color: '#FF1744' }}>
+                        Remove
+                      </button>
+                    ) : (
+                      <>
+                        <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
+                          title="Buy on Amazon"
+                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                          Amazon
+                        </a>
+                        <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
+                          title="Buy on Newegg"
+                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: '#FF9E1B' }}>
+                          Newegg
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
                 <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text)' }}>
@@ -120,6 +159,48 @@ export default function BuildSummary({
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {/* Custom / unlisted part */}
+          {onAddCustomPart && (
+            customOpen ? (
+              <div className="rounded-lg p-2.5 space-y-2" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Part name (e.g. RGB fan kit, used GPU)"
+                  className="w-full px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                  style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitCustomPart()}
+                    placeholder="Price ($)"
+                    inputMode="decimal"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                    style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                  />
+                  <button onClick={submitCustomPart}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    Add
+                  </button>
+                  <button onClick={() => setCustomOpen(false)}
+                    className="px-2 py-1.5 rounded-md text-xs font-semibold"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setCustomOpen(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ border: '1px dashed var(--ff-border)', color: 'var(--ff-text-2)' }}>
+                + Add custom part (anything not in our list)
+              </button>
+            )
+          )}
         </div>
 
         {/* Total */}
@@ -129,6 +210,25 @@ export default function BuildSummary({
             <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
           </div>
           <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>Est. street pricing · updated {PRICES_UPDATED}</p>
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+              Sales tax
+              <input
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                className="w-11 px-1.5 py-0.5 rounded text-[10px] text-right focus:outline-none"
+                style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              />
+              %
+            </label>
+            <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
+              {taxValid
+                ? `With tax: $${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -162,7 +262,7 @@ export default function BuildSummary({
                 <Save size={14} />
                 Save Build
               </button>
-              <ShareButton buildState={buildState} view={shareView} size="sm" />
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
             </motion.div>
           )}
 
