@@ -51,7 +51,7 @@ function BuildColumn({
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-        <h3 className="text-white font-bold">{title}</h3>
+        <h3 className="text-ff-primary font-bold">{title}</h3>
       </div>
       <div className="space-y-3">
         <PartSelector
@@ -93,13 +93,13 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   const fullGame = payload[0]?.payload?.fullGame ?? '';
   return (
-    <div className="bg-[#1C1C26] border border-white/10 rounded-xl p-3 shadow-2xl max-w-[220px]">
-      <p className="text-white text-xs font-bold mb-2">{fullGame}</p>
+    <div className="rounded-xl p-3 shadow-2xl max-w-[220px]" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+      <p className="text-ff-primary text-xs font-bold mb-2">{fullGame}</p>
       {payload.map(p => (
         <div key={p.name} className="flex items-center gap-2 text-xs">
           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-[#8888AA]">{p.name}:</span>
-          <span className="text-white font-bold">{p.value} FPS</span>
+          <span className="text-secondary-custom">{p.name}:</span>
+          <span className="text-ff-primary font-bold">{p.value} FPS</span>
         </div>
       ))}
     </div>
@@ -108,7 +108,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
 function GameAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
   return (
-    <text x={x} y={y} dy={4} textAnchor="end" fill="#B0B0C8" fontSize={11}>
+    <text x={x} y={y} dy={4} textAnchor="end" fill="var(--ff-text-2)" fontSize={11}>
       {payload?.value}
     </text>
   );
@@ -175,10 +175,10 @@ export default function Compare() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
-          <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl font-black text-ff-primary mb-4">
             Build <span className="gradient-text">Comparison</span>
           </h1>
-          <p className="text-[#8888AA] text-lg max-w-xl mx-auto">
+          <p className="text-secondary-custom text-lg max-w-xl mx-auto">
             Compare two GPU + CPU combinations side by side across 20 games. We've pre-loaded a sample matchup below — swap in any parts to compare your own builds.
           </p>
         </motion.div>
@@ -192,7 +192,7 @@ export default function Compare() {
           />
           <div className="relative hidden lg:flex items-center justify-center">
             <div className="w-px h-full bg-white/10" />
-            <span className="absolute text-[#8888AA] text-sm font-bold bg-[#0A0A0F] px-2">VS</span>
+            <span className="absolute text-secondary-custom text-sm font-bold px-2" style={{ backgroundColor: 'var(--ff-bg)' }}>VS</span>
           </div>
           <BuildColumn
             title="Build B" color={COLORS.b}
@@ -206,19 +206,19 @@ export default function Compare() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-white/8 bg-[#13131A] p-6"
+            className="rounded-2xl border border-subtle bg-surface p-6"
           >
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
-                <label className="block text-xs text-[#8888AA] mb-1.5 font-medium uppercase tracking-wider">Resolution</label>
+                <label className="block text-xs text-secondary-custom mb-1.5 font-medium uppercase tracking-wider">Resolution</label>
                 <div className="flex rounded-lg overflow-hidden border border-white/8 w-fit">
                   {resolutions.map(r => (
                     <button
                       key={r}
                       onClick={() => setResolution(r)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors ${
-                        resolution === r ? 'text-white bg-[#6C63FF]' : 'text-[#8888AA] hover:text-white'
+                        resolution === r ? 'text-white bg-[#6C63FF]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {r === '4k' ? '4K' : r}
@@ -227,14 +227,14 @@ export default function Compare() {
                 </div>
               </div>
               <div className="flex-1">
-                <label className="block text-xs text-[#8888AA] mb-1.5 font-medium uppercase tracking-wider">Quality</label>
+                <label className="block text-xs text-secondary-custom mb-1.5 font-medium uppercase tracking-wider">Quality</label>
                 <div className="flex rounded-lg overflow-hidden border border-white/8 w-fit">
                   {presets.map(p => (
                     <button
                       key={p}
                       onClick={() => setPreset(p)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors capitalize ${
-                        preset === p ? 'text-white bg-[#6C63FF]' : 'text-[#8888AA] hover:text-white'
+                        preset === p ? 'text-white bg-[#6C63FF]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {p}
@@ -248,20 +248,20 @@ export default function Compare() {
             <div className="flex gap-4 mb-6">
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.a}15`, border: `1px solid ${COLORS.a}30` }}>
                 <div className="text-3xl font-black" style={{ color: COLORS.a }}>{winsA}</div>
-                <div className="text-[#8888AA] text-xs mt-1">Build A Wins</div>
-                <div className="text-white text-xs font-semibold mt-2">
+                <div className="text-secondary-custom text-xs mt-1">Build A Wins</div>
+                <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
-                {costA > 0 && <div className="text-[#8888AA] text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
+                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
               </div>
-              <div className="flex items-center justify-center text-[#8888AA] font-bold text-lg">VS</div>
+              <div className="flex items-center justify-center text-secondary-custom font-bold text-lg">VS</div>
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.b}15`, border: `1px solid ${COLORS.b}30` }}>
                 <div className="text-3xl font-black" style={{ color: COLORS.b }}>{winsB}</div>
-                <div className="text-[#8888AA] text-xs mt-1">Build B Wins</div>
-                <div className="text-white text-xs font-semibold mt-2">
+                <div className="text-secondary-custom text-xs mt-1">Build B Wins</div>
+                <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
-                {costB > 0 && <div className="text-[#8888AA] text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
+                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
               </div>
             </div>
 
@@ -277,8 +277,8 @@ export default function Compare() {
                     barGap={4}
                     barCategoryGap="30%"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                    <XAxis type="number" stroke="#8888AA" tick={{ fontSize: 11, fill: '#8888AA' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--ff-border)" horizontal={false} />
+                    <XAxis type="number" stroke="var(--ff-text-2)" tick={{ fontSize: 11, fill: 'var(--ff-text-2)' }} />
                     <YAxis
                       type="category" dataKey="game" width={160}
                       tick={<GameAxisTick />}
@@ -286,32 +286,32 @@ export default function Compare() {
                       stroke="transparent"
                       interval={0}
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(136,136,170,0.08)' }} />
                     <Legend
-                      wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: '#8888AA' }}
+                      wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: 'var(--ff-text-2)' }}
                     />
                     <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build A" position="right" fontSize={10} fill="#B0B0C8" />
+                      <LabelList dataKey="Build A" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
                     <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build B" position="right" fontSize={10} fill="#B0B0C8" />
+                      <LabelList dataKey="Build B" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <p className="sm:hidden text-[10px] text-[#8888AA] text-center mt-2">← Scroll the chart to see full bars and values →</p>
+            <p className="sm:hidden text-[10px] text-secondary-custom text-center mt-2">← Scroll the chart to see full bars and values →</p>
 
             {/* Detailed table */}
-            <div className="mt-6 rounded-xl border border-white/8 overflow-hidden">
+            <div className="mt-6 rounded-xl border border-subtle overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white/3">
+                  <thead style={{ backgroundColor: 'var(--ff-card)' }}>
                     <tr>
-                      <th className="text-left px-4 py-2 text-xs text-[#8888AA] font-medium">Game</th>
+                      <th className="text-left px-4 py-2 text-xs text-secondary-custom font-medium">Game</th>
                       <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.a }}>Build A FPS</th>
                       <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.b }}>Build B FPS</th>
-                      <th className="text-right px-4 py-2 text-xs text-[#8888AA] font-medium">Winner</th>
+                      <th className="text-right px-4 py-2 text-xs text-secondary-custom font-medium">Winner</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -321,18 +321,18 @@ export default function Compare() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: i * 0.02 }}
-                        className="border-t border-white/5 hover:bg-white/2"
+                        className="border-t border-subtle"
                       >
                         <td className="px-4 py-2.5">
-                          <span className="text-white text-xs">{row.fullGame}</span>
+                          <span className="text-ff-primary text-xs">{row.fullGame}</span>
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          <span className="font-bold text-sm" style={{ color: row.winner === 'A' ? COLORS.a : '#8888AA' }}>
+                          <span className="font-bold text-sm" style={{ color: row.winner === 'A' ? COLORS.a : 'var(--ff-text-2)' }}>
                             {row['Build A']}
                           </span>
                         </td>
                         <td className="px-4 py-2.5 text-right">
-                          <span className="font-bold text-sm" style={{ color: row.winner === 'B' ? COLORS.b : '#8888AA' }}>
+                          <span className="font-bold text-sm" style={{ color: row.winner === 'B' ? COLORS.b : 'var(--ff-text-2)' }}>
                             {row['Build B']}
                           </span>
                         </td>
@@ -355,8 +355,8 @@ export default function Compare() {
             </div>
           </motion.div>
         ) : (
-          <div className="rounded-2xl border border-white/8 bg-[#13131A] p-12 text-center">
-            <p className="text-[#8888AA] text-lg">Select GPU + CPU for both builds to see the comparison</p>
+          <div className="rounded-2xl border border-subtle bg-surface p-12 text-center">
+            <p className="text-secondary-custom text-lg">Select GPU + CPU for both builds to see the comparison</p>
           </div>
         )}
       </div>
