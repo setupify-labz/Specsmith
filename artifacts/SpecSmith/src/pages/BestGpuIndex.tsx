@@ -16,7 +16,7 @@ export default function BestGpuIndex() {
             Best GPU <span className="gradient-text">by Game</span>
           </h1>
           <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--ff-text-2)' }}>
-            Pick the game you actually play. We rank 15 GPUs from $269 to flagship by estimated FPS at
+            Pick the game you actually play. We rank 15 GPUs from budget to flagship by estimated FPS at
             1080p, 1440p, and 4K — with value, budget, and 144 FPS picks.
           </p>
         </motion.div>
