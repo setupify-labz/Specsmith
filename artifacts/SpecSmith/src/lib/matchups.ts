@@ -180,3 +180,64 @@ export function getRelatedCpuMatchups(m: CpuMatchup, limit = 4): CpuMatchup[] {
     .filter(o => o.slug !== m.slug && (o.cpuA === m.cpuA || o.cpuB === m.cpuA || o.cpuA === m.cpuB || o.cpuB === m.cpuB))
     .slice(0, limit);
 }
+
+/** Average FPS per $100 of part price — bigger is better, easy to compare. */
+export function fpsPer100(avgFps: number, price: number): number {
+  return Math.round((avgFps / price) * 1000) / 10;
+}
+
+export interface VerdictInput {
+  kind: 'GPU' | 'CPU';
+  nameA: string; nameB: string;
+  priceA: number; priceB: number;
+  winsA: number; winsB: number;
+  total: number;
+  avgA: number; avgB: number;
+  resolution: string;
+}
+
+/**
+ * Written verdict for a matchup page, generated from the same numbers the
+ * verdict cards show so the text can never contradict them. Recomputed when
+ * the resolution toggle changes; the prerendered copy uses the default
+ * resolution, which is what search engines index.
+ */
+export function buildVerdictParagraph(v: VerdictInput): string {
+  const aWon = v.winsA > v.winsB;
+  const tie = v.winsA === v.winsB;
+  const [wName, lName] = aWon ? [v.nameA, v.nameB] : [v.nameB, v.nameA];
+  const [wPrice, lPrice] = aWon ? [v.priceA, v.priceB] : [v.priceB, v.priceA];
+  const [wAvg, lAvg] = aWon ? [v.avgA, v.avgB] : [v.avgB, v.avgA];
+  const wins = Math.max(v.winsA, v.winsB);
+  const fmt = (n: number) => Math.round(n).toLocaleString();
+
+  const perDollarW = wAvg / wPrice;
+  const perDollarL = lAvg / lPrice;
+  const winnerIsValue = perDollarW >= perDollarL;
+  const valuePct = Math.round((Math.max(perDollarW, perDollarL) / Math.min(perDollarW, perDollarL) - 1) * 100);
+  const audience = v.kind === 'CPU' ? 'for gaming' : 'for most gamers';
+
+  if (tie) {
+    const samePrice = v.priceA === v.priceB;
+    const [cheapName, cheapPrice, richPrice] = v.priceA <= v.priceB
+      ? [v.nameA, v.priceA, v.priceB] : [v.nameB, v.priceB, v.priceA];
+    const base = `The ${v.nameA} and ${v.nameB} are effectively tied across all ${v.total} tested games at ${v.resolution} High — ${fmt(v.avgA)} vs ${fmt(v.avgB)} average FPS, inside this estimator's margin of error.`;
+    if (samePrice) {
+      return `${base} They even cost the same at $${fmt(v.priceA)}, so pick whichever fits the platform you're building on or is cheaper the day you buy.`;
+    }
+    return `${base} That makes price the deciding factor: at $${fmt(cheapPrice)} vs $${fmt(richPrice)}, the ${cheapName} delivers about ${valuePct}% more FPS per dollar and is the smarter buy ${audience}.`;
+  }
+
+  const pctFaster = Math.round((wAvg / lAvg - 1) * 100);
+  const fasterClause = pctFaster >= 1
+    ? `averaging ${pctFaster}% higher FPS (${fmt(wAvg)} vs ${fmt(lAvg)})`
+    : `though the average gap is under 1% (${fmt(wAvg)} vs ${fmt(lAvg)} FPS)`;
+  const winClause = wins === v.total
+    ? `won all ${v.total} tested games`
+    : `won ${wins} of ${v.total} tested games (the rest were too close to call)`;
+
+  if (winnerIsValue) {
+    return `The ${wName} ${winClause} at ${v.resolution} High, ${fasterClause}. At $${fmt(wPrice)} vs $${fmt(lPrice)} it's also the better value per frame — a clean sweep, making it the clear pick ${audience}.`;
+  }
+  return `The ${wName} ${winClause} at ${v.resolution} High, ${fasterClause}. But it costs $${fmt(wPrice)} to the ${lName}'s $${fmt(lPrice)}, so the ${lName} delivers about ${valuePct}% more FPS per dollar. Chasing maximum frames? Get the ${wName}. Maximizing a budget? The ${lName} is the smarter pick.`;
+}

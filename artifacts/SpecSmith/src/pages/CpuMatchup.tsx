@@ -5,7 +5,7 @@ import { Zap, ChevronRight, Trophy, DollarSign, Cpu, ExternalLink } from 'lucide
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
-import { getCpuMatchup, getMatchupCpuById, getMatchupFixedGpu, getCpuMatchupTitle, getRelatedCpuMatchups } from '../lib/matchups';
+import { getCpuMatchup, getMatchupCpuById, getMatchupFixedGpu, getCpuMatchupTitle, getRelatedCpuMatchups, buildVerdictParagraph, fpsPer100 } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { getCpuMatchupMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
@@ -76,15 +76,25 @@ export default function CpuMatchup() {
   const avgAF = rows.reduce((s, r) => s + r.fpsA, 0) / rows.length;
   const avgBF = rows.reduce((s, r) => s + r.fpsB, 0) / rows.length;
   const fmtAvg = (v: number) => Math.abs(avgAF - avgBF) < 1 ? v.toFixed(1) : String(Math.round(v));
-  const valueA = cpuA.price_usd / avgAF;
-  const valueB = cpuB.price_usd / avgBF;
-  const valueWinner = valueA <= valueB ? cpuA : cpuB;
+  const valueA = fpsPer100(avgAF, cpuA.price_usd);
+  const valueB = fpsPer100(avgBF, cpuB.price_usd);
+  const valueWinner = valueA >= valueB ? cpuA : cpuB;
   const isTie = winsA === winsB;
   const winner = winsA > winsB ? cpuA : cpuB;
   const recommended = isTie ? valueWinner : winner;
 
+  const verdictText = buildVerdictParagraph({
+    kind: 'CPU',
+    nameA: cpuA.name, nameB: cpuB.name,
+    priceA: cpuA.price_usd, priceB: cpuB.price_usd,
+    winsA, winsB, total: rows.length,
+    avgA: avgAF, avgB: avgBF,
+    resolution: resLabels[resolution],
+  });
+
   const specs: { label: string; a: string | number; b: string | number }[] = [
     { label: 'Price', a: `$${cpuA.price_usd}`, b: `$${cpuB.price_usd}` },
+    { label: `FPS per $100 (${resLabels[resolution]} avg)`, a: valueA, b: valueB },
     { label: 'Cores / Threads', a: `${cpuA.cores} / ${cpuA.threads}`, b: `${cpuB.cores} / ${cpuB.threads}` },
     { label: 'Boost Clock', a: `${cpuA.boost_ghz} GHz`, b: `${cpuB.boost_ghz} GHz` },
     { label: 'TDP', a: `${cpuA.tdp_watts} W`, b: `${cpuB.tdp_watts} W` },
@@ -120,7 +130,7 @@ export default function CpuMatchup() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Trophy size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-accent)' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>{isTie ? 'Overall Result' : 'Overall Winner'} ({resLabels[resolution]} High)</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>{isTie ? '🤝 Overall Result' : '🏆 FPS King'} ({resLabels[resolution]} High)</p>
             {isTie ? (
               <>
                 <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>Dead Heat</p>
@@ -135,7 +145,7 @@ export default function CpuMatchup() {
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Zap size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-cyan)' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>Games Won</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>⚡ Games Won</p>
             <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
               <span style={{ color: COLORS.a }}>{winsA}</span>
               <span className="mx-2" style={{ color: 'var(--ff-text-3)' }}>—</span>
@@ -145,12 +155,20 @@ export default function CpuMatchup() {
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <DollarSign size={18} className="mx-auto mb-2" style={{ color: '#00E676' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>Better Value</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>💰 Better Value</p>
             <p className="text-lg font-black" style={{ color: valueWinner === cpuA ? COLORS.a : COLORS.b }}>{valueWinner.name}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>
-              ${valueA.toFixed(2)} vs ${valueB.toFixed(2)} per frame
+              {valueA} vs {valueB} FPS per $100
             </p>
           </div>
+        </div>
+
+        {/* Written verdict */}
+        <div className="rounded-2xl p-6 mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+          <h2 className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+            <Trophy size={16} style={{ color: 'var(--ff-accent)' }} /> Verdict
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{verdictText}</p>
         </div>
 
         {/* FPS table */}

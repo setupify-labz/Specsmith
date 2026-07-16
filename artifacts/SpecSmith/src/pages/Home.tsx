@@ -56,14 +56,15 @@ export default function Home() {
           >
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#6C63FF] text-sm font-medium mb-6">
               <Monitor size={14} />
-              PC Builder + FPS Estimator
+              Free PC Builder + FPS Estimator
             </span>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
-              Know Your FPS<br />
-              <span className="gradient-text">Before You Buy</span>
+              Build the Fastest Gaming PC<br />
+              <span className="gradient-text">for Your Budget</span>
             </h1>
             <p className="text-xl text-secondary-custom max-w-2xl mx-auto mb-10 leading-relaxed">
-              Build your dream PC and see exactly how it performs in 20 top games — before spending a dollar.
+              Pick real parts, know your FPS in 20 top games before you buy, and catch compatibility
+              problems instantly — free, no account needed.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

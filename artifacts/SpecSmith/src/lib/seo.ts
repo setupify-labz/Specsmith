@@ -1,5 +1,6 @@
 import { getPrebuiltTotal, type Prebuilt } from './prebuilts';
 import { getMatchupGpu, getMatchupCpuById, type Matchup, type CpuMatchup } from './matchups';
+import { getPageGame, type GamePage } from './gamePages';
 
 export const SITE_URL = 'https://specsmithpc.com';
 export const SITE_NAME = 'SpecSmith';
@@ -44,6 +45,12 @@ export const ROUTE_META: RouteMeta[] = [
     title: 'How SpecSmith Estimates FPS | About',
     description:
       'Learn how SpecSmith\u2019s tier-based algorithm estimates gaming FPS from GPU and CPU benchmark data, and how we check socket, RAM, and PSU compatibility.',
+  },
+  {
+    path: '/best-gpu',
+    title: 'Best GPU by Game — FPS-Tested Picks for 20 Games | SpecSmith',
+    description:
+      'Find the best graphics card for the game you actually play: FPS-ranked picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles — best value, budget, 144 FPS, and 4K picks with estimated FPS at every resolution.',
   },
   {
     path: '/vs',
@@ -101,6 +108,15 @@ export function getCpuMatchupMeta(matchup: CpuMatchup): RouteMeta {
     path: `/vs/${matchup.slug}`,
     title: `${nameA} vs ${nameB} — Which CPU Wins for Gaming? | SpecSmith`,
     description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}) for gaming: estimated FPS in 20 games with an RTX 4090, full spec comparison, and price-per-frame value. See which CPU is the better buy.`,
+  };
+}
+
+export function getGamePageMeta(page: GamePage): RouteMeta {
+  const name = getPageGame(page.gameId)?.name ?? page.gameId;
+  return {
+    path: `/best-gpu/${page.slug}`,
+    title: `Best GPU for ${name} (2026) — FPS at 1080p, 1440p & 4K | SpecSmith`,
+    description: `The best graphics cards for ${name} in 2026: estimated FPS for 15 GPUs from $269 to $2,999 at 1080p, 1440p, and 4K High settings — plus best value, budget, 144 FPS, and 4K 60 picks.`,
   };
 }
 
