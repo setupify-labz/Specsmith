@@ -13,11 +13,11 @@ import PrebuiltDetail from './pages/PrebuiltDetail';
 import Compare from './pages/Compare';
 import About from './pages/About';
 import SharedBuild from './pages/SharedBuild';
-import GpuMatchup from './pages/GpuMatchup';
+import Matchup from './pages/Matchup';
 import GpuMatchupIndex from './pages/GpuMatchupIndex';
 import { prebuilts } from './lib/prebuilts';
-import { MATCHUPS } from './lib/matchups';
-import { getPrebuiltMeta, getMatchupMeta, getRouteMeta, type RouteMeta } from './lib/seo';
+import { MATCHUPS, CPU_MATCHUPS } from './lib/matchups';
+import { getPrebuiltMeta, getMatchupMeta, getCpuMatchupMeta, getRouteMeta, type RouteMeta } from './lib/seo';
 
 export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
 
@@ -31,11 +31,13 @@ export const PRERENDER_ROUTES = [
   '/vs',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
+  ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
 ];
 
 const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...prebuilts.map((p) => [`/prebuilts/${p.id}`, getPrebuiltMeta(p)] as const),
   ...MATCHUPS.map((m) => [`/vs/${m.slug}`, getMatchupMeta(m)] as const),
+  ...CPU_MATCHUPS.map((m) => [`/vs/${m.slug}`, getCpuMatchupMeta(m)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -67,7 +69,7 @@ export function render(url: string): string {
               <Route path="/about" element={<About />} />
               <Route path="/build" element={<SharedBuild />} />
               <Route path="/vs" element={<GpuMatchupIndex />} />
-              <Route path="/vs/:slug" element={<GpuMatchup />} />
+              <Route path="/vs/:slug" element={<Matchup />} />
             </Routes>
             <Footer />
           </StaticRouter>

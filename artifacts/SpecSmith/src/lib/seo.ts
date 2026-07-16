@@ -1,5 +1,5 @@
 import { getPrebuiltTotal, type Prebuilt } from './prebuilts';
-import { getMatchupGpu, type Matchup } from './matchups';
+import { getMatchupGpu, getMatchupCpuById, type Matchup, type CpuMatchup } from './matchups';
 
 export const SITE_URL = 'https://specsmithpc.com';
 export const SITE_NAME = 'SpecSmith';
@@ -47,9 +47,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/vs',
-    title: 'GPU Comparisons — Head-to-Head FPS in 20 Games | SpecSmith',
+    title: 'GPU & CPU Comparisons — Head-to-Head FPS in 20 Games | SpecSmith',
     description:
-      'Compare popular GPUs head-to-head: estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value. RTX 40/50 series vs AMD RX 6000/7000 vs Intel Arc.',
+      'Compare popular GPUs and CPUs head-to-head: estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value. RTX 40/50 series vs AMD Radeon vs Intel Arc, Ryzen vs Intel Core.',
   },
   {
     path: '/build',
@@ -89,6 +89,18 @@ export function getMatchupMeta(matchup: Matchup): RouteMeta {
     path: `/vs/${matchup.slug}`,
     title: `${nameA} vs ${nameB} — Which GPU Wins? FPS in 20 Games | SpecSmith`,
     description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}): estimated FPS in 20 games at 1080p, 1440p, and 4K, full spec comparison, and price-per-frame value. See which GPU is the better buy.`,
+  };
+}
+
+export function getCpuMatchupMeta(matchup: CpuMatchup): RouteMeta {
+  const a = getMatchupCpuById(matchup.cpuA);
+  const b = getMatchupCpuById(matchup.cpuB);
+  const nameA = a?.name ?? matchup.cpuA;
+  const nameB = b?.name ?? matchup.cpuB;
+  return {
+    path: `/vs/${matchup.slug}`,
+    title: `${nameA} vs ${nameB} — Which CPU Wins for Gaming? | SpecSmith`,
+    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}) for gaming: estimated FPS in 20 games with an RTX 4090, full spec comparison, and price-per-frame value. See which CPU is the better buy.`,
   };
 }
 
