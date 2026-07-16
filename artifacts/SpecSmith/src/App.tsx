@@ -21,6 +21,8 @@ const SharedBuild = lazy(() => import('./pages/SharedBuild'));
 const NotFound = lazy(() => import('./pages/not-found'));
 const Matchup = lazy(() => import('./pages/Matchup'));
 const GpuMatchupIndex = lazy(() => import('./pages/GpuMatchupIndex'));
+const BestGpuForGame = lazy(() => import('./pages/BestGpuForGame'));
+const BestGpuIndex = lazy(() => import('./pages/BestGpuIndex'));
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -58,6 +60,8 @@ function AppRoutes() {
           <Route path="/build"     element={<PageWrapper><SharedBuild /></PageWrapper>} />
           <Route path="/vs"        element={<PageWrapper><GpuMatchupIndex /></PageWrapper>} />
           <Route path="/vs/:slug"  element={<PageWrapper><Matchup /></PageWrapper>} />
+          <Route path="/best-gpu"  element={<PageWrapper><BestGpuIndex /></PageWrapper>} />
+          <Route path="/best-gpu/:slug" element={<PageWrapper><BestGpuForGame /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>

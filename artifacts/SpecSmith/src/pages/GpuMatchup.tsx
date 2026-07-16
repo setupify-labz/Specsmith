@@ -5,7 +5,7 @@ import { Zap, ChevronRight, Trophy, DollarSign, Cpu } from 'lucide-react';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
-import { getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups } from '../lib/matchups';
+import { getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups, buildVerdictParagraph, fpsPer100 } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { getMatchupMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
@@ -76,15 +76,25 @@ export default function GpuMatchup() {
   const avgBF = rows.reduce((s, r) => s + r.fpsB, 0) / rows.length;
   // One decimal when the averages would round to look identical.
   const fmtAvg = (v: number) => Math.abs(avgAF - avgBF) < 1 ? v.toFixed(1) : String(Math.round(v));
-  const valueA = gpuA.price_usd / avgAF;
-  const valueB = gpuB.price_usd / avgBF;
-  const valueWinner = valueA <= valueB ? gpuA : gpuB;
+  const valueA = fpsPer100(avgAF, gpuA.price_usd);
+  const valueB = fpsPer100(avgBF, gpuB.price_usd);
+  const valueWinner = valueA >= valueB ? gpuA : gpuB;
   const isTie = winsA === winsB;
   const winner = winsA > winsB ? gpuA : gpuB;
   const recommended = isTie ? valueWinner : winner;
 
+  const verdictText = buildVerdictParagraph({
+    kind: 'GPU',
+    nameA: gpuA.name, nameB: gpuB.name,
+    priceA: gpuA.price_usd, priceB: gpuB.price_usd,
+    winsA, winsB, total: rows.length,
+    avgA: avgAF, avgB: avgBF,
+    resolution: resLabels[resolution],
+  });
+
   const specs: { label: string; a: string | number; b: string | number }[] = [
     { label: 'Price', a: `$${gpuA.price_usd}`, b: `$${gpuB.price_usd}` },
+    { label: `FPS per $100 (${resLabels[resolution]} avg)`, a: valueA, b: valueB },
     { label: 'VRAM', a: `${gpuA.vram_gb} GB`, b: `${gpuB.vram_gb} GB` },
     { label: 'TDP', a: `${gpuA.tdp_watts} W`, b: `${gpuB.tdp_watts} W` },
     { label: 'Architecture', a: gpuA.architecture, b: gpuB.architecture },
@@ -119,7 +129,7 @@ export default function GpuMatchup() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Trophy size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-accent)' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>{isTie ? 'Overall Result' : 'Overall Winner'} ({resLabels[resolution]} High)</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>{isTie ? '🤝 Overall Result' : '🏆 FPS King'} ({resLabels[resolution]} High)</p>
             {isTie ? (
               <>
                 <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>Dead Heat</p>
@@ -134,7 +144,7 @@ export default function GpuMatchup() {
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <Zap size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-cyan)' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>Games Won</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>⚡ Games Won</p>
             <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
               <span style={{ color: COLORS.a }}>{winsA}</span>
               <span className="mx-2" style={{ color: 'var(--ff-text-3)' }}>—</span>
@@ -144,12 +154,20 @@ export default function GpuMatchup() {
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <DollarSign size={18} className="mx-auto mb-2" style={{ color: '#00E676' }} />
-            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>Better Value</p>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>💰 Better Value</p>
             <p className="text-lg font-black" style={{ color: valueWinner === gpuA ? COLORS.a : COLORS.b }}>{valueWinner.name}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>
-              ${valueA.toFixed(2)} vs ${valueB.toFixed(2)} per frame
+              {valueA} vs {valueB} FPS per $100
             </p>
           </div>
+        </div>
+
+        {/* Written verdict */}
+        <div className="rounded-2xl p-6 mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+          <h2 className="font-bold mb-2 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+            <Trophy size={16} style={{ color: 'var(--ff-accent)' }} /> Verdict
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{verdictText}</p>
         </div>
 
         {/* FPS table */}
