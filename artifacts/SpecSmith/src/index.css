@@ -85,6 +85,7 @@
   --ff-scrollbar:  rgba(108,99,255,0.4);
   --ff-accent-30:  rgba(108,99,255,0.3);
   --ff-accent-10:  rgba(108,99,255,0.1);
+  --ff-grid:       rgba(255,255,255,0.04);
   --ff-transition: 200ms ease;
 }
 
@@ -129,6 +130,7 @@
   --ff-scrollbar:  rgba(90,82,238,0.4);
   --ff-accent-30:  rgba(90,82,238,0.3);
   --ff-accent-10:  rgba(90,82,238,0.1);
+  --ff-grid:       rgba(10,10,40,0.05);
 }
 
 @layer base {
@@ -304,8 +306,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(var(--ff-border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ff-border) 1px, transparent 1px);
+    linear-gradient(var(--ff-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ff-grid) 1px, transparent 1px);
   background-size: 60px 60px;
   animation: gridMove 20s linear infinite;
 }

@@ -58,11 +58,11 @@ export default function Home() {
               <Monitor size={14} />
               PC Builder + FPS Estimator
             </span>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-6 leading-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
               Know Your FPS<br />
               <span className="gradient-text">Before You Buy</span>
             </h1>
-            <p className="text-xl text-[#8888AA] max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-xl text-secondary-custom max-w-2xl mx-auto mb-10 leading-relaxed">
               Build your dream PC and see exactly how it performs in 20 top games — before spending a dollar.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -76,7 +76,7 @@ export default function Home() {
               </Link>
               <Link
                 to="/prebuilts"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg border border-white/20 hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-ff-primary font-bold text-lg border border-subtle hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
               >
                 See Build Guides
                 <ChevronRight size={18} />
@@ -88,9 +88,9 @@ export default function Home() {
 
       {/* Stats bar */}
       <div id="ad-sidebar" className="ad-slot mx-4 max-w-7xl lg:mx-auto mb-4 hidden lg:flex items-center justify-center">
-        <span className="text-[#8888AA] text-xs">Advertisement</span>
+        <span className="text-secondary-custom text-xs">Advertisement</span>
       </div>
-      <section className="border-y border-white/5 bg-[#13131A]/50 py-8">
+      <section className="border-y border-subtle bg-surface py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((s, i) => (
@@ -103,7 +103,7 @@ export default function Home() {
                 className="text-center"
               >
                 <div className="text-3xl font-black gradient-text mb-1">{s.value}</div>
-                <div className="text-[#8888AA] text-sm">{s.label}</div>
+                <div className="text-secondary-custom text-sm">{s.label}</div>
               </motion.div>
             ))}
           </div>
@@ -118,8 +118,8 @@ export default function Home() {
           viewport={{ once: true }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Everything You Need</h2>
-          <p className="text-[#8888AA] text-lg max-w-xl mx-auto">Build smarter with tools designed for real hardware decisions.</p>
+          <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Everything You Need</h2>
+          <p className="text-secondary-custom text-lg max-w-xl mx-auto">Build smarter with tools designed for real hardware decisions.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -130,25 +130,25 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
-              className="rounded-2xl border border-white/8 bg-[#1C1C26] p-6 card-hover"
+              className="rounded-2xl border border-subtle bg-card-dark p-6 card-hover"
             >
               <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4">
                 {f.icon}
               </div>
-              <h3 className="text-white font-bold text-lg mb-2">{f.title}</h3>
-              <p className="text-[#8888AA] text-sm leading-relaxed">{f.description}</p>
+              <h3 className="text-ff-primary font-bold text-lg mb-2">{f.title}</h3>
+              <p className="text-secondary-custom text-sm leading-relaxed">{f.description}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* Prebuilts preview */}
-      <section className="py-16 bg-[#0A0A0F]">
+      <section className="py-16 bg-ff-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">Popular Builds</h2>
-              <p className="text-[#8888AA] text-sm mt-1">Ready-to-go configurations for every budget</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Popular Builds</h2>
+              <p className="text-secondary-custom text-sm mt-1">Ready-to-go configurations for every budget</p>
             </div>
             <Link
               to="/prebuilts"
@@ -166,10 +166,10 @@ export default function Home() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex-shrink-0 w-64 rounded-2xl border border-white/8 bg-[#1C1C26] p-5 card-hover"
+                className="flex-shrink-0 w-64 rounded-2xl border border-subtle bg-card-dark p-5 card-hover"
               >
-                <div className="text-xl font-black text-white mb-1">{p.name}</div>
-                <p className="text-[#8888AA] text-xs mb-4">{p.tagline}</p>
+                <div className="text-xl font-black text-ff-primary mb-1">{p.name}</div>
+                <p className="text-secondary-custom text-xs mb-4">{p.tagline}</p>
                 <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
                 <Link
                   to={`/prebuilts/${p.id}`}
@@ -194,8 +194,8 @@ export default function Home() {
         >
           <div className="absolute inset-0 border border-[#6C63FF]/20 rounded-3xl" />
           <div className="relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Ready to Build?</h2>
-            <p className="text-[#8888AA] text-lg mb-8 max-w-lg mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Ready to Build?</h2>
+            <p className="text-secondary-custom text-lg mb-8 max-w-lg mx-auto">
               Pick your parts, check compatibility, and see exactly what FPS you'll get — all for free.
             </p>
             <Link
