@@ -42,11 +42,11 @@ export const GAME_PAGES: GamePage[] = [
 ];
 
 // Price ladder shown in every game's FPS table — a representative spread
-// from budget to flagship, not the full 50-GPU dataset.
+// of currently-buyable cards from budget to flagship, not the full dataset.
 export const GAME_TABLE_GPU_IDS = [
-  'rtx5090', 'rtx4090', 'rtx5080', 'rx7900xtx', 'rtx5070ti', 'rx7900xt',
-  'rtx4070s', 'rx7800xt', 'rtx5070', 'rtx5060ti', 'rtx4060ti', 'rx7700xt',
-  'rtx4060', 'arcb580', 'rx7600',
+  'rtx5090', 'rtx5080', 'rx7900xtx', 'rtx5070ti', 'rx9070xt', 'rx9070',
+  'rtx5070', 'rx7800xt', 'rtx5060ti', 'rx9060xt16', 'rx7700xt', 'rtx5060',
+  'arcb580', 'rx7600', 'arcb570',
 ];
 
 const games = gamesData as PageGame[];

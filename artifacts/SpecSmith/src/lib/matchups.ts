@@ -74,6 +74,15 @@ export const MATCHUPS: Matchup[] = [
   { slug: 'rx-6600-vs-rtx-3050',             gpuA: 'rx6600',     gpuB: 'rtx3050' },
   { slug: 'arc-a750-vs-rx-6600',             gpuA: 'arca750',    gpuB: 'rx6600' },
   { slug: 'arc-b580-vs-rtx-4060-ti',         gpuA: 'arcb580',    gpuB: 'rtx4060ti' },
+  // Batch 3 — RDNA 4, Blackwell budget, Battlemage
+  { slug: 'rx-9070-xt-vs-rtx-5070-ti',       gpuA: 'rx9070xt',   gpuB: 'rtx5070ti' },
+  { slug: 'rx-9070-xt-vs-rx-7900-xtx',       gpuA: 'rx9070xt',   gpuB: 'rx7900xtx' },
+  { slug: 'rx-9070-vs-rtx-5070',             gpuA: 'rx9070',     gpuB: 'rtx5070' },
+  { slug: 'rx-9070-xt-vs-rx-9070',           gpuA: 'rx9070xt',   gpuB: 'rx9070' },
+  { slug: 'rx-9060-xt-vs-rtx-5060-ti',       gpuA: 'rx9060xt16', gpuB: 'rtx5060ti' },
+  { slug: 'rtx-5060-vs-rtx-4060',            gpuA: 'rtx5060',    gpuB: 'rtx4060' },
+  { slug: 'rtx-5060-vs-rx-9060-xt-8gb',      gpuA: 'rtx5060',    gpuB: 'rx9060xt8' },
+  { slug: 'arc-b570-vs-rtx-5050',            gpuA: 'arcb570',    gpuB: 'rtx5050' },
 ];
 
 export interface MatchupCpu {
@@ -118,11 +127,18 @@ export const CPU_MATCHUPS: CpuMatchup[] = [
   // Budget classics
   { slug: 'i5-12400f-vs-ryzen-5-5600',           cpuA: 'i5-12400f',  cpuB: 'r5-5600' },
   { slug: 'ryzen-5-7600-vs-i5-13400f',           cpuA: 'r5-7600',    cpuB: 'i5-13400f' },
+  // Zen 5 X3D and Arrow Lake
+  { slug: 'ryzen-7-9800x3d-vs-ryzen-7-7800x3d',  cpuA: 'r7-9800x3d', cpuB: 'r7-7800x3d' },
+  { slug: 'ryzen-7-9800x3d-vs-ryzen-9-9950x3d',  cpuA: 'r7-9800x3d', cpuB: 'r9-9950x3d' },
+  { slug: 'ryzen-7-9800x3d-vs-ryzen-7-9700x',    cpuA: 'r7-9800x3d', cpuB: 'r7-9700x' },
+  { slug: 'core-ultra-9-285k-vs-i9-14900k',      cpuA: 'cu9-285k',   cpuB: 'i9-14900k' },
+  { slug: 'core-ultra-7-265k-vs-i7-14700k',      cpuA: 'cu7-265k',   cpuB: 'i7-14700k' },
+  { slug: 'core-ultra-5-245k-vs-i5-14600k',      cpuA: 'cu5-245k',   cpuB: 'i5-14600k' },
 ];
 
 // All GPU matchup FPS tables are computed against one strong gaming CPU so
 // the GPU is the only variable being compared.
-export const MATCHUP_CPU_ID = 'r7-7800x3d';
+export const MATCHUP_CPU_ID = 'r7-9800x3d';
 
 // CPU matchup tables are computed against the fastest GPU in the dataset so
 // the CPU is the bottleneck wherever a game allows it to be.

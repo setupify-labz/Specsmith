@@ -5,6 +5,7 @@ import {
   getGamePage, getPageGame, getGamePicks, getGameGpuRows, getGameIntro,
   getRelatedGamePages, getGamePageTitle,
 } from '../lib/gamePages';
+import { getMatchupCpu } from '../lib/matchups';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import { getGamePageMeta } from '../lib/seo';
@@ -125,8 +126,8 @@ export default function BestGpuForGame() {
           </div>
           <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--ff-text-3)' }}>
             Estimates assume High settings at native resolution with no upscaling (DLSS/FSR/XeSS), paired with a
-            Ryzen 7 7800X3D. Real-world results vary by driver, game patch, and system configuration. Prices are
-            typical US street pricing, last updated {PRICES_UPDATED}.
+            {' '}{getMatchupCpu().name}. Real-world results vary by driver, game patch, and system configuration.
+            Prices are typical US street pricing, last updated {PRICES_UPDATED}.
           </p>
         </div>
 
