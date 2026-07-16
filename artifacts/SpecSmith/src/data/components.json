@@ -1,6 +1,30 @@
 {
   "motherboards": [
     {
+      "id": "z890hero",
+      "name": "ASUS ROG Maximus Z890 Hero",
+      "brand": "ASUS",
+      "price_usd": 629,
+      "socket": "LGA1851",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
+      "id": "b860tom",
+      "name": "MSI MAG B860 Tomahawk",
+      "brand": "MSI",
+      "price_usd": 219,
+      "socket": "LGA1851",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ATX",
+      "sponsored": false
+    },
+    {
       "id": "z790e",
       "name": "ASUS ROG Strix Z790-E",
       "brand": "ASUS",

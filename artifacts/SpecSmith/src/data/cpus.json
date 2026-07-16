@@ -1,5 +1,68 @@
 [
   {
+    "id": "cu9-285k",
+    "name": "Core Ultra 9 285K",
+    "brand": "Intel",
+    "series": "Core Ultra 200",
+    "price_usd": 489,
+    "tier": 10,
+    "cores": 24,
+    "threads": 24,
+    "base_ghz": 3.7,
+    "boost_ghz": 5.7,
+    "tdp_watts": 125,
+    "socket": "LGA1851",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2024,
+    "benchmark_score": 285,
+    "cpu_multiplier": 1,
+    "sponsored": false
+  },
+  {
+    "id": "cu7-265k",
+    "name": "Core Ultra 7 265K",
+    "brand": "Intel",
+    "series": "Core Ultra 200",
+    "price_usd": 259,
+    "tier": 8,
+    "cores": 20,
+    "threads": 20,
+    "base_ghz": 3.9,
+    "boost_ghz": 5.5,
+    "tdp_watts": 125,
+    "socket": "LGA1851",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2024,
+    "benchmark_score": 255,
+    "cpu_multiplier": 0.99,
+    "sponsored": false
+  },
+  {
+    "id": "cu5-245k",
+    "name": "Core Ultra 5 245K",
+    "brand": "Intel",
+    "series": "Core Ultra 200",
+    "price_usd": 199,
+    "tier": 7,
+    "cores": 14,
+    "threads": 14,
+    "base_ghz": 4.2,
+    "boost_ghz": 5.2,
+    "tdp_watts": 125,
+    "socket": "LGA1851",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2024,
+    "benchmark_score": 220,
+    "cpu_multiplier": 0.98,
+    "sponsored": false
+  },
+  {
     "id": "i9-14900ks",
     "name": "i9-14900KS",
     "brand": "Intel",
@@ -437,6 +500,69 @@
     "release_year": 2021,
     "benchmark_score": 148,
     "cpu_multiplier": 0.94,
+    "sponsored": false
+  },
+  {
+    "id": "r9-9950x3d",
+    "name": "Ryzen 9 9950X3D",
+    "brand": "AMD",
+    "series": "Ryzen 9000",
+    "price_usd": 669,
+    "tier": 10,
+    "cores": 16,
+    "threads": 32,
+    "base_ghz": 4.3,
+    "boost_ghz": 5.7,
+    "tdp_watts": 170,
+    "socket": "AM5",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2025,
+    "benchmark_score": 310,
+    "cpu_multiplier": 1.04,
+    "sponsored": false
+  },
+  {
+    "id": "r9-9900x3d",
+    "name": "Ryzen 9 9900X3D",
+    "brand": "AMD",
+    "series": "Ryzen 9000",
+    "price_usd": 559,
+    "tier": 10,
+    "cores": 12,
+    "threads": 24,
+    "base_ghz": 4.4,
+    "boost_ghz": 5.5,
+    "tdp_watts": 120,
+    "socket": "AM5",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2025,
+    "benchmark_score": 295,
+    "cpu_multiplier": 1.03,
+    "sponsored": false
+  },
+  {
+    "id": "r7-9800x3d",
+    "name": "Ryzen 7 9800X3D",
+    "brand": "AMD",
+    "series": "Ryzen 9000",
+    "price_usd": 476,
+    "tier": 10,
+    "cores": 8,
+    "threads": 16,
+    "base_ghz": 4.7,
+    "boost_ghz": 5.2,
+    "tdp_watts": 120,
+    "socket": "AM5",
+    "supported_ram": [
+      "DDR5"
+    ],
+    "release_year": 2024,
+    "benchmark_score": 290,
+    "cpu_multiplier": 1.05,
     "sponsored": false
   },
   {
