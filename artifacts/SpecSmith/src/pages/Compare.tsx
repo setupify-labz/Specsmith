@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
@@ -85,23 +85,32 @@ function BuildColumn({
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ color: string; name: string; value: number }>;
+  payload?: Array<{ color: string; name: string; value: number; payload: { fullGame: string } }>;
   label?: string;
 }
 
-function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
+  const fullGame = payload[0]?.payload?.fullGame ?? '';
   return (
-    <div className="bg-[#1C1C26] border border-white/10 rounded-xl p-3 shadow-2xl">
-      <p className="text-white text-xs font-bold mb-2">{label}</p>
+    <div className="bg-[#1C1C26] border border-white/10 rounded-xl p-3 shadow-2xl max-w-[220px]">
+      <p className="text-white text-xs font-bold mb-2">{fullGame}</p>
       {payload.map(p => (
         <div key={p.name} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
           <span className="text-[#8888AA]">{p.name}:</span>
           <span className="text-white font-bold">{p.value} FPS</span>
         </div>
       ))}
     </div>
+  );
+}
+
+function GameAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  return (
+    <text x={x} y={y} dy={4} textAnchor="end" fill="#B0B0C8" fontSize={11}>
+      {payload?.value}
+    </text>
   );
 }
 
@@ -146,7 +155,7 @@ export default function Compare() {
       const fpsA = estimateFpsForBuild(selectedGpuA, selectedCpuA, g, resolution, preset).estimated;
       const fpsB = estimateFpsForBuild(selectedGpuB, selectedCpuB, g, resolution, preset).estimated;
       return {
-        game: g.name.length > 18 ? g.name.substring(0, 18) + '…' : g.name,
+        game: g.name.length > 26 ? g.name.slice(0, 25) + '…' : g.name,
         fullGame: g.name,
         'Build A': fpsA,
         'Build B': fpsB,
@@ -257,31 +266,41 @@ export default function Compare() {
             </div>
 
             {/* Bar chart */}
-            <div style={{ height: 500 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={chartData}
-                  layout="vertical"
-                  margin={{ top: 0, right: 20, left: 120, bottom: 0 }}
-                  barSize={10}
-                  barGap={3}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" stroke="#8888AA" tick={{ fontSize: 11, fill: '#8888AA' }} />
-                  <YAxis
-                    type="category" dataKey="game" width={120}
-                    tick={{ fontSize: 10, fill: '#8888AA' }}
-                    stroke="transparent"
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: '#8888AA' }}
-                  />
-                  <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <div style={{ height: Math.max(560, chartData.length * 42), minWidth: 640 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    layout="vertical"
+                    margin={{ top: 0, right: 44, left: 4, bottom: 0 }}
+                    barSize={14}
+                    barGap={4}
+                    barCategoryGap="30%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" stroke="#8888AA" tick={{ fontSize: 11, fill: '#8888AA' }} />
+                    <YAxis
+                      type="category" dataKey="game" width={160}
+                      tick={<GameAxisTick />}
+                      tickLine={false}
+                      stroke="transparent"
+                      interval={0}
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                    <Legend
+                      wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: '#8888AA' }}
+                    />
+                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
+                      <LabelList dataKey="Build A" position="right" fontSize={10} fill="#B0B0C8" />
+                    </Bar>
+                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
+                      <LabelList dataKey="Build B" position="right" fontSize={10} fill="#B0B0C8" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
+            <p className="sm:hidden text-[10px] text-[#8888AA] text-center mt-2">← Scroll the chart to see full bars and values →</p>
 
             {/* Detailed table */}
             <div className="mt-6 rounded-xl border border-white/8 overflow-hidden">
