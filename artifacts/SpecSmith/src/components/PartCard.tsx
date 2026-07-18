@@ -61,7 +61,7 @@ export default function PartCard({
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`relative rounded-xl p-4 cursor-pointer card-hover transition-all ${
+      className={`relative rounded-2xl p-4 cursor-pointer card-hover transition-all ${
         recommended ? 'recommended-card' :
         selected ? 'selected-card' : 'border'
       }`}

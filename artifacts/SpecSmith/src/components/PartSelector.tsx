@@ -1,10 +1,29 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import {
+  ChevronDown, ChevronUp, Search, Check,
+  Cpu, Gpu, CircuitBoard, MemoryStick, HardDrive, Power, Box, Fan,
+  Monitor, Keyboard, Mouse, Headphones,
+} from 'lucide-react';
 import PartCard from './PartCard';
 import { buildPartQuery } from '../lib/fps';
 
 type SortKey = 'price' | 'performance' | 'value';
+
+const CATEGORY_ICONS: Record<string, typeof Cpu> = {
+  gpu: Gpu,
+  cpu: Cpu,
+  motherboard: CircuitBoard,
+  ram: MemoryStick,
+  storage: HardDrive,
+  psu: Power,
+  case: Box,
+  cooler: Fan,
+  monitor: Monitor,
+  keyboard: Keyboard,
+  mouse: Mouse,
+  headset: Headphones,
+};
 
 interface Part {
   id: string;
@@ -67,31 +86,48 @@ export default function PartSelector({
   }, [parts, category]);
 
   const selectedPart = parts.find(p => p.id === selectedId);
+  const Icon = CATEGORY_ICONS[category] ?? Box;
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+    <div
+      className="rounded-2xl overflow-hidden transition-shadow"
+      style={{
+        border: `1px solid ${selectedId ? 'var(--ff-accent-30)' : 'var(--ff-border)'}`,
+        backgroundColor: 'var(--ff-surface)',
+        boxShadow: open ? '0 8px 24px -8px rgba(108,99,255,0.18)' : 'none',
+      }}
+    >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 transition-colors"
-        style={{ backgroundColor: 'var(--ff-surface)' }}
+        style={{ backgroundColor: open ? 'var(--ff-card-hover)' : 'var(--ff-surface)' }}
         onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--ff-card-hover)')}
-        onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'var(--ff-surface)')}
+        onMouseLeave={e => (e.currentTarget.style.backgroundColor = open ? 'var(--ff-card-hover)' : 'var(--ff-surface)')}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className="w-2 h-2 rounded-full transition-colors"
-            style={{ backgroundColor: selectedId ? 'var(--ff-accent)' : 'var(--ff-border)' }}
-          />
-          <div className="text-left">
+            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors"
+            style={{
+              background: selectedId ? 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' : 'var(--ff-card)',
+              border: selectedId ? 'none' : '1px solid var(--ff-border)',
+            }}
+          >
+            {selectedId
+              ? <Check size={16} className="text-white" strokeWidth={3} />
+              : <Icon size={16} style={{ color: 'var(--ff-text-2)' }} />}
+          </div>
+          <div className="text-left min-w-0">
             <span className="font-semibold text-sm" style={{ color: 'var(--ff-text)' }}>{label}</span>
-            {selectedPart && (
-              <p className="text-xs truncate max-w-[200px]" style={{ color: 'var(--ff-text-2)' }}>{selectedPart.name}</p>
+            {selectedPart ? (
+              <p className="text-xs truncate max-w-[220px]" style={{ color: 'var(--ff-text-2)' }}>{selectedPart.name}</p>
+            ) : (
+              <p className="text-xs" style={{ color: 'var(--ff-text-3)' }}>Not selected</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-shrink-0">
           {selectedPart && (
-            <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent)' }}>
+            <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>
               ${selectedPart.price_usd.toLocaleString()}
             </span>
           )}
@@ -110,7 +146,7 @@ export default function PartSelector({
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="p-4 space-y-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
+            <div className="p-4 space-y-3" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
               {/* Search + Sort */}
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -145,7 +181,7 @@ export default function PartSelector({
               </div>
 
               {/* Parts grid */}
-              <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pt-1 pr-1">
                 {filtered.length === 0 ? (
                   <p className="text-sm text-center py-4" style={{ color: 'var(--ff-text-2)' }}>No parts found</p>
                 ) : (
