@@ -53,6 +53,18 @@ export const ROUTE_META: RouteMeta[] = [
       'Find the best graphics card for the game you actually play: FPS-ranked picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles — best value, budget, 144 FPS, and 4K picks with estimated FPS at every resolution.',
   },
   {
+    path: '/best-cpu',
+    title: 'Best CPU by Game — Gaming FPS Compared for 20 Games | SpecSmith',
+    description:
+      'Find the best processor for the game you actually play: FPS-ranked CPU picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles, paired with an RTX 4090 to isolate CPU performance.',
+  },
+  {
+    path: '/gpu-tier-list',
+    title: 'GPU Tier List (2026) — Every Graphics Card Ranked S to D | SpecSmith',
+    description:
+      'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50 series, AMD RX 6000/7000/9000, and Intel Arc. Updated with current market pricing.',
+  },
+  {
     path: '/vs',
     title: 'GPU & CPU Comparisons — Head-to-Head FPS in 20 Games | SpecSmith',
     description:
@@ -117,6 +129,15 @@ export function getGamePageMeta(page: GamePage): RouteMeta {
     path: `/best-gpu/${page.slug}`,
     title: `Best GPU for ${name} (2026) — FPS at 1080p, 1440p & 4K | SpecSmith`,
     description: `The best graphics cards for ${name} in 2026: estimated FPS for 15 GPUs from budget to flagship at 1080p, 1440p, and 4K High settings — plus best value, budget, 144 FPS, and 4K 60 picks.`,
+  };
+}
+
+export function getCpuGamePageMeta(page: GamePage): RouteMeta {
+  const name = getPageGame(page.gameId)?.name ?? page.gameId;
+  return {
+    path: `/best-cpu/${page.slug}`,
+    title: `Best CPU for ${name} (2026) — Gaming FPS Compared | SpecSmith`,
+    description: `The best processors for ${name} in 2026: estimated FPS for 15 CPUs from budget to flagship, paired with an RTX 4090 to isolate CPU performance — plus best value and budget picks.`,
   };
 }
 

@@ -17,10 +17,14 @@ import Matchup from './pages/Matchup';
 import GpuMatchupIndex from './pages/GpuMatchupIndex';
 import BestGpuForGame from './pages/BestGpuForGame';
 import BestGpuIndex from './pages/BestGpuIndex';
+import BestCpuForGame from './pages/BestCpuForGame';
+import BestCpuIndex from './pages/BestCpuIndex';
+import GpuTierList from './pages/GpuTierList';
 import { prebuilts } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS } from './lib/matchups';
 import { GAME_PAGES } from './lib/gamePages';
-import { getPrebuiltMeta, getMatchupMeta, getCpuMatchupMeta, getGamePageMeta, getRouteMeta, type RouteMeta } from './lib/seo';
+import { CPU_GAME_PAGES } from './lib/cpuGamePages';
+import { getPrebuiltMeta, getMatchupMeta, getCpuMatchupMeta, getGamePageMeta, getCpuGamePageMeta, getRouteMeta, type RouteMeta } from './lib/seo';
 
 export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
 
@@ -33,10 +37,13 @@ export const PRERENDER_ROUTES = [
   '/build',
   '/vs',
   '/best-gpu',
+  '/best-cpu',
+  '/gpu-tier-list',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...GAME_PAGES.map((p) => `/best-gpu/${p.slug}`),
+  ...CPU_GAME_PAGES.map((p) => `/best-cpu/${p.slug}`),
 ];
 
 const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
@@ -44,6 +51,7 @@ const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...MATCHUPS.map((m) => [`/vs/${m.slug}`, getMatchupMeta(m)] as const),
   ...CPU_MATCHUPS.map((m) => [`/vs/${m.slug}`, getCpuMatchupMeta(m)] as const),
   ...GAME_PAGES.map((p) => [`/best-gpu/${p.slug}`, getGamePageMeta(p)] as const),
+  ...CPU_GAME_PAGES.map((p) => [`/best-cpu/${p.slug}`, getCpuGamePageMeta(p)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -78,6 +86,9 @@ export function render(url: string): string {
               <Route path="/vs/:slug" element={<Matchup />} />
               <Route path="/best-gpu" element={<BestGpuIndex />} />
               <Route path="/best-gpu/:slug" element={<BestGpuForGame />} />
+              <Route path="/best-cpu" element={<BestCpuIndex />} />
+              <Route path="/best-cpu/:slug" element={<BestCpuForGame />} />
+              <Route path="/gpu-tier-list" element={<GpuTierList />} />
             </Routes>
             <Footer />
           </StaticRouter>

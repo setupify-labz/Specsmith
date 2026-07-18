@@ -29,6 +29,8 @@ export default function Footer() {
                 { to: '/compare', label: 'Compare' },
                 { to: '/vs', label: 'GPU & CPU Comparisons' },
                 { to: '/best-gpu', label: 'Best GPU by Game' },
+                { to: '/best-cpu', label: 'Best CPU by Game' },
+                { to: '/gpu-tier-list', label: 'GPU Tier List' },
                 { to: '/about', label: 'About' },
               ].map(link => (
                 <Link key={link.to} to={link.to}
