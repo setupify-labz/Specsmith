@@ -54,42 +54,50 @@ function drawAnvilLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size
   ctx.translate(x, y);
   ctx.scale(size / 64, size / 64);
 
-  const grad = ctx.createLinearGradient(10, 12, 56, 58);
+  const grad = ctx.createLinearGradient(10, 12, 52, 34);
   grad.addColorStop(0, '#7C6BFF');
   grad.addColorStop(1, C.cyan);
+  const pinGrad = ctx.createLinearGradient(14, 32, 50, 50);
+  pinGrad.addColorStop(0, '#4E8FF7');
+  pinGrad.addColorStop(1, C.cyan);
 
   ctx.fillStyle = C.cyan;
-  ctx.fill(new Path2D('M24 3 L25.8 7.6 L30.5 9.5 L25.8 11.4 L24 16 L22.2 11.4 L17.5 9.5 L22.2 7.6 Z'));
-  ctx.globalAlpha = 0.85;
-  ctx.beginPath();
-  ctx.arc(34, 6, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
+  ctx.fill(new Path2D('M32 1.5 L33.6 5.8 L38 7.5 L33.6 9.2 L32 13.5 L30.4 9.2 L26 7.5 L30.4 5.8 Z'));
 
+  ctx.save();
+  ctx.translate(7.4, 1);
+  ctx.scale(0.75, 0.75);
   ctx.fillStyle = grad;
   ctx.fill(new Path2D('M11 16 H38 C46 16 53.5 16.5 57.5 19.5 C55.5 24.5 47 28.5 40 30 H11 Q8 30 8 27 V19 Q8 16 11 16 Z'));
   ctx.fill(new Path2D('M22 30 H40 C38.5 33.5 37 36.5 37 40 H27 C27 36.5 25.5 33.5 22 30 Z'));
-  ctx.beginPath();
-  ctx.roundRect(13, 40, 38, 13, 3);
-  ctx.fill();
-  for (const px of [17, 26.3, 35.6, 45]) {
-    ctx.beginPath();
-    ctx.roundRect(px, 53, 5, 6, 1.2);
-    ctx.fill();
+  ctx.restore();
+
+  ctx.fillStyle = pinGrad;
+  for (const py of [33.5, 38, 42.5]) {
+    for (const px of [9.5, 50.5]) {
+      ctx.beginPath();
+      ctx.roundRect(px, py, 4, 3, 1);
+      ctx.fill();
+    }
   }
 
-  ctx.strokeStyle = C.bg;
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = 'round';
-  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = '#223052';
   ctx.beginPath();
-  ctx.moveTo(19, 46.5);
-  ctx.lineTo(34, 46.5);
-  ctx.stroke();
+  ctx.roundRect(13.5, 31, 37, 17, 3);
+  ctx.fill();
+  ctx.fillStyle = '#E8ECF2';
   ctx.beginPath();
-  ctx.arc(38.5, 46.5, 2.1, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+  ctx.roundRect(17.5, 34.5, 29, 10, 2);
+  ctx.fill();
+  ctx.fillStyle = grad;
+  ctx.fillRect(26.6, 31, 10.8, 6.5);
+
+  ctx.fillStyle = pinGrad;
+  for (const px of [17, 24.6, 32.2, 39.8, 47]) {
+    ctx.beginPath();
+    ctx.roundRect(px, 48, 4, 6, 1.2);
+    ctx.fill();
+  }
 
   ctx.restore();
 }
