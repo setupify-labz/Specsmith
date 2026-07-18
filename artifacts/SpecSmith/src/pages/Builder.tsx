@@ -79,6 +79,7 @@ export default function Builder() {
 
   const gpuSectionRef = useRef<HTMLDivElement>(null);
   const cpuSectionRef = useRef<HTMLDivElement>(null);
+  const fpsSectionRef = useRef<HTMLDivElement>(null);
 
   const selectedGpu = gpus.find(g => g.id === build.gpu) ?? null;
   const selectedCpu = cpus.find(c => c.id === build.cpu) ?? null;
@@ -166,6 +167,15 @@ export default function Builder() {
     keyboard: (build as any).keyboard ?? null,
     mouse: (build as any).mouse ?? null,
     headset: (build as any).headset ?? null,
+  };
+
+  const handleEstimateFps = () => {
+    setShowFps(true);
+    // Wait a tick so the FPS section has mounted before scrolling to it —
+    // scrolls every time the button is clicked, not just the first.
+    requestAnimationFrame(() => {
+      fpsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const handleScrollToGpu = () => {
@@ -354,7 +364,7 @@ export default function Builder() {
             <BuildSummary
               parts={summaryParts}
               totalCost={totalCost}
-              onEstimateFps={() => setShowFps(true)}
+              onEstimateFps={handleEstimateFps}
               canEstimate={canEstimate}
               compatibilityOk={warnings.filter(w => w.type === 'error').length === 0}
               gpu={selectedGpu}
@@ -371,15 +381,17 @@ export default function Builder() {
         </div>
 
         {/* FPS Estimator */}
-        <AnimatePresence>
-          {showFps && selectedGpu && selectedCpu && (
-            <FpsEstimator
-              gpu={selectedGpu} cpu={selectedCpu} games={games}
-              resolution={fpsResolution} preset={fpsPreset}
-              onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
-            />
-          )}
-        </AnimatePresence>
+        <div ref={fpsSectionRef}>
+          <AnimatePresence>
+            {showFps && selectedGpu && selectedCpu && (
+              <FpsEstimator
+                gpu={selectedGpu} cpu={selectedCpu} games={games}
+                resolution={fpsResolution} preset={fpsPreset}
+                onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+              />
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
