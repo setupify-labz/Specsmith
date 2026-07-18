@@ -4,6 +4,8 @@ import { Cpu, Zap, DollarSign, ChevronRight, Monitor } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import HeroFpsCard from '../components/HeroFpsCard';
+import CircuitAccent from '../components/CircuitAccent';
 
 const stats = [
   { value: '50+', label: 'GPUs Tracked' },
@@ -15,16 +17,19 @@ const stats = [
 const features = [
   {
     icon: <Cpu size={24} className="text-[#6C63FF]" />,
+    glow: 'rgba(108,99,255,0.35)',
     title: 'Part Picker',
     description: 'Choose from 100+ real components with live compatibility checks to ensure everything works together perfectly.',
   },
   {
     icon: <Zap size={24} className="text-[#00D4FF]" />,
+    glow: 'rgba(0,212,255,0.35)',
     title: 'FPS Estimator',
     description: 'See estimated FPS in 20 games at 1080p, 1440p, and 4K — across all quality presets before you spend a cent.',
   },
   {
     icon: <DollarSign size={24} className="text-[#00E676]" />,
+    glow: 'rgba(0,230,118,0.35)',
     title: 'Price Tracker',
     description: 'Know your total build cost instantly. Every component shows real pricing with direct links to purchase.',
   },
@@ -48,42 +53,47 @@ export default function Home() {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6C63FF]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/8 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-          >
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#6C63FF] text-sm font-medium mb-6">
-              <Monitor size={14} />
-              Free PC Builder + FPS Estimator
-            </span>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
-              Build the Fastest Gaming PC<br />
-              <span className="gradient-text">for Your Budget</span>
-            </h1>
-            <p className="text-xl text-secondary-custom max-w-2xl mx-auto mb-10 leading-relaxed">
-              Pick real parts, know your FPS in 20 top games before you buy, and catch compatibility
-              problems instantly — free, no account needed.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/builder"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg transition-all hover:opacity-90 hover:scale-105"
-                style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
-              >
-                <Zap size={18} />
-                Start Building
-              </Link>
-              <Link
-                to="/prebuilts"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-ff-primary font-bold text-lg border border-subtle hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
-              >
-                See Build Guides
-                <ChevronRight size={18} />
-              </Link>
-            </div>
-          </motion.div>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="text-center lg:text-left"
+            >
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#6C63FF] text-sm font-medium mb-6">
+                <Monitor size={14} />
+                Free PC Builder + FPS Estimator
+              </span>
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
+                Build the Fastest Gaming PC<br />
+                <span className="gradient-text">for Your Budget</span>
+              </h1>
+              <p className="text-xl text-secondary-custom max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+                Pick real parts, know your FPS in 20 top games before you buy, and catch compatibility
+                problems instantly — free, no account needed.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link
+                  to="/builder"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg transition-all hover:opacity-90 hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
+                >
+                  <Zap size={18} />
+                  Start Building
+                </Link>
+                <Link
+                  to="/prebuilts"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-ff-primary font-bold text-lg border border-subtle hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
+                >
+                  See Build Guides
+                  <ChevronRight size={18} />
+                </Link>
+              </div>
+            </motion.div>
+
+            <HeroFpsCard />
+          </div>
         </div>
       </section>
 
@@ -109,18 +119,19 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="relative py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <CircuitAccent />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="relative z-10 text-center mb-12"
         >
           <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Everything You Need</h2>
           <p className="text-secondary-custom text-lg max-w-xl mx-auto">Build smarter with tools designed for real hardware decisions.</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((f, i) => (
             <motion.div
               key={f.title}
@@ -130,7 +141,10 @@ export default function Home() {
               transition={{ delay: i * 0.15 }}
               className="rounded-2xl border border-subtle bg-card-dark p-6 card-hover"
             >
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: `radial-gradient(circle at 30% 30%, ${f.glow}, transparent 70%)`, border: '1px solid var(--ff-border)' }}
+              >
                 {f.icon}
               </div>
               <h3 className="text-ff-primary font-bold text-lg mb-2">{f.title}</h3>
