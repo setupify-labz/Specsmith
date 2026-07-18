@@ -48,7 +48,6 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-        <div className="animated-grid" />
         {/* Glow orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6C63FF]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/8 blur-3xl pointer-events-none" />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check } from 'lucide-react';
+import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { ShareView } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
@@ -101,10 +101,19 @@ export default function BuildSummary({
     <>
       <div
         className="rounded-2xl p-5 sticky top-20"
-        style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
+        style={{
+          border: '1px solid var(--ff-border)',
+          backgroundColor: 'var(--ff-surface)',
+          boxShadow: '0 12px 32px -12px rgba(0,0,0,0.12)',
+        }}
       >
         <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
-          <DollarSign size={18} style={{ color: 'var(--ff-accent)' }} />
+          <span
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
+          >
+            <DollarSign size={16} className="text-white" />
+          </span>
           Build Summary
         </h3>
 
@@ -112,10 +121,11 @@ export default function BuildSummary({
         <div className="space-y-2 mb-4 min-h-[100px]">
           <AnimatePresence>
             {parts.length === 0 && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="text-sm text-center py-6" style={{ color: 'var(--ff-text-2)' }}>
-                Select components to build your PC
-              </motion.p>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="flex flex-col items-center text-center py-8 gap-2">
+                <PackageOpen size={28} style={{ color: 'var(--ff-text-3)' }} />
+                <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Select components to build your PC</p>
+              </motion.div>
             )}
             {parts.map(p => (
               <motion.div

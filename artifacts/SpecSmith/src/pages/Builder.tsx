@@ -13,7 +13,7 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Monitor as MonitorIcon } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 
@@ -193,7 +193,22 @@ export default function Builder() {
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
             PC <span className="gradient-text">Builder</span>
           </h1>
-          <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
+          <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
+
+          <div className="flex items-center gap-3 max-w-xs">
+            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ff-border)' }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
+                initial={{ width: 0 }}
+                animate={{ width: `${(corePartsList.length / 8) * 100}%` }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text-2)' }}>
+              {corePartsList.length} of 8 selected
+            </span>
+          </div>
         </motion.div>
 
         <div className="mb-6">
@@ -273,13 +288,28 @@ export default function Builder() {
             />
 
             {/* Peripherals section */}
-            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{
+                border: '1px solid var(--ff-border)',
+                backgroundColor: 'var(--ff-surface)',
+                boxShadow: peripheralsOpen ? '0 8px 24px -8px rgba(108,99,255,0.18)' : 'none',
+              }}
+            >
               <button
                 onClick={() => setPeripheralsOpen(!peripheralsOpen)}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors"
-                style={{ color: 'var(--ff-text)' }}
+                className="w-full flex items-center justify-between p-4 text-sm font-semibold transition-colors"
+                style={{ color: 'var(--ff-text)', backgroundColor: peripheralsOpen ? 'var(--ff-card-hover)' : 'var(--ff-surface)' }}
               >
-                <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional — Monitor, Keyboard, Mouse, Headset)</span></span>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
+                  >
+                    <MonitorIcon size={16} style={{ color: 'var(--ff-text-2)' }} />
+                  </div>
+                  <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional — Monitor, Keyboard, Mouse, Headset)</span></span>
+                </div>
                 <ChevronDown size={18} className={`transition-transform duration-300 ${peripheralsOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
               </button>
               <AnimatePresence>
@@ -291,7 +321,7 @@ export default function Builder() {
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-1 pb-2 space-y-2" style={{ borderTop: '1px solid var(--ff-border)' }}>
+                    <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
                       <PartSelector category="monitor" label="Monitor"
                         parts={peripheralData.monitors as Monitor[]} selectedId={(build as any).monitor}
                         onSelect={id => (selectPart as any)('monitor', id)}

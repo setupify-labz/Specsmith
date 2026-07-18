@@ -311,21 +311,6 @@
   .ff-input::placeholder { color: var(--ff-text-3); }
 }
 
-/* Animated grid background */
-.animated-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--ff-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ff-grid) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: gridMove 20s linear infinite;
-}
-@keyframes gridMove {
-  0%   { transform: translate(0,0); }
-  100% { transform: translate(60px,60px); }
-}
-
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--ff-bg); }
