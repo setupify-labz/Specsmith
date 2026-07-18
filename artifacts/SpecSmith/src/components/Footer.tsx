@@ -1,12 +1,32 @@
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
 
+const NAV_GROUPS = [
+  {
+    heading: 'Build',
+    links: [
+      { to: '/', label: 'Home' },
+      { to: '/builder', label: 'Builder' },
+      { to: '/prebuilts', label: 'Build Guides' },
+    ],
+  },
+  {
+    heading: 'Compare & Research',
+    links: [
+      { to: '/compare', label: 'Compare Builds' },
+      { to: '/vs', label: 'GPU & CPU Comparisons' },
+      { to: '/best-gpu', label: 'Best GPU by Game' },
+      { to: '/best-cpu', label: 'Best CPU by Game' },
+      { to: '/gpu-tier-list', label: 'GPU Tier List' },
+    ],
+  },
+];
+
 export default function Footer() {
   return (
     <footer style={{ backgroundColor: 'var(--ff-bg)', borderTop: '1px solid var(--ff-border)', marginTop: '5rem' }}>
-      <div id="ad-footer" className="ad-slot mx-4 my-4" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center gap-2 mb-3">
@@ -18,29 +38,21 @@ export default function Footer() {
             <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Build it. Benchmark it. Own it.</p>
           </div>
 
-          {/* Links */}
-          <div>
-            <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Navigation</h4>
-            <div className="flex flex-col gap-2">
-              {[
-                { to: '/', label: 'Home' },
-                { to: '/builder', label: 'Builder' },
-                { to: '/prebuilts', label: 'Build Guides' },
-                { to: '/compare', label: 'Compare' },
-                { to: '/vs', label: 'GPU & CPU Comparisons' },
-                { to: '/best-gpu', label: 'Best GPU by Game' },
-                { to: '/best-cpu', label: 'Best CPU by Game' },
-                { to: '/gpu-tier-list', label: 'GPU Tier List' },
-                { to: '/about', label: 'About' },
-              ].map(link => (
-                <Link key={link.to} to={link.to}
-                  className="text-sm transition-colors hover:opacity-80"
-                  style={{ color: 'var(--ff-text-2)' }}>
-                  {link.label}
-                </Link>
-              ))}
+          {/* Grouped nav */}
+          {NAV_GROUPS.map(group => (
+            <div key={group.heading}>
+              <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h4>
+              <div className="flex flex-col gap-2">
+                {group.links.map(link => (
+                  <Link key={link.to} to={link.to}
+                    className="text-sm transition-colors hover:opacity-80"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          ))}
 
           {/* Legal */}
           <div>
@@ -51,6 +63,9 @@ export default function Footer() {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               FPS estimates are based on benchmark data and should be used as a guide only. Actual performance varies by driver version, game patch, and system configuration.
             </p>
+            <Link to="/about" className="inline-block text-sm mt-3 transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+              About SpecSmith
+            </Link>
           </div>
         </div>
 

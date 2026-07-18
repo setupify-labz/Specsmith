@@ -88,9 +88,6 @@ export default function Home() {
       </section>
 
       {/* Stats bar */}
-      <div id="ad-sidebar" className="ad-slot mx-4 max-w-7xl lg:mx-auto mb-4 hidden lg:flex items-center justify-center">
-        <span className="text-secondary-custom text-xs">Advertisement</span>
-      </div>
       <section className="border-y border-subtle bg-surface py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
