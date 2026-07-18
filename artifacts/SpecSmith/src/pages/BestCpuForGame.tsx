@@ -3,13 +3,12 @@ import { motion } from 'framer-motion';
 import { Zap, ChevronRight, Cpu as CpuIcon, ExternalLink } from 'lucide-react';
 import {
   getCpuGamePage, getCpuGamePicks, getGameCpuRows, getCpuGameIntro,
-  getRelatedCpuGamePages,
+  getRelatedCpuGamePages, getCpuGamePageMeta,
 } from '../lib/cpuGamePages';
 import { getPageGame, getGamePageTitle } from '../lib/gamePages';
 import { getMatchupFixedGpu } from '../lib/matchups';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
-import { getCpuGamePageMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 
 export default function BestCpuForGame() {

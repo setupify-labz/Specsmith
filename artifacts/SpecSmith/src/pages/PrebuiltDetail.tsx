@@ -6,9 +6,8 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery } from '../lib/prebuilts';
+import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, getPrebuiltMeta } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
-import { getPrebuiltMeta } from '../lib/seo';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }

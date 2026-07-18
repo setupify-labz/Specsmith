@@ -1,6 +1,7 @@
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from './fps';
 import { getMatchupGpu, getMatchupCpu, fpsPer100, type MatchupGpu } from './matchups';
+import type { RouteMeta } from './seo';
 
 export interface PageGame {
   id: string;
@@ -174,4 +175,15 @@ export function getRelatedGamePages(p: GamePage, limit = 4): GamePage[] {
   const sameGenre = others.filter(o => getPageGame(o.gameId)?.genre === genre);
   const rest = others.filter(o => getPageGame(o.gameId)?.genre !== genre);
   return [...sameGenre, ...rest].slice(0, limit);
+}
+
+// Kept here (not in lib/seo.ts) so pages that don't need game-page data
+// don't pull this module's JSON imports into their shared chunk.
+export function getGamePageMeta(page: GamePage): RouteMeta {
+  const name = getPageGame(page.gameId)?.name ?? page.gameId;
+  return {
+    path: `/best-gpu/${page.slug}`,
+    title: `Best GPU for ${name} (2026) — FPS at 1080p, 1440p & 4K | SpecSmith`,
+    description: `The best graphics cards for ${name} in 2026: estimated FPS for 15 GPUs from budget to flagship at 1080p, 1440p, and 4K High settings — plus best value, budget, 144 FPS, and 4K 60 picks.`,
+  };
 }

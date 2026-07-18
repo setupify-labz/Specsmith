@@ -1,6 +1,9 @@
-import { getPrebuiltTotal, type Prebuilt } from './prebuilts';
-import { getMatchupGpu, getMatchupCpuById, type Matchup, type CpuMatchup } from './matchups';
-import { getPageGame, type GamePage } from './gamePages';
+// Deliberately no imports from prebuilts.ts / matchups.ts / gamePages.ts /
+// cpuGamePages.ts here — those modules pull in the full GPU/CPU/game JSON
+// datasets, and this file is a shared chunk loaded by every lazy route via
+// useSeo(). Their meta-generator functions (getPrebuiltMeta, getMatchupMeta,
+// etc.) live in their owning modules instead so a page that only needs
+// getRouteMeta (Home, About, ...) doesn't pay to download unrelated data.
 
 export const SITE_URL = 'https://specsmithpc.com';
 export const SITE_NAME = 'SpecSmith';
@@ -89,56 +92,6 @@ export function getRouteMeta(path: string): RouteMeta {
         'SpecSmith is a free PC Builder and FPS Estimator for planning compatible gaming PCs.',
     }
   );
-}
-
-export function getPrebuiltMeta(prebuilt: Prebuilt): RouteMeta {
-  return {
-    path: `/prebuilts/${prebuilt.id}`,
-    title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | SpecSmith`,
-    description: `${prebuilt.tagline}. ${prebuilt.description} Estimated total: $${getPrebuiltTotal(prebuilt).toLocaleString()}. See full parts list and FPS benchmarks.`,
-  };
-}
-
-export function getMatchupMeta(matchup: Matchup): RouteMeta {
-  const a = getMatchupGpu(matchup.gpuA);
-  const b = getMatchupGpu(matchup.gpuB);
-  const nameA = a?.name ?? matchup.gpuA;
-  const nameB = b?.name ?? matchup.gpuB;
-  return {
-    path: `/vs/${matchup.slug}`,
-    title: `${nameA} vs ${nameB} — Which GPU Wins? FPS in 20 Games | SpecSmith`,
-    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}): estimated FPS in 20 games at 1080p, 1440p, and 4K, full spec comparison, and price-per-frame value. See which GPU is the better buy.`,
-  };
-}
-
-export function getCpuMatchupMeta(matchup: CpuMatchup): RouteMeta {
-  const a = getMatchupCpuById(matchup.cpuA);
-  const b = getMatchupCpuById(matchup.cpuB);
-  const nameA = a?.name ?? matchup.cpuA;
-  const nameB = b?.name ?? matchup.cpuB;
-  return {
-    path: `/vs/${matchup.slug}`,
-    title: `${nameA} vs ${nameB} — Which CPU Wins for Gaming? | SpecSmith`,
-    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}) for gaming: estimated FPS in 20 games with an RTX 4090, full spec comparison, and price-per-frame value. See which CPU is the better buy.`,
-  };
-}
-
-export function getGamePageMeta(page: GamePage): RouteMeta {
-  const name = getPageGame(page.gameId)?.name ?? page.gameId;
-  return {
-    path: `/best-gpu/${page.slug}`,
-    title: `Best GPU for ${name} (2026) — FPS at 1080p, 1440p & 4K | SpecSmith`,
-    description: `The best graphics cards for ${name} in 2026: estimated FPS for 15 GPUs from budget to flagship at 1080p, 1440p, and 4K High settings — plus best value, budget, 144 FPS, and 4K 60 picks.`,
-  };
-}
-
-export function getCpuGamePageMeta(page: GamePage): RouteMeta {
-  const name = getPageGame(page.gameId)?.name ?? page.gameId;
-  return {
-    path: `/best-cpu/${page.slug}`,
-    title: `Best CPU for ${name} (2026) — Gaming FPS Compared | SpecSmith`,
-    description: `The best processors for ${name} in 2026: estimated FPS for 15 CPUs from budget to flagship, paired with an RTX 4090 to isolate CPU performance — plus best value and budget picks.`,
-  };
 }
 
 export function buildHeadTags(meta: RouteMeta): string {

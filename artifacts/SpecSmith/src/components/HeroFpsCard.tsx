@@ -75,17 +75,20 @@ export default function HeroFpsCard() {
           <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--ff-text-2)' }}>
             <Zap size={13} style={{ color: 'var(--ff-cyan)' }} /> FPS Estimator
           </span>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: 'var(--ff-accent)', backgroundColor: 'var(--ff-accent-10)' }}>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: 'var(--ff-accent-text)', backgroundColor: 'var(--ff-accent-10)' }}>
             1440p · High
           </span>
         </div>
 
-        <h3 className="text-sm font-bold mb-4" style={{ color: 'var(--ff-text)' }}>
+        {/* A card label, not a document heading — using <h3> here skipped
+            past <h2> in the page outline and failed Lighthouse's
+            heading-order check. */}
+        <p className="text-sm font-bold mb-4" style={{ color: 'var(--ff-text)' }}>
           {CARD_A.name} <span style={{ color: 'var(--ff-text-3)' }}>vs</span> {CARD_B.name}
-        </h3>
+        </p>
 
         <div className="space-y-4">
-          <Bar name={CARD_A.name} price={CARD_A.price} fps={CARD_A.fps} color="var(--ff-accent)" delay={500} maxFps={maxFps} />
+          <Bar name={CARD_A.name} price={CARD_A.price} fps={CARD_A.fps} color="var(--ff-accent-text)" delay={500} maxFps={maxFps} />
           <Bar name={CARD_B.name} price={CARD_B.price} fps={CARD_B.fps} color="#00E676" delay={700} maxFps={maxFps} />
         </div>
 

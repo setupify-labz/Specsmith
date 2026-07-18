@@ -1,5 +1,6 @@
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
+import type { RouteMeta } from './seo';
 
 export interface MatchupGpu {
   id: string;
@@ -256,4 +257,30 @@ export function buildVerdictParagraph(v: VerdictInput): string {
     return `The ${wName} ${winClause} at ${v.resolution} High, ${fasterClause}. At $${fmt(wPrice)} vs $${fmt(lPrice)} it's also the better value per frame — a clean sweep, making it the clear pick ${audience}.`;
   }
   return `The ${wName} ${winClause} at ${v.resolution} High, ${fasterClause}. But it costs $${fmt(wPrice)} to the ${lName}'s $${fmt(lPrice)}, so the ${lName} delivers about ${valuePct}% more FPS per dollar. Chasing maximum frames? Get the ${wName}. Maximizing a budget? The ${lName} is the smarter pick.`;
+}
+
+// Kept here (not in lib/seo.ts) so pages that don't need GPU/CPU matchup
+// data don't pull this module's JSON imports into their shared chunk.
+export function getMatchupMeta(matchup: Matchup): RouteMeta {
+  const a = getMatchupGpu(matchup.gpuA);
+  const b = getMatchupGpu(matchup.gpuB);
+  const nameA = a?.name ?? matchup.gpuA;
+  const nameB = b?.name ?? matchup.gpuB;
+  return {
+    path: `/vs/${matchup.slug}`,
+    title: `${nameA} vs ${nameB} — Which GPU Wins? FPS in 20 Games | SpecSmith`,
+    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}): estimated FPS in 20 games at 1080p, 1440p, and 4K, full spec comparison, and price-per-frame value. See which GPU is the better buy.`,
+  };
+}
+
+export function getCpuMatchupMeta(matchup: CpuMatchup): RouteMeta {
+  const a = getMatchupCpuById(matchup.cpuA);
+  const b = getMatchupCpuById(matchup.cpuB);
+  const nameA = a?.name ?? matchup.cpuA;
+  const nameB = b?.name ?? matchup.cpuB;
+  return {
+    path: `/vs/${matchup.slug}`,
+    title: `${nameA} vs ${nameB} — Which CPU Wins for Gaming? | SpecSmith`,
+    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}) for gaming: estimated FPS in 20 games with an RTX 4090, full spec comparison, and price-per-frame value. See which CPU is the better buy.`,
+  };
 }

@@ -73,15 +73,24 @@ function addActivity(userId: string, message: string) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(getSession);
-  const [builds, setBuilds] = useState<SavedBuild[]>(() => {
+  // Start signed-out on every render — matching the server, which has no
+  // localStorage — then hydrate the real session right after mount below.
+  // Reading getSession() straight into these initializers (the old
+  // approach) made a logged-in user's client's first render differ from
+  // the server's, which is exactly what React reports as hydration error
+  // #418 (see the identical fix in ThemeContext.tsx).
+  const [user, setUser] = useState<User | null>(null);
+  const [builds, setBuilds] = useState<SavedBuild[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
+
+  useEffect(() => {
     const s = getSession();
-    return s ? getUserBuilds(s.id) : [];
-  });
-  const [activity, setActivity] = useState<Activity[]>(() => {
-    const s = getSession();
-    return s ? getUserActivity(s.id) : [];
-  });
+    if (s) {
+      setUser(s);
+      setBuilds(getUserBuilds(s.id));
+      setActivity(getUserActivity(s.id));
+    }
+  }, []);
 
   const refreshBuilds = useCallback((u: User) => {
     setBuilds(getUserBuilds(u.id));

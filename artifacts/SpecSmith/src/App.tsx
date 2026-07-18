@@ -1,11 +1,11 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import PageWrapper from './components/PageWrapper';
 
 const Home = lazy(() => import('./pages/Home'));
 const Builder = lazy(() => import('./pages/Builder'));
@@ -26,23 +26,6 @@ const BestGpuIndex = lazy(() => import('./pages/BestGpuIndex'));
 const BestCpuForGame = lazy(() => import('./pages/BestCpuForGame'));
 const BestCpuIndex = lazy(() => import('./pages/BestCpuIndex'));
 const GpuTierList = lazy(() => import('./pages/GpuTierList'));
-
-function PageWrapper({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.15 }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-}
 
 function AppRoutes() {
   return (

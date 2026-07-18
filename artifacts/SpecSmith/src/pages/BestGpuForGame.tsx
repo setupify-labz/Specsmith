@@ -3,12 +3,11 @@ import { motion } from 'framer-motion';
 import { Zap, ChevronRight, Gamepad2, ExternalLink } from 'lucide-react';
 import {
   getGamePage, getPageGame, getGamePicks, getGameGpuRows, getGameIntro,
-  getRelatedGamePages, getGamePageTitle,
+  getRelatedGamePages, getGamePageTitle, getGamePageMeta,
 } from '../lib/gamePages';
 import { getMatchupCpu } from '../lib/matchups';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
-import { getGamePageMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 
 export default function BestGpuForGame() {

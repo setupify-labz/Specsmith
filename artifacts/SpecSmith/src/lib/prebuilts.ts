@@ -4,6 +4,7 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import peripheralData from '../data/peripherals.json';
+import type { RouteMeta } from './seo';
 
 export interface Prebuilt {
   id: string;
@@ -63,4 +64,14 @@ export function getPartSearchQuery(category: string, id: string): string {
 
 export function getPrebuiltTotal(prebuilt: Prebuilt): number {
   return Object.entries(prebuilt.parts).reduce((sum, [cat, id]) => sum + getPartPrice(cat, id), 0);
+}
+
+// Kept here (not in lib/seo.ts) so pages that don't need prebuilt data
+// don't pull this module's JSON imports into their shared chunk.
+export function getPrebuiltMeta(prebuilt: Prebuilt): RouteMeta {
+  return {
+    path: `/prebuilts/${prebuilt.id}`,
+    title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | SpecSmith`,
+    description: `${prebuilt.tagline}. ${prebuilt.description} Estimated total: $${getPrebuiltTotal(prebuilt).toLocaleString()}. See full parts list and FPS benchmarks.`,
+  };
 }

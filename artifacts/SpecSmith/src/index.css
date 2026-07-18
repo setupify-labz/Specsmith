@@ -5,6 +5,19 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Metric-matched fallback for Inter — sized so the system font Inter swaps
+   in from lines up almost exactly with Inter's own metrics. Without this,
+   the hero's large bold headline (and every other heading) visibly resizes
+   the instant the webfont loads, which is what was driving CLS above 1.0. */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.49%;
+  descent-override: 22.56%;
+  line-gap-override: 0%;
+  size-adjust: 107.06%;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -76,8 +89,14 @@
   --ff-border:    rgba(255,255,255,0.08);
   --ff-text:      #F0F0FF;
   --ff-text-2:    #8888AA;
-  --ff-text-3:    #555577;
+  --ff-text-3:    #7A7AA8;
   --ff-accent:    #6C63FF;
+  /* Lighter than --ff-accent specifically for small accent-colored text on
+     dark backgrounds — the base #6C63FF only hits ~3.9:1 contrast there,
+     under WCAG AA's 4.5:1 floor. Keep --ff-accent itself untouched since
+     it's also used for gradients/borders/box-shadows where this doesn't
+     apply. */
+  --ff-accent-text: #9B94FF;
   --ff-cyan:      #00D4FF;
   --ff-nav-bg:    rgba(10,10,15,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.75);
@@ -121,8 +140,10 @@
   --ff-border:    rgba(0,0,20,0.1);
   --ff-text:      #0A0A1A;
   --ff-text-2:    #555566;
-  --ff-text-3:    #888899;
+  --ff-text-3:    #6B6B82;
   --ff-accent:    #5A52EE;
+  /* Already passes 4.5:1 in light mode, so just reuse --ff-accent here. */
+  --ff-accent-text: #5A52EE;
   --ff-cyan:      #0099CC;
   --ff-nav-bg:    rgba(244,244,250,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.5);
@@ -145,7 +166,7 @@
 
   body {
     @apply antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
     background-color: var(--ff-bg);
     color: var(--ff-text);
     transition: background-color var(--ff-transition), color var(--ff-transition);
