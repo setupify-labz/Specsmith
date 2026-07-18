@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Save, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Save, Trash2, Eye, EyeOff, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { AVATAR_PERSONAS } from '../lib/avatars';
+import UserAvatar from '../components/UserAvatar';
 
 const RESOLUTIONS = ['1080p', '1440p', '4K'];
 const PRESETS = ['low', 'medium', 'high', 'ultra'];
@@ -48,6 +50,11 @@ export default function Settings() {
     showToast('Password changed!', 'success');
   };
 
+  const handlePickAvatar = (id: string) => {
+    updateSettings({ avatar: id });
+    showToast('Avatar updated!', 'success');
+  };
+
   const handleDeleteAccount = () => {
     if (deleteInput !== 'DELETE') { showToast('Type DELETE to confirm', 'warning'); return; }
     deleteAccount();
@@ -85,6 +92,40 @@ export default function Settings() {
               style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
               <Save size={14} /> Save Profile
             </button>
+          </div>
+
+          {/* Avatar */}
+          <div className={sectionClass} style={sectionStyle}>
+            <h2 className="font-bold mb-1" style={{ color: 'var(--ff-text)' }}>Avatar</h2>
+            <p className="text-xs mb-4" style={{ color: 'var(--ff-text-2)' }}>Pick a persona to represent you around the site.</p>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              {AVATAR_PERSONAS.map(p => {
+                const selected = user.avatar === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handlePickAvatar(p.id)}
+                    title={p.tagline}
+                    className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all hover:scale-[1.03]"
+                    style={{
+                      backgroundColor: 'var(--ff-card)',
+                      border: selected ? '2px solid var(--ff-accent)' : '2px solid transparent',
+                      boxShadow: selected ? '0 0 0 1px var(--ff-accent), 0 4px 16px -4px rgba(108,99,255,0.35)' : 'none',
+                    }}
+                  >
+                    <div className="relative">
+                      <UserAvatar username={user.username} avatar={p.id} size={44} />
+                      {selected && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center bg-[#00E676]">
+                          <Check size={10} className="text-black" strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-semibold text-center leading-tight" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Preferences */}

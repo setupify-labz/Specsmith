@@ -5,6 +5,7 @@ import { Menu, X, Cpu, Moon, Sun, LayoutDashboard, Settings, LogOut, ChevronDown
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
+import UserAvatar from './UserAvatar';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -118,10 +119,7 @@ export default function Navbar() {
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all"
                     style={{ color: 'var(--ff-text)', backgroundColor: 'var(--ff-card)' }}
                   >
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
-                      {user.username[0].toUpperCase()}
-                    </div>
+                    <UserAvatar username={user.username} avatar={user.avatar} size={28} />
                     <span className="hidden sm:block text-sm font-medium">{user.username}</span>
                     <ChevronDown size={14} className={`transition-transform ${avatarOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
                   </button>

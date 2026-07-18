@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ShareButton from '../components/ShareButton';
 import { getShareUrl } from '../lib/sharing';
+import UserAvatar from '../components/UserAvatar';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -70,11 +71,14 @@ export default function Dashboard() {
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>
-            Welcome back, <span className="gradient-text">{user.username}</span>
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Manage your saved builds and preferences</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex items-center gap-4">
+          <UserAvatar username={user.username} avatar={user.avatar} size={56} />
+          <div>
+            <h1 className="text-3xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>
+              Welcome back, <span className="gradient-text">{user.username}</span>
+            </h1>
+            <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Manage your saved builds and preferences</p>
+          </div>
         </motion.div>
 
         {/* Stats row */}
