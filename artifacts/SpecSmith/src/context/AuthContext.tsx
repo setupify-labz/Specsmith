@@ -8,6 +8,7 @@ export interface User {
   preferredResolution: string;
   preferredPreset: string;
   createdAt: string;
+  avatar?: string;
 }
 
 export interface SavedBuild {
