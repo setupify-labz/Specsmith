@@ -23,6 +23,9 @@ const Matchup = lazy(() => import('./pages/Matchup'));
 const GpuMatchupIndex = lazy(() => import('./pages/GpuMatchupIndex'));
 const BestGpuForGame = lazy(() => import('./pages/BestGpuForGame'));
 const BestGpuIndex = lazy(() => import('./pages/BestGpuIndex'));
+const BestCpuForGame = lazy(() => import('./pages/BestCpuForGame'));
+const BestCpuIndex = lazy(() => import('./pages/BestCpuIndex'));
+const GpuTierList = lazy(() => import('./pages/GpuTierList'));
 
 function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -62,6 +65,9 @@ function AppRoutes() {
           <Route path="/vs/:slug"  element={<PageWrapper><Matchup /></PageWrapper>} />
           <Route path="/best-gpu"  element={<PageWrapper><BestGpuIndex /></PageWrapper>} />
           <Route path="/best-gpu/:slug" element={<PageWrapper><BestGpuForGame /></PageWrapper>} />
+          <Route path="/best-cpu"  element={<PageWrapper><BestCpuIndex /></PageWrapper>} />
+          <Route path="/best-cpu/:slug" element={<PageWrapper><BestCpuForGame /></PageWrapper>} />
+          <Route path="/gpu-tier-list" element={<PageWrapper><GpuTierList /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>
