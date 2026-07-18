@@ -187,6 +187,8 @@ export default function Navbar() {
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="md:hidden p-2 rounded-lg transition-colors"
                 style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
               >
                 {menuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>

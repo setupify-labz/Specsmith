@@ -5,9 +5,8 @@ import { Zap, ChevronRight, Trophy, DollarSign, Cpu, ExternalLink } from 'lucide
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
-import { getCpuMatchup, getMatchupCpuById, getMatchupFixedGpu, getCpuMatchupTitle, getRelatedCpuMatchups, buildVerdictParagraph, fpsPer100 } from '../lib/matchups';
+import { getCpuMatchup, getMatchupCpuById, getMatchupFixedGpu, getCpuMatchupTitle, getRelatedCpuMatchups, buildVerdictParagraph, fpsPer100, getCpuMatchupMeta } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
-import { getCpuMatchupMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 
 interface Game {

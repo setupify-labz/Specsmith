@@ -1,6 +1,7 @@
 import { estimateFpsForBuild } from './fps';
 import { getMatchupCpuById, getMatchupFixedGpu, fpsPer100, type MatchupCpu } from './matchups';
 import { GAME_PAGES, getPageGame, type PageGame, type GamePage } from './gamePages';
+import type { RouteMeta } from './seo';
 
 // "Best CPU for <game>" SEO landing pages at /best-cpu/<slug>. Reuses the
 // same 20-game list as the GPU game pages so every title has a matching pair.
@@ -113,4 +114,15 @@ export function getRelatedCpuGamePages(p: GamePage, limit = 4): GamePage[] {
   const sameGenre = others.filter(o => getPageGame(o.gameId)?.genre === genre);
   const rest = others.filter(o => getPageGame(o.gameId)?.genre !== genre);
   return [...sameGenre, ...rest].slice(0, limit);
+}
+
+// Kept here (not in lib/seo.ts) so pages that don't need CPU-game data
+// don't pull this module's JSON imports into their shared chunk.
+export function getCpuGamePageMeta(page: GamePage): RouteMeta {
+  const name = getPageGame(page.gameId)?.name ?? page.gameId;
+  return {
+    path: `/best-cpu/${page.slug}`,
+    title: `Best CPU for ${name} (2026) — Gaming FPS Compared | SpecSmith`,
+    description: `The best processors for ${name} in 2026: estimated FPS for 15 CPUs from budget to flagship, paired with an RTX 4090 to isolate CPU performance — plus best value and budget picks.`,
+  };
 }

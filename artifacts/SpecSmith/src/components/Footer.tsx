@@ -41,7 +41,7 @@ export default function Footer() {
           {/* Grouped nav */}
           {NAV_GROUPS.map(group => (
             <div key={group.heading}>
-              <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h4>
+              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h3>
               <div className="flex flex-col gap-2">
                 {group.links.map(link => (
                   <Link key={link.to} to={link.to}
@@ -56,7 +56,7 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h4>
+            <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h3>
             <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ff-text-2)' }}>
               As an Amazon Associate, SpecSmith earns from qualifying purchases.
             </p>

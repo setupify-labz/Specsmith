@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { Routes, Route } from 'react-router-dom';
@@ -6,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import PageWrapper from './components/PageWrapper';
 import Home from './pages/Home';
 import Builder from './pages/Builder';
 import Prebuilts from './pages/Prebuilts';
@@ -20,11 +22,11 @@ import BestGpuIndex from './pages/BestGpuIndex';
 import BestCpuForGame from './pages/BestCpuForGame';
 import BestCpuIndex from './pages/BestCpuIndex';
 import GpuTierList from './pages/GpuTierList';
-import { prebuilts } from './lib/prebuilts';
-import { MATCHUPS, CPU_MATCHUPS } from './lib/matchups';
-import { GAME_PAGES } from './lib/gamePages';
-import { CPU_GAME_PAGES } from './lib/cpuGamePages';
-import { getPrebuiltMeta, getMatchupMeta, getCpuMatchupMeta, getGamePageMeta, getCpuGamePageMeta, getRouteMeta, type RouteMeta } from './lib/seo';
+import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
+import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
+import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
+import { CPU_GAME_PAGES, getCpuGamePageMeta } from './lib/cpuGamePages';
+import { getRouteMeta, type RouteMeta } from './lib/seo';
 
 export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
 
@@ -74,22 +76,28 @@ export function render(url: string): string {
         <ToastProvider>
           <StaticRouter location={url}>
             <Navbar />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/builder" element={<Builder />} />
-              <Route path="/prebuilts" element={<Prebuilts />} />
-              <Route path="/prebuilts/:slug" element={<PrebuiltDetail />} />
-              <Route path="/compare" element={<Compare />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/build" element={<SharedBuild />} />
-              <Route path="/vs" element={<GpuMatchupIndex />} />
-              <Route path="/vs/:slug" element={<Matchup />} />
-              <Route path="/best-gpu" element={<BestGpuIndex />} />
-              <Route path="/best-gpu/:slug" element={<BestGpuForGame />} />
-              <Route path="/best-cpu" element={<BestCpuIndex />} />
-              <Route path="/best-cpu/:slug" element={<BestCpuForGame />} />
-              <Route path="/gpu-tier-list" element={<GpuTierList />} />
-            </Routes>
+            {/* Mirrors the <Suspense> App.tsx wraps its (lazy-loaded) <Routes>
+                in — without it, the client's Suspense boundary has no
+                matching hydration markers in the static HTML, which React
+                reports as a hydration mismatch (error #418) on every route. */}
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
+                <Route path="/builder" element={<PageWrapper><Builder /></PageWrapper>} />
+                <Route path="/prebuilts" element={<PageWrapper><Prebuilts /></PageWrapper>} />
+                <Route path="/prebuilts/:slug" element={<PageWrapper><PrebuiltDetail /></PageWrapper>} />
+                <Route path="/compare" element={<PageWrapper><Compare /></PageWrapper>} />
+                <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
+                <Route path="/build" element={<PageWrapper><SharedBuild /></PageWrapper>} />
+                <Route path="/vs" element={<PageWrapper><GpuMatchupIndex /></PageWrapper>} />
+                <Route path="/vs/:slug" element={<PageWrapper><Matchup /></PageWrapper>} />
+                <Route path="/best-gpu" element={<PageWrapper><BestGpuIndex /></PageWrapper>} />
+                <Route path="/best-gpu/:slug" element={<PageWrapper><BestGpuForGame /></PageWrapper>} />
+                <Route path="/best-cpu" element={<PageWrapper><BestCpuIndex /></PageWrapper>} />
+                <Route path="/best-cpu/:slug" element={<PageWrapper><BestCpuForGame /></PageWrapper>} />
+                <Route path="/gpu-tier-list" element={<PageWrapper><GpuTierList /></PageWrapper>} />
+              </Routes>
+            </Suspense>
             <Footer />
           </StaticRouter>
         </ToastProvider>
