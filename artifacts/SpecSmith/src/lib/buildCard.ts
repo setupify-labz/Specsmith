@@ -47,6 +47,26 @@ function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 }
 
+// The logo image, preloaded at module import so it's ready by the time a
+// share card is generated. Falls back to the drawn Anvil Chip mark if the
+// image hasn't loaded (first-ever render, offline, etc.).
+const logoImg = typeof Image !== 'undefined' ? new Image() : null;
+if (logoImg) logoImg.src = '/logo.png';
+
+function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    ctx.save();
+    const r = size * 0.22;
+    ctx.beginPath();
+    ctx.roundRect(x, y, size, size, r);
+    ctx.clip();
+    ctx.drawImage(logoImg, x, y, size, size);
+    ctx.restore();
+    return;
+  }
+  drawAnvilLogo(ctx, x, y, size);
+}
+
 // The Anvil Chip mark, drawn in the same 64-unit space as Logo.tsx /
 // favicon.svg and scaled to `size` pixels at (x, y) top-left.
 function drawAnvilLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
@@ -152,8 +172,8 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
   const PAD = 36;
   const headerY = 30;
 
-  // Anvil Chip logo
-  drawAnvilLogo(ctx, PAD, headerY - 2, 36);
+  // SpecSmith logo
+  drawLogo(ctx, PAD, headerY - 2, 36);
 
   // "SpecSmith" wordmark
   ctx.textAlign = 'left';
