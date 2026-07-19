@@ -3,6 +3,7 @@ import { Zap, Calculator, Shield, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import PageGlow from '../components/PageGlow';
 
 const sections = [
   {
@@ -64,18 +65,19 @@ Use SpecSmith estimates as a starting point for your research, not a guarantee. 
 export default function About() {
   useSeo(getRouteMeta('/about'));
   return (
-    <div className="min-h-screen pt-24 pb-20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen pt-24 pb-20">
+      <PageGlow />
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-16"
         >
-          <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
+          <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
             About <span className="gradient-text">SpecSmith</span>
           </h1>
-          <p className="text-[#8888AA] text-lg max-w-2xl mx-auto">
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--ff-text-2)' }}>
             SpecSmith exists to remove the guesswork from PC building. We believe everyone deserves to know exactly what performance they'll get before committing their hard-earned money.
           </p>
         </motion.div>
@@ -88,10 +90,10 @@ export default function About() {
           className="rounded-2xl p-8 mb-8 text-center"
           style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.12), rgba(0,212,255,0.06))' }}
         >
-          <p className="text-2xl font-bold text-white italic">
+          <p className="text-2xl font-bold italic" style={{ color: 'var(--ff-text)' }}>
             "Build it. Benchmark it. Own it."
           </p>
-          <p className="text-[#8888AA] mt-3">
+          <p className="mt-3" style={{ color: 'var(--ff-text-2)' }}>
             Our mission is to democratize PC performance knowledge — making it accessible to first-time builders and seasoned enthusiasts alike.
           </p>
         </motion.div>
@@ -105,15 +107,16 @@ export default function About() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="rounded-2xl border border-white/8 bg-[#1C1C26] p-6"
+              className="rounded-2xl p-6"
+              style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
                   {s.icon}
                 </div>
-                <h2 className="text-white font-bold text-lg">{s.title}</h2>
+                <h2 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>{s.title}</h2>
               </div>
-              <div className="text-[#8888AA] text-sm leading-relaxed whitespace-pre-line">
+              <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--ff-text-2)' }}>
                 {s.content}
               </div>
             </motion.div>
@@ -127,7 +130,7 @@ export default function About() {
           viewport={{ once: true }}
           className="text-center mt-16"
         >
-          <p className="text-[#8888AA] mb-6">Ready to put it to use?</p>
+          <p className="mb-6" style={{ color: 'var(--ff-text-2)' }}>Ready to put it to use?</p>
           <Link
             to="/builder"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg hover:opacity-90 hover:scale-105 transition-all"

@@ -10,6 +10,7 @@ import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels,
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
+import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -194,8 +195,9 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
 export default function Prebuilts() {
   useSeo(getRouteMeta('/prebuilts'));
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow variant="warm" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>

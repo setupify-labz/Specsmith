@@ -9,6 +9,7 @@ import { getMatchupCpu } from '../lib/matchups';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
+import PageGlow from '../components/PageGlow';
 
 export default function BestGpuForGame() {
   const { slug } = useParams<{ slug: string }>();
@@ -46,8 +47,9 @@ export default function BestGpuForGame() {
   const valuePick = picks.find(p => p.label === 'Best Value')!;
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-gpu" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
           style={{ color: 'var(--ff-text-2)' }}>
           ← Best GPU by Game

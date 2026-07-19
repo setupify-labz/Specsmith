@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import PageGlow from '../components/PageGlow';
 
 interface FieldError { username?: string; email?: string; password?: string; confirm?: string; }
 
@@ -121,8 +122,9 @@ export default function Signup() {
   );
 
   return (
-    <div className="min-h-screen pt-20 flex items-center justify-center px-4 py-8" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
+    <div className="relative min-h-screen pt-20 flex items-center justify-center px-4 py-8" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow variant="cool" />
+      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
             Create <span className="gradient-text">Account</span>

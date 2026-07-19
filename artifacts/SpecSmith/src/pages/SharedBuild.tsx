@@ -11,6 +11,7 @@ import gamesData from '../data/games.json';
 import { useAuth } from '../context/AuthContext';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; tier: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -88,8 +89,9 @@ export default function SharedBuild() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-4xl mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
           <div className="mb-6">

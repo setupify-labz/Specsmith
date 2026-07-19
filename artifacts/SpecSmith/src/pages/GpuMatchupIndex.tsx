@@ -7,6 +7,7 @@ import {
 } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import PageGlow from '../components/PageGlow';
 
 interface Card {
   slug: string;
@@ -63,8 +64,9 @@ export default function GpuMatchupIndex() {
   }));
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
             GPU & CPU <span className="gradient-text">Comparisons</span>

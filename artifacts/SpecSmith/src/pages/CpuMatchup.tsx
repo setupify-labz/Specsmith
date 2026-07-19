@@ -8,6 +8,7 @@ import type { Resolution, Preset } from '../lib/fps';
 import { getCpuMatchup, getMatchupCpuById, getMatchupFixedGpu, getCpuMatchupTitle, getRelatedCpuMatchups, buildVerdictParagraph, fpsPer100, getCpuMatchupMeta } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
+import PageGlow from '../components/PageGlow';
 
 interface Game {
   id: string; name: string; genre: string;
@@ -105,8 +106,9 @@ export default function CpuMatchup() {
   const related = getRelatedCpuMatchups(matchup);
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/vs" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
           style={{ color: 'var(--ff-text-2)' }}>
           ← All Comparisons

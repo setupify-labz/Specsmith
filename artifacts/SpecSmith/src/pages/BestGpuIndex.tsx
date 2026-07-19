@@ -4,13 +4,15 @@ import { ChevronRight, Gamepad2 } from 'lucide-react';
 import { GAME_PAGES, getPageGame, getGamePageTitle } from '../lib/gamePages';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import PageGlow from '../components/PageGlow';
 
 export default function BestGpuIndex() {
   useSeo(getRouteMeta('/best-gpu'));
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
             Best GPU <span className="gradient-text">by Game</span>
