@@ -9,6 +9,7 @@ import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import PageGlow from '../components/PageGlow';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -171,8 +172,9 @@ export default function Compare() {
   const winsB = chartData.filter(d => d.winner === 'B').length;
 
   return (
-    <div className="min-h-screen pt-24 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen pt-24 pb-20">
+      <PageGlow variant="cool" />
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-black text-ff-primary mb-4">

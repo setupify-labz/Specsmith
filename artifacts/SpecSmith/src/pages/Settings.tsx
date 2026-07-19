@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { AVATAR_PERSONAS } from '../lib/avatars';
 import UserAvatar from '../components/UserAvatar';
+import PageGlow from '../components/PageGlow';
 
 const RESOLUTIONS = ['1080p', '1440p', '4K'];
 const PRESETS = ['low', 'medium', 'high', 'ultra'];
@@ -67,8 +68,9 @@ export default function Settings() {
   const labelClass = "block text-xs font-medium mb-1.5";
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-2xl mx-auto px-4">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-2xl mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-3xl font-black mb-6" style={{ color: 'var(--ff-text)' }}>
             Account <span className="gradient-text">Settings</span>

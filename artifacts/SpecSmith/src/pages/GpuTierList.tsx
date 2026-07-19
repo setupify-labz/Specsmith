@@ -5,14 +5,16 @@ import { getGpuTiers } from '../lib/gpuTierList';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
+import PageGlow from '../components/PageGlow';
 
 export default function GpuTierList() {
   useSeo(getRouteMeta('/gpu-tier-list'));
   const tiers = getGpuTiers();
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow variant="warm" />
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
             GPU Tier <span className="gradient-text">List</span>

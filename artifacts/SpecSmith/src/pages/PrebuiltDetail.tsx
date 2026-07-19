@@ -8,6 +8,7 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, getPrebuiltMeta } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
+import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -83,8 +84,9 @@ export default function PrebuiltDetail() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow variant="warm" />
+      <div className="relative max-w-4xl mx-auto px-4">
         <Link
           to="/prebuilts"
           className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"

@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext';
 import ShareButton from '../components/ShareButton';
 import { getShareUrl } from '../lib/sharing';
 import UserAvatar from '../components/UserAvatar';
+import PageGlow from '../components/PageGlow';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -68,8 +69,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex items-center gap-4">
           <UserAvatar username={user.username} avatar={user.avatar} size={56} />

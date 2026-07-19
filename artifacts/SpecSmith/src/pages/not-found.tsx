@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Cpu } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
+import PageGlow from '../components/PageGlow';
 
 export default function NotFound() {
   useSeo({
@@ -12,8 +13,9 @@ export default function NotFound() {
   });
 
   return (
-    <div className="min-h-screen pt-24 pb-20 flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ff-bg)' }}>
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-md">
+    <div className="relative min-h-screen pt-24 pb-20 flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow variant="danger" />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative text-center max-w-md">
         <div className="text-7xl font-black gradient-text mb-4">404</div>
         <h1 className="text-2xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>Page Not Found</h1>
         <p className="text-sm mb-8" style={{ color: 'var(--ff-text-2)' }}>

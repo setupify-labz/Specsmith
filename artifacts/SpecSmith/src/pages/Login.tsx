@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import PageGlow from '../components/PageGlow';
 
 export default function Login() {
   const { login } = useAuth();
@@ -34,11 +35,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen pt-20 flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ff-bg)' }}>
+    <div className="relative min-h-screen pt-20 flex items-center justify-center px-4" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <PageGlow />
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="relative w-full max-w-md"
       >
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
