@@ -105,8 +105,8 @@ export default function Settings() {
                   <button
                     key={p.id}
                     onClick={() => handlePickAvatar(p.id)}
-                    title={p.tagline}
-                    className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all hover:scale-[1.03]"
+                    title={`${p.name} — ${p.tagline}`}
+                    className="flex items-center justify-center p-3 rounded-xl transition-all hover:scale-[1.03]"
                     style={{
                       backgroundColor: 'var(--ff-card)',
                       border: selected ? '2px solid var(--ff-accent)' : '2px solid transparent',
@@ -121,7 +121,6 @@ export default function Settings() {
                         </span>
                       )}
                     </div>
-                    <span className="text-[10px] font-semibold text-center leading-tight" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
                   </button>
                 );
               })}
