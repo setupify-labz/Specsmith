@@ -22,6 +22,7 @@ import BestGpuIndex from './pages/BestGpuIndex';
 import BestCpuForGame from './pages/BestCpuForGame';
 import BestCpuIndex from './pages/BestCpuIndex';
 import GpuTierList from './pages/GpuTierList';
+import UpgradeCalculator from './pages/UpgradeCalculator';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -41,6 +42,7 @@ export const PRERENDER_ROUTES = [
   '/best-gpu',
   '/best-cpu',
   '/gpu-tier-list',
+  '/upgrade-calculator',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -96,6 +98,7 @@ export function render(url: string): string {
                 <Route path="/best-cpu" element={<PageWrapper><BestCpuIndex /></PageWrapper>} />
                 <Route path="/best-cpu/:slug" element={<PageWrapper><BestCpuForGame /></PageWrapper>} />
                 <Route path="/gpu-tier-list" element={<PageWrapper><GpuTierList /></PageWrapper>} />
+                <Route path="/upgrade-calculator" element={<PageWrapper><UpgradeCalculator /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />
