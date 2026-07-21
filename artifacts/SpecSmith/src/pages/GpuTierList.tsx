@@ -65,11 +65,16 @@ export default function GpuTierList() {
           not "is it worth it." Prices are typical US street pricing, last updated {PRICES_UPDATED}.
         </p>
 
-        <div className="text-center mt-10">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
           <Link to="/compare"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Trophy size={15} /> Compare Two GPUs Head-to-Head <ChevronRight size={14} />
+          </Link>
+          <Link to="/upgrade-calculator"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-80"
+            style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
+            Thinking About Upgrading? <ChevronRight size={14} />
           </Link>
         </div>
       </div>

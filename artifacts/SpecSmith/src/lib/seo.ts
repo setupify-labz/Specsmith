@@ -74,6 +74,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Compare popular GPUs and CPUs head-to-head: estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value. RTX 40/50 series vs AMD Radeon vs Intel Arc, Ryzen vs Intel Core.',
   },
   {
+    path: '/upgrade-calculator',
+    title: 'GPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    description:
+      'See what your current GPU is roughly worth used, what it actually costs to trade up to a faster card after resale, and the real FPS gain — before you spend anything.',
+  },
+  {
     path: '/build',
     title: 'Shared Build — SpecSmith',
     description:
