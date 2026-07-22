@@ -26,6 +26,7 @@ import UpgradeCalculator from './pages/UpgradeCalculator';
 import Gallery from './pages/Gallery';
 import GpuUpgradeIndex from './pages/GpuUpgradeIndex';
 import GpuUpgradePage from './pages/GpuUpgradePage';
+import BuildCrate from './pages/BuildCrate';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -49,6 +50,7 @@ export const PRERENDER_ROUTES = [
   '/upgrade-calculator',
   '/gallery',
   '/upgrade',
+  '/crate',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -110,6 +112,7 @@ export function render(url: string): string {
                 <Route path="/gallery" element={<PageWrapper><Gallery /></PageWrapper>} />
                 <Route path="/upgrade" element={<PageWrapper><GpuUpgradeIndex /></PageWrapper>} />
                 <Route path="/upgrade/:slug" element={<PageWrapper><GpuUpgradePage /></PageWrapper>} />
+                <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />
