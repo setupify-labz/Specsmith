@@ -38,6 +38,9 @@ export default function UpgradeCalculator() {
           <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--ff-text-2)' }}>
             Pick your current GPU, see what it's roughly worth used, and what it'd actually cost — and gain — to trade up.
           </p>
+          <Link to="/upgrade" className="inline-block text-xs font-semibold mt-3 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+            Or browse upgrade guides for every GPU →
+          </Link>
         </motion.div>
 
         <div className="mb-6">

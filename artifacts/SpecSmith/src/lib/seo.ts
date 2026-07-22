@@ -80,6 +80,12 @@ export const ROUTE_META: RouteMeta[] = [
       'See what your current GPU is roughly worth used, what it actually costs to trade up to a faster card after resale, and the real FPS gain — before you spend anything.',
   },
   {
+    path: '/upgrade',
+    title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    description:
+      'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+  },
+  {
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
