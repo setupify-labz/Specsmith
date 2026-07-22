@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Trash2, Edit2, Check, ExternalLink, BarChart2, Clock, Zap } from 'lucide-react';
+import { Cpu, Trash2, Edit2, Check, ExternalLink, BarChart2, Clock, Zap, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ShareButton from '../components/ShareButton';
 import { getShareUrl } from '../lib/sharing';
 import UserAvatar from '../components/UserAvatar';
 import PageGlow from '../components/PageGlow';
+import { publishBuild, computeBuildStats } from '../lib/gallery';
+import { isGalleryEnabled } from '../lib/supabase';
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -28,6 +30,7 @@ export default function Dashboard() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   if (!user) {
     return (
@@ -55,6 +58,19 @@ export default function Dashboard() {
   const commitEdit = (id: string) => {
     if (editName.trim()) renameBuild(id, editName.trim());
     setEditingId(null);
+  };
+
+  const handlePublish = async (buildId: string, name: string, buildState: Record<string, string | null>) => {
+    if (!user) return;
+    const { hasGpuAndCpu } = computeBuildStats(buildState);
+    if (!hasGpuAndCpu) {
+      showToast('Add a GPU and CPU to this build before publishing', 'warning');
+      return;
+    }
+    setPublishingId(buildId);
+    const result = await publishBuild(name, buildState, user.username);
+    setPublishingId(null);
+    showToast(result.ok ? 'Published to the Gallery' : result.error, result.ok ? 'success' : 'error');
   };
 
   const handleDelete = (id: string) => {
@@ -173,6 +189,15 @@ export default function Dashboard() {
                           <Cpu size={11} /> Load
                         </button>
                         <ShareButton buildState={build.buildState} buildName={build.name} buildId={build.id} size="sm" />
+                        <button
+                          onClick={() => handlePublish(build.id, build.name, build.buildState)}
+                          disabled={!isGalleryEnabled || publishingId === build.id}
+                          title={!isGalleryEnabled ? "Gallery isn't live yet" : 'Publish this build to the public Gallery'}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-40"
+                          style={{ backgroundColor: '#00E67612', color: '#00E676' }}
+                        >
+                          <Upload size={11} /> {publishingId === build.id ? 'Publishing…' : 'Publish'}
+                        </button>
                         <button
                           onClick={() => handleDelete(build.id)}
                           className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg"
