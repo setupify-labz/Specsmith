@@ -12,6 +12,7 @@ const navLinks = [
   { to: '/builder', label: 'Builder' },
   { to: '/prebuilts', label: 'Build Guides' },
   { to: '/compare', label: 'Compare' },
+  { to: '/crate', label: 'Build Crate' },
   { to: '/gallery', label: 'Gallery' },
   { to: '/about', label: 'About' },
 ];

@@ -80,6 +80,18 @@ export const ROUTE_META: RouteMeta[] = [
       'See what your current GPU is roughly worth used, what it actually costs to trade up to a faster card after resale, and the real FPS gain — before you spend anything.',
   },
   {
+    path: '/crate',
+    title: 'Build Crate — Random PC Build Generator | SpecSmith',
+    description:
+      'Open a Build Crate for a fully random gaming PC — every part guaranteed to physically fit together, with a rarity pull based on how high-end you land. See the total cost and estimated FPS instantly.',
+  },
+  {
+    path: '/upgrade',
+    title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    description:
+      'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+  },
+  {
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
