@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Package, RotateCcw, Cpu, Share2, Sparkles, Lock,
+  Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX,
   CircuitBoard, MemoryStick, MonitorSmartphone, HardDrive, Box, Fan, Zap, type LucideIcon,
 } from 'lucide-react';
 import {
@@ -11,7 +11,12 @@ import {
   finalizeCrateBuild, type CrateBuild, type CrateRarity, type RolledPart,
   type CrateMotherboard, type CrateCpu, type CrateRam, type CrateGpu, type CrateStorage, type CrateCase, type CrateCooler, type CratePsu,
 } from '../lib/buildCrate';
+import { getBestPull, recordPullIfBest, type BestPull } from '../lib/crateBestPull';
+import { playRaritySound, playSpinWhoosh, isCrateSoundMuted, setCrateSoundMuted } from '../lib/crateSound';
 import { getShareUrl } from '../lib/sharing';
+import { publishBuild } from '../lib/gallery';
+import { isGalleryEnabled } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -24,6 +29,15 @@ const RARITY_STYLE: Record<CrateRarity, { label: string; color: string; glow: st
   rare:      { label: 'Rare',      color: '#00D4FF', glow: 'rgba(0,212,255,0.4)' },
   epic:      { label: 'Epic',      color: '#9B6BFF', glow: 'rgba(155,107,255,0.45)' },
   legendary: { label: 'Legendary', color: '#FFD700', glow: 'rgba(255,215,0,0.5)' },
+};
+
+// How dramatic the landing effect gets, escalating per rarity tier.
+const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
+  common:    { particles: 6,  distance: 40,  shake: 0,  rays: false },
+  uncommon:  { particles: 10, distance: 55,  shake: 0,  rays: false },
+  rare:      { particles: 14, distance: 70,  shake: 4,  rays: true },
+  epic:      { particles: 20, distance: 95,  shake: 7,  rays: true },
+  legendary: { particles: 28, distance: 130, shake: 11, rays: true },
 };
 
 // Category icons stand in for real product photos — we don't have licensed
@@ -41,21 +55,43 @@ const CATEGORY_ICON: Record<CategoryKey, LucideIcon> = {
   psu: Zap,
 };
 
+function LightRays({ color, count }: { color: string; count: number }) {
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 15 }}>
+      {Array.from({ length: count }).map((_, i) => {
+        const angle = (i / count) * 360;
+        return (
+          <motion.div
+            key={i}
+            className="absolute left-1/2 top-1/2 origin-left"
+            style={{ width: 140, height: 3, background: `linear-gradient(90deg, ${color}, transparent)`, transform: `rotate(${angle}deg)` }}
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: [0, 0.85, 0], scaleX: [0, 1, 1.2] }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 /** Rarity-colored flash + outward particle burst, triggered right as a reel
- * lands on its result. Bigger bursts for rarer pulls. */
-function LandingBurst({ color, big }: { color: string; big: boolean }) {
-  const particles = useMemo(() => {
-    const count = big ? 18 : 9;
-    return Array.from({ length: count }, (_, i) => {
-      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
-      const distance = 60 + Math.random() * (big ? 90 : 50);
-      return { dx: Math.cos(angle) * distance, dy: Math.sin(angle) * distance, delay: Math.random() * 0.08 };
-    });
+ * lands on its result. Escalates in particle count / spread / light rays
+ * with rarity — a Common pull barely twinkles, Legendary gets the works. */
+function LandingBurst({ color, rarity }: { color: string; rarity: CrateRarity }) {
+  const cfg = RARITY_INTENSITY[rarity];
+  const particles = useMemo(() => Array.from({ length: cfg.particles }, (_, i) => {
+    const angle = (i / cfg.particles) * Math.PI * 2 + Math.random() * 0.4;
+    const distance = cfg.distance * 0.6 + Math.random() * cfg.distance * 0.6;
+    return { dx: Math.cos(angle) * distance, dy: Math.sin(angle) * distance, delay: Math.random() * 0.08 };
+  }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    []);
+  const size = rarity === 'legendary' ? 6 : rarity === 'epic' ? 5 : 4;
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-visible" style={{ zIndex: 20 }}>
+      {cfg.rays && <LightRays color={color} count={rarity === 'legendary' ? 10 : 7} />}
       <motion.div
         className="absolute inset-0"
         initial={{ opacity: 0.55 }}
@@ -67,10 +103,43 @@ function LandingBurst({ color, big }: { color: string; big: boolean }) {
         <motion.div
           key={i}
           className="absolute rounded-full"
-          style={{ left: '50%', top: '50%', width: big ? 5 : 4, height: big ? 5 : 4, backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
+          style={{ left: '50%', top: '50%', width: size, height: size, backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
           initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
           animate={{ x: p.dx, y: p.dy, opacity: 0, scale: 0.4 }}
           transition={{ duration: 0.6, delay: p.delay, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Full-viewport gold flash + falling confetti — only for the rarest pulls. */
+function LegendaryBlast() {
+  const confetti = useMemo(() => Array.from({ length: 40 }, () => ({
+    x: Math.random() * 100,
+    delay: Math.random() * 0.4,
+    duration: 1.4 + Math.random() * 0.8,
+    rotate: Math.random() * 360,
+    color: ['#FFD700', '#FFB300', '#FF6B00', '#FFFFFF'][Math.floor(Math.random() * 4)],
+  })), []);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 200 }}>
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0.6 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.7 }}
+        style={{ background: 'radial-gradient(circle at 50% 35%, rgba(255,215,0,0.35), transparent 60%)' }}
+      />
+      {confetti.map((c, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-sm"
+          style={{ left: `${c.x}%`, top: -20, width: 8, height: 8, backgroundColor: c.color }}
+          initial={{ y: 0, opacity: 1, rotate: 0 }}
+          animate={{ y: '110vh', opacity: [1, 1, 0], rotate: c.rotate }}
+          transition={{ duration: c.duration, delay: c.delay, ease: 'easeIn' }}
         />
       ))}
     </div>
@@ -101,8 +170,9 @@ const REEL_ITEM_WIDTH = 128;
 const REEL_VISIBLE_WIDTH = 384;
 const REEL_LANDING_INDEX = 26;
 
-function CrateReel({ category, pool, finalName, rarity, onComplete }: {
-  category: CategoryKey; pool: { name: string }[]; finalName: string; rarity: CrateRarity; onComplete: () => void;
+function CrateReel({ category, pool, finalName, rarity, onLand, onComplete }: {
+  category: CategoryKey; pool: { name: string }[]; finalName: string; rarity: CrateRarity;
+  onLand: (rarity: CrateRarity) => void; onComplete: () => void;
 }) {
   const [landed, setLanded] = useState(false);
   const Icon = CATEGORY_ICON[category];
@@ -120,6 +190,7 @@ function CrateReel({ category, pool, finalName, rarity, onComplete }: {
 
   const handleSpinComplete = () => {
     setLanded(true);
+    onLand(rarity);
     setTimeout(onComplete, 480);
   };
 
@@ -149,7 +220,7 @@ function CrateReel({ category, pool, finalName, rarity, onComplete }: {
           </div>
         ))}
       </motion.div>
-      {landed && <LandingBurst color={RARITY_STYLE[rarity].color} big={rarity === 'epic' || rarity === 'legendary'} />}
+      {landed && <LandingBurst color={RARITY_STYLE[rarity].color} rarity={rarity} />}
     </div>
   );
 }
@@ -157,17 +228,45 @@ function CrateReel({ category, pool, finalName, rarity, onComplete }: {
 export default function BuildCrate() {
   useSeo(getRouteMeta('/crate'));
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [socket, setSocket] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<RevealedState>({});
   const [pending, setPending] = useState<PendingReveal | null>(null);
   const [finalBuild, setFinalBuild] = useState<CrateBuild | null>(null);
+  const [bestPull, setBestPull] = useState<BestPull | null>(null);
+  const [shake, setShake] = useState(0);
+  const [legendaryBlast, setLegendaryBlast] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+
+  useEffect(() => {
+    setBestPull(getBestPull());
+    setMuted(isCrateSoundMuted());
+  }, []);
 
   const revealedCount = CRATE_CATEGORY_ORDER.filter(c => revealed[c.key]).length;
   const nextCategory = CRATE_CATEGORY_ORDER[revealedCount];
 
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setCrateSoundMuted(next);
+  };
+
+  const handleLand = (rarity: CrateRarity) => {
+    playRaritySound(rarity);
+    const cfg = RARITY_INTENSITY[rarity];
+    if (cfg.shake > 0) setShake(cfg.shake);
+    if (rarity === 'legendary') {
+      setLegendaryBlast(true);
+      setTimeout(() => setLegendaryBlast(false), 1800);
+    }
+  };
+
   const openNext = () => {
     if (!nextCategory || pending) return;
+    playSpinWhoosh();
     const key = nextCategory.key;
 
     if (key === 'motherboard') {
@@ -206,11 +305,13 @@ export default function BuildCrate() {
     setPending(null);
 
     if (updated.motherboard && updated.cpu && updated.ram && updated.gpu && updated.storage && updated.case && updated.cooler && updated.psu) {
-      setFinalBuild(finalizeCrateBuild({
+      const fb = finalizeCrateBuild({
         gpu: updated.gpu.part, cpu: updated.cpu.part, motherboard: updated.motherboard.part,
         ram: updated.ram.part, storage: updated.storage.part, case: updated.case.part,
         cooler: updated.cooler.part, psu: updated.psu.part,
-      }));
+      });
+      setFinalBuild(fb);
+      setBestPull(recordPullIfBest({ rarity: fb.rarity, gpuName: fb.gpu.name, cpuName: fb.cpu.name, totalCost: fb.totalCost, avgFps: fb.avgFps }));
     }
   };
 
@@ -234,6 +335,14 @@ export default function BuildCrate() {
     showToast('Share link copied', 'success');
   };
 
+  const publishToGallery = async () => {
+    if (!finalBuild || !user) return;
+    setPublishing(true);
+    const result = await publishBuild(`${RARITY_STYLE[finalBuild.rarity].label} Crate Pull`, finalBuild.buildState, user.username);
+    setPublishing(false);
+    showToast(result.ok ? 'Published to the Gallery' : result.error, result.ok ? 'success' : 'error');
+  };
+
   const pendingPool = pending && (
     pending.key === 'motherboard' ? getMotherboardPool() :
     pending.key === 'cpu' ? getCpuPool(socket!) :
@@ -246,10 +355,24 @@ export default function BuildCrate() {
   );
 
   return (
-    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+    <motion.div
+      className="relative min-h-screen pt-24 pb-20"
+      style={{ backgroundColor: 'var(--ff-bg)' }}
+      animate={shake ? { x: [0, -shake, shake, -shake * 0.6, shake * 0.6, -shake * 0.3, shake * 0.3, 0] } : { x: 0 }}
+      transition={{ duration: 0.45 }}
+      onAnimationComplete={() => setShake(0)}
+    >
       <PageGlow variant="warm" />
+      <AnimatePresence>{legendaryBlast && <LegendaryBlast />}</AnimatePresence>
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
+        <div className="flex justify-end mb-1">
+          <button onClick={toggleMute} title={muted ? 'Unmute crate sounds' : 'Mute crate sounds'}
+            className="p-2 rounded-lg transition-opacity hover:opacity-70" style={{ color: 'var(--ff-text-3)' }}>
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+        </div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-4">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
             Build <span className="gradient-text">Crate</span>
           </h1>
@@ -257,6 +380,13 @@ export default function BuildCrate() {
             Open one crate per part. First crate sets your platform — everything after it is guaranteed to fit that platform.
           </p>
         </motion.div>
+
+        {bestPull && (
+          <p className="text-xs text-center mb-6" style={{ color: 'var(--ff-text-3)' }}>
+            Your best pull: <span style={{ color: RARITY_STYLE[bestPull.rarity].color, fontWeight: 700 }}>{RARITY_STYLE[bestPull.rarity].label}</span>{' '}
+            — {bestPull.gpuName} + {bestPull.cpuName}
+          </p>
+        )}
 
         {/* Slot row */}
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-8">
@@ -297,7 +427,7 @@ export default function BuildCrate() {
 
         {/* Spinning reel while a crate is opening */}
         {pending && pendingPool && (
-          <CrateReel category={pending.key} pool={pendingPool} finalName={pending.part.name} rarity={pending.rarity} onComplete={handleReelComplete} />
+          <CrateReel category={pending.key} pool={pendingPool} finalName={pending.part.name} rarity={pending.rarity} onLand={handleLand} onComplete={handleReelComplete} />
         )}
 
         {/* Open button */}
@@ -332,7 +462,7 @@ export default function BuildCrate() {
                 }}
               >
                 {(finalBuild.rarity === 'epic' || finalBuild.rarity === 'legendary') && (
-                  <LandingBurst color={RARITY_STYLE[finalBuild.rarity].color} big />
+                  <LandingBurst color={RARITY_STYLE[finalBuild.rarity].color} rarity={finalBuild.rarity} />
                 )}
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sparkles size={16} style={{ color: RARITY_STYLE[finalBuild.rarity].color }} />
@@ -357,7 +487,7 @@ export default function BuildCrate() {
                 <CompatibilityBanner warnings={finalBuild.compat.warnings} passed={finalBuild.compat.passed} />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
                 <button onClick={buildWithThis}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
                   style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
@@ -368,6 +498,21 @@ export default function BuildCrate() {
                   style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
                   <Share2 size={15} /> Copy Share Link
                 </button>
+                {user ? (
+                  <button onClick={publishToGallery}
+                    disabled={!isGalleryEnabled || publishing}
+                    title={!isGalleryEnabled ? "Gallery isn't live yet" : undefined}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40"
+                    style={{ backgroundColor: '#00E67612', color: '#00E676' }}>
+                    <Upload size={15} /> {publishing ? 'Publishing…' : 'Publish to Gallery'}
+                  </button>
+                ) : (
+                  <Link to="/login"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
+                    <Upload size={15} /> Log In to Publish
+                  </Link>
+                )}
                 <button onClick={resetCrate}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
                   style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
@@ -385,6 +530,6 @@ export default function BuildCrate() {
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
