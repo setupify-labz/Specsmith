@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Package, RotateCcw, Cpu, Share2, Sparkles, Lock } from 'lucide-react';
 import {
   CRATE_CATEGORY_ORDER, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
+  getMotherboardPool, getCpuPool, getRamPool, getGpuPool, getStoragePool, getCasePool, getCoolerPool, getPsuPool,
   finalizeCrateBuild, type CrateBuild, type CrateRarity, type RolledPart,
   type CrateMotherboard, type CrateCpu, type CrateRam, type CrateGpu, type CrateStorage, type CrateCase, type CrateCooler, type CratePsu,
 } from '../lib/buildCrate';
@@ -33,61 +34,118 @@ interface RevealedState {
   psu?: RolledPart<CratePsu>;
 }
 
+type CategoryKey = keyof RevealedState;
+
+interface PendingReveal {
+  key: CategoryKey;
+  part: { name: string };
+  rarity: CrateRarity;
+  apply: (updated: RevealedState) => void;
+}
+
+const REEL_ITEM_WIDTH = 128;
+const REEL_VISIBLE_WIDTH = 384;
+const REEL_LANDING_INDEX = 26;
+
+function CrateReel({ pool, finalName, onComplete }: { pool: { name: string }[]; finalName: string; onComplete: () => void }) {
+  const strip = useMemo(() => {
+    const arr: string[] = [];
+    for (let i = 0; i < REEL_LANDING_INDEX; i++) arr.push(pool[Math.floor(Math.random() * pool.length)].name);
+    arr.push(finalName);
+    for (let i = 0; i < 4; i++) arr.push(pool[Math.floor(Math.random() * pool.length)].name);
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const targetX = -(REEL_LANDING_INDEX * REEL_ITEM_WIDTH + REEL_ITEM_WIDTH / 2 - REEL_VISIBLE_WIDTH / 2);
+
+  return (
+    <div className="relative mx-auto mb-8 overflow-hidden rounded-2xl"
+      style={{ width: REEL_VISIBLE_WIDTH, maxWidth: '100%', height: 92, backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+      <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: '50%', width: 2, backgroundColor: 'var(--ff-accent)', boxShadow: '0 0 8px var(--ff-accent)' }} />
+      <div className="absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: 'linear-gradient(180deg, var(--ff-surface), transparent)' }} />
+      <div className="absolute inset-x-0 bottom-0 h-6 z-10 pointer-events-none" style={{ background: 'linear-gradient(0deg, var(--ff-surface), transparent)' }} />
+      <motion.div
+        className="flex items-center h-full"
+        initial={{ x: 0 }}
+        animate={{ x: targetX }}
+        transition={{ duration: 2.3, ease: [0.1, 0.7, 0.2, 1] }}
+        onAnimationComplete={onComplete}
+      >
+        {strip.map((name, i) => (
+          <div key={i} className="flex-shrink-0 flex items-center justify-center text-center px-3" style={{ width: REEL_ITEM_WIDTH }}>
+            <span className="text-xs font-bold leading-tight" style={{ color: i === REEL_LANDING_INDEX ? 'var(--ff-text)' : 'var(--ff-text-2)' }}>{name}</span>
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 export default function BuildCrate() {
   useSeo(getRouteMeta('/crate'));
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [socket, setSocket] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<RevealedState>({});
-  const [opening, setOpening] = useState(false);
+  const [pending, setPending] = useState<PendingReveal | null>(null);
   const [finalBuild, setFinalBuild] = useState<CrateBuild | null>(null);
 
   const revealedCount = CRATE_CATEGORY_ORDER.filter(c => revealed[c.key]).length;
   const nextCategory = CRATE_CATEGORY_ORDER[revealedCount];
 
   const openNext = () => {
-    if (!nextCategory || opening) return;
-    setOpening(true);
-    setTimeout(() => {
-      const key = nextCategory.key;
-      const updated: RevealedState = { ...revealed };
+    if (!nextCategory || pending) return;
+    const key = nextCategory.key;
 
-      if (key === 'motherboard') {
-        const r = rollMotherboard();
-        setSocket(r.socket);
-        updated.motherboard = r;
-      } else if (key === 'cpu') {
-        updated.cpu = rollCpu(socket!);
-      } else if (key === 'ram') {
-        updated.ram = rollRam(revealed.motherboard!.part.supported_ram[0]);
-      } else if (key === 'gpu') {
-        updated.gpu = rollGpu();
-      } else if (key === 'storage') {
-        updated.storage = rollStorage();
-      } else if (key === 'case') {
-        updated.case = rollCase();
-      } else if (key === 'cooler') {
-        updated.cooler = rollCooler();
-      } else {
-        updated.psu = rollPsu();
-      }
+    if (key === 'motherboard') {
+      const r = rollMotherboard();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.motherboard = r; } });
+      setSocket(r.socket);
+    } else if (key === 'cpu') {
+      const r = rollCpu(socket!);
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cpu = r; } });
+    } else if (key === 'ram') {
+      const r = rollRam(revealed.motherboard!.part.supported_ram[0]);
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.ram = r; } });
+    } else if (key === 'gpu') {
+      const r = rollGpu();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.gpu = r; } });
+    } else if (key === 'storage') {
+      const r = rollStorage();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.storage = r; } });
+    } else if (key === 'case') {
+      const r = rollCase();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.case = r; } });
+    } else if (key === 'cooler') {
+      const r = rollCooler();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cooler = r; } });
+    } else {
+      const r = rollPsu();
+      setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.psu = r; } });
+    }
+  };
 
-      setRevealed(updated);
-      setOpening(false);
+  const handleReelComplete = () => {
+    if (!pending) return;
+    const updated: RevealedState = { ...revealed };
+    pending.apply(updated);
+    setRevealed(updated);
+    setPending(null);
 
-      if (updated.motherboard && updated.cpu && updated.ram && updated.gpu && updated.storage && updated.case && updated.cooler && updated.psu) {
-        setFinalBuild(finalizeCrateBuild({
-          gpu: updated.gpu.part, cpu: updated.cpu.part, motherboard: updated.motherboard.part,
-          ram: updated.ram.part, storage: updated.storage.part, case: updated.case.part,
-          cooler: updated.cooler.part, psu: updated.psu.part,
-        }));
-      }
-    }, 750);
+    if (updated.motherboard && updated.cpu && updated.ram && updated.gpu && updated.storage && updated.case && updated.cooler && updated.psu) {
+      setFinalBuild(finalizeCrateBuild({
+        gpu: updated.gpu.part, cpu: updated.cpu.part, motherboard: updated.motherboard.part,
+        ram: updated.ram.part, storage: updated.storage.part, case: updated.case.part,
+        cooler: updated.cooler.part, psu: updated.psu.part,
+      }));
+    }
   };
 
   const resetCrate = () => {
     setSocket(null);
     setRevealed({});
+    setPending(null);
     setFinalBuild(null);
   };
 
@@ -103,6 +161,17 @@ export default function BuildCrate() {
     navigator.clipboard.writeText(url);
     showToast('Share link copied', 'success');
   };
+
+  const pendingPool = pending && (
+    pending.key === 'motherboard' ? getMotherboardPool() :
+    pending.key === 'cpu' ? getCpuPool(socket!) :
+    pending.key === 'ram' ? getRamPool(revealed.motherboard!.part.supported_ram[0]) :
+    pending.key === 'gpu' ? getGpuPool() :
+    pending.key === 'storage' ? getStoragePool() :
+    pending.key === 'case' ? getCasePool() :
+    pending.key === 'cooler' ? getCoolerPool() :
+    getPsuPool()
+  );
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
@@ -149,21 +218,23 @@ export default function BuildCrate() {
           })}
         </div>
 
+        {/* Spinning reel while a crate is opening */}
+        {pending && pendingPool && (
+          <CrateReel pool={pendingPool} finalName={pending.part.name} onComplete={handleReelComplete} />
+        )}
+
         {/* Open button */}
-        {!finalBuild && (
+        {!finalBuild && !pending && (
           <div className="flex justify-center mb-10">
             <motion.button
               onClick={openNext}
-              disabled={opening}
-              whileHover={{ scale: opening ? 1 : 1.04 }}
-              whileTap={{ scale: opening ? 1 : 0.97 }}
-              animate={opening ? { rotate: [0, -8, 8, -8, 8, 0] } : {}}
-              transition={opening ? { duration: 0.75 } : { duration: 0.15 }}
-              className="flex flex-col items-center gap-3 px-10 py-8 rounded-3xl font-black text-white disabled:opacity-80"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className="flex flex-col items-center gap-3 px-10 py-8 rounded-3xl font-black text-white"
               style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
             >
               <Package size={40} />
-              <span className="text-lg">{opening ? 'Opening…' : `Open ${nextCategory.label} Crate`}</span>
+              <span className="text-lg">Open {nextCategory.label} Crate</span>
             </motion.button>
           </div>
         )}
@@ -227,7 +298,7 @@ export default function BuildCrate() {
           )}
         </AnimatePresence>
 
-        {revealedCount === 0 && !opening && (
+        {revealedCount === 0 && !pending && (
           <p className="text-xs text-center mt-4" style={{ color: 'var(--ff-text-3)' }}>
             Socket and RAM type are always guaranteed to be compatible. Everything else — fit, wattage, cooling — is part of the roll.{' '}
             <Link to="/builder" className="underline hover:opacity-80" style={{ color: 'var(--ff-text-2)' }}>Prefer to pick your own parts?</Link>

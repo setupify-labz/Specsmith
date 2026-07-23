@@ -118,6 +118,18 @@ export function rollPsu(): RolledPart<CratePsu> {
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
+// Pools exposed so the UI can build a spinning reel of "candidates" for the
+// crate currently being opened — filler flavor for the animation, not used
+// for the actual roll (that already happened by the time the reel spins).
+export function getMotherboardPool(): CrateMotherboard[] { return motherboards; }
+export function getCpuPool(socket: string): CrateCpu[] { return cpus.filter(c => c.socket === socket); }
+export function getRamPool(type: string): CrateRam[] { return rams.filter(r => r.type === type); }
+export function getGpuPool(): CrateGpu[] { return gpus; }
+export function getStoragePool(): CrateStorage[] { return storages; }
+export function getCasePool(): CrateCase[] { return cases; }
+export function getCoolerPool(): CrateCooler[] { return coolers; }
+export function getPsuPool(): CratePsu[] { return psus; }
+
 function averageFpsForBuild(gpu: CrateGpu, cpu: CrateCpu): number {
   const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, cpu, g, '1440p', 'high').estimated, 0);
   return Math.round(total / games.length);
