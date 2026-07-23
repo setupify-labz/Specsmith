@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, RotateCcw, Cpu, Share2, Sparkles, Lock } from 'lucide-react';
+import {
+  Package, RotateCcw, Cpu, Share2, Sparkles, Lock,
+  CircuitBoard, MemoryStick, MonitorSmartphone, HardDrive, Box, Fan, Zap, type LucideIcon,
+} from 'lucide-react';
 import {
   CRATE_CATEGORY_ORDER, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
   getMotherboardPool, getCpuPool, getRamPool, getGpuPool, getStoragePool, getCasePool, getCoolerPool, getPsuPool,
@@ -22,6 +25,57 @@ const RARITY_STYLE: Record<CrateRarity, { label: string; color: string; glow: st
   epic:      { label: 'Epic',      color: '#9B6BFF', glow: 'rgba(155,107,255,0.45)' },
   legendary: { label: 'Legendary', color: '#FFD700', glow: 'rgba(255,215,0,0.5)' },
 };
+
+// Category icons stand in for real product photos — we don't have licensed
+// product photography to show yet (needs the Amazon Associates account or
+// manufacturer press assets), so this is honest flavor rather than a fake
+// per-product image.
+const CATEGORY_ICON: Record<CategoryKey, LucideIcon> = {
+  motherboard: CircuitBoard,
+  cpu: Cpu,
+  ram: MemoryStick,
+  gpu: MonitorSmartphone,
+  storage: HardDrive,
+  case: Box,
+  cooler: Fan,
+  psu: Zap,
+};
+
+/** Rarity-colored flash + outward particle burst, triggered right as a reel
+ * lands on its result. Bigger bursts for rarer pulls. */
+function LandingBurst({ color, big }: { color: string; big: boolean }) {
+  const particles = useMemo(() => {
+    const count = big ? 18 : 9;
+    return Array.from({ length: count }, (_, i) => {
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+      const distance = 60 + Math.random() * (big ? 90 : 50);
+      return { dx: Math.cos(angle) * distance, dy: Math.sin(angle) * distance, delay: Math.random() * 0.08 };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-visible" style={{ zIndex: 20 }}>
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0.55 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
+        style={{ background: `radial-gradient(circle at 50% 50%, ${color}55, transparent 70%)` }}
+      />
+      {particles.map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full"
+          style={{ left: '50%', top: '50%', width: big ? 5 : 4, height: big ? 5 : 4, backgroundColor: color, boxShadow: `0 0 6px ${color}` }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{ x: p.dx, y: p.dy, opacity: 0, scale: 0.4 }}
+          transition={{ duration: 0.6, delay: p.delay, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface RevealedState {
   motherboard?: RolledPart<CrateMotherboard>;
@@ -47,7 +101,12 @@ const REEL_ITEM_WIDTH = 128;
 const REEL_VISIBLE_WIDTH = 384;
 const REEL_LANDING_INDEX = 26;
 
-function CrateReel({ pool, finalName, onComplete }: { pool: { name: string }[]; finalName: string; onComplete: () => void }) {
+function CrateReel({ category, pool, finalName, rarity, onComplete }: {
+  category: CategoryKey; pool: { name: string }[]; finalName: string; rarity: CrateRarity; onComplete: () => void;
+}) {
+  const [landed, setLanded] = useState(false);
+  const Icon = CATEGORY_ICON[category];
+
   const strip = useMemo(() => {
     const arr: string[] = [];
     for (let i = 0; i < REEL_LANDING_INDEX; i++) arr.push(pool[Math.floor(Math.random() * pool.length)].name);
@@ -59,9 +118,20 @@ function CrateReel({ pool, finalName, onComplete }: { pool: { name: string }[]; 
 
   const targetX = -(REEL_LANDING_INDEX * REEL_ITEM_WIDTH + REEL_ITEM_WIDTH / 2 - REEL_VISIBLE_WIDTH / 2);
 
+  const handleSpinComplete = () => {
+    setLanded(true);
+    setTimeout(onComplete, 480);
+  };
+
   return (
     <div className="relative mx-auto mb-8 overflow-hidden rounded-2xl"
-      style={{ width: REEL_VISIBLE_WIDTH, maxWidth: '100%', height: 92, backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+      style={{
+        width: REEL_VISIBLE_WIDTH, maxWidth: '100%', height: 92,
+        backgroundColor: 'var(--ff-surface)',
+        border: landed ? `1.5px solid ${RARITY_STYLE[rarity].color}` : '1px solid var(--ff-border)',
+        boxShadow: landed ? `0 0 24px ${RARITY_STYLE[rarity].glow}` : undefined,
+        transition: 'border-color 0.2s, box-shadow 0.2s',
+      }}>
       <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: '50%', width: 2, backgroundColor: 'var(--ff-accent)', boxShadow: '0 0 8px var(--ff-accent)' }} />
       <div className="absolute inset-x-0 top-0 h-6 z-10 pointer-events-none" style={{ background: 'linear-gradient(180deg, var(--ff-surface), transparent)' }} />
       <div className="absolute inset-x-0 bottom-0 h-6 z-10 pointer-events-none" style={{ background: 'linear-gradient(0deg, var(--ff-surface), transparent)' }} />
@@ -70,14 +140,16 @@ function CrateReel({ pool, finalName, onComplete }: { pool: { name: string }[]; 
         initial={{ x: 0 }}
         animate={{ x: targetX }}
         transition={{ duration: 2.3, ease: [0.1, 0.7, 0.2, 1] }}
-        onAnimationComplete={onComplete}
+        onAnimationComplete={handleSpinComplete}
       >
         {strip.map((name, i) => (
-          <div key={i} className="flex-shrink-0 flex items-center justify-center text-center px-3" style={{ width: REEL_ITEM_WIDTH }}>
+          <div key={i} className="flex-shrink-0 flex flex-col items-center justify-center text-center gap-1 px-3" style={{ width: REEL_ITEM_WIDTH }}>
+            <Icon size={18} style={{ color: i === REEL_LANDING_INDEX ? 'var(--ff-accent)' : 'var(--ff-text-3)' }} />
             <span className="text-xs font-bold leading-tight" style={{ color: i === REEL_LANDING_INDEX ? 'var(--ff-text)' : 'var(--ff-text-2)' }}>{name}</span>
           </div>
         ))}
       </motion.div>
+      {landed && <LandingBurst color={RARITY_STYLE[rarity].color} big={rarity === 'epic' || rarity === 'legendary'} />}
     </div>
   );
 }
@@ -191,8 +263,12 @@ export default function BuildCrate() {
           {CRATE_CATEGORY_ORDER.map((cat, i) => {
             const r = revealed[cat.key];
             const isNext = i === revealedCount && !finalBuild;
+            const Icon = CATEGORY_ICON[cat.key];
             return (
-              <div key={cat.key}
+              <motion.div key={cat.key}
+                initial={r ? { scale: 0.7, opacity: 0 } : false}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                 className="rounded-xl p-2 text-center flex flex-col items-center justify-center"
                 style={{
                   minHeight: 64,
@@ -204,6 +280,7 @@ export default function BuildCrate() {
               >
                 {r ? (
                   <>
+                    <Icon size={14} style={{ color: RARITY_STYLE[r.rarity].color }} className="mb-0.5" />
                     <p className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: RARITY_STYLE[r.rarity].color }}>{RARITY_STYLE[r.rarity].label}</p>
                     <p className="text-[10px] font-bold leading-tight" style={{ color: 'var(--ff-text)' }}>{r.part.name}</p>
                   </>
@@ -213,14 +290,14 @@ export default function BuildCrate() {
                     <p className="text-[10px] font-semibold" style={{ color: 'var(--ff-text-3)' }}>{cat.label}</p>
                   </>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
         {/* Spinning reel while a crate is opening */}
         {pending && pendingPool && (
-          <CrateReel pool={pendingPool} finalName={pending.part.name} onComplete={handleReelComplete} />
+          <CrateReel category={pending.key} pool={pendingPool} finalName={pending.part.name} rarity={pending.rarity} onComplete={handleReelComplete} />
         )}
 
         {/* Open button */}
@@ -247,13 +324,16 @@ export default function BuildCrate() {
               transition={{ type: 'spring', stiffness: 260, damping: 22 }}
             >
               <div
-                className="rounded-3xl p-6 mb-6 text-center"
+                className="relative rounded-3xl p-6 mb-6 text-center"
                 style={{
                   backgroundColor: 'var(--ff-surface)',
                   border: `2px solid ${RARITY_STYLE[finalBuild.rarity].color}`,
                   boxShadow: `0 0 40px ${RARITY_STYLE[finalBuild.rarity].glow}`,
                 }}
               >
+                {(finalBuild.rarity === 'epic' || finalBuild.rarity === 'legendary') && (
+                  <LandingBurst color={RARITY_STYLE[finalBuild.rarity].color} big />
+                )}
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Sparkles size={16} style={{ color: RARITY_STYLE[finalBuild.rarity].color }} />
                   <span className="text-xs font-black uppercase tracking-[0.2em]" style={{ color: RARITY_STYLE[finalBuild.rarity].color }}>
