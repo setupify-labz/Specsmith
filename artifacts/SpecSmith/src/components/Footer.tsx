@@ -24,6 +24,7 @@ const NAV_GROUPS = [
   },
   {
     heading: 'Parts Guides',
+    headingTo: '/parts-guides',
     links: [
       { to: '/best-motherboard', label: 'Best Motherboards' },
       { to: '/best-ram', label: 'Best RAM' },
@@ -58,7 +59,13 @@ export default function Footer() {
           {/* Grouped nav */}
           {NAV_GROUPS.map(group => (
             <div key={group.heading}>
-              <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h3>
+              {group.headingTo ? (
+                <Link to={group.headingTo} className="block font-semibold text-sm mb-3 transition-colors hover:opacity-80" style={{ color: 'var(--ff-text)' }}>
+                  {group.heading}
+                </Link>
+              ) : (
+                <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h3>
+              )}
               <div className="flex flex-col gap-2">
                 {group.links.map(link => (
                   <Link key={link.to} to={link.to}

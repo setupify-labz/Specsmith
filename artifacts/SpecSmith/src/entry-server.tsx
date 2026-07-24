@@ -31,6 +31,7 @@ import CpuUpgradePage from './pages/CpuUpgradePage';
 import BestMotherboardIndex from './pages/BestMotherboardIndex';
 import BestMotherboardPage from './pages/BestMotherboardPage';
 import ComponentGuidePage from './pages/ComponentGuidePage';
+import PartsGuidesHub from './pages/PartsGuidesHub';
 import BuildCrate from './pages/BuildCrate';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
@@ -61,6 +62,7 @@ export const PRERENDER_ROUTES = [
   '/upgrade-cpu',
   '/best-motherboard',
   ...COMPONENT_GUIDES.map((g) => `/best-${g.slug}`),
+  '/parts-guides',
   '/crate',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -141,6 +143,7 @@ export function render(url: string): string {
                 <Route path="/best-keyboard" element={<PageWrapper><ComponentGuidePage category="keyboard" /></PageWrapper>} />
                 <Route path="/best-mouse" element={<PageWrapper><ComponentGuidePage category="mouse" /></PageWrapper>} />
                 <Route path="/best-headset" element={<PageWrapper><ComponentGuidePage category="headset" /></PageWrapper>} />
+                <Route path="/parts-guides" element={<PageWrapper><PartsGuidesHub /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
               </Routes>
             </Suspense>

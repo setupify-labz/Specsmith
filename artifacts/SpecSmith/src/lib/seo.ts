@@ -92,6 +92,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
   },
   {
+    path: '/parts-guides',
+    title: 'PC Parts Buying Guides — GPU, CPU, RAM, and More | SpecSmith',
+    description:
+      'Every buying guide on SpecSmith in one place — GPU and CPU tier lists, upgrade guides, and budget-to-premium picks for motherboards, RAM, storage, PSUs, cases, coolers, and peripherals.',
+  },
+  {
     path: '/best-motherboard',
     title: 'Best Motherboards by Platform (AM4, AM5, LGA1700, LGA1851) | SpecSmith',
     description:

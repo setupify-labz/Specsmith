@@ -35,6 +35,7 @@ const CpuUpgradePage = lazy(() => import('./pages/CpuUpgradePage'));
 const BestMotherboardIndex = lazy(() => import('./pages/BestMotherboardIndex'));
 const BestMotherboardPage = lazy(() => import('./pages/BestMotherboardPage'));
 const ComponentGuidePage = lazy(() => import('./pages/ComponentGuidePage'));
+const PartsGuidesHub = lazy(() => import('./pages/PartsGuidesHub'));
 const BuildCrate = lazy(() => import('./pages/BuildCrate'));
 
 function AppRoutes() {
@@ -78,6 +79,7 @@ function AppRoutes() {
           <Route path="/best-keyboard" element={<PageWrapper><ComponentGuidePage category="keyboard" /></PageWrapper>} />
           <Route path="/best-mouse" element={<PageWrapper><ComponentGuidePage category="mouse" /></PageWrapper>} />
           <Route path="/best-headset" element={<PageWrapper><ComponentGuidePage category="headset" /></PageWrapper>} />
+          <Route path="/parts-guides" element={<PageWrapper><PartsGuidesHub /></PageWrapper>} />
           <Route path="/crate"     element={<PageWrapper><BuildCrate /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
