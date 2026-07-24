@@ -26,12 +26,15 @@ import UpgradeCalculator from './pages/UpgradeCalculator';
 import Gallery from './pages/Gallery';
 import GpuUpgradeIndex from './pages/GpuUpgradeIndex';
 import GpuUpgradePage from './pages/GpuUpgradePage';
+import CpuUpgradeIndex from './pages/CpuUpgradeIndex';
+import CpuUpgradePage from './pages/CpuUpgradePage';
 import BuildCrate from './pages/BuildCrate';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
 import { CPU_GAME_PAGES, getCpuGamePageMeta } from './lib/cpuGamePages';
 import { UPGRADE_PAGES, getUpgradePageMeta } from './lib/upgradePages';
+import { CPU_UPGRADE_PAGES, getCpuUpgradePageMeta } from './lib/cpuUpgradePages';
 import { getRouteMeta, type RouteMeta } from './lib/seo';
 
 export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
@@ -50,6 +53,7 @@ export const PRERENDER_ROUTES = [
   '/upgrade-calculator',
   '/gallery',
   '/upgrade',
+  '/upgrade-cpu',
   '/crate',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -57,6 +61,7 @@ export const PRERENDER_ROUTES = [
   ...GAME_PAGES.map((p) => `/best-gpu/${p.slug}`),
   ...CPU_GAME_PAGES.map((p) => `/best-cpu/${p.slug}`),
   ...UPGRADE_PAGES.map((p) => `/upgrade/${p.slug}`),
+  ...CPU_UPGRADE_PAGES.map((p) => `/upgrade-cpu/${p.slug}`),
 ];
 
 const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
@@ -66,6 +71,7 @@ const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...GAME_PAGES.map((p) => [`/best-gpu/${p.slug}`, getGamePageMeta(p)] as const),
   ...CPU_GAME_PAGES.map((p) => [`/best-cpu/${p.slug}`, getCpuGamePageMeta(p)] as const),
   ...UPGRADE_PAGES.map((p) => [`/upgrade/${p.slug}`, getUpgradePageMeta(p)] as const),
+  ...CPU_UPGRADE_PAGES.map((p) => [`/upgrade-cpu/${p.slug}`, getCpuUpgradePageMeta(p)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -112,6 +118,8 @@ export function render(url: string): string {
                 <Route path="/gallery" element={<PageWrapper><Gallery /></PageWrapper>} />
                 <Route path="/upgrade" element={<PageWrapper><GpuUpgradeIndex /></PageWrapper>} />
                 <Route path="/upgrade/:slug" element={<PageWrapper><GpuUpgradePage /></PageWrapper>} />
+                <Route path="/upgrade-cpu" element={<PageWrapper><CpuUpgradeIndex /></PageWrapper>} />
+                <Route path="/upgrade-cpu/:slug" element={<PageWrapper><CpuUpgradePage /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
               </Routes>
             </Suspense>

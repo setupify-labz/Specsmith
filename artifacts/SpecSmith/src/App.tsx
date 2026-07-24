@@ -30,6 +30,8 @@ const UpgradeCalculator = lazy(() => import('./pages/UpgradeCalculator'));
 const Gallery = lazy(() => import('./pages/Gallery'));
 const GpuUpgradeIndex = lazy(() => import('./pages/GpuUpgradeIndex'));
 const GpuUpgradePage = lazy(() => import('./pages/GpuUpgradePage'));
+const CpuUpgradeIndex = lazy(() => import('./pages/CpuUpgradeIndex'));
+const CpuUpgradePage = lazy(() => import('./pages/CpuUpgradePage'));
 const BuildCrate = lazy(() => import('./pages/BuildCrate'));
 
 function AppRoutes() {
@@ -60,6 +62,8 @@ function AppRoutes() {
           <Route path="/gallery"   element={<PageWrapper><Gallery /></PageWrapper>} />
           <Route path="/upgrade"   element={<PageWrapper><GpuUpgradeIndex /></PageWrapper>} />
           <Route path="/upgrade/:slug" element={<PageWrapper><GpuUpgradePage /></PageWrapper>} />
+          <Route path="/upgrade-cpu" element={<PageWrapper><CpuUpgradeIndex /></PageWrapper>} />
+          <Route path="/upgrade-cpu/:slug" element={<PageWrapper><CpuUpgradePage /></PageWrapper>} />
           <Route path="/crate"     element={<PageWrapper><BuildCrate /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>

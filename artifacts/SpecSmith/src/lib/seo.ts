@@ -92,6 +92,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
   },
   {
+    path: '/upgrade-cpu',
+    title: 'CPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    description:
+      'Browse upgrade guides for every CPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+  },
+  {
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
