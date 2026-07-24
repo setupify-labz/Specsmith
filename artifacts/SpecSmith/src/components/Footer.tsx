@@ -18,6 +18,19 @@ const NAV_GROUPS = [
       { to: '/best-gpu', label: 'Best GPU by Game' },
       { to: '/best-cpu', label: 'Best CPU by Game' },
       { to: '/gpu-tier-list', label: 'GPU Tier List' },
+      { to: '/upgrade', label: 'GPU Upgrade Guides' },
+      { to: '/upgrade-cpu', label: 'CPU Upgrade Guides' },
+    ],
+  },
+  {
+    heading: 'Parts Guides',
+    links: [
+      { to: '/best-motherboard', label: 'Best Motherboards' },
+      { to: '/best-ram', label: 'Best RAM' },
+      { to: '/best-storage', label: 'Best Storage' },
+      { to: '/best-psu', label: 'Best Power Supplies' },
+      { to: '/best-case', label: 'Best Cases' },
+      { to: '/best-cooler', label: 'Best CPU Coolers' },
     ],
   },
 ];
@@ -26,7 +39,7 @@ export default function Footer() {
   return (
     <footer style={{ backgroundColor: 'var(--ff-bg)', borderTop: '1px solid var(--ff-border)', marginTop: '5rem' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand */}
           <div>
             <Link to="/" className="flex items-center gap-2 mb-3">
