@@ -30,6 +30,7 @@ import CpuUpgradeIndex from './pages/CpuUpgradeIndex';
 import CpuUpgradePage from './pages/CpuUpgradePage';
 import BestMotherboardIndex from './pages/BestMotherboardIndex';
 import BestMotherboardPage from './pages/BestMotherboardPage';
+import ComponentGuidePage from './pages/ComponentGuidePage';
 import BuildCrate from './pages/BuildCrate';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
@@ -38,6 +39,7 @@ import { CPU_GAME_PAGES, getCpuGamePageMeta } from './lib/cpuGamePages';
 import { UPGRADE_PAGES, getUpgradePageMeta } from './lib/upgradePages';
 import { CPU_UPGRADE_PAGES, getCpuUpgradePageMeta } from './lib/cpuUpgradePages';
 import { SOCKET_PAGES, getSocketPageMeta } from './lib/motherboardPages';
+import { COMPONENT_GUIDES, getComponentGuideMeta } from './lib/componentGuides';
 import { getRouteMeta, type RouteMeta } from './lib/seo';
 
 export { getRouteMeta, buildHeadTags, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
@@ -58,6 +60,7 @@ export const PRERENDER_ROUTES = [
   '/upgrade',
   '/upgrade-cpu',
   '/best-motherboard',
+  ...COMPONENT_GUIDES.map((g) => `/best-${g.slug}`),
   '/crate',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -78,6 +81,7 @@ const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...UPGRADE_PAGES.map((p) => [`/upgrade/${p.slug}`, getUpgradePageMeta(p)] as const),
   ...CPU_UPGRADE_PAGES.map((p) => [`/upgrade-cpu/${p.slug}`, getCpuUpgradePageMeta(p)] as const),
   ...SOCKET_PAGES.map((p) => [`/best-motherboard/${p.slug}`, getSocketPageMeta(p)] as const),
+  ...COMPONENT_GUIDES.map((g) => [`/best-${g.slug}`, getComponentGuideMeta(g)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -128,6 +132,11 @@ export function render(url: string): string {
                 <Route path="/upgrade-cpu/:slug" element={<PageWrapper><CpuUpgradePage /></PageWrapper>} />
                 <Route path="/best-motherboard" element={<PageWrapper><BestMotherboardIndex /></PageWrapper>} />
                 <Route path="/best-motherboard/:slug" element={<PageWrapper><BestMotherboardPage /></PageWrapper>} />
+                <Route path="/best-ram" element={<PageWrapper><ComponentGuidePage category="ram" /></PageWrapper>} />
+                <Route path="/best-storage" element={<PageWrapper><ComponentGuidePage category="storage" /></PageWrapper>} />
+                <Route path="/best-psu" element={<PageWrapper><ComponentGuidePage category="psu" /></PageWrapper>} />
+                <Route path="/best-case" element={<PageWrapper><ComponentGuidePage category="case" /></PageWrapper>} />
+                <Route path="/best-cooler" element={<PageWrapper><ComponentGuidePage category="cooler" /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
               </Routes>
             </Suspense>
