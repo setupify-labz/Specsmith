@@ -1,4 +1,5 @@
 import componentData from '../data/components.json';
+import peripheralData from '../data/peripherals.json';
 import type { RouteMeta } from './seo';
 
 export interface GuideItem {
@@ -22,7 +23,7 @@ export interface GuideColumn {
   format?: (v: unknown) => string;
 }
 
-export type GuideCategory = 'ram' | 'storage' | 'psu' | 'case' | 'cooler';
+export type GuideCategory = 'ram' | 'storage' | 'psu' | 'case' | 'cooler' | 'monitor' | 'keyboard' | 'mouse' | 'headset';
 
 export interface ComponentGuide {
   slug: string;
@@ -67,6 +68,29 @@ const casesSorted = [...cases].sort((a, b) => a.price_usd - b.price_usd);
 const caseBudget = casesSorted[0];
 const caseMid = casesSorted[Math.floor(casesSorted.length / 2)];
 const casePremium = casesSorted[casesSorted.length - 1];
+
+const monitors = peripheralData.monitors as (GuideItem & { size_inches: number; resolution: string; refresh_rate_hz: number; panel_type: string })[];
+const keyboards = peripheralData.keyboards as (GuideItem & { switch_type: string; form_factor: string; wireless: boolean })[];
+const mice = peripheralData.mice as (GuideItem & { dpi_max: number; weight_grams: number; wireless: boolean })[];
+const headsets = peripheralData.headsets as (GuideItem & { wireless: boolean; noise_cancelling: boolean; surround_sound: string })[];
+
+const monitorBudget = cheapest(monitors);
+const monitorFastest = monitors.reduce((max, m) => (m.refresh_rate_hz > max.refresh_rate_hz ? m : max), monitors[0]);
+const fourK = monitors.filter(m => m.resolution === '4K');
+const monitor4k = fourK.length > 0 ? cheapest(fourK) : priciest(monitors);
+
+const keyboardBudget = cheapest(keyboards);
+const wirelessKeyboards = keyboards.filter(k => k.wireless);
+const keyboardWireless = wirelessKeyboards.length > 0 ? cheapest(wirelessKeyboards) : priciest(keyboards);
+
+const mouseBudget = cheapest(mice);
+const mouseLight = mice.reduce((min, m) => (m.weight_grams < min.weight_grams ? m : min), mice[0]);
+const mousePremium = priciest(mice);
+
+const headsetBudget = cheapest(headsets);
+const wirelessHeadsets = headsets.filter(h => h.wireless);
+const headsetWireless = wirelessHeadsets.length > 0 ? cheapest(wirelessHeadsets) : priciest(headsets);
+const headsetPremium = priciest(headsets);
 
 const airCoolers = coolers.filter(c => c.type === 'Air');
 const aioCoolers = coolers.filter(c => c.type.includes('AIO'));
@@ -149,6 +173,69 @@ export const COMPONENT_GUIDES: ComponentGuide[] = [
     columns: [
       { key: 'type', label: 'Type' },
       { key: 'max_tdp_watts', label: 'Max TDP', format: v => v ? `${v}W` : '—' },
+    ],
+  },
+  {
+    slug: 'monitor', category: 'monitor', categoryLabel: 'Monitor',
+    title: 'Best Gaming Monitor',
+    blurb: 'Match your monitor to your GPU, not the other way around — a 240Hz+ panel is wasted if your card can’t push those frame rates, and a 4K screen needs serious GPU horsepower to actually run games at native resolution.',
+    items: monitors,
+    picks: [
+      { emoji: '💰', label: 'Budget Pick', item: monitorBudget, detail: `$${monitorBudget.price_usd} — ${monitorBudget.size_inches}" ${monitorBudget.resolution} at ${monitorBudget.refresh_rate_hz}Hz.` },
+      { emoji: '⚡', label: 'Highest Refresh', item: monitorFastest, detail: `${monitorFastest.refresh_rate_hz}Hz — the fastest panel we track, for competitive/esports titles.` },
+      { emoji: '🖥️', label: '4K Pick', item: monitor4k, detail: `$${monitor4k.price_usd} — ${monitor4k.size_inches}" ${monitor4k.resolution} at ${monitor4k.refresh_rate_hz}Hz.` },
+    ],
+    columns: [
+      { key: 'resolution', label: 'Resolution' },
+      { key: 'refresh_rate_hz', label: 'Refresh Rate', format: v => `${v}Hz` },
+      { key: 'panel_type', label: 'Panel' },
+    ],
+  },
+  {
+    slug: 'keyboard', category: 'keyboard', categoryLabel: 'Keyboard',
+    title: 'Best Gaming Keyboard',
+    blurb: 'Mechanical switches are the standard for gaming keyboards — the difference between switch types (linear, tactile, clicky) is mostly feel and noise, not a performance advantage in-game.',
+    items: keyboards,
+    picks: [
+      { emoji: '💰', label: 'Budget Pick', item: keyboardBudget, detail: `$${keyboardBudget.price_usd} — ${keyboardBudget.form_factor}, ${keyboardBudget.switch_type}.` },
+      { emoji: '📡', label: 'Wireless Pick', item: keyboardWireless, detail: `$${keyboardWireless.price_usd} — ${keyboardWireless.form_factor}, wireless.` },
+    ],
+    columns: [
+      { key: 'switch_type', label: 'Switches' },
+      { key: 'form_factor', label: 'Form Factor' },
+      { key: 'wireless', label: 'Wireless', format: v => v ? 'Yes' : 'No' },
+    ],
+  },
+  {
+    slug: 'mouse', category: 'mouse', categoryLabel: 'Mouse',
+    title: 'Best Gaming Mouse',
+    blurb: 'Weight and shape matter more than max DPI for most players — nearly every gaming mouse today has more sensitivity than anyone actually uses. Pick based on grip style and weight, not the DPI number on the box.',
+    items: mice,
+    picks: [
+      { emoji: '💰', label: 'Budget Pick', item: mouseBudget, detail: `$${mouseBudget.price_usd} — ${mouseBudget.dpi_max.toLocaleString()} DPI max.` },
+      { emoji: '🪶', label: 'Lightest Pick', item: mouseLight, detail: `${mouseLight.weight_grams}g — the lightest mouse we track.` },
+      { emoji: '👑', label: 'High-End Pick', item: mousePremium, detail: `$${mousePremium.price_usd} — ${mousePremium.buttons} buttons, ${mousePremium.dpi_max.toLocaleString()} DPI max.` },
+    ],
+    columns: [
+      { key: 'dpi_max', label: 'Max DPI', format: v => (v as number).toLocaleString() },
+      { key: 'weight_grams', label: 'Weight', format: v => `${v}g` },
+      { key: 'wireless', label: 'Wireless', format: v => v ? 'Yes' : 'No' },
+    ],
+  },
+  {
+    slug: 'headset', category: 'headset', categoryLabel: 'Headset',
+    title: 'Best Gaming Headset',
+    blurb: 'Wireless headsets have closed most of the latency/quality gap with wired for gaming, but check battery life if you play long sessions. A good microphone matters as much as sound quality if you play with a team.',
+    items: headsets,
+    picks: [
+      { emoji: '💰', label: 'Budget Pick', item: headsetBudget, detail: `$${headsetBudget.price_usd}${headsetBudget.wireless ? ' — wireless' : ' — wired'}.` },
+      { emoji: '📡', label: 'Wireless Pick', item: headsetWireless, detail: `$${headsetWireless.price_usd} — wireless${headsetWireless.noise_cancelling ? ', noise cancelling' : ''}.` },
+      { emoji: '👑', label: 'High-End Pick', item: headsetPremium, detail: `$${headsetPremium.price_usd} — ${headsetPremium.surround_sound}.` },
+    ],
+    columns: [
+      { key: 'wireless', label: 'Wireless', format: v => v ? 'Yes' : 'No' },
+      { key: 'noise_cancelling', label: 'ANC', format: v => v ? 'Yes' : 'No' },
+      { key: 'surround_sound', label: 'Surround' },
     ],
   },
 ];

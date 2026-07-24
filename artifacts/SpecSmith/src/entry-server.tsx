@@ -137,6 +137,10 @@ export function render(url: string): string {
                 <Route path="/best-psu" element={<PageWrapper><ComponentGuidePage category="psu" /></PageWrapper>} />
                 <Route path="/best-case" element={<PageWrapper><ComponentGuidePage category="case" /></PageWrapper>} />
                 <Route path="/best-cooler" element={<PageWrapper><ComponentGuidePage category="cooler" /></PageWrapper>} />
+                <Route path="/best-monitor" element={<PageWrapper><ComponentGuidePage category="monitor" /></PageWrapper>} />
+                <Route path="/best-keyboard" element={<PageWrapper><ComponentGuidePage category="keyboard" /></PageWrapper>} />
+                <Route path="/best-mouse" element={<PageWrapper><ComponentGuidePage category="mouse" /></PageWrapper>} />
+                <Route path="/best-headset" element={<PageWrapper><ComponentGuidePage category="headset" /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
               </Routes>
             </Suspense>

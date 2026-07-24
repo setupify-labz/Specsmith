@@ -31,6 +31,10 @@ const NAV_GROUPS = [
       { to: '/best-psu', label: 'Best Power Supplies' },
       { to: '/best-case', label: 'Best Cases' },
       { to: '/best-cooler', label: 'Best CPU Coolers' },
+      { to: '/best-monitor', label: 'Best Monitors' },
+      { to: '/best-keyboard', label: 'Best Keyboards' },
+      { to: '/best-mouse', label: 'Best Mice' },
+      { to: '/best-headset', label: 'Best Headsets' },
     ],
   },
 ];
