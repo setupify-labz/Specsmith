@@ -92,6 +92,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
   },
   {
+    path: '/best-motherboard',
+    title: 'Best Motherboards by Platform (AM4, AM5, LGA1700, LGA1851) | SpecSmith',
+    description:
+      'Every motherboard we track, organized by CPU socket — budget, sweet-spot, and high-end picks for AMD AM4/AM5 and Intel LGA1700/LGA1851 builds.',
+  },
+  {
     path: '/upgrade-cpu',
     title: 'CPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
     description:
