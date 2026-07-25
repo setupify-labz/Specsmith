@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, Zap, DollarSign, ChevronRight, Monitor } from 'lucide-react';
+import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -32,6 +32,41 @@ const features = [
     glow: 'rgba(0,230,118,0.35)',
     title: 'Price Tracker',
     description: 'Know your total build cost instantly. Every component shows real pricing with direct links to purchase.',
+  },
+];
+
+const exploreLinks = [
+  {
+    icon: <Package size={22} className="text-[#FFD700]" />,
+    glow: 'rgba(255,215,0,0.3)',
+    title: 'Build Crate',
+    description: 'Open a randomized build, one part at a time — every crate guaranteed to fit together, rarity pulls for how good it lands.',
+    to: '/crate',
+    cta: 'Open a Crate',
+  },
+  {
+    icon: <Users size={22} className="text-[#00E676]" />,
+    glow: 'rgba(0,230,118,0.3)',
+    title: 'Build Gallery',
+    description: 'Browse real builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
+    to: '/gallery',
+    cta: 'Browse Builds',
+  },
+  {
+    icon: <TrendingUp size={22} className="text-[#00D4FF]" />,
+    glow: 'rgba(0,212,255,0.3)',
+    title: 'Upgrade Guides',
+    description: 'See what your current GPU or CPU is worth used, and whether trading up is actually worth the money.',
+    to: '/upgrade',
+    cta: 'Check Your Upgrade',
+  },
+  {
+    icon: <BookOpen size={22} className="text-[#6C63FF]" />,
+    glow: 'rgba(108,99,255,0.3)',
+    title: 'Parts Guides',
+    description: 'Budget-to-premium picks for every part — motherboards, RAM, storage, cases, coolers, and peripherals.',
+    to: '/parts-guides',
+    cta: 'Browse Guides',
   },
 ];
 
@@ -191,6 +226,47 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Explore more */}
+      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-10"
+        >
+          <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">More Than a Part Picker</h2>
+          <p className="text-secondary-custom text-sm mt-1">Tools and content beyond the basic builder</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {exploreLinks.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+              className="rounded-2xl border border-subtle bg-card-dark p-6 card-hover"
+            >
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: `radial-gradient(circle at 30% 30%, ${f.glow}, transparent 70%)`, border: '1px solid var(--ff-border)' }}
+              >
+                {f.icon}
+              </div>
+              <h3 className="text-ff-primary font-bold text-lg mb-2">{f.title}</h3>
+              <p className="text-secondary-custom text-sm leading-relaxed mb-4">{f.description}</p>
+              <Link
+                to={f.to}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#6C63FF] hover:text-[#00D4FF] transition-colors"
+              >
+                {f.cta} <ChevronRight size={14} />
+              </Link>
+            </motion.div>
+          ))}
         </div>
       </section>
 
