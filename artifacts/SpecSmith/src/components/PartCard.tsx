@@ -136,7 +136,7 @@ export default function PartCard({
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-            style={{ color: 'var(--ff-accent)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
+            style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
           >
             Amazon <ExternalLink size={10} />
           </a>

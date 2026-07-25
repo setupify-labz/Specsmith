@@ -51,7 +51,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
           <button
             onClick={e => { e.stopPropagation(); setModalOpen(true); }}
             className="text-[10px] font-medium hover:opacity-80 transition-opacity"
-            style={{ color: 'var(--ff-accent)' }}
+            style={{ color: 'var(--ff-accent-text)' }}
           >
             Price History
           </button>
