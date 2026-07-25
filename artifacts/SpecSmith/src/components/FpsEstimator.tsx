@@ -111,8 +111,9 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {/* Game */}
         <div>
-          <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium" style={{ color: 'var(--ff-text-2)' }}>Game</label>
+          <label htmlFor="fps-game-select" className="block text-xs uppercase tracking-wider mb-1.5 font-medium" style={{ color: 'var(--ff-text-2)' }}>Game</label>
           <select
+            id="fps-game-select"
             value={selectedGame}
             onChange={e => setSelectedGame(e.target.value)}
             className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none"

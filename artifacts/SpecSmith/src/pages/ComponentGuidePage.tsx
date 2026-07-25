@@ -32,12 +32,12 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
           {guide.picks.map(p => (
             <div key={p.label} className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
               <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{p.emoji} {p.label}</p>
-              <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent)' }}>{p.item.name}</p>
+              <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent-text)' }}>{p.item.name}</p>
               <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.detail}</p>
               <div className="flex items-center gap-3 text-xs">
                 <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.item.price_usd}</span>
                 <a href={getAffiliateUrl(buildPartQuery(p.item.name, p.item.brand, guide.category))} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                  className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
                   Amazon <ExternalLink size={10} />
                 </a>
                 <a href={getNeweggUrl(buildPartQuery(p.item.name, p.item.brand, guide.category))} target="_blank" rel="noopener noreferrer"
@@ -67,7 +67,7 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
               <tbody>
                 {[...guide.items].sort((a, b) => a.price_usd - b.price_usd).map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                    <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(item.id) ? 'var(--ff-accent)' : 'var(--ff-text)' }}>
+                    <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(item.id) ? 'var(--ff-accent-text)' : 'var(--ff-text)' }}>
                       {item.name}
                     </td>
                     {guide.columns.map(c => (

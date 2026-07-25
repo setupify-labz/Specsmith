@@ -56,7 +56,7 @@ function BuildCard({ build, expanded, onToggle }: { build: PublicBuildRow; expan
                 <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{getPartName(cat, id)}</span>
                 <a href={getAffiliateUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80 flex-shrink-0"
-                  style={{ color: 'var(--ff-accent)' }}>
+                  style={{ color: 'var(--ff-accent-text)' }}>
                   Buy <ExternalLink size={9} />
                 </a>
               </div>

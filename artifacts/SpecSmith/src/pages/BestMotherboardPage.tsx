@@ -62,12 +62,12 @@ export default function BestMotherboardPage() {
             {picks.map(p => (
               <div key={p.label} className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{p.emoji} {p.label}</p>
-                <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent)' }}>{p.motherboard.name}</p>
+                <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent-text)' }}>{p.motherboard.name}</p>
                 <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.detail}</p>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.motherboard.price_usd}</span>
                   <a href={getAffiliateUrl(buildPartQuery(p.motherboard.name, p.motherboard.brand, 'motherboard'))} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                    className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
                     Amazon <ExternalLink size={10} />
                   </a>
                   <a href={getNeweggUrl(buildPartQuery(p.motherboard.name, p.motherboard.brand, 'motherboard'))} target="_blank" rel="noopener noreferrer"
@@ -97,7 +97,7 @@ export default function BestMotherboardPage() {
               <tbody>
                 {boards.map(b => (
                   <tr key={b.id} style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                    <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(b.id) ? 'var(--ff-accent)' : 'var(--ff-text)' }}>
+                    <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(b.id) ? 'var(--ff-accent-text)' : 'var(--ff-text)' }}>
                       {b.name}
                     </td>
                     <td className="py-2 px-3" style={{ color: 'var(--ff-text-2)' }}>{b.form_factor}</td>
