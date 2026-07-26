@@ -2,34 +2,30 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX,
+  Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX, Download, ImageDown, Flame,
   CircuitBoard, MemoryStick, MonitorSmartphone, HardDrive, Box, Fan, Zap, type LucideIcon,
 } from 'lucide-react';
 import {
-  CRATE_CATEGORY_ORDER, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
+  CRATE_CATEGORY_ORDER, RARITY_STYLE, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
   getMotherboardPool, getCpuPool, getRamPool, getGpuPool, getStoragePool, getCasePool, getCoolerPool, getPsuPool,
   finalizeCrateBuild, type CrateBuild, type CrateRarity, type RolledPart,
   type CrateMotherboard, type CrateCpu, type CrateRam, type CrateGpu, type CrateStorage, type CrateCase, type CrateCooler, type CratePsu,
 } from '../lib/buildCrate';
 import { getBestPull, recordPullIfBest, type BestPull } from '../lib/crateBestPull';
+import { isPityActive, pullsUntilPity, recordPullResult, PITY_THRESHOLD } from '../lib/cratePity';
 import { playRaritySound, playSpinWhoosh, isCrateSoundMuted, setCrateSoundMuted } from '../lib/crateSound';
 import { getShareUrl } from '../lib/sharing';
 import { publishBuild } from '../lib/gallery';
+import { recordGlobalPull } from '../lib/cratePulls';
+import { downloadCrateCard, copyCrateCardToClipboard } from '../lib/crateCard';
 import { isGalleryEnabled } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import CompatibilityBanner from '../components/CompatibilityBanner';
+import CratePullsFeed from '../components/CratePullsFeed';
 import PageGlow from '../components/PageGlow';
-
-const RARITY_STYLE: Record<CrateRarity, { label: string; color: string; glow: string }> = {
-  common:    { label: 'Common',    color: '#9CA3AF', glow: 'rgba(156,163,175,0.35)' },
-  uncommon:  { label: 'Uncommon',  color: '#00E676', glow: 'rgba(0,230,118,0.4)' },
-  rare:      { label: 'Rare',      color: '#00D4FF', glow: 'rgba(0,212,255,0.4)' },
-  epic:      { label: 'Epic',      color: '#9B6BFF', glow: 'rgba(155,107,255,0.45)' },
-  legendary: { label: 'Legendary', color: '#FFD700', glow: 'rgba(255,215,0,0.5)' },
-};
 
 // How dramatic the landing effect gets, escalating per rarity tier.
 const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
@@ -239,10 +235,15 @@ export default function BuildCrate() {
   const [legendaryBlast, setLegendaryBlast] = useState(false);
   const [muted, setMuted] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [pityActive, setPityActive] = useState(false);
+  const [pullsLeft, setPullsLeft] = useState(PITY_THRESHOLD);
+  const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
 
   useEffect(() => {
     setBestPull(getBestPull());
     setMuted(isCrateSoundMuted());
+    setPityActive(isPityActive());
+    setPullsLeft(pullsUntilPity());
   }, []);
 
   const revealedCount = CRATE_CATEGORY_ORDER.filter(c => revealed[c.key]).length;
@@ -274,13 +275,13 @@ export default function BuildCrate() {
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.motherboard = r; } });
       setSocket(r.socket);
     } else if (key === 'cpu') {
-      const r = rollCpu(socket!);
+      const r = rollCpu(socket!, pityActive);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cpu = r; } });
     } else if (key === 'ram') {
       const r = rollRam(revealed.motherboard!.part.supported_ram[0]);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.ram = r; } });
     } else if (key === 'gpu') {
-      const r = rollGpu();
+      const r = rollGpu(pityActive);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.gpu = r; } });
     } else if (key === 'storage') {
       const r = rollStorage();
@@ -312,6 +313,8 @@ export default function BuildCrate() {
       });
       setFinalBuild(fb);
       setBestPull(recordPullIfBest({ rarity: fb.rarity, gpuName: fb.gpu.name, cpuName: fb.cpu.name, totalCost: fb.totalCost, avgFps: fb.avgFps }));
+      recordPullResult(fb.rarity);
+      recordGlobalPull(fb, user?.username ?? 'Anonymous');
     }
   };
 
@@ -320,6 +323,8 @@ export default function BuildCrate() {
     setRevealed({});
     setPending(null);
     setFinalBuild(null);
+    setPityActive(isPityActive());
+    setPullsLeft(pullsUntilPity());
   };
 
   const buildWithThis = () => {
@@ -341,6 +346,40 @@ export default function BuildCrate() {
     const result = await publishBuild(`${RARITY_STYLE[finalBuild.rarity].label} Crate Pull`, finalBuild.buildState, user.username);
     setPublishing(false);
     showToast(result.ok ? 'Published to the Gallery' : result.error, result.ok ? 'success' : 'error');
+  };
+
+  const crateCardOptions = () => {
+    if (!finalBuild) return null;
+    return {
+      rarity: finalBuild.rarity,
+      totalCost: finalBuild.totalCost,
+      avgFps: finalBuild.avgFps,
+      parts: CRATE_CATEGORY_ORDER.map(c => {
+        const r = revealed[c.key]!;
+        return { label: c.label, name: r.part.name, rarity: r.rarity };
+      }),
+    };
+  };
+
+  const handleDownloadCard = async () => {
+    const options = crateCardOptions();
+    if (!options || cardState !== 'idle') return;
+    setCardState('downloading');
+    try { await downloadCrateCard(options); } finally { setCardState('idle'); }
+  };
+
+  const handleCopyCard = async () => {
+    const options = crateCardOptions();
+    if (!options || cardState !== 'idle') return;
+    setCardState('copying');
+    try {
+      await copyCrateCardToClipboard(options);
+      setCardState('copied');
+      setTimeout(() => setCardState('idle'), 2000);
+    } catch {
+      setCardState('idle');
+      showToast('Failed to copy image', 'error');
+    }
   };
 
   const pendingPool = pending && (
@@ -382,9 +421,18 @@ export default function BuildCrate() {
         </motion.div>
 
         {bestPull && (
-          <p className="text-xs text-center mb-6" style={{ color: 'var(--ff-text-3)' }}>
+          <p className="text-xs text-center mb-2" style={{ color: 'var(--ff-text-3)' }}>
             Your best pull: <span style={{ color: RARITY_STYLE[bestPull.rarity].color, fontWeight: 700 }}>{RARITY_STYLE[bestPull.rarity].label}</span>{' '}
             — {bestPull.gpuName} + {bestPull.cpuName}
+          </p>
+        )}
+
+        {!finalBuild && !pending && revealedCount === 0 && (
+          <p className="flex items-center justify-center gap-1.5 text-xs text-center mb-6" style={{ color: pityActive ? '#FF9800' : 'var(--ff-text-3)' }}>
+            <Flame size={12} />
+            {pityActive
+              ? 'Pity active — this crate is guaranteed Rare or better'
+              : `${pullsLeft} more sub-Rare pull${pullsLeft === 1 ? '' : 's'} until guaranteed Rare+`}
           </p>
         )}
 
@@ -498,6 +546,18 @@ export default function BuildCrate() {
                   style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
                   <Share2 size={15} /> Copy Share Link
                 </button>
+                <button onClick={handleDownloadCard}
+                  disabled={cardState !== 'idle'}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{ border: `1px solid ${RARITY_STYLE[finalBuild.rarity].color}`, color: RARITY_STYLE[finalBuild.rarity].color }}>
+                  <Download size={15} /> {cardState === 'downloading' ? 'Saving…' : 'Download Card'}
+                </button>
+                <button onClick={handleCopyCard}
+                  disabled={cardState !== 'idle'}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{ border: `1px solid ${RARITY_STYLE[finalBuild.rarity].color}`, color: RARITY_STYLE[finalBuild.rarity].color }}>
+                  <ImageDown size={15} /> {cardState === 'copying' ? 'Copying…' : cardState === 'copied' ? 'Copied!' : 'Copy Image'}
+                </button>
                 {user ? (
                   <button onClick={publishToGallery}
                     disabled={!isGalleryEnabled || publishing}
@@ -529,6 +589,8 @@ export default function BuildCrate() {
             <Link to="/builder" className="underline hover:opacity-80" style={{ color: 'var(--ff-text-2)' }}>Prefer to pick your own parts?</Link>
           </p>
         )}
+
+        <CratePullsFeed />
       </div>
     </motion.div>
   );

@@ -30,6 +30,14 @@ export const SOCKETS = [...new Set(cpus.map(c => c.socket))];
 
 export type CrateRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
+export const RARITY_STYLE: Record<CrateRarity, { label: string; color: string; glow: string }> = {
+  common:    { label: 'Common',    color: '#9CA3AF', glow: 'rgba(156,163,175,0.35)' },
+  uncommon:  { label: 'Uncommon',  color: '#00E676', glow: 'rgba(0,230,118,0.4)' },
+  rare:      { label: 'Rare',      color: '#00D4FF', glow: 'rgba(0,212,255,0.4)' },
+  epic:      { label: 'Epic',      color: '#9B6BFF', glow: 'rgba(155,107,255,0.45)' },
+  legendary: { label: 'Legendary', color: '#FFD700', glow: 'rgba(255,215,0,0.5)' },
+};
+
 function rarityFromPercentile(p: number): CrateRarity {
   if (p >= 0.9) return 'legendary';
   if (p >= 0.7) return 'epic';
@@ -81,8 +89,15 @@ export function rollMotherboard(): RolledPart<CrateMotherboard> & { socket: stri
   return { part: item, rarity: rarityFromPercentile(percentile), socket };
 }
 
-export function rollCpu(socket: string): RolledPart<CrateCpu> {
-  const pool = cpus.filter(c => c.socket === socket);
+// Overall build rarity (see getOverallRarity below) is just the average of
+// the GPU and CPU tiers, so pity only needs to touch these two rolls:
+// restricting both pools to tier >= PITY_MIN_TIER guarantees an average of
+// at least 5 — the "rare" floor — no matter what lands within that range.
+const PITY_MIN_TIER = 5;
+
+export function rollCpu(socket: string, pity = false): RolledPart<CrateCpu> {
+  let pool = cpus.filter(c => c.socket === socket);
+  if (pity) pool = pool.filter(c => c.tier >= PITY_MIN_TIER);
   const { item, percentile } = pickWeighted(pool, c => c.tier);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
@@ -93,8 +108,9 @@ export function rollRam(ramType: string): RolledPart<CrateRam> {
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
-export function rollGpu(): RolledPart<CrateGpu> {
-  const { item, percentile } = pickWeighted(gpus, g => g.tier);
+export function rollGpu(pity = false): RolledPart<CrateGpu> {
+  const pool = pity ? gpus.filter(g => g.tier >= PITY_MIN_TIER) : gpus;
+  const { item, percentile } = pickWeighted(pool, g => g.tier);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 

@@ -43,7 +43,7 @@ const FEATURED_GAMES = FEATURED_GAME_IDS
 
 const PRIORITY_LABELS = ['GPU', 'CPU', 'RAM', 'Storage', 'Motherboard', 'PSU', 'Case', 'Cooler'];
 
-function truncate(text: string, maxLen: number): string {
+export function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
 }
 
@@ -53,7 +53,7 @@ function truncate(text: string, maxLen: number): string {
 const logoImg = typeof Image !== 'undefined' ? new Image() : null;
 if (logoImg) logoImg.src = '/logo.png';
 
-function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
+export function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
   if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
     ctx.save();
     const r = size * 0.22;

@@ -48,3 +48,40 @@ $$;
 
 create index if not exists public_builds_created_at_idx on public_builds (created_at desc);
 create index if not exists public_builds_view_count_idx on public_builds (view_count desc);
+
+-- Build Crate global pulls feed — every finished crate run is recorded here
+-- (fire-and-forget from the client) so the Crate page can show a live feed
+-- of recent pulls across all visitors, not just a per-browser best-pull.
+-- Same anon-insert/anon-select, no-update/delete policy as public_builds,
+-- for the same reason: no login system to check ownership against.
+
+create table if not exists crate_pulls (
+  id uuid primary key default gen_random_uuid(),
+  rarity text not null check (rarity in ('common', 'uncommon', 'rare', 'epic', 'legendary')),
+  gpu_name text not null,
+  cpu_name text not null,
+  build_state jsonb not null,
+  total_cost integer not null,
+  avg_fps integer not null,
+  puller_name text not null default 'Anonymous',
+  created_at timestamptz not null default now()
+);
+
+alter table crate_pulls enable row level security;
+
+create policy "Anyone can view crate pulls"
+  on crate_pulls for select
+  using (true);
+
+create policy "Anyone can record a crate pull"
+  on crate_pulls for insert
+  with check (
+    char_length(gpu_name) between 1 and 80
+    and char_length(cpu_name) between 1 and 80
+    and char_length(puller_name) between 1 and 40
+    and total_cost >= 0
+    and avg_fps >= 0
+  );
+
+create index if not exists crate_pulls_created_at_idx on crate_pulls (created_at desc);
+create index if not exists crate_pulls_rarity_idx on crate_pulls (rarity);

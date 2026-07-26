@@ -23,3 +23,15 @@ export interface PublicBuildRow {
   view_count: number;
   created_at: string;
 }
+
+export interface CratePullRow {
+  id: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  gpu_name: string;
+  cpu_name: string;
+  build_state: Record<string, string | null>;
+  total_cost: number;
+  avg_fps: number;
+  puller_name: string;
+  created_at: string;
+}
