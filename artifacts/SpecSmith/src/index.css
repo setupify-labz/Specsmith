@@ -100,6 +100,10 @@
      it's also used for gradients/borders/box-shadows where this doesn't
      apply. */
   --ff-accent-text: #9B94FF;
+  /* Slightly darker than --ff-accent for solid-fill buttons with white
+     text — white-on-#6C63FF only hits ~4.3:1, under WCAG AA's 4.5:1 floor
+     for normal text. Same hue/saturation, nudged darker to clear it. */
+  --ff-accent-solid: #6259FF;
   --ff-cyan:      #00D4FF;
   --ff-nav-bg:    rgba(10,10,15,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.75);
@@ -145,8 +149,9 @@
   --ff-text-2:    #555566;
   --ff-text-3:    #6B6B82;
   --ff-accent:    #5A52EE;
-  /* Already passes 4.5:1 in light mode, so just reuse --ff-accent here. */
+  /* Both already pass 4.5:1 in light mode, so just reuse --ff-accent here. */
   --ff-accent-text: #5A52EE;
+  --ff-accent-solid: #5A52EE;
   --ff-cyan:      #0099CC;
   --ff-nav-bg:    rgba(244,244,250,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.5);

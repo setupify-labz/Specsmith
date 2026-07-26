@@ -23,7 +23,7 @@ const games = gamesData as Game[];
 const BADGE_STYLES: Record<string, { bg: string; color: string; border: string }> = {
   gray:   { bg: 'rgba(136,136,170,0.12)', color: '#8888AA', border: 'rgba(136,136,170,0.3)' },
   blue:   { bg: 'rgba(0,212,255,0.12)',   color: '#00D4FF', border: 'rgba(0,212,255,0.3)'   },
-  purple: { bg: 'rgba(108,99,255,0.12)',  color: '#6C63FF', border: 'rgba(108,99,255,0.3)'  },
+  purple: { bg: 'rgba(108,99,255,0.12)',  color: '#9B94FF', border: 'rgba(108,99,255,0.3)'  },
   amber:  { bg: 'rgba(255,179,0,0.12)',   color: '#FFB300', border: 'rgba(255,179,0,0.3)'   },
   gold:   { bg: 'rgba(255,179,0,0.18)',   color: '#FFD700', border: 'rgba(255,215,0,0.4)'   },
 };
@@ -50,7 +50,7 @@ function useTotalPrice(prebuilt: Prebuilt): number {
 }
 
 function getFpsColor(fps: number): string {
-  if (fps >= 144) return '#6C63FF';
+  if (fps >= 144) return '#9B94FF';
   if (fps >= 90)  return '#00D4FF';
   if (fps >= 60)  return '#00E676';
   if (fps >= 30)  return '#FFB300';
@@ -125,7 +125,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
               </div>
               <div className="text-xs font-medium leading-tight mb-1.5" style={{ color: 'var(--ff-text)' }}>{name}</div>
               <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent)' }}>${price}</span>
+                <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent-text)' }}>${price}</span>
                 <div className="flex items-center gap-1.5">
                   <a
                     href={getAffiliateUrl(getPartSearchQuery(cat, id))}
@@ -133,7 +133,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
                     rel="noopener noreferrer"
                     title="Buy on Amazon"
                     className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                    style={{ color: 'var(--ff-accent)' }}
+                    style={{ color: 'var(--ff-accent-text)' }}
                   >
                     Amazon <ExternalLink size={9} />
                   </a>

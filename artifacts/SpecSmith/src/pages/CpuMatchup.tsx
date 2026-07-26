@@ -18,7 +18,10 @@ interface Game {
 }
 
 const games = gamesData as Game[];
-const COLORS = { a: '#6C63FF', b: '#00D4FF' };
+// COLORS.a mirrors --ff-accent-text (not --ff-accent) — it's used exclusively
+// as text color to distinguish "side A" throughout this page, and the base
+// accent purple only hits ~4.3:1 against dark surfaces here.
+const COLORS = { a: '#9B94FF', b: '#00D4FF' };
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const resLabels: Record<Resolution, string> = { '1080p': '1080p', '1440p': '1440p', '4k': '4K' };
 
@@ -184,7 +187,7 @@ export default function CpuMatchup() {
                 <button key={r} onClick={() => setResolution(r)}
                   className="px-4 py-2 text-xs font-semibold transition-colors"
                   style={resolution === r
-                    ? { backgroundColor: 'var(--ff-accent)', color: '#fff' }
+                    ? { backgroundColor: 'var(--ff-accent-solid)', color: '#fff' }
                     : { backgroundColor: 'transparent', color: 'var(--ff-text-2)' }}>
                   {resLabels[r]}
                 </button>
@@ -260,7 +263,7 @@ export default function CpuMatchup() {
               <div key={c.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--ff-text-2)' }}>
                 <span className="font-semibold" style={{ color: i === 0 ? COLORS.a : COLORS.b }}>{c.name}:</span>
                 <a href={getAffiliateUrl(buildPartQuery(c.name, c.brand, 'cpu'))} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                  className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
                   Amazon <ExternalLink size={10} />
                 </a>
                 <a href={getNeweggUrl(buildPartQuery(c.name, c.brand, 'cpu'))} target="_blank" rel="noopener noreferrer"

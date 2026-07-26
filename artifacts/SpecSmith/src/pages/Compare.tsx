@@ -38,7 +38,10 @@ const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
 
-const COLORS = { a: '#6C63FF', b: '#00D4FF' };
+// COLORS.a mirrors --ff-accent-text (not --ff-accent) — used as text color
+// throughout this page, and the base accent purple only hits ~4.3:1 on dark
+// surfaces.
+const COLORS = { a: '#9B94FF', b: '#00D4FF' };
 
 function BuildColumn({
   title, color, gpuId, cpuId, onGpuSelect, onCpuSelect
@@ -220,7 +223,7 @@ export default function Compare() {
                       key={r}
                       onClick={() => setResolution(r)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors ${
-                        resolution === r ? 'text-white bg-[#6C63FF]' : 'text-secondary-custom hover:opacity-70'
+                        resolution === r ? 'text-white bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {r === '4k' ? '4K' : r}
@@ -236,7 +239,7 @@ export default function Compare() {
                       key={p}
                       onClick={() => setPreset(p)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors capitalize ${
-                        preset === p ? 'text-white bg-[#6C63FF]' : 'text-secondary-custom hover:opacity-70'
+                        preset === p ? 'text-white bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {p}

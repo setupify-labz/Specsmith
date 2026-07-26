@@ -184,7 +184,7 @@ export default function Dashboard() {
                         <button
                           onClick={() => navigate(`/builder?b=${btoa(JSON.stringify(build.buildState))}`)}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1"
-                          style={{ backgroundColor: `${getComputedStyle(document.documentElement).getPropertyValue('--ff-accent') || '#6C63FF'}18`, color: 'var(--ff-accent)' }}
+                          style={{ backgroundColor: `${getComputedStyle(document.documentElement).getPropertyValue('--ff-accent') || '#6C63FF'}18`, color: 'var(--ff-accent-text)' }}
                         >
                           <Cpu size={11} /> Load
                         </button>

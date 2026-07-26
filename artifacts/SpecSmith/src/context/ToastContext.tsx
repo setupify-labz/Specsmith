@@ -21,7 +21,7 @@ const COLORS: Record<ToastType, string> = {
   success: '#00E676',
   warning: '#FFB300',
   error:   '#FF1744',
-  info:    '#6C63FF',
+  info:    '#9B94FF',
 };
 
 const ICONS: Record<ToastType, React.ReactNode> = {

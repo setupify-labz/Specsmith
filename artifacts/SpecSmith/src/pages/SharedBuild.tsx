@@ -159,7 +159,7 @@ export default function SharedBuild() {
                   </h2>
                   <div className="space-y-2">
                     {fpsRows.map((row, i) => {
-                      const color = row.fps >= 144 ? '#6C63FF' : row.fps >= 90 ? '#00D4FF' : row.fps >= 60 ? '#00E676' : row.fps >= 30 ? '#FFB300' : '#FF1744';
+                      const color = row.fps >= 144 ? '#9B94FF' : row.fps >= 90 ? '#00D4FF' : row.fps >= 60 ? '#00E676' : row.fps >= 30 ? '#FFB300' : '#FF1744';
                       return (
                         <motion.div key={row.name}
                           initial={{ opacity: 0, y: 8 }}

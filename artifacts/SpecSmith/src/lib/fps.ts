@@ -38,7 +38,9 @@ export function estimateFps(
 
   let color: string;
   let label: string;
-  if (estimated >= 144)      { color = '#6C63FF'; label = 'Elite'; }
+  // #9B94FF, not the base --ff-accent purple — this color is rendered as
+  // text (FpsGauge), and the base accent only hits ~4.3:1 on dark surfaces.
+  if (estimated >= 144)      { color = '#9B94FF'; label = 'Elite'; }
   else if (estimated >= 90)  { color = '#00D4FF'; label = 'Excellent'; }
   else if (estimated >= 60)  { color = '#00E676'; label = 'Smooth'; }
   else if (estimated >= 30)  { color = '#FFB300'; label = 'Playable'; }
