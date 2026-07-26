@@ -89,7 +89,10 @@
   --ff-border:    rgba(255,255,255,0.08);
   --ff-text:      #F0F0FF;
   --ff-text-2:    #8888AA;
-  --ff-text-3:    #7A7AA8;
+  /* #7A7AA8 only hit ~4.16:1 against --ff-card and ~3.86:1 against
+     --ff-card-hover — under WCAG AA's 4.5:1 floor for normal text, found via
+     an axe-core audit. Same hue/saturation, nudged lighter to clear both. */
+  --ff-text-3:    #8686B0;
   --ff-accent:    #6C63FF;
   /* Lighter than --ff-accent specifically for small accent-colored text on
      dark backgrounds — the base #6C63FF only hits ~3.9:1 contrast there,
