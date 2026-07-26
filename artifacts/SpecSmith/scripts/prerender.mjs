@@ -28,7 +28,7 @@ function escapeAttr(value) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
-function injectHead(html, meta, siteUrl, defaultOgImage) {
+function injectHead(html, meta, siteUrl, defaultOgImage, breadcrumbJsonLd) {
   const url = meta.canonicalOverride ?? `${siteUrl}${meta.path === '/' ? '/' : meta.path}`;
   const image = meta.image ?? defaultOgImage;
   const title = escapeAttr(meta.title);
@@ -50,6 +50,14 @@ function injectHead(html, meta, siteUrl, defaultOgImage) {
     result = result.replace(
       '</title>',
       '</title>\n    <meta name="robots" content="noindex, follow" />',
+    );
+  }
+
+  const breadcrumb = breadcrumbJsonLd(meta);
+  if (breadcrumb) {
+    result = result.replace(
+      '</head>',
+      `    <script type="application/ld+json" id="breadcrumb-jsonld">${JSON.stringify(breadcrumb)}</script>\n  </head>`,
     );
   }
 
@@ -88,7 +96,7 @@ async function main() {
   await buildSsrBundle();
 
   const entryPath = path.join(ssrOutDir, 'entry-server.js');
-  const { render, getRouteMeta, getPrerenderMeta, PRERENDER_ROUTES, SITE_URL, DEFAULT_OG_IMAGE } = await import(`${entryPath}?t=${Date.now()}`);
+  const { render, getRouteMeta, getPrerenderMeta, breadcrumbJsonLd, PRERENDER_ROUTES, SITE_URL, DEFAULT_OG_IMAGE } = await import(`${entryPath}?t=${Date.now()}`);
   const resolveMeta = getPrerenderMeta ?? getRouteMeta;
 
   for (const routePath of PRERENDER_ROUTES) {
@@ -101,7 +109,7 @@ async function main() {
     }
 
     const meta = resolveMeta(routePath);
-    const html = injectHead(template.replace('<!--app-html-->', appHtml), meta, SITE_URL, DEFAULT_OG_IMAGE);
+    const html = injectHead(template.replace('<!--app-html-->', appHtml), meta, SITE_URL, DEFAULT_OG_IMAGE, breadcrumbJsonLd);
 
     const outFile =
       routePath === '/'

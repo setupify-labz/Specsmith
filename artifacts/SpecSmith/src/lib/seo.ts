@@ -228,6 +228,77 @@ export function applyClientMeta(meta: RouteMeta) {
       return el;
     }, content);
   }
+
+  let breadcrumbScript = document.getElementById('breadcrumb-jsonld');
+  const breadcrumb = breadcrumbJsonLd(meta);
+  if (breadcrumb) {
+    if (!breadcrumbScript) {
+      breadcrumbScript = document.createElement('script');
+      breadcrumbScript.id = 'breadcrumb-jsonld';
+      breadcrumbScript.setAttribute('type', 'application/ld+json');
+      document.head.appendChild(breadcrumbScript);
+    }
+    breadcrumbScript.textContent = JSON.stringify(breadcrumb);
+  } else if (breadcrumbScript) {
+    breadcrumbScript.remove();
+  }
+}
+
+export interface BreadcrumbItem {
+  name: string;
+  path: string;
+}
+
+// :slug detail pages get their listing page as the middle breadcrumb.
+const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
+  { prefix: '/vs/', parent: { name: 'GPU & CPU Comparisons', path: '/vs' } },
+  { prefix: '/best-gpu/', parent: { name: 'Best GPU by Game', path: '/best-gpu' } },
+  { prefix: '/best-cpu/', parent: { name: 'Best CPU by Game', path: '/best-cpu' } },
+  { prefix: '/upgrade/', parent: { name: 'GPU Upgrade Guides', path: '/upgrade' } },
+  { prefix: '/upgrade-cpu/', parent: { name: 'CPU Upgrade Guides', path: '/upgrade-cpu' } },
+  { prefix: '/best-motherboard/', parent: { name: 'Best Motherboards by Platform', path: '/best-motherboard' } },
+  { prefix: '/prebuilts/', parent: { name: 'Gaming PC Build Guides', path: '/prebuilts' } },
+];
+
+// Standalone guide/index pages that hang off the Parts Guides hub.
+const PARTS_GUIDES_PAGES = new Set([
+  '/gpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
+  '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',
+  '/best-monitor', '/best-keyboard', '/best-mouse', '/best-headset',
+]);
+
+function cleanTitle(title: string): string {
+  return title.replace(/\s*[|—]\s*SpecSmith.*$/, '').trim();
+}
+
+export function getBreadcrumbItems(meta: RouteMeta): BreadcrumbItem[] | null {
+  if (meta.path === '/' || meta.noindex) return null;
+  const items: BreadcrumbItem[] = [{ name: 'Home', path: '/' }];
+
+  const section = SECTION_PARENTS.find((s) => meta.path.startsWith(s.prefix));
+  if (section) {
+    items.push(section.parent);
+  } else if (PARTS_GUIDES_PAGES.has(meta.path)) {
+    items.push({ name: 'Parts Guides', path: '/parts-guides' });
+  }
+
+  items.push({ name: cleanTitle(meta.title), path: meta.path });
+  return items;
+}
+
+export function breadcrumbJsonLd(meta: RouteMeta): Record<string, unknown> | null {
+  const items = getBreadcrumbItems(meta);
+  if (!items || items.length < 2) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      item: `${SITE_URL}${item.path === '/' ? '/' : item.path}`,
+    })),
+  };
 }
 
 export function siteJsonLdGraph() {
