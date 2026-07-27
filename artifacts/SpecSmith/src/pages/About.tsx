@@ -8,7 +8,7 @@ import PageGlow from '../components/PageGlow';
 const sections = [
   {
     icon: <Calculator size={20} className="text-[#6C63FF]" />,
-    title: 'How FPS Estimation Works',
+    title: 'How does SpecSmith estimate FPS?',
     content: `SpecSmith uses a data-driven algorithm to estimate gaming performance based on two key components: your GPU tier and CPU tier. Each component is scored on a 1-10 tier scale based on benchmark data from thousands of real-world gaming tests.
 
 The estimation formula works as follows:
@@ -25,7 +25,7 @@ The estimation formula works as follows:
   },
   {
     icon: <BarChart3 size={20} className="text-[#00D4FF]" />,
-    title: 'Data Sources & Accuracy',
+    title: 'Where does the benchmark data come from?',
     content: `Our benchmark data is aggregated from multiple sources including manufacturer specifications, independent hardware reviews, and community-sourced gaming benchmarks. We cross-reference results across multiple testing methodologies to ensure accuracy.
 
 Each GPU and CPU in our database includes a benchmark score that reflects its real-world gaming performance relative to other products. These scores are regularly updated to reflect driver improvements, game patches, and newly released hardware.
@@ -34,7 +34,7 @@ For games, we benchmark at multiple quality presets and resolutions to capture t
   },
   {
     icon: <Shield size={20} className="text-[#00E676]" />,
-    title: 'Compatibility Checking',
+    title: 'What does the compatibility checker actually check?',
     content: `SpecSmith checks three critical compatibility factors:
 
 Socket Compatibility: CPU socket must match motherboard socket. For example, Intel 12th/13th/14th Gen CPUs use LGA1700 and require an LGA1700 motherboard. AMD Ryzen 7000 series uses AM5, while Ryzen 5000 uses AM4.
@@ -45,7 +45,7 @@ PSU Wattage: The power supply must provide enough wattage for the GPU TDP + CPU 
   },
   {
     icon: <Zap size={20} className="text-[#FFB300]" />,
-    title: 'Limitations & Caveats',
+    title: 'What do the FPS estimates not account for?',
     content: `FPS estimates are approximations and will vary in practice. Factors we don't account for include:
 
 - Ray tracing and path tracing workloads (shown estimates are for rasterization)
@@ -59,13 +59,36 @@ PSU Wattage: The power supply must provide enough wattage for the GPU TDP + CPU 
 - Background applications and OS overhead
 
 Use SpecSmith estimates as a starting point for your research, not a guarantee. We recommend checking independent reviews for the specific hardware you're considering.`
-  }
+  },
+  {
+    icon: <Calculator size={20} className="text-[#9B94FF]" />,
+    title: 'Is SpecSmith free, and do I need an account?',
+    content: `SpecSmith is completely free with no account required — the Builder, FPS estimates, compatibility checks, and every comparison and guide page are open to anyone. Creating an account is optional and only unlocks saving builds, sharing them, and publishing to the Gallery; nothing about pricing or performance data is gated behind it.`
+  },
+  {
+    icon: <BarChart3 size={20} className="text-[#00D4FF]" />,
+    title: "What if my GPU or CPU isn't in your list?",
+    content: `The Builder lets you add a custom part with your own name and price if it's not in our database yet — you'll still get accurate compatibility checks for everything around it, though FPS estimates require a tracked GPU and CPU since those numbers come from tier data we maintain. We're regularly adding newly released hardware.`
+  },
 ];
+
+// Generated from the same `sections` array rendered below, so the
+// structured data can never drift from what's actually visible on the page.
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: sections.map((s) => ({
+    '@type': 'Question',
+    name: s.title,
+    acceptedAnswer: { '@type': 'Answer', text: s.content },
+  })),
+};
 
 export default function About() {
   useSeo(getRouteMeta('/about'));
   return (
     <div className="relative min-h-screen pt-24 pb-20">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
