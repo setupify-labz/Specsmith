@@ -5,7 +5,7 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
   const location = useLocation();
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <motion.main
         key={location.pathname}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -13,7 +13,7 @@ export default function PageWrapper({ children }: { children: React.ReactNode })
         transition={{ duration: 0.15 }}
       >
         {children}
-      </motion.div>
+      </motion.main>
     </AnimatePresence>
   );
 }

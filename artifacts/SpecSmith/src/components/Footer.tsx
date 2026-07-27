@@ -64,7 +64,7 @@ export default function Footer() {
                   {group.heading}
                 </Link>
               ) : (
-                <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h3>
+                <h2 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>{group.heading}</h2>
               )}
               <div className="flex flex-col gap-2">
                 {group.links.map(link => (
@@ -80,7 +80,7 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h3 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h3>
+            <h2 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h2>
             <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ff-text-2)' }}>
               As an Amazon Associate, SpecSmith earns from qualifying purchases.
             </p>

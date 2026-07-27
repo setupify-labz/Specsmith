@@ -104,7 +104,11 @@ export default function PartCard({
       {/* Header */}
       <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
         <div className="flex-1 min-w-0 pr-14">
-          <h4 className="font-semibold text-sm leading-tight" style={{ color: 'var(--ff-text)' }}>{name}</h4>
+          {/* Not a document heading — dozens of these render per open
+              category, and using <h4> here skipped past <h2>/<h3> in the
+              page outline and failed the heading-order check (same fix
+              already applied to the card label in HeroFpsCard.tsx). */}
+          <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--ff-text)' }}>{name}</p>
           {tier !== undefined && (
             <span
               className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"

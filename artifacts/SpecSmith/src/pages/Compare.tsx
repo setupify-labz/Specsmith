@@ -55,7 +55,7 @@ function BuildColumn({
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-        <h3 className="text-ff-primary font-bold">{title}</h3>
+        <h2 className="text-ff-primary font-bold">{title}</h2>
       </div>
       <div className="space-y-3">
         <PartSelector

@@ -107,7 +107,7 @@ export default function BuildSummary({
           boxShadow: '0 12px 32px -12px rgba(0,0,0,0.12)',
         }}
       >
-        <h3 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+        <h2 className="font-bold text-lg mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
           <span
             className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
@@ -115,7 +115,7 @@ export default function BuildSummary({
             <DollarSign size={16} className="text-white" />
           </span>
           Build Summary
-        </h3>
+        </h2>
 
         {/* Parts list */}
         <div className="space-y-2 mb-4 min-h-[100px]">
