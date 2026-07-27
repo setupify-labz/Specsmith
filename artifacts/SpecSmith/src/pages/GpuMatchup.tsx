@@ -238,7 +238,7 @@ export default function GpuMatchup() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                  <th className="text-left py-2 pr-4 font-medium" style={{ color: 'var(--ff-text-2)' }}></th>
+                  <th className="text-left py-2 pr-4 font-medium" style={{ color: 'var(--ff-text-2)' }}><span className="sr-only">Spec</span></th>
                   <th className="text-right py-2 px-4 font-semibold" style={{ color: COLORS.a }}>{gpuA.name}</th>
                   <th className="text-right py-2 pl-4 font-semibold" style={{ color: COLORS.b }}>{gpuB.name}</th>
                 </tr>
