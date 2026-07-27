@@ -119,18 +119,48 @@ export function rollStorage(): RolledPart<CrateStorage> {
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
-export function rollCase(): RolledPart<CrateCase> {
-  const { item, percentile } = pickWeighted(cases, c => c.price_usd);
+// Case, cooler, and PSU are rolled last precisely so each one can be
+// constrained by whatever was already rolled before it — motherboard form
+// factor and GPU length are known by the time the case is picked, the
+// case's clearance and the CPU's heat are known by the time the cooler is
+// picked, and both TDPs are known by the time the PSU is picked. The
+// margins mirror checkCompatibility()'s own "tight fit" thresholds, so a
+// crate pull can never land on so much as a warning, only a real range of
+// how good the parts inside are.
+export function rollCase(motherboardFormFactor?: string, gpuLengthMm?: number): RolledPart<CrateCase> {
+  let pool = cases;
+  if (motherboardFormFactor) {
+    pool = pool.filter(c => !c.motherboard_support || c.motherboard_support.includes(motherboardFormFactor));
+  }
+  if (gpuLengthMm) {
+    pool = pool.filter(c => !c.gpu_clearance_mm || c.gpu_clearance_mm >= gpuLengthMm + 15);
+  }
+  const { item, percentile } = pickWeighted(pool, c => c.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
-export function rollCooler(): RolledPart<CrateCooler> {
-  const { item, percentile } = pickWeighted(coolers, c => c.price_usd);
+export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number): RolledPart<CrateCooler> {
+  let pool = coolers;
+  if (caseClearanceMm) {
+    // AIOs have no height_mm (low-profile pump/radiator, not a tower), so
+    // they always clear regardless of case clearance — only air coolers
+    // are filtered here.
+    pool = pool.filter(c => !c.height_mm || c.height_mm <= caseClearanceMm - 5);
+  }
+  if (cpuTdpWatts) {
+    pool = pool.filter(c => !c.max_tdp_watts || c.max_tdp_watts >= cpuTdpWatts);
+  }
+  const { item, percentile } = pickWeighted(pool, c => c.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
-export function rollPsu(): RolledPart<CratePsu> {
-  const { item, percentile } = pickWeighted(psus, p => p.wattage);
+export function rollPsu(gpuTdpWatts?: number, cpuTdpWatts?: number): RolledPart<CratePsu> {
+  let pool = psus;
+  if (gpuTdpWatts !== undefined && cpuTdpWatts !== undefined) {
+    const required = (gpuTdpWatts + cpuTdpWatts + 100) * 1.1;
+    pool = pool.filter(p => p.wattage >= required);
+  }
+  const { item, percentile } = pickWeighted(pool, p => p.wattage);
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 

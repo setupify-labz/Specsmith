@@ -287,13 +287,13 @@ export default function BuildCrate() {
       const r = rollStorage();
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.storage = r; } });
     } else if (key === 'case') {
-      const r = rollCase();
+      const r = rollCase(revealed.motherboard!.part.form_factor, revealed.gpu!.part.length_mm);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.case = r; } });
     } else if (key === 'cooler') {
-      const r = rollCooler();
+      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, revealed.cpu!.part.tdp_watts);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cooler = r; } });
     } else {
-      const r = rollPsu();
+      const r = rollPsu(revealed.gpu!.part.tdp_watts, revealed.cpu!.part.tdp_watts);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.psu = r; } });
     }
   };
@@ -585,7 +585,7 @@ export default function BuildCrate() {
 
         {revealedCount === 0 && !pending && (
           <p className="text-xs text-center mt-4" style={{ color: 'var(--ff-text-3)' }}>
-            Socket and RAM type are always guaranteed to be compatible. Everything else — fit, wattage, cooling — is part of the roll.{' '}
+            Every part is guaranteed to fit and work together — socket, RAM, case clearance, cooler height, and power headroom. What's random is only how good the parts you land on are.{' '}
             <Link to="/builder" className="underline hover:opacity-80" style={{ color: 'var(--ff-text-2)' }}>Prefer to pick your own parts?</Link>
           </p>
         )}
