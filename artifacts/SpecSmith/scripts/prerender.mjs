@@ -90,8 +90,31 @@ function generateSitemap(routes, siteUrl) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
+// The whole site is prerendered to static HTML, so the only thing standing
+// between "bytes on the wire" and first paint is the render-blocking
+// stylesheet <link> Vite's build emits — a full extra network round trip
+// (DNS/TCP/TLS already paid for the HTML request, but the browser still
+// can't discover and fetch the CSS until it parses into <head>, then can't
+// paint until that response lands) that on throttled mobile alone accounted
+// for a large chunk of a 4+ second FCP/LCP even though TBT and CLS were
+// already perfect. Inlining the CSS directly into every prerendered page
+// removes that round trip entirely, at the cost of the (small, ~19KB
+// gzipped) stylesheet no longer being a separately cacheable resource
+// across page loads — a clear win for this site's traffic pattern (cold
+// single-page landings from search), since SPA navigation after the first
+// load never re-fetches CSS anyway.
+async function inlineStylesheet(template) {
+  const match = template.match(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/);
+  if (!match) return template;
+  const [linkTag, href] = match;
+  const cssPath = path.join(publicDir, href.replace(/^\//, ''));
+  const css = await fs.readFile(cssPath, 'utf-8');
+  return template.replace(linkTag, `<style>${css}</style>`);
+}
+
 async function main() {
-  const template = await fs.readFile(path.join(publicDir, 'index.html'), 'utf-8');
+  let template = await fs.readFile(path.join(publicDir, 'index.html'), 'utf-8');
+  template = await inlineStylesheet(template);
 
   await buildSsrBundle();
 
