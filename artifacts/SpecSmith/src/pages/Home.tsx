@@ -95,7 +95,7 @@ export default function Home() {
               transition={{ duration: 0.7 }}
               className="text-center lg:text-left"
             >
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#6C63FF] text-sm font-medium mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#9B94FF] text-sm font-medium mb-6">
                 <Monitor size={14} />
                 Free PC Builder + FPS Estimator
               </span>
@@ -198,7 +198,7 @@ export default function Home() {
             </div>
             <Link
               to="/prebuilts"
-              className="flex items-center gap-1 text-[#6C63FF] hover:text-[#00D4FF] text-sm font-medium transition-colors"
+              className="flex items-center gap-1 text-[#9B94FF] hover:text-[#00D4FF] text-sm font-medium transition-colors"
             >
               View all <ChevronRight size={16} />
             </Link>
@@ -219,7 +219,7 @@ export default function Home() {
                 <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
                 <Link
                   to={`/prebuilts/${p.id}`}
-                  className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[#6C63FF] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[#9B94FF] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
                 >
                   View Build <ChevronRight size={14} />
                 </Link>
@@ -261,7 +261,7 @@ export default function Home() {
               <p className="text-secondary-custom text-sm leading-relaxed mb-4">{f.description}</p>
               <Link
                 to={f.to}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[#6C63FF] hover:text-[#00D4FF] transition-colors"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[#9B94FF] hover:text-[#00D4FF] transition-colors"
               >
                 {f.cta} <ChevronRight size={14} />
               </Link>
