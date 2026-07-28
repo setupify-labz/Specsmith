@@ -5,6 +5,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { loadModel, instantiateModel, type ModelName, type LoadedModel } from './modelLibrary';
 
 // Stylized showcase 3D preview of the current build — a display-pedestal
 // "hologram of your rig" rather than a render of specific SKUs (no licensed
@@ -29,6 +30,15 @@ export interface Build3dParts {
   cooler: boolean;
   /** Raw cooler type from data ("Air", "240mm AIO", ...) — picks the mesh variant. */
   coolerType?: string;
+  // Optional real-part details: pick which archetype model to show and how
+  // big to render it, so an RTX 5090 visibly isn't an RX 6400.
+  gpuTier?: number;
+  gpuLengthMm?: number;
+  coolerHeightMm?: number;
+  caseFormFactor?: string;
+  caseName?: string;
+  moboFormFactor?: string;
+  storageType?: string;
 }
 
 export interface Build3dScene {
@@ -48,11 +58,13 @@ const PART_KEYS = ['case', 'motherboard', 'cpu', 'cooler', 'ram', 'gpu', 'psu', 
 type PartKey = (typeof PART_KEYS)[number];
 
 // ---------- shared animation registries (populated by builders) ----------
-interface Spinner { obj: THREE.Object3D; speed: number }
+interface Spinner { obj: THREE.Object3D; speed: number; axis: 'x' | 'y' | 'z' }
 
 interface BuildCtx {
   spinners: Spinner[];
   rgbMats: THREE.MeshBasicMaterial[];
+  /** Guards against re-registering shared (cached-model) glow materials. */
+  rgbSeen: Set<THREE.Material>;
 }
 
 // ---------- materials ----------
@@ -179,7 +191,7 @@ function makeFan(ctx: BuildCtx, radius: number): THREE.Group {
     blades.add(blade);
   }
   g.add(blades);
-  ctx.spinners.push({ obj: blades, speed: 3.2 + Math.random() * 1.5 });
+  ctx.spinners.push({ obj: blades, speed: 3.2 + Math.random() * 1.5, axis: 'z' });
 
   const rgb = glow(ACCENT);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.82, radius * 0.05, 8, 36), rgb);
@@ -263,7 +275,7 @@ function buildCase(ctx: BuildCtx): THREE.Group {
 
   // Interior fill light — the panels shadow the key light, so without this
   // the parts inside the case read as murky silhouettes through the glass.
-  const interior = new THREE.PointLight(0xaab4ff, 7, 4.5, 1.6);
+  const interior = new THREE.PointLight(0xaab4ff, 2.5, 3.5, 1.6);
   interior.position.set(-0.2, 0.9, 0.7);
   g.add(interior);
 
@@ -518,8 +530,77 @@ function buildStorage(): THREE.Group {
   return g;
 }
 
+// ---------- archetype-model placement ----------
+
+/** Scene units per real-world millimeter (case interior ~3.4 units deep). */
+const U = 0.00613;
+
+interface Placement {
+  rotation?: [number, number, number];
+  /** World-axis rotations applied in order — unambiguous alternative to Euler. */
+  worldRots?: ['x' | 'y' | 'z', number][];
+  /** Uniform scale factor; mutually exclusive with fitInto. */
+  uniformScale?: number;
+  /** Non-uniform stretch to exactly this size (post-rotation). */
+  fitInto?: [number, number, number];
+  center: [number, number, number];
+}
+
+const WORLD_AXES = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+
+/** Rotate, scale, then move so the instance's bbox center lands on target. */
+function placeInstance(group: THREE.Group, p: Placement) {
+  // Local bbox BEFORE rotating: scale applies in local space (M = T·R·S), so
+  // fit ratios must be computed against local extents, mapped through the
+  // rotation to the world axis each local axis ends up pointing along.
+  const localSize = new THREE.Box3().setFromObject(group).getSize(new THREE.Vector3());
+  if (p.rotation) group.rotation.set(p.rotation[0], p.rotation[1], p.rotation[2]);
+  if (p.worldRots) for (const [axis, angle] of p.worldRots) group.rotateOnWorldAxis(WORLD_AXES[axis], angle);
+  if (p.fitInto) {
+    const localArr = [localSize.x, localSize.y, localSize.z];
+    const scales: number[] = [1, 1, 1];
+    (['x', 'y', 'z'] as const).forEach((axis, i) => {
+      const dir = WORLD_AXES[axis].clone().applyQuaternion(group.quaternion);
+      const world = Math.abs(dir.x) >= Math.abs(dir.y) && Math.abs(dir.x) >= Math.abs(dir.z) ? 0 : Math.abs(dir.y) >= Math.abs(dir.z) ? 1 : 2;
+      scales[i] = p.fitInto![world] / localArr[i];
+    });
+    group.scale.set(scales[0], scales[1], scales[2]);
+  } else if (p.uniformScale) {
+    group.scale.setScalar(p.uniformScale);
+  }
+  const post = new THREE.Box3().setFromObject(group);
+  const center = post.getCenter(new THREE.Vector3());
+  group.position.add(new THREE.Vector3(...p.center).sub(center));
+}
+
+function gpuArchetype(tier?: number): ModelName {
+  if (tier === undefined) return 'gpu-highend';
+  if (tier >= 8) return 'gpu-flagship';
+  if (tier >= 5) return 'gpu-highend';
+  if (tier >= 3) return 'gpu-midrange';
+  return 'gpu-compact';
+}
+
+function caseArchetype(formFactor?: string, name?: string): ModelName {
+  if (formFactor === 'Full Tower') return 'case-fulltower';
+  if (formFactor === 'Mini Tower') return 'case-compact';
+  if (name && /air|flow|mesh|torrent/i.test(name)) return 'case-airflow';
+  return 'case-midtower';
+}
+
+function coolerArchetype(type?: string, heightMm?: number): ModelName {
+  if (type?.toUpperCase().includes('AIO')) {
+    const mm = parseInt(type, 10);
+    return mm >= 280 ? 'cooler-aio-360' : 'cooler-aio-240';
+  }
+  return (heightMm ?? 155) < 145 ? 'cooler-air-small' : 'cooler-air-big';
+}
+
 function disposeObject(obj: THREE.Object3D) {
   obj.traverse((child) => {
+    // Cached-model clones share geometry/materials with modelLibrary's cache
+    // and with every other clone — never dispose those here.
+    if (child.userData.shared) return;
     const mesh = child as THREE.Mesh;
     if (mesh.geometry) mesh.geometry.dispose();
     const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
@@ -568,7 +649,9 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 60);
-  camera.position.set(4.5, 2.4, 5.3);
+  // Camera sits on the tempered-glass side (-X) so the default view looks
+  // INTO the case at the parts, not at the motherboard-tray wall.
+  camera.position.set(-4.6, 2.4, 5.2);
   camera.lookAt(0, -0.15, 0);
 
   // Image-based lighting for the PBR materials
@@ -578,7 +661,7 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
 
   scene.add(new THREE.HemisphereLight(0x8890c0, 0x0c0e1c, 0.5));
   const key = new THREE.DirectionalLight(0xffffff, 1.6);
-  key.position.set(4, 6, 3);
+  key.position.set(-4, 6, 3);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   key.shadow.camera.left = -4; key.shadow.camera.right = 4;
@@ -588,7 +671,7 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   const purpleLight = new THREE.PointLight(ACCENT, 26, 0, 1.8);
   purpleLight.position.set(-3, 2, 3);
   scene.add(purpleLight);
-  const cyanLight = new THREE.PointLight(CYAN, 14, 0, 1.8);
+  const cyanLight = new THREE.PointLight(CYAN, 7, 0, 1.8);
   cyanLight.position.set(3, -0.5, -3);
   scene.add(cyanLight);
 
@@ -602,13 +685,13 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   }
 
   const rig = new THREE.Group();
-  rig.rotation.y = -0.55;
+  rig.rotation.y = 0.55;
   scene.add(rig);
 
   // Display pedestal (static, holds the whole show together)
   const pedestal = new THREE.Mesh(
     new THREE.CylinderGeometry(2.45, 2.65, 0.16, 56),
-    new THREE.MeshStandardMaterial({ color: 0x13152a, roughness: 0.35, metalness: 0.7, envMapIntensity: 0.9 }),
+    new THREE.MeshStandardMaterial({ color: 0x13152a, roughness: 0.45, metalness: 0.5, envMapIntensity: 0.4 }),
   );
   pedestal.position.y = -1.78;
   pedestal.receiveShadow = true;
@@ -641,19 +724,165 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   parts.position.y = -0.06;
   rig.add(parts);
 
-  const buildCtx: BuildCtx = { spinners: [], rgbMats: [] };
+  const buildCtx: BuildCtx = { spinners: [], rgbMats: [], rgbSeen: new Set() };
   const managed = new Map<PartKey, ManagedPart>();
-  let coolerVariant: 'air' | 'aio' = 'air';
+  const signatures = new Map<PartKey, string>();
+  let currentParts: Build3dParts | null = null;
+  let needsRenderFlag = { set: () => {} }; // replaced below once needsRender exists
+
+  function registerGlow(mats: THREE.MeshBasicMaterial[]) {
+    for (const m of mats) {
+      if (!buildCtx.rgbSeen.has(m)) {
+        buildCtx.rgbSeen.add(m);
+        buildCtx.rgbMats.push(m);
+      }
+    }
+  }
+
+  /** Async-attach an archetype model into a holder group; falls back to the
+   * procedural builder if the GLB can't load. */
+  function attachModel(
+    holder: THREE.Group,
+    name: ModelName,
+    place: (model: LoadedModel) => Placement,
+    fallback: (() => THREE.Group) | null,
+    spinSpeed = 3.5,
+  ) {
+    loadModel(name)
+      .then((model) => {
+        if (holder.userData.dead) return;
+        const inst = instantiateModel(model);
+        // Shared cache resources — never disposed with the scene.
+        inst.group.traverse((o) => { o.userData.shared = true; });
+        placeInstance(inst.group, place(model));
+        holder.add(inst.group);
+        for (const s of inst.spinners) {
+          buildCtx.spinners.push({ obj: s.obj, speed: spinSpeed + Math.random() * 1.2, axis: s.axis });
+        }
+        registerGlow(model.glowMats);
+        needsRenderFlag.set();
+      })
+      .catch(() => {
+        if (holder.userData.dead || !fallback) return;
+        holder.add(fallback());
+        needsRenderFlag.set();
+      });
+  }
+
+  function radiatorLenMm(type?: string): number {
+    const mm = parseInt(type ?? '', 10);
+    return (Number.isFinite(mm) ? mm : 240) + 40; // radiator runs ~40mm past its fan span
+  }
 
   const builders: Record<PartKey, () => THREE.Group> = {
-    case: () => buildCase(buildCtx),
-    motherboard: () => buildMotherboard(buildCtx),
-    cpu: () => buildCpu(),
-    cooler: () => (coolerVariant === 'aio' ? buildAioCooler(buildCtx) : buildAirCooler(buildCtx)),
-    ram: () => buildRam(buildCtx),
-    gpu: () => buildGpu(buildCtx),
-    psu: () => buildPsu(),
-    storage: () => buildStorage(),
+    case: () => {
+      const holder = new THREE.Group();
+      const p = currentParts;
+      attachModel(holder, caseArchetype(p?.caseFormFactor, p?.caseName),
+        () => ({ fitInto: [2.0, 3.0, 3.4], center: [0, 0, 0] }),
+        () => buildCase(buildCtx));
+      // The case models ship fan cutouts but no fans — mount RGB fans.
+      const fanPlacements: Placement[] = [
+        { rotation: [0, 0, 0], uniformScale: 1, center: [0.15, 0.95, -1.42] },
+        { rotation: [0, Math.PI, 0], uniformScale: 1, center: [0.15, 0.5, 1.42] },
+        { rotation: [0, Math.PI, 0], uniformScale: 1, center: [0.15, -0.4, 1.42] },
+      ];
+      for (const fp of fanPlacements) {
+        attachModel(holder, 'fan-rgb-120',
+          (m) => ({ ...fp, uniformScale: 0.5 / Math.max(m.size.x, m.size.y) }),
+          null, 5);
+      }
+      return holder;
+    },
+    motherboard: () => {
+      const holder = new THREE.Group();
+      const matx = /m|itx/i.test(currentParts?.moboFormFactor ?? 'ATX');
+      // Model lies flat (components +Y); stand it against the tray wall with
+      // components facing the glass (-X).
+      attachModel(holder, matx ? 'motherboard-matx' : 'motherboard-atx',
+        () => matx
+          ? ({ rotation: [0, 0, Math.PI / 2], fitInto: [0.25, 1.88, 1.88], center: [0.85, 0.35, -0.3] })
+          : ({ rotation: [0, 0, Math.PI / 2], fitInto: [0.25, 2.35, 1.88], center: [0.85, 0.15, -0.15] }),
+        () => buildMotherboard(buildCtx));
+      return holder;
+    },
+    cpu: () => {
+      const holder = new THREE.Group();
+      attachModel(holder, 'cpu-chip',
+        (m) => ({ rotation: [0, 0, Math.PI / 2], uniformScale: 0.34 / m.size.x, center: [0.7, 0.75, -0.5] }),
+        () => buildCpu());
+      return holder;
+    },
+    cooler: () => {
+      const holder = new THREE.Group();
+      const p = currentParts;
+      const arch = coolerArchetype(p?.coolerType, p?.coolerHeightMm);
+      if (arch.includes('aio')) {
+        // Radiator runs along model X with the pump hanging +Z; lay the
+        // radiator flat under the case roof (pump down), run it front-to-back.
+        attachModel(holder, arch,
+          (m) => ({
+            worldRots: [['x', Math.PI / 2], ['y', -Math.PI / 2]],
+            uniformScale: (radiatorLenMm(p?.coolerType) * U) / m.size.x,
+            center: [0.35, 1.02, -0.2],
+          }),
+          () => buildAioCooler(buildCtx));
+      } else {
+        const heightMm = Math.min(170, Math.max(120, p?.coolerHeightMm ?? 155));
+        attachModel(holder, arch,
+          (m) => ({ uniformScale: (heightMm * U * 1.35) / m.size.y, center: [0.5, 0.85, -0.5] }),
+          () => buildAirCooler(buildCtx));
+      }
+      return holder;
+    },
+    ram: () => {
+      const holder = new THREE.Group();
+      for (const z of [-0.02, 0.14]) {
+        // Stick stands up (length → Y), RGB diffuser toward the glass (-X).
+        attachModel(holder, 'ram-rgb',
+          (m) => ({ rotation: [0, 0, Math.PI / 2], uniformScale: 0.85 / m.size.x, center: [0.7, 0.75, z] }),
+          null);
+      }
+      // Procedural fallback for the pair is handled once, via the first slot
+      // failing: modelLibrary caches the rejection, so both attach calls fail
+      // together — add the fallback on the first.
+      loadModel('ram-rgb').catch(() => {
+        if (!holder.userData.dead) holder.add(buildRam(buildCtx));
+      });
+      return holder;
+    },
+    gpu: () => {
+      const holder = new THREE.Group();
+      const p = currentParts;
+      const lengthMm = Math.min(360, Math.max(160, p?.gpuLengthMm ?? 300));
+      // Length (model X) runs front-to-back (Z); fans stay up and visible.
+      attachModel(holder, gpuArchetype(p?.gpuTier),
+        (m) => ({ rotation: [0, -Math.PI / 2, 0], uniformScale: (lengthMm * U) / m.size.x, center: [0.35, -0.15, 0.25] }),
+        () => buildGpu(buildCtx));
+      return holder;
+    },
+    psu: () => {
+      const holder = new THREE.Group();
+      attachModel(holder, 'psu-atx',
+        (m) => ({ uniformScale: 1.0 / m.size.z, center: [0.3, -1.16, -1.05] }),
+        () => buildPsu());
+      return holder;
+    },
+    storage: () => {
+      const holder = new THREE.Group();
+      const nvme = currentParts?.storageType?.toUpperCase().includes('NVME');
+      if (nvme) {
+        // Vertical on the board, heatsink toward the glass.
+        attachModel(holder, 'ssd-nvme',
+          (m) => ({ rotation: [0, 0, Math.PI / 2], uniformScale: 0.6 / m.size.x, center: [0.72, -0.3, 0.1] }),
+          () => buildStorage());
+      } else {
+        attachModel(holder, 'ssd-25',
+          (m) => ({ uniformScale: 0.55 / m.size.x, center: [0.35, -1.0, 0.85] }),
+          () => buildStorage());
+      }
+      return holder;
+    },
   };
 
   function pruneAnimRegistries(removed: THREE.Group) {
@@ -682,20 +911,34 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   }
 
   let needsRender = true;
+  needsRenderFlag = { set: () => { needsRender = true; } };
+
+  /** Detail fields that force a rebuild of a part's mesh when they change
+   * (different archetype or different real-world size). */
+  function signatureFor(key: PartKey, p: Build3dParts): string {
+    switch (key) {
+      case 'gpu': return `${gpuArchetype(p.gpuTier)}|${p.gpuLengthMm ?? 0}`;
+      case 'cooler': return `${coolerArchetype(p.coolerType, p.coolerHeightMm)}|${p.coolerType ?? ''}|${p.coolerHeightMm ?? 0}`;
+      case 'case': return caseArchetype(p.caseFormFactor, p.caseName);
+      case 'motherboard': return /m|itx/i.test(p.moboFormFactor ?? 'ATX') ? 'matx' : 'atx';
+      case 'storage': return p.storageType?.toUpperCase().includes('NVME') ? 'nvme' : 'sata';
+      default: return '';
+    }
+  }
 
   function setParts(next: Build3dParts) {
-    const nextVariant: 'air' | 'aio' = next.coolerType?.toUpperCase().includes('AIO') ? 'aio' : 'air';
-    if (nextVariant !== coolerVariant) {
-      const existing = managed.get('cooler');
-      if (existing) {
+    currentParts = next;
+    for (const partKey of PART_KEYS) {
+      const sig = signatureFor(partKey, next);
+      const existing = managed.get(partKey);
+      if (existing && signatures.get(partKey) !== sig) {
+        existing.group.userData.dead = true;
         parts.remove(existing.group);
         pruneAnimRegistries(existing.group);
         disposeObject(existing.group);
-        managed.delete('cooler');
+        managed.delete(partKey);
       }
-      coolerVariant = nextVariant;
-    }
-    for (const partKey of PART_KEYS) {
+      signatures.set(partKey, sig);
       const want = next[partKey];
       const entry = ensurePart(partKey);
       entry.target = want ? 1 : 0;
@@ -808,7 +1051,7 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
       }
       // Fans spin and RGB cycles while any part is on stage
       if (anyPartVisible()) {
-        for (const s of buildCtx.spinners) s.obj.rotation.z += s.speed * dt;
+        for (const s of buildCtx.spinners) s.obj.rotation[s.axis] += s.speed * dt;
         const t = time * 0.00006;
         buildCtx.rgbMats.forEach((m, i) => m.color.setHSL((t + i * 0.09) % 1, 0.75, 0.62));
         animating = true;

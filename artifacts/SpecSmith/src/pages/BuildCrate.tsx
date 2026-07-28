@@ -258,6 +258,13 @@ export default function BuildCrate() {
     motherboard: !!revealed.motherboard, cpu: !!revealed.cpu, ram: !!revealed.ram, gpu: !!revealed.gpu,
     storage: !!revealed.storage, case: !!revealed.case, cooler: !!revealed.cooler, psu: !!revealed.psu,
     coolerType: revealed.cooler?.part.type,
+    coolerHeightMm: revealed.cooler?.part.height_mm,
+    gpuTier: revealed.gpu?.part.tier,
+    gpuLengthMm: revealed.gpu?.part.length_mm,
+    caseFormFactor: (revealed.case?.part as { form_factor?: string } | undefined)?.form_factor,
+    caseName: revealed.case?.part.name,
+    moboFormFactor: revealed.motherboard?.part.form_factor,
+    storageType: (revealed.storage?.part as { type?: string } | undefined)?.type,
   }), [revealed]);
 
   const toggleMute = () => {

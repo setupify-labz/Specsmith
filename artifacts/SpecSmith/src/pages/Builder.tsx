@@ -163,6 +163,13 @@ export default function Builder() {
     gpu: !!selectedGpu, cpu: !!selectedCpu, motherboard: !!selectedMb, ram: !!selectedRam,
     storage: !!selectedStorage, psu: !!selectedPsu, case: !!selectedCase, cooler: !!selectedCooler,
     coolerType: selectedCooler?.type,
+    coolerHeightMm: (selectedCooler as { height_mm?: number } | null)?.height_mm,
+    gpuTier: selectedGpu?.tier,
+    gpuLengthMm: (selectedGpu as { length_mm?: number } | null)?.length_mm,
+    caseFormFactor: selectedCase?.form_factor,
+    caseName: selectedCase?.name,
+    moboFormFactor: selectedMb?.form_factor,
+    storageType: selectedStorage?.type,
   }), [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedStorage, selectedPsu, selectedCase, selectedCooler]);
 
   const summaryParts = [
