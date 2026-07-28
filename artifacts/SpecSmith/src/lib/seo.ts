@@ -320,11 +320,6 @@ export function siteJsonLdGraph() {
         description:
           'Free PC Builder and FPS Estimator. Pick GPU, CPU, and other components, check compatibility, and get estimated FPS across popular games and resolutions.',
         publisher: { '@id': `${SITE_URL}/#organization` },
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${SITE_URL}/builder?{search_term_string}`,
-          'query-input': 'required name=search_term_string',
-        },
       },
     ],
   };

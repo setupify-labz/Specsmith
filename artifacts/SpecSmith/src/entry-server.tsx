@@ -43,7 +43,7 @@ import { SOCKET_PAGES, getSocketPageMeta } from './lib/motherboardPages';
 import { COMPONENT_GUIDES, getComponentGuideMeta } from './lib/componentGuides';
 import { getRouteMeta, type RouteMeta } from './lib/seo';
 
-export { getRouteMeta, buildHeadTags, breadcrumbJsonLd, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
+export { getRouteMeta, buildHeadTags, breadcrumbJsonLd, siteJsonLdGraph, SITE_URL, DEFAULT_OG_IMAGE } from './lib/seo';
 
 export const PRERENDER_ROUTES = [
   '/',
