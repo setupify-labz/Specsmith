@@ -183,7 +183,7 @@ export function getGamePageMeta(page: GamePage): RouteMeta {
   const name = getPageGame(page.gameId)?.name ?? page.gameId;
   return {
     path: `/best-gpu/${page.slug}`,
-    title: `Best GPU for ${name} (2026) — FPS at 1080p, 1440p & 4K | SpecSmith`,
+    title: `Best GPU for ${name} | SpecSmith`,
     description: `The best graphics cards for ${name} in 2026: estimated FPS for 15 GPUs from budget to flagship at 1080p, 1440p, and 4K High settings — plus best value, budget, 144 FPS, and 4K 60 picks.`,
   };
 }

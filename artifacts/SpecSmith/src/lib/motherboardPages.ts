@@ -90,7 +90,7 @@ export function getMotherboardPicks(socket: string): MotherboardPick[] {
 export function getSocketPageMeta(page: SocketPage): RouteMeta {
   return {
     path: `/best-motherboard/${page.slug}`,
-    title: `Best ${page.label} Motherboards (2026) — Budget to High-End | SpecSmith`,
+    title: `Best ${page.label} Motherboards | SpecSmith`,
     description: `Every ${page.label} motherboard we track, compared by price, form factor, and RAM support — with budget, sweet-spot, and high-end picks for your build.`,
   };
 }

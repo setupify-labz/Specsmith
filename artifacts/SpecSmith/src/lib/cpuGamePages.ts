@@ -122,7 +122,7 @@ export function getCpuGamePageMeta(page: GamePage): RouteMeta {
   const name = getPageGame(page.gameId)?.name ?? page.gameId;
   return {
     path: `/best-cpu/${page.slug}`,
-    title: `Best CPU for ${name} (2026) — Gaming FPS Compared | SpecSmith`,
+    title: `Best CPU for ${name} | SpecSmith`,
     description: `The best processors for ${name} in 2026: estimated FPS for 15 CPUs from budget to flagship, paired with an RTX 4090 to isolate CPU performance — plus best value and budget picks.`,
   };
 }

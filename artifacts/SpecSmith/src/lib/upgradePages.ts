@@ -105,7 +105,7 @@ export function getUpgradePageMeta(page: UpgradePage): RouteMeta {
   const name = gpu?.name ?? page.gpuId;
   return {
     path: `/upgrade/${page.slug}`,
-    title: `What Should You Upgrade Your ${name} To? — Trade-Up Guide | SpecSmith`,
+    title: `${name} Upgrade Guide | SpecSmith`,
     description: `Thinking about upgrading from a ${name}? See its estimated resale value, real upgrade options ranked by FPS gain, and the actual net cost after trading up.`,
   };
 }

@@ -57,19 +57,19 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/best-cpu',
-    title: 'Best CPU by Game — Gaming FPS Compared for 20 Games | SpecSmith',
+    title: 'Best CPU by Game — FPS Compared | SpecSmith',
     description:
       'Find the best processor for the game you actually play: FPS-ranked CPU picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles, paired with an RTX 4090 to isolate CPU performance.',
   },
   {
     path: '/gpu-tier-list',
-    title: 'GPU Tier List (2026) — Every Graphics Card Ranked S to D | SpecSmith',
+    title: 'GPU Tier List — Ranked S to D | SpecSmith',
     description:
       'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50 series, AMD RX 6000/7000/9000, and Intel Arc. Updated with current market pricing.',
   },
   {
     path: '/vs',
-    title: 'GPU & CPU Comparisons — Head-to-Head FPS in 20 Games | SpecSmith',
+    title: 'GPU & CPU Comparisons | SpecSmith',
     description:
       'Compare popular GPUs and CPUs head-to-head: estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value. RTX 40/50 series vs AMD Radeon vs Intel Arc, Ryzen vs Intel Core.',
   },
@@ -99,7 +99,7 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/best-motherboard',
-    title: 'Best Motherboards by Platform (AM4, AM5, LGA1700, LGA1851) | SpecSmith',
+    title: 'Best Motherboards by Platform | SpecSmith',
     description:
       'Every motherboard we track, organized by CPU socket — budget, sweet-spot, and high-end picks for AMD AM4/AM5 and Intel LGA1700/LGA1851 builds.',
   },
