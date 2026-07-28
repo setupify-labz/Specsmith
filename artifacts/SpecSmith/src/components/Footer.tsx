@@ -87,7 +87,7 @@ export default function Footer() {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               FPS estimates are based on benchmark data and should be used as a guide only. Actual performance varies by driver version, game patch, and system configuration.
             </p>
-            <Link to="/about" className="inline-block text-sm mt-3 transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+            <Link to="/about" className="inline-block text-sm mt-3 transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
               About SpecSmith
             </Link>
           </div>

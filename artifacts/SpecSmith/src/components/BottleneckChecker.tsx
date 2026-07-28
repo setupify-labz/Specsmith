@@ -97,7 +97,7 @@ export default function BottleneckChecker({ gpuScore, cpuScore, onFixGpu, onFixC
           <button
             onClick={bottleneck === 'CPU' ? onFixCpu : onFixGpu}
             className="text-xs font-semibold transition-opacity hover:opacity-80"
-            style={{ color: 'var(--ff-accent)' }}
+            style={{ color: 'var(--ff-accent-text)' }}
           >
             Upgrade {bottleneck} →
           </button>

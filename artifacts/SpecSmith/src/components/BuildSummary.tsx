@@ -151,7 +151,7 @@ export default function BuildSummary({
                       <>
                         <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
                           title="Buy on Amazon"
-                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
                           Amazon
                         </a>
                         <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
@@ -267,7 +267,7 @@ export default function BuildSummary({
               <button
                 onClick={() => setSaveOpen(true)}
                 className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
-                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent)' }}
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
               >
                 <Save size={14} />
                 Save Build

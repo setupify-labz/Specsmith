@@ -24,10 +24,15 @@ import "./index.css";
 // few hundred ms and then snap back, which is exactly what was driving
 // Lighthouse's Cumulative Layout Shift score above 1.0. hydrateRoot()
 // attaches to the existing markup instead of replacing it.
+// Query params carry client-only state the prerendered HTML can't know about
+// (/builder?gpu=..., /build?b=...) — hydrating against that mismatched markup
+// throws React #418 and falls back to a client render anyway, so skip
+// straight to the client render and save the console error.
 const root = document.getElementById("root")!;
-if (root.hasChildNodes()) {
+if (root.hasChildNodes() && !window.location.search) {
   hydrateRoot(root, <App />);
 } else {
-  // Fallback for the (non-prerendered) dev server, where #root starts empty.
+  // Also the fallback for the (non-prerendered) dev server, where #root
+  // starts empty.
   createRoot(root).render(<App />);
 }

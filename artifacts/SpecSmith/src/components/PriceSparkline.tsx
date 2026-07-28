@@ -169,7 +169,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
                 <button
                   onClick={() => showToast('Price alerts coming soon!', 'info')}
                   className="text-xs font-semibold transition-opacity hover:opacity-80"
-                  style={{ color: 'var(--ff-accent)' }}
+                  style={{ color: 'var(--ff-accent-text)' }}
                 >
                   Set Price Alert
                 </button>

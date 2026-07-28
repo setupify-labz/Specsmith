@@ -86,7 +86,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
                   <button
                     onClick={() => { onClose(); navigate('/login'); }}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm"
-                    style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent)' }}
+                    style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
                   >
                     <LogIn size={15} />
                     Log In
