@@ -23,7 +23,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/',
     title: 'SpecSmith — Free PC Builder & FPS Estimator',
     description:
-      'Build a compatible gaming PC and see estimated FPS across 20 games before you buy. Pick from 50+ GPUs and 50+ CPUs with live compatibility checks and real pricing.',
+      'Build a compatible gaming PC and see estimated FPS across 20 games before you buy — 50+ GPUs and CPUs, live compatibility checks, and real pricing.',
   },
   {
     path: '/builder',
@@ -35,7 +35,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/prebuilts',
     title: 'Gaming PC Build Guides — 5 Curated Part Lists | SpecSmith',
     description:
-      'Five curated PC build guides across budget, 1080p, 1440p, and 4K tiers — full part lists with estimated FPS and total cost. Load any build straight into the Builder to customize it.',
+      'Five curated PC build guides for budget, 1080p, 1440p, and 4K — full part lists with estimated FPS and cost, ready to load into the Builder.',
   },
   {
     path: '/compare',
@@ -53,37 +53,37 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/best-gpu',
     title: 'Best GPU by Game — FPS-Tested Picks for 20 Games | SpecSmith',
     description:
-      'Find the best graphics card for the game you actually play: FPS-ranked picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles — best value, budget, 144 FPS, and 4K picks with estimated FPS at every resolution.',
+      'Find the best graphics card for the game you actually play — FPS-ranked picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles.',
   },
   {
     path: '/best-cpu',
     title: 'Best CPU by Game — FPS Compared | SpecSmith',
     description:
-      'Find the best processor for the game you actually play: FPS-ranked CPU picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles, paired with an RTX 4090 to isolate CPU performance.',
+      'Find the best processor for the game you actually play — FPS-ranked CPU picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles.',
   },
   {
     path: '/gpu-tier-list',
     title: 'GPU Tier List — Ranked S to D | SpecSmith',
     description:
-      'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50 series, AMD RX 6000/7000/9000, and Intel Arc. Updated with current market pricing.',
+      'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50, AMD RX 6000/7000/9000, and Intel Arc.',
   },
   {
     path: '/vs',
     title: 'GPU & CPU Comparisons | SpecSmith',
     description:
-      'Compare popular GPUs and CPUs head-to-head: estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value. RTX 40/50 series vs AMD Radeon vs Intel Arc, Ryzen vs Intel Core.',
+      'Compare popular GPUs and CPUs head-to-head — estimated FPS in 20 games at 1080p, 1440p, and 4K, plus specs and price-per-frame value.',
   },
   {
     path: '/upgrade-calculator',
     title: 'GPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
     description:
-      'See what your current GPU is roughly worth used, what it actually costs to trade up to a faster card after resale, and the real FPS gain — before you spend anything.',
+      'See what your current GPU is worth used, what it costs to trade up to a faster card after resale, and the real FPS gain.',
   },
   {
     path: '/crate',
     title: 'Build Crate — Random PC Build Generator | SpecSmith',
     description:
-      'Open a Build Crate for a fully random gaming PC — every part guaranteed to physically fit together, with a rarity pull based on how high-end you land. See the total cost and estimated FPS instantly.',
+      'Open a Build Crate for a fully random gaming PC — every part guaranteed to fit together, with a rarity pull based on how high-end you land.',
   },
   {
     path: '/upgrade',
@@ -95,7 +95,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/parts-guides',
     title: 'PC Parts Buying Guides — GPU, CPU, RAM, and More | SpecSmith',
     description:
-      'Every buying guide on SpecSmith in one place — GPU and CPU tier lists, upgrade guides, and budget-to-premium picks for motherboards, RAM, storage, PSUs, cases, coolers, and peripherals.',
+      'Every buying guide on SpecSmith in one place — tier lists, upgrade guides, and budget-to-premium picks for every PC part and peripheral.',
   },
   {
     path: '/best-motherboard',
@@ -113,7 +113,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
-      'Browse real gaming PC builds published by SpecSmith users, with full part lists, total cost, estimated FPS, and buy links. Load any build straight into the Builder.',
+      'Browse real gaming PC builds published by SpecSmith users — full part lists, total cost, estimated FPS, and buy links.',
   },
   {
     path: '/build',

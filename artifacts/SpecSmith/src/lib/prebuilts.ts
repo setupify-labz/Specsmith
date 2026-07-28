@@ -72,6 +72,6 @@ export function getPrebuiltMeta(prebuilt: Prebuilt): RouteMeta {
   return {
     path: `/prebuilts/${prebuilt.id}`,
     title: `${prebuilt.name} — ${prebuilt.target_resolution} Gaming PC | SpecSmith`,
-    description: `${prebuilt.tagline}. ${prebuilt.description} Estimated total: $${getPrebuiltTotal(prebuilt).toLocaleString()}. See full parts list and FPS benchmarks.`,
+    description: prebuilt.description,
   };
 }

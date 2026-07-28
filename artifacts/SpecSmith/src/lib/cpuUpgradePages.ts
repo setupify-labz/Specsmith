@@ -98,7 +98,7 @@ export function getCpuUpgradePageMeta(page: CpuUpgradePage): RouteMeta {
   return {
     path: `/upgrade-cpu/${page.slug}`,
     title: `${name} Upgrade Guide | SpecSmith`,
-    description: `Thinking about upgrading from a ${name}? See its estimated resale value, real upgrade options ranked by FPS gain, and the actual net cost after trading up.`,
+    description: `Thinking about upgrading from a ${name}? See its resale value, upgrade options ranked by FPS gain, and the net cost after trading up.`,
   };
 }
 

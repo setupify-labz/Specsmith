@@ -371,7 +371,7 @@ export function getMatchupMeta(matchup: Matchup): RouteMeta {
   return {
     path: `/vs/${matchup.slug}`,
     title: `${nameA} vs ${nameB} | SpecSmith`,
-    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}): estimated FPS in 20 games at 1080p, 1440p, and 4K, full spec comparison, and price-per-frame value. See which GPU is the better buy.`,
+    description: `${nameA} vs ${nameB}: estimated FPS in 20 games at 1080p, 1440p & 4K, full specs, and price-per-frame value — see which GPU wins.`,
   };
 }
 
@@ -383,6 +383,6 @@ export function getCpuMatchupMeta(matchup: CpuMatchup): RouteMeta {
   return {
     path: `/vs/${matchup.slug}`,
     title: `${nameA} vs ${nameB} | SpecSmith`,
-    description: `${nameA} ($${a?.price_usd}) vs ${nameB} ($${b?.price_usd}) for gaming: estimated FPS in 20 games with an RTX 4090, full spec comparison, and price-per-frame value. See which CPU is the better buy.`,
+    description: `${nameA} vs ${nameB} for gaming: estimated FPS in 20 games with an RTX 4090, full specs, and price-per-frame value — see which CPU wins.`,
   };
 }
