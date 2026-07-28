@@ -2,6 +2,14 @@ import { build } from 'vite';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { PRICES_UPDATED } from '../src/lib/prices.ts';
+
+// ISO date (YYYY-MM-DD) for every page's <lastmod> — deliberately the last
+// real pricing-data refresh date, not "whenever this build happened to
+// run". A lastmod that changes on every deploy regardless of whether
+// content actually changed trains crawlers to distrust the signal; tying
+// it to PRICES_UPDATED means it only moves when something real changed.
+const SITEMAP_LASTMOD = new Date(PRICES_UPDATED).toISOString().slice(0, 10);
 
 const root = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const publicDir = path.join(root, 'dist', 'public');
@@ -83,7 +91,7 @@ function generateSitemap(routes, siteUrl) {
       const entry = sitemapEntry(routePath);
       if (!entry) return null;
       const loc = routePath === '/' ? `${siteUrl}/` : `${siteUrl}${routePath}`;
-      return `  <url>\n    <loc>${loc}</loc>\n    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`;
+      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${SITEMAP_LASTMOD}</lastmod>\n    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`;
     })
     .filter(Boolean)
     .join('\n');
