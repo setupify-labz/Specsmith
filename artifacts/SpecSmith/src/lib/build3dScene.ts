@@ -940,6 +940,10 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
       }
       signatures.set(partKey, sig);
       const want = next[partKey];
+      // Only build/load a part once it's actually wanted — otherwise the
+      // panel eagerly fetches all 8 archetype GLBs the instant it mounts,
+      // before the user has picked anything.
+      if (!want && !managed.has(partKey)) continue;
       const entry = ensurePart(partKey);
       entry.target = want ? 1 : 0;
       if (reducedMotion) {

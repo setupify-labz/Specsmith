@@ -13,7 +13,7 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown, Monitor as MonitorIcon } from 'lucide-react';
+import { ChevronDown, Monitor as MonitorIcon, Boxes } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 
@@ -384,17 +384,38 @@ export default function Builder() {
           {/* Right panel */}
           <div className="lg:col-span-1 space-y-6">
             {clientReady && (
-              <Suspense
-                fallback={
+              corePartsList.length > 0 ? (
+                <Suspense
+                  fallback={
+                    <div
+                      className="h-[340px] rounded-2xl"
+                      style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
+                      aria-hidden="true"
+                    />
+                  }
+                >
+                  <Build3D parts={scene3dParts} />
+                </Suspense>
+              ) : (
+                // Same chrome as Build3D's empty state, but without loading
+                // three.js (~176KB gzip) for a visitor who hasn't picked a
+                // part yet — the real panel takes over on the first pick.
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
+                >
+                  <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+                    <Boxes size={16} style={{ color: 'var(--ff-accent-text)' }} aria-hidden="true" />
+                    <h2 className="text-sm font-bold" style={{ color: 'var(--ff-text)' }}>3D Preview</h2>
+                  </div>
                   <div
-                    className="h-[340px] rounded-2xl"
-                    style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                    aria-hidden="true"
-                  />
-                }
-              >
-                <Build3D parts={scene3dParts} />
-              </Suspense>
+                    className="h-72 mx-3 mb-3 rounded-xl flex items-end justify-center pb-4"
+                    style={{ background: 'radial-gradient(ellipse at 50% 40%, #171a2e 0%, #0b0c15 75%)' }}
+                  >
+                    <span className="text-xs" style={{ color: '#8888AA' }}>Select parts to watch your rig assemble</span>
+                  </div>
+                </div>
+              )
             )}
             <BuildSummary
               parts={summaryParts}
