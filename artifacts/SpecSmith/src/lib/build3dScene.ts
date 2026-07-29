@@ -1011,11 +1011,31 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   resizeObserver.observe(container);
   resize();
 
-  // ---- Render loop: paused when offscreen or the tab is hidden ----
+  // ---- Render loop: paused when offscreen, the tab is hidden, or the GPU
+  // context is lost (common on mobile — Safari in particular reclaims WebGL
+  // contexts under memory pressure; without handling this the canvas would
+  // freeze on a stale frame forever with no way to recover but a reload). ----
   let rafId: number | null = null;
   let onScreen = true;
+  let contextLost = false;
   let lastTime = 0;
   let disposed = false;
+
+  function onContextLost(e: Event) {
+    e.preventDefault(); // tells the browser we intend to handle restoration
+    contextLost = true;
+    if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+  function onContextRestored() {
+    contextLost = false;
+    lastTime = 0;
+    needsRender = true;
+    // Three.js re-uploads textures/geometries to the new context lazily as
+    // they're next used, so simply resuming the loop is enough.
+    scheduleFrame();
+  }
+  renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
+  renderer.domElement.addEventListener('webglcontextrestored', onContextRestored, false);
 
   function anyPartVisible(): boolean {
     for (const entry of managed.values()) if (entry.group.visible) return true;
@@ -1070,7 +1090,7 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   }
 
   function scheduleFrame() {
-    if (disposed || rafId !== null) return;
+    if (disposed || rafId !== null || contextLost) return;
     if (!onScreen || document.visibilityState === 'hidden') return;
     rafId = requestAnimationFrame(frame);
   }
@@ -1098,6 +1118,8 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
     intersectionObserver.disconnect();
     resizeObserver.disconnect();
     document.removeEventListener('visibilitychange', onVisibilityChange);
+    renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+    renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
     renderer.domElement.removeEventListener('pointerdown', onPointerDown);
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
