@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Boxes, WifiOff } from 'lucide-react';
-import { isDataSaverOn } from '../lib/dataSaver';
+import { isDataSaverOn, hasDataSaverOverride, setDataSaverOverride } from '../lib/dataSaver';
 
 interface Build3DGateProps {
   /** The actual <Suspense><Build3D .../></Suspense> tree — not rendered (and
@@ -16,7 +16,7 @@ interface Build3DGateProps {
 // three.js (~176KB gzip) genuinely never downloads while blocked, not just
 // the GLB models.
 export default function Build3DGate({ children, heightClass = 'h-72' }: Build3DGateProps) {
-  const [blocked, setBlocked] = useState(isDataSaverOn);
+  const [blocked, setBlocked] = useState(() => isDataSaverOn() && !hasDataSaverOverride());
 
   if (!blocked) return <>{children}</>;
 
@@ -38,7 +38,7 @@ export default function Build3DGate({ children, heightClass = 'h-72' }: Build3DG
           Data Saver is on — the 3D preview loads extra images to show your build.
         </p>
         <button
-          onClick={() => setBlocked(false)}
+          onClick={() => { setDataSaverOverride(); setBlocked(false); }}
           className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
           style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
         >
