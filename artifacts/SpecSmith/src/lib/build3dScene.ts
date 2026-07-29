@@ -639,7 +639,11 @@ export function createBuild3dScene(container: HTMLElement): Build3dScene | null 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // PCFSoftShadowMap is deprecated in this three.js version — the renderer
+  // silently downgrades it to the harder-edged PCFShadowMap and logs a
+  // warning on every scene creation. VSMShadowMap is the current
+  // soft-shadow replacement.
+  renderer.shadowMap.type = THREE.VSMShadowMap;
   renderer.domElement.style.width = '100%';
   renderer.domElement.style.height = '100%';
   renderer.domElement.style.display = 'block';
