@@ -30,6 +30,7 @@ import PageGlow from '../components/PageGlow';
 // Same lazy three.js chunk as the Builder — only downloads once a crate is
 // actually being opened, never in the prerendered HTML path.
 const Build3D = lazy(() => import('../components/Build3D'));
+import Build3DGate from '../components/Build3DGate';
 
 // How dramatic the landing effect gets, escalating per rarity tier.
 const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
@@ -503,17 +504,19 @@ export default function BuildCrate() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8 max-w-2xl mx-auto"
           >
-            <Suspense
-              fallback={
-                <div
-                  className="h-[380px] rounded-2xl"
-                  style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                  aria-hidden="true"
-                />
-              }
-            >
-              <Build3D parts={scene3dParts} heightClass="h-80" />
-            </Suspense>
+            <Build3DGate heightClass="h-80">
+              <Suspense
+                fallback={
+                  <div
+                    className="h-[380px] rounded-2xl"
+                    style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
+                    aria-hidden="true"
+                  />
+                }
+              >
+                <Build3D parts={scene3dParts} heightClass="h-80" />
+              </Suspense>
+            </Build3DGate>
           </motion.div>
         )}
 

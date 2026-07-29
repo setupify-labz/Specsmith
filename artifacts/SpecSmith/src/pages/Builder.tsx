@@ -21,6 +21,7 @@ import { getRouteMeta } from '../lib/seo';
 // that only ever downloads on this page, after hydration — every other page's
 // bundle is untouched, and the prerendered Builder HTML doesn't include it.
 const Build3D = lazy(() => import('../components/Build3D'));
+import Build3DGate from '../components/Build3DGate';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -385,17 +386,19 @@ export default function Builder() {
           <div className="lg:col-span-1 space-y-6">
             {clientReady && (
               corePartsList.length > 0 ? (
-                <Suspense
-                  fallback={
-                    <div
-                      className="h-[340px] rounded-2xl"
-                      style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                      aria-hidden="true"
-                    />
-                  }
-                >
-                  <Build3D parts={scene3dParts} />
-                </Suspense>
+                <Build3DGate>
+                  <Suspense
+                    fallback={
+                      <div
+                        className="h-[340px] rounded-2xl"
+                        style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
+                        aria-hidden="true"
+                      />
+                    }
+                  >
+                    <Build3D parts={scene3dParts} />
+                  </Suspense>
+                </Build3DGate>
               ) : (
                 // Same chrome as Build3D's empty state, but without loading
                 // three.js (~176KB gzip) for a visitor who hasn't picked a

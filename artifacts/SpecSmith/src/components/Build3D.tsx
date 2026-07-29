@@ -10,6 +10,9 @@ interface Build3DProps {
 
 // Default export so Builder can React.lazy() this — three.js only downloads
 // on the Builder page, after hydration, never in the prerendered HTML path.
+// Data Saver gating happens one level up (Build3DGate) — by the time this
+// component's own code runs, the lazy import() has already fetched three.js,
+// so gating here would be too late to save that download.
 export default function Build3D({ parts, heightClass = 'h-72' }: Build3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Build3dScene | null>(null);
