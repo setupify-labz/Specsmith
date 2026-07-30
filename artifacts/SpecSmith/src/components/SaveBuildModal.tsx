@@ -66,7 +66,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
           >
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Save Build</h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
+              <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
                 <X size={16} />
               </button>
             </div>
@@ -102,8 +102,9 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
                 )}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ff-text-2)' }}>Build Name</label>
+                    <label htmlFor="save-build-name" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ff-text-2)' }}>Build Name</label>
                     <input
+                      id="save-build-name"
                       className="ff-input"
                       value={name}
                       onChange={e => setName(e.target.value)}
@@ -112,8 +113,9 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ff-text-2)' }}>Notes <span style={{ color: 'var(--ff-text-3)' }}>(optional)</span></label>
+                    <label htmlFor="save-build-notes" className="block text-xs font-medium mb-1.5" style={{ color: 'var(--ff-text-2)' }}>Notes <span style={{ color: 'var(--ff-text-3)' }}>(optional)</span></label>
                     <textarea
+                      id="save-build-notes"
                       className="ff-input"
                       style={{ height: 80, resize: 'none', paddingTop: 10, paddingBottom: 10 }}
                       value={notes}

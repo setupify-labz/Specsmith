@@ -85,6 +85,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
                 </div>
                 <button
                   onClick={() => setModalOpen(false)}
+                  aria-label="Close"
                   className="p-1.5 rounded-lg transition-colors"
                   style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}
                 >
