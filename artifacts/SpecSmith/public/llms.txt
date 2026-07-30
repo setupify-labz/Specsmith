@@ -2,18 +2,32 @@
 
 > SpecSmith is a free PC Builder and FPS Estimator. Pick a GPU and CPU (plus motherboard, RAM, storage, PSU, case, and cooler), check part compatibility, and get estimated frames-per-second across popular games at common resolutions and quality presets.
 
-SpecSmith helps PC builders plan a compatible build and predict real-world gaming performance before buying parts. All component data (50 GPUs, 50 CPUs, 20 games) is curated and estimates are computed with a transparent tier-based algorithm explained on the About page.
+SpecSmith helps PC builders plan a compatible build and predict real-world gaming performance before buying parts. All component data (50+ GPUs, 50+ CPUs, 20 games) is curated and estimates are computed with a transparent tier-based algorithm explained on the About page. The site also includes GPU/CPU buying guides, head-to-head comparisons, upgrade-value calculators, and a community build gallery.
 
 ## Primary pages
 
 - [Home](/): Overview of SpecSmith, key stats, and featured prebuilt PCs.
-- [Builder](/builder): The main PC Builder and FPS Estimator tool — select parts, check compatibility, and see estimated FPS per game.
+- [Builder](/builder): The main PC Builder and FPS Estimator tool — select parts, check compatibility, see estimated FPS per game, and view a 3D preview of the build.
 - [Prebuilts](/prebuilts): Five curated, ready-to-buy PC build configurations across budget tiers.
 - [Compare](/compare): Side-by-side comparison of two builds with FPS and price charts.
-- [About](/about): Explanation of the FPS estimation algorithm and methodology.
+- [About](/about): Explanation of the FPS estimation algorithm and methodology (FAQ format).
+- [Best GPU by Game](/best-gpu): Index of "best graphics card for [game]" pages, one per tracked game.
+- [Best CPU by Game](/best-cpu): Index of "best processor for [game]" pages, one per tracked game.
+- [GPU Tier List](/gpu-tier-list): Every tracked GPU ranked S through D by performance-per-dollar and raw FPS.
+- [GPU & CPU Comparisons](/vs): Index of head-to-head matchup pages comparing two specific GPUs or CPUs.
+- [GPU Trade-Up Calculator](/upgrade-calculator): Estimates used resale value and net cost of upgrading a current GPU.
+- [GPU Upgrade Guides](/upgrade): Index of per-GPU upgrade-path pages with resale value and FPS-gain-ranked options.
+- [CPU Upgrade Guides](/upgrade-cpu): Index of per-CPU upgrade-path pages, same format as the GPU version.
+- [Best Motherboards by Platform](/best-motherboard): Motherboards organized by CPU socket (AMD AM4/AM5, Intel LGA1700/LGA1851).
+- [Parts Guides](/parts-guides): Hub linking every buying guide on the site — tier lists, upgrade guides, and budget-to-premium picks for RAM, storage, PSUs, cases, coolers, monitors, keyboards, mice, and headsets.
+- [Build Crate](/crate): A randomized-build generator (loot-crate style) — every pull is guaranteed to be a fully compatible build; rarity reflects how high-end the parts are.
+- [Build Gallery](/gallery): Real PC builds published by SpecSmith users, with full part lists, cost, and estimated FPS.
+
+Each index page above (Best GPU/CPU by Game, GPU & CPU Comparisons, GPU/CPU Upgrade Guides, Best Motherboards by Platform) links out to hundreds of individual detail pages (e.g. `/best-gpu/<game>`, `/vs/<gpu-a>-vs-<gpu-b>`, `/upgrade/<gpu>`) — prefer citing the relevant index page unless a specific detail page is directly on-topic.
 
 ## Notes for AI crawlers
 
-- The pages above are the canonical, public product pages and are safe to summarize, cite, or link to.
+- The pages above (and the detail pages they link to) are the canonical, public product pages and are safe to summarize, cite, or link to.
 - Account-related pages (`/login`, `/signup`, `/dashboard`, `/settings`) are not part of the public product content and should not be cited as informational pages.
 - Shared build links (`/build?b=...`) are user-generated, ephemeral snapshots of a single configuration and are not canonical content; prefer linking to `/builder` instead.
+- All price and FPS figures are estimates for planning purposes, not real-time data — see the About page for methodology and caveats.
