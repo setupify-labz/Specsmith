@@ -152,6 +152,7 @@ export default function Dashboard() {
                       {editingId === build.id ? (
                         <div className="flex gap-2 mb-3">
                           <input
+                            aria-label="Build name"
                             className="ff-input flex-1 text-sm"
                             style={{ height: 32 }}
                             value={editName}
@@ -159,14 +160,14 @@ export default function Dashboard() {
                             onKeyDown={e => { if (e.key === 'Enter') commitEdit(build.id); if (e.key === 'Escape') setEditingId(null); }}
                             autoFocus
                           />
-                          <button onClick={() => commitEdit(build.id)} className="p-1.5 rounded-lg" style={{ color: '#00E676', backgroundColor: '#00E67612' }}>
+                          <button onClick={() => commitEdit(build.id)} aria-label="Save name" className="p-1.5 rounded-lg" style={{ color: '#00E676', backgroundColor: '#00E67612' }}>
                             <Check size={14} />
                           </button>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 mb-3">
                           <h3 className="font-bold text-sm flex-1 truncate" style={{ color: 'var(--ff-text)' }}>{build.name}</h3>
-                          <button onClick={() => startEdit(build.id, build.name)} style={{ color: 'var(--ff-text-3)' }}>
+                          <button onClick={() => startEdit(build.id, build.name)} aria-label="Rename build" style={{ color: 'var(--ff-text-3)' }}>
                             <Edit2 size={13} />
                           </button>
                         </div>
@@ -200,6 +201,7 @@ export default function Dashboard() {
                         </button>
                         <button
                           onClick={() => handleDelete(build.id)}
+                          aria-label={deleteConfirm === build.id ? undefined : 'Delete build'}
                           className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg"
                           style={{
                             color: deleteConfirm === build.id ? '#FF1744' : 'var(--ff-text-3)',

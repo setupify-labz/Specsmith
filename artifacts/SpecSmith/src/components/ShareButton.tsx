@@ -99,12 +99,12 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold" style={{ color: 'var(--ff-text)' }}>Scan to Open Build</h3>
-                <button onClick={() => setQrOpen(false)} style={{ color: 'var(--ff-text-2)' }}>
+                <button onClick={() => setQrOpen(false)} aria-label="Close" style={{ color: 'var(--ff-text-2)' }}>
                   <X size={16} />
                 </button>
               </div>
-              <div className="inline-block p-3 bg-white rounded-xl">
-                <QRCodeSVG value={url} size={200} />
+              <div className="inline-block p-3 bg-white rounded-xl" role="img" aria-label="QR code linking to this build">
+                <QRCodeSVG value={url} size={200} aria-hidden="true" />
               </div>
               <p className="text-xs mt-3" style={{ color: 'var(--ff-text-2)' }}>Scan with your phone to view this build</p>
               <button
