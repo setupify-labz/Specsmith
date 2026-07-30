@@ -81,12 +81,12 @@ export default function Settings() {
             <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Profile</h2>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Username</label>
-                <input className="ff-input" value={username} onChange={e => setUsername(e.target.value)} />
+                <label htmlFor="settings-username" className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Username</label>
+                <input id="settings-username" className="ff-input" value={username} onChange={e => setUsername(e.target.value)} />
               </div>
               <div>
-                <label className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Email</label>
-                <input className="ff-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                <label htmlFor="settings-email" className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Email</label>
+                <input id="settings-email" className="ff-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
               </div>
             </div>
             <button onClick={handleSaveProfile}
@@ -134,8 +134,9 @@ export default function Settings() {
             <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>FPS Estimator Preferences</h2>
             <div className="grid sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Default Resolution</label>
+                <label htmlFor="settings-resolution" className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Default Resolution</label>
                 <select
+                  id="settings-resolution"
                   className="ff-input"
                   value={resolution}
                   onChange={e => setResolution(e.target.value)}
@@ -145,8 +146,9 @@ export default function Settings() {
                 </select>
               </div>
               <div>
-                <label className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Default Quality Preset</label>
+                <label htmlFor="settings-preset" className={labelClass} style={{ color: 'var(--ff-text-2)' }}>Default Quality Preset</label>
                 <select
+                  id="settings-preset"
                   className="ff-input"
                   value={preset}
                   onChange={e => setPreset(e.target.value)}
@@ -168,14 +170,15 @@ export default function Settings() {
             <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Change Password</h2>
             <div className="space-y-3 mb-4">
               {[
-                { label: 'Current Password', val: currentPw, set: setCurrentPw, show: showCurrentPw, toggle: setShowCurrentPw },
-                { label: 'New Password', val: newPw, set: setNewPw, show: showNewPw, toggle: setShowNewPw },
-                { label: 'Confirm New Password', val: confirmPw, set: setConfirmPw, show: showNewPw, toggle: () => {} },
+                { id: 'settings-current-pw', label: 'Current Password', val: currentPw, set: setCurrentPw, show: showCurrentPw, toggle: setShowCurrentPw },
+                { id: 'settings-new-pw', label: 'New Password', val: newPw, set: setNewPw, show: showNewPw, toggle: setShowNewPw },
+                { id: 'settings-confirm-pw', label: 'Confirm New Password', val: confirmPw, set: setConfirmPw, show: showNewPw, toggle: () => {} },
               ].map(f => (
                 <div key={f.label}>
-                  <label className={labelClass} style={{ color: 'var(--ff-text-2)' }}>{f.label}</label>
+                  <label htmlFor={f.id} className={labelClass} style={{ color: 'var(--ff-text-2)' }}>{f.label}</label>
                   <div className="relative">
                     <input
+                      id={f.id}
                       type={f.show ? 'text' : 'password'}
                       className="ff-input pr-10"
                       value={f.val}
@@ -184,6 +187,7 @@ export default function Settings() {
                     />
                     {f.label !== 'Confirm New Password' && (
                       <button type="button" onClick={() => f.toggle((v: boolean) => !v)}
+                        aria-label={f.show ? 'Hide password' : 'Show password'}
                         className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ff-text-3)' }}>
                         {f.show ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
@@ -218,6 +222,7 @@ export default function Settings() {
                 </p>
                 <input
                   className="ff-input"
+                  aria-label="Type DELETE to confirm account deletion"
                   value={deleteInput}
                   onChange={e => setDeleteInput(e.target.value)}
                   placeholder="DELETE"
