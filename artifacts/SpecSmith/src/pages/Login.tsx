@@ -87,7 +87,7 @@ export default function Login() {
                 type="button"
                 onClick={() => showToast('Password reset not available in demo', 'info')}
                 className="text-xs hover:opacity-80"
-                style={{ color: 'var(--ff-accent)' }}
+                style={{ color: 'var(--ff-accent-text)' }}
               >
                 Forgot password?
               </button>
@@ -104,6 +104,7 @@ export default function Login() {
                 autoComplete="current-password"
               />
               <button type="button" onClick={() => setShowPass(!showPass)}
+                aria-label={showPass ? 'Hide password' : 'Show password'}
                 className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ff-text-3)' }}>
                 {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -130,7 +131,7 @@ export default function Login() {
 
           <p className="text-center text-sm" style={{ color: 'var(--ff-text-2)' }}>
             Don't have an account?{' '}
-            <Link to="/signup" className="font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+            <Link to="/signup" className="font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
               Sign up
             </Link>
           </p>

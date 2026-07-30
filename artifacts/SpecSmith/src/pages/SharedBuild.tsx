@@ -96,7 +96,7 @@ export default function SharedBuild() {
           {/* Header */}
           <div className="mb-6">
             <div className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-3"
-              style={{ backgroundColor: 'var(--ff-accent)18', color: 'var(--ff-accent)', border: '1px solid var(--ff-accent)40' }}>
+              style={{ backgroundColor: 'var(--ff-accent)18', color: 'var(--ff-accent-text)', border: '1px solid var(--ff-accent)40' }}>
               SHARED BUILD
             </div>
             <h1 className="text-3xl font-black" style={{ color: 'var(--ff-text)' }}>{name}</h1>
@@ -125,7 +125,7 @@ export default function SharedBuild() {
                         </span>
                         <a href={getAffiliateUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
                           className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80"
-                          style={{ color: 'var(--ff-accent)' }}>
+                          style={{ color: 'var(--ff-accent-text)' }}>
                           Amazon <ExternalLink size={9} />
                         </a>
                         <a href={getNeweggUrl(getPartSearchQuery(cat, id))} target="_blank" rel="noopener noreferrer"
@@ -142,7 +142,7 @@ export default function SharedBuild() {
                       <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>Custom</span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>{c.name}</span>
-                        <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent)' }}>${c.price.toLocaleString()}</span>
+                        <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent-text)' }}>${c.price.toLocaleString()}</span>
                       </div>
                     </div>
                   ))}
@@ -194,13 +194,13 @@ export default function SharedBuild() {
                   {!user ? (
                     <Link to="/signup"
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm"
-                      style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent)' }}>
+                      style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}>
                       <ArrowRight size={15} /> Save to My Account
                     </Link>
                   ) : (
                     <button onClick={loadInBuilder}
                       className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm"
-                      style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent)' }}>
+                      style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}>
                       <ArrowRight size={15} /> Open in Builder
                     </button>
                   )}

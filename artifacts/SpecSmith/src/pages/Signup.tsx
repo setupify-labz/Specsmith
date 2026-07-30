@@ -138,12 +138,12 @@ export default function Signup() {
           {renderField('username', 'Username', 'text', <User size={15} />, 'username')}
           {renderField('email', 'Email', 'email', <Mail size={15} />, 'name@example.com')}
           {renderField('password', 'Password', showPass ? 'text' : 'password', <Lock size={15} />, '••••••••',
-            <button type="button" onClick={() => setShowPass(!showPass)} style={{ color: 'var(--ff-text-3)' }}>
+            <button type="button" onClick={() => setShowPass(!showPass)} aria-label={showPass ? 'Hide password' : 'Show password'} style={{ color: 'var(--ff-text-3)' }}>
               {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           )}
           {renderField('confirm', 'Confirm Password', showConfirm ? 'text' : 'password', <Lock size={15} />, '••••••••',
-            <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ color: 'var(--ff-text-3)' }}>
+            <button type="button" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? 'Hide password' : 'Show password'} style={{ color: 'var(--ff-text-3)' }}>
               {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           )}
@@ -161,7 +161,7 @@ export default function Signup() {
 
           <p className="text-center text-sm" style={{ color: 'var(--ff-text-2)' }}>
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent)' }}>
+            <Link to="/login" className="font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
               Log in
             </Link>
           </p>
