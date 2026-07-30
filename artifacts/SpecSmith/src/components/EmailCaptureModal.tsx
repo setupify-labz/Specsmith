@@ -56,7 +56,7 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
                 </div>
                 <h3 className="font-bold text-base" style={{ color: 'var(--ff-text)' }}>Want us to email you this build?</h3>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
+              <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
                 <X size={16} />
               </button>
             </div>
@@ -69,6 +69,7 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
               <input
                 type="email"
                 className="ff-input"
+                aria-label="Email address"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@example.com"
