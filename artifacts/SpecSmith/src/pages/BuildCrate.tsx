@@ -226,6 +226,39 @@ function CrateReel({ category, pool, finalName, rarity, onLand, onComplete }: {
   );
 }
 
+// Cold traffic from short-form video lands here with zero context about
+// SpecSmith, so this stays short and always visible (not gated behind an
+// accordion). Generated into FAQPage JSON-LD below so it can't drift from
+// what's actually on the page.
+const crateFaqSections = [
+  {
+    title: 'Is this a real PC build, or just a random image?',
+    content: 'Every pull comes from SpecSmith\'s real parts database — the build you get is a genuine, buildable PC with real prices and real compatibility, not a random generator making things up.',
+  },
+  {
+    title: 'Do I have to buy anything?',
+    content: 'No. Build Crate is 100% free to open, no account or purchase required. If you like your pull, you can send it straight to the Builder to fine-tune it, or just enjoy the pull.',
+  },
+  {
+    title: 'How is rarity decided?',
+    content: 'Each part you land on is weighted toward the lower end of its category, and rarity (Common through Legendary) reflects roughly where that part ranks against everything else in its category — landing a top-tier GPU is rarer than landing an entry-level one.',
+  },
+  {
+    title: 'Can I keep opening crates?',
+    content: 'Yes — hit "Open New Crates" to start over anytime. There\'s also a pity system: go too long without a Rare-or-better pull and your next crate is guaranteed one.',
+  },
+];
+
+const crateFaqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: crateFaqSections.map((s) => ({
+    '@type': 'Question',
+    name: s.title,
+    acceptedAnswer: { '@type': 'Answer', text: s.content },
+  })),
+};
+
 export default function BuildCrate() {
   useSeo(getRouteMeta('/crate'));
   const navigate = useNavigate();
@@ -420,6 +453,7 @@ export default function BuildCrate() {
       transition={{ duration: 0.45 }}
       onAnimationComplete={() => setShake(0)}
     >
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(crateFaqJsonLd) }} />
       <PageGlow variant="warm" />
       <AnimatePresence>{legendaryBlast && <LegendaryBlast />}</AnimatePresence>
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6">
@@ -633,6 +667,15 @@ export default function BuildCrate() {
         )}
 
         <CratePullsFeed />
+
+        <div className="mt-12 space-y-3">
+          {crateFaqSections.map((s) => (
+            <div key={s.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{s.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{s.content}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </motion.div>
   );
