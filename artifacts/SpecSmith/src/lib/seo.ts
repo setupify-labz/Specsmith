@@ -84,6 +84,7 @@ export const ROUTE_META: RouteMeta[] = [
     title: 'Build Crate — Random PC Build Generator | SpecSmith',
     description:
       'Open a Build Crate for a fully random gaming PC — every part guaranteed to fit together, with a rarity pull based on how high-end you land.',
+    image: `${SITE_URL}/opengraph-crate.jpg`,
   },
   {
     path: '/upgrade',
