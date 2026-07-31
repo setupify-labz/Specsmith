@@ -115,6 +115,7 @@ export const ROUTE_META: RouteMeta[] = [
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
       'Browse real gaming PC builds published by SpecSmith users — full part lists, total cost, estimated FPS, and buy links.',
+    image: `${SITE_URL}/opengraph-gallery.jpg`,
   },
   {
     path: '/build',
