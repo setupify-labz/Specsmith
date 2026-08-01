@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX, Download, ImageDown, Flame,
+  Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX, Download, ImageDown, Flame, Clipboard,
   CircuitBoard, MemoryStick, MonitorSmartphone, HardDrive, Box, Fan, Zap, type LucideIcon,
 } from 'lucide-react';
 import {
@@ -392,6 +392,17 @@ export default function BuildCrate() {
     showToast('Share link copied', 'success');
   };
 
+  // A ready-to-paste caption for whoever's filming their pull — references
+  // the actual rarity and parts landed on, so it doesn't read as generic
+  // copy-pasted filler.
+  const copyCaption = () => {
+    if (!finalBuild) return;
+    const rarity = RARITY_STYLE[finalBuild.rarity].label;
+    const caption = `I built a website that randomly generates gaming PCs... it gave me a ${rarity} pull (${finalBuild.gpu.name} + ${finalBuild.cpu.name}). Rate it 1-10 👇\n\n#pcbuild #webdev #gamingpc #fyp #techtok #buildinpublic`;
+    navigator.clipboard.writeText(caption);
+    showToast('Caption copied', 'success');
+  };
+
   const publishToGallery = async () => {
     if (!finalBuild || !user) return;
     setPublishing(true);
@@ -621,6 +632,11 @@ export default function BuildCrate() {
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
                   style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
                   <Share2 size={15} /> Copy Share Link
+                </button>
+                <button onClick={copyCaption}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
+                  <Clipboard size={15} /> Copy Caption
                 </button>
                 <button onClick={handleDownloadCard}
                   disabled={cardState !== 'idle'}
