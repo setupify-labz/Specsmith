@@ -385,9 +385,19 @@ export default function BuildCrate() {
     navigate(`/builder?${qs}`);
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (!finalBuild) return;
     const url = getShareUrl(finalBuild.buildState, `${RARITY_STYLE[finalBuild.rarity].label} Build Crate`);
+    // Prefer the OS share sheet on mobile — the exact device this page is
+    // usually opened on — falling back to a plain clipboard copy.
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: `${RARITY_STYLE[finalBuild.rarity].label} Build Crate pull`, url });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
     navigator.clipboard.writeText(url);
     showToast('Share link copied', 'success');
   };
@@ -631,7 +641,7 @@ export default function BuildCrate() {
                 <button onClick={copyShareLink}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
                   style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
-                  <Share2 size={15} /> Copy Share Link
+                  <Share2 size={15} /> Share Link
                 </button>
                 <button onClick={copyCaption}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
