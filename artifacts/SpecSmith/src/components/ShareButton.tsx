@@ -26,14 +26,38 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
 
   const url = getShareUrl(buildState, buildName, view, customParts);
 
+  const markShared = () => {
+    if (buildId) {
+      shareBuild(buildId);
+      if (!hasDismissedEmailCapture()) setEmailCaptureOpen(true);
+    }
+  };
+
   const handleCopy = async () => {
+    // On mobile, prefer the OS share sheet (drop straight into Messages,
+    // Mail, or any app) over a silent clipboard copy — it's the one-tap
+    // path on the exact devices most people are on when sharing a build.
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: buildName || 'My PC Build', url });
+        markShared();
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return; // user closed the share sheet
+        // any other failure (e.g. share target rejected it) — fall through to clipboard copy
+      }
+    }
+    await copyLinkOnly();
+  };
+
+  // Always a plain clipboard copy, regardless of Web Share support — used
+  // by the QR modal's "Copy link instead" fallback, which exists precisely
+  // for people who don't want the share sheet.
+  const copyLinkOnly = async () => {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      if (buildId) {
-        shareBuild(buildId);
-        if (!hasDismissedEmailCapture()) setEmailCaptureOpen(true);
-      }
+      markShared();
       setTimeout(() => setCopied(false), 2500);
     } catch {
       showToast('Failed to copy link', 'error');
@@ -108,7 +132,7 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
               </div>
               <p className="text-xs mt-3" style={{ color: 'var(--ff-text-2)' }}>Scan with your phone to view this build</p>
               <button
-                onClick={handleCopy}
+                onClick={copyLinkOnly}
                 className="mt-3 text-xs font-semibold"
                 style={{ color: 'var(--ff-accent-text)' }}
               >
