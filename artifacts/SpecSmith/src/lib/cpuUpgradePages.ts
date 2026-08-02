@@ -36,6 +36,7 @@ export const CPU_UPGRADE_PAGES: CpuUpgradePage[] = [
   { slug: 'ryzen-9-9950x3d', cpuId: 'r9-9950x3d' },
   { slug: 'ryzen-9-9900x3d', cpuId: 'r9-9900x3d' },
   { slug: 'ryzen-7-9800x3d', cpuId: 'r7-9800x3d' },
+  { slug: 'ryzen-7-9850x3d', cpuId: 'r7-9850x3d' },
   { slug: 'ryzen-9-9950x', cpuId: 'r9-9950x' },
   { slug: 'ryzen-9-9900x', cpuId: 'r9-9900x' },
   { slug: 'ryzen-7-9700x', cpuId: 'r7-9700x' },

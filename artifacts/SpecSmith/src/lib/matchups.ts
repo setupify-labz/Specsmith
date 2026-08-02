@@ -213,6 +213,7 @@ export const CPU_MATCHUPS: CpuMatchup[] = [
   { slug: 'ryzen-7-9800x3d-vs-ryzen-7-7800x3d',  cpuA: 'r7-9800x3d', cpuB: 'r7-7800x3d' },
   { slug: 'ryzen-7-9800x3d-vs-ryzen-9-9950x3d',  cpuA: 'r7-9800x3d', cpuB: 'r9-9950x3d' },
   { slug: 'ryzen-7-9800x3d-vs-ryzen-7-9700x',    cpuA: 'r7-9800x3d', cpuB: 'r7-9700x' },
+  { slug: 'ryzen-7-9850x3d-vs-ryzen-7-9800x3d',  cpuA: 'r7-9850x3d', cpuB: 'r7-9800x3d' },
   { slug: 'core-ultra-9-285k-vs-i9-14900k',      cpuA: 'cu9-285k',   cpuB: 'i9-14900k' },
   { slug: 'core-ultra-7-265k-vs-i7-14700k',      cpuA: 'cu7-265k',   cpuB: 'i7-14700k' },
   { slug: 'core-ultra-5-245k-vs-i5-14600k',      cpuA: 'cu5-245k',   cpuB: 'i5-14600k' },
