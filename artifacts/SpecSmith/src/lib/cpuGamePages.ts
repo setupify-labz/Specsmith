@@ -10,7 +10,7 @@ export const CPU_GAME_PAGES: GamePage[] = GAME_PAGES;
 // Price ladder for the CPU FPS table — a representative spread of current
 // Intel/AMD chips from budget to flagship, not the full 50-CPU dataset.
 export const GAME_TABLE_CPU_IDS = [
-  'r9-9950x3d', 'r9-9900x3d', 'cu9-285k', 'r7-9800x3d', 'i9-14900k',
+  'r7-9850x3d', 'r9-9950x3d', 'r9-9900x3d', 'cu9-285k', 'r7-9800x3d', 'i9-14900k',
   'i7-14700k', 'r7-9700x', 'cu7-265k', 'r7-7800x3d', 'r5-9600x',
   'i5-14600k', 'cu5-245k', 'r5-7600', 'i5-13400f', 'i3-14100f',
 ];
