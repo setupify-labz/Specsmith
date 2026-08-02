@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, TrendingUp } from 'lucide-react';
+import { ChevronRight, TrendingUp, Sliders } from 'lucide-react';
 import { CPU_UPGRADE_PAGES } from '../lib/cpuUpgradePages';
 import { getUpgradeCpu } from '../lib/cpuUpgradeCalculator';
 import { useSeo } from '../hooks/useSeo';
@@ -53,13 +53,20 @@ export default function CpuUpgradeIndex() {
 
         <div className="text-center mt-10">
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>
-            Looking for a GPU upgrade instead?
+            Want the interactive version instead? Pick any chip and compare live. Or looking for a GPU upgrade?
           </p>
-          <Link to="/upgrade"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
-            Browse GPU Upgrade Guides <ChevronRight size={14} />
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/upgrade-calculator-cpu"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+              <Sliders size={15} /> Open Upgrade Calculator <ChevronRight size={14} />
+            </Link>
+            <Link to="/upgrade"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+              style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
+              GPU Upgrade Guides <ChevronRight size={14} />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

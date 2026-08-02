@@ -158,10 +158,10 @@ export default function CpuUpgradePage() {
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Cpu size={15} /> Build Around the {cpu.name}
           </Link>
-          <Link to="/upgrade-cpu"
+          <Link to="/upgrade-calculator-cpu"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
-            <Sliders size={15} /> Browse All CPUs <ChevronRight size={14} />
+            <Sliders size={15} /> Try a Different CPU <ChevronRight size={14} />
           </Link>
         </div>
 

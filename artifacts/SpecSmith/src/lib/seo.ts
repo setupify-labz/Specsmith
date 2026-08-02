@@ -80,6 +80,12 @@ export const ROUTE_META: RouteMeta[] = [
       'See what your current GPU is worth used, what it costs to trade up to a faster card after resale, and the real FPS gain.',
   },
   {
+    path: '/upgrade-calculator-cpu',
+    title: 'CPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    description:
+      'See what your current CPU is worth used, what it costs to trade up to a faster chip after resale, and the real FPS gain.',
+  },
+  {
     path: '/crate',
     title: 'Build Crate — Random PC Build Generator | SpecSmith',
     description:

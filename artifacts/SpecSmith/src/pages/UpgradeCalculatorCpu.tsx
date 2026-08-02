@@ -1,16 +1,16 @@
 import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, DollarSign, TrendingUp, Zap, Cpu, Share2 } from 'lucide-react';
+import { ArrowRight, DollarSign, TrendingUp, Zap, MonitorSmartphone, Share2 } from 'lucide-react';
 import PartSelector from '../components/PartSelector';
 import PageGlow from '../components/PageGlow';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { useToast } from '../context/ToastContext';
 import {
-  getUpgradeGpus, getUpgradeGpu, getUpgradeCandidates, estimateResaleValue, averageFps,
+  getUpgradeCpus, getUpgradeCpu, getCpuUpgradeCandidates, estimateCpuResaleValue, averageCpuFps,
   type UpgradeVerdict,
-} from '../lib/upgradeCalculator';
+} from '../lib/cpuUpgradeCalculator';
 
 const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: string; border: string }> = {
   strong:   { label: 'Strong upgrade',   bg: 'rgba(0,230,118,0.12)', color: '#00E676', border: 'rgba(0,230,118,0.3)' },
@@ -18,24 +18,24 @@ const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: 
   marginal: { label: 'Marginal gain',    bg: 'rgba(255,179,0,0.12)', color: '#FFB300', border: 'rgba(255,179,0,0.3)' },
 };
 
-export default function UpgradeCalculator() {
-  useSeo(getRouteMeta('/upgrade-calculator'));
+export default function UpgradeCalculatorCpu() {
+  useSeo(getRouteMeta('/upgrade-calculator-cpu'));
   const { showToast } = useToast();
   const [searchParams] = useSearchParams();
-  const gpus = getUpgradeGpus();
+  const cpus = getUpgradeCpus();
   const [currentId, setCurrentId] = useState<string | null>(() => {
-    const fromUrl = searchParams.get('gpu');
-    return fromUrl && gpus.some(g => g.id === fromUrl) ? fromUrl : null;
+    const fromUrl = searchParams.get('cpu');
+    return fromUrl && cpus.some(c => c.id === fromUrl) ? fromUrl : null;
   });
 
-  const current = currentId ? getUpgradeGpu(currentId) : null;
-  const resale = current ? estimateResaleValue(current.price_usd) : 0;
-  const avgFpsCurrent = current ? averageFps(current) : 0;
-  const candidates = useMemo(() => currentId ? getUpgradeCandidates(currentId) : [], [currentId]);
+  const current = currentId ? getUpgradeCpu(currentId) : null;
+  const resale = current ? estimateCpuResaleValue(current.price_usd) : 0;
+  const avgFpsCurrent = current ? averageCpuFps(current) : 0;
+  const candidates = useMemo(() => currentId ? getCpuUpgradeCandidates(currentId) : [], [currentId]);
 
   const shareResult = async () => {
     if (!current) return;
-    const url = `${SITE_URL}/upgrade-calculator?gpu=${current.id}`;
+    const url = `${SITE_URL}/upgrade-calculator-cpu?cpu=${current.id}`;
     const title = `Should you upgrade your ${current.name}?`;
     if (typeof navigator.share === 'function') {
       try {
@@ -59,30 +59,30 @@ export default function UpgradeCalculator() {
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
-            Should You <span className="gradient-text">Upgrade?</span>
+            Should You <span className="gradient-text">Upgrade Your CPU?</span>
           </h1>
           <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--ff-text-2)' }}>
-            Pick your current GPU, see what it's roughly worth used, and what it'd actually cost — and gain — to trade up.
+            Pick your current CPU, see what it's roughly worth used, and what it'd actually cost — and gain — to trade up.
           </p>
           <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
-            <Link to="/upgrade" className="inline-block text-xs font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
-              Or browse upgrade guides for every GPU →
+            <Link to="/upgrade-cpu" className="inline-block text-xs font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+              Or browse upgrade guides for every CPU →
             </Link>
-            <Link to="/upgrade-calculator-cpu" className="inline-block text-xs font-semibold hover:opacity-80" style={{ color: 'var(--ff-text-3)' }}>
-              Looking to upgrade your CPU instead? →
+            <Link to="/upgrade-calculator" className="inline-block text-xs font-semibold hover:opacity-80" style={{ color: 'var(--ff-text-3)' }}>
+              Looking to upgrade your GPU instead? →
             </Link>
           </div>
         </motion.div>
 
         <div className="mb-6">
           <PartSelector
-            category="gpu" label="Your Current GPU" defaultOpen
-            parts={gpus}
+            category="cpu" label="Your Current CPU" defaultOpen
+            parts={cpus}
             selectedId={currentId}
             onSelect={setCurrentId}
             getSpecs={p => {
-              const g = p as ReturnType<typeof getUpgradeGpus>[number];
-              return [{ label: 'Tier', value: `${g.tier}/10` }];
+              const c = p as ReturnType<typeof getUpgradeCpus>[number];
+              return [{ label: 'Tier', value: `${c.tier}/10` }];
             }}
           />
         </div>
@@ -103,11 +103,11 @@ export default function UpgradeCalculator() {
                     <Zap size={13} /> Your Average FPS
                   </div>
                   <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>{avgFpsCurrent}</div>
-                  <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Across 20 games at 1440p High.</p>
+                  <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Across 20 games at 1440p High, paired with an RTX 4090.</p>
                 </div>
                 <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                   <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
-                    <Cpu size={13} /> Current Card
+                    <MonitorSmartphone size={13} /> Current CPU
                   </div>
                   <div className="text-lg font-black leading-tight" style={{ color: 'var(--ff-text)' }}>{current.name}</div>
                   <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>${current.price_usd.toLocaleString()} new · Tier {current.tier}/10</p>
@@ -139,7 +139,7 @@ export default function UpgradeCalculator() {
                     const style = VERDICT_STYLE[c.verdict];
                     return (
                       <motion.div
-                        key={c.gpu.id}
+                        key={c.cpu.id}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.04 }}
@@ -148,7 +148,7 @@ export default function UpgradeCalculator() {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3">
-                            <span className="font-bold" style={{ color: 'var(--ff-text)' }}>{c.gpu.name}</span>
+                            <span className="font-bold" style={{ color: 'var(--ff-text)' }}>{c.cpu.name}</span>
                             <span
                               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                               style={{ backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}` }}
@@ -157,7 +157,7 @@ export default function UpgradeCalculator() {
                             </span>
                           </div>
                           <Link
-                            to={`/builder?gpu=${c.gpu.id}`}
+                            to={`/builder?cpu=${c.cpu.id}`}
                             className="text-xs font-semibold flex items-center gap-1 transition-opacity hover:opacity-80"
                             style={{ color: 'var(--ff-accent-text)' }}
                           >
@@ -184,7 +184,8 @@ export default function UpgradeCalculator() {
                     );
                   })}
                   <p className="text-[10px] text-center pt-2" style={{ color: 'var(--ff-text-3)' }}>
-                    *Net cost = new card's price minus your current card's estimated resale value.
+                    *Net cost = new CPU's price minus your current CPU's estimated resale value. FPS gains from a CPU upgrade
+                    are naturally smaller than a GPU upgrade's — most games are GPU-bound before the CPU becomes the limit.
                   </p>
                 </div>
               )}
