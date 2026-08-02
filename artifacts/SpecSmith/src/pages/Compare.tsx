@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Share2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
@@ -8,7 +9,8 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
+import { useToast } from '../context/ToastContext';
 import PageGlow from '../components/PageGlow';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -128,6 +130,7 @@ const DEFAULT_CPU_B = 'r7-7800x3d';
 
 export default function Compare() {
   useSeo(getRouteMeta('/compare'));
+  const { showToast } = useToast();
   const [searchParams] = useSearchParams();
   const initGpu = (param: string, fallback: string, altIndex: number) => {
     const fromUrl = searchParams.get(param);
@@ -143,8 +146,14 @@ export default function Compare() {
   const [cpuA, setCpuA] = useState<string | null>(() => initCpu('cpuA', DEFAULT_CPU_A, 0));
   const [gpuB, setGpuB] = useState<string | null>(() => initGpu('gpuB', DEFAULT_GPU_B, 1));
   const [cpuB, setCpuB] = useState<string | null>(() => initCpu('cpuB', DEFAULT_CPU_B, 1));
-  const [resolution, setResolution] = useState<Resolution>('1080p');
-  const [preset, setPreset] = useState<Preset>('high');
+  const [resolution, setResolution] = useState<Resolution>(() => {
+    const fromUrl = searchParams.get('res');
+    return (resolutions as string[]).includes(fromUrl ?? '') ? (fromUrl as Resolution) : '1080p';
+  });
+  const [preset, setPreset] = useState<Preset>(() => {
+    const fromUrl = searchParams.get('preset');
+    return (presets as string[]).includes(fromUrl ?? '') ? (fromUrl as Preset) : 'high';
+  });
 
   const selectedGpuA = gpus.find(g => g.id === gpuA);
   const selectedCpuA = cpus.find(c => c.id === cpuA);
@@ -173,6 +182,27 @@ export default function Compare() {
 
   const winsA = chartData.filter(d => d.winner === 'A').length;
   const winsB = chartData.filter(d => d.winner === 'B').length;
+
+  const shareComparison = async () => {
+    if (!canCompare) return;
+    const params = new URLSearchParams({ gpuA: gpuA!, cpuA: cpuA!, gpuB: gpuB!, cpuB: cpuB!, res: resolution, preset });
+    const url = `${SITE_URL}/compare?${params.toString()}`;
+    const title = `${selectedGpuA?.name} + ${selectedCpuA?.name} vs ${selectedGpuB?.name} + ${selectedCpuB?.name}`;
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Comparison link copied', 'success');
+    } catch {
+      showToast('Failed to copy link', 'error');
+    }
+  };
 
   return (
     <div className="relative min-h-screen pt-24 pb-20">
@@ -214,7 +244,7 @@ export default function Compare() {
             className="rounded-2xl border border-subtle bg-surface p-6"
           >
             {/* Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
               <div className="flex-1">
                 <label className="block text-xs text-secondary-custom mb-1.5 font-medium uppercase tracking-wider">Resolution</label>
                 <div className="flex rounded-lg overflow-hidden border border-white/8 w-fit">
@@ -247,6 +277,13 @@ export default function Compare() {
                   ))}
                 </div>
               </div>
+              <button
+                onClick={shareComparison}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:opacity-80 sm:self-end"
+                style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              >
+                <Share2 size={13} /> Share Comparison
+              </button>
             </div>
 
             {/* Score summary */}
