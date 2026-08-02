@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, DollarSign, TrendingUp, Zap, Cpu } from 'lucide-react';
+import { ArrowRight, DollarSign, TrendingUp, Zap, Cpu, Share2 } from 'lucide-react';
 import PartSelector from '../components/PartSelector';
 import PageGlow from '../components/PageGlow';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
+import { useToast } from '../context/ToastContext';
 import {
   getUpgradeGpus, getUpgradeGpu, getUpgradeCandidates, estimateResaleValue, averageFps,
   type UpgradeVerdict,
@@ -19,13 +20,38 @@ const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: 
 
 export default function UpgradeCalculator() {
   useSeo(getRouteMeta('/upgrade-calculator'));
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const { showToast } = useToast();
+  const [searchParams] = useSearchParams();
   const gpus = getUpgradeGpus();
+  const [currentId, setCurrentId] = useState<string | null>(() => {
+    const fromUrl = searchParams.get('gpu');
+    return fromUrl && gpus.some(g => g.id === fromUrl) ? fromUrl : null;
+  });
 
   const current = currentId ? getUpgradeGpu(currentId) : null;
   const resale = current ? estimateResaleValue(current.price_usd) : 0;
   const avgFpsCurrent = current ? averageFps(current) : 0;
   const candidates = useMemo(() => currentId ? getUpgradeCandidates(currentId) : [], [currentId]);
+
+  const shareResult = async () => {
+    if (!current) return;
+    const url = `${SITE_URL}/upgrade-calculator?gpu=${current.id}`;
+    const title = `Should you upgrade your ${current.name}?`;
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Link copied', 'success');
+    } catch {
+      showToast('Failed to copy link', 'error');
+    }
+  };
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
@@ -83,9 +109,18 @@ export default function UpgradeCalculator() {
                 </div>
               </div>
 
-              <h2 className="text-xl font-black mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
-                <TrendingUp size={18} style={{ color: 'var(--ff-accent)' }} /> Upgrade Options
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-black flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+                  <TrendingUp size={18} style={{ color: 'var(--ff-accent)' }} /> Upgrade Options
+                </h2>
+                <button
+                  onClick={shareResult}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                >
+                  <Share2 size={12} /> Share
+                </button>
+              </div>
 
               {candidates.length === 0 ? (
                 <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
