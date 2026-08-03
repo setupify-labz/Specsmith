@@ -8,7 +8,7 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, type Prebuilt } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
@@ -194,8 +194,23 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
 
 export default function Prebuilts() {
   useSeo(getRouteMeta('/prebuilts'));
+
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'SpecSmith Curated Gaming PC Builds',
+    description: 'Expert-selected PC configurations for every budget, from entry-level to enthusiast.',
+    itemListElement: prebuilts.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: p.name,
+      url: `${SITE_URL}/prebuilts/${p.id}`,
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}

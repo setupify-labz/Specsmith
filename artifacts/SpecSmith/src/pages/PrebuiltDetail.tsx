@@ -8,6 +8,7 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, getPrebuiltMeta } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
+import { SITE_URL } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
@@ -83,8 +84,22 @@ export default function PrebuiltDetail() {
     navigate(`/builder?${params.toString()}`);
   };
 
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `${prebuilt.name} — Components`,
+    description: prebuilt.description,
+    itemListElement: Object.entries(prebuilt.parts).map(([cat, id], i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: getPartName(cat, id),
+      url: `${SITE_URL}/builder?${cat}=${id}`,
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-4xl mx-auto px-4">
         <Link
