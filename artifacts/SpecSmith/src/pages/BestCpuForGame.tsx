@@ -9,6 +9,7 @@ import { getPageGame, getGamePageTitle } from '../lib/gamePages';
 import { getMatchupFixedGpu } from '../lib/matchups';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
+import { SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
@@ -48,8 +49,22 @@ export default function BestCpuForGame() {
   const pickIds = new Set(picks.map(p => p.cpu.id));
   const valuePick = picks.find(p => p.label === 'Best Value')!;
 
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Best CPU for ${game.name}`,
+    description: `CPUs ranked by ${game.name} performance, from flagship to budget.`,
+    itemListElement: rows.map((r, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: r.cpu.name,
+      url: `${SITE_URL}/builder?cpu=${r.cpu.id}`,
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-cpu" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
