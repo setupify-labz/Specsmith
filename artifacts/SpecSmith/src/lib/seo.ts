@@ -68,6 +68,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50, AMD RX 6000/7000/9000, and Intel Arc.',
   },
   {
+    path: '/cpu-tier-list',
+    title: 'CPU Tier List — Ranked S to D | SpecSmith',
+    description:
+      'Every CPU we track ranked S through D by raw gaming performance — Ryzen 9000/7000, Intel Core Ultra, and 12th-14th gen.',
+  },
+  {
     path: '/vs',
     title: 'GPU & CPU Comparisons | SpecSmith',
     description:
@@ -270,7 +276,7 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
 
 // Standalone guide/index pages that hang off the Parts Guides hub.
 const PARTS_GUIDES_PAGES = new Set([
-  '/gpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
+  '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',
   '/best-monitor', '/best-keyboard', '/best-mouse', '/best-headset',
 ]);

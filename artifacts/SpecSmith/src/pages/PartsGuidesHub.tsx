@@ -10,6 +10,7 @@ import PageGlow from '../components/PageGlow';
 
 const GUIDE_LINKS = [
   { to: '/gpu-tier-list', label: 'GPU Tier List', desc: 'Every GPU ranked S to D', icon: Trophy },
+  { to: '/cpu-tier-list', label: 'CPU Tier List', desc: 'Every CPU ranked S to D', icon: Trophy },
   { to: '/upgrade', label: 'GPU Upgrade Guides', desc: 'What to upgrade your card to', icon: TrendingUp },
   { to: '/upgrade-cpu', label: 'CPU Upgrade Guides', desc: 'What to upgrade your chip to', icon: TrendingUp },
   { to: '/best-motherboard', label: 'Motherboards', desc: 'By platform: AM4, AM5, LGA1700, LGA1851', icon: CircuitBoard },

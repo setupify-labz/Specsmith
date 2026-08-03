@@ -22,6 +22,7 @@ import BestGpuIndex from './pages/BestGpuIndex';
 import BestCpuForGame from './pages/BestCpuForGame';
 import BestCpuIndex from './pages/BestCpuIndex';
 import GpuTierList from './pages/GpuTierList';
+import CpuTierList from './pages/CpuTierList';
 import UpgradeCalculator from './pages/UpgradeCalculator';
 import UpgradeCalculatorCpu from './pages/UpgradeCalculatorCpu';
 import Gallery from './pages/Gallery';
@@ -57,6 +58,7 @@ export const PRERENDER_ROUTES = [
   '/best-gpu',
   '/best-cpu',
   '/gpu-tier-list',
+  '/cpu-tier-list',
   '/upgrade-calculator',
   '/upgrade-calculator-cpu',
   '/gallery',
@@ -128,6 +130,7 @@ export function render(url: string): string {
                 <Route path="/best-cpu" element={<PageWrapper><BestCpuIndex /></PageWrapper>} />
                 <Route path="/best-cpu/:slug" element={<PageWrapper><BestCpuForGame /></PageWrapper>} />
                 <Route path="/gpu-tier-list" element={<PageWrapper><GpuTierList /></PageWrapper>} />
+                <Route path="/cpu-tier-list" element={<PageWrapper><CpuTierList /></PageWrapper>} />
                 <Route path="/upgrade-calculator" element={<PageWrapper><UpgradeCalculator /></PageWrapper>} />
                 <Route path="/upgrade-calculator-cpu" element={<PageWrapper><UpgradeCalculatorCpu /></PageWrapper>} />
                 <Route path="/gallery" element={<PageWrapper><Gallery /></PageWrapper>} />

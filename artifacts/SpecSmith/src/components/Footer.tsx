@@ -18,6 +18,7 @@ const NAV_GROUPS = [
       { to: '/best-gpu', label: 'Best GPU by Game' },
       { to: '/best-cpu', label: 'Best CPU by Game' },
       { to: '/gpu-tier-list', label: 'GPU Tier List' },
+      { to: '/cpu-tier-list', label: 'CPU Tier List' },
       { to: '/upgrade', label: 'GPU Upgrade Guides' },
       { to: '/upgrade-cpu', label: 'CPU Upgrade Guides' },
     ],

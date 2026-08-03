@@ -26,6 +26,7 @@ const BestGpuIndex = lazy(() => import('./pages/BestGpuIndex'));
 const BestCpuForGame = lazy(() => import('./pages/BestCpuForGame'));
 const BestCpuIndex = lazy(() => import('./pages/BestCpuIndex'));
 const GpuTierList = lazy(() => import('./pages/GpuTierList'));
+const CpuTierList = lazy(() => import('./pages/CpuTierList'));
 const UpgradeCalculator = lazy(() => import('./pages/UpgradeCalculator'));
 const UpgradeCalculatorCpu = lazy(() => import('./pages/UpgradeCalculatorCpu'));
 const Gallery = lazy(() => import('./pages/Gallery'));
@@ -63,6 +64,7 @@ function AppRoutes() {
           <Route path="/best-cpu"  element={<PageWrapper><BestCpuIndex /></PageWrapper>} />
           <Route path="/best-cpu/:slug" element={<PageWrapper><BestCpuForGame /></PageWrapper>} />
           <Route path="/gpu-tier-list" element={<PageWrapper><GpuTierList /></PageWrapper>} />
+          <Route path="/cpu-tier-list" element={<PageWrapper><CpuTierList /></PageWrapper>} />
           <Route path="/upgrade-calculator" element={<PageWrapper><UpgradeCalculator /></PageWrapper>} />
           <Route path="/upgrade-calculator-cpu" element={<PageWrapper><UpgradeCalculatorCpu /></PageWrapper>} />
           <Route path="/gallery"   element={<PageWrapper><Gallery /></PageWrapper>} />
