@@ -6,7 +6,7 @@ import {
   getMatchupGpu, getMatchupCpuById, getMatchupTitle, getCpuMatchupTitle,
 } from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
 
 interface Card {
@@ -63,8 +63,34 @@ export default function GpuMatchupIndex() {
     priceB: getMatchupCpuById(m.cpuB)?.price_usd,
   }));
 
+  const toListItems = (cards: Card[]) => cards.map((c, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    name: c.title,
+    url: `${SITE_URL}/vs/${c.slug}`,
+  }));
+
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'ItemList',
+        name: 'GPU Head-to-Head Comparisons',
+        description: 'GPU matchups compared across 20 games at 1080p, 1440p, and 4K.',
+        itemListElement: toListItems(gpuCards),
+      },
+      {
+        '@type': 'ItemList',
+        name: 'CPU Head-to-Head Comparisons',
+        description: 'CPU matchups compared across 20 games at 1080p, 1440p, and 4K.',
+        itemListElement: toListItems(cpuCards),
+      },
+    ],
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
