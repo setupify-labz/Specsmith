@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Trophy } from 'lucide-react';
 import { getGpuTiers } from '../lib/gpuTierList';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
@@ -11,8 +11,22 @@ export default function GpuTierList() {
   useSeo(getRouteMeta('/gpu-tier-list'));
   const tiers = getGpuTiers();
 
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'GPU Tier List — Ranked S to D',
+    description: 'Every graphics card SpecSmith tracks, ranked S to D by raw performance.',
+    itemListElement: tiers.flatMap(tier => tier.gpus).map(({ gpu }, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: gpu.name,
+      url: `${SITE_URL}/builder?gpu=${gpu.id}`,
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
