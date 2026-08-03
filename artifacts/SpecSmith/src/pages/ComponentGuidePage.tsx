@@ -4,6 +4,7 @@ import { Cpu, ExternalLink } from 'lucide-react';
 import { getComponentGuide, getComponentGuideMeta, type GuideCategory } from '../lib/componentGuides';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
+import { SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
@@ -14,9 +15,24 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
   if (!guide) return null;
 
   const pickIds = new Set(guide.picks.map(p => p.item.id));
+  const sortedItems = [...guide.items].sort((a, b) => a.price_usd - b.price_usd);
+
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: guide.title,
+    description: guide.blurb,
+    itemListElement: sortedItems.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      url: `${SITE_URL}/builder?${guide.category}=${item.id}`,
+    })),
+  };
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
@@ -65,7 +81,7 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
                 </tr>
               </thead>
               <tbody>
-                {[...guide.items].sort((a, b) => a.price_usd - b.price_usd).map(item => (
+                {sortedItems.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid var(--ff-border)' }}>
                     <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(item.id) ? 'var(--ff-accent-text)' : 'var(--ff-text)' }}>
                       {item.name}

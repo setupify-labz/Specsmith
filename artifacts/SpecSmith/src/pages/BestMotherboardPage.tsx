@@ -4,6 +4,7 @@ import { ChevronRight, Cpu, ExternalLink } from 'lucide-react';
 import { getSocketPage, getMotherboardsForSocket, getMotherboardPicks, getSocketPageMeta, SOCKET_PAGES } from '../lib/motherboardPages';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
+import { SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
@@ -39,8 +40,22 @@ export default function BestMotherboardPage() {
   const pickIds = new Set(picks.map(p => p.motherboard.id));
   const related = SOCKET_PAGES.filter(p => p.slug !== page.slug);
 
+  const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Best ${page.label} Motherboards`,
+    description: page.blurb,
+    itemListElement: boards.map((b, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: b.name,
+      url: `${SITE_URL}/builder?motherboard=${b.id}`,
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-motherboard" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
