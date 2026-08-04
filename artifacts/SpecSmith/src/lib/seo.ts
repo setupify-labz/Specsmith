@@ -66,12 +66,14 @@ export const ROUTE_META: RouteMeta[] = [
     title: 'GPU Tier List — Ranked S to D | SpecSmith',
     description:
       'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50, AMD RX 6000/7000/9000, and Intel Arc.',
+    image: `${SITE_URL}/opengraph-gpu-tier-list.jpg`,
   },
   {
     path: '/cpu-tier-list',
     title: 'CPU Tier List — Ranked S to D | SpecSmith',
     description:
       'Every CPU we track ranked S through D by raw gaming performance — Ryzen 9000/7000, Intel Core Ultra, and 12th-14th gen.',
+    image: `${SITE_URL}/opengraph-cpu-tier-list.jpg`,
   },
   {
     path: '/vs',
