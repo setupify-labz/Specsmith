@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Share2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
@@ -215,6 +215,13 @@ export default function Compare() {
           </h1>
           <p className="text-secondary-custom text-lg max-w-xl mx-auto">
             Compare two GPU + CPU combinations side by side across 20 games. We've pre-loaded a sample matchup below — swap in any parts to compare your own builds.
+          </p>
+          <p className="text-secondary-custom text-sm mt-3">
+            Not sure where to start? See the{' '}
+            <Link to="/gpu-tier-list" className="font-semibold hover:opacity-80" style={{ color: COLORS.a }}>GPU</Link>
+            {' '}or{' '}
+            <Link to="/cpu-tier-list" className="font-semibold hover:opacity-80" style={{ color: COLORS.b }}>CPU</Link>
+            {' '}Tier List.
           </p>
         </motion.div>
 
