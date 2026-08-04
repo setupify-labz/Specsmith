@@ -13,9 +13,11 @@ SpecSmith helps PC builders plan a compatible build and predict real-world gamin
 - [About](/about): Explanation of the FPS estimation algorithm and methodology (FAQ format).
 - [Best GPU by Game](/best-gpu): Index of "best graphics card for [game]" pages, one per tracked game.
 - [Best CPU by Game](/best-cpu): Index of "best processor for [game]" pages, one per tracked game.
-- [GPU Tier List](/gpu-tier-list): Every tracked GPU ranked S through D by performance-per-dollar and raw FPS.
+- [GPU Tier List](/gpu-tier-list): Every tracked GPU ranked S through D by raw performance, with a best-value pick flagged per tier.
+- [CPU Tier List](/cpu-tier-list): Every tracked CPU ranked S through D by raw gaming performance, same format as the GPU version.
 - [GPU & CPU Comparisons](/vs): Index of head-to-head matchup pages comparing two specific GPUs or CPUs.
 - [GPU Trade-Up Calculator](/upgrade-calculator): Estimates used resale value and net cost of upgrading a current GPU.
+- [CPU Trade-Up Calculator](/upgrade-calculator-cpu): Estimates used resale value and net cost of upgrading a current CPU, same format as the GPU version.
 - [GPU Upgrade Guides](/upgrade): Index of per-GPU upgrade-path pages with resale value and FPS-gain-ranked options.
 - [CPU Upgrade Guides](/upgrade-cpu): Index of per-CPU upgrade-path pages, same format as the GPU version.
 - [Best Motherboards by Platform](/best-motherboard): Motherboards organized by CPU socket (AMD AM4/AM5, Intel LGA1700/LGA1851).
