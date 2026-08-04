@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen } from 'lucide-react';
+import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -59,6 +59,14 @@ const exploreLinks = [
     description: 'See what your current GPU or CPU is worth used, and whether trading up is actually worth the money.',
     to: '/upgrade',
     cta: 'Check Your Upgrade',
+  },
+  {
+    icon: <Trophy size={22} className="text-[#FFB300]" />,
+    glow: 'rgba(255,179,0,0.3)',
+    title: 'Tier Lists',
+    description: 'Every GPU and CPU we track, ranked S to D by raw performance — with the best-value pick flagged in each tier.',
+    to: '/gpu-tier-list',
+    cta: 'See the Rankings',
   },
   {
     icon: <BookOpen size={22} className="text-[#6C63FF]" />,
@@ -241,7 +249,7 @@ export default function Home() {
           <p className="text-secondary-custom text-sm mt-1">Tools and content beyond the basic builder</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {exploreLinks.map((f, i) => (
             <motion.div
               key={f.title}
