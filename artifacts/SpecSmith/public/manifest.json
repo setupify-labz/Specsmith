@@ -1,0 +1,15 @@
+{
+  "name": "SpecSmith — Free PC Builder & FPS Estimator",
+  "short_name": "SpecSmith",
+  "description": "Pick real PC parts, check compatibility, and see estimated FPS across 20 games before you buy — free, no account needed.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#0A0A0F",
+  "icons": [
+    { "src": "/favicon-96.png", "sizes": "96x96", "type": "image/png" },
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
