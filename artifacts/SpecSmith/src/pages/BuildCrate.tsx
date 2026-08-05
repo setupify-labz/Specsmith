@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,11 +26,6 @@ import { getRouteMeta } from '../lib/seo';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import CratePullsFeed from '../components/CratePullsFeed';
 import PageGlow from '../components/PageGlow';
-
-// Same lazy three.js chunk as the Builder — only downloads once a crate is
-// actually being opened, never in the prerendered HTML path.
-const Build3D = lazy(() => import('../components/Build3D'));
-import Build3DGate from '../components/Build3DGate';
 
 // How dramatic the landing effect gets, escalating per rarity tier.
 const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
@@ -287,20 +282,6 @@ export default function BuildCrate() {
   const revealedCount = CRATE_CATEGORY_ORDER.filter(c => revealed[c.key]).length;
   const nextCategory = CRATE_CATEGORY_ORDER[revealedCount];
 
-  // The 3D rig assembles part-by-part as crates are opened.
-  const scene3dParts = useMemo(() => ({
-    motherboard: !!revealed.motherboard, cpu: !!revealed.cpu, ram: !!revealed.ram, gpu: !!revealed.gpu,
-    storage: !!revealed.storage, case: !!revealed.case, cooler: !!revealed.cooler, psu: !!revealed.psu,
-    coolerType: revealed.cooler?.part.type,
-    coolerHeightMm: revealed.cooler?.part.height_mm,
-    gpuTier: revealed.gpu?.part.tier,
-    gpuLengthMm: revealed.gpu?.part.length_mm,
-    caseFormFactor: (revealed.case?.part as { form_factor?: string } | undefined)?.form_factor,
-    caseName: revealed.case?.part.name,
-    moboFormFactor: revealed.motherboard?.part.form_factor,
-    storageType: (revealed.storage?.part as { type?: string } | undefined)?.type,
-  }), [revealed]);
-
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
@@ -550,29 +531,6 @@ export default function BuildCrate() {
         {/* Spinning reel while a crate is opening */}
         {pending && pendingPool && (
           <CrateReel category={pending.key} pool={pendingPool} finalName={pending.part.name} rarity={pending.rarity} onLand={handleLand} onComplete={handleReelComplete} />
-        )}
-
-        {/* The rig assembles in 3D as parts land */}
-        {revealedCount > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 max-w-2xl mx-auto"
-          >
-            <Build3DGate heightClass="h-80">
-              <Suspense
-                fallback={
-                  <div
-                    className="h-[380px] rounded-2xl"
-                    style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                    aria-hidden="true"
-                  />
-                }
-              >
-                <Build3D parts={scene3dParts} heightClass="h-80" />
-              </Suspense>
-            </Build3DGate>
-          </motion.div>
         )}
 
         {/* Open button */}

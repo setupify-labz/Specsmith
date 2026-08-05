@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
@@ -13,15 +13,9 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown, Monitor as MonitorIcon, Boxes } from 'lucide-react';
+import { ChevronDown, Monitor as MonitorIcon } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
-
-// Lazy so three.js (the heaviest dependency in the app) is a separate chunk
-// that only ever downloads on this page, after hydration — every other page's
-// bundle is untouched, and the prerendered Builder HTML doesn't include it.
-const Build3D = lazy(() => import('../components/Build3D'));
-import Build3DGate from '../components/Build3DGate';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -74,10 +68,6 @@ export default function Builder() {
 
   const { build, selectPart } = useBuilder(initialBuild as any);
   const [showFps, setShowFps] = useState(false);
-  // React.lazy can't render during SSR/prerender (and WebGL doesn't exist
-  // there anyway) — gate the 3D panel on client mount.
-  const [clientReady, setClientReady] = useState(false);
-  useEffect(() => setClientReady(true), []);
   const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
   const [fpsPreset, setFpsPreset] = useState<Preset>('high');
   const [customParts, setCustomParts] = useState<{ id: string; name: string; price: number }[]>([]);
@@ -159,19 +149,6 @@ export default function Builder() {
     selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: selectedMouse.price_usd },
     selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: selectedHeadset.price_usd },
   ].filter(Boolean) as { label: string; name: string; price: number }[];
-
-  const scene3dParts = useMemo(() => ({
-    gpu: !!selectedGpu, cpu: !!selectedCpu, motherboard: !!selectedMb, ram: !!selectedRam,
-    storage: !!selectedStorage, psu: !!selectedPsu, case: !!selectedCase, cooler: !!selectedCooler,
-    coolerType: selectedCooler?.type,
-    coolerHeightMm: (selectedCooler as { height_mm?: number } | null)?.height_mm,
-    gpuTier: selectedGpu?.tier,
-    gpuLengthMm: (selectedGpu as { length_mm?: number } | null)?.length_mm,
-    caseFormFactor: selectedCase?.form_factor,
-    caseName: selectedCase?.name,
-    moboFormFactor: selectedMb?.form_factor,
-    storageType: selectedStorage?.type,
-  }), [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedStorage, selectedPsu, selectedCase, selectedCooler]);
 
   const summaryParts = [
     ...corePartsList,
@@ -384,42 +361,6 @@ export default function Builder() {
 
           {/* Right panel */}
           <div className="lg:col-span-1 space-y-6">
-            {clientReady && (
-              corePartsList.length > 0 ? (
-                <Build3DGate>
-                  <Suspense
-                    fallback={
-                      <div
-                        className="h-[340px] rounded-2xl"
-                        style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                        aria-hidden="true"
-                      />
-                    }
-                  >
-                    <Build3D parts={scene3dParts} />
-                  </Suspense>
-                </Build3DGate>
-              ) : (
-                // Same chrome as Build3D's empty state, but without loading
-                // three.js (~176KB gzip) for a visitor who hasn't picked a
-                // part yet — the real panel takes over on the first pick.
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
-                >
-                  <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-                    <Boxes size={16} style={{ color: 'var(--ff-accent-text)' }} aria-hidden="true" />
-                    <h2 className="text-sm font-bold" style={{ color: 'var(--ff-text)' }}>3D Preview</h2>
-                  </div>
-                  <div
-                    className="h-72 mx-3 mb-3 rounded-xl flex items-end justify-center pb-4"
-                    style={{ background: 'radial-gradient(ellipse at 50% 40%, #171a2e 0%, #0b0c15 75%)' }}
-                  >
-                    <span className="text-xs" style={{ color: '#8888AA' }}>Select parts to watch your rig assemble</span>
-                  </div>
-                </div>
-              )
-            )}
             <BuildSummary
               parts={summaryParts}
               totalCost={totalCost}
