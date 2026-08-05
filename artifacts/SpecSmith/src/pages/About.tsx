@@ -24,7 +24,7 @@ The estimation formula works as follows:
 5. We calculate a realistic range: ±12% from the estimated value to reflect real-world variation.`
   },
   {
-    icon: <BarChart3 size={20} className="text-[#00D4FF]" />,
+    icon: <BarChart3 size={20} className="text-[var(--ff-cyan)]" />,
     title: 'Where does the benchmark data come from?',
     content: `Our benchmark data is aggregated from multiple sources including manufacturer specifications, independent hardware reviews, and community-sourced gaming benchmarks. We cross-reference results across multiple testing methodologies to ensure accuracy.
 
@@ -33,7 +33,7 @@ Each GPU and CPU in our database includes a benchmark score that reflects its re
 For games, we benchmark at multiple quality presets and resolutions to capture the full performance envelope. Games are tested with their latest patches and graphics settings documentation from developers.`
   },
   {
-    icon: <Shield size={20} className="text-[#00E676]" />,
+    icon: <Shield size={20} className="text-[var(--ff-green)]" />,
     title: 'What does the compatibility checker actually check?',
     content: `SpecSmith checks three critical compatibility factors:
 
@@ -44,7 +44,7 @@ RAM Compatibility: The RAM type (DDR4 vs DDR5) must be supported by both the CPU
 PSU Wattage: The power supply must provide enough wattage for the GPU TDP + CPU TDP + 100W system overhead. We warn when your PSU is insufficient and alert when headroom is tight.`
   },
   {
-    icon: <Zap size={20} className="text-[#FFB300]" />,
+    icon: <Zap size={20} className="text-[var(--ff-amber)]" />,
     title: 'What do the FPS estimates not account for?',
     content: `FPS estimates are approximations and will vary in practice. Factors we don't account for include:
 
@@ -61,12 +61,12 @@ PSU Wattage: The power supply must provide enough wattage for the GPU TDP + CPU 
 Use SpecSmith estimates as a starting point for your research, not a guarantee. We recommend checking independent reviews for the specific hardware you're considering.`
   },
   {
-    icon: <Calculator size={20} className="text-[#9B94FF]" />,
+    icon: <Calculator size={20} className="text-[var(--ff-accent-text)]" />,
     title: 'Is SpecSmith free, and do I need an account?',
     content: `SpecSmith is completely free with no account required — the Builder, FPS estimates, compatibility checks, and every comparison and guide page are open to anyone. Creating an account is optional and only unlocks saving builds, sharing them, and publishing to the Gallery; nothing about pricing or performance data is gated behind it.`
   },
   {
-    icon: <BarChart3 size={20} className="text-[#00D4FF]" />,
+    icon: <BarChart3 size={20} className="text-[var(--ff-cyan)]" />,
     title: "What if my GPU or CPU isn't in your list?",
     content: `The Builder lets you add a custom part with your own name and price if it's not in our database yet — you'll still get accurate compatibility checks for everything around it, though FPS estimates require a tracked GPU and CPU since those numbers come from tier data we maintain. We're regularly adding newly released hardware.`
   },

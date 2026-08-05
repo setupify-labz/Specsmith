@@ -96,7 +96,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
             ) : (
               <>
                 {builds.length >= 18 && builds.length < 20 && (
-                  <div className="mb-4 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#FFB30018', color: '#FFB300', border: '1px solid #FFB30040' }}>
+                  <div className="mb-4 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: '#FFB30018', color: 'var(--ff-amber)', border: '1px solid #FFB30040' }}>
                     You have {builds.length}/20 builds saved. You're almost at the limit.
                   </div>
                 )}

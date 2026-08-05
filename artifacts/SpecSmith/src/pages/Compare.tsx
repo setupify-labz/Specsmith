@@ -40,10 +40,11 @@ const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
 
-// COLORS.a mirrors --ff-accent-text (not --ff-accent) — used as text color
-// throughout this page, and the base accent purple only hits ~4.3:1 on dark
-// surfaces.
-const COLORS = { a: '#9B94FF', b: '#00D4FF' };
+// Reuses the theme-aware --ff-accent-text/--ff-cyan tokens directly (not
+// raw hex) so "Build A"/"Build B" text stays WCAG-AA-contrast in both
+// themes — this used to be hardcoded to the dark-mode hex values and read
+// as low as ~2:1 in light mode, found via an axe-core light-theme sweep.
+const COLORS = { a: 'var(--ff-accent-text)', b: 'var(--ff-cyan)' };
 
 function BuildColumn({
   title, color, gpuId, cpuId, onGpuSelect, onCpuSelect

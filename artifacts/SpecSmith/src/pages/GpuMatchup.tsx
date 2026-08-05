@@ -19,10 +19,11 @@ interface Game {
 }
 
 const games = gamesData as Game[];
-// COLORS.a mirrors --ff-accent-text (not --ff-accent) — it's used exclusively
-// as text color to distinguish "side A" throughout this page, and the base
-// accent purple only hits ~4.3:1 against dark surfaces here.
-const COLORS = { a: '#9B94FF', b: '#00D4FF' };
+// Reuses the theme-aware --ff-accent-text/--ff-cyan tokens directly (not
+// raw hex) so "side A"/"side B" text stays WCAG-AA-contrast in both themes —
+// this used to be hardcoded to the dark-mode hex values and read as low as
+// ~2:1 in light mode, found via an axe-core light-theme sweep.
+const COLORS = { a: 'var(--ff-accent-text)', b: 'var(--ff-cyan)' };
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const resLabels: Record<Resolution, string> = { '1080p': '1080p', '1440p': '1440p', '4k': '4K' };
 
@@ -157,7 +158,7 @@ export default function GpuMatchup() {
             <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>of {rows.length} games{tooClose > 0 ? ` · ${tooClose} too close to call` : ''}</p>
           </div>
           <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-            <DollarSign size={18} className="mx-auto mb-2" style={{ color: '#00E676' }} />
+            <DollarSign size={18} className="mx-auto mb-2" style={{ color: 'var(--ff-green)' }} />
             <p className="text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>💰 Better Value</p>
             <p className="text-lg font-black" style={{ color: valueWinner === gpuA ? COLORS.a : COLORS.b }}>{valueWinner.name}</p>
             <p className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>

@@ -105,6 +105,12 @@
      for normal text. Same hue/saturation, nudged darker to clear it. */
   --ff-accent-solid: #6259FF;
   --ff-cyan:      #00D4FF;
+  --ff-green:     #00E676;
+  --ff-newegg:    #FF9E1B;
+  --ff-red:       #FF1744;
+  --ff-amber:     #FFB300;
+  --ff-epic:      #9B6BFF;
+  --ff-gold:      #FFD700;
   --ff-nav-bg:    rgba(10,10,15,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.75);
   --ff-input-bg:  #13131A;
@@ -149,10 +155,31 @@
   --ff-text-2:    #555566;
   --ff-text-3:    #6B6B82;
   --ff-accent:    #5A52EE;
-  /* Both already pass 4.5:1 in light mode, so just reuse --ff-accent here. */
-  --ff-accent-text: #5A52EE;
+  /* #5A52EE (same as --ff-accent) clears 4.5:1 against plain white, but
+     only hits ~4.13:1 against the translucent accent-tinted badge
+     backgrounds (e.g. bg-[#6C63FF]/15) it's paired with on the homepage —
+     found via an axe-core light-theme sweep. Darkened further so it clears
+     4.5:1 against those tints too, not just white. */
+  --ff-accent-text: #453DC8;
   --ff-accent-solid: #5A52EE;
-  --ff-cyan:      #0099CC;
+  /* #0099CC only hits ~3.27:1 against white — under WCAG AA's 4.5:1 floor.
+     Darkened; still reads as "cyan" and only gains contrast as a button
+     gradient stop (white text on top). */
+  --ff-cyan:      #00728F;
+  /* #00E676/#FF9E1B (the dark-mode values) only hit ~1.4-2.1:1 against
+     light-mode surfaces — nowhere close to WCAG AA's 4.5:1 floor. Same
+     hue, darkened until they clear 4.5:1 against both white cards and
+     the palest tinted backgrounds that use them (found via axe-core). */
+  --ff-green:     #007A3D;
+  --ff-newegg:    #8F5100;
+  /* Same story as green/newegg above: #FF1744 only hits ~3.85:1 and
+     #FFB300 only ~1.79:1 against light-mode white, both under 4.5:1. */
+  --ff-red:       #C40028;
+  --ff-amber:     #8A5D00;
+  /* Build Crate's rarity accent colors — #9B6BFF/#FFD700 only hit
+     ~3.5:1/1.4:1 against light-mode white. */
+  --ff-epic:      #6C2FD0;
+  --ff-gold:      #7A6000;
   --ff-nav-bg:    rgba(244,244,250,0.88);
   --ff-modal-bg:  rgba(0,0,0,0.5);
   --ff-input-bg:  #F4F4FA;

@@ -13,9 +13,9 @@ import {
 } from '../lib/upgradeCalculator';
 
 const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: string; border: string }> = {
-  strong:   { label: 'Strong upgrade',   bg: 'rgba(0,230,118,0.12)', color: '#00E676', border: 'rgba(0,230,118,0.3)' },
-  moderate: { label: 'Moderate upgrade', bg: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: 'rgba(0,212,255,0.3)' },
-  marginal: { label: 'Marginal gain',    bg: 'rgba(255,179,0,0.12)', color: '#FFB300', border: 'rgba(255,179,0,0.3)' },
+  strong:   { label: 'Strong upgrade',   bg: 'rgba(0,230,118,0.12)', color: 'var(--ff-green)', border: 'rgba(0,230,118,0.3)' },
+  moderate: { label: 'Moderate upgrade', bg: 'rgba(0,212,255,0.12)', color: 'var(--ff-cyan)', border: 'rgba(0,212,255,0.3)' },
+  marginal: { label: 'Marginal gain',    bg: 'rgba(255,179,0,0.12)', color: 'var(--ff-amber)', border: 'rgba(255,179,0,0.3)' },
 };
 
 export default function UpgradeCalculator() {
@@ -171,7 +171,7 @@ export default function UpgradeCalculator() {
                           </div>
                           <div>
                             <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>FPS Gain</p>
-                            <p className="text-lg font-black" style={{ color: c.fpsGainPct >= 0 ? '#00E676' : '#FF1744' }}>
+                            <p className="text-lg font-black" style={{ color: c.fpsGainPct >= 0 ? 'var(--ff-green)' : 'var(--ff-red)' }}>
                               {c.fpsGainPct >= 0 ? '+' : ''}{c.fpsGainPct}%
                             </p>
                           </div>

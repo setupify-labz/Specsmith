@@ -76,8 +76,8 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
           className={btnClass}
           style={{
             border: '1px solid var(--ff-accent)',
-            color: copied ? '#00E676' : 'var(--ff-accent-text)',
-            borderColor: copied ? '#00E676' : 'var(--ff-accent)',
+            color: copied ? 'var(--ff-green)' : 'var(--ff-accent-text)',
+            borderColor: copied ? 'var(--ff-green)' : 'var(--ff-accent)',
             backgroundColor: copied ? '#00E67608' : 'transparent',
           }}
         >

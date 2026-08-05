@@ -31,7 +31,7 @@ export default function BottleneckChecker({ gpuScore, cpuScore, onFixGpu, onFixC
     message = 'Great balance! Your CPU and GPU are well-matched for maximum performance.';
   }
 
-  const badgeColor = severity === 'severe' ? '#FF1744' : severity === 'moderate' ? '#FFB300' : '#00E676';
+  const badgeColor = severity === 'severe' ? 'var(--ff-red)' : severity === 'moderate' ? 'var(--ff-amber)' : 'var(--ff-green)';
   const badgeLabel = severity === 'none' ? 'Balanced' : severity === 'moderate' ? 'Moderate Bottleneck' : 'Severe Bottleneck';
 
   const total = gpuScore + cpuScore;

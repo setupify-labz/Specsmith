@@ -32,7 +32,7 @@ export default function CratePullsFeed() {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-10">
       <h2 className="flex items-center gap-2 text-sm font-bold mb-3" style={{ color: 'var(--ff-text)' }}>
-        <Trophy size={15} style={{ color: '#FFD700' }} /> Recent Epic+ Pulls
+        <Trophy size={15} style={{ color: 'var(--ff-gold)' }} /> Recent Epic+ Pulls
       </h2>
       {pulls.length === 0 ? (
         <p className="text-xs text-center py-6 rounded-2xl" style={{ color: 'var(--ff-text-3)', backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>

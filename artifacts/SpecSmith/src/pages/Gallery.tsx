@@ -133,13 +133,13 @@ export default function Gallery() {
             {top.length > 0 && (
               <div className="mb-10">
                 <h2 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
-                  <Trophy size={18} style={{ color: '#FFB300' }} /> Most Viewed Builds
+                  <Trophy size={18} style={{ color: 'var(--ff-amber)' }} /> Most Viewed Builds
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {top.map((b, i) => (
                     <div key={b.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold"
                       style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
-                      <span style={{ color: '#FFB300' }}>#{i + 1}</span> {b.name}
+                      <span style={{ color: 'var(--ff-amber)' }}>#{i + 1}</span> {b.name}
                       <span className="flex items-center gap-0.5" style={{ color: 'var(--ff-text-3)' }}><Eye size={10} /> {b.view_count}</span>
                     </div>
                   ))}

@@ -22,13 +22,13 @@ const features = [
     description: 'Choose from 100+ real components with live compatibility checks to ensure everything works together perfectly.',
   },
   {
-    icon: <Zap size={24} className="text-[#00D4FF]" />,
+    icon: <Zap size={24} className="text-[var(--ff-cyan)]" />,
     glow: 'rgba(0,212,255,0.35)',
     title: 'FPS Estimator',
     description: 'See estimated FPS in 20 games at 1080p, 1440p, and 4K — across all quality presets before you spend a cent.',
   },
   {
-    icon: <DollarSign size={24} className="text-[#00E676]" />,
+    icon: <DollarSign size={24} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.35)',
     title: 'Price Tracker',
     description: 'Know your total build cost instantly. Every component shows real pricing with direct links to purchase.',
@@ -45,7 +45,7 @@ const exploreLinks = [
     cta: 'Open a Crate',
   },
   {
-    icon: <Users size={22} className="text-[#00E676]" />,
+    icon: <Users size={22} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.3)',
     title: 'Build Gallery',
     description: 'Browse real builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
@@ -53,7 +53,7 @@ const exploreLinks = [
     cta: 'Browse Builds',
   },
   {
-    icon: <TrendingUp size={22} className="text-[#00D4FF]" />,
+    icon: <TrendingUp size={22} className="text-[var(--ff-cyan)]" />,
     glow: 'rgba(0,212,255,0.3)',
     title: 'Upgrade Guides',
     description: 'See what your current GPU or CPU is worth used, and whether trading up is actually worth the money.',
@@ -61,7 +61,7 @@ const exploreLinks = [
     cta: 'Check Your Upgrade',
   },
   {
-    icon: <Trophy size={22} className="text-[#FFB300]" />,
+    icon: <Trophy size={22} className="text-[var(--ff-amber)]" />,
     glow: 'rgba(255,179,0,0.3)',
     title: 'Tier Lists',
     description: 'Every GPU and CPU we track, ranked S to D by raw performance — with the best-value pick flagged in each tier.',
@@ -103,7 +103,7 @@ export default function Home() {
               transition={{ duration: 0.7 }}
               className="text-center lg:text-left"
             >
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[#9B94FF] text-sm font-medium mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#6C63FF]/15 border border-[#6C63FF]/30 text-[var(--ff-accent-text)] text-sm font-medium mb-6">
                 <Monitor size={14} />
                 Free PC Builder + FPS Estimator
               </span>
@@ -206,7 +206,7 @@ export default function Home() {
             </div>
             <Link
               to="/prebuilts"
-              className="flex items-center gap-1 text-[#9B94FF] hover:text-[#00D4FF] text-sm font-medium transition-colors"
+              className="flex items-center gap-1 text-[var(--ff-accent-text)] hover:text-[var(--ff-cyan)] text-sm font-medium transition-colors"
             >
               View all <ChevronRight size={16} />
             </Link>
@@ -227,7 +227,7 @@ export default function Home() {
                 <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
                 <Link
                   to={`/prebuilts/${p.id}`}
-                  className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[#9B94FF] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[var(--ff-accent-text)] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
                 >
                   View Build <ChevronRight size={14} />
                 </Link>
@@ -269,7 +269,7 @@ export default function Home() {
               <p className="text-secondary-custom text-sm leading-relaxed mb-4">{f.description}</p>
               <Link
                 to={f.to}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[#9B94FF] hover:text-[#00D4FF] transition-colors"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--ff-accent-text)] hover:text-[var(--ff-cyan)] transition-colors"
               >
                 {f.cta} <ChevronRight size={14} />
               </Link>

@@ -57,7 +57,7 @@ export default function Login() {
         >
           {error && (
             <div className="px-4 py-3 rounded-lg text-sm font-medium"
-              style={{ backgroundColor: '#FF174418', color: '#FF1744', border: '1px solid #FF174440' }}>
+              style={{ backgroundColor: '#FF174418', color: 'var(--ff-red)', border: '1px solid #FF174440' }}>
               {error}
             </div>
           )}

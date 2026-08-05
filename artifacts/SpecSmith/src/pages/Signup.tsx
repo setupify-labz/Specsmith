@@ -116,7 +116,7 @@ export default function Signup() {
         {extra && <span className="absolute right-3 top-1/2 -translate-y-1/2">{extra}</span>}
       </div>
       {touched[name] && errors[name] && (
-        <p className="text-xs mt-1" style={{ color: '#FF1744' }}>{errors[name]}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--ff-red)' }}>{errors[name]}</p>
       )}
     </div>
   );

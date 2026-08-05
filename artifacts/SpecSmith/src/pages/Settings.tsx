@@ -205,20 +205,20 @@ export default function Settings() {
 
           {/* Danger zone */}
           <div className={sectionClass} style={{ ...sectionStyle, border: '1px solid rgba(255,23,68,0.3)' }}>
-            <h2 className="font-bold mb-2" style={{ color: '#FF1744' }}>Danger Zone</h2>
+            <h2 className="font-bold mb-2" style={{ color: 'var(--ff-red)' }}>Danger Zone</h2>
             <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>
               Deleting your account is permanent. All saved builds and data will be lost.
             </p>
             {!showDeleteConfirm ? (
               <button onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm"
-                style={{ backgroundColor: '#FF174418', color: '#FF1744', border: '1px solid #FF174440' }}>
+                style={{ backgroundColor: '#FF174418', color: 'var(--ff-red)', border: '1px solid #FF174440' }}>
                 <Trash2 size={14} /> Delete Account
               </button>
             ) : (
               <div className="space-y-3">
                 <p className="text-sm font-medium" style={{ color: 'var(--ff-text)' }}>
-                  Type <code className="font-mono font-bold" style={{ color: '#FF1744' }}>DELETE</code> to confirm:
+                  Type <code className="font-mono font-bold" style={{ color: 'var(--ff-red)' }}>DELETE</code> to confirm:
                 </p>
                 <input
                   className="ff-input"
@@ -232,7 +232,7 @@ export default function Settings() {
                   <button onClick={handleDeleteAccount}
                     disabled={deleteInput !== 'DELETE'}
                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-40"
-                    style={{ backgroundColor: '#FF174418', color: '#FF1744', border: '1px solid #FF174440' }}>
+                    style={{ backgroundColor: '#FF174418', color: 'var(--ff-red)', border: '1px solid #FF174440' }}>
                     <Trash2 size={14} /> Confirm Delete
                   </button>
                   <button onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }}

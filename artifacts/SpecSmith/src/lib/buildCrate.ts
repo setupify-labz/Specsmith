@@ -30,12 +30,16 @@ export const SOCKETS = [...new Set(cpus.map(c => c.socket))];
 
 export type CrateRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
+// Colors are theme-aware tokens, not raw hex — these render as text (crate
+// reveal labels, "best pull" summary) and the dark-mode hex values ranged
+// from ~1.4:1 to ~3.5:1 in light mode, under WCAG AA's 4.5:1 floor (found
+// via an axe-core light-theme sweep).
 export const RARITY_STYLE: Record<CrateRarity, { label: string; color: string; glow: string }> = {
-  common:    { label: 'Common',    color: '#9CA3AF', glow: 'rgba(156,163,175,0.35)' },
-  uncommon:  { label: 'Uncommon',  color: '#00E676', glow: 'rgba(0,230,118,0.4)' },
-  rare:      { label: 'Rare',      color: '#00D4FF', glow: 'rgba(0,212,255,0.4)' },
-  epic:      { label: 'Epic',      color: '#9B6BFF', glow: 'rgba(155,107,255,0.45)' },
-  legendary: { label: 'Legendary', color: '#FFD700', glow: 'rgba(255,215,0,0.5)' },
+  common:    { label: 'Common',    color: 'var(--ff-text-2)', glow: 'rgba(156,163,175,0.35)' },
+  uncommon:  { label: 'Uncommon',  color: 'var(--ff-green)', glow: 'rgba(0,230,118,0.4)' },
+  rare:      { label: 'Rare',      color: 'var(--ff-cyan)', glow: 'rgba(0,212,255,0.4)' },
+  epic:      { label: 'Epic',      color: 'var(--ff-epic)', glow: 'rgba(155,107,255,0.45)' },
+  legendary: { label: 'Legendary', color: 'var(--ff-gold)', glow: 'rgba(255,215,0,0.5)' },
 };
 
 function rarityFromPercentile(p: number): CrateRarity {

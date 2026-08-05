@@ -18,10 +18,10 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType>({ showToast: () => {} });
 
 const COLORS: Record<ToastType, string> = {
-  success: '#00E676',
-  warning: '#FFB300',
-  error:   '#FF1744',
-  info:    '#9B94FF',
+  success: 'var(--ff-green)',
+  warning: 'var(--ff-amber)',
+  error:   'var(--ff-red)',
+  info:    'var(--ff-accent-text)',
 };
 
 const ICONS: Record<ToastType, React.ReactNode> = {

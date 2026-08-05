@@ -38,13 +38,15 @@ export function estimateFps(
 
   let color: string;
   let label: string;
-  // #9B94FF, not the base --ff-accent purple — this color is rendered as
-  // text (FpsGauge), and the base accent only hits ~4.3:1 on dark surfaces.
-  if (estimated >= 144)      { color = '#9B94FF'; label = 'Elite'; }
-  else if (estimated >= 90)  { color = '#00D4FF'; label = 'Excellent'; }
-  else if (estimated >= 60)  { color = '#00E676'; label = 'Smooth'; }
-  else if (estimated >= 30)  { color = '#FFB300'; label = 'Playable'; }
-  else                       { color = '#FF1744'; label = 'Unplayable'; }
+  // Theme-aware tokens, not raw hex — this color is rendered as text
+  // (FpsGauge), and the dark-mode hex values only hit ~2-3.9:1 in light
+  // mode, under WCAG AA's 4.5:1 floor (found via an axe-core light-theme
+  // sweep).
+  if (estimated >= 144)      { color = 'var(--ff-accent-text)'; label = 'Elite'; }
+  else if (estimated >= 90)  { color = 'var(--ff-cyan)'; label = 'Excellent'; }
+  else if (estimated >= 60)  { color = 'var(--ff-green)'; label = 'Smooth'; }
+  else if (estimated >= 30)  { color = 'var(--ff-amber)'; label = 'Playable'; }
+  else                       { color = 'var(--ff-red)'; label = 'Unplayable'; }
 
   return { estimated, min, max, color, label };
 }

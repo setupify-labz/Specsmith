@@ -46,9 +46,9 @@ function getTargetRowStyle(fps: number, target: FpsTarget): React.CSSProperties 
 
 function getTargetBadge(fps: number, target: FpsTarget): { icon: string; color: string } | null {
   if (target === null) return null;
-  if (fps >= target) return { icon: '✓', color: '#00E676' };
-  if (fps >= target * 0.85) return { icon: '~', color: '#FFB300' };
-  return { icon: '✗', color: '#FF1744' };
+  if (fps >= target) return { icon: '✓', color: 'var(--ff-green)' };
+  if (fps >= target * 0.85) return { icon: '~', color: 'var(--ff-amber)' };
+  return { icon: '✗', color: 'var(--ff-red)' };
 }
 
 export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onResolutionChange, onPresetChange }: Props) {
@@ -187,9 +187,9 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
         </div>
         {meetsTarget && (
           <div className="flex items-center gap-3 ml-auto text-xs shrink-0">
-            <span style={{ color: '#00E676' }}>✓ {meetsTarget.green}</span>
-            <span style={{ color: '#FFB300' }}>~ {meetsTarget.yellow}</span>
-            <span style={{ color: '#FF1744' }}>✗ {meetsTarget.red}</span>
+            <span style={{ color: 'var(--ff-green)' }}>✓ {meetsTarget.green}</span>
+            <span style={{ color: 'var(--ff-amber)' }}>~ {meetsTarget.yellow}</span>
+            <span style={{ color: 'var(--ff-red)' }}>✗ {meetsTarget.red}</span>
           </div>
         )}
       </div>
@@ -207,9 +207,9 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
           <h4 className="font-semibold text-sm" style={{ color: 'var(--ff-text)' }}>All Games Overview</h4>
           {fpsTarget !== null && (
             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--ff-text-2)' }}>
-              <span className="flex items-center gap-1"><span style={{ color: '#00E676' }}>●</span> ≥{fpsTarget}</span>
-              <span className="flex items-center gap-1"><span style={{ color: '#FFB300' }}>●</span> within 15%</span>
-              <span className="flex items-center gap-1"><span style={{ color: '#FF1744' }}>●</span> below</span>
+              <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-green)' }}>●</span> ≥{fpsTarget}</span>
+              <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-amber)' }}>●</span> within 15%</span>
+              <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-red)' }}>●</span> below</span>
             </div>
           )}
         </div>

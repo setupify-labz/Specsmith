@@ -144,7 +144,7 @@ export default function BuildSummary({
                       <button onClick={() => onRemoveCustomPart?.(p.customId!)}
                         title="Remove custom part"
                         className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80"
-                        style={{ color: '#FF1744' }}>
+                        style={{ color: 'var(--ff-red)' }}>
                         Remove
                       </button>
                     ) : (
@@ -156,7 +156,7 @@ export default function BuildSummary({
                         </a>
                         <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
                           title="Buy on Newegg"
-                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: '#FF9E1B' }}>
+                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-newegg)' }}>
                           Newegg
                         </a>
                       </>
@@ -306,7 +306,7 @@ export default function BuildSummary({
                   style={{
                     border: '1px solid var(--ff-border)',
                     backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
-                    color: cardState === 'copied' ? '#00E676' : 'var(--ff-text-2)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
                     minWidth: 40,
                   }}
                   title="Copy image to clipboard"

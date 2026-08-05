@@ -153,7 +153,7 @@ export default function Navbar() {
                         <div style={{ borderTop: '1px solid var(--ff-border)' }} />
                         <button onClick={handleLogout}
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors text-left"
-                          style={{ color: '#FF1744' }}
+                          style={{ color: 'var(--ff-red)' }}
                           onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#FF174410')}
                           onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
                           <LogOut size={14} /> Sign Out
@@ -229,7 +229,7 @@ export default function Navbar() {
                   <Link to="/settings" className="block px-4 py-3 rounded-lg text-base font-medium"
                     style={{ color: 'var(--ff-text)' }}>Settings</Link>
                   <button onClick={handleLogout} className="block w-full text-left px-4 py-3 rounded-lg text-base font-medium"
-                    style={{ color: '#FF1744' }}>Sign Out</button>
+                    style={{ color: 'var(--ff-red)' }}>Sign Out</button>
                 </>
               ) : (
                 <>

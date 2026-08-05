@@ -19,7 +19,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
   const trend = getSparklineTrend(history, currentPrice);
   const stats = getPriceStats(history, currentPrice);
 
-  const trendColor = trend === 'down' ? '#00E676' : trend === 'up' ? '#FF1744' : '#8888AA';
+  const trendColor = trend === 'down' ? 'var(--ff-green)' : trend === 'up' ? 'var(--ff-red)' : 'var(--ff-text-2)';
   const TrendIcon = trend === 'down' ? TrendingDown : trend === 'up' ? TrendingUp : Minus;
   const trendLabel = `${trend === 'down' ? '↓' : trend === 'up' ? '↑' : '—'} ${Math.abs(stats.trendPct)}% est. 12-month trend`;
 
@@ -140,7 +140,7 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
                 {[
                   { label: '12-Month Low', value: `$${stats.minPrice.toLocaleString()}`, sub: stats.minMonth },
                   { label: '12-Month High', value: `$${stats.maxPrice.toLocaleString()}`, sub: stats.maxMonth },
-                  { label: 'Price Trend', value: `${stats.trendPct > 0 ? '↑' : '↓'} ${Math.abs(stats.trendPct)}%`, sub: 'this year', color: stats.trendPct > 0 ? '#FF1744' : '#00E676' },
+                  { label: 'Price Trend', value: `${stats.trendPct > 0 ? '↑' : '↓'} ${Math.abs(stats.trendPct)}%`, sub: 'this year', color: stats.trendPct > 0 ? 'var(--ff-red)' : 'var(--ff-green)' },
                 ].map(stat => (
                   <div key={stat.label} className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--ff-card)' }}>
                     <p className="text-[10px] mb-1" style={{ color: 'var(--ff-text-2)' }}>{stat.label}</p>
@@ -153,12 +153,12 @@ export default function PriceSparkline({ partId, currentPrice, partName }: Props
               {/* Badge + alert */}
               <div className="flex items-center justify-between mt-4">
                 {stats.badge === 'great' && (
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#00E67618', color: '#00E676', border: '1px solid #00E67640' }}>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#00E67618', color: 'var(--ff-green)', border: '1px solid #00E67640' }}>
                     Below typical price (est.)
                   </span>
                 )}
                 {stats.badge === 'high' && (
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#FF174418', color: '#FF1744', border: '1px solid #FF174440' }}>
+                  <span className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: '#FF174418', color: 'var(--ff-red)', border: '1px solid #FF174440' }}>
                     Above typical price (est.)
                   </span>
                 )}

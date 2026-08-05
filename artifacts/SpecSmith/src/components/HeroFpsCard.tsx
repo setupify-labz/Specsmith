@@ -89,11 +89,11 @@ export default function HeroFpsCard() {
 
         <div className="space-y-4">
           <Bar name={CARD_A.name} price={CARD_A.price} fps={CARD_A.fps} color="var(--ff-accent-text)" delay={500} maxFps={maxFps} />
-          <Bar name={CARD_B.name} price={CARD_B.price} fps={CARD_B.fps} color="#00E676" delay={700} maxFps={maxFps} />
+          <Bar name={CARD_B.name} price={CARD_B.price} fps={CARD_B.fps} color="var(--ff-green)" delay={700} maxFps={maxFps} />
         </div>
 
         <div className="flex items-center gap-1.5 mt-4 pt-4 text-xs font-semibold" style={{ borderTop: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}>
-          <Trophy size={13} style={{ color: '#FFB300' }} />
+          <Trophy size={13} style={{ color: 'var(--ff-amber)' }} />
           20 games benchmarked · real pricing
         </div>
       </motion.div>

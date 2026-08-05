@@ -18,8 +18,8 @@ export default function CompatibilityBanner({ warnings, passed = [] }: Props) {
           exit={{ opacity: 0, y: -8 }}
           className="flex items-center gap-2 p-3 rounded-lg bg-[#00E676]/8 border border-[#00E676]/20"
         >
-          <CheckCircle size={16} className="text-[#00E676] shrink-0" />
-          <span className="text-sm text-[#00E676] font-medium">
+          <CheckCircle size={16} className="text-[var(--ff-green)] shrink-0" />
+          <span className="text-sm text-[var(--ff-green)] font-medium">
             {passed.length > 0
               ? `All checks passed: ${passed.join(' · ')}`
               : 'No compatibility issues detected'}
@@ -29,7 +29,7 @@ export default function CompatibilityBanner({ warnings, passed = [] }: Props) {
         <div className="space-y-2">
           {warnings.map(w => {
             const isError = w.type === 'error';
-            const color = isError ? '#FF1744' : '#FFB300';
+            const color = isError ? 'var(--ff-red)' : 'var(--ff-amber)';
             return (
               <motion.div
                 key={w.id}

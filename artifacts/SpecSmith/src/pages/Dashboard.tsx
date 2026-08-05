@@ -104,8 +104,8 @@ export default function Dashboard() {
           {[
             { label: 'Builds Saved', value: builds.length, icon: <Cpu size={18} />, color: 'var(--ff-accent)', truncate: false },
             { label: 'Builds Shared', value: totalShared, icon: <ExternalLink size={18} />, color: 'var(--ff-cyan)', truncate: false },
-            { label: 'Most Used GPU', value: mostUsedGpu.replace(/-/g, ' ').toUpperCase(), icon: <BarChart2 size={18} />, color: '#00E676', truncate: true },
-            { label: 'Total Builds', value: `${builds.length}/20`, icon: <Zap size={18} />, color: '#FFB300', truncate: false },
+            { label: 'Most Used GPU', value: mostUsedGpu.replace(/-/g, ' ').toUpperCase(), icon: <BarChart2 size={18} />, color: 'var(--ff-green)', truncate: true },
+            { label: 'Total Builds', value: `${builds.length}/20`, icon: <Zap size={18} />, color: 'var(--ff-amber)', truncate: false },
           ].map(stat => (
             <div key={stat.label} className="rounded-xl p-4"
               style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
@@ -160,7 +160,7 @@ export default function Dashboard() {
                             onKeyDown={e => { if (e.key === 'Enter') commitEdit(build.id); if (e.key === 'Escape') setEditingId(null); }}
                             autoFocus
                           />
-                          <button onClick={() => commitEdit(build.id)} aria-label="Save name" className="p-1.5 rounded-lg" style={{ color: '#00E676', backgroundColor: '#00E67612' }}>
+                          <button onClick={() => commitEdit(build.id)} aria-label="Save name" className="p-1.5 rounded-lg" style={{ color: 'var(--ff-green)', backgroundColor: '#00E67612' }}>
                             <Check size={14} />
                           </button>
                         </div>
@@ -195,7 +195,7 @@ export default function Dashboard() {
                           disabled={!isGalleryEnabled || publishingId === build.id}
                           title={!isGalleryEnabled ? "Gallery isn't live yet" : 'Publish this build to the public Gallery'}
                           className="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-40"
-                          style={{ backgroundColor: '#00E67612', color: '#00E676' }}
+                          style={{ backgroundColor: '#00E67612', color: 'var(--ff-green)' }}
                         >
                           <Upload size={11} /> {publishingId === build.id ? 'Publishing…' : 'Publish'}
                         </button>
@@ -204,7 +204,7 @@ export default function Dashboard() {
                           aria-label={deleteConfirm === build.id ? undefined : 'Delete build'}
                           className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-lg"
                           style={{
-                            color: deleteConfirm === build.id ? '#FF1744' : 'var(--ff-text-3)',
+                            color: deleteConfirm === build.id ? 'var(--ff-red)' : 'var(--ff-text-3)',
                             backgroundColor: deleteConfirm === build.id ? '#FF174418' : 'var(--ff-card)',
                             border: deleteConfirm === build.id ? '1px solid #FF174440' : '1px solid transparent',
                           }}

@@ -20,19 +20,19 @@ const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
 
 const BADGE_STYLES: Record<string, { bg: string; color: string; border: string }> = {
-  gray:   { bg: 'rgba(136,136,170,0.12)', color: '#8888AA', border: 'rgba(136,136,170,0.3)' },
-  blue:   { bg: 'rgba(0,212,255,0.12)',   color: '#00D4FF', border: 'rgba(0,212,255,0.3)'   },
-  purple: { bg: 'rgba(108,99,255,0.12)',  color: '#9B94FF', border: 'rgba(108,99,255,0.3)'  },
-  amber:  { bg: 'rgba(255,179,0,0.12)',   color: '#FFB300', border: 'rgba(255,179,0,0.3)'   },
-  gold:   { bg: 'rgba(255,179,0,0.18)',   color: '#FFD700', border: 'rgba(255,215,0,0.4)'   },
+  gray:   { bg: 'rgba(136,136,170,0.12)', color: 'var(--ff-text-2)', border: 'rgba(136,136,170,0.3)' },
+  blue:   { bg: 'rgba(0,212,255,0.12)',   color: 'var(--ff-cyan)', border: 'rgba(0,212,255,0.3)'   },
+  purple: { bg: 'rgba(108,99,255,0.12)',  color: 'var(--ff-accent-text)', border: 'rgba(108,99,255,0.3)'  },
+  amber:  { bg: 'rgba(255,179,0,0.12)',   color: 'var(--ff-amber)', border: 'rgba(255,179,0,0.3)'   },
+  gold:   { bg: 'rgba(255,179,0,0.18)',   color: 'var(--ff-gold)', border: 'rgba(255,215,0,0.4)'   },
 };
 
 function getFpsColor(fps: number): string {
-  if (fps >= 144) return '#9B94FF';
-  if (fps >= 90)  return '#00D4FF';
-  if (fps >= 60)  return '#00E676';
-  if (fps >= 30)  return '#FFB300';
-  return '#FF1744';
+  if (fps >= 144) return 'var(--ff-accent-text)';
+  if (fps >= 90)  return 'var(--ff-cyan)';
+  if (fps >= 60)  return 'var(--ff-green)';
+  if (fps >= 30)  return 'var(--ff-amber)';
+  return 'var(--ff-red)';
 }
 
 export default function PrebuiltDetail() {
@@ -158,7 +158,7 @@ export default function PrebuiltDetail() {
                               rel="noopener noreferrer"
                               title="Buy on Newegg"
                               className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                              style={{ color: '#FF9E1B' }}
+                              style={{ color: 'var(--ff-newegg)' }}
                             >
                               Newegg <ExternalLink size={9} />
                             </a>

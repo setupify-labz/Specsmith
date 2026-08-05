@@ -665,7 +665,7 @@ export default function BuildCrate() {
                     disabled={!isGalleryEnabled || publishing}
                     title={!isGalleryEnabled ? "Gallery isn't live yet" : undefined}
                     className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40"
-                    style={{ backgroundColor: '#00E67612', color: '#00E676' }}>
+                    style={{ backgroundColor: '#00E67612', color: 'var(--ff-green)' }}>
                     <Upload size={15} /> {publishing ? 'Publishing…' : 'Publish to Gallery'}
                   </button>
                 ) : (

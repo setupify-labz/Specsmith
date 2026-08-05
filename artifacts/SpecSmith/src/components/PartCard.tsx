@@ -41,7 +41,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
   'best-value': {
     label: 'BEST VALUE',
     background: '#00E67618',
-    color: '#00E676',
+    color: 'var(--ff-green)',
     border: '1px solid #00E67650',
   },
   'best-performance': {
@@ -80,7 +80,7 @@ export default function PartCard({
       )}
       {sponsored && !selected && (
         <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full z-10"
-          style={{ backgroundColor: '#FFB30018', color: '#FFB300', border: '1px solid #FFB30040' }}>
+          style={{ backgroundColor: '#FFB30018', color: 'var(--ff-amber)', border: '1px solid #FFB30040' }}>
           SPONSORED
         </span>
       )}
@@ -150,7 +150,7 @@ export default function PartCard({
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
             className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-            style={{ color: '#FF9E1B', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
+            style={{ color: 'var(--ff-newegg)', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
           >
             Newegg <ExternalLink size={10} />
           </a>
