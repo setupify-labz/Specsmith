@@ -24,6 +24,7 @@ const NAV_GROUPS = [
       { to: '/upgrade-cpu', label: 'CPU Upgrade Guides' },
       { to: '/best-gpu-budget', label: 'Best GPU by Budget' },
       { to: '/best-cpu-budget', label: 'Best CPU by Budget' },
+      { to: '/best-pc-for', label: 'Best PC by Use Case' },
     ],
   },
   {

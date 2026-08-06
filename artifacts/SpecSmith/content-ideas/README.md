@@ -15,6 +15,11 @@ week, built to be screen-recorded directly on the live site:
 - **"Roast My Build"** on the Builder — deliberately bad combos (flagship
   GPU + ancient CPU, undersized PSU) so the site's own compatibility/
   bottleneck warnings fire on screen, no editing needed
+- **Build Crate pulls** — legendary/high-tier rarity pulls landing on
+  screen, or deliberately re-rolling for a meme-tier pull
+- **Higher or Lower streaks** (added 2026-08-06, once the game shipped) —
+  a good/bad streak run, or a genuinely surprising price call (e.g. an
+  old flagship still costing more than a new mid-range card)
 Every part/price used has to come from the real dataset (gpus.json,
 cpus.json, components.json) — the whole point is showing the actual
 tool working, not a mockup. Delivered as a dated markdown file in this
@@ -35,10 +40,27 @@ submissions. Never presented as organic user activity. This was the
 one item flagged back to the user before being added to scope, and
 labeling was their explicit condition.
 
-## 3. Dynamic SEO landing pages
-Continue the existing pattern (Best GPU/CPU for Game, Parts Guides,
-Tier Lists) for new search-intent gaps — e.g. `/builds/best-minecraft-pc`,
-`/builds/budget-1440p-gaming` style pages.
+## 3. Dynamic SEO landing pages / keyword pipeline
+Added 2026-08-06 at the user's request: work off a maintained keyword
+queue (`seo-keyword-queue.md` in this directory) instead of picking
+targets ad hoc. Each routine run that touches this workstream should
+generate 2-3 pages from the top of the queue, using the established
+template conventions (schema/JSON-LD, WCAG AA, prerendered + sitemap,
+cross-linked from Parts Guides/Footer/llms.txt), then check them off.
+
+Hard rule carried over from every other page on this site: every number
+shown has to come from real, verifiable data already in the repo
+(gpus.json/cpus.json/components.json field values) or a defensible,
+disclosed selection rule built on those fields (e.g. "NVIDIA-first for
+NVENC, then benchmark score" — a real hardware fact, not an invented
+number). **Adding a genuinely new game to the FPS estimator is NOT part
+of this pipeline** — that requires sourcing and verifying real per-GPU
+benchmark ratios for that game first (the same rigor as the monthly
+price refresh), which is slower and riskier than a template fill.
+Queue those separately and flag them, never fabricate the numbers.
+
+First run (2026-08-06): shipped `/best-pc-for` (Streaming, Video
+Editing) — see `seo-keyword-queue.md` for what's queued next.
 
 ## 4. Local-storage persistence
 Client-side only — no changes to the existing Supabase auth/database.

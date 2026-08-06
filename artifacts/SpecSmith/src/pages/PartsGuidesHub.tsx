@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ChevronRight, CircuitBoard, MemoryStick, HardDrive, Zap, Box, Fan,
-  Monitor, Keyboard, Mouse, Headphones, TrendingUp, Trophy, DollarSign,
+  Monitor, Keyboard, Mouse, Headphones, TrendingUp, Trophy, DollarSign, Sparkles,
 } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -13,6 +13,7 @@ const GUIDE_LINKS = [
   { to: '/cpu-tier-list', label: 'CPU Tier List', desc: 'Every CPU ranked S to D', icon: Trophy },
   { to: '/best-gpu-budget', label: 'Best GPU by Budget', desc: 'Strongest card under your price ceiling', icon: DollarSign },
   { to: '/best-cpu-budget', label: 'Best CPU by Budget', desc: 'Strongest chip under your price ceiling', icon: DollarSign },
+  { to: '/best-pc-for', label: 'Best PC by Use Case', desc: 'Streaming, video editing, and more', icon: Sparkles },
   { to: '/upgrade', label: 'GPU Upgrade Guides', desc: 'What to upgrade your card to', icon: TrendingUp },
   { to: '/upgrade-cpu', label: 'CPU Upgrade Guides', desc: 'What to upgrade your chip to', icon: TrendingUp },
   { to: '/best-motherboard', label: 'Motherboards', desc: 'By platform: AM4, AM5, LGA1700, LGA1851', icon: CircuitBoard },

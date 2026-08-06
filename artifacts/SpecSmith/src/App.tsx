@@ -42,6 +42,8 @@ const BuildCrate = lazy(() => import('./pages/BuildCrate'));
 const PriceGuesser = lazy(() => import('./pages/PriceGuesser'));
 const BudgetPartIndex = lazy(() => import('./pages/BudgetPartIndex'));
 const BudgetPartPage = lazy(() => import('./pages/BudgetPartPage'));
+const UseCaseBuildIndex = lazy(() => import('./pages/UseCaseBuildIndex'));
+const UseCaseBuildPage = lazy(() => import('./pages/UseCaseBuildPage'));
 
 function AppRoutes() {
   return (
@@ -93,6 +95,8 @@ function AppRoutes() {
           <Route path="/best-gpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="gpu" /></PageWrapper>} />
           <Route path="/best-cpu-budget" element={<PageWrapper><BudgetPartIndex category="cpu" /></PageWrapper>} />
           <Route path="/best-cpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="cpu" /></PageWrapper>} />
+          <Route path="/best-pc-for" element={<PageWrapper><UseCaseBuildIndex /></PageWrapper>} />
+          <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>

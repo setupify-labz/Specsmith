@@ -143,6 +143,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Pick a price ceiling to see the strongest CPUs we track that fit under it, ranked by benchmark performance — from under $150 to under $1,000.',
   },
   {
+    path: '/best-pc-for',
+    title: 'Best PC Build by Use Case | SpecSmith',
+    description:
+      'GPU and CPU picks weighted for what actually matters outside pure gaming FPS — streaming, video editing, and more, across three budgets each.',
+  },
+  {
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
@@ -293,6 +299,7 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/best-motherboard/', parent: { name: 'Best Motherboards by Platform', path: '/best-motherboard' } },
   { prefix: '/best-gpu-budget/', parent: { name: 'Best GPU by Budget', path: '/best-gpu-budget' } },
   { prefix: '/best-cpu-budget/', parent: { name: 'Best CPU by Budget', path: '/best-cpu-budget' } },
+  { prefix: '/best-pc-for/', parent: { name: 'Best PC Build by Use Case', path: '/best-pc-for' } },
   { prefix: '/prebuilts/', parent: { name: 'Gaming PC Build Guides', path: '/prebuilts' } },
 ];
 
@@ -301,7 +308,7 @@ const PARTS_GUIDES_PAGES = new Set([
   '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',
   '/best-monitor', '/best-keyboard', '/best-mouse', '/best-headset',
-  '/best-gpu-budget', '/best-cpu-budget',
+  '/best-gpu-budget', '/best-cpu-budget', '/best-pc-for',
 ]);
 
 function cleanTitle(title: string): string {

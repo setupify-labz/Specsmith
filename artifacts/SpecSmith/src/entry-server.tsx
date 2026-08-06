@@ -39,6 +39,9 @@ import PriceGuesser from './pages/PriceGuesser';
 import BudgetPartIndex from './pages/BudgetPartIndex';
 import BudgetPartPage from './pages/BudgetPartPage';
 import { GPU_BUDGET_TIERS, CPU_BUDGET_TIERS, getBudgetPageMeta } from './lib/budgetPages';
+import UseCaseBuildIndex from './pages/UseCaseBuildIndex';
+import UseCaseBuildPage from './pages/UseCaseBuildPage';
+import { USE_CASES, getUseCasePageMeta } from './lib/useCaseBuilds';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -77,6 +80,8 @@ export const PRERENDER_ROUTES = [
   '/best-cpu-budget',
   ...GPU_BUDGET_TIERS.map((t) => `/best-gpu-budget/${t.slug}`),
   ...CPU_BUDGET_TIERS.map((t) => `/best-cpu-budget/${t.slug}`),
+  '/best-pc-for',
+  ...USE_CASES.map((u) => `/best-pc-for/${u.slug}`),
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -99,6 +104,7 @@ const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...COMPONENT_GUIDES.map((g) => [`/best-${g.slug}`, getComponentGuideMeta(g)] as const),
   ...GPU_BUDGET_TIERS.map((t) => [`/best-gpu-budget/${t.slug}`, getBudgetPageMeta('gpu', t)] as const),
   ...CPU_BUDGET_TIERS.map((t) => [`/best-cpu-budget/${t.slug}`, getBudgetPageMeta('cpu', t)] as const),
+  ...USE_CASES.map((u) => [`/best-pc-for/${u.slug}`, getUseCasePageMeta(u)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -167,6 +173,8 @@ export function render(url: string): string {
                 <Route path="/best-gpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="gpu" /></PageWrapper>} />
                 <Route path="/best-cpu-budget" element={<PageWrapper><BudgetPartIndex category="cpu" /></PageWrapper>} />
                 <Route path="/best-cpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="cpu" /></PageWrapper>} />
+                <Route path="/best-pc-for" element={<PageWrapper><UseCaseBuildIndex /></PageWrapper>} />
+                <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />
