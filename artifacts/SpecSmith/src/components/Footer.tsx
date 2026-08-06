@@ -22,6 +22,8 @@ const NAV_GROUPS = [
       { to: '/cpu-tier-list', label: 'CPU Tier List' },
       { to: '/upgrade', label: 'GPU Upgrade Guides' },
       { to: '/upgrade-cpu', label: 'CPU Upgrade Guides' },
+      { to: '/best-gpu-budget', label: 'Best GPU by Budget' },
+      { to: '/best-cpu-budget', label: 'Best CPU by Budget' },
     ],
   },
   {

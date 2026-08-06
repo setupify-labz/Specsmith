@@ -36,6 +36,9 @@ import ComponentGuidePage from './pages/ComponentGuidePage';
 import PartsGuidesHub from './pages/PartsGuidesHub';
 import BuildCrate from './pages/BuildCrate';
 import PriceGuesser from './pages/PriceGuesser';
+import BudgetPartIndex from './pages/BudgetPartIndex';
+import BudgetPartPage from './pages/BudgetPartPage';
+import { GPU_BUDGET_TIERS, CPU_BUDGET_TIERS, getBudgetPageMeta } from './lib/budgetPages';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -70,6 +73,10 @@ export const PRERENDER_ROUTES = [
   '/parts-guides',
   '/crate',
   '/price-guesser',
+  '/best-gpu-budget',
+  '/best-cpu-budget',
+  ...GPU_BUDGET_TIERS.map((t) => `/best-gpu-budget/${t.slug}`),
+  ...CPU_BUDGET_TIERS.map((t) => `/best-cpu-budget/${t.slug}`),
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -90,6 +97,8 @@ const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
   ...CPU_UPGRADE_PAGES.map((p) => [`/upgrade-cpu/${p.slug}`, getCpuUpgradePageMeta(p)] as const),
   ...SOCKET_PAGES.map((p) => [`/best-motherboard/${p.slug}`, getSocketPageMeta(p)] as const),
   ...COMPONENT_GUIDES.map((g) => [`/best-${g.slug}`, getComponentGuideMeta(g)] as const),
+  ...GPU_BUDGET_TIERS.map((t) => [`/best-gpu-budget/${t.slug}`, getBudgetPageMeta('gpu', t)] as const),
+  ...CPU_BUDGET_TIERS.map((t) => [`/best-cpu-budget/${t.slug}`, getBudgetPageMeta('cpu', t)] as const),
 ]);
 
 export function getPrerenderMeta(path: string): RouteMeta {
@@ -154,6 +163,10 @@ export function render(url: string): string {
                 <Route path="/parts-guides" element={<PageWrapper><PartsGuidesHub /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
                 <Route path="/price-guesser" element={<PageWrapper><PriceGuesser /></PageWrapper>} />
+                <Route path="/best-gpu-budget" element={<PageWrapper><BudgetPartIndex category="gpu" /></PageWrapper>} />
+                <Route path="/best-gpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="gpu" /></PageWrapper>} />
+                <Route path="/best-cpu-budget" element={<PageWrapper><BudgetPartIndex category="cpu" /></PageWrapper>} />
+                <Route path="/best-cpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="cpu" /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />

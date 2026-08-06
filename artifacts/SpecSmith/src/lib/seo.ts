@@ -131,6 +131,18 @@ export const ROUTE_META: RouteMeta[] = [
       'Browse upgrade guides for every CPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
   },
   {
+    path: '/best-gpu-budget',
+    title: 'Best GPU by Budget | SpecSmith',
+    description:
+      'Pick a price ceiling to see the strongest GPUs we track that fit under it, ranked by benchmark performance — from under $200 to under $1,500.',
+  },
+  {
+    path: '/best-cpu-budget',
+    title: 'Best CPU by Budget | SpecSmith',
+    description:
+      'Pick a price ceiling to see the strongest CPUs we track that fit under it, ranked by benchmark performance — from under $150 to under $1,000.',
+  },
+  {
     path: '/gallery',
     title: 'Build Gallery — Real PC Builds from SpecSmith Users',
     description:
@@ -279,6 +291,8 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/upgrade/', parent: { name: 'GPU Upgrade Guides', path: '/upgrade' } },
   { prefix: '/upgrade-cpu/', parent: { name: 'CPU Upgrade Guides', path: '/upgrade-cpu' } },
   { prefix: '/best-motherboard/', parent: { name: 'Best Motherboards by Platform', path: '/best-motherboard' } },
+  { prefix: '/best-gpu-budget/', parent: { name: 'Best GPU by Budget', path: '/best-gpu-budget' } },
+  { prefix: '/best-cpu-budget/', parent: { name: 'Best CPU by Budget', path: '/best-cpu-budget' } },
   { prefix: '/prebuilts/', parent: { name: 'Gaming PC Build Guides', path: '/prebuilts' } },
 ];
 
@@ -287,6 +301,7 @@ const PARTS_GUIDES_PAGES = new Set([
   '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',
   '/best-monitor', '/best-keyboard', '/best-mouse', '/best-headset',
+  '/best-gpu-budget', '/best-cpu-budget',
 ]);
 
 function cleanTitle(title: string): string {

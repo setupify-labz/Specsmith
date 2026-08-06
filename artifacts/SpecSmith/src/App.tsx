@@ -40,6 +40,8 @@ const ComponentGuidePage = lazy(() => import('./pages/ComponentGuidePage'));
 const PartsGuidesHub = lazy(() => import('./pages/PartsGuidesHub'));
 const BuildCrate = lazy(() => import('./pages/BuildCrate'));
 const PriceGuesser = lazy(() => import('./pages/PriceGuesser'));
+const BudgetPartIndex = lazy(() => import('./pages/BudgetPartIndex'));
+const BudgetPartPage = lazy(() => import('./pages/BudgetPartPage'));
 
 function AppRoutes() {
   return (
@@ -87,6 +89,10 @@ function AppRoutes() {
           <Route path="/parts-guides" element={<PageWrapper><PartsGuidesHub /></PageWrapper>} />
           <Route path="/crate"     element={<PageWrapper><BuildCrate /></PageWrapper>} />
           <Route path="/price-guesser" element={<PageWrapper><PriceGuesser /></PageWrapper>} />
+          <Route path="/best-gpu-budget" element={<PageWrapper><BudgetPartIndex category="gpu" /></PageWrapper>} />
+          <Route path="/best-gpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="gpu" /></PageWrapper>} />
+          <Route path="/best-cpu-budget" element={<PageWrapper><BudgetPartIndex category="cpu" /></PageWrapper>} />
+          <Route path="/best-cpu-budget/:slug" element={<PageWrapper><BudgetPartPage category="cpu" /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>
