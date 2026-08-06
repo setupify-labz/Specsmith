@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUp, ArrowDown, Trophy, RotateCcw, Cpu } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trophy, RotateCcw, Cpu, Share2 } from 'lucide-react';
 import PageGlow from '../components/PageGlow';
 import { useSeo } from '../hooks/useSeo';
-import { getRouteMeta } from '../lib/seo';
+import { getRouteMeta, SITE_URL } from '../lib/seo';
+import { useToast } from '../context/ToastContext';
 import { pickStartingPair, pickNextItem, type GuesserItem } from '../lib/priceGuesser';
 
 const BEST_KEY = 'specsmith-guesser-best';
@@ -53,6 +54,7 @@ function ItemCard({ item, revealPrice, highlight }: { item: GuesserItem; revealP
 
 export default function PriceGuesser() {
   useSeo(getRouteMeta('/price-guesser'));
+  const { showToast } = useToast();
   const [current, setCurrent] = useState<GuesserItem | null>(null);
   const [next, setNext] = useState<GuesserItem | null>(null);
   const [score, setScore] = useState(0);
@@ -103,6 +105,25 @@ export default function PriceGuesser() {
     }
   };
 
+  const shareScore = async () => {
+    const url = `${SITE_URL}/price-guesser`;
+    const title = `I scored ${score} in a row on SpecSmith's Higher or Lower price game — can you beat it?`;
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${title} ${url}`);
+      showToast('Copied to clipboard', 'success');
+    } catch {
+      showToast('Failed to copy', 'error');
+    }
+  };
+
   if (!current || !next) return null;
 
   return (
@@ -139,13 +160,22 @@ export default function PriceGuesser() {
             <p className="text-sm mb-6" style={{ color: 'var(--ff-text-2)' }}>
               {next.name} — ${next.price.toLocaleString()} was {next.price > current.price ? 'higher' : 'lower'} than {current.name} at ${current.price.toLocaleString()}.
             </p>
-            <button
-              onClick={startGame}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white"
-              style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
-            >
-              <RotateCcw size={16} /> Play Again
-            </button>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <button
+                onClick={startGame}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white"
+                style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
+              >
+                <RotateCcw size={16} /> Play Again
+              </button>
+              <button
+                onClick={shareScore}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm"
+                style={{ backgroundColor: 'var(--ff-card)', color: 'var(--ff-text)', border: '1px solid var(--ff-border)' }}
+              >
+                <Share2 size={16} /> Share Score
+              </button>
+            </div>
           </motion.div>
         ) : (
           <>
