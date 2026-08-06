@@ -31,6 +31,16 @@ Separately, shareable engagement hooks *coded into the frontend*
 (a build-critique layout, custom share mechanics) ship as normal
 feature commits, not files in this directory.
 
+**Video production packages** (added 2026-08-06): for weeks that want a
+fuller production package instead of just hooks + combos, run
+`video-prompt-system-template.md` with a target feature/part/matchup.
+It's a hybrid system — AI text-to-video generation (Runway/Sora/Luma)
+is used ONLY for cinematic B-roll (desk setups, RGB lighting, macro
+shots); the actual SpecSmith UI is always a real screen recording,
+never AI-generated, per the no-mockups rule above. Produces a
+scene-by-scene shot list, kinetic typography captions, and audio/
+sound-design cues per run.
+
 ## 2. Labeled gallery seeding
 If the public Build Gallery is sparse, generate realistic/high-end/
 meme-tier example builds to keep it feeling populated — but every
