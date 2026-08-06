@@ -101,6 +101,12 @@ export const ROUTE_META: RouteMeta[] = [
     image: `${SITE_URL}/opengraph-crate.jpg`,
   },
   {
+    path: '/price-guesser',
+    title: 'Higher or Lower — PC Part Price Guessing Game | SpecSmith',
+    description:
+      'Guess whether the next GPU or CPU costs more or less than the last — using real street prices from the SpecSmith Builder. How high can you streak?',
+  },
+  {
     path: '/upgrade',
     title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
     description:

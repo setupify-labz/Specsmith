@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy } from 'lucide-react';
+import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, ArrowUpDown } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -75,6 +75,14 @@ const exploreLinks = [
     description: 'Budget-to-premium picks for every part — motherboards, RAM, storage, cases, coolers, and peripherals.',
     to: '/parts-guides',
     cta: 'Browse Guides',
+  },
+  {
+    icon: <ArrowUpDown size={22} className="text-[var(--ff-red)]" />,
+    glow: 'rgba(255,23,68,0.3)',
+    title: 'Higher or Lower',
+    description: 'Guess whether the next GPU or CPU costs more or less than the last, using real prices from our Builder. Beat your streak.',
+    to: '/price-guesser',
+    cta: 'Play Now',
   },
 ];
 

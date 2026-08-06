@@ -35,6 +35,7 @@ import BestMotherboardPage from './pages/BestMotherboardPage';
 import ComponentGuidePage from './pages/ComponentGuidePage';
 import PartsGuidesHub from './pages/PartsGuidesHub';
 import BuildCrate from './pages/BuildCrate';
+import PriceGuesser from './pages/PriceGuesser';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -68,6 +69,7 @@ export const PRERENDER_ROUTES = [
   ...COMPONENT_GUIDES.map((g) => `/best-${g.slug}`),
   '/parts-guides',
   '/crate',
+  '/price-guesser',
   ...prebuilts.map((p) => `/prebuilts/${p.id}`),
   ...MATCHUPS.map((m) => `/vs/${m.slug}`),
   ...CPU_MATCHUPS.map((m) => `/vs/${m.slug}`),
@@ -151,6 +153,7 @@ export function render(url: string): string {
                 <Route path="/best-headset" element={<PageWrapper><ComponentGuidePage category="headset" /></PageWrapper>} />
                 <Route path="/parts-guides" element={<PageWrapper><PartsGuidesHub /></PageWrapper>} />
                 <Route path="/crate" element={<PageWrapper><BuildCrate /></PageWrapper>} />
+                <Route path="/price-guesser" element={<PageWrapper><PriceGuesser /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />

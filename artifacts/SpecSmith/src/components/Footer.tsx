@@ -8,6 +8,7 @@ const NAV_GROUPS = [
       { to: '/', label: 'Home' },
       { to: '/builder', label: 'Builder' },
       { to: '/prebuilts', label: 'Build Guides' },
+      { to: '/price-guesser', label: 'Higher or Lower (Price Game)' },
     ],
   },
   {

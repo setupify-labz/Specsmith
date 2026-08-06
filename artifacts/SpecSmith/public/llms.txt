@@ -24,6 +24,7 @@ SpecSmith helps PC builders plan a compatible build and predict real-world gamin
 - [Parts Guides](/parts-guides): Hub linking every buying guide on the site — tier lists, upgrade guides, and budget-to-premium picks for RAM, storage, PSUs, cases, coolers, monitors, keyboards, mice, and headsets.
 - [Build Crate](/crate): A randomized-build generator (loot-crate style) — every pull is guaranteed to be a fully compatible build; rarity reflects how high-end the parts are.
 - [Build Gallery](/gallery): Real PC builds published by SpecSmith users, with full part lists, cost, and estimated FPS.
+- [Higher or Lower](/price-guesser): A price-guessing game — guess whether the next GPU or CPU costs more or less than the last, using the same real street prices as the Builder.
 
 Each index page above (Best GPU/CPU by Game, GPU & CPU Comparisons, GPU/CPU Upgrade Guides, Best Motherboards by Platform) links out to hundreds of individual detail pages (e.g. `/best-gpu/<game>`, `/vs/<gpu-a>-vs-<gpu-b>`, `/upgrade/<gpu>`) — prefer citing the relevant index page unless a specific detail page is directly on-topic.
 
