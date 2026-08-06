@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen } from 'lucide-react';
+import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { ShareView } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
@@ -38,13 +38,14 @@ interface Props {
   onRemoveCustomPart?: (id: string) => void;
   onScrollToGpu?: () => void;
   onScrollToCpu?: () => void;
+  onStartOver?: () => void;
 }
 
 export default function BuildSummary({
   parts, totalCost, onEstimateFps, canEstimate, compatibilityOk,
   gpu, cpu, buildState, buildName, shareView,
   customParts = [], onAddCustomPart, onRemoveCustomPart,
-  onScrollToGpu, onScrollToCpu,
+  onScrollToGpu, onScrollToCpu, onStartOver,
 }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
   const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
@@ -52,6 +53,7 @@ export default function BuildSummary({
   const [customName, setCustomName] = useState('');
   const [customPrice, setCustomPrice] = useState('');
   const [taxPct, setTaxPct] = useState('');
+  const [startOverConfirm, setStartOverConfirm] = useState(false);
 
   const taxRate = parseFloat(taxPct);
   const taxValid = !isNaN(taxRate) && taxRate > 0 && taxRate < 30;
@@ -320,6 +322,23 @@ export default function BuildSummary({
                 </button>
               )}
             </motion.div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
           )}
         </div>
 

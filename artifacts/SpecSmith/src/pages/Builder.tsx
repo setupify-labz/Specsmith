@@ -66,7 +66,7 @@ export default function Builder() {
     return hasAny ? fromParams : undefined;
   }, []);
 
-  const { build, selectPart } = useBuilder(initialBuild as any);
+  const { build, selectPart, clearBuild } = useBuilder(initialBuild as any);
   const [showFps, setShowFps] = useState(false);
   const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
   const [fpsPreset, setFpsPreset] = useState<Preset>('high');
@@ -75,6 +75,11 @@ export default function Builder() {
     setCustomParts(list => [...list, { id: `custom-${Date.now()}`, name, price }]);
   const removeCustomPart = (id: string) =>
     setCustomParts(list => list.filter(p => p.id !== id));
+  const startOver = () => {
+    clearBuild();
+    setCustomParts([]);
+    setShowFps(false);
+  };
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
   const gpuSectionRef = useRef<HTMLDivElement>(null);
@@ -376,6 +381,7 @@ export default function Builder() {
               onRemoveCustomPart={removeCustomPart}
               onScrollToGpu={handleScrollToGpu}
               onScrollToCpu={handleScrollToCpu}
+              onStartOver={startOver}
             />
           </div>
         </div>
