@@ -16,8 +16,18 @@ create table if not exists public_builds (
   total_cost integer not null,
   avg_fps integer not null,
   view_count integer not null default 0,
+  -- True only for builds SpecSmith itself seeds when the gallery is sparse.
+  -- The public insert policy below can never set this (no with-check clause
+  -- grants it), so a build can only become a staff pick via a direct
+  -- Table Editor / service-role insert — never through the public API.
+  -- The Gallery UI renders these with a distinct badge; they must never be
+  -- presented as organic user submissions.
+  is_staff_pick boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Run this if public_builds already existed before is_staff_pick was added:
+-- alter table public_builds add column if not exists is_staff_pick boolean not null default false;
 
 alter table public_builds enable row level security;
 
@@ -32,6 +42,10 @@ create policy "Anyone can publish a build"
     and char_length(creator_name) between 1 and 40
     and total_cost >= 0
     and avg_fps >= 0
+    -- Blocks a direct REST/anon-key insert from setting this itself —
+    -- staff picks can only be created via the Table Editor / service role,
+    -- which bypasses RLS entirely.
+    and is_staff_pick = false
   );
 
 -- Lets the gallery increment a build's view count without granting a

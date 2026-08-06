@@ -21,6 +21,7 @@ export interface PublicBuildRow {
   total_cost: number;
   avg_fps: number;
   view_count: number;
+  is_staff_pick: boolean;
   created_at: string;
 }
 
