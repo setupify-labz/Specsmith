@@ -55,6 +55,19 @@ export const USE_CASES: UseCase[] = [
     ],
     gpuStrategy: 'vram',
   },
+  {
+    slug: 'ai-local-llm',
+    title: 'Best PC Build for Local AI / LLM Inference',
+    shortTitle: 'Local AI / LLMs',
+    intro: 'Running local language models (through tools like Ollama or LM Studio) is almost entirely a VRAM problem — the model has to fit on the GPU to run at usable speed, so more VRAM directly means larger or less-aggressively-quantized models you can actually run, even ahead of raw gaming benchmark score. System RAM and CPU matter far less here than for gaming, since inference happens on the GPU.',
+    criteria: 'GPU picked by highest VRAM in budget (ties broken by benchmark score) — the binding constraint for local inference. CPU picked by highest core count in budget, mainly to keep the rest of the system responsive while a model is loaded.',
+    tiers: [
+      { label: 'Getting Started', maxGpuPrice: 400, maxCpuPrice: 250 },
+      { label: 'Serious Local Inference', maxGpuPrice: 900, maxCpuPrice: 500 },
+      { label: 'Maximum VRAM', maxGpuPrice: 2000, maxCpuPrice: 800 },
+    ],
+    gpuStrategy: 'vram',
+  },
 ];
 
 export function getUseCase(slug: string): UseCase | undefined {
