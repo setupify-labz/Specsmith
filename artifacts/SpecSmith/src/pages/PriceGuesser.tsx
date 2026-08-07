@@ -10,6 +10,37 @@ import { pickStartingPair, pickNextItem, type GuesserItem } from '../lib/priceGu
 
 const BEST_KEY = 'specsmith-guesser-best';
 
+// Generated into FAQPage JSON-LD below so it can't drift from what's
+// actually on the page.
+const guesserFaqSections = [
+  {
+    title: 'Where do the prices come from?',
+    content: 'The exact same street-pricing dataset that powers the Builder and Compare pages — no separate numbers made up for the game.',
+  },
+  {
+    title: 'Why can\'t I lose points, only my streak?',
+    content: 'It\'s a streak game, not a scored quiz — one wrong guess ends the run and your best streak is saved locally in your browser. There\'s no account, no server-side leaderboard, and no way to lose progress on parts you\'ve already correctly guessed.',
+  },
+  {
+    title: 'Do I need an account to play?',
+    content: 'No. It\'s free with no sign-up, and your best streak persists across visits via your browser\'s local storage only.',
+  },
+  {
+    title: 'Can two GPUs or CPUs ever tie on price?',
+    content: 'The game deliberately avoids pairing items with identical prices, since "higher or lower" would be unanswerable — every round has a real, decidable answer.',
+  },
+];
+
+const guesserFaqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: guesserFaqSections.map((s) => ({
+    '@type': 'Question',
+    name: s.title,
+    acceptedAnswer: { '@type': 'Answer', text: s.content },
+  })),
+};
+
 function readBest(): number {
   try {
     return Number(localStorage.getItem(BEST_KEY)) || 0;
@@ -128,6 +159,7 @@ export default function PriceGuesser() {
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(guesserFaqJsonLd) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
@@ -215,10 +247,19 @@ export default function PriceGuesser() {
           </>
         )}
 
-        <div className="text-center mt-8">
+        <div className="text-center mt-8 mb-4">
           <Link to="/builder" className="inline-flex items-center gap-1 text-xs font-semibold hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
             <Cpu size={12} /> See real prices for every part in the Builder →
           </Link>
+        </div>
+
+        <div className="mt-8 space-y-3">
+          {guesserFaqSections.map((s) => (
+            <div key={s.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{s.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{s.content}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
