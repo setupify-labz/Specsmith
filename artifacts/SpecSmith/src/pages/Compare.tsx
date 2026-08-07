@@ -222,7 +222,8 @@ export default function Compare() {
             <Link to="/gpu-tier-list" className="font-semibold hover:opacity-80" style={{ color: COLORS.a }}>GPU</Link>
             {' '}or{' '}
             <Link to="/cpu-tier-list" className="font-semibold hover:opacity-80" style={{ color: COLORS.b }}>CPU</Link>
-            {' '}Tier List.
+            {' '}Tier List. Or test your price instincts with{' '}
+            <Link to="/price-guesser" className="font-semibold hover:opacity-80" style={{ color: 'var(--ff-red)' }}>Higher or Lower</Link>.
           </p>
         </motion.div>
 
