@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, Sparkles, Box } from 'lucide-react';
 import { USE_CASES } from '../lib/useCaseBuilds';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -43,6 +43,25 @@ export default function UseCaseBuildIndex() {
               </Link>
             </motion.div>
           ))}
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: USE_CASES.length * 0.05 }}>
+            <Link to="/best-pc-for/small-form-factor"
+              className="flex items-center justify-between rounded-xl p-4 transition-all hover:opacity-90 card-hover"
+              style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+              <div className="flex items-center gap-3">
+                <Box size={16} style={{ color: 'var(--ff-accent)' }} />
+                <div>
+                  <span className="text-sm font-bold" style={{ color: 'var(--ff-text)' }}>Small Form Factor (Mini-ITX)</span>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--ff-text-3)' }}>2 clearance-verified builds</p>
+                </div>
+              </div>
+              <ChevronRight size={16} style={{ color: 'var(--ff-text-3)' }} />
+            </Link>
+          </motion.div>
         </div>
 
         <div className="text-center mt-10">

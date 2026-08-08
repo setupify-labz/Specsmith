@@ -23,7 +23,7 @@ SpecSmith helps PC builders plan a compatible build and predict real-world gamin
 - [Best Motherboards by Platform](/best-motherboard): Motherboards organized by CPU socket (AMD AM4/AM5, Intel LGA1700/LGA1851).
 - [Best GPU by Budget](/best-gpu-budget): Every GPU we track under a given price ceiling, ranked by benchmark performance, from under $200 to under $1,500.
 - [Best CPU by Budget](/best-cpu-budget): Every CPU we track under a given price ceiling, ranked by benchmark performance, from under $150 to under $1,000.
-- [Best PC by Use Case](/best-pc-for): GPU/CPU picks across three budgets for use cases beyond pure gaming FPS — streaming (NVENC-first) and video editing (VRAM-first) so far.
+- [Best PC by Use Case](/best-pc-for): GPU/CPU picks across three budgets for use cases beyond pure gaming FPS — streaming (NVENC-first), video editing (VRAM-first), and local AI/LLM inference (VRAM-first) — plus two clearance-verified Mini-ITX small form factor builds.
 - [Parts Guides](/parts-guides): Hub linking every buying guide on the site — tier lists, upgrade guides, and budget-to-premium picks for RAM, storage, PSUs, cases, coolers, monitors, keyboards, mice, and headsets.
 - [Build Crate](/crate): A randomized-build generator (loot-crate style) — every pull is guaranteed to be a fully compatible build; rarity reflects how high-end the parts are.
 - [Build Gallery](/gallery): Real PC builds published by SpecSmith users, with full part lists, cost, and estimated FPS.

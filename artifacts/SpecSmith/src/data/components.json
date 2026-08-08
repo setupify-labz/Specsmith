@@ -275,6 +275,18 @@
       ],
       "form_factor": "ATX",
       "sponsored": false
+    },
+    {
+      "id": "asusb650ei",
+      "name": "ASUS ROG Strix B650E-I Gaming WiFi",
+      "brand": "ASUS",
+      "price_usd": 229,
+      "socket": "AM5",
+      "supported_ram": [
+        "DDR5"
+      ],
+      "form_factor": "ITX",
+      "sponsored": false
     }
   ],
   "ram": [
