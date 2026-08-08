@@ -965,6 +965,28 @@
       "type": "360mm AIO",
       "max_tdp_watts": 350,
       "sponsored": false
+    },
+    {
+      "id": "noctl9i17xx",
+      "name": "Noctua NH-L9i-17xx",
+      "brand": "Noctua",
+      "price_usd": 45,
+      "type": "Air",
+      "max_tdp_watts": 75,
+      "sponsored": false,
+      "height_mm": 37,
+      "socket_support": ["LGA1700", "LGA1851"]
+    },
+    {
+      "id": "noctl9aam5",
+      "name": "Noctua NH-L9a-AM5",
+      "brand": "Noctua",
+      "price_usd": 45,
+      "type": "Air",
+      "max_tdp_watts": 75,
+      "sponsored": false,
+      "height_mm": 37,
+      "socket_support": ["AM5"]
     }
   ]
 }

@@ -13,7 +13,7 @@ export interface CrateRam extends Part { type: string; }
 export interface CrateStorage extends Part { }
 export interface CratePsu extends Part { wattage: number; }
 export interface CrateCase extends Part { motherboard_support?: string[]; gpu_clearance_mm?: number; cooler_clearance_mm?: number; }
-export interface CrateCooler extends Part { type: string; height_mm?: number; max_tdp_watts?: number; }
+export interface CrateCooler extends Part { type: string; height_mm?: number; max_tdp_watts?: number; socket_support?: string[]; }
 interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 
 const gpus = gpuData as CrateGpu[];
@@ -143,7 +143,7 @@ export function rollCase(motherboardFormFactor?: string, gpuLengthMm?: number): 
   return { part: item, rarity: rarityFromPercentile(percentile) };
 }
 
-export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number): RolledPart<CrateCooler> {
+export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number, cpuSocket?: string): RolledPart<CrateCooler> {
   let pool = coolers;
   if (caseClearanceMm) {
     // AIOs have no height_mm (low-profile pump/radiator, not a tower), so
@@ -153,6 +153,11 @@ export function rollCooler(caseClearanceMm?: number, cpuTdpWatts?: number): Roll
   }
   if (cpuTdpWatts) {
     pool = pool.filter(c => !c.max_tdp_watts || c.max_tdp_watts >= cpuTdpWatts);
+  }
+  if (cpuSocket) {
+    // Most coolers have no socket_support (universal mounting brackets);
+    // only single-socket compact designs need filtering here.
+    pool = pool.filter(c => !c.socket_support || c.socket_support.includes(cpuSocket));
   }
   const { item, percentile } = pickWeighted(pool, c => c.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile) };

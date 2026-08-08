@@ -323,7 +323,7 @@ export default function BuildCrate() {
       const r = rollCase(revealed.motherboard!.part.form_factor, revealed.gpu!.part.length_mm);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.case = r; } });
     } else if (key === 'cooler') {
-      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, revealed.cpu!.part.tdp_watts);
+      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, revealed.cpu!.part.tdp_watts, revealed.cpu!.part.socket);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cooler = r; } });
     } else {
       const r = rollPsu(revealed.gpu!.part.tdp_watts, revealed.cpu!.part.tdp_watts);

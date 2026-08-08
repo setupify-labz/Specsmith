@@ -24,7 +24,7 @@ export function checkCompatibility(parts: {
   ram?: { type: string; name: string } | null;
   psu?: { wattage: number; name: string } | null;
   case?: { name: string; gpu_clearance_mm?: number; cooler_clearance_mm?: number; motherboard_support?: string[] } | null;
-  cooler?: { name: string; type: string; height_mm?: number; max_tdp_watts?: number } | null;
+  cooler?: { name: string; type: string; height_mm?: number; max_tdp_watts?: number; socket_support?: string[] } | null;
 }): CompatibilityResult {
   const warnings: CompatibilityWarning[] = [];
   const passed: string[] = [];
@@ -42,6 +42,25 @@ export function checkCompatibility(parts: {
       });
     } else {
       passed.push('CPU socket');
+    }
+  }
+
+  // Cooler socket vs CPU socket — most coolers use universal mounting
+  // brackets and have no socket_support field at all (treated as
+  // compatible with everything); a handful of compact low-profile
+  // coolers are genuinely single-socket designs.
+  if (parts.cooler?.socket_support && parts.cpu) {
+    if (!parts.cooler.socket_support.includes(parts.cpu.socket)) {
+      warnings.push({
+        id: 'cooler-socket-mismatch',
+        type: 'error',
+        title: 'Cooler doesn\'t mount on this CPU\'s socket',
+        detail: `${parts.cooler.name} only mounts on ${parts.cooler.socket_support.join('/')}, but ${parts.cpu.name} uses ${parts.cpu.socket}. This cooler's bracket physically won't attach.`,
+        fix: `Pick a cooler that supports ${parts.cpu.socket}, or a universal-mount cooler.`,
+        confidence: 'certain',
+      });
+    } else {
+      passed.push('Cooler socket');
     }
   }
 
