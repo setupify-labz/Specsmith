@@ -155,8 +155,6 @@ export default function PriceGuesser() {
     }
   };
 
-  if (!current || !next) return null;
-
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(guesserFaqJsonLd) }} />
@@ -180,7 +178,17 @@ export default function PriceGuesser() {
           </div>
         </div>
 
-        {gameOver ? (
+        {!current || !next ? (
+          // Round data is picked client-side only (useEffect) — picking it
+          // during the initial render would have the server and client each
+          // roll different random items, a hydration mismatch. This
+          // placeholder is what both server and client agree on for that
+          // brief window, so the rest of the page (title, FAQ, JSON-LD)
+          // doesn't have to be hidden behind it too.
+          <div className="rounded-2xl p-10 text-center" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+            <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>Loading round…</p>
+          </div>
+        ) : gameOver ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
