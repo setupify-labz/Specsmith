@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cpu, ExternalLink } from 'lucide-react';
-import { getSffPicks, getSffPageMeta, sffItemListJsonLd } from '../lib/sffBuilds';
+import { getSffPicks, getSffPageMeta, sffItemListJsonLd, sffFaqs, sffFaqJsonLd } from '../lib/sffBuilds';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
@@ -30,6 +30,7 @@ export default function SffBuildPage() {
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sffItemListJsonLd(picks)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(sffFaqJsonLd()) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-pc-for" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -82,12 +83,21 @@ export default function SffBuildPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
           <Link to="/builder"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Cpu size={15} /> Start a Custom Build
           </Link>
+        </div>
+
+        <div className="space-y-3">
+          {sffFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

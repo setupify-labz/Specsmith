@@ -15,6 +15,11 @@ export interface UseCaseTier {
   maxCpuPrice: number;
 }
 
+export interface UseCaseFaq {
+  title: string;
+  content: string;
+}
+
 export interface UseCase {
   slug: string;
   title: string;
@@ -26,6 +31,7 @@ export interface UseCase {
   // real, well-documented hardware fact, not an invented benchmark.
   // 'vram' prefers the highest-VRAM card in budget, ties broken by score.
   gpuStrategy: 'encode' | 'vram';
+  faqs: UseCaseFaq[];
 }
 
 export const USE_CASES: UseCase[] = [
@@ -41,6 +47,20 @@ export const USE_CASES: UseCase[] = [
       { label: 'High-End Streamer', maxGpuPrice: 1500, maxCpuPrice: 900 },
     ],
     gpuStrategy: 'encode',
+    faqs: [
+      {
+        title: 'Do I need an NVIDIA GPU to stream well?',
+        content: 'Not strictly — AMD (AMF) and Intel (QuickSync) both ship their own hardware video encoders too. NVIDIA\'s NVENC is favored because it has the lowest performance overhead and the widest, most mature support in OBS/Streamlabs, which is why these picks default to it when the budget allows.',
+      },
+      {
+        title: 'Why does CPU core count matter more for streaming than for pure gaming?',
+        content: 'A streaming PC is running the game and (if you\'re not using NVENC/hardware encoding) potentially software-encoding video at the same time. More cores means more headroom to do both without either the game or the stream stuttering.',
+      },
+      {
+        title: 'What if I already use a capture card or a second streaming PC?',
+        content: 'Then the encoding load is off your gaming PC entirely, and you can prioritize a GPU picked purely for game performance instead of NVENC — these tiers assume a single-PC streaming setup.',
+      },
+    ],
   },
   {
     slug: 'video-editing',
@@ -54,6 +74,20 @@ export const USE_CASES: UseCase[] = [
       { label: 'Professional Editor', maxGpuPrice: 1800, maxCpuPrice: 1000 },
     ],
     gpuStrategy: 'vram',
+    faqs: [
+      {
+        title: 'Why pick a GPU by VRAM instead of gaming benchmark score?',
+        content: 'Editing software loads the full timeline, effects, and cache into video memory — run out of VRAM and the software drops to slower fallback paths or stutters, regardless of how fast the GPU is at rendering games. More VRAM raises the ceiling on resolution and layer count before that happens.',
+      },
+      {
+        title: 'Does CPU still matter for video editing?',
+        content: 'Yes — exports, proxy generation, and some effects are CPU-bound (or split between CPU and GPU depending on the codec), so these picks still weight core count heavily, just secondary to the GPU\'s VRAM.',
+      },
+      {
+        title: 'What about storage speed?',
+        content: 'A fast NVMe SSD matters a lot for scrubbing high-resolution footage smoothly, but storage isn\'t part of this GPU/CPU pairing — see the Storage buying guide under Parts Guides for picks.',
+      },
+    ],
   },
   {
     slug: 'ai-local-llm',
@@ -67,6 +101,24 @@ export const USE_CASES: UseCase[] = [
       { label: 'Maximum VRAM', maxGpuPrice: 2000, maxCpuPrice: 800 },
     ],
     gpuStrategy: 'vram',
+    faqs: [
+      {
+        title: 'Why does VRAM matter more than GPU brand or benchmark score for local AI?',
+        content: 'A model has to fit entirely (or almost entirely) in video memory to run at usable speed — if it doesn\'t fit, it either won\'t load or falls back to slow CPU/system-RAM offloading. More VRAM directly raises the size of model you can run, ahead of how that GPU scores in gaming benchmarks.',
+      },
+      {
+        title: 'Do AMD or Intel GPUs work for local AI, or is it NVIDIA-only?',
+        content: 'NVIDIA (via CUDA) has the most mature software support across tools like Ollama and LM Studio, but AMD and Intel cards can run inference too through ROCm or Vulkan backends depending on the tool — support varies more than with NVIDIA, so check your specific tool\'s compatibility list before buying.',
+      },
+      {
+        title: 'Does the CPU matter for running local models?',
+        content: 'Far less than for gaming — inference runs on the GPU, so the CPU\'s main job is keeping the rest of the system responsive while a model is loaded. These picks still favor higher core counts where the budget allows, but it\'s a secondary factor here.',
+      },
+      {
+        title: 'What does quantization mean for how much VRAM I need?',
+        content: 'Quantization shrinks a model\'s memory footprint by storing its weights at lower precision, trading a small amount of output quality for a much smaller VRAM requirement — it\'s how larger models get squeezed onto consumer GPUs, and most local tools let you pick a quantization level per model.',
+      },
+    ],
   },
 ];
 
@@ -120,5 +172,17 @@ export function useCaseItemListJsonLd(useCase: UseCase, picks: TierPick[]) {
       { '@type': 'ListItem', position: i * 2 + 1, name: p.gpu.name, url: `${SITE_URL}/builder?gpu=${p.gpu.id}` },
       { '@type': 'ListItem', position: i * 2 + 2, name: p.cpu.name, url: `${SITE_URL}/builder?cpu=${p.cpu.id}` },
     ]),
+  };
+}
+
+export function useCaseFaqJsonLd(useCase: UseCase) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: useCase.faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
   };
 }

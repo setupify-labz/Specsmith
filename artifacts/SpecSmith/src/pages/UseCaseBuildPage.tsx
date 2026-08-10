@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Cpu, ExternalLink } from 'lucide-react';
-import { getUseCase, getTierPicks, getUseCasePageMeta, useCaseItemListJsonLd, USE_CASES } from '../lib/useCaseBuilds';
+import { getUseCase, getTierPicks, getUseCasePageMeta, useCaseItemListJsonLd, useCaseFaqJsonLd, USE_CASES } from '../lib/useCaseBuilds';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
@@ -39,6 +39,7 @@ export default function UseCaseBuildPage() {
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(useCaseItemListJsonLd(useCase, picks)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(useCaseFaqJsonLd(useCase)) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-pc-for" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -107,7 +108,7 @@ export default function UseCaseBuildPage() {
         </div>
 
         {related.length > 0 && (
-          <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+          <div className="rounded-2xl p-6 mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <h2 className="font-bold mb-3 text-sm" style={{ color: 'var(--ff-text)' }}>Other Use-Case Guides</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {related.map(r => (
@@ -121,6 +122,15 @@ export default function UseCaseBuildPage() {
             </div>
           </div>
         )}
+
+        <div className="space-y-3">
+          {useCase.faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

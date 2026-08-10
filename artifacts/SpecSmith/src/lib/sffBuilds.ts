@@ -88,3 +88,30 @@ export function sffItemListJsonLd(picks: SffPick[]) {
     ]),
   };
 }
+
+export const sffFaqs = [
+  {
+    title: "Why do both tiers use the same CPU, motherboard, and cooler?",
+    content: "This site only tracks one Mini-ITX motherboard and one low-profile cooler rated for a Ryzen socket, so both builds share that fixed platform — only the GPU changes between tiers, since that's the part most constrained by case clearance.",
+  },
+  {
+    title: "What does the 15mm clearance margin actually protect against?",
+    content: "A case's listed GPU clearance is usually measured to the absolute physical limit, but exact card length varies by manufacturer even for the same GPU model — the 15mm margin leaves room for that variance so a listed-as-fitting card doesn't end up jammed against the side panel.",
+  },
+  {
+    title: "Can I swap in a different case and still trust these picks?",
+    content: "The GPU and cooler picks are matched to the specific clearance numbers of the two cases shown here — swapping cases means re-checking GPU length and cooler height against the new case's spec sheet, which the Builder's compatibility checker will flag automatically if you load this build and then change the case.",
+  },
+];
+
+export function sffFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: sffFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
