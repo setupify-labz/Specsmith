@@ -27,7 +27,11 @@ numbers, no new games without sourcing real per-GPU FPS data first
   Strix B650E-I Gaming WiFi, AM5, DDR5, $229). Both tiers' full 5-part
   builds (case/motherboard/CPU/cooler/GPU) load into the Builder with
   zero compatibility warnings — verified live, not just asserted.
-  Commit: pending (this session).
+  Commit: 07addc1.
+- [x] 2026-08-10 — Added FAQ + FAQPage schema to all four `/best-pc-for/:slug`
+  pages (streaming, video-editing, ai-local-llm, small-form-factor) —
+  these were the only major prerendered pages missing it, per a fresh
+  full-site audit. Commit: cdad817.
 
 ## Queued — use-case build guides (same `/best-pc-for/:slug` pattern)
 - [ ] **Home Office / Productivity (non-gaming)** — lower priority, weaker
