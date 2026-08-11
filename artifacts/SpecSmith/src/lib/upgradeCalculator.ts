@@ -92,3 +92,30 @@ export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandi
       return { gpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict };
     });
 }
+
+export const upgradeCalculatorFaqs = [
+  {
+    title: 'How is the resale value calculated?',
+    content: 'It\'s a flat 65% of the card\'s current listed price, rounded to a clean number — a rough estimate to plan around, not a live market quote. Actual used prices vary by condition, region, and demand, so treat it as a starting point, not gospel.',
+  },
+  {
+    title: 'What counts as a "strong", "moderate", or "marginal" upgrade?',
+    content: 'It\'s based on the average FPS gain across all 20 tracked games at 1440p High: 30%+ is a strong upgrade, 15-29% is moderate, and under 15% is marginal — worth knowing before spending money on a card that won\'t feel meaningfully faster.',
+  },
+  {
+    title: 'Why does "Net Cost" matter more than the new card\'s price?',
+    content: 'Net cost subtracts your current card\'s estimated resale value from the new card\'s price — it\'s what the upgrade actually costs you out of pocket if you sell your old GPU, which is usually the number that matters when deciding whether it\'s worth it.',
+  },
+];
+
+export function upgradeCalculatorFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: upgradeCalculatorFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}

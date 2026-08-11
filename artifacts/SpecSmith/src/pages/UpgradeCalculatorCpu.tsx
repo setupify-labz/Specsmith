@@ -9,6 +9,7 @@ import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { useToast } from '../context/ToastContext';
 import {
   getUpgradeCpus, getUpgradeCpu, getCpuUpgradeCandidates, estimateCpuResaleValue, averageCpuFps,
+  cpuUpgradeCalculatorFaqs, cpuUpgradeCalculatorFaqJsonLd,
   type UpgradeVerdict,
 } from '../lib/cpuUpgradeCalculator';
 
@@ -55,6 +56,7 @@ export default function UpgradeCalculatorCpu() {
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(cpuUpgradeCalculatorFaqJsonLd()) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
@@ -192,6 +194,15 @@ export default function UpgradeCalculatorCpu() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="mt-12 space-y-3">
+          {cpuUpgradeCalculatorFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

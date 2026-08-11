@@ -94,3 +94,30 @@ export function getCpuUpgradeCandidates(currentId: string, limit = 6): CpuUpgrad
       return { cpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict };
     });
 }
+
+export const cpuUpgradeCalculatorFaqs = [
+  {
+    title: 'How is the resale value calculated?',
+    content: 'It\'s a flat 60% of the chip\'s current listed price, rounded to a clean number — a rough estimate to plan around, not a live market quote. Actual used prices vary by condition, region, and demand.',
+  },
+  {
+    title: 'Why are the FPS gains so much smaller here than on the GPU calculator?',
+    content: 'Most tracked games are GPU-bound, not CPU-bound, so even a big jump in CPU performance shows up as a small change in average FPS — the CPU\'s effect on gaming performance is real but narrow compared to a GPU upgrade. That\'s also why the "strong upgrade" threshold here is 4%+, not the GPU calculator\'s 30%+.',
+  },
+  {
+    title: 'If the FPS gain is small, is a CPU upgrade ever worth it for gaming?',
+    content: 'For pure gaming FPS, usually less than a GPU upgrade — but a stronger CPU still helps with 1% lows, streaming/multitasking while gaming, and CPU-heavy titles this calculator\'s 20-game average can understate. If gaming FPS alone is the goal, check the GPU Trade-Up Calculator first.',
+  },
+];
+
+export function cpuUpgradeCalculatorFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: cpuUpgradeCalculatorFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
