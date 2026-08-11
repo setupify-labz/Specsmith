@@ -124,6 +124,33 @@ function GameAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { v
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const presets: Preset[] = ['low', 'medium', 'high', 'ultra'];
 
+const compareFaqs = [
+  {
+    title: 'Does changing resolution or quality preset change which build wins a given game?',
+    content: 'No — for any single game, both builds are scaled by that game\'s same base FPS number at the chosen resolution/preset, so the winner for that game is fixed by the builds themselves. Resolution and preset change the raw FPS numbers shown, not which build comes out ahead in that particular title.',
+  },
+  {
+    title: 'Why does Build A win some games and Build B win others?',
+    content: 'Each tracked game has its own real weighting of how much GPU strength versus CPU strength matters (a GPU-bound shooter behaves differently than a CPU-heavy strategy game) — so a build with a stronger GPU but weaker CPU can win GPU-heavy titles while losing CPU-sensitive ones to a more balanced build, even if one build costs more overall.',
+  },
+  {
+    title: 'What do the two default builds represent?',
+    content: 'A starting example, not a recommendation — two real, similarly-priced GPU+CPU pairings (currently about $100 apart) so the comparison has something to show before you\'ve picked your own parts. Swap either side using the selectors above; the URL updates so you can share your specific comparison.',
+  },
+];
+
+function compareFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: compareFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
+
 const DEFAULT_GPU_A = 'rtx4070ti';
 const DEFAULT_CPU_A = 'i5-13600k';
 const DEFAULT_GPU_B = 'rx7800xt';
@@ -207,6 +234,7 @@ export default function Compare() {
 
   return (
     <div className="relative min-h-screen pt-24 pb-20">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(compareFaqJsonLd()) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -410,6 +438,15 @@ export default function Compare() {
             <p className="text-secondary-custom text-lg">Select GPU + CPU for both builds to see the comparison</p>
           </div>
         )}
+
+        <div className="mt-12 space-y-3">
+          {compareFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
