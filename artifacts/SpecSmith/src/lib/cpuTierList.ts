@@ -68,3 +68,30 @@ export function getCpuTiers(): Tier[] {
     };
   });
 }
+
+export const cpuTierListFaqs = [
+  {
+    title: 'How are tiers assigned — is price a factor?',
+    content: 'No — tiers are based purely on raw gaming benchmark score (S is 270+, A is 230-269, B is 195-229, C is 150-194, D is under 150), independent of price. The thresholds are calibrated to how CPU scores actually cluster in the dataset, not copy-pasted from the GPU tier list — CPUs bunch up much more densely near the top than GPUs do.',
+  },
+  {
+    title: 'What does the 💰 icon mean?',
+    content: 'It marks the best-value chip within that specific tier — the one with the highest FPS-per-$100 among CPUs that landed in the same performance tier, not necessarily the cheapest one overall.',
+  },
+  {
+    title: 'My CPU is tier A — will it bottleneck a flagship (S-tier) GPU?',
+    content: 'Not meaningfully in most games — tier A chips are built to keep pace with high-end GPUs. If you want to check a specific CPU/GPU pairing directly, load both into the Builder and its compatibility/bottleneck checker will flag it if there\'s a real mismatch.',
+  },
+];
+
+export function cpuTierListFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: cpuTierListFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}

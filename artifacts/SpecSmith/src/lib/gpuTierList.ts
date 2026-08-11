@@ -66,3 +66,30 @@ export function getGpuTiers(): Tier[] {
     };
   });
 }
+
+export const gpuTierListFaqs = [
+  {
+    title: 'How are tiers assigned — is price a factor?',
+    content: 'No — tiers are based purely on raw benchmark score (S is 245+, A is 195-244, B is 150-194, C is 110-149, D is under 110), the same "if money were no object" ranking a classic tier list uses. Price is deliberately kept separate so the ranking answers "how fast is it," not "is it worth it."',
+  },
+  {
+    title: 'What does the 💰 icon mean?',
+    content: 'It marks the best-value card within that specific tier — the one with the highest FPS-per-$100 among cards that landed in the same performance tier. It\'s not necessarily the cheapest card in the tier, just the one giving you the most performance for your money once you\'ve already decided that tier\'s performance level is what you want.',
+  },
+  {
+    title: 'Why is a card in tier B sometimes more expensive than one in tier A?',
+    content: 'Pricing and performance don\'t move in lockstep — an older or less efficient architecture can cost more than a newer card that outperforms it, which is exactly the kind of gap this tier list is built to expose. Check the Higher or Lower game or the GPU comparisons page for more of these head-to-head surprises.',
+  },
+];
+
+export function gpuTierListFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: gpuTierListFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
