@@ -32,11 +32,17 @@ numbers, no new games without sourcing real per-GPU FPS data first
   pages (streaming, video-editing, ai-local-llm, small-form-factor) —
   these were the only major prerendered pages missing it, per a fresh
   full-site audit. Commit: cdad817.
+- [x] 2026-08-11 — Use-case build guide: Home Office / Productivity
+  (`/best-pc-for/home-office`) — new `budget` GPU strategy (cheapest
+  card in budget, since raw GPU performance is irrelevant to office
+  work — a real hardware fact, not an invented number), CPU still
+  picked by highest core count for multitasking headroom. Includes
+  FAQ + FAQPage schema from day one. Now that Streaming/Video Editing/
+  AI-LLM have all shipped, this was the queue's own trigger condition
+  to unblock it.
 
 ## Queued — use-case build guides (same `/best-pc-for/:slug` pattern)
-- [ ] **Home Office / Productivity (non-gaming)** — lower priority, weaker
-  distinct search intent than the above three; only pick this up if
-  the others are exhausted.
+(none currently — all four queued use cases have shipped)
 
 ## Queued — budget/combo micro-pages
 - [ ] Per-generation "which motherboard for [popular CPU]" cross-links —

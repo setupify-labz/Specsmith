@@ -30,7 +30,9 @@ export interface UseCase {
   // 'encode' prefers NVIDIA (NVENC hardware encoder) at equal budget — a
   // real, well-documented hardware fact, not an invented benchmark.
   // 'vram' prefers the highest-VRAM card in budget, ties broken by score.
-  gpuStrategy: 'encode' | 'vram';
+  // 'budget' picks the cheapest card in budget — for workloads where raw
+  // GPU performance doesn't matter, so the budget goes to CPU instead.
+  gpuStrategy: 'encode' | 'vram' | 'budget';
   faqs: UseCaseFaq[];
 }
 
@@ -120,6 +122,33 @@ export const USE_CASES: UseCase[] = [
       },
     ],
   },
+  {
+    slug: 'home-office',
+    title: 'Best PC Build for Home Office / Productivity',
+    shortTitle: 'Home Office',
+    intro: 'Spreadsheets, video calls, browser tabs, and document editing barely touch the GPU at all — even the cheapest discrete card we track drives multiple high-resolution monitors without breaking a sweat, far beyond what integrated graphics alone can do. That means the smart move for a productivity build is to spend as little as possible on GPU and put the budget into CPU cores instead, since core count is what actually determines how many apps you can run smoothly at once.',
+    criteria: 'GPU picked as the cheapest card in budget — raw gaming performance is irrelevant here, so there\'s no reason to pay more than the entry price. CPU picked by highest core count in budget (ties broken by benchmark score), since multitasking headroom is what matters for office work.',
+    tiers: [
+      { label: 'Everyday Office', maxGpuPrice: 200, maxCpuPrice: 200 },
+      { label: 'Power Multitasker', maxGpuPrice: 250, maxCpuPrice: 400 },
+      { label: 'Hybrid Work + Light Creative', maxGpuPrice: 350, maxCpuPrice: 600 },
+    ],
+    gpuStrategy: 'budget',
+    faqs: [
+      {
+        title: 'Why does this guide pick the cheapest GPU instead of the best one in budget?',
+        content: 'Office work — browsers, spreadsheets, video calls, documents — doesn\'t use the GPU for anything demanding, so a $1,000 flagship card drives a monitor exactly as well as a $140 entry-level one. Spending less on the GPU frees up more of the budget for the CPU, RAM, and storage, which is where a productivity PC actually feels faster.',
+      },
+      {
+        title: 'Wouldn\'t integrated graphics be enough, so I don\'t need a GPU at all?',
+        content: 'For light office work, often yes — many CPUs include integrated graphics capable of driving a couple of monitors. This guide assumes you want a discrete card anyway (for a wider range of motherboard/CPU combos, or headroom for the occasional game or GPU-accelerated task); if your CPU has integrated graphics and you\'re certain you\'ll never need more, you can skip the GPU line entirely and put that budget toward the CPU or RAM.',
+      },
+      {
+        title: 'Why does CPU core count matter so much for office multitasking?',
+        content: 'Every open browser tab, video call, and background app claims its own share of CPU time — more cores means more of them can run smoothly at once without the system bogging down, which is why these picks weight core count heavily even though clock speed and gaming benchmarks matter less here than for a gaming build.',
+      },
+    ],
+  },
 ];
 
 export function getUseCase(slug: string): UseCase | undefined {
@@ -132,6 +161,9 @@ function pickGpu(strategy: UseCase['gpuStrategy'], maxPrice: number): Gpu {
     const nvidia = pool.filter(g => g.brand === 'NVIDIA').sort((a, b) => b.benchmark_score - a.benchmark_score);
     if (nvidia.length > 0) return nvidia[0];
     return [...pool].sort((a, b) => b.benchmark_score - a.benchmark_score)[0];
+  }
+  if (strategy === 'budget') {
+    return [...pool].sort((a, b) => a.price_usd - b.price_usd)[0];
   }
   return [...pool].sort((a, b) => (b.vram_gb - a.vram_gb) || (b.benchmark_score - a.benchmark_score))[0];
 }
@@ -155,11 +187,17 @@ export function getTierPicks(useCase: UseCase): TierPick[] {
   }));
 }
 
+const GPU_STRATEGY_LABEL: Record<UseCase['gpuStrategy'], string> = {
+  encode: 'NVENC encoding support',
+  vram: 'VRAM headroom',
+  budget: 'lowest cost',
+};
+
 export function getUseCasePageMeta(useCase: UseCase): RouteMeta {
   return {
     path: `/best-pc-for/${useCase.slug}`,
     title: `${useCase.title} (2026) | SpecSmith`,
-    description: `${useCase.shortTitle}-focused GPU and CPU picks across three budgets, chosen by ${useCase.gpuStrategy === 'encode' ? 'NVENC encoding support' : 'VRAM headroom'} and core count — with real prices and buy links.`,
+    description: `${useCase.shortTitle}-focused GPU and CPU picks across three budgets, chosen by ${GPU_STRATEGY_LABEL[useCase.gpuStrategy]} and core count — with real prices and buy links.`,
   };
 }
 
