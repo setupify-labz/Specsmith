@@ -13,6 +13,33 @@ import PageGlow from '../components/PageGlow';
 
 const PART_CATEGORIES = ['gpu', 'cpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler', 'monitor', 'keyboard', 'mouse', 'headset'];
 
+const galleryFaqs = [
+  {
+    title: 'Do I need an account to browse the gallery?',
+    content: 'No — browsing every published build is open to anyone. You only need an account to save a build to your own Dashboard and publish it here yourself.',
+  },
+  {
+    title: 'What does the ✨ "Staff Pick" label mean?',
+    content: 'It marks a build that SpecSmith seeded rather than a real user submission — used to keep the gallery populated early on. Staff picks are always visually labeled this way and never presented as organic user activity.',
+  },
+  {
+    title: 'How is "Most Viewed" calculated?',
+    content: 'It\'s a real view count, incremented each time someone expands a build card to see its full part list — not a curated or editorial ranking, just the builds that have actually drawn the most clicks.',
+  },
+];
+
+function galleryFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: galleryFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
+
 function BuildCard({ build, expanded, onToggle }: { build: PublicBuildRow; expanded: boolean; onToggle: () => void }) {
   const partEntries = PART_CATEGORIES
     .map(cat => [cat, build.build_state[cat] ?? ''] as [string, string])
@@ -120,6 +147,7 @@ export default function Gallery() {
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(galleryFaqJsonLd()) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
@@ -181,6 +209,15 @@ export default function Gallery() {
             )}
           </>
         )}
+
+        <div className="mt-12 space-y-3">
+          {galleryFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
