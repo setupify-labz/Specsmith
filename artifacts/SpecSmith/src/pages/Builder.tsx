@@ -38,6 +38,37 @@ const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
 
+const builderFaqs = [
+  {
+    title: 'How accurate are the FPS estimates for my exact build?',
+    content: 'They use the same transparent tier-based algorithm explained on the About page, applied to whatever specific GPU/CPU/game/resolution/preset combination you\'ve picked here — not a generic average. Estimates are a planning guide, not a guarantee; real-world results vary by driver version, game patch, and background load.',
+  },
+  {
+    title: 'Can I add a part that isn\'t in the list?',
+    content: 'Yes — use "Add Custom Part" in the build summary to enter any component by name and price so it\'s included in your total cost. Custom parts don\'t have benchmark data in our dataset, so they won\'t affect the FPS estimate or compatibility checks — those still run on the tracked GPU and CPU you\'ve selected.',
+  },
+  {
+    title: 'Does the total price include sales tax?',
+    content: 'No, prices exclude sales tax by default. The build summary has an optional field where you can enter your local tax rate to see an estimated with-tax total — nothing is added automatically since rates vary by location.',
+  },
+  {
+    title: 'What do the compatibility warnings actually mean?',
+    content: 'Each one explains the specific reason for the conflict, a suggested fix, and how confident we are — "certain" for hard incompatibilities (like a socket mismatch) versus "likely" for things that depend on factors we can\'t fully verify (like exact case clearance). They\'re not just a red flag — click into one to see the reasoning.',
+  },
+];
+
+function builderFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: builderFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
+
 function getResolutionTier(res: string): number {
   if (res === '4K' || res === '5120x1440p') return 4;
   if (res === '3440x1440p' || res === '1440p') return 2;
@@ -203,6 +234,7 @@ export default function Builder() {
 
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(builderFaqJsonLd()) }} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
@@ -397,6 +429,15 @@ export default function Builder() {
               />
             )}
           </AnimatePresence>
+        </div>
+
+        <div className="mt-12 space-y-3">
+          {builderFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
