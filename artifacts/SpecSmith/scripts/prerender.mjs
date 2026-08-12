@@ -83,6 +83,7 @@ function injectHead(html, meta, siteUrl, defaultOgImage, breadcrumbJsonLd, siteJ
 // pages that actually exist. /build is excluded (noindex, unbounded URLs).
 function sitemapEntry(routePath) {
   if (routePath === '/build') return null;
+  if (routePath === '/404') return null;
   if (routePath === '/') return { changefreq: 'weekly', priority: '1.0' };
   if (routePath === '/builder') return { changefreq: 'weekly', priority: '0.9' };
   if (routePath === '/prebuilts') return { changefreq: 'weekly', priority: '0.8' };
@@ -149,9 +150,14 @@ async function main() {
     const meta = resolveMeta(routePath);
     const html = injectHead(template.replace('<!--app-html-->', appHtml), meta, SITE_URL, DEFAULT_OG_IMAGE, breadcrumbJsonLd, siteJsonLdGraph);
 
+    // 404.html is written flat (not nested in a /404/ folder) because that's
+    // the exact filename Cloudflare's not_found_handling: "404-page" looks
+    // for at the assets root when a request matches no real file.
     const outFile =
       routePath === '/'
         ? path.join(publicDir, 'index.html')
+        : routePath === '/404'
+        ? path.join(publicDir, '404.html')
         : path.join(publicDir, routePath.replace(/^\//, ''), 'index.html');
 
     await fs.mkdir(path.dirname(outFile), { recursive: true });
@@ -160,8 +166,9 @@ async function main() {
   }
 
   const sitemapFile = path.join(publicDir, 'sitemap.xml');
+  const sitemapUrlCount = PRERENDER_ROUTES.filter((r) => sitemapEntry(r) !== null).length;
   await fs.writeFile(sitemapFile, generateSitemap(PRERENDER_ROUTES, SITE_URL), 'utf-8');
-  console.log(`[prerender] Wrote ${path.relative(root, sitemapFile)} (${PRERENDER_ROUTES.length - 1} URLs)`);
+  console.log(`[prerender] Wrote ${path.relative(root, sitemapFile)} (${sitemapUrlCount} URLs)`);
 
   await fs.rm(ssrOutDir, { recursive: true, force: true });
 }

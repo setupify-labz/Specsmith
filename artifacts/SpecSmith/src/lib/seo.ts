@@ -26,6 +26,12 @@ export const ROUTE_META: RouteMeta[] = [
       'Build a compatible gaming PC and see estimated FPS across 20 games before you buy — 50+ GPUs and CPUs, live compatibility checks, and real pricing.',
   },
   {
+    path: '/404',
+    title: 'Page Not Found | SpecSmith',
+    description: 'The page you\'re looking for doesn\'t exist or may have moved.',
+    noindex: true,
+  },
+  {
     path: '/builder',
     title: 'PC Builder + FPS Estimator | SpecSmith',
     description:

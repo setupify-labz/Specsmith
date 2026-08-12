@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageWrapper from './components/PageWrapper';
 import Home from './pages/Home';
+import NotFound from './pages/not-found';
 import Builder from './pages/Builder';
 import Prebuilts from './pages/Prebuilts';
 import PrebuiltDetail from './pages/PrebuiltDetail';
@@ -63,6 +64,7 @@ export const PRERENDER_ROUTES = [
   '/compare',
   '/about',
   '/build',
+  '/404',
   '/vs',
   '/best-gpu',
   '/best-cpu',
@@ -180,6 +182,7 @@ export function render(url: string): string {
                 <Route path="/best-pc-for" element={<PageWrapper><UseCaseBuildIndex /></PageWrapper>} />
                 <Route path="/best-pc-for/small-form-factor" element={<PageWrapper><SffBuildPage /></PageWrapper>} />
                 <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
+                <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
               </Routes>
             </Suspense>
             <Footer />
