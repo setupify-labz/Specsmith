@@ -3,3 +3,9 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Vite content-hashes every filename under /assets/ (e.g. index-DeIj2fQ0.js) —
+# any content change produces a new URL, so these are safe to cache forever.
+# HTML pages intentionally stay off this rule so new deploys show up right away.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
