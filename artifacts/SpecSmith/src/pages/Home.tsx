@@ -4,8 +4,40 @@ import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import { PRICES_UPDATED } from '../lib/prices';
 import HeroFpsCard from '../components/HeroFpsCard';
 import CircuitAccent from '../components/CircuitAccent';
+
+const homeFaqs = [
+  {
+    title: 'Is SpecSmith really free?',
+    content: 'Yes, completely — the Builder, FPS estimates, compatibility checks, and comparisons are all free with no account required. You only need to sign up if you want to save a build to your Dashboard or publish it to the Gallery.',
+  },
+  {
+    title: 'Where do the prices and FPS numbers come from?',
+    content: `Prices are estimated US street pricing, refreshed monthly (last updated ${PRICES_UPDATED}). FPS estimates use a transparent tier-based algorithm explained in full on the About page — they're a planning guide to compare parts before you buy, not a live-scraped price feed or a guarantee of exact real-world performance.`,
+  },
+  {
+    title: 'Do I need to know anything about PC building to use this?',
+    content: 'No — that\'s the point of the compatibility checker. Pick parts you\'re interested in, and SpecSmith flags socket mismatches, insufficient PSU wattage, case clearance issues, and more before you spend money on something that doesn\'t fit together.',
+  },
+  {
+    title: 'How many parts and games does SpecSmith track?',
+    content: '50+ GPUs, 50+ CPUs, and 20 benchmarked games across resolutions and quality presets — plus motherboards, RAM, storage, PSUs, cases, coolers, and peripherals for a full build.',
+  },
+];
+
+function homeFaqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: homeFaqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+}
 
 const stats = [
   { value: '50+', label: 'GPUs Tracked' },
@@ -97,6 +129,7 @@ export default function Home() {
   useSeo(getRouteMeta('/'));
   return (
     <div className="min-h-screen">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd()) }} />
       {/* Hero */}
       <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
         {/* Glow orbs */}
@@ -311,6 +344,18 @@ export default function Home() {
             </Link>
           </div>
         </motion.div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="space-y-3">
+          {homeFaqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4 border border-subtle bg-card-dark">
+              <h2 className="font-bold text-sm mb-1.5 text-ff-primary">{f.title}</h2>
+              <p className="text-xs leading-relaxed text-secondary-custom">{f.content}</p>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
