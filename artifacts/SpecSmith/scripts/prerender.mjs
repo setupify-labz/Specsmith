@@ -147,6 +147,22 @@ async function main() {
       continue;
     }
 
+    // Catches the exact class of bug found 2026-08-12: entry-server.tsx
+    // keeps its own duplicated <Routes> list (needed so useParams works
+    // during prerender) that can silently drift from App.tsx's — when it's
+    // missing a route, <Routes> just renders nothing instead of erroring,
+    // shipping a blank page to every crawler with no build-time signal.
+    // /build is the one legitimate exception: prerendered with no share
+    // link param, its intentional fallback state has no <h1> by design —
+    // real content only exists client-side once a real ?b= link loads.
+    if (routePath !== '/build' && !/<h1[\s>]/i.test(appHtml)) {
+      throw new Error(
+        `[prerender] "${routePath}" rendered with no <h1> — this usually means entry-server.tsx's ` +
+        `route list is missing a route App.tsx has (a silent SSR/routing drift, not a rendering fluke). ` +
+        `Check that every route in App.tsx also exists in entry-server.tsx's <Routes> list.`
+      );
+    }
+
     const meta = resolveMeta(routePath);
     const html = injectHead(template.replace('<!--app-html-->', appHtml), meta, SITE_URL, DEFAULT_OG_IMAGE, breadcrumbJsonLd, siteJsonLdGraph);
 
