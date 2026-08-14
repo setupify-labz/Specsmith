@@ -30,9 +30,35 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
     })),
   };
 
+  const faqs = [
+    {
+      title: `How do I pick the right ${guide.categoryLabel}?`,
+      content: guide.blurb,
+    },
+    {
+      title: `How many ${guide.categoryLabel} options do you track, and how are the picks chosen?`,
+      content: `We track ${guide.items.length} ${guide.categoryLabel} options. The picks above (${guide.picks.map(p => p.label).join(', ')}) are the price/spec extremes within that tracked list — cheapest, fastest or highest-spec, and most expensive — not sponsored placements.`,
+    },
+    {
+      title: 'Are these prices up to date?',
+      content: `Prices are typical US street pricing, last updated ${PRICES_UPDATED}.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
@@ -100,6 +126,15 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
           <p className="text-xs mt-4 leading-relaxed" style={{ color: 'var(--ff-text-3)' }}>
             Prices are typical US street pricing, last updated {PRICES_UPDATED}.
           </p>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
