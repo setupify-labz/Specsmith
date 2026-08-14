@@ -28,11 +28,37 @@ const GUIDE_LINKS = [
   { to: '/best-headset', label: 'Headsets', desc: 'Wired and wireless, with mic quality', icon: Headphones },
 ];
 
+const faqs = [
+  {
+    title: "What's the difference between the Tier Lists and the Budget guides?",
+    content: 'Tier Lists rank every GPU or CPU we track purely on performance, S to D, regardless of price. Budget guides filter down to whatever fits under a specific price ceiling, ranked by benchmark score within that limit — use Tier Lists to see the full performance picture, Budget guides when you have a firm spending cap.',
+  },
+  {
+    title: 'Are these guides kept up to date?',
+    content: 'Prices refresh monthly as part of the site\'s regular data update, and tier/budget rankings recalculate automatically from the current dataset — nothing here is a static, one-time snapshot.',
+  },
+  {
+    title: "Where do I start if I'm building my first PC?",
+    content: 'Skip straight to the Builder — pick parts as you go and it flags socket mismatches, PSU wattage shortfalls, and case clearance issues in real time, so you don\'t need to read every guide here first to avoid a bad combination.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.title,
+    acceptedAnswer: { '@type': 'Answer', text: f.content },
+  })),
+};
+
 export default function PartsGuidesHub() {
   useSeo(getRouteMeta('/parts-guides'));
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -68,6 +94,15 @@ export default function PartsGuidesHub() {
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="space-y-3 mt-12 mb-2">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="text-center mt-10">

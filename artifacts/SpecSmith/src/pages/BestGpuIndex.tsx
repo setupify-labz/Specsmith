@@ -6,11 +6,37 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
 
+const faqs = [
+  {
+    title: `How many games does this cover?`,
+    content: `${GAME_PAGES.length} popular titles, from competitive shooters like Valorant and CS2 to demanding open-world games like Cyberpunk 2077 and Alan Wake 2. Each game's page ranks GPUs by estimated FPS specifically for that title's performance profile.`,
+  },
+  {
+    title: 'How is "best" GPU determined per game?',
+    content: 'Each game page ranks 15 GPUs from budget to flagship by estimated FPS at 1080p, 1440p, and 4K for that specific title, then calls out separate value, budget, and 144 FPS picks — the fastest card isn\'t always the right recommendation for every budget.',
+  },
+  {
+    title: "What if my game isn't listed here?",
+    content: 'Use the Builder to estimate FPS for any GPU paired with any of the other games in our dataset, or the GPU Tier List for a game-agnostic ranking of every card we track.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.title,
+    acceptedAnswer: { '@type': 'Answer', text: f.content },
+  })),
+};
+
 export default function BestGpuIndex() {
   useSeo(getRouteMeta('/best-gpu'));
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -51,6 +77,15 @@ export default function BestGpuIndex() {
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="space-y-3 mt-12 mb-2">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="text-center mt-10">

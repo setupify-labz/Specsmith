@@ -109,8 +109,48 @@ export default function CpuMatchup() {
 
   const related = getRelatedCpuMatchups(matchup);
 
+  const priceDiff = Math.abs(cpuA.price_usd - cpuB.price_usd);
+  const cheaper = cpuA.price_usd <= cpuB.price_usd ? cpuA : cpuB;
+  const pricier = cheaper === cpuA ? cpuB : cpuA;
+  const betterValueFps = valueWinner === cpuA ? valueA : valueB;
+  const otherValueFps = valueWinner === cpuA ? valueB : valueA;
+
+  const faqs = [
+    {
+      title: `Is the ${cpuA.name} or ${cpuB.name} faster for gaming?`,
+      content: isTie
+        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games tested here — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Buy whichever is better value.`
+        : `The ${winner.name} is faster overall, winning ${winner === cpuA ? winsA : winsB} of ${rows.length} games tested at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
+    },
+    {
+      title: `Which is better value, the ${cpuA.name} or ${cpuB.name}?`,
+      content: `The ${valueWinner.name} delivers more FPS per dollar — ${betterValueFps} FPS per $100 spent versus ${otherValueFps} FPS per $100 for the other chip, based on average FPS across all ${rows.length} games at ${resLabels[resolution]}.`,
+    },
+    {
+      title: `How much does the ${cpuA.name} cost compared to the ${cpuB.name}?`,
+      content: priceDiff === 0
+        ? `Both chips cost the same, $${cpuA.price_usd}, based on typical US street pricing last updated ${PRICES_UPDATED}.`
+        : `The ${cheaper.name} is $${priceDiff} cheaper at $${cheaper.price_usd} vs $${pricier.price_usd} for the ${pricier.name}, based on typical US street pricing last updated ${PRICES_UPDATED}.`,
+    },
+    {
+      title: 'Why is this comparison run at a lower resolution than the GPU matchups?',
+      content: `Both chips are paired with the same ${gpu.name} here — a GPU fast enough that the CPU becomes the bottleneck, which is where CPU differences actually show up. At 1440p/4K, most games become GPU-bound and CPU gaps shrink toward zero; switch resolutions above to see that happen.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/vs" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -288,6 +328,16 @@ export default function CpuMatchup() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             Build with the {recommended.name}{isTie ? ' (better value)' : ''} <ChevronRight size={14} />
           </Link>
+        </div>
+
+        {/* FAQ */}
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {/* Related matchups */}

@@ -4,6 +4,7 @@ import { ArrowRight, ChevronRight, DollarSign, Zap, Cpu, Sliders } from 'lucide-
 import { getUpgradePage, getUpgradeIntro, getRelatedUpgradePages, getUpgradePageMeta } from '../lib/upgradePages';
 import { getUpgradeGpu, getUpgradeCandidates, estimateResaleValue, averageFps, type UpgradeVerdict } from '../lib/upgradeCalculator';
 import { useSeo } from '../hooks/useSeo';
+import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
 const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: string; border: string }> = {
@@ -46,8 +47,50 @@ export default function GpuUpgradePage() {
   const intro = getUpgradeIntro(gpu);
   const related = getRelatedUpgradePages(page);
 
+  const bestGain = candidates.length > 0
+    ? candidates.reduce((best, c) => c.fpsGainPct > best.fpsGainPct ? c : best, candidates[0])
+    : undefined;
+
+  const faqs = [
+    {
+      title: `What should I upgrade my ${gpu.name} to?`,
+      content: candidates.length === 0
+        ? `The ${gpu.name} is already the top tier we track — there's nothing meaningfully faster in our dataset to recommend.`
+        : `The most direct next step up is the ${candidates[0].gpu.name}, roughly a ${candidates[0].fpsGainPct >= 0 ? '+' : ''}${candidates[0].fpsGainPct}% FPS gain for an estimated net cost of $${candidates[0].netCost.toLocaleString()} after reselling your ${gpu.name}. ${candidates.length} tracked upgrade option${candidates.length === 1 ? '' : 's'} total — see the full list above.`,
+    },
+    {
+      title: `How much is my ${gpu.name} worth used?`,
+      content: `Roughly $${resale.toLocaleString()}, a rough resale estimate based on typical used-market depreciation — not a live marketplace quote. Actual resale value depends on condition, local demand, and where you sell.`,
+    },
+    {
+      title: 'What does "Net Cost" mean on this page?',
+      content: `Net cost is the new card's price minus your ${gpu.name}'s estimated resale value — the real out-of-pocket cost of the upgrade if you sell your old card. It doesn't include shipping, marketplace fees, or sales tax.`,
+    },
+    {
+      title: 'Is upgrading worth it right now?',
+      content: bestGain === undefined
+        ? `There's no faster card in our dataset than the ${gpu.name}, so there's nothing to gain by upgrading right now.`
+        : bestGain.fpsGainPct >= 30
+        ? `The biggest jump available is the ${bestGain.gpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a strong upgrade if the net cost fits your budget. Prices last updated ${PRICES_UPDATED}.`
+        : bestGain.fpsGainPct >= 15
+        ? `The biggest jump available is the ${bestGain.gpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a moderate, noticeable gain rather than a dramatic one. Prices last updated ${PRICES_UPDATED}.`
+        : `Even the biggest jump available, the ${bestGain.gpu.name}, only gains roughly +${bestGain.fpsGainPct}% FPS — a marginal difference. It's probably worth waiting for a bigger generational leap before upgrading. Prices last updated ${PRICES_UPDATED}.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <Link to="/upgrade" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -160,6 +203,15 @@ export default function GpuUpgradePage() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             <Sliders size={15} /> Try a Different GPU <ChevronRight size={14} />
           </Link>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {related.length > 0 && (

@@ -70,6 +70,31 @@ export default function GpuMatchupIndex() {
     url: `${SITE_URL}/vs/${c.slug}`,
   }));
 
+  const faqs = [
+    {
+      title: 'How are these matchups picked?',
+      content: `The ${gpuCards.length} GPU and ${cpuCards.length} CPU matchups here are curated around parts people actually cross-shop — same price tier, same generation, or a common "should I upgrade" pairing. Don't see the exact two parts you're deciding between? Use Open Build Comparison below to compare any GPU + CPU combo directly.`,
+    },
+    {
+      title: 'What do the FPS numbers on each matchup page mean?',
+      content: 'Each matchup estimates FPS across 20 benchmarked games at 1080p, 1440p, and 4K, with the other component (GPU or CPU) held fixed so the comparison isolates the part being tested. Full methodology is on the About page.',
+    },
+    {
+      title: 'Is "better value" the same as "faster"?',
+      content: 'No — each matchup page reports both separately. The FPS winner is whichever part scores higher average FPS; the value winner is whichever delivers more FPS per $100 spent. They\'re often different parts, and both numbers are shown side by side so you can decide which matters more for your budget.',
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   const itemListJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -91,6 +116,7 @@ export default function GpuMatchupIndex() {
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -111,6 +137,15 @@ export default function GpuMatchupIndex() {
           <Cpu size={18} style={{ color: 'var(--ff-cyan)' }} /> CPU Matchups
         </h2>
         <MatchupGrid cards={cpuCards} icon={<Cpu size={16} style={{ color: 'var(--ff-cyan)' }} />} />
+
+        <div className="space-y-3 mt-12">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
+        </div>
 
         <div className="text-center mt-10">
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>

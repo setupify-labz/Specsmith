@@ -4,6 +4,7 @@ import { ArrowRight, ChevronRight, DollarSign, Zap, Cpu, Sliders } from 'lucide-
 import { getCpuUpgradePage, getCpuUpgradeIntro, getRelatedCpuUpgradePages, getCpuUpgradePageMeta } from '../lib/cpuUpgradePages';
 import { getUpgradeCpu, getCpuUpgradeCandidates, estimateCpuResaleValue, averageCpuFps, type UpgradeVerdict } from '../lib/cpuUpgradeCalculator';
 import { useSeo } from '../hooks/useSeo';
+import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
 const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: string; border: string }> = {
@@ -46,8 +47,50 @@ export default function CpuUpgradePage() {
   const intro = getCpuUpgradeIntro(cpu);
   const related = getRelatedCpuUpgradePages(page);
 
+  const bestGain = candidates.length > 0
+    ? candidates.reduce((best, c) => c.fpsGainPct > best.fpsGainPct ? c : best, candidates[0])
+    : undefined;
+
+  const faqs = [
+    {
+      title: `What should I upgrade my ${cpu.name} to?`,
+      content: candidates.length === 0
+        ? `The ${cpu.name} is already the top tier we track — there's nothing meaningfully faster in our dataset to recommend.`
+        : `The most direct next step up is the ${candidates[0].cpu.name}, roughly a ${candidates[0].fpsGainPct >= 0 ? '+' : ''}${candidates[0].fpsGainPct}% FPS gain for an estimated net cost of $${candidates[0].netCost.toLocaleString()} after reselling your ${cpu.name}. ${candidates.length} tracked upgrade option${candidates.length === 1 ? '' : 's'} total — see the full list above.`,
+    },
+    {
+      title: `How much is my ${cpu.name} worth used?`,
+      content: `Roughly $${resale.toLocaleString()}, a rough resale estimate based on typical used-market depreciation — not a live marketplace quote. Actual resale value depends on condition, local demand, and where you sell.`,
+    },
+    {
+      title: 'Why are CPU upgrade FPS gains smaller than GPU upgrade gains?',
+      content: `These numbers are measured with a flagship GPU (RTX 4090) already installed, so most games are limited by the graphics card, not the processor — that's realistic for anyone who already has a strong GPU and is only weighing a CPU swap. A weaker GPU would show a bigger CPU-driven gain in some titles.`,
+    },
+    {
+      title: 'Is upgrading worth it right now?',
+      content: bestGain === undefined
+        ? `There's no faster chip in our dataset than the ${cpu.name}, so there's nothing to gain by upgrading right now.`
+        : bestGain.fpsGainPct >= 30
+        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a strong upgrade if the net cost fits your budget. Prices last updated ${PRICES_UPDATED}.`
+        : bestGain.fpsGainPct >= 15
+        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a moderate, noticeable gain rather than a dramatic one. Prices last updated ${PRICES_UPDATED}.`
+        : `Even the biggest jump available, the ${bestGain.cpu.name}, only gains roughly +${bestGain.fpsGainPct}% FPS — a marginal difference paired with a flagship GPU. It's probably worth waiting unless you need the extra cores/threads for non-gaming work. Prices last updated ${PRICES_UPDATED}.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <Link to="/upgrade-cpu" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -163,6 +206,15 @@ export default function CpuUpgradePage() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             <Sliders size={15} /> Try a Different CPU <ChevronRight size={14} />
           </Link>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {related.length > 0 && (

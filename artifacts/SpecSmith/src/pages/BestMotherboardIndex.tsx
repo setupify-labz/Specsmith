@@ -6,11 +6,37 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
 
+const faqs = [
+  {
+    title: 'How do I know which socket my CPU uses?',
+    content: 'Check your CPU\'s product page or box — AMD\'s current desktop chips use AM5 or the older AM4, while Intel\'s current chips use LGA1700 or LGA1851. Picking the wrong socket is the single most common compatibility mistake, which is why every motherboard here is filtered by socket first.',
+  },
+  {
+    title: 'What do "budget, sweet-spot, and high-end" picks mean?',
+    content: 'Each socket page highlights the cheapest board that supports the platform, the best balance of price and features, and the highest-end board we track — so you can match the motherboard tier to how much you\'re spending on the rest of the build.',
+  },
+  {
+    title: 'Will any motherboard for my socket work with any CPU for that socket?',
+    content: 'Socket match is necessary but not always sufficient — BIOS version, RAM speed support, and power delivery can still vary between boards. Load your specific CPU and motherboard into the Builder to get a full compatibility check, not just a socket match.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.title,
+    acceptedAnswer: { '@type': 'Answer', text: f.content },
+  })),
+};
+
 export default function BestMotherboardIndex() {
   useSeo(getRouteMeta('/best-motherboard'));
 
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -46,6 +72,15 @@ export default function BestMotherboardIndex() {
               </motion.div>
             );
           })}
+        </div>
+
+        <div className="space-y-3 mt-12 mb-2">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="text-center mt-10">

@@ -108,8 +108,48 @@ export default function GpuMatchup() {
 
   const related = getRelatedMatchups(matchup);
 
+  const priceDiff = Math.abs(gpuA.price_usd - gpuB.price_usd);
+  const cheaper = gpuA.price_usd <= gpuB.price_usd ? gpuA : gpuB;
+  const pricier = cheaper === gpuA ? gpuB : gpuA;
+  const betterValueFps = valueWinner === gpuA ? valueA : valueB;
+  const otherValueFps = valueWinner === gpuA ? valueB : valueA;
+
+  const faqs = [
+    {
+      title: `Is the ${gpuA.name} or ${gpuB.name} faster?`,
+      content: isTie
+        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games tested here — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Neither wins enough games outright to call a clear FPS winner.`
+        : `The ${winner.name} is faster overall, winning ${winner === gpuA ? winsA : winsB} of ${rows.length} games tested at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
+    },
+    {
+      title: `Which is better value, the ${gpuA.name} or ${gpuB.name}?`,
+      content: `The ${valueWinner.name} delivers more FPS per dollar — ${betterValueFps} FPS per $100 spent versus ${otherValueFps} FPS per $100 for the other card, based on average FPS across all ${rows.length} games at ${resLabels[resolution]}.`,
+    },
+    {
+      title: `How much does the ${gpuA.name} cost compared to the ${gpuB.name}?`,
+      content: priceDiff === 0
+        ? `Both cards cost the same, $${gpuA.price_usd}, based on typical US street pricing last updated ${PRICES_UPDATED}.`
+        : `The ${cheaper.name} is $${priceDiff} cheaper at $${cheaper.price_usd} vs $${pricier.price_usd} for the ${pricier.name}, based on typical US street pricing last updated ${PRICES_UPDATED}.`,
+    },
+    {
+      title: 'Does this comparison account for CPU bottlenecking?',
+      content: `Both cards are paired with the same ${cpu.name} here to isolate GPU performance. Your own CPU could shift these numbers up or down — use "Customize This Comparison" above to swap in your actual CPU and see FPS estimates for your specific pairing.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/vs" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -284,6 +324,16 @@ export default function GpuMatchup() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             Build with the {recommended.name}{isTie ? ' (better value)' : ''} <ChevronRight size={14} />
           </Link>
+        </div>
+
+        {/* FAQ */}
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {/* Related matchups */}

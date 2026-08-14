@@ -15,8 +15,34 @@ export default function GpuUpgradeIndex() {
     .filter((x): x is { page: typeof x.page; gpu: NonNullable<typeof x.gpu> } => !!x.gpu)
     .sort((a, b) => b.gpu.tier - a.gpu.tier || a.gpu.price_usd - b.gpu.price_usd);
 
+  const faqs = [
+    {
+      title: 'How is my resale value estimated?',
+      content: 'Each guide applies a typical used-market depreciation estimate to the card\'s current new price — a rough guide for planning, not a live marketplace quote. Actual resale value depends on condition, local demand, and where you sell.',
+    },
+    {
+      title: `How many cards have a dedicated upgrade guide?`,
+      content: `${cards.length} GPUs, covering nearly every card in our dataset. Don't see yours? Use the interactive Upgrade Calculator instead — it works for any card.`,
+    },
+    {
+      title: 'Should I upgrade my GPU or my CPU first?',
+      content: 'It depends on what\'s actually limiting your FPS in the games you play. If you\'re GPU-bound (common at 1440p/4K), a GPU upgrade helps more; if you\'re CPU-bound (common at 1080p in CPU-heavy titles), check the CPU Upgrade Guides instead. The Builder\'s FPS estimator can help you see which is the bigger bottleneck for your specific setup.',
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
@@ -48,6 +74,15 @@ export default function GpuUpgradeIndex() {
                 <ChevronRight size={16} style={{ color: 'var(--ff-text-3)' }} />
               </Link>
             </motion.div>
+          ))}
+        </div>
+
+        <div className="space-y-3 mt-12 mb-2">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
           ))}
         </div>
 
