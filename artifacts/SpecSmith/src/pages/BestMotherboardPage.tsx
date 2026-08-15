@@ -53,9 +53,38 @@ export default function BestMotherboardPage() {
     })),
   };
 
+  const cheapest = boards.reduce((min, b) => (b.price_usd < min.price_usd ? b : min), boards[0]);
+  const priciest = boards.reduce((max, b) => (b.price_usd > max.price_usd ? b : max), boards[0]);
+
+  const faqs = [
+    {
+      title: `Will any ${page.label} motherboard work with my CPU?`,
+      content: `Socket match (${page.label}) is necessary but not always sufficient — BIOS version, RAM speed support, and power delivery can still vary between boards. Load your specific CPU and motherboard into the Builder to get a full compatibility check, not just a socket match.`,
+    },
+    {
+      title: `How many ${page.label} motherboards do you track?`,
+      content: `${boards.length}, ranging from $${cheapest.price_usd} (${cheapest.name}) to $${priciest.price_usd} (${priciest.name}). Prices are typical US street pricing, last updated ${PRICES_UPDATED}.`,
+    },
+    {
+      title: 'Do I need the most expensive board for this platform?',
+      content: 'No — motherboard price mostly buys extra features (better power delivery for overclocking, more M.2 slots, Wi-Fi, RGB), not raw performance. A budget board on the same socket runs the same CPU at stock speeds just fine; only step up if you specifically need what the pricier board adds.',
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-motherboard" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -134,6 +163,15 @@ export default function BestMotherboardPage() {
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Cpu size={15} /> Start a Build
           </Link>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>

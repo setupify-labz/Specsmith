@@ -97,9 +97,41 @@ export default function PrebuiltDetail() {
     })),
   };
 
+  const bestFps = fpsRows[0];
+  const worstFps = fpsRows[fpsRows.length - 1];
+  const avgFps = fpsRows.length > 0 ? Math.round(fpsRows.reduce((s, r) => s + r.fps, 0) / fpsRows.length) : 0;
+
+  const faqs = [
+    {
+      title: `What FPS can I expect from the ${prebuilt.name}?`,
+      content: fpsRows.length > 0
+        ? `Averages ${avgFps} FPS at ${prebuilt.target_resolution} across ${fpsRows.length} tested games — from ${bestFps.fps} FPS in ${bestFps.game} down to ${worstFps.fps} FPS in ${worstFps.game}, depending on how demanding the game is.`
+        : `FPS estimates for this build aren't available.`,
+    },
+    {
+      title: `How much does the ${prebuilt.name} cost?`,
+      content: `An estimated $${totalPrice.toLocaleString()} total for every component listed above, based on typical US street pricing. That's a planning estimate, not a live cart total — click through to Amazon or Newegg for current prices on each part.`,
+    },
+    {
+      title: 'Can I swap parts in this build?',
+      content: 'Yes — click "Customize in Builder" to load this exact build into the full Builder tool, where you can swap any component and see the compatibility checks and FPS estimates update live.',
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow variant="warm" />
       <div className="relative max-w-4xl mx-auto px-4">
         <Link
@@ -225,6 +257,15 @@ export default function PrebuiltDetail() {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="space-y-3 mt-6">
+            {faqs.map((f) => (
+              <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+                <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>

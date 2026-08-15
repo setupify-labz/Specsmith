@@ -48,6 +48,7 @@ export default function BestCpuForGame() {
   const related = getRelatedCpuGamePages(page);
   const pickIds = new Set(picks.map(p => p.cpu.id));
   const valuePick = picks.find(p => p.label === 'Best Value')!;
+  const overallPick = picks.find(p => p.label === 'Best Overall');
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -62,9 +63,37 @@ export default function BestCpuForGame() {
     })),
   };
 
+  const faqs = [
+    {
+      title: `What's the best CPU for ${game.name}?`,
+      content: overallPick
+        ? `The ${overallPick.cpu.name} tops our ${game.name} FPS ranking at $${overallPick.cpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we tested.`
+        : `The ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we tested for ${game.name}.`,
+    },
+    {
+      title: `Why is every CPU tested with the same ${gpu.name}?`,
+      content: `Pairing every CPU with a flagship ${gpu.name} isolates CPU performance so the rankings reflect the processor, not the graphics card. With a weaker GPU, the gap between these CPUs would shrink — the GPU becomes the bigger bottleneck instead.`,
+    },
+    {
+      title: 'How accurate are these FPS estimates?',
+      content: `They're built from a transparent tier-based algorithm (explained in full on the About page) — a planning guide for comparing CPUs before you buy, not a guarantee of exact real-world performance. Actual FPS varies by RAM speed, game patch, and in-game settings beyond the High preset used here.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-cpu" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -157,6 +186,15 @@ export default function BestCpuForGame() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             Compare Any Two Builds <ChevronRight size={14} />
           </Link>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {related.length > 0 && (

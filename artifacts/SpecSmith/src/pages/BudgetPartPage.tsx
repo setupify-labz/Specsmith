@@ -46,9 +46,41 @@ export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }
   const related = allTiers.filter(t => t.slug !== tier.slug);
   const partCategory = category === 'gpu' ? 'gpu' : 'cpu';
 
+  const topPick = parts.length > 0
+    ? parts.reduce((best, p) => (p.benchmark_score > best.benchmark_score ? p : best), parts[0])
+    : undefined;
+
+  const faqs = [
+    {
+      title: `What's the best ${kind} ${tier.label.toLowerCase()}?`,
+      content: topPick
+        ? `The ${topPick.name} at $${topPick.price_usd} — it has the highest benchmark score (${topPick.benchmark_score}) of the ${parts.length} ${kind}s we track ${tier.label.toLowerCase()}. Every part on this page is ranked the same way: by raw benchmark performance within the price cap, not a subjective pick.`
+        : `We don't currently track a ${kind} under this price point.`,
+    },
+    {
+      title: `Are these prices accurate right now?`,
+      content: `Prices are typical US street pricing, refreshed monthly (last updated ${PRICES_UPDATED}). A ${kind} sitting right at the edge of ${tier.label.toLowerCase()} could shift into a different tier slightly next update.`,
+    },
+    {
+      title: `What does "Benchmark" mean in the table?`,
+      content: `It's our relative performance index for comparing parts against each other — not a specific real-world game or test result. Use it to rank options within this price range; for actual estimated FPS in specific games, use the Builder or FPS Estimator instead.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(budgetItemListJsonLd(category, tier, parts)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to={indexPath} className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -127,6 +159,15 @@ export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
             <Cpu size={15} /> Start a Build
           </Link>
+        </div>
+
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         <div className="rounded-2xl p-6" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>

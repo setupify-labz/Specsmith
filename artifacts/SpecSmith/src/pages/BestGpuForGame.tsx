@@ -46,6 +46,7 @@ export default function BestGpuForGame() {
   const related = getRelatedGamePages(page);
   const pickIds = new Set(picks.map(p => p.gpu.id));
   const valuePick = picks.find(p => p.label === 'Best Value')!;
+  const kingPick = picks.find(p => p.label === 'FPS King');
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -60,9 +61,37 @@ export default function BestGpuForGame() {
     })),
   };
 
+  const faqs = [
+    {
+      title: `What's the best GPU for ${game.name}?`,
+      content: kingPick
+        ? `The ${kingPick.gpu.name} tops our ${game.name} FPS ranking at $${kingPick.gpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we tested.`
+        : `The ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we tested for ${game.name}.`,
+    },
+    {
+      title: `Do these ${game.name} FPS numbers apply to my exact CPU?`,
+      content: `These estimates are paired with a ${getMatchupCpu().name} to isolate GPU performance. A weaker CPU could bottleneck these numbers in CPU-heavy scenes; load your actual CPU into the Builder to get an estimate for your specific pairing.`,
+    },
+    {
+      title: 'How accurate are these FPS estimates?',
+      content: `They're built from a transparent tier-based algorithm (explained in full on the About page) — a planning guide for comparing GPUs before you buy, not a guarantee of exact real-world performance. Actual FPS varies by driver version, game patch, and in-game settings beyond the High preset used here.`,
+    },
+  ];
+
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.title,
+      acceptedAnswer: { '@type': 'Answer', text: f.content },
+    })),
+  };
+
   return (
     <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <PageGlow />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
         <Link to="/best-gpu" className="inline-flex items-center gap-1 text-sm font-medium mb-6 transition-colors"
@@ -159,6 +188,16 @@ export default function BestGpuForGame() {
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
             Compare Any Two Builds <ChevronRight size={14} />
           </Link>
+        </div>
+
+        {/* FAQ */}
+        <div className="space-y-3 mb-10">
+          {faqs.map((f) => (
+            <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+            </div>
+          ))}
         </div>
 
         {/* Related game pages */}
