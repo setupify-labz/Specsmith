@@ -6,6 +6,7 @@ import PriceSparkline from './PriceSparkline';
 interface PartCardProps {
   id: string;
   name: string;
+  image?: string;
   searchQuery?: string;
   price_usd: number;
   selected: boolean;
@@ -53,7 +54,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
+  id, name, image, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
   return (
@@ -103,6 +104,14 @@ export default function PartCard({
 
       {/* Header */}
       <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
+        {image && (
+          <div
+            className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
+            style={{ backgroundColor: 'var(--ff-bg)' }}
+          >
+            <img src={image} alt="" loading="lazy" className="w-full h-full object-contain p-1" />
+          </div>
+        )}
         <div className="flex-1 min-w-0 pr-14">
           {/* Not a document heading — dozens of these render per open
               category, and using <h4> here skipped past <h2>/<h3> in the

@@ -5,13 +5,10 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// PORT only configures the local dev/preview server (server.port /
+// preview.port below) — it has no effect on `vite build` — so it falls
+// back to a default instead of failing builds that never set it.
+const rawPort = process.env.PORT ?? "5173";
 
 const port = Number(rawPort);
 
@@ -19,13 +16,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+// BASE_PATH affects the build's asset URL prefix. Default to "/" rather
+// than failing builds in environments (e.g. Cloudflare Pages preview)
+// where it wasn't explicitly configured.
+const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,

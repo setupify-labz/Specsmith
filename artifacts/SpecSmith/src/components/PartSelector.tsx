@@ -28,6 +28,7 @@ const CATEGORY_ICONS: Record<string, typeof Cpu> = {
 interface Part {
   id: string;
   name: string;
+  image?: string;
   price_usd: number;
   tier?: number;
   benchmark_score?: number;
@@ -191,6 +192,7 @@ export default function PartSelector({
                       key={part.id}
                       id={part.id}
                       name={part.name}
+                      image={part.image}
                       searchQuery={buildPartQuery(part.name, part.brand as string | undefined, category)}
                       price_usd={part.price_usd}
                       selected={part.id === selectedId}

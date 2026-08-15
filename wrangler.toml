@@ -1,0 +1,7 @@
+name = "specsmith"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./artifacts/SpecSmith/dist/public"
+not_found_handling = "404-page"
+html_handling = "drop-trailing-slash"
