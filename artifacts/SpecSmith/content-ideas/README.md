@@ -81,3 +81,14 @@ recent history across a refresh.
 Low-overhead, shareable, no-account-required modules in the spirit of
 Build Crate — e.g. "Higher/Lower: PC Part Prices" using the real parts
 dataset.
+
+## Reminder for the user (not a coding task)
+Added 2026-08-14 after a Cloudflare deploy outage: the sandbox this
+routine runs in cannot reach specsmithpc.com or the internet generally,
+so nothing in the daily verification pipeline can ever detect a live-site
+outage (DNS, deploy failure, etc.) — it only ever tests the code locally.
+The user was pointed at setting up a free external uptime monitor
+(e.g. UptimeRobot, monitoring https://specsmithpc.com) to actually cover
+this gap, but said they were too tired that night and asked to be
+reminded later. Bring this up again in a future check-in if it hasn't
+been mentioned that the user already set one up.
