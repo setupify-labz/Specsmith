@@ -9,6 +9,10 @@ export interface BuildState {
   psu: string | null;
   case: string | null;
   cooler: string | null;
+  monitor: string | null;
+  keyboard: string | null;
+  mouse: string | null;
+  headset: string | null;
 }
 
 const EMPTY_BUILD: BuildState = {
@@ -20,6 +24,10 @@ const EMPTY_BUILD: BuildState = {
   psu: null,
   case: null,
   cooler: null,
+  monitor: null,
+  keyboard: null,
+  mouse: null,
+  headset: null,
 };
 
 const STORAGE_KEY = 'specsmith-builder-draft';

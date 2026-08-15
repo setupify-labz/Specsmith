@@ -5,7 +5,7 @@ import PartSelector from '../components/PartSelector';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import FpsEstimator from '../components/FpsEstimator';
-import { useBuilder } from '../hooks/useBuilder';
+import { useBuilder, type BuildState } from '../hooks/useBuilder';
 import { checkCompatibility } from '../lib/compatibility';
 import { decodeBuild } from '../lib/sharing';
 import gpuData from '../data/gpus.json';
@@ -85,10 +85,10 @@ export default function Builder() {
     const b = searchParams.get('b');
     if (b) {
       const decoded = decodeBuild(decodeURIComponent(b));
-      if (decoded) return decoded.build as Record<string, string | null>;
+      if (decoded) return decoded.build as Partial<BuildState>;
     }
-    const keys = ['gpu','cpu','motherboard','ram','storage','psu','case','cooler','monitor','keyboard','mouse','headset'];
-    const fromParams: Record<string, string | null> = {};
+    const keys: (keyof BuildState)[] = ['gpu','cpu','motherboard','ram','storage','psu','case','cooler','monitor','keyboard','mouse','headset'];
+    const fromParams: Partial<BuildState> = {};
     let hasAny = false;
     keys.forEach(k => {
       const v = searchParams.get(k);
@@ -97,7 +97,7 @@ export default function Builder() {
     return hasAny ? fromParams : undefined;
   }, []);
 
-  const { build, selectPart, clearBuild } = useBuilder(initialBuild as any);
+  const { build, selectPart, clearBuild } = useBuilder(initialBuild);
   const [showFps, setShowFps] = useState(false);
   const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
   const [fpsPreset, setFpsPreset] = useState<Preset>('high');
@@ -125,10 +125,10 @@ export default function Builder() {
   const selectedPsu = (componentData.psus as PSU[]).find(p => p.id === build.psu) ?? null;
   const selectedCase = (componentData.cases as Case[]).find(c => c.id === build.case) ?? null;
   const selectedCooler = (componentData.coolers as Cooler[]).find(c => c.id === build.cooler) ?? null;
-  const selectedMonitor = (peripheralData.monitors as Monitor[]).find(m => m.id === (build as any).monitor) ?? null;
-  const selectedKeyboard = (peripheralData.keyboards as Keyboard[]).find(k => k.id === (build as any).keyboard) ?? null;
-  const selectedMouse = (peripheralData.mice as Mouse[]).find(m => m.id === (build as any).mouse) ?? null;
-  const selectedHeadset = (peripheralData.headsets as Headset[]).find(h => h.id === (build as any).headset) ?? null;
+  const selectedMonitor = (peripheralData.monitors as Monitor[]).find(m => m.id === build.monitor) ?? null;
+  const selectedKeyboard = (peripheralData.keyboards as Keyboard[]).find(k => k.id === build.keyboard) ?? null;
+  const selectedMouse = (peripheralData.mice as Mouse[]).find(m => m.id === build.mouse) ?? null;
+  const selectedHeadset = (peripheralData.headsets as Headset[]).find(h => h.id === build.headset) ?? null;
 
   const compat = useMemo(() => {
     const result = checkCompatibility({
@@ -199,10 +199,10 @@ export default function Builder() {
     motherboard: build.motherboard, ram: build.ram,
     storage: build.storage, psu: build.psu,
     case: build.case, cooler: build.cooler,
-    monitor: (build as any).monitor ?? null,
-    keyboard: (build as any).keyboard ?? null,
-    mouse: (build as any).mouse ?? null,
-    headset: (build as any).headset ?? null,
+    monitor: build.monitor ?? null,
+    keyboard: build.keyboard ?? null,
+    mouse: build.mouse ?? null,
+    headset: build.headset ?? null,
   };
 
   const handleEstimateFps = () => {
@@ -370,23 +370,23 @@ export default function Builder() {
                   >
                     <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
                       <PartSelector category="monitor" label="Monitor"
-                        parts={peripheralData.monitors as Monitor[]} selectedId={(build as any).monitor}
-                        onSelect={id => (selectPart as any)('monitor', id)}
+                        parts={peripheralData.monitors as Monitor[]} selectedId={build.monitor}
+                        onSelect={id => selectPart('monitor', id)}
                         getSpecs={p => { const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
                       />
                       <PartSelector category="keyboard" label="Keyboard"
-                        parts={peripheralData.keyboards as Keyboard[]} selectedId={(build as any).keyboard}
-                        onSelect={id => (selectPart as any)('keyboard', id)}
+                        parts={peripheralData.keyboards as Keyboard[]} selectedId={build.keyboard}
+                        onSelect={id => selectPart('keyboard', id)}
                         getSpecs={p => { const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
                       />
                       <PartSelector category="mouse" label="Mouse"
-                        parts={peripheralData.mice as Mouse[]} selectedId={(build as any).mouse}
-                        onSelect={id => (selectPart as any)('mouse', id)}
+                        parts={peripheralData.mice as Mouse[]} selectedId={build.mouse}
+                        onSelect={id => selectPart('mouse', id)}
                         getSpecs={p => { const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
                       />
                       <PartSelector category="headset" label="Headset"
-                        parts={peripheralData.headsets as Headset[]} selectedId={(build as any).headset}
-                        onSelect={id => (selectPart as any)('headset', id)}
+                        parts={peripheralData.headsets as Headset[]} selectedId={build.headset}
+                        onSelect={id => selectPart('headset', id)}
                         getSpecs={p => { const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
                       />
                     </div>
