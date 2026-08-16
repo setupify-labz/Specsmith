@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
@@ -13,7 +13,7 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown, Monitor as MonitorIcon } from 'lucide-react';
+import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 
@@ -241,6 +241,13 @@ export default function Builder() {
             PC <span className="gradient-text">Builder</span>
           </h1>
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
+
+          {corePartsList.length === 0 && (
+            <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
+              style={{ color: 'var(--ff-accent-text)' }}>
+              <Sparkles size={12} /> Not sure where to start? Take the 2-question PC Build Quiz →
+            </Link>
+          )}
 
           <div className="flex items-center gap-3 max-w-xs">
             <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ff-border)' }}>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, ArrowUpDown } from 'lucide-react';
+import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, ArrowUpDown, Sparkles } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -68,6 +68,14 @@ const features = [
 ];
 
 const exploreLinks = [
+  {
+    icon: <Sparkles size={22} className="text-[#FF6EC7]" />,
+    glow: 'rgba(255,110,199,0.3)',
+    title: 'PC Build Quiz',
+    description: "Not sure what to pick? Answer 2 questions about your use case and budget for a matched GPU + CPU recommendation.",
+    to: '/quiz',
+    cta: 'Take the Quiz',
+  },
   {
     icon: <Package size={22} className="text-[#FFD700]" />,
     glow: 'rgba(255,215,0,0.3)',
