@@ -118,8 +118,8 @@ export default function GpuMatchup() {
     {
       title: `Is the ${gpuA.name} or ${gpuB.name} faster?`,
       content: isTie
-        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games tested here — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Neither wins enough games outright to call a clear FPS winner.`
-        : `The ${winner.name} is faster overall, winning ${winner === gpuA ? winsA : winsB} of ${rows.length} games tested at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
+        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games in this comparison — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Neither wins enough games outright to call a clear FPS winner.`
+        : `The ${winner.name} is faster overall, winning ${winner === gpuA ? winsA : winsB} of ${rows.length} games compared at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
     },
     {
       title: `Which is better value, the ${gpuA.name} or ${gpuB.name}?`,

@@ -15,10 +15,10 @@ paths = [ "/" ]
 localPort = 25360
 
 [services.development]
-run = "pnpm --filter @workspace/frameforge run dev"
+run = "pnpm --filter @workspace/specsmith run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/frameforge", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/specsmith", "run", "build" ]
 publicDir = "artifacts/SpecSmith/dist/public"
 serve = "static"
 

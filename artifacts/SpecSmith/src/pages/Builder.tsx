@@ -42,7 +42,7 @@ const games = gamesData as Game[];
 const builderFaqs = [
   {
     title: 'How accurate are the FPS estimates for my exact build?',
-    content: 'They use the same transparent tier-based algorithm explained on the About page, applied to whatever specific GPU/CPU/game/resolution/preset combination you\'ve picked here — not a generic average. Estimates are a planning guide, not a guarantee; real-world results vary by driver version, game patch, and background load.',
+    content: 'They use the same transparent tier-based algorithm explained on the About page, applied to whatever specific GPU/CPU/game/resolution/preset combination you\'ve picked here — not a generic average. Estimates are a planning guide, not a guarantee; real-world results vary by driver version, game patch, and background load. For a real, cited benchmark instead of an estimate, check Verified Benchmarks below the estimator — coverage is still small, so it won\'t have every combination yet.',
   },
   {
     title: 'Can I add a part that isn\'t in the list?',

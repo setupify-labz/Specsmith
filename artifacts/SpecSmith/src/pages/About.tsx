@@ -9,7 +9,7 @@ const sections = [
   {
     icon: <Calculator size={20} className="text-[#6C63FF]" />,
     title: 'How does SpecSmith estimate FPS?',
-    content: `SpecSmith uses a data-driven algorithm to estimate gaming performance based on two key components: your GPU tier and CPU tier. Each component is scored on a 1-10 tier scale based on benchmark data from thousands of real-world gaming tests.
+    content: `SpecSmith's FPS Estimator uses a formula based on two key components: your GPU tier and CPU tier. Each part in our database is assigned a 1-10 tier and a benchmark score by us, reflecting its relative gaming performance position compared to the other parts we track — this is an internal ranking we maintain, not a figure pulled from an external lab.
 
 The estimation formula works as follows:
 
@@ -25,12 +25,14 @@ The estimation formula works as follows:
   },
   {
     icon: <BarChart3 size={20} className="text-[var(--ff-cyan)]" />,
-    title: 'Where does the benchmark data come from?',
-    content: `Our benchmark data is aggregated from multiple sources including manufacturer specifications, independent hardware reviews, and community-sourced gaming benchmarks. We cross-reference results across multiple testing methodologies to ensure accuracy.
+    title: 'Where does the benchmark data come from? (Estimated vs. Verified)',
+    content: `SpecSmith has two separate systems, and it matters which one you're looking at:
 
-Each GPU and CPU in our database includes a benchmark score that reflects its real-world gaming performance relative to other products. These scores are regularly updated to reflect driver improvements, game patches, and newly released hardware.
+The FPS Estimator (the numbers shown for all 20 games in the Builder) is a planning heuristic, not lab data: every GPU and CPU gets a 1-10 tier and a benchmark score that we assign and maintain ourselves as a general reference point for that part's relative gaming performance. We update these as new hardware releases, but they are not the output of us running per-title benchmarks on physical hardware, and they are not independently audited. Treat Estimator numbers as a rough starting point for comparing parts — not a substitute for real reviews.
 
-For games, we benchmark at multiple quality presets and resolutions to capture the full performance envelope. Games are tested with their latest patches and graphics settings documentation from developers.`
+Verified Benchmarks (shown in the Builder below the Estimator, where available) are different: each number there is measured FPS from a real, cited source — publisher, URL, and the settings it was captured under are all shown. Coverage is intentionally small today, so most GPU/CPU/game combinations will show "No verified benchmark available" rather than a filled-in guess. We add to this list only when we have an actual sourced result, never by estimating a gap closed.
+
+If you need real per-title performance evidence, check Verified Benchmarks first or look at independent reviews — use the Estimator for quick relative comparisons across many parts and games at once, not as a stand-in for measured data.`
   },
   {
     icon: <Shield size={20} className="text-[var(--ff-green)]" />,

@@ -105,7 +105,7 @@ export default function PrebuiltDetail() {
     {
       title: `What FPS can I expect from the ${prebuilt.name}?`,
       content: fpsRows.length > 0
-        ? `Averages ${avgFps} FPS at ${prebuilt.target_resolution} across ${fpsRows.length} tested games — from ${bestFps.fps} FPS in ${bestFps.game} down to ${worstFps.fps} FPS in ${worstFps.game}, depending on how demanding the game is.`
+        ? `Averages ${avgFps} estimated FPS at ${prebuilt.target_resolution} across ${fpsRows.length} games — from ${bestFps.fps} FPS in ${bestFps.game} down to ${worstFps.fps} FPS in ${worstFps.game}, depending on how demanding the game is.`
         : `FPS estimates for this build aren't available.`,
     },
     {

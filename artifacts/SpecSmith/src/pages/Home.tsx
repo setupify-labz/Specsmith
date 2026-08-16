@@ -15,7 +15,7 @@ const homeFaqs = [
   },
   {
     title: 'Where do the prices and FPS numbers come from?',
-    content: `Prices are estimated US street pricing, refreshed monthly (last updated ${PRICES_UPDATED}). FPS estimates use a transparent tier-based algorithm explained in full on the About page — they're a planning guide to compare parts before you buy, not a live-scraped price feed or a guarantee of exact real-world performance.`,
+    content: `Prices are estimated US street pricing, refreshed monthly (last updated ${PRICES_UPDATED}). FPS estimates use a transparent tier-based algorithm explained in full on the About page — they're a planning guide to compare parts before you buy, not a live-scraped price feed or a guarantee of exact real-world performance. For a small set of configurations backed by an actual cited benchmark instead of an estimate, see Verified Benchmarks in the Builder.`,
   },
   {
     title: 'Do I need to know anything about PC building to use this?',
@@ -23,7 +23,7 @@ const homeFaqs = [
   },
   {
     title: 'How many parts and games does SpecSmith track?',
-    content: '50+ GPUs, 50+ CPUs, and 20 benchmarked games across resolutions and quality presets — plus motherboards, RAM, storage, PSUs, cases, coolers, and peripherals for a full build.',
+    content: '50+ GPUs, 50+ CPUs, and 20 games we estimate FPS for across resolutions and quality presets — plus motherboards, RAM, storage, PSUs, cases, coolers, and peripherals for a full build.',
   },
 ];
 
@@ -42,7 +42,7 @@ function homeFaqJsonLd() {
 const stats = [
   { value: '50+', label: 'GPUs Tracked' },
   { value: '50+', label: 'CPUs Tracked' },
-  { value: '20', label: 'Games Benchmarked' },
+  { value: '20', label: 'Games Estimated' },
   { value: 'Free', label: 'Forever' },
 ];
 

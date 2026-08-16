@@ -57,7 +57,7 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/best-gpu',
-    title: 'Best GPU by Game — FPS-Tested Picks for 20 Games | SpecSmith',
+    title: 'Best GPU by Game — FPS-Ranked Picks for 20 Games | SpecSmith',
     description:
       'Find the best graphics card for the game you actually play — FPS-ranked picks for Fortnite, Valorant, Cyberpunk 2077, and 17 more titles.',
   },

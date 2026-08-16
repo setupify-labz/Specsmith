@@ -77,7 +77,7 @@ export default function GpuMatchupIndex() {
     },
     {
       title: 'What do the FPS numbers on each matchup page mean?',
-      content: 'Each matchup estimates FPS across 20 benchmarked games at 1080p, 1440p, and 4K, with the other component (GPU or CPU) held fixed so the comparison isolates the part being tested. Full methodology is on the About page.',
+      content: 'Each matchup estimates FPS across 20 games at 1080p, 1440p, and 4K, with the other component (GPU or CPU) held fixed so the comparison isolates the part being compared. Full methodology is on the About page.',
     },
     {
       title: 'Is "better value" the same as "faster"?',

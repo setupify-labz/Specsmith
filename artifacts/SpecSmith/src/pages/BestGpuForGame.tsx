@@ -65,8 +65,8 @@ export default function BestGpuForGame() {
     {
       title: `What's the best GPU for ${game.name}?`,
       content: kingPick
-        ? `The ${kingPick.gpu.name} tops our ${game.name} FPS ranking at $${kingPick.gpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we tested.`
-        : `The ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we tested for ${game.name}.`,
+        ? `The ${kingPick.gpu.name} tops our ${game.name} FPS ranking at $${kingPick.gpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we compared.`
+        : `The ${valuePick.gpu.name} delivers the best FPS-per-dollar of the ${rows.length} GPUs we compared for ${game.name}.`,
     },
     {
       title: `Do these ${game.name} FPS numbers apply to my exact CPU?`,

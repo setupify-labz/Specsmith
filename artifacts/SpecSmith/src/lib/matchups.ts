@@ -341,7 +341,7 @@ export function buildVerdictParagraph(v: VerdictInput): string {
     const samePrice = v.priceA === v.priceB;
     const [cheapName, cheapPrice, richPrice] = v.priceA <= v.priceB
       ? [v.nameA, v.priceA, v.priceB] : [v.nameB, v.priceB, v.priceA];
-    const base = `The ${v.nameA} and ${v.nameB} are effectively tied across all ${v.total} tested games at ${v.resolution} High — ${fmt(v.avgA)} vs ${fmt(v.avgB)} average FPS, inside this estimator's margin of error.`;
+    const base = `The ${v.nameA} and ${v.nameB} are effectively tied across all ${v.total} compared games at ${v.resolution} High — ${fmt(v.avgA)} vs ${fmt(v.avgB)} average FPS, inside this estimator's margin of error.`;
     if (samePrice) {
       return `${base} They even cost the same at $${fmt(v.priceA)}, so pick whichever fits the platform you're building on or is cheaper the day you buy.`;
     }
@@ -353,8 +353,8 @@ export function buildVerdictParagraph(v: VerdictInput): string {
     ? `averaging ${pctFaster}% higher FPS (${fmt(wAvg)} vs ${fmt(lAvg)})`
     : `though the average gap is under 1% (${fmt(wAvg)} vs ${fmt(lAvg)} FPS)`;
   const winClause = wins === v.total
-    ? `won all ${v.total} tested games`
-    : `won ${wins} of ${v.total} tested games (the rest were too close to call)`;
+    ? `won all ${v.total} compared games`
+    : `won ${wins} of ${v.total} compared games (the rest were too close to call)`;
 
   if (winnerIsValue) {
     return `The ${wName} ${winClause} at ${v.resolution} High, ${fasterClause}. At $${fmt(wPrice)} vs $${fmt(lPrice)} it's also the better value per frame — a clean sweep, making it the clear pick ${audience}.`;

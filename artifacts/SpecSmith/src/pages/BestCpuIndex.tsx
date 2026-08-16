@@ -13,7 +13,7 @@ const faqs = [
     content: `${CPU_GAME_PAGES.length} popular titles, from CPU-heavy esports games like Valorant and CS2 to open-world titles like Cyberpunk 2077 and Starfield. Each game's page ranks CPUs by estimated FPS specifically for that title's performance profile.`,
   },
   {
-    title: 'Why is every game tested with the same RTX 4090?',
+    title: 'Why is every game paired with the same RTX 4090?',
     content: 'CPU differences only show up clearly when the GPU isn\'t the bottleneck. Pairing every CPU with a flagship RTX 4090 isolates CPU performance so the rankings reflect the processor, not the graphics card — with your actual GPU, gains from a faster CPU may be smaller.',
   },
   {

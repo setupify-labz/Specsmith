@@ -119,8 +119,8 @@ export default function CpuMatchup() {
     {
       title: `Is the ${cpuA.name} or ${cpuB.name} faster for gaming?`,
       content: isTie
-        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games tested here — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Buy whichever is better value.`
-        : `The ${winner.name} is faster overall, winning ${winner === cpuA ? winsA : winsB} of ${rows.length} games tested at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
+        ? `They're effectively tied at ${resLabels[resolution]} across the ${rows.length} games in this comparison — ${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS, close enough to fall inside this estimator's margin. Buy whichever is better value.`
+        : `The ${winner.name} is faster overall, winning ${winner === cpuA ? winsA : winsB} of ${rows.length} games compared at ${resLabels[resolution]} (${fmtAvg(avgAF)} vs ${fmtAvg(avgBF)} average FPS).`,
     },
     {
       title: `Which is better value, the ${cpuA.name} or ${cpuB.name}?`,

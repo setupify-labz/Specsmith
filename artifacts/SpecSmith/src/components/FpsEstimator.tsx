@@ -301,7 +301,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
       </div>
 
       <p className="text-xs mt-4 italic" style={{ color: 'var(--ff-text-3)' }}>
-        FPS estimates are for native resolution with no upscaling (no DLSS, FSR, or XeSS). Real-world performance with upscaling enabled can be significantly higher. Figures are based on aggregated benchmark data and will vary by driver version, game patch, background processes, and system temperature.
+        FPS estimates are for native resolution with no upscaling (no DLSS, FSR, or XeSS). Real-world performance with upscaling enabled can be significantly higher. Figures come from SpecSmith's tier-based estimate formula (see the About page), not per-title lab benchmarks, and actual FPS will vary by driver version, game patch, background processes, and system temperature.
       </p>
     </motion.div>
   );

@@ -67,11 +67,11 @@ export default function BestCpuForGame() {
     {
       title: `What's the best CPU for ${game.name}?`,
       content: overallPick
-        ? `The ${overallPick.cpu.name} tops our ${game.name} FPS ranking at $${overallPick.cpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we tested.`
-        : `The ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we tested for ${game.name}.`,
+        ? `The ${overallPick.cpu.name} tops our ${game.name} FPS ranking at $${overallPick.cpu.price_usd}. If you don't need the absolute fastest, the ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we compared.`
+        : `The ${valuePick.cpu.name} delivers the best FPS-per-dollar of the ${rows.length} CPUs we compared for ${game.name}.`,
     },
     {
-      title: `Why is every CPU tested with the same ${gpu.name}?`,
+      title: `Why is every CPU paired with the same ${gpu.name}?`,
       content: `Pairing every CPU with a flagship ${gpu.name} isolates CPU performance so the rankings reflect the processor, not the graphics card. With a weaker GPU, the gap between these CPUs would shrink — the GPU becomes the bigger bottleneck instead.`,
     },
     {

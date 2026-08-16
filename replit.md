@@ -15,7 +15,7 @@ pnpm workspace monorepo using TypeScript. Contains the SpecSmith PC Builder + FP
 
 ## SpecSmith Application
 
-A complete PC Builder + FPS Estimator web application at `artifacts/frameforge/` (branded as "SpecSmith"; the artifact/package directory name is kept as `frameforge` internally to avoid breaking workspace filters and workflow references).
+A complete PC Builder + FPS Estimator web application at `artifacts/SpecSmith/`.
 
 ### Tech Stack
 - React 18 + React Router v6
@@ -50,4 +50,4 @@ A complete PC Builder + FPS Estimator web application at `artifacts/frameforge/`
 
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/frameforge run dev` — run SpecSmith locally (package name kept as `frameforge`)
+- `pnpm --filter @workspace/specsmith run dev` — run SpecSmith locally
