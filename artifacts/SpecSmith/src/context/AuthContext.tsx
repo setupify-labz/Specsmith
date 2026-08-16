@@ -1,5 +1,31 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
+// SECURITY (audited, not fixed — no backend exists to fix it with): this
+// entire module is a client-only, localStorage-backed demo auth system.
+// Passwords are stored and compared in plaintext, in the browser, with no
+// hashing — that is fundamentally not something you can harden client-side;
+// it needs a real backend. Do not present this as production-grade
+// authentication anywhere in the product.
+//
+// What this means concretely:
+// - Anyone with access to the browser (devtools, another extension, a
+//   compromised machine) can read every user's plaintext password directly
+//   out of localStorage['specsmith-users'].
+// - There is no session expiry — a session lives until explicit logout.
+// - "Login" is just an array scan comparing plaintext strings; there is no
+//   protection against automated guessing since it never leaves the client.
+//
+// Migration path before real accounts should be enabled: this repo already
+// has a working Supabase project (see src/lib/supabase.ts) used ONLY for
+// the anonymous public build gallery today — no Supabase Auth is wired up.
+// The real fix is: add Supabase Auth (or an equivalent backend), move
+// signup/login to it (hashed passwords, real sessions/JWTs, never expose a
+// password hash to the client), keep `users`/`saved builds` in Postgres
+// tables keyed by the authenticated user's id with RLS policies instead of
+// localStorage, and migrate this context to be a thin wrapper over that
+// client SDK instead of the getUsers/setUsers helpers below. Until that
+// lands, treat every account created here as a local-only demo account.
+
 export interface User {
   id: string;
   username: string;
@@ -69,7 +95,7 @@ function getUserActivity(userId: string): Activity[] {
 }
 function addActivity(userId: string, message: string) {
   const acts = getUserActivity(userId);
-  acts.unshift({ id: Date.now().toString(), message, time: new Date().toISOString() });
+  acts.unshift({ id: crypto.randomUUID(), message, time: new Date().toISOString() });
   localStorage.setItem(`specsmith-activity-${userId}`, JSON.stringify(acts.slice(0, 20)));
 }
 
@@ -113,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const users = getUsers();
     if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) return false;
     const newUser: User = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       username, email, password,
       preferredResolution: '1080p',
       preferredPreset: 'high',
@@ -139,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const current = getUserBuilds(user.id);
     if (current.length >= 20) return false;
     const newBuild: SavedBuild = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       name, notes, buildState,
       savedAt: new Date().toISOString(),
       sharedCount: 0,

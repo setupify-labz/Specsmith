@@ -20,7 +20,38 @@ export interface VerifiedFpsQuery {
   preset: Preset;
   rayTracing: boolean;
   upscaler: Upscaler;
+  /**
+   * Which DLSS/FSR/XeSS quality mode is being asked about (e.g. "Quality",
+   * "Balanced"). Only meaningful when `upscaler !== 'native'`; leave
+   * undefined for native. Undefined does NOT mean "any mode" — see
+   * matchesUpscalerMode below.
+   */
+  upscalerMode?: string;
   frameGeneration: boolean;
+}
+
+/**
+ * Exact upscaler-mode matching, split out and exported so it's directly
+ * unit-testable without needing a full VerifiedFpsQuery/BenchmarkRecord.
+ *
+ * Rules (per the provenance spec — an unspecified mode must never silently
+ * mean "any mode"):
+ * - upscaler === 'native': mode doesn't apply to either side; always matches.
+ * - upscaler !== 'native': both the query's requested mode and the record's
+ *   confirmed mode must be present AND equal. If either side is missing a
+ *   mode (query didn't ask for one, or the record's mode is an unconfirmed
+ *   provenance gap — see BenchmarkRecord.upscalerMode's doc comment), that's
+ *   a non-match, not a wildcard match. This is what stops "DLSS Quality"
+ *   silently satisfying a query for "DLSS Performance" (or vice versa) once
+ *   mode-specific records exist.
+ */
+export function matchesUpscalerMode(
+  upscaler: Upscaler,
+  queryMode: string | undefined,
+  recordMode: string | undefined,
+): boolean {
+  if (upscaler === 'native') return true;
+  return queryMode !== undefined && recordMode !== undefined && queryMode === recordMode;
 }
 
 export function getGameFeatureProfile(gameId: string): GameFeatureProfile | undefined {
@@ -37,15 +68,13 @@ export function getVerifiedGames(): GameFeatureProfile[] {
  * is that every displayed number traces to a real source. See
  * types.ts / the project's benchmark-provenance spec for why.
  *
- * KNOWN GAP (tracked, not silent): matching does not yet consider
- * upscalerMode (Quality/Balanced/Performance/Ultra Performance). No seeded
- * record currently sets a mode, so this can't misfire today — but the
- * moment a DLSS/FSR/XeSS record is added, this match logic must be
- * extended to require an exact mode match too, or two different quality
- * modes could be conflated as the same result. Do not add a mode-specific
- * record without fixing this first.
+ * `records` defaults to the real bundled benchmarkRecords.json and normally
+ * should never be overridden in application code — the parameter exists so
+ * tests can exercise the matching logic (including upscalerMode, which no
+ * real seeded record uses yet) against synthetic in-memory fixtures instead
+ * of requiring fake entries in the actual "honest database."
  */
-export function lookupVerifiedFps(query: VerifiedFpsQuery): VerifiedFpsResult {
+export function lookupVerifiedFps(query: VerifiedFpsQuery, records: BenchmarkRecord[] = benchmarkRecords): VerifiedFpsResult {
   const profile = getGameFeatureProfile(query.gameId);
 
   if (profile) {
@@ -78,7 +107,7 @@ export function lookupVerifiedFps(query: VerifiedFpsQuery): VerifiedFpsResult {
     }
   }
 
-  const record = benchmarkRecords.find(
+  const record = records.find(
     (r) =>
       r.gameId === query.gameId &&
       r.cpuId === query.cpuId &&
@@ -87,6 +116,7 @@ export function lookupVerifiedFps(query: VerifiedFpsQuery): VerifiedFpsResult {
       r.preset === query.preset &&
       r.rayTracing === query.rayTracing &&
       r.upscaler === query.upscaler &&
+      matchesUpscalerMode(query.upscaler, query.upscalerMode, r.upscalerMode) &&
       r.frameGeneration === query.frameGeneration,
   );
 

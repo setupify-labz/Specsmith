@@ -101,7 +101,10 @@ export const PRERENDER_ROUTES = [
   ...SOCKET_PAGES.map((p) => `/best-motherboard/${p.slug}`),
   '/quiz',
   ...QUIZ_USE_CASES.map((u) => `/quiz/${u.slug}`),
-  '/admin/benchmarks',
+  // '/admin/benchmarks' is deliberately NOT in this list. See the
+  // SECURITY comment on its <Route> below — prerendering it would write
+  // its full content to a publicly-fetchable static HTML file, which is
+  // the one exposure a route-level guard on this static site can't close.
 ];
 
 const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
@@ -192,6 +195,9 @@ export function render(url: string): string {
                 <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
                 <Route path="/quiz" element={<PageWrapper><Quiz /></PageWrapper>} />
                 <Route path="/quiz/:slug" element={<PageWrapper><QuizLanding /></PageWrapper>} />
+                {/* Kept in the SSR route table (so `pnpm dev`/local rendering still
+                    works) but deliberately absent from PRERENDER_ROUTES above — see
+                    the matching SECURITY comment in App.tsx. */}
                 <Route path="/admin/benchmarks" element={<PageWrapper><AdminBenchmarks /></PageWrapper>} />
                 <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
               </Routes>

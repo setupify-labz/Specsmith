@@ -104,6 +104,17 @@ function AppRoutes() {
           <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
           <Route path="/quiz"      element={<PageWrapper><Quiz /></PageWrapper>} />
           <Route path="/quiz/:slug" element={<PageWrapper><QuizLanding /></PageWrapper>} />
+          {/* SECURITY (audited, not yet fixed): this site is 100% static with no
+              backend, so there is no real server-side auth to gate this route with —
+              see AuthContext.tsx's doc comment for why localStorage auth can't provide
+              that. The actual protection today is that this route is deliberately
+              excluded from PRERENDER_ROUTES (entry-server.tsx), so no static HTML for
+              it exists in production and a direct request 404s at the host level; it's
+              also unlinked from any public UI and disallowed in robots.txt. That's real
+              (a client-side gate here would not be, and would misrepresent the security
+              level), but it only holds as long as nobody adds a public link to it or a
+              server. TODO: once a real backend exists (see AuthContext.tsx), gate this
+              route server-side and only then bring back prerendering/linking for it. */}
           <Route path="/admin/benchmarks" element={<PageWrapper><AdminBenchmarks /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
