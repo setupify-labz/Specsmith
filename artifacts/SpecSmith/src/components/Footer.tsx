@@ -9,6 +9,7 @@ const NAV_GROUPS = [
       { to: '/builder', label: 'Builder' },
       { to: '/prebuilts', label: 'Build Guides' },
       { to: '/price-guesser', label: 'Higher or Lower (Price Game)' },
+      { to: '/quiz', label: 'What PC Should I Get? (Quiz)' },
     ],
   },
   {
