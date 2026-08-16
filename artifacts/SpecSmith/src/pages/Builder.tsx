@@ -273,7 +273,6 @@ export default function Builder() {
                 selectedId={build.gpu}
                 recommendedIds={recommendedIds}
                 onSelect={id => { selectPart('gpu', id); setShowFps(false); }}
-                showSparkline
                 getSpecs={p => {
                   const g = p as GPU;
                   return [
@@ -292,7 +291,6 @@ export default function Builder() {
                 selectedId={build.cpu}
                 recommendedIds={recommendedIds}
                 onSelect={id => { selectPart('cpu', id); setShowFps(false); }}
-                showSparkline
                 getSpecs={p => {
                   const c = p as CPU;
                   return [

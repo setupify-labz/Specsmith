@@ -44,13 +44,12 @@ interface PartSelectorProps {
   onSelect: (id: string | null) => void;
   getSpecs: (part: Part) => { label: string; value: string }[];
   defaultOpen?: boolean;
-  showSparkline?: boolean;
   recommendedIds?: string[];
 }
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, showSparkline, recommendedIds = [],
+  defaultOpen = false, recommendedIds = [],
 }: PartSelectorProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [search, setSearch] = useState('');
@@ -205,7 +204,6 @@ export default function PartSelector({
                       }
                       specs={getSpecs(part)}
                       tier={part.tier}
-                      showSparkline={showSparkline}
                       onSelect={(id) => onSelect(id === selectedId ? null : id)}
                     />
                   ))

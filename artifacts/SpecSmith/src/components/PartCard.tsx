@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Check, ExternalLink } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import PriceSparkline from './PriceSparkline';
 
 interface PartCardProps {
   id: string;
@@ -15,7 +14,6 @@ interface PartCardProps {
   badge?: 'best-value' | 'best-performance';
   specs: { label: string; value: string }[];
   tier?: number;
-  showSparkline?: boolean;
   onSelect: (id: string) => void;
 }
 
@@ -54,7 +52,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, showSparkline, onSelect
+  id, name, image, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
   return (
@@ -165,13 +163,6 @@ export default function PartCard({
           </a>
         </div>
       </div>
-
-      {/* Price sparkline (only for GPU/CPU) */}
-      {showSparkline && (
-        <div onClick={e => e.stopPropagation()}>
-          <PriceSparkline partId={id} currentPrice={price_usd} partName={name} />
-        </div>
-      )}
     </motion.div>
   );
 }
