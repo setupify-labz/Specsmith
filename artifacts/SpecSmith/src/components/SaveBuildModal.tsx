@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 import EmailCaptureModal from './EmailCaptureModal';
 
 interface Props {
@@ -20,6 +21,8 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [emailCaptureBuildId, setEmailCaptureBuildId] = useState<string | null>(null);
+  const titleId = useId();
+  const modalRef = useModalA11y(open, onClose);
 
   useEffect(() => {
     if (open) setName(`My Build #${(builds.length + 1)}`);
@@ -63,9 +66,14 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
             className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
             style={{ backgroundColor: 'var(--ff-surface)' }}
             onClick={e => e.stopPropagation()}
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
           >
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Save Build</h3>
+              <h3 id={titleId} className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Save Build</h3>
               <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
                 <X size={16} />
               </button>

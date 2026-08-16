@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, Check, X, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -6,6 +6,7 @@ import { getShareUrl, type ShareView, type SharedCustomPart } from '../lib/shari
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { hasDismissedEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
+import { useModalA11y } from '../hooks/useModalA11y';
 import EmailCaptureModal from './EmailCaptureModal';
 
 interface Props {
@@ -23,6 +24,8 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
   const [emailCaptureOpen, setEmailCaptureOpen] = useState(false);
   const { showToast } = useToast();
   const { shareBuild } = useAuth();
+  const qrTitleId = useId();
+  const qrModalRef = useModalA11y(qrOpen, () => setQrOpen(false));
 
   const url = getShareUrl(buildState, buildName, view, customParts);
 
@@ -120,9 +123,14 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
               className="rounded-2xl p-6 shadow-2xl text-center"
               style={{ backgroundColor: 'var(--ff-surface)', maxWidth: 320, width: '100%' }}
               onClick={e => e.stopPropagation()}
+              ref={qrModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={qrTitleId}
+              tabIndex={-1}
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold" style={{ color: 'var(--ff-text)' }}>Scan to Open Build</h3>
+                <h3 id={qrTitleId} className="font-bold" style={{ color: 'var(--ff-text)' }}>Scan to Open Build</h3>
                 <button onClick={() => setQrOpen(false)} aria-label="Close" style={{ color: 'var(--ff-text-2)' }}>
                   <X size={16} />
                 </button>

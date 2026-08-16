@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, X } from 'lucide-react';
 import { saveEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
 import { useToast } from '../context/ToastContext';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface Props {
   open: boolean;
@@ -14,6 +15,8 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const { showToast } = useToast();
+  const titleId = useId();
+  const modalRef = useModalA11y(open, onClose);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -47,6 +50,11 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
             className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
             style={{ backgroundColor: 'var(--ff-surface)' }}
             onClick={e => e.stopPropagation()}
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -54,7 +62,7 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
                   style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
                   <Mail size={15} className="text-white" />
                 </div>
-                <h3 className="font-bold text-base" style={{ color: 'var(--ff-text)' }}>Want us to email you this build?</h3>
+                <h3 id={titleId} className="font-bold text-base" style={{ color: 'var(--ff-text)' }}>Want us to email you this build?</h3>
               </div>
               <button onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg flex-shrink-0" style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}>
                 <X size={16} />
