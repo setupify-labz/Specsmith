@@ -4,7 +4,8 @@ Disallow: /dashboard
 Disallow: /settings
 Disallow: /login
 Disallow: /signup
-Disallow: /build
+Disallow: /build$
+Disallow: /build?
 
 User-agent: GPTBot
 Allow: /
