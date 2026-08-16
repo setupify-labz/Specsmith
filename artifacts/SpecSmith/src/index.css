@@ -259,12 +259,18 @@
     50%      { box-shadow: 0 0 0 3px var(--ff-accent), 0 0 35px rgba(108,99,255,0.6); }
   }
 
-  /* FPS colors */
-  .fps-low       { color: #FF1744; }
-  .fps-medium    { color: #FFB300; }
-  .fps-good      { color: #00E676; }
-  .fps-elite     { color: #6C63FF; }
-  .fps-excellent { color: #00D4FF; }
+  /* FPS colors — theme-aware tokens, not hardcoded hex: the dark-mode
+     values happen to match what used to be hardcoded here, but the
+     light-mode counterparts do not (plain --ff-accent's dark value also
+     falls just short of 4.5:1 for 14px bold text, so fps-elite uses the
+     dedicated text-safe --ff-accent-text token instead). Hardcoded hex
+     previously left every tier except fps-low unreadable in light mode
+     (contrast as low as 1.67:1 against a white row background). */
+  .fps-low       { color: var(--ff-red); }
+  .fps-medium    { color: var(--ff-amber); }
+  .fps-good      { color: var(--ff-green); }
+  .fps-elite     { color: var(--ff-accent-text); }
+  .fps-excellent { color: var(--ff-cyan); }
 
   /* Shake animation */
   @keyframes shake {

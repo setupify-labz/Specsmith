@@ -94,14 +94,14 @@ export default function FpsGauge({ fps, min, max, color, label }: FpsGaugeProps)
           <span className="text-4xl font-black tabular-nums" style={{ color }}>
             {displayFps}
           </span>
-          <span className="text-xs text-[#8888AA] font-medium uppercase tracking-widest">FPS</span>
+          <span className="text-xs text-[var(--ff-text-2)] font-medium uppercase tracking-widest">FPS</span>
         </div>
       </div>
       <div className="mt-1 text-center">
         <span className="text-sm font-semibold px-3 py-1 rounded-full text-xs" style={{ color, backgroundColor: `${color}18` }}>
           {label}
         </span>
-        <p className="text-[#8888AA] text-xs mt-2">
+        <p className="text-[var(--ff-text-2)] text-xs mt-2">
           Range: <span style={{ color }}>{min} — {max} FPS estimated</span>
         </p>
       </div>

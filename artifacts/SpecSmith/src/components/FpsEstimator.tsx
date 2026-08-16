@@ -214,7 +214,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
           )}
         </div>
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--ff-border)' }}>
-          <div className="overflow-x-auto max-h-80 overflow-y-auto">
+          <div className="overflow-x-auto max-h-80 overflow-y-auto" tabIndex={0} role="region" aria-label="All games FPS results table">
             <table className="w-full">
               <thead className="sticky top-0" style={{ backgroundColor: 'var(--ff-card)' }}>
                 <tr>
