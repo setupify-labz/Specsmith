@@ -36,6 +36,14 @@ export function getVerifiedGames(): GameFeatureProfile[] {
  * no formula fallback. This is deliberate: the whole point of this engine
  * is that every displayed number traces to a real source. See
  * types.ts / the project's benchmark-provenance spec for why.
+ *
+ * KNOWN GAP (tracked, not silent): matching does not yet consider
+ * upscalerMode (Quality/Balanced/Performance/Ultra Performance). No seeded
+ * record currently sets a mode, so this can't misfire today — but the
+ * moment a DLSS/FSR/XeSS record is added, this match logic must be
+ * extended to require an exact mode match too, or two different quality
+ * modes could be conflated as the same result. Do not add a mode-specific
+ * record without fixing this first.
  */
 export function lookupVerifiedFps(query: VerifiedFpsQuery): VerifiedFpsResult {
   const profile = getGameFeatureProfile(query.gameId);

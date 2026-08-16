@@ -50,9 +50,14 @@ export default function VerifiedBenchmarkPanel({ gpuId, gpuName, cpuId, cpuName 
         <h3 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Verified Benchmarks</h3>
         <span className="text-xs font-normal" style={{ color: 'var(--ff-text-2)' }}>— {gpuName} + {cpuName}</span>
       </div>
-      <p className="text-xs mb-5" style={{ color: 'var(--ff-text-3)' }}>
+      <p className="text-xs mb-2" style={{ color: 'var(--ff-text-3)' }}>
         Every number here traces to a real, cited benchmark. No formula, no guessing — if we don't have a measured
         result for your exact configuration, we say so instead of estimating one.
+      </p>
+      <p className="text-xs mb-5 px-3 py-2 rounded-lg" style={{ color: 'var(--ff-amber)', backgroundColor: 'var(--ff-card)' }}>
+        Coverage is intentionally tiny right now — {games.length} game{games.length === 1 ? '' : 's'} verified so far.
+        Expect "No verified benchmark available" for almost every combination until more real records are added.
+        That's the honest state of the database, not a bug.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">

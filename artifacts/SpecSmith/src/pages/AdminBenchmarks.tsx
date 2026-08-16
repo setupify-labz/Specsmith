@@ -78,6 +78,8 @@ export default function AdminBenchmarks() {
                   <th className="text-left py-1 pr-3">CPU + GPU</th>
                   <th className="text-left py-1 pr-3">Settings</th>
                   <th className="text-right py-1 pr-3">FPS</th>
+                  <th className="text-right py-1 pr-3">Fields confirmed</th>
+                  <th className="text-left py-1 pr-3">Verified how</th>
                   <th className="text-left py-1">Quality / Source</th>
                 </tr>
               </thead>
@@ -91,6 +93,14 @@ export default function AdminBenchmarks() {
                       {r.rayTracing ? ' · RT' : ''}
                     </td>
                     <td className="py-1.5 pr-3 text-right font-bold">{r.averageFps}</td>
+                    <td className="py-1.5 pr-3 text-right" style={{ color: 'var(--ff-text-2)' }}>
+                      {r.confirmedFields.length}/13
+                    </td>
+                    <td className="py-1.5 pr-3">
+                      <span style={{ color: r.verificationMethod === 'direct-fetch' ? 'var(--ff-green)' : 'var(--ff-amber)' }}>
+                        {r.verificationMethod === 'direct-fetch' ? 'Direct fetch' : 'Search summary'}
+                      </span>
+                    </td>
                     <td className="py-1.5">
                       <span style={{ color: 'var(--ff-amber)' }}>{r.evidenceQuality}</span>{' '}
                       <a href={r.source.url} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
