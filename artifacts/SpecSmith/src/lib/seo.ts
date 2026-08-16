@@ -114,6 +114,12 @@ export const ROUTE_META: RouteMeta[] = [
     image: `${SITE_URL}/opengraph-price-guesser.jpg`,
   },
   {
+    path: '/quiz',
+    title: 'What PC Should I Get? — PC Build Quiz | SpecSmith',
+    description:
+      'Answer 2 quick questions about your use case and budget to get a matched GPU + CPU pick with real prices — then load it straight into the Builder.',
+  },
+  {
     path: '/upgrade',
     title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
     description:
@@ -308,6 +314,7 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/best-cpu-budget/', parent: { name: 'Best CPU by Budget', path: '/best-cpu-budget' } },
   { prefix: '/best-pc-for/', parent: { name: 'Best PC Build by Use Case', path: '/best-pc-for' } },
   { prefix: '/prebuilts/', parent: { name: 'Gaming PC Build Guides', path: '/prebuilts' } },
+  { prefix: '/quiz/', parent: { name: 'PC Build Quiz', path: '/quiz' } },
 ];
 
 // Standalone guide/index pages that hang off the Parts Guides hub.
