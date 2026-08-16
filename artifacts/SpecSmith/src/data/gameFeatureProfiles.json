@@ -1,0 +1,12 @@
+[
+  {
+    "gameId": "marvelrivals",
+    "name": "Marvel Rivals",
+    "engine": "Unreal Engine 5 (deferred rendering pipeline, not Lumen/Nanite by default)",
+    "dlss": { "status": "supported", "notes": "DLSS 4 with Multi Frame Generation supported on RTX 50-series." },
+    "fsr": { "status": "supported", "notes": "FSR 3, including AMD frame generation." },
+    "xess": { "status": "supported" },
+    "frameGeneration": { "status": "supported", "notes": "Available via both DLSS (NVIDIA) and FSR 3 (any vendor)." },
+    "rayTracing": { "status": "supported" }
+  }
+]

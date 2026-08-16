@@ -5,6 +5,7 @@ import PartSelector from '../components/PartSelector';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import FpsEstimator from '../components/FpsEstimator';
+import VerifiedBenchmarkPanel from '../components/VerifiedBenchmarkPanel';
 import { useBuilder, type BuildState } from '../hooks/useBuilder';
 import { checkCompatibility } from '../lib/compatibility';
 import { decodeBuild } from '../lib/sharing';
@@ -431,6 +432,14 @@ export default function Builder() {
                 gpu={selectedGpu} cpu={selectedCpu} games={games}
                 resolution={fpsResolution} preset={fpsPreset}
                 onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {showFps && selectedGpu && selectedCpu && (
+              <VerifiedBenchmarkPanel
+                gpuId={selectedGpu.id} gpuName={selectedGpu.name}
+                cpuId={selectedCpu.id} cpuName={selectedCpu.name}
               />
             )}
           </AnimatePresence>

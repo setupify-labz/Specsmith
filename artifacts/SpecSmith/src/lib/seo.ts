@@ -114,6 +114,12 @@ export const ROUTE_META: RouteMeta[] = [
     image: `${SITE_URL}/opengraph-price-guesser.jpg`,
   },
   {
+    path: '/admin/benchmarks',
+    title: 'Benchmark Coverage — Internal | SpecSmith',
+    description: 'Internal dashboard tracking verified benchmark record coverage.',
+    noindex: true,
+  },
+  {
     path: '/quiz',
     title: 'What PC Should I Get? — PC Build Quiz | SpecSmith',
     description:

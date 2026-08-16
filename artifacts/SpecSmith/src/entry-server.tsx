@@ -48,6 +48,7 @@ import { getSffPageMeta } from './lib/sffBuilds';
 import Quiz from './pages/Quiz';
 import QuizLanding from './pages/QuizLanding';
 import { QUIZ_USE_CASES, getQuizPageMeta } from './lib/quiz';
+import AdminBenchmarks from './pages/AdminBenchmarks';
 import { prebuilts, getPrebuiltMeta } from './lib/prebuilts';
 import { MATCHUPS, CPU_MATCHUPS, getMatchupMeta, getCpuMatchupMeta } from './lib/matchups';
 import { GAME_PAGES, getGamePageMeta } from './lib/gamePages';
@@ -100,6 +101,7 @@ export const PRERENDER_ROUTES = [
   ...SOCKET_PAGES.map((p) => `/best-motherboard/${p.slug}`),
   '/quiz',
   ...QUIZ_USE_CASES.map((u) => `/quiz/${u.slug}`),
+  '/admin/benchmarks',
 ];
 
 const DYNAMIC_META_BY_PATH: Record<string, RouteMeta> = Object.fromEntries([
@@ -190,6 +192,7 @@ export function render(url: string): string {
                 <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
                 <Route path="/quiz" element={<PageWrapper><Quiz /></PageWrapper>} />
                 <Route path="/quiz/:slug" element={<PageWrapper><QuizLanding /></PageWrapper>} />
+                <Route path="/admin/benchmarks" element={<PageWrapper><AdminBenchmarks /></PageWrapper>} />
                 <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
               </Routes>
             </Suspense>

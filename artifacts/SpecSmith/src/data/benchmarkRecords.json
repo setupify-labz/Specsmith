@@ -1,0 +1,59 @@
+[
+  {
+    "id": "mr-rtx3060-r55600-1080p-ultra-native",
+    "gameId": "marvelrivals",
+    "cpuId": "r5-5600",
+    "gpuId": "rtx3060",
+    "resolution": "1080p",
+    "preset": "ultra",
+    "rayTracing": false,
+    "upscaler": "native",
+    "frameGeneration": false,
+    "averageFps": 60,
+    "source": {
+      "url": "https://evezone.evetech.co.za/performance-pulse/rtx-3060-marvel-rivals-at-1080p-fps-benchmark-optimal-settings",
+      "publisher": "EveZone (Evetech)",
+      "accessedAt": "2026-08-16"
+    },
+    "evidenceQuality": "B",
+    "notes": "Reported as 'slightly over 60 FPS'. Ultra preset with Lumen Global Illumination enabled (this game's default GI setting, not confirmed to be the same toggle as a formal hardware Ray Tracing switch, hence rayTracing recorded as false). Sourced via web search summary, not independently re-fetched — full article methodology (exact RAM, driver, game version) not confirmed."
+  },
+  {
+    "id": "mr-rtx3060-r55600-1080p-ultra-lumengi-off",
+    "gameId": "marvelrivals",
+    "cpuId": "r5-5600",
+    "gpuId": "rtx3060",
+    "resolution": "1080p",
+    "preset": "ultra",
+    "rayTracing": false,
+    "upscaler": "native",
+    "frameGeneration": false,
+    "averageFps": 113,
+    "source": {
+      "url": "https://evezone.evetech.co.za/performance-pulse/rtx-3060-marvel-rivals-at-1080p-fps-benchmark-optimal-settings",
+      "publisher": "EveZone (Evetech)",
+      "accessedAt": "2026-08-16"
+    },
+    "evidenceQuality": "B",
+    "notes": "Same test system as the baseline record, with in-game 'Lumen Global Illumination' disabled — this is a real, distinct settings state from the default-GI baseline, not an estimate. Sourced via web search summary, not independently re-fetched."
+  },
+  {
+    "id": "mr-rtx3060-r55600-1080p-ultra-lumengi-off-framegen",
+    "gameId": "marvelrivals",
+    "cpuId": "r5-5600",
+    "gpuId": "rtx3060",
+    "resolution": "1080p",
+    "preset": "ultra",
+    "rayTracing": false,
+    "upscaler": "native",
+    "frameGeneration": true,
+    "averageFps": 169,
+    "source": {
+      "url": "https://evezone.evetech.co.za/performance-pulse/rtx-3060-marvel-rivals-at-1080p-fps-benchmark-optimal-settings",
+      "publisher": "EveZone (Evetech)",
+      "accessedAt": "2026-08-16"
+    },
+    "evidenceQuality": "B",
+    "notes": "Same test system, Lumen GI still disabled, Frame Generation additionally enabled. RTX 3060 (Ampere) has no DLSS Frame Generation hardware (Optical Flow Accelerator is RTX 40-series+ only), so this must be AMD FSR 3 Frame Generation, which is vendor-agnostic. IMPORTANT: 169 FPS here is the frame-generation-boosted DISPLAYED figure, not independently rendered frames — do not present this as equivalent to native FPS in the UI."
+  }
+]

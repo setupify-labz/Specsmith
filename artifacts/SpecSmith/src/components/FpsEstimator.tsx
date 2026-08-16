@@ -100,12 +100,17 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
       className="rounded-2xl p-6 mt-6"
       style={{ border: '1px solid var(--ff-accent-30)', backgroundColor: 'var(--ff-surface)' }}
     >
-      <h3 className="font-bold text-lg mb-5" style={{ color: 'var(--ff-text)' }}>
+      <h3 className="font-bold text-lg mb-1" style={{ color: 'var(--ff-text)' }}>
         <span className="gradient-text">FPS Estimator</span>
         <span className="text-xs font-normal ml-2" style={{ color: 'var(--ff-text-2)' }}>
           — {gpu.name} + {cpu.name}
         </span>
       </h3>
+      <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+        Estimated — not measured. These numbers come from a tier-based formula for quick planning across all games at
+        once, not real per-game benchmarks. For a number backed by an actual cited benchmark, see Verified
+        Benchmarks below.
+      </p>
 
       {/* Controls */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">

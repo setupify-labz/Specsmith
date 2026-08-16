@@ -47,6 +47,7 @@ const UseCaseBuildPage = lazy(() => import('./pages/UseCaseBuildPage'));
 const SffBuildPage = lazy(() => import('./pages/SffBuildPage'));
 const Quiz = lazy(() => import('./pages/Quiz'));
 const QuizLanding = lazy(() => import('./pages/QuizLanding'));
+const AdminBenchmarks = lazy(() => import('./pages/AdminBenchmarks'));
 
 function AppRoutes() {
   return (
@@ -103,6 +104,7 @@ function AppRoutes() {
           <Route path="/best-pc-for/:slug" element={<PageWrapper><UseCaseBuildPage /></PageWrapper>} />
           <Route path="/quiz"      element={<PageWrapper><Quiz /></PageWrapper>} />
           <Route path="/quiz/:slug" element={<PageWrapper><QuizLanding /></PageWrapper>} />
+          <Route path="/admin/benchmarks" element={<PageWrapper><AdminBenchmarks /></PageWrapper>} />
           <Route path="*"          element={<PageWrapper><NotFound /></PageWrapper>} />
         </Routes>
       </Suspense>
