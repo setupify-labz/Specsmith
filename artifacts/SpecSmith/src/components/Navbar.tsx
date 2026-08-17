@@ -52,10 +52,14 @@ export default function Navbar() {
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
           scrolled ? 'shadow-lg' : ''
         }`}
         style={{
+          // Defaults to 0 (today's exact position) — only shifts down when
+          // LegacyMigrationBanner is mounted and sets this var to its own
+          // height, so the two never overlap. See that component.
+          top: 'var(--legacy-banner-h, 0px)',
           backgroundColor: scrolled
             ? 'var(--ff-nav-bg)'
             : 'transparent',

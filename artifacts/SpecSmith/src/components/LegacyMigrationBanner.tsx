@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { isMigrationPromptDismissedThisSession, dismissMigrationPromptThisSession } from '../lib/authMigration';
+
+const BANNER_HEIGHT_VAR = '--legacy-banner-h';
 
 // Prominent, hard-to-miss notice for anyone with pre-migration localStorage
 // builds (see authMigration.ts) — dismissible for the current browser
@@ -16,9 +18,33 @@ export default function LegacyMigrationBanner() {
   const { showToast } = useToast();
   const [dismissed, setDismissed] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
-  if (!legacyAccount || legacyAccount.builds.length === 0) return null;
-  if (dismissed || isMigrationPromptDismissedThisSession()) return null;
+  const visible = !!legacyAccount && legacyAccount.builds.length > 0
+    && !dismissed && !isMigrationPromptDismissedThisSession();
+
+  // Navbar.tsx reads this to shift itself down by exactly this banner's
+  // rendered height, instead of the fixed navbar overlapping/hiding it —
+  // that overlap was the actual production bug this fixes. A
+  // ResizeObserver (not a one-time measurement) keeps it correct as the
+  // banner's text wraps differently across viewport widths.
+  useEffect(() => {
+    if (!visible || !bannerRef.current) {
+      document.documentElement.style.removeProperty(BANNER_HEIGHT_VAR);
+      return;
+    }
+    const el = bannerRef.current;
+    const setHeight = () => document.documentElement.style.setProperty(BANNER_HEIGHT_VAR, `${el.offsetHeight}px`);
+    setHeight();
+    const observer = new ResizeObserver(setHeight);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty(BANNER_HEIGHT_VAR);
+    };
+  }, [visible]);
+
+  if (!visible) return null;
 
   const count = legacyAccount.builds.length;
   const plural = count === 1 ? '' : 's';
@@ -44,6 +70,7 @@ export default function LegacyMigrationBanner() {
 
   return (
     <div
+      ref={bannerRef}
       role="alert"
       className="relative z-40 px-4 py-3 text-sm font-medium flex flex-wrap items-center justify-center gap-3 text-center"
       style={{ backgroundColor: '#FFB30018', borderBottom: '1px solid #FFB30040', color: 'var(--ff-amber)' }}
