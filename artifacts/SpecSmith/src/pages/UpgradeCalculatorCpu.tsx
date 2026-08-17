@@ -8,7 +8,7 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { useToast } from '../context/ToastContext';
 import {
-  getUpgradeCpus, getUpgradeCpu, getCpuUpgradeCandidates, estimateCpuResaleValue, averageCpuFps,
+  getUpgradeCpus, getUpgradeCpu, getCpuUpgradeCandidates, getBestValueCpuCandidate, estimateCpuResaleValue, averageCpuFps,
   cpuUpgradeCalculatorFaqs, cpuUpgradeCalculatorFaqJsonLd,
   type UpgradeVerdict,
 } from '../lib/cpuUpgradeCalculator';
@@ -18,6 +18,7 @@ const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: 
   moderate: { label: 'Moderate upgrade', bg: 'rgba(0,212,255,0.12)', color: 'var(--ff-cyan)', border: 'rgba(0,212,255,0.3)' },
   marginal: { label: 'Marginal gain',    bg: 'rgba(255,179,0,0.12)', color: 'var(--ff-amber)', border: 'rgba(255,179,0,0.3)' },
 };
+const BEST_VALUE_STYLE = { label: 'Best value', bg: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: 'rgba(255,215,0,0.35)' };
 
 export default function UpgradeCalculatorCpu() {
   useSeo(getRouteMeta('/upgrade-calculator-cpu'));
@@ -33,6 +34,7 @@ export default function UpgradeCalculatorCpu() {
   const resale = current ? estimateCpuResaleValue(current.price_usd) : 0;
   const avgFpsCurrent = current ? averageCpuFps(current) : 0;
   const candidates = useMemo(() => currentId ? getCpuUpgradeCandidates(currentId) : [], [currentId]);
+  const bestValue = useMemo(() => getBestValueCpuCandidate(candidates), [candidates]);
 
   const shareResult = async () => {
     if (!current) return;
@@ -149,7 +151,7 @@ export default function UpgradeCalculatorCpu() {
                         style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="font-bold" style={{ color: 'var(--ff-text)' }}>{c.cpu.name}</span>
                             <span
                               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
@@ -157,6 +159,12 @@ export default function UpgradeCalculatorCpu() {
                             >
                               {style.label}
                             </span>
+                            {bestValue?.cpu.id === c.cpu.id && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: BEST_VALUE_STYLE.bg, color: BEST_VALUE_STYLE.color, border: `1px solid ${BEST_VALUE_STYLE.border}` }}>
+                                {BEST_VALUE_STYLE.label}
+                              </span>
+                            )}
                           </div>
                           <Link
                             to={`/builder?cpu=${c.cpu.id}`}
@@ -166,7 +174,7 @@ export default function UpgradeCalculatorCpu() {
                             Build with this <ArrowRight size={12} />
                           </Link>
                         </div>
-                        <div className="grid grid-cols-3 gap-3 text-center">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                           <div>
                             <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Net Cost*</p>
                             <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>${c.netCost.toLocaleString()}</p>
@@ -181,12 +189,18 @@ export default function UpgradeCalculatorCpu() {
                             <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>New Average</p>
                             <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>{c.avgFpsNew} FPS</p>
                           </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Cost / FPS**</p>
+                            <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
+                              {c.costPerFps !== null ? `$${c.costPerFps}` : '—'}
+                            </p>
+                          </div>
                         </div>
                       </motion.div>
                     );
                   })}
                   <p className="text-[10px] text-center pt-2" style={{ color: 'var(--ff-text-3)' }}>
-                    *Net cost = new CPU's price minus your current CPU's estimated resale value. FPS gains from a CPU upgrade
+                    *Net cost = new CPU's price minus your current CPU's estimated resale value. **Cost/FPS = net cost divided by the average FPS gained — lower is a better value, not shown when there's no positive FPS gain to divide by. FPS gains from a CPU upgrade
                     are naturally smaller than a GPU upgrade's — most games are GPU-bound before the CPU becomes the limit.
                   </p>
                 </div>

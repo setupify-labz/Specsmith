@@ -58,6 +58,11 @@ export interface CpuUpgradeCandidate {
   avgFpsNew: number;
   fpsGainPct: number;
   verdict: UpgradeVerdict;
+  /** Dollars spent per average FPS gained (netCost / FPS gained), rounded.
+   * Null when there's no meaningful FPS gain to divide by (zero/negative),
+   * or when netCost is 0 — in either case a $/FPS ratio would be
+   * undefined or misleading rather than a real number. */
+  costPerFps: number | null;
 }
 
 /** CPUs worth considering as an upgrade from the given chip. Same
@@ -91,8 +96,19 @@ export function getCpuUpgradeCandidates(currentId: string, limit = 6): CpuUpgrad
       // swings a GPU upgrade can produce. Thresholds are scaled to that real
       // range rather than reusing the GPU calculator's numbers verbatim.
       const verdict: UpgradeVerdict = fpsGainPct >= 4 ? 'strong' : fpsGainPct >= 2 ? 'moderate' : 'marginal';
-      return { cpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict };
+      const fpsGained = avgFpsNew - avgFpsCurrent;
+      const costPerFps = netCost > 0 && fpsGained > 0 ? Math.round(netCost / fpsGained) : null;
+      return { cpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict, costPerFps };
     });
+}
+
+/** The candidate with the lowest $/FPS — the best-value pick, which isn't
+ * always the one with the biggest raw FPS gain. Undefined when no
+ * candidate has a computable costPerFps (see CpuUpgradeCandidate.costPerFps). */
+export function getBestValueCpuCandidate(candidates: CpuUpgradeCandidate[]): CpuUpgradeCandidate | undefined {
+  return candidates
+    .filter((c): c is CpuUpgradeCandidate & { costPerFps: number } => c.costPerFps !== null)
+    .reduce<CpuUpgradeCandidate | undefined>((best, c) => (!best || c.costPerFps! < best.costPerFps!) ? c : best, undefined);
 }
 
 export const cpuUpgradeCalculatorFaqs = [

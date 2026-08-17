@@ -58,6 +58,11 @@ export interface UpgradeCandidate {
   avgFpsNew: number;
   fpsGainPct: number;
   verdict: UpgradeVerdict;
+  /** Dollars spent per average FPS gained (netCost / FPS gained), rounded.
+   * Null when there's no meaningful FPS gain to divide by (zero/negative),
+   * or when netCost is 0 — in either case a $/FPS ratio would be
+   * undefined or misleading rather than a real number. */
+  costPerFps: number | null;
 }
 
 /** GPUs worth considering as an upgrade from the given card. Picks the
@@ -89,8 +94,19 @@ export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandi
       const netCost = Math.max(0, gpu.price_usd - resale);
       const fpsGainPct = Math.round(((avgFpsNew - avgFpsCurrent) / avgFpsCurrent) * 100);
       const verdict: UpgradeVerdict = fpsGainPct >= 30 ? 'strong' : fpsGainPct >= 15 ? 'moderate' : 'marginal';
-      return { gpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict };
+      const fpsGained = avgFpsNew - avgFpsCurrent;
+      const costPerFps = netCost > 0 && fpsGained > 0 ? Math.round(netCost / fpsGained) : null;
+      return { gpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict, costPerFps };
     });
+}
+
+/** The candidate with the lowest $/FPS — the best-value pick, which isn't
+ * always the one with the biggest raw FPS gain. Undefined when no
+ * candidate has a computable costPerFps (see UpgradeCandidate.costPerFps). */
+export function getBestValueCandidate(candidates: UpgradeCandidate[]): UpgradeCandidate | undefined {
+  return candidates
+    .filter((c): c is UpgradeCandidate & { costPerFps: number } => c.costPerFps !== null)
+    .reduce<UpgradeCandidate | undefined>((best, c) => (!best || c.costPerFps! < best.costPerFps!) ? c : best, undefined);
 }
 
 export const upgradeCalculatorFaqs = [
