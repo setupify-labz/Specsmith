@@ -44,7 +44,7 @@ export default function BestCpuForGame() {
 
   const picks = getCpuGamePicks(game);
   const rows = getGameCpuRows(game);
-  const intro = getCpuGameIntro(game);
+  const intro = getCpuGameIntro(game, rows);
   const related = getRelatedCpuGamePages(page);
   const pickIds = new Set(picks.map(p => p.cpu.id));
   const valuePick = picks.find(p => p.label === 'Best Value')!;

@@ -154,18 +154,50 @@ export function getGamePicks(game: PageGame): GamePick[] {
   return picks;
 }
 
-/** Game-specific intro paragraph — how GPU-hungry this title actually is. */
-export function getGameIntro(game: PageGame): string {
-  const bound = game.gpu_bound ?? 0.75;
+/**
+ * Average 1080p→4K FPS drop-off for the FPS King GPU, across every tracked
+ * game — computed once from the same estimator calls the pages themselves
+ * make (no separate data source), so getGameIntro can say whether a given
+ * game's resolution scaling is steeper or gentler than typical instead of
+ * just restating its gpu_bound bucket.
+ */
+let cachedAverageResolutionDropPct: number | null = null;
+function getAverageResolutionDropPct(): number {
+  if (cachedAverageResolutionDropPct !== null) return cachedAverageResolutionDropPct;
+  const drops = GAME_PAGES.map((p) => {
+    const g = getPageGame(p.gameId);
+    if (!g) return null;
+    const rows = getGameGpuRows(g);
+    const king = rows.reduce((best, r) => (r.fps4k > best.fps4k ? r : best), rows[0]);
+    return Math.round(((king.fps1080 - king.fps4k) / king.fps1080) * 100);
+  }).filter((d): d is number => d !== null);
+  cachedAverageResolutionDropPct = Math.round(drops.reduce((a, b) => a + b, 0) / drops.length);
+  return cachedAverageResolutionDropPct;
+}
+
+/**
+ * Game-specific intro paragraph. Previously bucketed purely by gpu_bound
+ * into one of three generic templates (most GPU-heavy games saying nearly
+ * identical things about each other). Now computes an actual number from
+ * this game's own FPS ladder — how much the FPS King GPU's frame rate
+ * drops from 1080p to 4K — and states it relative to the 20-game average,
+ * so two games with similar gpu_bound values but different real scaling
+ * curves no longer read as the same page with the name swapped.
+ */
+export function getGameIntro(game: PageGame, rows: GameGpuRow[]): string {
   const cpu = getMatchupCpu();
   const base = `All estimates below assume High settings at native resolution (no DLSS/FSR upscaling) paired with a ${cpu.name}.`;
-  if (bound >= 0.85) {
-    return `${game.name} is one of the most GPU-heavy games we track — your graphics card determines almost all of your frame rate here, so this is exactly the kind of title worth upgrading for. ${base}`;
-  }
-  if (bound >= 0.65) {
-    return `${game.name} is a demanding title where the GPU does most of the work, though a capable CPU still matters for smooth frame pacing. ${base}`;
-  }
-  return `${game.name} is a CPU-leaning esports title — most modern graphics cards push very high frame rates, so the smart play is buying the cheapest card that hits your monitor's refresh rate rather than the most powerful one. ${base}`;
+  const king = rows.reduce((best, r) => (r.fps4k > best.fps4k ? r : best), rows[0]);
+  const dropPct = Math.round(((king.fps1080 - king.fps4k) / king.fps1080) * 100);
+  const avgDropPct = getAverageResolutionDropPct();
+  const diff = dropPct - avgDropPct;
+  const comparison =
+    Math.abs(diff) <= 3
+      ? `about typical for the games we track — the 20-game average is ${avgDropPct}%`
+      : diff > 0
+      ? `steeper than the 20-game average of ${avgDropPct}% — GPU choice matters more than usual for this one`
+      : `gentler than the 20-game average of ${avgDropPct}% — you can get away with less GPU than usual and still hold up at 4K`;
+  return `Stepping up from 1080p to 4K, even the ${king.gpu.name} loses about ${dropPct}% of its frame rate in ${game.name} — ${comparison}. ${base}`;
 }
 
 /** Other game pages to cross-link (same genre first, then the rest). */

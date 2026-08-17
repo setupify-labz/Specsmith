@@ -42,7 +42,7 @@ export default function BestGpuForGame() {
 
   const picks = getGamePicks(game);
   const rows = getGameGpuRows(game);
-  const intro = getGameIntro(game);
+  const intro = getGameIntro(game, rows);
   const related = getRelatedGamePages(page);
   const pickIds = new Set(picks.map(p => p.gpu.id));
   const valuePick = picks.find(p => p.label === 'Best Value')!;

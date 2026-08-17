@@ -93,18 +93,51 @@ export function getCpuGamePicks(game: PageGame): CpuGamePick[] {
   return picks;
 }
 
-/** Game-specific intro — how much the CPU actually matters for this title. */
-export function getCpuGameIntro(game: PageGame): string {
-  const bound = game.gpu_bound ?? 0.75;
+/**
+ * Average FPS spread between the fastest and cheapest tracked CPU (same
+ * fixed-GPU methodology as the page tables) across every tracked game —
+ * computed once, so getCpuGameIntro can say whether a given game's CPU
+ * sensitivity is wider or narrower than typical instead of just restating
+ * its gpu_bound bucket.
+ */
+let cachedAverageCpuSpreadPct: number | null = null;
+function getAverageCpuSpreadPct(): number {
+  if (cachedAverageCpuSpreadPct !== null) return cachedAverageCpuSpreadPct;
+  const spreads = CPU_GAME_PAGES.map((p) => {
+    const g = getPageGame(p.gameId);
+    if (!g) return null;
+    const rows = getGameCpuRows(g);
+    const fastest = rows.reduce((best, r) => (r.fps1080 > best.fps1080 ? r : best), rows[0]);
+    const cheapest = rows.reduce((best, r) => (r.cpu.price_usd < best.cpu.price_usd ? r : best), rows[0]);
+    return Math.round(((fastest.fps1080 - cheapest.fps1080) / fastest.fps1080) * 100);
+  }).filter((d): d is number => d !== null);
+  cachedAverageCpuSpreadPct = Math.round(spreads.reduce((a, b) => a + b, 0) / spreads.length);
+  return cachedAverageCpuSpreadPct;
+}
+
+/**
+ * Game-specific intro. Previously bucketed purely by gpu_bound into one of
+ * three generic templates. Now computes the actual FPS gap between the
+ * fastest and cheapest CPU on this page's own ladder — a real buying
+ * question ("what do I give up by not buying the top chip?") — and states
+ * it relative to the 20-game average, so games no longer read as
+ * interchangeable copies of each other with the name swapped.
+ */
+export function getCpuGameIntro(game: PageGame, rows: GameCpuRow[]): string {
   const gpu = getMatchupFixedGpu();
   const base = `All estimates below assume High settings at native resolution (no DLSS/FSR upscaling) paired with an ${gpu.name} so the CPU is the bottleneck wherever the game allows it.`;
-  if (bound >= 0.85) {
-    return `${game.name} is heavily GPU-bound — nearly any modern CPU delivers close to the same frame rate here, so don't overspend on the processor for this game specifically; put the budget into the graphics card instead. ${base}`;
-  }
-  if (bound >= 0.65) {
-    return `${game.name} leans on the GPU, but a faster CPU still helps frame pacing and 1% lows, especially at 1080p. ${base}`;
-  }
-  return `${game.name} is a CPU-heavy esports title — the processor genuinely controls your frame rate ceiling here, so this is exactly the kind of game worth spending on a fast CPU for. ${base}`;
+  const fastest = rows.reduce((best, r) => (r.fps1080 > best.fps1080 ? r : best), rows[0]);
+  const cheapest = rows.reduce((best, r) => (r.cpu.price_usd < best.cpu.price_usd ? r : best), rows[0]);
+  const spreadPct = Math.round(((fastest.fps1080 - cheapest.fps1080) / fastest.fps1080) * 100);
+  const avgSpreadPct = getAverageCpuSpreadPct();
+  const diff = spreadPct - avgSpreadPct;
+  const comparison =
+    Math.abs(diff) <= 1
+      ? `about typical for the games we track — the 20-game average is ${avgSpreadPct}%`
+      : diff > 0
+      ? `wider than the 20-game average of ${avgSpreadPct}% — this is exactly the kind of title worth spending on a faster CPU for`
+      : `narrower than the 20-game average of ${avgSpreadPct}% — almost any CPU on our list keeps up here, so don't overspend on the processor for this game specifically`;
+  return `At 1080p, the ${cheapest.cpu.name} trails the ${fastest.cpu.name} by about ${spreadPct}% FPS in ${game.name} — ${comparison}. ${base}`;
 }
 
 /** Other CPU-game pages to cross-link (same genre first, then the rest). */
