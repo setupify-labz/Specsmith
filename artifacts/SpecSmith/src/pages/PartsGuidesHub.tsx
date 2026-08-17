@@ -34,6 +34,10 @@ const faqs = [
     content: 'Tier Lists rank every GPU or CPU we track purely on performance, S to D, regardless of price. Budget guides filter down to whatever fits under a specific price ceiling, ranked by benchmark score within that limit — use Tier Lists to see the full performance picture, Budget guides when you have a firm spending cap.',
   },
   {
+    title: 'These guides, the PC Build Quiz, Best PC by Use Case, and Build Crate all recommend parts — which one should I actually use?',
+    content: 'They\'re not the same tool wearing different skins — each picks by different criteria for a different situation. The Tier Lists and Budget/RAM/Storage/etc. guides on this page rank every part we track by raw benchmark performance or price, for browsing on your own terms. The 2-question PC Build Quiz and Best PC by Use Case guides pick a specific GPU+CPU pair matched to what you\'ll actually use the PC for (gaming, streaming, video editing) and your budget — faster if you just want an answer. Build Crate is the odd one out: it\'s a for-fun randomizer, not a recommendation — every pull is still guaranteed to be fully compatible, but what you land on is chance, not a pick for your situation. If you want a specific answer fast, use the Quiz or a Use Case guide. If you want to compare every option yourself, use the guides on this page. If you just want to see a random compatible build, open a Crate.',
+  },
+  {
     title: 'Are these guides kept up to date?',
     content: 'Prices refresh monthly as part of the site\'s regular data update, and tier/budget rankings recalculate automatically from the current dataset — nothing here is a static, one-time snapshot.',
   },

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw } from 'lucide-react';
+import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
-import type { ShareView } from '../lib/sharing';
+import { downloadBuildFile, parseBuildFileContent, type ShareView, type SharedCustomPart } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
+import { useToast } from '../context/ToastContext';
 import BottleneckChecker from './BottleneckChecker';
 import ShareButton from './ShareButton';
 import SaveBuildModal from './SaveBuildModal';
@@ -39,13 +40,14 @@ interface Props {
   onScrollToGpu?: () => void;
   onScrollToCpu?: () => void;
   onStartOver?: () => void;
+  onImportBuild?: (imported: { build: Record<string, string | null>; name: string; view: ShareView | null; customParts: SharedCustomPart[] }) => void;
 }
 
 export default function BuildSummary({
   parts, totalCost, onEstimateFps, canEstimate, compatibilityOk,
   gpu, cpu, buildState, buildName, shareView,
   customParts = [], onAddCustomPart, onRemoveCustomPart,
-  onScrollToGpu, onScrollToCpu, onStartOver,
+  onScrollToGpu, onScrollToCpu, onStartOver, onImportBuild,
 }: Props) {
   const [saveOpen, setSaveOpen] = useState(false);
   const [cardState, setCardState] = useState<'idle' | 'downloading' | 'copying' | 'copied'>('idle');
@@ -54,6 +56,30 @@ export default function BuildSummary({
   const [customPrice, setCustomPrice] = useState('');
   const [taxPct, setTaxPct] = useState('');
   const [startOverConfirm, setStartOverConfirm] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
+
+  const handleExportFile = () => {
+    downloadBuildFile(buildState, buildName, shareView, customParts);
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file next time
+    if (!file || !onImportBuild) return;
+    try {
+      const text = await file.text();
+      const parsed = parseBuildFileContent(text);
+      if (!parsed) {
+        showToast('That file isn\'t a valid SpecSmith build export', 'error');
+        return;
+      }
+      onImportBuild(parsed);
+      showToast(`Imported "${parsed.name}"`, 'success');
+    } catch {
+      showToast('Failed to read that file', 'error');
+    }
+  };
 
   const taxRate = parseFloat(taxPct);
   const taxValid = !isNaN(taxRate) && taxRate > 0 && taxRate < 30;
@@ -322,6 +348,47 @@ export default function BuildSummary({
                 </button>
               )}
             </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
           )}
 
           {/* Start Over */}

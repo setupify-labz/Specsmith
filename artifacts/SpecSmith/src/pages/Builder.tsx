@@ -21,6 +21,9 @@ import { getRouteMeta } from '../lib/seo';
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
 
+const VALID_RESOLUTIONS: Resolution[] = ['1080p', '1440p', '4k'];
+const VALID_PRESETS: Preset[] = ['low', 'medium', 'high', 'ultra'];
+
 interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface Motherboard { id: string; name: string; brand: string; price_usd: number; socket: string; supported_ram: string[]; form_factor: string; sponsored?: boolean; [key: string]: unknown; }
@@ -98,7 +101,7 @@ export default function Builder() {
     return hasAny ? fromParams : undefined;
   }, []);
 
-  const { build, selectPart, clearBuild } = useBuilder(initialBuild);
+  const { build, selectPart, loadBuild, clearBuild } = useBuilder(initialBuild);
   const [showFps, setShowFps] = useState(false);
   const [fpsResolution, setFpsResolution] = useState<Resolution>('1080p');
   const [fpsPreset, setFpsPreset] = useState<Preset>('high');
@@ -110,6 +113,17 @@ export default function Builder() {
   const startOver = () => {
     clearBuild();
     setCustomParts([]);
+    setShowFps(false);
+  };
+  const importBuild = (imported: { build: Record<string, string | null>; view: { resolution: string; preset: string } | null; customParts: { name: string; price: number }[] }) => {
+    loadBuild(imported.build);
+    if (imported.view
+      && (VALID_RESOLUTIONS as string[]).includes(imported.view.resolution)
+      && (VALID_PRESETS as string[]).includes(imported.view.preset)) {
+      setFpsResolution(imported.view.resolution as Resolution);
+      setFpsPreset(imported.view.preset as Preset);
+    }
+    setCustomParts(imported.customParts.map((cp, i) => ({ id: `custom-${Date.now()}-${i}`, name: cp.name, price: cp.price })));
     setShowFps(false);
   };
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
@@ -168,6 +182,7 @@ export default function Builder() {
     return result;
   }, [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
   const warnings = compat.warnings;
+  const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
   const corePartsList = [
     selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: selectedGpu.price_usd },
@@ -344,7 +359,7 @@ export default function Builder() {
             <div
               className="rounded-2xl overflow-hidden"
               style={{
-                border: '1px solid var(--ff-border)',
+                border: monitorWarningCount > 0 && !peripheralsOpen ? '1px solid var(--ff-amber)' : '1px solid var(--ff-border)',
                 backgroundColor: 'var(--ff-surface)',
                 boxShadow: peripheralsOpen ? '0 8px 24px -8px rgba(108,99,255,0.18)' : 'none',
               }}
@@ -356,12 +371,28 @@ export default function Builder() {
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center relative"
                     style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
                   >
                     <MonitorIcon size={16} style={{ color: 'var(--ff-text-2)' }} />
+                    {monitorWarningCount > 0 && !peripheralsOpen && (
+                      <span
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-black"
+                        style={{ backgroundColor: 'var(--ff-amber)' }}
+                        aria-hidden="true"
+                      >
+                        {monitorWarningCount}
+                      </span>
+                    )}
                   </div>
-                  <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional — Monitor, Keyboard, Mouse, Headset)</span></span>
+                  <div className="text-left">
+                    <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional)</span></span>
+                    <p className="text-xs font-normal mt-0.5" style={{ color: monitorWarningCount > 0 && !peripheralsOpen ? 'var(--ff-amber)' : 'var(--ff-text-3)' }}>
+                      {monitorWarningCount > 0 && !peripheralsOpen
+                        ? `${monitorWarningCount} monitor pairing note${monitorWarningCount > 1 ? 's' : ''} — open to review`
+                        : 'Pairing a monitor checks it against your GPU — also Keyboard, Mouse, Headset'}
+                    </p>
+                  </div>
                 </div>
                 <ChevronDown size={18} className={`transition-transform duration-300 ${peripheralsOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
               </button>
@@ -420,6 +451,7 @@ export default function Builder() {
               onScrollToGpu={handleScrollToGpu}
               onScrollToCpu={handleScrollToCpu}
               onStartOver={startOver}
+              onImportBuild={importBuild}
             />
           </div>
         </div>
