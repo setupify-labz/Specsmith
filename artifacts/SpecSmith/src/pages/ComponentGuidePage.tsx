@@ -37,7 +37,7 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
     },
     {
       title: `How many ${guide.categoryLabel} options do you track, and how are the picks chosen?`,
-      content: `We track ${guide.items.length} ${guide.categoryLabel} options. The picks above (${guide.picks.map(p => p.label).join(', ')}) are the price/spec extremes within that tracked list — cheapest, fastest or highest-spec, and most expensive — not sponsored placements.`,
+      content: `We track ${guide.items.length} ${guide.categoryLabel} options. The picks above (${guide.picks.map(p => p.label).join(', ')}) are computed directly from that tracked list — by price, spec extremes, or capacity-per-dollar depending on the pick — not sponsored placements.`,
     },
     {
       title: 'Are these prices up to date?',

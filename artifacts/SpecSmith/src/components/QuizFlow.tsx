@@ -72,6 +72,13 @@ export default function QuizFlow({ lockedUseCase }: QuizFlowProps) {
               </p>
             </div>
 
+            {result.avgFps !== undefined && (
+              <div className="rounded-xl p-3 mb-4 text-center" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <span className="text-lg font-black" style={{ color: 'var(--ff-accent-text)' }}>~{result.avgFps} FPS</span>
+                <span className="text-xs ml-1.5" style={{ color: 'var(--ff-text-2)' }}>estimated average across 20 games at 1440p High</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {([
                 { label: 'GPU', part: result.gpu, category: 'gpu' as const },

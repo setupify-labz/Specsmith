@@ -49,15 +49,25 @@ function priciest<T extends GuideItem>(items: T[]): T {
   return items.reduce((max, i) => (i.price_usd > max.price_usd ? i : max), items[0]);
 }
 
-const ddr5 = ram.filter(r => r.type === 'DDR5');
-const ddr4 = ram.filter(r => r.type === 'DDR4');
-const ramBudget = cheapest(ram);
-const ramDdr5Pick = ddr5.length > 0 ? cheapest(ddr5) : ram[0];
-const ramPremium = priciest(ram);
+// Enriched with a computed $/unit field so the comparison table can show
+// it as a normal column and a "Best $/unit" pick can reference the exact
+// same number — capacity-per-dollar is the standard way RAM/storage
+// shoppers actually compare kits, unlike the other guide categories here
+// which don't have a clean continuous spec to divide price by.
+const ramEnriched = ram.map(r => ({ ...r, cost_per_gb: Math.round((r.price_usd / r.capacity_gb) * 100) / 100 }));
+const storageEnriched = storage.map(s => ({ ...s, cost_per_tb: Math.round((s.price_usd / s.capacity_tb) * 100) / 100 }));
 
-const storageBudget = cheapest(storage);
-const nvme = storage.filter(s => s.type.startsWith('NVMe'));
-const storageFastest = nvme.length > 0 ? nvme.reduce((max, s) => (s.speed_mbs > max.speed_mbs ? s : max), nvme[0]) : priciest(storage);
+const ddr5 = ramEnriched.filter(r => r.type === 'DDR5');
+const ddr4 = ramEnriched.filter(r => r.type === 'DDR4');
+const ramBudget = cheapest(ramEnriched);
+const ramDdr5Pick = ddr5.length > 0 ? cheapest(ddr5) : ramEnriched[0];
+const ramPremium = priciest(ramEnriched);
+const ramBestValue = ramEnriched.reduce((best, r) => (r.cost_per_gb < best.cost_per_gb ? r : best), ramEnriched[0]);
+
+const storageBudget = cheapest(storageEnriched);
+const nvme = storageEnriched.filter(s => s.type.startsWith('NVMe'));
+const storageFastest = nvme.length > 0 ? nvme.reduce((max, s) => (s.speed_mbs > max.speed_mbs ? s : max), nvme[0]) : priciest(storageEnriched);
+const storageBestValue = storageEnriched.reduce((best, s) => (s.cost_per_tb < best.cost_per_tb ? s : best), storageEnriched[0]);
 
 const psuSorted = [...psus].sort((a, b) => a.wattage - b.wattage);
 const psuBudget = psuSorted[0];
@@ -103,31 +113,41 @@ export const COMPONENT_GUIDES: ComponentGuide[] = [
     slug: 'ram', category: 'ram', categoryLabel: 'RAM',
     title: 'Best RAM for Gaming',
     blurb: 'DDR5 is the current standard for AM5 and LGA1851 builds; DDR4 remains the right (and cheaper) choice for AM4 and older LGA1700 boards. Check your motherboard’s supported type before buying — the two are not interchangeable.',
-    items: ram,
+    items: ramEnriched,
     picks: [
       { emoji: '💰', label: 'Budget Pick', item: ramBudget, detail: `The least expensive kit we track at $${ramBudget.price_usd} — ${ramBudget.capacity_gb}GB ${ramBudget.type}-${ramBudget.speed_mhz}.` },
       { emoji: '⚡', label: 'DDR5 Pick', item: ramDdr5Pick, detail: `Cheapest DDR5 kit at $${ramDdr5Pick.price_usd} — ${ramDdr5Pick.capacity_gb}GB at ${ramDdr5Pick.speed_mhz}MHz.` },
       { emoji: '👑', label: 'High-End Pick', item: ramPremium, detail: `The top kit we track at $${ramPremium.price_usd} — ${ramPremium.capacity_gb}GB ${ramPremium.type}-${ramPremium.speed_mhz}.` },
+      ...(ramBestValue.id !== ramBudget.id && ramBestValue.id !== ramDdr5Pick.id && ramBestValue.id !== ramPremium.id ? [{
+        emoji: '💵', label: 'Best $/GB', item: ramBestValue,
+        detail: `$${ramBestValue.cost_per_gb.toFixed(2)}/GB — the most capacity per dollar, ${ramBestValue.capacity_gb}GB ${ramBestValue.type}-${ramBestValue.speed_mhz} for $${ramBestValue.price_usd}. Still check your motherboard supports this type.`,
+      }] : []),
     ],
     columns: [
       { key: 'type', label: 'Type' },
       { key: 'capacity_gb', label: 'Capacity', format: v => `${v}GB` },
       { key: 'speed_mhz', label: 'Speed', format: v => `${v}MHz` },
+      { key: 'cost_per_gb', label: '$/GB', format: v => `$${(v as number).toFixed(2)}` },
     ],
   },
   {
     slug: 'storage', category: 'storage', categoryLabel: 'Storage',
     title: 'Best Storage for Gaming',
     blurb: 'NVMe Gen4 is the sweet spot for gaming right now — Gen5 drives are faster on paper but rarely translate to noticeably faster load times in actual games. SATA SSDs and HDDs are fine for bulk storage of a large game library.',
-    items: storage,
+    items: storageEnriched,
     picks: [
       { emoji: '💰', label: 'Budget Pick', item: storageBudget, detail: `The least expensive drive we track at $${storageBudget.price_usd} — ${storageBudget.capacity_tb}TB ${storageBudget.type}.` },
       { emoji: '⚡', label: 'Fastest Pick', item: storageFastest, detail: `${storageFastest.speed_mbs.toLocaleString()} MB/s — the quickest drive we track, for the shortest load times.` },
+      ...(storageBestValue.id !== storageBudget.id && storageBestValue.id !== storageFastest.id ? [{
+        emoji: '💵', label: 'Best $/TB', item: storageBestValue,
+        detail: `$${storageBestValue.cost_per_tb.toFixed(2)}/TB — the most capacity per dollar, ${storageBestValue.capacity_tb}TB ${storageBestValue.type} for $${storageBestValue.price_usd}. Cheapest-per-TB storage tends to be HDD — slower than SSD/NVMe, but fine for bulk game library storage.`,
+      }] : []),
     ],
     columns: [
       { key: 'type', label: 'Type' },
       { key: 'capacity_tb', label: 'Capacity', format: v => `${v}TB` },
       { key: 'speed_mbs', label: 'Speed', format: v => `${(v as number).toLocaleString()} MB/s` },
+      { key: 'cost_per_tb', label: '$/TB', format: v => `$${(v as number).toFixed(2)}` },
     ],
   },
   {

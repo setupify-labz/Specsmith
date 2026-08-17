@@ -1,13 +1,37 @@
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
+import gamesData from '../data/games.json';
 import { getUseCase, getTierPicks } from './useCaseBuilds';
+import { estimateFpsForBuild } from './fps';
 import type { RouteMeta } from './seo';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; vram_gb: number; benchmark_score: number; }
 interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; }
+// Richer variants for the FPS calculation only — QuizResult.gpu/cpu stay
+// typed as the narrower Gpu/Cpu above so both this module's own picks and
+// useCaseBuilds.ts's TierPick.gpu/cpu (which don't carry *_multiplier)
+// satisfy the same field.
+interface FpsGpu extends Gpu { gpu_multiplier: number; [key: string]: unknown; }
+interface FpsCpu extends Cpu { cpu_multiplier: number; [key: string]: unknown; }
+interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 
-const gpus = gpuData as Gpu[];
-const cpus = cpuData as Cpu[];
+const gpus = gpuData as FpsGpu[];
+const cpus = cpuData as FpsCpu[];
+const games = gamesData as Game[];
+
+// Reference settings for the "gaming" quiz result's FPS estimate — same
+// 1440p High baseline the /upgrade calculators use elsewhere on the site,
+// so this number means the same thing wherever it's shown. Not used for
+// the other use cases: their picks are chosen by non-gaming criteria
+// (NVENC, core count, VRAM...) the way the /best-pc-for guides already
+// are, and those guides don't show a gaming FPS number either.
+const GAMING_FPS_RESOLUTION = '1440p';
+const GAMING_FPS_PRESET = 'high';
+
+function averageGamingFps(gpu: FpsGpu, cpu: FpsCpu): number {
+  const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, cpu, g, GAMING_FPS_RESOLUTION, GAMING_FPS_PRESET).estimated, 0);
+  return Math.round(total / games.length);
+}
 
 export interface QuizUseCase {
   slug: string;
@@ -62,6 +86,11 @@ export interface QuizResult {
   tierLabel: string;
   gpu: Gpu;
   cpu: Cpu;
+  /** Estimated average FPS across all tracked games at 1440p High — only
+   * set for the "gaming" use case, where that's the actual picking
+   * criterion. Other use cases pick by non-gaming criteria and don't
+   * carry this, same as the /best-pc-for guides they mirror. */
+  avgFps?: number;
 }
 
 export function getQuizResult(useCaseSlug: string, tierIndex: number): QuizResult | null {
@@ -74,7 +103,7 @@ export function getQuizResult(useCaseSlug: string, tierIndex: number): QuizResul
     const gpu = bestByScore(gpus.filter((g) => g.price_usd <= tier.maxGpuPrice));
     const cpu = bestByScore(cpus.filter((c) => c.price_usd <= tier.maxCpuPrice));
     if (!gpu || !cpu) return null;
-    return { useCase, tierLabel: tier.label, gpu, cpu };
+    return { useCase, tierLabel: tier.label, gpu, cpu, avgFps: averageGamingFps(gpu, cpu) };
   }
 
   const uc = getUseCase(useCaseSlug);

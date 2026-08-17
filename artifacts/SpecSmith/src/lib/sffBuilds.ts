@@ -1,11 +1,14 @@
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
+import gamesData from '../data/games.json';
+import { estimateFpsForBuild } from './fps';
 import type { RouteMeta } from './seo';
 import { SITE_URL } from './seo';
 
-interface Gpu { id: string; name: string; brand: string; price_usd: number; length_mm: number; benchmark_score: number; }
-interface Cpu { id: string; name: string; brand: string; price_usd: number; socket: string; tdp_watts: number; benchmark_score: number; }
+interface Gpu { id: string; name: string; brand: string; price_usd: number; length_mm: number; benchmark_score: number; gpu_multiplier: number; [key: string]: unknown; }
+interface Cpu { id: string; name: string; brand: string; price_usd: number; socket: string; tdp_watts: number; benchmark_score: number; cpu_multiplier: number; [key: string]: unknown; }
+interface Game { id: string; name: string; gpu_bound?: number; base_fps: Record<string, Record<string, number>>; [key: string]: unknown; }
 interface CaseData { id: string; name: string; price_usd: number; gpu_clearance_mm: number; cooler_clearance_mm: number; motherboard_support: string[]; }
 interface Motherboard { id: string; name: string; price_usd: number; socket: string; form_factor: string; }
 interface Cooler { id: string; name: string; price_usd: number; height_mm: number; socket_support: string[]; }
@@ -15,6 +18,17 @@ const cpus = cpuData as Cpu[];
 const cases = componentData.cases as CaseData[];
 const motherboards = componentData.motherboards as Motherboard[];
 const coolers = componentData.coolers as Cooler[];
+const games = gamesData as Game[];
+
+// Same 1440p High reference used for the "gaming" quiz result and the
+// /upgrade calculators, so this number means the same thing everywhere.
+const SFF_FPS_RESOLUTION = '1440p';
+const SFF_FPS_PRESET = 'high';
+
+function averageSffFps(gpu: Gpu, cpu: Cpu): number {
+  const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, cpu, g, SFF_FPS_RESOLUTION, SFF_FPS_PRESET).estimated, 0);
+  return Math.round(total / games.length);
+}
 
 // Fixed platform for both SFF tiers: Ryzen 7 9700X is the strongest CPU
 // whose TDP (65W) fits under a 37mm low-profile cooler's rating, paired
@@ -44,6 +58,7 @@ export interface SffPick {
   cpu: Cpu;
   motherboard: Motherboard;
   cooler: Cooler;
+  avgFps: number;
 }
 
 function pickGpuForCase(c: CaseData, maxPrice: number, margin: number): Gpu {
@@ -65,7 +80,7 @@ export function getSffPicks(): SffPick[] {
   return SFF_TIERS.map(tier => {
     const sffCase = cases.find(c => c.id === tier.caseId)!;
     const gpu = pickGpuForCase(sffCase, tier.maxGpuPrice, tier.gpuClearanceMargin);
-    return { tier, case: sffCase, gpu, cpu, motherboard, cooler };
+    return { tier, case: sffCase, gpu, cpu, motherboard, cooler, avgFps: averageSffFps(gpu, cpu) };
   });
 }
 

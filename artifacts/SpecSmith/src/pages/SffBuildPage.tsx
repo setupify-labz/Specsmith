@@ -67,6 +67,10 @@ export default function SffBuildPage() {
                   ${(p.case.price_usd + p.motherboard.price_usd + p.cpu.price_usd + p.cooler.price_usd + p.gpu.price_usd).toLocaleString()}
                 </span>
               </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xs font-semibold" style={{ color: 'var(--ff-text-2)' }}>Est. Avg FPS</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>~{p.avgFps} FPS <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}>(1440p High)</span></span>
+              </div>
               <Link to={`/builder?gpu=${p.gpu.id}&cpu=${p.cpu.id}&motherboard=${p.motherboard.id}&cooler=${p.cooler.id}&case=${p.case.id}`}
                 className="mt-4 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg hover:opacity-80"
                 style={{ backgroundColor: 'var(--ff-card)', color: 'var(--ff-text)' }}>
