@@ -29,11 +29,33 @@ export interface VerifiedFpsQuery {
   /**
    * Which DLSS/FSR/XeSS quality mode is being asked about (e.g. "Quality",
    * "Balanced"). Only meaningful when `upscaler !== 'native'`; leave
-   * undefined for native. Undefined does NOT mean "any mode" — see
-   * matchesUpscalerMode below.
+   * undefined for native, or when the caller isn't asking about a specific
+   * mode. Undefined does NOT mean "any mode" — see matchesOptionalDimension
+   * below: it only matches a record whose mode is *also* unconfirmed.
    */
   upscalerMode?: string;
+  /**
+   * A real, source-described settings toggle with no dedicated schema
+   * dimension (e.g. Marvel Rivals' in-game "Lumen Global Illumination"
+   * switch — see BenchmarkRecord.settingsVariant's doc comment). Leave
+   * undefined unless specifically querying for a non-default variant; same
+   * unclaimed-matches-unclaimed-only rule as upscalerMode.
+   */
+  settingsVariant?: string;
   frameGeneration: boolean;
+}
+
+/**
+ * Shared rule for any optional, not-always-confirmed matching dimension:
+ * two honestly-unclaimed values match each other (neither side is
+ * asserting anything, so there's nothing to disagree about), but an
+ * unclaimed value never silently matches a claimed one in either
+ * direction, and two different claimed values never match. Used for both
+ * upscalerMode and settingsVariant.
+ */
+function matchesOptionalDimension(queryValue: string | undefined, recordValue: string | undefined): boolean {
+  if (queryValue === undefined && recordValue === undefined) return true;
+  return queryValue !== undefined && recordValue !== undefined && queryValue === recordValue;
 }
 
 /**
@@ -43,13 +65,17 @@ export interface VerifiedFpsQuery {
  * Rules (per the provenance spec — an unspecified mode must never silently
  * mean "any mode"):
  * - upscaler === 'native': mode doesn't apply to either side; always matches.
- * - upscaler !== 'native': both the query's requested mode and the record's
- *   confirmed mode must be present AND equal. If either side is missing a
- *   mode (query didn't ask for one, or the record's mode is an unconfirmed
- *   provenance gap — see BenchmarkRecord.upscalerMode's doc comment), that's
- *   a non-match, not a wildcard match. This is what stops "DLSS Quality"
- *   silently satisfying a query for "DLSS Performance" (or vice versa) once
- *   mode-specific records exist.
+ * - upscaler !== 'native': both sides unspecified matches (two honest "no
+ *   mode claimed" states agreeing with each other — this is what lets a
+ *   record whose source never named a mode, like Avatar: Frontiers of
+ *   Pandora's DLSS record, be reachable by the current UI, which never
+ *   asks for a mode either). Otherwise both the query's requested mode and
+ *   the record's confirmed mode must be present AND equal — if only one
+ *   side has a mode, or they're different modes, that's a non-match, not a
+ *   wildcard. This is what stops "DLSS Quality" silently satisfying a
+ *   query for "DLSS Performance" (or vice versa) once mode-specific
+ *   records exist, and stops a confirmed mode silently satisfying a query
+ *   that never asked for one.
  */
 export function matchesUpscalerMode(
   upscaler: Upscaler,
@@ -57,7 +83,7 @@ export function matchesUpscalerMode(
   recordMode: string | undefined,
 ): boolean {
   if (upscaler === 'native') return true;
-  return queryMode !== undefined && recordMode !== undefined && queryMode === recordMode;
+  return matchesOptionalDimension(queryMode, recordMode);
 }
 
 export function getGameFeatureProfile(gameId: string): GameFeatureProfile | undefined {
@@ -123,6 +149,7 @@ export function lookupVerifiedFps(query: VerifiedFpsQuery, records: BenchmarkRec
       r.rayTracing === query.rayTracing &&
       r.upscaler === query.upscaler &&
       matchesUpscalerMode(query.upscaler, query.upscalerMode, r.upscalerMode) &&
+      matchesOptionalDimension(query.settingsVariant, r.settingsVariant) &&
       r.frameGeneration === query.frameGeneration,
   );
 

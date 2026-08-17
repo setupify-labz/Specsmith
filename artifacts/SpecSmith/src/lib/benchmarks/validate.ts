@@ -80,6 +80,9 @@ export function validateBenchmarkRecord(
   if (record.upscaler === 'native' && record.upscalerMode) {
     errors.push('upscalerMode set but upscaler is "native" — mode does not apply to native rendering');
   }
+  if (record.settingsVariant !== undefined && record.settingsVariant.trim() === '') {
+    errors.push('settingsVariant is set but empty — omit the field entirely for the baseline/default state instead of an empty string');
+  }
 
   if (!Number.isFinite(record.averageFps) || record.averageFps <= 0) {
     errors.push(`averageFps must be a positive number, got ${record.averageFps}`);

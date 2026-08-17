@@ -29,6 +29,7 @@
     "preset": "ultra",
     "rayTracing": false,
     "upscaler": "native",
+    "settingsVariant": "Lumen Global Illumination off",
     "frameGeneration": false,
     "averageFps": 113,
     "source": {

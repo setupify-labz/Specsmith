@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lookupVerifiedFps, matchesUpscalerMode, type VerifiedFpsQuery } from './lookup';
+import { lookupVerifiedFps, matchesUpscalerMode, getAllBenchmarkRecords, type VerifiedFpsQuery } from './lookup';
 import type { BenchmarkRecord } from './types';
 
 // All fixtures below are synthetic, in-memory-only test data — never written
@@ -145,15 +145,109 @@ describe('matchesUpscalerMode — pure function rules (Priority 3)', () => {
     expect(matchesUpscalerMode('dlss', 'Quality', 'Quality')).toBe(true);
   });
 
-  it('an unspecified query mode must NOT silently mean "all modes"', () => {
-    expect(matchesUpscalerMode('dlss', undefined, 'Quality')).toBe(false);
-  });
-
-  it('an unspecified record mode (provenance gap) must NOT silently match a requested mode', () => {
+  it('a query that specifies Quality does not match a record with an unspecified mode', () => {
     expect(matchesUpscalerMode('dlss', 'Quality', undefined)).toBe(false);
   });
 
-  it('both sides unspecified for a non-native upscaler still does not match (no mode confirmed on either side)', () => {
-    expect(matchesUpscalerMode('dlss', undefined, undefined)).toBe(false);
+  it('a query that specifies Performance does not match a record with an unspecified mode', () => {
+    expect(matchesUpscalerMode('dlss', 'Performance', undefined)).toBe(false);
+  });
+
+  it('an unspecified query mode must NOT silently mean "all modes" — does not match a record with a specified Quality mode', () => {
+    expect(matchesUpscalerMode('dlss', undefined, 'Quality')).toBe(false);
+  });
+
+  it('an unspecified query mode must NOT silently mean "all modes" — does not match a record with a specified Performance mode', () => {
+    expect(matchesUpscalerMode('dlss', undefined, 'Performance')).toBe(false);
+  });
+
+  it('both sides unspecified for a non-native upscaler DOES match — two honest "no mode claimed" states agree, this is not a wildcard match against a confirmed mode', () => {
+    expect(matchesUpscalerMode('dlss', undefined, undefined)).toBe(true);
+    expect(matchesUpscalerMode('fsr', undefined, undefined)).toBe(true);
+    expect(matchesUpscalerMode('xess', undefined, undefined)).toBe(true);
+  });
+});
+
+// Regression coverage for the bcbab44 review findings — reachability
+// bugs found by testing the real bundled data through the real query
+// shape VerifiedBenchmarkPanel.tsx sends (no upscalerMode/settingsVariant
+// control exists in that UI, so both are always omitted from a real
+// query — these tests simulate exactly that, not a synthetic fixture).
+describe('reachability regression: unspecified-upscalerMode records (Avatar: Frontiers of Pandora)', () => {
+  const records = getAllBenchmarkRecords();
+  const avatarRecords = records.filter((r) => r.gameId === 'avatarfop');
+
+  it('both avatarfop records exist and have no confirmed upscalerMode (the source never states one)', () => {
+    expect(avatarRecords).toHaveLength(2);
+    for (const r of avatarRecords) {
+      expect(r.upscaler).toBe('dlss');
+      expect(r.upscalerMode).toBeUndefined();
+    }
+  });
+
+  it('both avatarfop records are reachable via the exact query shape the UI sends (no upscalerMode field)', () => {
+    for (const r of avatarRecords) {
+      const query: VerifiedFpsQuery = {
+        gameId: r.gameId, cpuId: r.cpuId, gpuId: r.gpuId,
+        resolution: r.resolution, preset: r.preset,
+        rayTracing: r.rayTracing, upscaler: r.upscaler,
+        frameGeneration: r.frameGeneration,
+        // upscalerMode intentionally omitted — VerifiedBenchmarkPanel never sends it.
+      };
+      const result = lookupVerifiedFps(query, records);
+      expect(result.state).toBe('MEASURED');
+      expect(result.record?.id).toBe(r.id);
+    }
+  });
+
+  it('a query that DOES specify a mode still correctly finds nothing (unconfirmed record mode is not a wildcard)', () => {
+    const r = avatarRecords[0];
+    const query: VerifiedFpsQuery = {
+      gameId: r.gameId, cpuId: r.cpuId, gpuId: r.gpuId,
+      resolution: r.resolution, preset: r.preset,
+      rayTracing: r.rayTracing, upscaler: r.upscaler,
+      upscalerMode: 'Quality',
+      frameGeneration: r.frameGeneration,
+    };
+    const result = lookupVerifiedFps(query, records);
+    expect(result.state).toBe('NOT_AVAILABLE');
+  });
+});
+
+describe('reachability regression: settingsVariant distinguishes the Marvel Rivals Lumen GI records', () => {
+  const records = getAllBenchmarkRecords();
+
+  it('the baseline (Lumen GI on) record is reachable with no settingsVariant in the query', () => {
+    const query: VerifiedFpsQuery = {
+      gameId: 'marvelrivals', cpuId: 'r5-5600', gpuId: 'rtx3060',
+      resolution: '1080p', preset: 'ultra', rayTracing: false,
+      upscaler: 'native', frameGeneration: false,
+    };
+    const result = lookupVerifiedFps(query, records);
+    expect(result.state).toBe('MEASURED');
+    expect(result.record?.id).toBe('mr-rtx3060-r55600-1080p-ultra-native');
+    expect(result.record?.averageFps).toBe(60);
+  });
+
+  it('the Lumen GI off record is independently reachable when the query asks for that variant', () => {
+    const query: VerifiedFpsQuery = {
+      gameId: 'marvelrivals', cpuId: 'r5-5600', gpuId: 'rtx3060',
+      resolution: '1080p', preset: 'ultra', rayTracing: false,
+      upscaler: 'native', frameGeneration: false,
+      settingsVariant: 'Lumen Global Illumination off',
+    };
+    const result = lookupVerifiedFps(query, records);
+    expect(result.state).toBe('MEASURED');
+    expect(result.record?.id).toBe('mr-rtx3060-r55600-1080p-ultra-lumengi-off');
+    expect(result.record?.averageFps).toBe(113);
+  });
+
+  it('averageFps and every other field on both records is unchanged from before this fix — only settingsVariant was added', () => {
+    const native = records.find((r) => r.id === 'mr-rtx3060-r55600-1080p-ultra-native');
+    const lumenOff = records.find((r) => r.id === 'mr-rtx3060-r55600-1080p-ultra-lumengi-off');
+    expect(native?.averageFps).toBe(60);
+    expect(native?.settingsVariant).toBeUndefined();
+    expect(lumenOff?.averageFps).toBe(113);
+    expect(lumenOff?.settingsVariant).toBe('Lumen Global Illumination off');
   });
 });

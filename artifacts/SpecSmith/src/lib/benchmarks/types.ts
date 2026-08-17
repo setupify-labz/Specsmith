@@ -130,6 +130,17 @@ export interface BenchmarkRecord {
   /** Which DLSS/FSR/XeSS quality mode, when upscaler !== 'native'. Unset means the source didn't specify one — treat as a gap, not as "any mode". */
   upscalerMode?: string;
   /**
+   * A real, source-described settings toggle that doesn't correspond to
+   * any other field here — e.g. Marvel Rivals' in-game "Lumen Global
+   * Illumination" switch, which is neither the same thing as the
+   * `rayTracing` boolean nor a `preset` tier (see the seeded
+   * mr-rtx3060-...-lumengi-off record for a real example). Leave unset for
+   * a record representing the baseline/default state; only set it when
+   * the source explicitly documents a distinct, named non-default variant
+   * — never invent one to force two otherwise-identical records apart.
+   */
+  settingsVariant?: string;
+  /**
    * True if this record's averageFps reflects Frame-Generation-boosted
    * *displayed* frames, not independently rendered ones (spec rule 9 —
    * these must never be silently presented as native FPS).
