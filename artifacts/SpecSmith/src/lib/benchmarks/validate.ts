@@ -26,7 +26,7 @@ export interface ValidationIssue {
 const EVIDENCE_QUALITIES: readonly EvidenceQuality[] = ['A', 'B', 'C', 'D'];
 const VERIFICATION_METHODS: readonly VerificationMethod[] = ['search-summary', 'direct-fetch'];
 const RESOLUTIONS = ['1080p', '1440p', '4k'];
-const PRESETS = ['low', 'medium', 'high', 'ultra'];
+const PRESETS = ['low', 'medium', 'high', 'ultra', 'extreme'];
 const UPSCALERS = ['native', 'dlss', 'fsr', 'xess'];
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -159,7 +159,7 @@ export function validateAllBenchmarkRecords(
 export function validateGameFeatureProfiles(profiles: readonly GameFeatureProfile[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const seenGameIds = new Map<string, number>();
-  const statuses = ['supported', 'unsupported', 'conditional'];
+  const statuses = ['supported', 'unsupported', 'conditional', 'unknown'];
 
   profiles.forEach((profile) => {
     seenGameIds.set(profile.gameId, (seenGameIds.get(profile.gameId) ?? 0) + 1);

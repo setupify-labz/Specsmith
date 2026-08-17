@@ -12,9 +12,9 @@ interface Props {
 }
 
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
-const presets: Preset[] = ['low', 'medium', 'high', 'ultra'];
+const presets: Preset[] = ['low', 'medium', 'high', 'ultra', 'extreme'];
 const resLabels: Record<Resolution, string> = { '1080p': '1080p', '1440p': '1440p', '4k': '4K' };
-const presetLabels: Record<Preset, string> = { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra' };
+const presetLabels: Record<Preset, string> = { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra', extreme: 'Extreme' };
 
 export default function VerifiedBenchmarkPanel({ gpuId, gpuName, cpuId, cpuName }: Props) {
   const games = getVerifiedGames();

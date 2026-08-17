@@ -24,6 +24,29 @@ that's disclosed to users. The two systems must never be conflated: a
 verified record is measured; an Estimator number is a maintained guess.
 Nothing in this doc applies to the Estimator's data.
 
+## `gameFeatureProfiles.json` is intentionally independent of `games.json`
+
+A game does **not** need to exist in `games.json` (the Estimator's own
+catalog) to have a `GameFeatureProfile` and verified benchmark records —
+and a game in `games.json` does not automatically have either. These are
+two separate namespaces on purpose: `games.json` entries carry
+Estimator-specific shape (a `base_fps` grid per resolution×preset,
+`gpu_bound` weighting) that a verified-only game has no use for. Marvel
+Rivals proves this works today — it has a profile and 3 verified records
+with zero presence in `games.json`.
+
+The namespace that actually matters for a `BenchmarkRecord.gameId` is
+`gameFeatureProfiles.json` — that's what `VerifiedBenchmarkPanel`'s game
+dropdown is built from (`getVerifiedGames()` in `lookup.ts`), and what
+`validateBenchmarkRecord` checks against. A record for a game with no
+profile would compile and pass every other check, but be permanently
+unreachable from the UI. Whether that gameId is *also* in `games.json` is
+a separate, softer question, surfaced honestly (not as an error) via
+`getCoverageSummary().gamesNotInEstimatorCatalog`.
+
+Do not add a "must also exist in `games.json`" requirement anywhere in
+this system — that coupling was considered and deliberately rejected.
+
 ## `EvidenceQuality`: A / B / C / D
 
 **Status: no rubric for what separates these grades is written down
@@ -78,8 +101,9 @@ only strengthens the confidence behind data already in the system.
 
 `REQUIRED_PROVENANCE_FIELDS` (`types.ts`) lists every field the checklist
 covers: `cpu, gpu, resolution, preset, rayTracingState, upscaler,
-upscalerMode, frameGenerationState, averageFps, nativeVsDisplayed,
-methodology, sourcePublicationDate, evidenceGrade, sourceUrl`.
+upscalerMode, frameGenerationState, averageFps, onePercentLow,
+zeroPointOnePercentLow, nativeVsDisplayed, methodology,
+sourcePublicationDate, evidenceGrade, sourceUrl`.
 
 `confirmedFields` is the subset you can actually stand behind after
 reading the source. Anything not in that list is a **disclosed gap**, not
@@ -113,12 +137,23 @@ an assumed default:
 5. `gpuId`/`cpuId` must match an id already in `gpus.json`/`cpus.json`.
    `gameId` must match (or be added as) an entry in
    `gameFeatureProfiles.json` — that file, not `games.json`, is what makes
-   a game selectable in the Verified Benchmarks panel.
-6. Run `pnpm run validate:benchmarks` before committing. It checks schema
+   a game selectable in the Verified Benchmarks panel. If the game has no
+   profile yet, add a minimal one with all five features set to
+   `{ status: 'unknown' }` rather than guessing their support — each gets
+   upgraded to a real status later, independently, as it's actually
+   confirmed. Never set a status other than `'unknown'` without a source
+   for that specific feature.
+6. `preset` must be one of the five normalized tiers (`low/medium/high/
+   ultra/extreme`). If the source's actual setting name is more specific
+   (e.g. "Extreme" in a game whose own menu also has a separate "Ultra"),
+   set `presetLabel` to that verbatim name and explain the mapping in
+   `notes`. If the setting doesn't cleanly fit any of the five tiers,
+   don't force it — reject the record instead.
+7. Run `pnpm run validate:benchmarks` before committing. It checks schema
    validity, catalog references, evidence-field consistency, and the
    frame-generation rule above — see `validate.ts`. A record that fails
    this should not be merged.
-7. Never add a record for a number you couldn't find a real source for,
+8. Never add a record for a number you couldn't find a real source for,
    even to "fill a gap" in coverage. An empty cell that honestly says "no
    verified benchmark available" is the entire point of this system — see
    `lookup.ts`'s doc comment on why there's no formula fallback.
