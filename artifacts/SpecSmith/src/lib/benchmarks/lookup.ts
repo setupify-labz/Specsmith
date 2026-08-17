@@ -1,5 +1,8 @@
 import benchmarkRecordsData from '../../data/benchmarkRecords.json';
 import gameFeatureProfilesData from '../../data/gameFeatureProfiles.json';
+import estimatorGamesData from '../../data/games.json';
+import estimatorGpusData from '../../data/gpus.json';
+import estimatorCpusData from '../../data/cpus.json';
 import type {
   BenchmarkRecord,
   GameFeatureProfile,
@@ -11,6 +14,9 @@ import type {
 
 const benchmarkRecords = benchmarkRecordsData as BenchmarkRecord[];
 const gameFeatureProfiles = gameFeatureProfilesData as GameFeatureProfile[];
+const estimatorGameIds = new Set((estimatorGamesData as { id: string }[]).map((g) => g.id));
+const estimatorGpuCount = (estimatorGpusData as { id: string }[]).length;
+const estimatorCpuCount = (estimatorCpusData as { id: string }[]).length;
 
 export interface VerifiedFpsQuery {
   gameId: string;
@@ -130,6 +136,18 @@ export interface CoverageSummary {
   cpus: string[];
   gpus: string[];
   sources: { url: string; publisher: string; recordCount: number }[];
+  /** Size of the Estimator's own catalog, for computing "N of M" coverage against it. */
+  estimatorCatalogSize: { games: number; gpus: number; cpus: number };
+  /**
+   * Verified-games (gameFeatureProfiles) whose gameId does NOT appear in
+   * the Estimator's games.json — real, honest, and worth surfacing: it
+   * means that game's measured data is reachable only from the Verified
+   * Benchmarks panel and nowhere else on the site (not the Estimator, not
+   * matchup pages, not tier lists), since every other surface reads from
+   * games.json. Not an error — profiles are allowed to cover games outside
+   * the Estimator's roster — but a real discoverability gap.
+   */
+  gamesNotInEstimatorCatalog: string[];
 }
 
 export function getCoverageSummary(): CoverageSummary {
@@ -154,6 +172,8 @@ export function getCoverageSummary(): CoverageSummary {
     cpus: [...cpuSet],
     gpus: [...gpuSet],
     sources: [...sourceCounts.values()],
+    estimatorCatalogSize: { games: estimatorGameIds.size, gpus: estimatorGpuCount, cpus: estimatorCpuCount },
+    gamesNotInEstimatorCatalog: gameFeatureProfiles.map((p) => p.gameId).filter((id) => !estimatorGameIds.has(id)),
   };
 }
 

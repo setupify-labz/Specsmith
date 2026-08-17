@@ -8,7 +8,8 @@
     "build": "vite build --config vite.config.ts && node scripts/prerender.mjs",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",

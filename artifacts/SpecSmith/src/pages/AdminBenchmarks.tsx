@@ -1,5 +1,6 @@
 import { useSeo } from '../hooks/useSeo';
-import { getCoverageSummary, getAllBenchmarkRecords } from '../lib/benchmarks/lookup';
+import { getCoverageSummary, getAllBenchmarkRecords, getVerifiedGames } from '../lib/benchmarks/lookup';
+import { validateAllBenchmarkRecords, validateGameFeatureProfiles } from '../lib/benchmarks/validate';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 
@@ -18,6 +19,14 @@ export default function AdminBenchmarks() {
   const summary = getCoverageSummary();
   const records = getAllBenchmarkRecords();
 
+  const knownGpuIds = new Set(gpuData.map((g) => g.id));
+  const knownCpuIds = new Set(cpuData.map((c) => c.id));
+  const knownVerifiedGameIds = new Set(getVerifiedGames().map((p) => p.gameId));
+  const dataIssues = [
+    ...validateAllBenchmarkRecords(records, knownGpuIds, knownCpuIds, knownVerifiedGameIds),
+    ...validateGameFeatureProfiles(getVerifiedGames()),
+  ];
+
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
@@ -26,12 +35,32 @@ export default function AdminBenchmarks() {
           Internal tracking page — not linked from the site, excluded from search engines.
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        {/* Data integrity — same checks as validate.test.ts, run live against
+            whatever is currently in the JSON files so this page always
+            reflects real state, not just the last time tests were run. */}
+        <div className="rounded-xl p-4 mb-8" style={{ backgroundColor: 'var(--ff-surface)', border: `1px solid ${dataIssues.length > 0 ? 'var(--ff-red)' : 'var(--ff-green)'}` }}>
+          <h2 className="font-bold text-sm mb-2" style={{ color: 'var(--ff-text)' }}>
+            Data integrity: {dataIssues.length === 0 ? '✓ clean' : `${dataIssues.length} issue${dataIssues.length === 1 ? '' : 's'}`}
+          </h2>
+          {dataIssues.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--ff-text-2)' }}>Every record and profile passes schema, catalog-reference, and internal-consistency checks.</p>
+          ) : (
+            <ul className="space-y-1">
+              {dataIssues.map((issue, i) => (
+                <li key={i} className="text-xs" style={{ color: 'var(--ff-text-2)' }}>
+                  <span style={{ color: 'var(--ff-red)' }} className="font-semibold">{issue.recordId}</span>: {issue.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {[
             { label: 'Verified Records', value: summary.totalRecords },
-            { label: 'Games Covered', value: summary.games.filter((g) => g.recordCount > 0).length },
-            { label: 'CPUs Covered', value: summary.cpus.length },
-            { label: 'GPUs Covered', value: summary.gpus.length },
+            { label: 'Games Covered', value: `${summary.games.filter((g) => g.recordCount > 0).length} / ${summary.estimatorCatalogSize.games} catalog` },
+            { label: 'CPUs Covered', value: `${summary.cpus.length} / ${summary.estimatorCatalogSize.cpus} catalog` },
+            { label: 'GPUs Covered', value: `${summary.gpus.length} / ${summary.estimatorCatalogSize.gpus} catalog` },
           ].map((s) => (
             <div key={s.label} className="rounded-xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
               <p className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>{s.value}</p>
@@ -39,6 +68,17 @@ export default function AdminBenchmarks() {
             </div>
           ))}
         </div>
+
+        {summary.gamesNotInEstimatorCatalog.length > 0 && (
+          <div className="rounded-xl p-4 mb-8" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-amber)' }}>
+            <h2 className="font-bold text-sm mb-2" style={{ color: 'var(--ff-text)' }}>Verified games outside the Estimator catalog</h2>
+            <p className="text-xs mb-2" style={{ color: 'var(--ff-text-2)' }}>
+              These have a verified-benchmark game profile but no entry in games.json — their measured data is
+              reachable only from the Verified Benchmarks panel, not the Estimator, matchup pages, or tier lists.
+            </p>
+            <p className="text-xs" style={{ color: 'var(--ff-amber)' }}>{summary.gamesNotInEstimatorCatalog.join(', ')}</p>
+          </div>
+        )}
 
         <div className="rounded-xl p-4 mb-8" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
           <h2 className="font-bold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Games — coverage</h2>
