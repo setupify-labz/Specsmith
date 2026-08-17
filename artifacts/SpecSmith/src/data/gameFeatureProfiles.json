@@ -8,5 +8,95 @@
     "xess": { "status": "supported" },
     "frameGeneration": { "status": "supported", "notes": "Available via both DLSS (NVIDIA) and FSR 3 (any vendor)." },
     "rayTracing": { "status": "supported" }
+  },
+  {
+    "gameId": "cyberpunk2077",
+    "name": "Cyberpunk 2077",
+    "dlss": { "status": "supported", "notes": "DLSS Quality mode demonstrated working in a directly-inspected Tech4Gamers RTX 4070 Super/4070 benchmark at 1440p." },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "supported", "notes": "RT Ultra demonstrated working in the same benchmark." }
+  },
+  {
+    "gameId": "alanwake2",
+    "name": "Alan Wake 2",
+    "dlss": { "status": "supported", "notes": "DLSS Quality mode demonstrated working in a directly-inspected Tech4Gamers RTX 4070 Super/4070 benchmark at 1440p." },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "supported", "notes": "RT Low demonstrated working in the same benchmark." }
+  },
+  {
+    "gameId": "forzahorizon5",
+    "name": "Forza Horizon 5",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "supported", "notes": "RT High demonstrated working in a directly-inspected Tech4Gamers RTX 4070 Super/4070 benchmark at 1440p Extreme." }
+  },
+  {
+    "gameId": "starfield",
+    "name": "Starfield",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
+  },
+  {
+    "gameId": "rdr2",
+    "name": "Red Dead Redemption 2",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
+  },
+  {
+    "gameId": "tlou1",
+    "name": "The Last of Us Part I",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
+  },
+  {
+    "gameId": "msfs2020",
+    "name": "Microsoft Flight Simulator 2020",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
+  },
+  {
+    "gameId": "avatarfop",
+    "name": "Avatar: Frontiers of Pandora",
+    "dlss": { "status": "supported", "notes": "DLSS (exact quality mode not stated by the source) demonstrated working in a directly-inspected Tech4Gamers RTX 4070 Super/4070 benchmark at 1440p Ultra." },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "supported", "notes": "Source explicitly states: 'the game incorporates ray tracing in all settings' — i.e. always on, no toggle, not something inferred from general engine knowledge." }
+  },
+  {
+    "gameId": "hogwarts",
+    "name": "Hogwarts Legacy",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
+  },
+  {
+    "gameId": "remnant2",
+    "name": "Remnant 2",
+    "dlss": { "status": "unknown" },
+    "fsr": { "status": "unknown" },
+    "xess": { "status": "unknown" },
+    "frameGeneration": { "status": "unknown" },
+    "rayTracing": { "status": "unknown" }
   }
 ]
