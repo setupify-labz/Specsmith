@@ -1,11 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, ChevronRight, Trophy, DollarSign, Cpu } from 'lucide-react';
+import { Zap, ChevronRight, Trophy, DollarSign, Cpu, ListChecks } from 'lucide-react';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
-import { getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups, buildVerdictParagraph, fpsPer100, getMatchupMeta } from '../lib/matchups';
+import {
+  getMatchup, getMatchupGpu, getMatchupCpu, getMatchupTitle, getRelatedMatchups, buildVerdictParagraph, fpsPer100, getMatchupMeta,
+  bucketGamesByWinner, MATCHUP_WIN_MARGIN,
+} from '../lib/matchups';
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
 import { ExternalLink } from 'lucide-react';
@@ -69,13 +72,13 @@ export default function GpuMatchup() {
     );
   }
 
-  // A game only counts as "won" with a >2% margin — anything closer is
-  // inside this estimator's error bars. The overall verdict is derived
-  // from these win counts so the two cards can never contradict each other.
-  const WIN_MARGIN = 1.02;
-  const winsA = rows.filter(r => r.fpsA > r.fpsB * WIN_MARGIN).length;
-  const winsB = rows.filter(r => r.fpsB > r.fpsA * WIN_MARGIN).length;
-  const tooClose = rows.length - winsA - winsB;
+  // Single source of truth for win/loss/tie, shared with the table's
+  // per-row coloring below — the verdict cards, the per-game breakdown,
+  // and the table can never disagree about who won which game.
+  const breakdown = bucketGamesByWinner(rows);
+  const winsA = breakdown.winsA.length;
+  const winsB = breakdown.winsB.length;
+  const tooClose = breakdown.tooClose.length;
   const avgAF = rows.reduce((s, r) => s + r.fpsA, 0) / rows.length;
   const avgBF = rows.reduce((s, r) => s + r.fpsB, 0) / rows.length;
   // One decimal when the averages would round to look identical.
@@ -215,6 +218,54 @@ export default function GpuMatchup() {
           <p className="text-sm leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{verdictText}</p>
         </div>
 
+        {/* Where each card actually wins — the specific games behind the aggregate count above */}
+        <div className="rounded-2xl p-6 mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+          <h2 className="font-bold mb-1 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+            <ListChecks size={16} style={{ color: 'var(--ff-accent)' }} /> Where Each Card Wins
+          </h2>
+          <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+            Which specific games favor each card at {resLabels[resolution]} — not just the average.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: COLORS.a }}>{gpuA.name} wins ({breakdown.winsA.length})</p>
+              {breakdown.winsA.length > 0 ? (
+                <ul className="space-y-1">
+                  {breakdown.winsA.map(g => (
+                    <li key={g} className="text-xs" style={{ color: 'var(--ff-text-2)' }}>{g}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs italic" style={{ color: 'var(--ff-text-3)' }}>None</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: COLORS.b }}>{gpuB.name} wins ({breakdown.winsB.length})</p>
+              {breakdown.winsB.length > 0 ? (
+                <ul className="space-y-1">
+                  {breakdown.winsB.map(g => (
+                    <li key={g} className="text-xs" style={{ color: 'var(--ff-text-2)' }}>{g}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs italic" style={{ color: 'var(--ff-text-3)' }}>None</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: 'var(--ff-text-2)' }}>Too close to call ({breakdown.tooClose.length})</p>
+              {breakdown.tooClose.length > 0 ? (
+                <ul className="space-y-1">
+                  {breakdown.tooClose.map(g => (
+                    <li key={g} className="text-xs" style={{ color: 'var(--ff-text-3)' }}>{g}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs italic" style={{ color: 'var(--ff-text-3)' }}>None</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* FPS table */}
         <div className="rounded-2xl p-6 mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
@@ -248,8 +299,8 @@ export default function GpuMatchup() {
               <tbody>
                 {rows.map(r => {
                   const diff = r.fpsA - r.fpsB;
-                  const aWins = r.fpsA > r.fpsB * WIN_MARGIN;
-                  const bWins = r.fpsB > r.fpsA * WIN_MARGIN;
+                  const aWins = r.fpsA > r.fpsB * MATCHUP_WIN_MARGIN;
+                  const bWins = r.fpsB > r.fpsA * MATCHUP_WIN_MARGIN;
                   return (
                     <tr key={r.game} style={{ borderBottom: '1px solid var(--ff-border)' }}>
                       <td className="py-2 pr-4" style={{ color: 'var(--ff-text)' }}>{r.game}</td>

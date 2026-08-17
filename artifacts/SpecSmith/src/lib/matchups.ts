@@ -306,6 +306,39 @@ export function fpsPer100(avgFps: number, price: number): number {
   return Math.round((avgFps / price) * 1000) / 10;
 }
 
+// A game only counts as "won" with a >2% margin — anything closer is inside
+// this estimator's error bars. Single source of truth so the win-count cards,
+// the per-row table coloring, and the per-game breakdown below can never
+// disagree with each other.
+export const MATCHUP_WIN_MARGIN = 1.02;
+
+export interface MatchupGameRow { game: string; fpsA: number; fpsB: number; }
+
+export interface GameWinnerBreakdown {
+  winsA: string[];
+  winsB: string[];
+  tooClose: string[];
+}
+
+/**
+ * Buckets each row's game by which side actually wins it. This is what
+ * answers the real buyer question the aggregate "X of 20 games" count
+ * can't: does the winning part actually win in the specific games you
+ * play, or just on average? Uses the exact same rows and margin as
+ * buildVerdictParagraph's win counts.
+ */
+export function bucketGamesByWinner(rows: MatchupGameRow[]): GameWinnerBreakdown {
+  const winsA: string[] = [];
+  const winsB: string[] = [];
+  const tooClose: string[] = [];
+  for (const r of rows) {
+    if (r.fpsA > r.fpsB * MATCHUP_WIN_MARGIN) winsA.push(r.game);
+    else if (r.fpsB > r.fpsA * MATCHUP_WIN_MARGIN) winsB.push(r.game);
+    else tooClose.push(r.game);
+  }
+  return { winsA, winsB, tooClose };
+}
+
 export interface VerdictInput {
   kind: 'GPU' | 'CPU';
   nameA: string; nameB: string;
