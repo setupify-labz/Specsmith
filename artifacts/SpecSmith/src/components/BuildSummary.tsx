@@ -61,6 +61,7 @@ export default function BuildSummary({
 
   const handleExportFile = () => {
     downloadBuildFile(buildState, buildName, shareView, customParts);
+    showToast(`Exported "${buildName ?? 'My SpecSmith Build'}"`, 'success');
   };
 
   const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
