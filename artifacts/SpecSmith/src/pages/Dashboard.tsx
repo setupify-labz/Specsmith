@@ -24,13 +24,20 @@ function formatTime(iso: string) {
 }
 
 export default function Dashboard() {
-  const { user, builds, deleteBuild, renameBuild } = useAuth();
+  const { user, loading, builds, deleteBuild, renameBuild } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+
+  // `loading` covers the initial session/profile fetch: without this check,
+  // a real logged-in user would see a "please log in" flash on every full
+  // page load, right up until that async check resolves and sets `user`.
+  if (loading) {
+    return <div className="min-h-screen pt-24" />;
+  }
 
   if (!user) {
     return (

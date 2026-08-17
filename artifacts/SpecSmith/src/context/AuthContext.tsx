@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { supabase, isSupabaseConfigured, type ProfileRow, type SavedBuildRow } from '../lib/supabase';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase, isSupabaseConfigured, setRememberSession, type ProfileRow, type SavedBuildRow } from '../lib/supabase';
 import { detectLegacyAccount, clearMigratedLegacyData, type LegacyAccount } from '../lib/authMigration';
 
 // Real accounts: Supabase Auth (email/password) + two RLS-scoped tables
@@ -47,6 +47,13 @@ export interface SaveBuildResult extends AuthResult {
   buildId?: string;
 }
 
+export interface UpdateSettingsResult extends AuthResult {
+  /** True when an email change was requested — Supabase sends a
+   * confirmation link and the address on file doesn't change until it's
+   * clicked, so the UI should say so instead of implying it's already live. */
+  emailChangePending?: boolean;
+}
+
 export interface MigrationResult {
   ok: boolean;
   migratedCount: number;
@@ -65,16 +72,17 @@ interface AuthContextType {
    * same underlying check the Gallery already uses. Every method below is
    * a safe no-op returning a clear error in that state, never a crash. */
   authAvailable: boolean;
-  login: (email: string, password: string) => Promise<AuthResult>;
+  login: (email: string, password: string, remember?: boolean) => Promise<AuthResult>;
   signup: (username: string, email: string, password: string) => Promise<SignupResult>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
+  completePasswordReset: (newPassword: string) => Promise<AuthResult>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
   saveBuild: (name: string, notes: string, buildState: Record<string, string | null>) => Promise<SaveBuildResult>;
   deleteBuild: (id: string) => Promise<AuthResult>;
   renameBuild: (id: string, name: string) => Promise<AuthResult>;
   shareBuild: (id: string) => Promise<void>;
-  updateSettings: (data: { username?: string; email?: string; avatar?: string; preferredResolution?: string; preferredPreset?: string }) => Promise<AuthResult>;
+  updateSettings: (data: { username?: string; email?: string; avatar?: string; preferredResolution?: string; preferredPreset?: string }) => Promise<UpdateSettingsResult>;
   deleteAccount: () => Promise<AuthResult>;
   isUsernameTaken: (username: string) => Promise<boolean>;
   /** Legacy localStorage data detected in this browser, if any — null once
@@ -116,11 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [builds, setBuilds] = useState<SavedBuild[]>([]);
   const [loading, setLoading] = useState(true);
   const [legacyAccount, setLegacyAccount] = useState<LegacyAccount | null>(null);
-  // Avoids a duplicate initial fetch: onAuthStateChange fires once
-  // immediately on subscribe (with whatever session already exists) in
-  // addition to on real changes, so the mount effect and that first event
-  // would otherwise both trigger a load.
-  const didInitialLoad = useRef(false);
 
   const loadBuilds = useCallback(async (userId: string) => {
     if (!supabase) return;
@@ -161,15 +164,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setBuilds([]);
       }
       setLoading(false);
-      didInitialLoad.current = true;
     });
 
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
+  const login = useCallback(async (email: string, password: string, remember = true): Promise<AuthResult> => {
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
+    setRememberSession(remember);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
@@ -199,7 +202,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    // Without an explicit redirectTo, Supabase falls back to the project's
+    // configured Site URL, which may not point at a page that can actually
+    // complete the reset. /reset-password is that page — see ResetPassword.tsx.
+    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }, []);
+
+  const completePasswordReset = useCallback(async (newPassword: string): Promise<AuthResult> => {
+    if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
+    // Only reachable with an active session — either a normal login or the
+    // temporary one Supabase establishes from the emailed reset link, which
+    // is itself the proof of identity here, so no current-password check
+    // (unlike changePassword below, used from Settings by an already-known user).
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   }, []);
@@ -250,13 +268,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!error) setBuilds(prev => prev.map(b => b.id === id ? { ...b, sharedCount: b.sharedCount + 1 } : b));
   }, [user, builds]);
 
-  const updateSettings = useCallback(async (data: { username?: string; email?: string; avatar?: string; preferredResolution?: string; preferredPreset?: string }): Promise<AuthResult> => {
+  const updateSettings = useCallback(async (data: { username?: string; email?: string; avatar?: string; preferredResolution?: string; preferredPreset?: string }): Promise<UpdateSettingsResult> => {
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
 
-    if (data.email && data.email !== user.email) {
-      // Supabase sends a confirmation link to the new address; the email
-      // on file doesn't change until that's clicked, so this call
-      // succeeding doesn't mean the change is live yet.
+    // Supabase sends a confirmation link to the new address; the email on
+    // file doesn't actually change until that's clicked, so the local
+    // user state is deliberately reloaded with the *current* (still-active)
+    // email below, not the pending one — showing the new address as if it
+    // were already live would be misleading (e.g. it'd imply the next
+    // login should use it, when the old one is still required until
+    // confirmed).
+    const emailChangePending = Boolean(data.email && data.email !== user.email);
+    if (emailChangePending) {
       const { error } = await supabase.auth.updateUser({ email: data.email });
       if (error) return { ok: false, error: error.message };
     }
@@ -274,8 +297,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    await loadUser(user.id, data.email ?? user.email);
-    return { ok: true };
+    await loadUser(user.id, user.email);
+    return { ok: true, emailChangePending };
   }, [user, loadUser]);
 
   const deleteAccount = useCallback(async (): Promise<AuthResult> => {
@@ -314,19 +337,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Inserted one at a time (not a single bulk insert) so a build blocked
     // by the 20-build cap partway through doesn't roll back the ones
     // before it — each success is confirmed individually before its local
-    // copy is ever cleared.
+    // copy is ever cleared. Only the cap is treated as terminal (every
+    // build after it would fail too, so there's no point continuing); any
+    // other per-build error (e.g. a corrupted local build with a name/notes
+    // field longer than the server allows) skips just that one build and
+    // keeps trying the rest, instead of abandoning the whole migration.
     const migratedIds: string[] = [];
-    let lastError: string | undefined;
+    const failedNames: string[] = [];
+    let capReached = false;
     for (const build of legacy.builds) {
       const { error } = await supabase.from('saved_builds').insert({
         user_id: user.id, name: build.name, notes: build.notes,
         build_state: build.buildState, shared_count: build.sharedCount,
       });
       if (error) {
-        lastError = error.message.includes('saved_builds_limit_reached')
-          ? 'Reached the 20 build limit — delete some builds to migrate the rest.'
-          : error.message;
-        break; // cap or other error — stop, keep whatever wasn't migrated
+        if (error.message.includes('saved_builds_limit_reached')) {
+          capReached = true;
+          break;
+        }
+        failedNames.push(build.name);
+        continue;
       }
       migratedIds.push(build.id);
     }
@@ -339,13 +369,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const remaining = legacy.builds.length - migratedIds.length;
     setLegacyAccount(remaining > 0 ? detectLegacyAccount() : null);
 
-    return { ok: remaining === 0, migratedCount: migratedIds.length, remainingCount: remaining, error: lastError };
+    let error: string | undefined;
+    if (capReached) error = 'Reached the 20 build limit — delete some builds to migrate the rest.';
+    else if (failedNames.length > 0) error = `Could not migrate: ${failedNames.join(', ')}`;
+
+    return { ok: remaining === 0, migratedCount: migratedIds.length, remainingCount: remaining, error };
   }, [user, loadBuilds]);
 
   return (
     <AuthContext.Provider value={{
       user, builds, loading, authAvailable: isSupabaseConfigured,
-      login, signup, logout, requestPasswordReset, changePassword,
+      login, signup, logout, requestPasswordReset, completePasswordReset, changePassword,
       saveBuild, deleteBuild, renameBuild, shareBuild,
       updateSettings, deleteAccount, isUsernameTaken,
       legacyAccount, migrateLegacyBuilds,

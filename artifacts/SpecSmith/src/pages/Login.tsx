@@ -22,7 +22,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const result = await login(email, password);
+    const result = await login(email, password, remember);
     setLoading(false);
     if (result.ok) {
       navigate('/dashboard');

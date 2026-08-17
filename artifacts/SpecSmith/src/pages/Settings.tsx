@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Save, Trash2, Eye, EyeOff, Check } from 'lucide-react';
@@ -12,21 +12,42 @@ const RESOLUTIONS = ['1080p', '1440p', '4K'];
 const PRESETS = ['low', 'medium', 'high', 'ultra'];
 
 export default function Settings() {
-  const { user, updateSettings, changePassword, deleteAccount } = useAuth();
+  const { user, loading, updateSettings, changePassword, deleteAccount } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState(user?.username ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [resolution, setResolution] = useState(user?.preferredResolution ?? '1080p');
-  const [preset, setPreset] = useState(user?.preferredPreset ?? 'high');
+  const [resolution, setResolution] = useState('1080p');
+  const [preset, setPreset] = useState('high');
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // The initial session/profile fetch is async, so `user` isn't available
+  // on first render — these fields hydrate once it resolves, keyed on
+  // user.id (not the whole `user` object) so they don't get stomped by
+  // in-progress edits every time a save reloads the profile.
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username);
+      setEmail(user.email);
+      setResolution(user.preferredResolution);
+      setPreset(user.preferredPreset);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Without this, a real logged-in user gets bounced straight to /login on
+  // every visit/refresh, since `user` is still null during that same async
+  // check — the redirect must wait for it to resolve either way.
+  if (loading) {
+    return <div className="min-h-screen pt-24" />;
+  }
 
   if (!user) {
     navigate('/login');
@@ -36,8 +57,12 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     if (!username.trim() || !email.trim()) return;
     const result = await updateSettings({ username: username.trim(), email: email.trim(), preferredResolution: resolution, preferredPreset: preset });
-    if (result.ok) showToast('Settings saved!', 'success');
-    else showToast(result.error ?? 'Username or email already taken', 'error');
+    if (!result.ok) { showToast(result.error ?? 'Username or email already taken', 'error'); return; }
+    if (result.emailChangePending) {
+      showToast(`Settings saved! Check ${email.trim()} for a link to confirm your new email — your old email stays active until then.`, 'info');
+    } else {
+      showToast('Settings saved!', 'success');
+    }
   };
 
   const handleChangePassword = async () => {

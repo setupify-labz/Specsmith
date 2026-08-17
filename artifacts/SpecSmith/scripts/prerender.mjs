@@ -85,6 +85,9 @@ function sitemapEntry(routePath) {
   if (routePath === '/build') return null;
   if (routePath === '/404') return null;
   if (routePath === '/admin/benchmarks') return null;
+  if (routePath === '/reset-password') return null;
+  if (routePath === '/login') return null;
+  if (routePath === '/signup') return null;
   if (routePath === '/') return { changefreq: 'weekly', priority: '1.0' };
   if (routePath === '/builder') return { changefreq: 'weekly', priority: '0.9' };
   if (routePath === '/prebuilts') return { changefreq: 'weekly', priority: '0.8' };

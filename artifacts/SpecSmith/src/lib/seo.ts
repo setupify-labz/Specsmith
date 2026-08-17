@@ -182,6 +182,24 @@ export const ROUTE_META: RouteMeta[] = [
     noindex: true,
     canonicalOverride: `${SITE_URL}/builder`,
   },
+  {
+    path: '/reset-password',
+    title: 'Reset Password — SpecSmith',
+    description: 'Set a new password for your SpecSmith account.',
+    noindex: true,
+  },
+  {
+    path: '/login',
+    title: 'Log In — SpecSmith',
+    description: 'Log in to your SpecSmith account to access your saved PC builds.',
+    noindex: true,
+  },
+  {
+    path: '/signup',
+    title: 'Sign Up — SpecSmith',
+    description: 'Create a free SpecSmith account to save PC builds and access them from any device.',
+    noindex: true,
+  },
 ];
 
 export function getRouteMeta(path: string): RouteMeta {

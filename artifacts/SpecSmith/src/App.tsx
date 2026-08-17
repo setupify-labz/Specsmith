@@ -16,6 +16,7 @@ const Compare = lazy(() => import('./pages/Compare'));
 const About = lazy(() => import('./pages/About'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Settings = lazy(() => import('./pages/Settings'));
 const SharedBuild = lazy(() => import('./pages/SharedBuild'));
@@ -65,6 +66,7 @@ function AppRoutes() {
           <Route path="/about"     element={<PageWrapper><About /></PageWrapper>} />
           <Route path="/login"     element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/signup"    element={<PageWrapper><Signup /></PageWrapper>} />
+          <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
           <Route path="/dashboard" element={<PageWrapper><Dashboard /></PageWrapper>} />
           <Route path="/settings"  element={<PageWrapper><Settings /></PageWrapper>} />
           <Route path="/build"     element={<PageWrapper><SharedBuild /></PageWrapper>} />

@@ -17,6 +17,9 @@ import PrebuiltDetail from './pages/PrebuiltDetail';
 import Compare from './pages/Compare';
 import About from './pages/About';
 import SharedBuild from './pages/SharedBuild';
+import ResetPassword from './pages/ResetPassword';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Matchup from './pages/Matchup';
 import GpuMatchupIndex from './pages/GpuMatchupIndex';
 import BestGpuForGame from './pages/BestGpuForGame';
@@ -69,6 +72,9 @@ export const PRERENDER_ROUTES = [
   '/compare',
   '/about',
   '/build',
+  '/reset-password',
+  '/login',
+  '/signup',
   '/404',
   '/vs',
   '/best-gpu',
@@ -159,6 +165,9 @@ export function render(url: string): string {
                 <Route path="/compare" element={<PageWrapper><Compare /></PageWrapper>} />
                 <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
                 <Route path="/build" element={<PageWrapper><SharedBuild /></PageWrapper>} />
+                <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
+                <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+                <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
                 <Route path="/vs" element={<PageWrapper><GpuMatchupIndex /></PageWrapper>} />
                 <Route path="/vs/:slug" element={<PageWrapper><Matchup /></PageWrapper>} />
                 <Route path="/best-gpu" element={<PageWrapper><BestGpuIndex /></PageWrapper>} />
