@@ -125,6 +125,15 @@ export function getAffiliateUrl(partName: string): string {
   return `https://www.amazon.com/s?k=${encodeURIComponent(partName)}&tag=${AMAZON_AFFILIATE_TAG}`;
 }
 
+// Not yet configured — SpecSmith has no Newegg affiliate account (EPN,
+// via Impact or Sovrn/Rakuten depending on the program) set up, so every
+// Newegg link today earns nothing. Left null rather than a fabricated
+// value; getNeweggUrl only appends a tracking param when this is set, so
+// dropping in the real affiliate ID once the account exists is the only
+// change needed — no other code to touch.
+export const NEWEGG_AFFILIATE_ID: string | null = null;
+
 export function getNeweggUrl(partName: string): string {
-  return `https://www.newegg.com/p/pl?d=${encodeURIComponent(partName)}`;
+  const base = `https://www.newegg.com/p/pl?d=${encodeURIComponent(partName)}`;
+  return NEWEGG_AFFILIATE_ID ? `${base}&affid=${NEWEGG_AFFILIATE_ID}` : base;
 }
