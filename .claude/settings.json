@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Bash(pnpm run typecheck)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm run dev)",
+      "Bash(pnpm run dev:*)",
+      "Bash(pnpm vitest)",
+      "Bash(pnpm vitest:*)",
+      "Bash(vitest*)",
+      "Bash(tsc*)",
+      "Bash(git status)",
+      "Bash(git status:*)",
+      "Bash(git diff)",
+      "Bash(git diff:*)",
+      "Bash(git log)",
+      "Bash(git log:*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git merge --ff-only *)",
+      "Bash(git fetch *)",
+      "Bash(git push origin claude/specsmith-context-1qrm4t)",
+      "Bash(git push origin claude/specsmith-context-1qrm4t:*)",
+      "Bash(git push -u origin claude/specsmith-context-1qrm4t)",
+      "Bash(git push -u origin claude/specsmith-context-1qrm4t:*)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main:*)"
+    ],
+    "ask": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push origin :*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)",
+      "Bash(git branch -D*)",
+      "Bash(git rebase*)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*secret*)",
+      "Read(**/*credentials*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)"
+    ]
+  }
+}
