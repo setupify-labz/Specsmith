@@ -12,6 +12,7 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { useToast } from '../context/ToastContext';
 import PageGlow from '../components/PageGlow';
+import { getAverageFps, getCostPerFps, getBetterValueBuild } from '../lib/compareValue';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -211,6 +212,12 @@ export default function Compare() {
   const winsA = chartData.filter(d => d.winner === 'A').length;
   const winsB = chartData.filter(d => d.winner === 'B').length;
 
+  const avgFpsA = getAverageFps(chartData.map(d => d['Build A']));
+  const avgFpsB = getAverageFps(chartData.map(d => d['Build B']));
+  const costPerFpsA = getCostPerFps(costA, avgFpsA);
+  const costPerFpsB = getCostPerFps(costB, avgFpsB);
+  const betterValue = getBetterValueBuild(costPerFpsA, costPerFpsB);
+
   const shareComparison = async () => {
     if (!canCompare) return;
     const params = new URLSearchParams({ gpuA: gpuA!, cpuA: cpuA!, gpuB: gpuB!, cpuB: cpuB!, res: resolution, preset });
@@ -332,6 +339,16 @@ export default function Compare() {
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
                 {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
+                {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Avg FPS: {avgFpsA}</div>}
+                {costPerFpsA !== null && (
+                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsA}/avg FPS</div>
+                )}
+                {betterValue === 'A' && (
+                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
+                    style={{ backgroundColor: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: '1px solid rgba(255,215,0,0.35)' }}>
+                    Better Value
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-center text-secondary-custom font-bold text-lg">VS</div>
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.b}15`, border: `1px solid ${COLORS.b}30` }}>
@@ -341,8 +358,23 @@ export default function Compare() {
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
                 {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
+                {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Avg FPS: {avgFpsB}</div>}
+                {costPerFpsB !== null && (
+                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsB}/avg FPS</div>
+                )}
+                {betterValue === 'B' && (
+                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
+                    style={{ backgroundColor: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: '1px solid rgba(255,215,0,0.35)' }}>
+                    Better Value
+                  </span>
+                )}
               </div>
             </div>
+            {(costPerFpsA !== null || costPerFpsB !== null) && (
+              <p className="text-[10px] text-secondary-custom text-center -mt-2 mb-6">
+                $/avg FPS = total GPU+CPU cost divided by average FPS across all 20 games at the selected resolution/quality — lower is a better value, separate from which build wins more individual games.
+              </p>
+            )}
 
             {/* Bar chart */}
             <div className="overflow-x-auto">
