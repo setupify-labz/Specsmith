@@ -70,6 +70,20 @@ export default function PartCard({
         border: selected || recommended ? undefined : '1px solid var(--ff-border)',
       }}
       onClick={() => onSelect(id)}
+      onKeyDown={e => {
+        // Selecting a part is this card's primary action, so it needs to
+        // work from the keyboard the same as a click — the Amazon/Newegg
+        // links inside remain real <a> tags and stop propagation on their
+        // own click, so Tab still reaches them independently.
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(id);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`${name}, $${price_usd.toLocaleString()}${selected ? ', selected' : ''}`}
     >
       {/* Corner badges */}
       {selected && !sponsored && (
@@ -107,7 +121,7 @@ export default function PartCard({
             className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
             style={{ backgroundColor: 'var(--ff-bg)' }}
           >
-            <img src={image} alt="" loading="lazy" className="w-full h-full object-contain p-1" />
+            <img src={image} alt={name} loading="lazy" className="w-full h-full object-contain p-1" />
           </div>
         )}
         <div className="flex-1 min-w-0 pr-14">
