@@ -69,112 +69,115 @@ export default function PartCard({
         borderColor: selected ? 'var(--ff-accent)' : 'var(--ff-border)',
         border: selected || recommended ? undefined : '1px solid var(--ff-border)',
       }}
-      onClick={() => onSelect(id)}
-      onKeyDown={e => {
-        // Selecting a part is this card's primary action, so it needs to
-        // work from the keyboard the same as a click — the Amazon/Newegg
-        // links inside remain real <a> tags and stop propagation on their
-        // own click, so Tab still reaches them independently.
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(id);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
-      aria-label={`${name}, $${price_usd.toLocaleString()}${selected ? ', selected' : ''}`}
     >
-      {/* Corner badges */}
-      {selected && !sponsored && (
-        <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#00E676] flex items-center justify-center z-10">
-          <Check size={11} className="text-black" strokeWidth={3} />
-        </div>
-      )}
-      {sponsored && !selected && (
-        <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full z-10"
-          style={{ backgroundColor: '#FFB30018', color: 'var(--ff-amber)', border: '1px solid #FFB30040' }}>
-          SPONSORED
-        </span>
-      )}
-      {recommended && (
-        <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full z-10"
-          style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))', color: 'white' }}>
-          RECOMMENDED
-        </span>
-      )}
-      {badge && (
-        <span className="absolute top-3 left-3 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 tracking-wide"
-          style={{
-            background: badgeStyles[badge].background,
-            color: badgeStyles[badge].color,
-            border: badgeStyles[badge].border,
-          }}>
-          {badgeStyles[badge].label}
-        </span>
-      )}
+      {/* Selecting a part is this card's primary action. A real <button>
+          filling the card (rather than role="button" on the outer div)
+          keeps it a sibling of the Amazon/Newegg links below instead of
+          their ancestor — axe-core's nested-interactive check flags the
+          latter, since a button containing other focusable controls isn't
+          reliably operable across all screen readers even though it works
+          in a quick manual test. The content layer above it has
+          pointer-events: none so clicks pass through to this button
+          everywhere except the two links, which opt back in. */}
+      <button
+        type="button"
+        className="absolute inset-0 w-full h-full rounded-2xl"
+        style={{ zIndex: 0 }}
+        onClick={() => onSelect(id)}
+        aria-pressed={selected}
+        aria-label={`${name}, $${price_usd.toLocaleString()}${selected ? ', selected' : ''}`}
+      />
 
-      {/* Header */}
-      <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
-        {image && (
-          <div
-            className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
-            style={{ backgroundColor: 'var(--ff-bg)' }}
-          >
-            <img src={image} alt={name} loading="lazy" className="w-full h-full object-contain p-1" />
+      <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
+        {/* Corner badges */}
+        {selected && !sponsored && (
+          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#00E676] flex items-center justify-center z-10">
+            <Check size={11} className="text-black" strokeWidth={3} />
           </div>
         )}
-        <div className="flex-1 min-w-0 pr-14">
-          {/* Not a document heading — dozens of these render per open
-              category, and using <h4> here skipped past <h2>/<h3> in the
-              page outline and failed the heading-order check (same fix
-              already applied to the card label in HeroFpsCard.tsx). */}
-          <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--ff-text)' }}>{name}</p>
-          {tier !== undefined && (
-            <span
-              className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
-              style={{ background: tierGradients[tier] ?? '#8888AA' }}
+        {sponsored && !selected && (
+          <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full z-10"
+            style={{ backgroundColor: '#FFB30018', color: 'var(--ff-amber)', border: '1px solid #FFB30040' }}>
+            SPONSORED
+          </span>
+        )}
+        {recommended && (
+          <span className="absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full z-10"
+            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))', color: 'white' }}>
+            RECOMMENDED
+          </span>
+        )}
+        {badge && (
+          <span className="absolute top-3 left-3 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 tracking-wide"
+            style={{
+              background: badgeStyles[badge].background,
+              color: badgeStyles[badge].color,
+              border: badgeStyles[badge].border,
+            }}>
+            {badgeStyles[badge].label}
+          </span>
+        )}
+
+        {/* Header */}
+        <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
+          {image && (
+            <div
+              className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
+              style={{ backgroundColor: 'var(--ff-bg)' }}
             >
-              {tierLabels[tier] ?? `Tier ${tier}`}
-            </span>
+              <img src={image} alt={name} loading="lazy" className="w-full h-full object-contain p-1" />
+            </div>
           )}
-        </div>
-      </div>
-
-      {/* Specs */}
-      <div className="space-y-1 mb-3">
-        {specs.map(s => (
-          <div key={s.label} className="flex items-center justify-between text-xs">
-            <span style={{ color: 'var(--ff-text-2)' }}>{s.label}</span>
-            <span className="font-medium" style={{ color: 'var(--ff-text)' }}>{s.value}</span>
+          <div className="flex-1 min-w-0 pr-14">
+            {/* Not a document heading — dozens of these render per open
+                category, and using <h4> here skipped past <h2>/<h3> in the
+                page outline and failed the heading-order check (same fix
+                already applied to the card label in HeroFpsCard.tsx). */}
+            <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--ff-text)' }}>{name}</p>
+            {tier !== undefined && (
+              <span
+                className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                style={{ background: tierGradients[tier] ?? '#8888AA' }}
+              >
+                {tierLabels[tier] ?? `Tier ${tier}`}
+              </span>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Price + Buy */}
-      <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
-        <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>${price_usd.toLocaleString()}</span>
-        <div className="flex items-center gap-1.5">
-          <a
-            href={getAffiliateUrl(query)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-            style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
-          >
-            Amazon <ExternalLink size={10} />
-          </a>
-          <a
-            href={getNeweggUrl(query)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-            style={{ color: 'var(--ff-newegg)', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
-          >
-            Newegg <ExternalLink size={10} />
-          </a>
+        {/* Specs */}
+        <div className="space-y-1 mb-3">
+          {specs.map(s => (
+            <div key={s.label} className="flex items-center justify-between text-xs">
+              <span style={{ color: 'var(--ff-text-2)' }}>{s.label}</span>
+              <span className="font-medium" style={{ color: 'var(--ff-text)' }}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Price + Buy */}
+        <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>${price_usd.toLocaleString()}</span>
+          <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
+            <a
+              href={getAffiliateUrl(query)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+              style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
+            >
+              Amazon <ExternalLink size={10} />
+            </a>
+            <a
+              href={getNeweggUrl(query)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+              style={{ color: 'var(--ff-newegg)', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
+            >
+              Newegg <ExternalLink size={10} />
+            </a>
+          </div>
         </div>
       </div>
     </motion.div>
