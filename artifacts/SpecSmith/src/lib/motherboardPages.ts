@@ -1,4 +1,5 @@
 import componentData from '../data/components.json';
+import cpuData from '../data/cpus.json';
 import type { RouteMeta } from './seo';
 
 export interface PageMotherboard {
@@ -13,7 +14,16 @@ export interface PageMotherboard {
   [key: string]: unknown;
 }
 
+interface SocketCpu {
+  id: string;
+  name: string;
+  price_usd: number;
+  socket: string;
+  [key: string]: unknown;
+}
+
 const motherboards = componentData.motherboards as PageMotherboard[];
+const cpus = cpuData as SocketCpu[];
 
 export interface SocketPage {
   slug: string;
@@ -44,11 +54,61 @@ export function getMotherboardsForSocket(socket: string): PageMotherboard[] {
   return motherboards.filter(m => m.socket === socket).sort((a, b) => a.price_usd - b.price_usd);
 }
 
+export function getCpusForSocket(socket: string): SocketCpu[] {
+  return cpus.filter(c => c.socket === socket).sort((a, b) => a.price_usd - b.price_usd);
+}
+
+export interface CpuPriceBand {
+  cheapest: SocketCpu;
+  priciest: SocketCpu;
+  count: number;
+}
+
+/** Splits an already price-sorted list into `parts` contiguous, as-equal-
+ * as-possible chunks (standard index-partition: chunk i spans
+ * [floor(i*n/parts), floor((i+1)*n/parts))). Exported for direct testing. */
+export function chunkEvenly<T>(items: T[], parts: number): T[][] {
+  if (parts <= 0) return [];
+  const chunks: T[][] = [];
+  for (let i = 0; i < parts; i++) {
+    const start = Math.floor((i * items.length) / parts);
+    const end = Math.floor(((i + 1) * items.length) / parts);
+    chunks.push(items.slice(start, end));
+  }
+  return chunks;
+}
+
+/** Splits a socket's tracked CPUs (cheapest to priciest) into `bandCount`
+ * price bands — one per motherboard pick for that socket — so the cheapest
+ * pick lines up with the cheapest CPU band and the priciest pick with the
+ * priciest. This is a price-tier grouping only, not a compatibility check:
+ * empty bands (more picks than tracked CPUs) are dropped. */
+export function getCpuPriceBands(socket: string, bandCount: number): CpuPriceBand[] {
+  const sockCpus = getCpusForSocket(socket);
+  return chunkEvenly(sockCpus, bandCount)
+    .filter(chunk => chunk.length > 0)
+    .map(chunk => ({ cheapest: chunk[0], priciest: chunk[chunk.length - 1], count: chunk.length }));
+}
+
+/** One sentence describing a CPU price band, explicitly framed as a price
+ * pairing, not a claim that the motherboard is technically optimal for
+ * those CPUs — real compatibility still needs checking in the Builder. */
+export function formatCpuPairing(socket: string, band: CpuPriceBand): string {
+  const range = band.cheapest.id === band.priciest.id
+    ? `around $${band.cheapest.price_usd}`
+    : `from $${band.cheapest.price_usd}–$${band.priciest.price_usd}`;
+  const examples = band.cheapest.id === band.priciest.id
+    ? band.cheapest.name
+    : `${band.cheapest.name} up to the ${band.priciest.name}`;
+  return `Similarly priced to ${socket} CPUs ${range}, such as the ${examples} — a price-tier pairing, not a technical compatibility recommendation.`;
+}
+
 export interface MotherboardPick {
   emoji: string;
   label: string;
   motherboard: PageMotherboard;
   detail: string;
+  cpuPairing?: string;
 }
 
 /** Picks derived purely from price position within the socket's lineup —
@@ -84,7 +144,11 @@ export function getMotherboardPicks(socket: string): MotherboardPick[] {
     });
   }
 
-  return picks;
+  const bands = getCpuPriceBands(socket, picks.length);
+  return picks.map((p, i) => {
+    const band = bands[i];
+    return band ? { ...p, cpuPairing: formatCpuPairing(socket, band) } : p;
+  });
 }
 
 export function getSocketPageMeta(page: SocketPage): RouteMeta {

@@ -108,6 +108,9 @@ export default function BestMotherboardPage() {
                 <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{p.emoji} {p.label}</p>
                 <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent-text)' }}>{p.motherboard.name}</p>
                 <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.detail}</p>
+                {p.cpuPairing && (
+                  <p className="text-[11px] leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.cpuPairing}</p>
+                )}
                 <div className="flex items-center gap-3 text-xs">
                   <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.motherboard.price_usd}</span>
                   <a href={getAffiliateUrl(buildPartQuery(p.motherboard.name, p.motherboard.brand, 'motherboard'))} target="_blank" rel="noopener noreferrer"
