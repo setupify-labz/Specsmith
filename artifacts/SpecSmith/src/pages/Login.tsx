@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import PageGlow from '../components/PageGlow';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, requestPasswordReset } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const formRef = useRef<HTMLFormElement>(null);
@@ -22,13 +22,12 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 500));
-    const ok = login(email, password);
+    const result = await login(email, password);
     setLoading(false);
-    if (ok) {
+    if (result.ok) {
       navigate('/dashboard');
     } else {
-      setError('Invalid email or password');
+      setError(result.error ?? 'Invalid email or password');
       setShake(true);
       setTimeout(() => setShake(false), 600);
     }
@@ -85,7 +84,17 @@ export default function Login() {
               <label className="text-xs font-medium" style={{ color: 'var(--ff-text-2)' }}>Password</label>
               <button
                 type="button"
-                onClick={() => showToast('Password reset not available in demo', 'info')}
+                onClick={async () => {
+                  if (!email.trim()) {
+                    showToast('Enter your email above first, then click "Forgot password?"', 'info');
+                    return;
+                  }
+                  const result = await requestPasswordReset(email.trim());
+                  showToast(
+                    result.ok ? `Password reset email sent to ${email.trim()}` : (result.error ?? 'Could not send reset email'),
+                    result.ok ? 'success' : 'error'
+                  );
+                }}
                 className="text-xs hover:opacity-80"
                 style={{ color: 'var(--ff-accent-text)' }}
               >

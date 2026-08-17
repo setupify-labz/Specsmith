@@ -13,6 +13,32 @@ export const supabase: SupabaseClient | null = url && anonKey ? createClient(url
 
 export const isGalleryEnabled = supabase !== null;
 
+// Same underlying check as isGalleryEnabled (same client, same env vars) —
+// named separately for AuthContext.tsx so each feature's "is this
+// configured" flag reads clearly at its own call sites, without renaming
+// the gallery's existing export.
+export const isSupabaseConfigured = supabase !== null;
+
+export interface ProfileRow {
+  id: string;
+  username: string;
+  avatar: string | null;
+  preferred_resolution: string;
+  preferred_preset: string;
+  created_at: string;
+}
+
+export interface SavedBuildRow {
+  id: string;
+  user_id: string;
+  name: string;
+  notes: string;
+  build_state: Record<string, string | null>;
+  shared_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PublicBuildRow {
   id: string;
   name: string;

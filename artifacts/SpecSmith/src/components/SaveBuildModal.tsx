@@ -31,19 +31,14 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 600));
-    const beforeIds = new Set(builds.map(b => b.id));
-    const ok = saveBuild(name.trim(), notes.trim(), buildState);
+    const result = await saveBuild(name.trim(), notes.trim(), buildState);
     setSaving(false);
-    if (ok) {
+    if (result.ok) {
       showToast('Build saved!', 'success', { label: 'View in Dashboard', onClick: () => navigate('/dashboard') });
       onClose();
-      // Grab the newly created build's id (most recent, not present before save) to offer the optional email capture.
-      const savedBuilds = JSON.parse(localStorage.getItem(`specsmith-builds-${user?.id}`) || '[]') as { id: string }[];
-      const newBuild = savedBuilds.find(b => !beforeIds.has(b.id));
-      if (newBuild) setEmailCaptureBuildId(newBuild.id);
-    } else if (builds.length >= 20) {
-      showToast('You have reached the 20 build limit. Delete some builds first.', 'error');
+      if (result.buildId) setEmailCaptureBuildId(result.buildId);
+    } else {
+      showToast(result.error ?? 'Could not save build', 'error');
     }
   };
 

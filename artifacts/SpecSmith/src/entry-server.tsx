@@ -8,6 +8,7 @@ import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageWrapper from './components/PageWrapper';
+import LegacyMigrationBanner from './components/LegacyMigrationBanner';
 import Home from './pages/Home';
 import NotFound from './pages/not-found';
 import Builder from './pages/Builder';
@@ -144,6 +145,7 @@ export function render(url: string): string {
         <ToastProvider>
           <StaticRouter location={url}>
             <Navbar />
+            <LegacyMigrationBanner />
             {/* Mirrors the <Suspense> App.tsx wraps its (lazy-loaded) <Routes>
                 in — without it, the client's Suspense boundary has no
                 matching hydration markers in the static HTML, which React

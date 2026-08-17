@@ -24,7 +24,7 @@ function formatTime(iso: string) {
 }
 
 export default function Dashboard() {
-  const { user, builds, activity, deleteBuild, renameBuild } = useAuth();
+  const { user, builds, deleteBuild, renameBuild } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -55,9 +55,11 @@ export default function Dashboard() {
   const totalShared = builds.reduce((s, b) => s + b.sharedCount, 0);
 
   const startEdit = (id: string, name: string) => { setEditingId(id); setEditName(name); };
-  const commitEdit = (id: string) => {
-    if (editName.trim()) renameBuild(id, editName.trim());
+  const commitEdit = async (id: string) => {
     setEditingId(null);
+    if (!editName.trim()) return;
+    const result = await renameBuild(id, editName.trim());
+    if (!result.ok) showToast(result.error ?? 'Could not rename build', 'error');
   };
 
   const handlePublish = async (buildId: string, name: string, buildState: Record<string, string | null>) => {
@@ -73,11 +75,11 @@ export default function Dashboard() {
     showToast(result.ok ? 'Published to the Gallery' : result.error, result.ok ? 'success' : 'error');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
-      deleteBuild(id);
       setDeleteConfirm(null);
-      showToast('Build deleted', 'info');
+      const result = await deleteBuild(id);
+      showToast(result.ok ? 'Build deleted' : (result.error ?? 'Could not delete build'), result.ok ? 'info' : 'error');
     } else {
       setDeleteConfirm(id);
       setTimeout(() => setDeleteConfirm(c => c === id ? null : c), 3000);
@@ -219,20 +221,20 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Activity feed */}
+          {/* Recently saved */}
           <div>
-            <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Recent Activity</h2>
+            <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Recently Saved</h2>
             <div className="rounded-2xl overflow-hidden"
               style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-              {activity.length === 0 ? (
-                <p className="p-6 text-sm text-center" style={{ color: 'var(--ff-text-2)' }}>No activity yet</p>
+              {builds.length === 0 ? (
+                <p className="p-6 text-sm text-center" style={{ color: 'var(--ff-text-2)' }}>No builds saved yet</p>
               ) : (
-                activity.slice(0, 8).map((act, i) => (
-                  <div key={act.id} className="px-4 py-3"
-                    style={{ borderBottom: i < Math.min(activity.length - 1, 7) ? '1px solid var(--ff-border)' : undefined }}>
-                    <p className="text-sm" style={{ color: 'var(--ff-text)' }}>{act.message}</p>
+                builds.slice(0, 8).map((build, i) => (
+                  <div key={build.id} className="px-4 py-3"
+                    style={{ borderBottom: i < Math.min(builds.length - 1, 7) ? '1px solid var(--ff-border)' : undefined }}>
+                    <p className="text-sm truncate" style={{ color: 'var(--ff-text)' }}>{build.name}</p>
                     <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--ff-text-3)' }}>
-                      <Clock size={10} />{formatTime(act.time)}
+                      <Clock size={10} />{formatTime(build.savedAt)}
                     </p>
                   </div>
                 ))

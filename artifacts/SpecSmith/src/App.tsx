@@ -6,6 +6,7 @@ import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import PageWrapper from './components/PageWrapper';
+import LegacyMigrationBanner from './components/LegacyMigrationBanner';
 
 const Home = lazy(() => import('./pages/Home'));
 const Builder = lazy(() => import('./pages/Builder'));
@@ -53,6 +54,7 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
+      <LegacyMigrationBanner />
       <Suspense fallback={null}>
         <Routes>
           <Route path="/"          element={<PageWrapper><Home /></PageWrapper>} />

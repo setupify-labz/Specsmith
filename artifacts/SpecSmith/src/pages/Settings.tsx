@@ -12,7 +12,7 @@ const RESOLUTIONS = ['1080p', '1440p', '4K'];
 const PRESETS = ['low', 'medium', 'high', 'ultra'];
 
 export default function Settings() {
-  const { user, updateSettings, deleteAccount } = useAuth();
+  const { user, updateSettings, changePassword, deleteAccount } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -33,32 +33,34 @@ export default function Settings() {
     return null;
   }
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!username.trim() || !email.trim()) return;
-    const ok = updateSettings({ username: username.trim(), email: email.trim(), preferredResolution: resolution, preferredPreset: preset });
-    if (ok) showToast('Settings saved!', 'success');
-    else showToast('Username or email already taken', 'error');
+    const result = await updateSettings({ username: username.trim(), email: email.trim(), preferredResolution: resolution, preferredPreset: preset });
+    if (result.ok) showToast('Settings saved!', 'success');
+    else showToast(result.error ?? 'Username or email already taken', 'error');
   };
 
-  const handleChangePassword = () => {
-    if (currentPw !== user.password) { showToast('Current password is incorrect', 'error'); return; }
+  const handleChangePassword = async () => {
     if (newPw.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
     if (!/[0-9]/.test(newPw)) { showToast('Password must contain a number', 'error'); return; }
     if (!/[A-Z]/.test(newPw)) { showToast('Password must contain an uppercase letter', 'error'); return; }
     if (newPw !== confirmPw) { showToast('Passwords do not match', 'error'); return; }
-    updateSettings({ password: newPw });
+    const result = await changePassword(currentPw, newPw);
+    if (!result.ok) { showToast(result.error ?? 'Could not change password', 'error'); return; }
     setCurrentPw(''); setNewPw(''); setConfirmPw('');
     showToast('Password changed!', 'success');
   };
 
-  const handlePickAvatar = (id: string) => {
-    updateSettings({ avatar: id });
-    showToast('Avatar updated!', 'success');
+  const handlePickAvatar = async (id: string) => {
+    const result = await updateSettings({ avatar: id });
+    if (result.ok) showToast('Avatar updated!', 'success');
+    else showToast(result.error ?? 'Could not update avatar', 'error');
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (deleteInput !== 'DELETE') { showToast('Type DELETE to confirm', 'warning'); return; }
-    deleteAccount();
+    const result = await deleteAccount();
+    if (!result.ok) { showToast(result.error ?? 'Could not delete account', 'error'); return; }
     navigate('/');
     showToast('Account deleted', 'info');
   };
