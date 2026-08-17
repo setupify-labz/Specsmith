@@ -187,6 +187,64 @@ export function getTierPicks(useCase: UseCase): TierPick[] {
   }));
 }
 
+export interface TierStepUp {
+  /** How much more this tier's total costs versus the previous tier. */
+  costDelta: number;
+  /** Plain-language description of what that extra money actually buys — real deltas, not a sales pitch. */
+  gpuClause: string;
+  cpuClause: string;
+}
+
+export interface TierComparison extends TierPick {
+  /** GPU + CPU price for this tier — shown as two separate numbers today, never summed. */
+  totalCost: number;
+  /** Undefined for the first (cheapest) tier, which has nothing to step up from. */
+  stepUp?: TierStepUp;
+}
+
+function formatGpuStepUp(prevGpu: Gpu, gpu: Gpu): string {
+  if (gpu.id === prevGpu.id) return 'the same GPU';
+  const vramDelta = gpu.vram_gb - prevGpu.vram_gb;
+  if (vramDelta > 0) return `+${vramDelta}GB more VRAM`;
+  if (vramDelta < 0) return `${Math.abs(vramDelta)}GB less VRAM`;
+  return 'a different GPU with the same VRAM';
+}
+
+function formatCpuStepUp(prevCpu: Cpu, cpu: Cpu): string {
+  const coreDelta = cpu.cores - prevCpu.cores;
+  if (coreDelta > 0) return `+${coreDelta} more CPU cores`;
+  if (coreDelta < 0) return `${Math.abs(coreDelta)} fewer CPU cores`;
+  return 'the same CPU core count';
+}
+
+/**
+ * Total cost per tier (a sum the page never currently shows — GPU and CPU
+ * price are displayed as two separate numbers) plus what the price jump to
+ * each tier actually buys versus the one before it, in real spec terms
+ * (VRAM, cores) — not just "more expensive." Answers the real question a
+ * three-tier page raises but never answers: is the next tier up worth it?
+ * Sometimes the honest answer computed here is "barely" (e.g. the top
+ * video-editing tier gains 0GB VRAM and 0 cores over the middle one for a
+ * real card) — this reports whatever the real numbers say either way.
+ */
+export function getTierComparisons(picks: TierPick[]): TierComparison[] {
+  return picks.map((p, i) => {
+    const totalCost = p.gpu.price_usd + p.cpu.price_usd;
+    if (i === 0) return { ...p, totalCost };
+    const prev = picks[i - 1];
+    const prevTotal = prev.gpu.price_usd + prev.cpu.price_usd;
+    return {
+      ...p,
+      totalCost,
+      stepUp: {
+        costDelta: totalCost - prevTotal,
+        gpuClause: formatGpuStepUp(prev.gpu, p.gpu),
+        cpuClause: formatCpuStepUp(prev.cpu, p.cpu),
+      },
+    };
+  });
+}
+
 const GPU_STRATEGY_LABEL: Record<UseCase['gpuStrategy'], string> = {
   encode: 'NVENC encoding support',
   vram: 'VRAM headroom',

@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Cpu, ExternalLink } from 'lucide-react';
-import { getUseCase, getTierPicks, getUseCasePageMeta, useCaseItemListJsonLd, useCaseFaqJsonLd, USE_CASES } from '../lib/useCaseBuilds';
+import { getUseCase, getTierPicks, getTierComparisons, getUseCasePageMeta, useCaseItemListJsonLd, useCaseFaqJsonLd, USE_CASES } from '../lib/useCaseBuilds';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
@@ -34,6 +34,7 @@ export default function UseCaseBuildPage() {
   }
 
   const picks = getTierPicks(useCase);
+  const comparisons = getTierComparisons(picks);
   const related = USE_CASES.filter(u => u.slug !== useCase.slug);
 
   return (
@@ -57,9 +58,12 @@ export default function UseCaseBuildPage() {
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          {picks.map(p => (
+          {comparisons.map(p => (
             <div key={p.tier.label} className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-              <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--ff-accent-text)' }}>{p.tier.label}</p>
+              <div className="flex items-baseline justify-between mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--ff-accent-text)' }}>{p.tier.label}</p>
+                <p className="text-sm font-black" style={{ color: 'var(--ff-text)' }}>${p.totalCost.toLocaleString()} <span className="text-[10px] font-normal" style={{ color: 'var(--ff-text-3)' }}>total</span></p>
+              </div>
 
               <div className="mb-3 pb-3" style={{ borderBottom: '1px solid var(--ff-border)' }}>
                 <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>GPU</p>
@@ -90,6 +94,15 @@ export default function UseCaseBuildPage() {
                 style={{ backgroundColor: 'var(--ff-card)', color: 'var(--ff-text)' }}>
                 Load in Builder <ChevronRight size={12} />
               </Link>
+
+              {/* Is stepping up to this tier actually worth it? Real cost + spec
+                  deltas versus the tier to the left, computed from the picks above —
+                  not shown on the cheapest tier, which has nothing to step up from. */}
+              {p.stepUp && (
+                <p className="text-[11px] leading-relaxed mt-3 pt-3" style={{ color: 'var(--ff-text-3)', borderTop: '1px solid var(--ff-border)' }}>
+                  <span style={{ color: 'var(--ff-text-2)', fontWeight: 600 }}>+${p.stepUp.costDelta.toLocaleString()}</span> over the previous tier gets you {p.stepUp.gpuClause} and {p.stepUp.cpuClause}.
+                </p>
+              )}
             </div>
           ))}
         </div>
