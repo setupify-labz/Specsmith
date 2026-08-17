@@ -180,10 +180,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = useCallback(async (username: string, email: string, password: string): Promise<SignupResult> => {
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
+    // Without an explicit emailRedirectTo, Supabase falls back to the
+    // project's configured Site URL (see requestPasswordReset below for the
+    // same issue) — computing it from the current origin instead keeps
+    // local dev on localhost while production confirmation links land on
+    // the real site rather than whatever Site URL happens to be set to.
+    const emailRedirectTo = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username } },
+      options: { data: { username }, emailRedirectTo },
     });
     if (error) return { ok: false, error: error.message };
     // With email confirmation required (see supabase-schema.sql / Supabase
