@@ -1,6 +1,7 @@
 import { useSeo } from '../hooks/useSeo';
 import { getCoverageSummary, getAllBenchmarkRecords, getVerifiedGames } from '../lib/benchmarks/lookup';
 import { validateAllBenchmarkRecords, validateGameFeatureProfiles } from '../lib/benchmarks/validate';
+import { REQUIRED_PROVENANCE_FIELDS } from '../lib/benchmarks/types';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 
@@ -134,7 +135,7 @@ export default function AdminBenchmarks() {
                     </td>
                     <td className="py-1.5 pr-3 text-right font-bold">{r.averageFps}</td>
                     <td className="py-1.5 pr-3 text-right" style={{ color: 'var(--ff-text-2)' }}>
-                      {r.confirmedFields.length}/13
+                      {r.confirmedFields.length}/{REQUIRED_PROVENANCE_FIELDS.length}
                     </td>
                     <td className="py-1.5 pr-3">
                       <span style={{ color: r.verificationMethod === 'direct-fetch' ? 'var(--ff-green)' : 'var(--ff-amber)' }}>

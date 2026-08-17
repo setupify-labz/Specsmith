@@ -147,6 +147,11 @@ export default function VerifiedBenchmarkPanel({ gpuId, gpuName, cpuId, cpuName 
             </a>
             {' · Evidence quality ' + result.record.evidenceQuality}
           </p>
+          {result.record.verificationMethod === 'search-summary' && (
+            <p className="text-[11px] mt-1" style={{ color: 'var(--ff-text-3)' }}>
+              Found via a search summary of the source, not independently re-read from the original page.
+            </p>
+          )}
         </div>
       )}
 
