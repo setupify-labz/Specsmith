@@ -121,9 +121,16 @@ balanceRatio = cpuContribution / gpuContribution
 VRAM tier: `vram < demand` → Insufficient; `vram <= demand+1` → Tight; else → Comfortable.
 
 ### Upgrade-recommendation trigger thresholds
+
+*(Row 1 corrected 2026-08-18 — see §8. It previously described the CPU
+condition as the `cpuPct` percentage-of-total metric; the source actually
+reuses `balanceRatio` itself, i.e. the exact same value and formula as the
+Overview tab's bottleneck bar, just compared against a looser 0.7 cutoff
+instead of the bar's 0.55/0.8/1.4/2.0 boundaries.)*
+
 | Condition | Suggestion |
 |---|---|
-| `cpuContribution/(cpuContribution+gpuContribution)`-derived ratio < 0.7 | CPU upgrade (Critical) |
+| `balanceRatio` (`cpuContribution / gpuContribution`, same formula as the Overview-tab bottleneck bar above) < 0.7 | CPU upgrade (Critical) |
 | GPU ratio (`gpuPerf/15000`) < 0.55 **and** resolution is 4K or 1440p | GPU upgrade (Critical) |
 | RAM ≤ 8 GB | RAM upgrade (Critical) |
 | Storage = HDD | NVMe upgrade (Critical) |
@@ -131,9 +138,18 @@ VRAM tier: `vram < demand` → Insufficient; `vram <= demand+1` → Tight; else 
 | GPU ratio > 1.7 **and** resolution = 1080p | Higher-res monitor (High) |
 | Storage = SATA SSD | NVMe upgrade (Low) |
 
+**⚠️ See §8, finding 2** — this same `balanceRatio` value is labeled with
+the *opposite* bottleneck direction in the Overview tab vs. the Analysis
+tab / this upgrade trigger, directly in IObit's own source. Not resolved
+here; both interpretations are quoted in §8.
+
 ---
 
-## 2. Per-game weights (29 games)
+## 2. Per-game weights (30 games)
+
+*(Corrected 2026-08-18 — the table below and the source `GAME_WEIGHTS`
+object both contain 30 keys; this section previously said "29 games,"
+undercounting by one. See §8 for the audit that caught this.)*
 
 `gpuWeight` + `cpuWeight` do not always sum to 1 in their raw form because
 `gpuWeight` is further multiplied by `resMult × qualityMult × rtMult ×
@@ -539,3 +555,107 @@ a **hardcoded** set of reference parts (not the full catalog):
 | 60–144 FPS | Smooth gaming |
 | 144–240 FPS | High-refresh excellent |
 | 240+ FPS | Elite / Competitive |
+
+Minor note: the "FPS Across Resolution" chart (`renderAcrossResolutionChart`)
+only plots 720p / 1080p / 1440p / 4K — it omits 8K even though 8K is a
+selectable resolution everywhere else in the tool. Cosmetic scope gap, not
+a numeric error; not corrected here since it doesn't affect any value in
+this document.
+
+---
+
+## 8. Audit findings — internal inconsistencies (2026-08-18)
+
+Scope of this pass: game-entry count, formula implementation, catalog
+anomalies, duplicate/misnamed entries — checked directly against the
+extracted source pasted into this conversation, not against IObit's live
+site (which this environment cannot reach). Two findings below are
+**corrections applied above**; two are **unresolved and left as flagged
+observations**, per the audit instruction not to guess past what the
+source directly supports.
+
+### 1. Game count was wrong (corrected)
+§2's heading said "29 games." Both `GAME_WEIGHTS` and the mirrored
+`lanJson.games` catalog contain exactly **30** keys (`valorant` through
+`stardew`, including `cp2077`, `cp2077rt`, and `cp2077pt` as three separate
+entries). The table itself was already complete at 30 rows — only the
+count label was wrong. Corrected in §2. (This also means the "29 games"
+figure given in the earlier, separate `iobit-fps-calculator-summary.md`
+extraction from this same session is off by one — that file is outside
+this audit's scope and was not touched.)
+
+### 2. Contradictory bottleneck-direction labeling (UNRESOLVED — flagged, not fixed)
+The exact same computed value — `cpuContribution / gpuContribution`, built
+from identical inputs (`cpuRatio`, `gpuRatio`, `resMult`, the selected
+game's `cpuWeight`/`gpuWeight`) and evaluated once per calculation — is
+labeled with **opposite meanings** in two places in IObit's own source:
+
+- **Overview tab** (`renderFpsResult`, the CPU/GPU balance bar):
+  ```js
+  const d = c / p;   // c = cpuContribution, p = gpuContribution
+  d < .55 ? /* "GPU Bottleneck" */ : d < .8 ? /* "Slight GPU Bottleneck" */
+    : d > 2 ? /* "CPU Bottleneck" */ : d > 1.4 ? /* "Slight CPU Bottleneck" */
+    : /* "Balanced" */
+  ```
+  A **low** ratio here is labeled a **GPU** bottleneck.
+
+- **Analysis tab** (`generateConfigAnalysis`, the CPU-analysis prose) —
+  recomputes the identical ratio under a different variable name:
+  ```js
+  const a = cpuRatio * e.cpuWeight / (gpuRatio * e.gpuWeight * s);  // s = resMult
+  a < .55 && s > .5 ? /* title1: "Significant CPU Bottleneck Detected" */
+    : a < .75 && s > .5 ? /* title2: "Mild CPU Bottleneck..." */ : ...
+  ```
+  The **same low ratio** is labeled a **CPU** bottleneck here.
+
+- The **upgrade-recommendation list** (same function, `a < .7 →` push a
+  "CPU Upgrade... Eliminates CPU bottleneck" suggestion) sides with the
+  Analysis tab's interpretation, not the Overview tab's — see the
+  corrected §3 table row above.
+
+So two of the three UI surfaces (Analysis tab text + upgrade list) agree
+a low ratio means the CPU is under-provisioned; the third (Overview tab's
+own balance bar) calls the identical number a GPU problem. Worth noting:
+this formula is a **weighted sum**, not a `min()` of two independent FPS
+estimates — it has no rigorous "limiting factor" concept to begin with, so
+neither labeling is more "correct" than the other; they're just two
+different arbitrary interpretive choices layered on the same number, and
+they disagree. **Not fixed here** — it's a contradiction in IObit's own
+tool, not something this document has enough information to resolve one
+way or the other. Flagged for reference only.
+
+### 3. GPU-tier-chart reference lookups may not match their own catalog keys (UNRESOLVED — flagged, not fixed)
+Within `GPU_OBJECT`, any base-model GPU that has a suffixed sibling
+variant in the same series is keyed with a **trailing underscore** in the
+extracted source — e.g. `"4070_"` (base RTX 4070) coexists with
+`"4070_Ti"` and `"4070_Super"`; likewise `"3070_"`, `"4060_"`, `"1050_"`,
+`"4080_"`, `"3090_"`, `"6800_"`, `"7600_"`, `"5700_"`, `"1660_"`,
+`"1080_"`, `"1070_"`, `"590_"`.
+
+`renderGpuTierChart`'s hardcoded reference-part lookup, however, searches
+for the **bare** key with no trailing underscore:
+```js
+gpu_arr.find((e => "4070" === e.key))   // catalog key is actually "4070_"
+gpu_arr.find((e => "3070" === e.key))   // catalog key is actually "3070_"
+gpu_arr.find((e => "4060" === e.key))   // catalog key is actually "4060_"
+gpu_arr.find((e => "1050" === e.key))   // catalog key is actually "1050_"
+```
+If the trailing-underscore keys in the extracted source are genuine (i.e.
+this is really how IObit's shipped code names these object keys, not an
+artifact of however this bundle was deobfuscated/pretty-printed before it
+reached this conversation), then 4 of the 10 bars in the GPU tier-comparison
+chart (RTX 4070, RTX 3070, RTX 4060, GTX 1050) would fail their `.perf`
+lookup — `Array.prototype.find` would return `undefined`, and
+`undefined.perf` throws. The bar's **label** would still render correctly
+(labels come from a separate `lanJson.gpus.gpuTier` name lookup that *is*
+keyed without underscores), so this would show as broken/missing bars, not
+wrong numbers.
+
+**This is not corrected in §5 or §6** — §5's tables intentionally show
+display names, not raw object keys, so they're unaffected either way; §6
+already listed the correct display-name set. This finding is recorded here
+only because it's a genuine internal inconsistency directly visible in the
+extracted source, and because it could not be verified against IObit's
+live site from this environment (no network access to `iobit.com`). Do not
+treat it as confirmed live-site behavior — only as a fact about the
+extracted source text.
