@@ -90,21 +90,24 @@ parsers:
 node research/userbenchmark/build-known-games.mjs
 ```
 Output: `known-games.json`, with every game split into:
-- **`resolved`** — has a `gameId` + URL (+ sample count, where known) and
-  is directly reachable. Pulled from the single-game pages' own identity
-  and `relatedGamePages`, and the search page's `searchResultGames` and
-  `carouselGames`.
+- **`resolved`** — has a `gameId` + URL (+ sample count and caption, where
+  known) and is directly reachable. Pulled from the single-game pages' own
+  identity and `relatedGamePages`, and the search page's
+  `searchResultGames` and `carouselGames`.
 - **`nameOnly`** — only a name is known, from the search page's site-wide
   autocomplete list. **Not reachable** without either saving that specific
   game's own page, or capturing the "308 MORE »" AJAX response by hand.
+- **`nonGameHits`** — search hits that matched the term "FPS" but aren't
+  FPS-Estimates games at all (found one: a "Blade" RAM kit's SpeedTest
+  page). Kept separate so it's never miscounted as a game.
 
-As of the two sources saved so far: **12 resolved**, **303 name-only**,
-**315 total distinct games known** (from an autocomplete list of 316 raw
-"FPS Estimates …" name occurrences, minus 12 that turned out to already be
-resolved elsewhere, minus 1 genuine duplicate string in the source list
-itself — see `parse.mjs`'s `duplicateLabels`). This count only grows when
-a new source is saved and parsed — this tool performs no lookups of its
-own, it only re-aggregates existing parsed output.
+As of all sources saved so far — including the 4 hand-captured AJAX
+pagination pages that cover the full 317-hit result set (see
+`homepage/README.md`'s "AJAX pagination pages" section) — **316
+resolved**, **0 name-only**, **316 total distinct games known**, plus
+**1 non-game hit** set aside. This count only grows when a new source is
+saved and parsed — this tool performs no lookups of its own, it only
+re-aggregates existing parsed output.
 
 ## What gets extracted (parse.mjs)
 

@@ -24,12 +24,28 @@ control that a true static homepage wouldn't have.
 ## How to add another saved page
 
 Same workflow as `../parse.mjs`: save a page's full HTML source into
-`pages/` (any `.html`/`.htm`/`.xhtml`/`.txt` extension), then run:
+`pages/` (any `.html`/`.htm`/`.xhtml`/`.txt`/`.xml` extension), then run:
 ```
 node research/userbenchmark/homepage/parse.mjs
 ```
 Output goes to `parsed/<filename>.json`, plus an `index.json` summarizing
 every parsed page.
+
+### AJAX pagination pages (`.xml`)
+
+The "308 MORE »" control on the initial search page is a JSF/Mojarra AJAX
+form postback, not a link — see `paginationGap` below. It **can** still be
+captured without any fetch/crawl code here: open the search page in a
+browser, open devtools' Network tab, click "308 MORE »" (and then "Next »"
+for further pages), and save each response body — a
+`<partial-response>...<update id="searchForm"><![CDATA[...]]></update>...`
+XML document — as a `.xml` file in `pages/`. That's exactly how
+`Search-FPS-page1-ajax.xml` through `Search-FPS-page4-ajax.xml` were
+captured (all 4 pages of the 317-hit result set, saved by hand from the
+browser, then parsed the same way as any other saved page). The parser
+detects the `mh-ajaxpager`/"Page N of M" markup these captures carry and
+records `paginationGap.source: "ajax-page"` with the page's `PGMP` value
+instead of the initial page's "N MORE »" gap notice.
 
 ## What gets extracted
 
@@ -37,11 +53,19 @@ every parsed page.
   form's POST action, and the current search term.
 - **`hitsSummary`** — total hit count and how many are actually shown
   (`317` / `9` on the saved page).
-- **`searchResultGames`** — the 9 `tl-tag` result cards: name, caption
-  (e.g. `"FPS Estimates (CSGO)"` — note some games get a parenthetical
-  abbreviation, most don't), **sample count**, gameId, slug, canonical
-  game URL, icon URL. This is the richest per-game data on the page — it's
-  the only place here that pairs a sample count with a resolvable id/URL.
+- **`searchResultGames`** — the `tl-tag` result cards that are actual
+  FPS-Estimates games: name, caption (e.g. `"FPS Estimates (CSGO)"` — note
+  some games get a parenthetical abbreviation, most don't; retro games
+  sometimes carry a price instead, e.g. `"FPS Estimates - $29"`),
+  **sample count**, gameId, slug, canonical game URL, icon URL. This is the
+  richest per-game data captured here — the only place that pairs a sample
+  count with a resolvable id/URL. (9 on the original `Search-FPS.html`
+  page; up to 100 per AJAX pagination page — see below.)
+- **`nonGameSearchHits`** — `tl-tag` cards whose URL does **not** match
+  `/PCGame/FPS-Estimates-.../` — the search term "FPS" also turns up
+  unrelated product hits (found one: a "Blade" RAM kit's SpeedTest page,
+  on AJAX page 4). Kept separate rather than folded into
+  `searchResultGames` with a null gameId.
 - **`facets`** — the sidebar breakdown (Subdomain / Type / Category /
   Brand), each entry a `{label, count, filterUrl}`.
 - **`paginationGap`** — the "308 MORE »" control, recorded as **not**
@@ -90,7 +114,7 @@ were truncated or mis-scraped.
 | SSD bench/value score or samples | Name + price only, no score | Fetch the SSD's own `/Rating/<id>` page |
 | USB products/scores | No — nav link only | Fetch `usb.userbenchmark.com` directly |
 | CPU/GPU numeric bench/value % | Not present anywhere on this page | Fetch the part's `/Rating/<id>` page, or a specific game's FPS-Estimates page (which does carry per-part bench/value %) |
-| IDs/URLs for the other 308 game hits | Only 9 of 317 have a resolvable id/URL; the other 316 exist as bare names in the autocomplete array | Execute the "308 MORE »" AJAX postback (not a static URL), or search for each name individually |
+| IDs/URLs for the other 308 game hits | ~~Only 9 of 317 have a resolvable id/URL~~ **Resolved** — all 4 AJAX pagination pages were captured by hand and saved (`Search-FPS-page1-ajax.xml` .. `page4-ajax.xml`); 316 of the 317 hits are now id/url-resolvable games (the 317th is the non-game "Blade" RAM hit — see `nonGameSearchHits`). See `../known-games.json` for the merged, deduplicated result: 316 resolved, 0 name-only. | Done — no further action needed for this gap. |
 | Explicit rank numbers | "The Best" table's order is positional only, no rank/tier label | Not available from any page seen so far |
 
 Nothing in this list was worked around — each is reported as a genuine gap

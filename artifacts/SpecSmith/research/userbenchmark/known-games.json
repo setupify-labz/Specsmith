@@ -1,22 +1,520 @@
 {
-  "generatedAt": "2026-08-18T01:23:02.917Z",
+  "generatedAt": "2026-08-18T01:45:28.692Z",
   "note": "RESEARCH DATA — merged from every locally saved UserBenchmark source parsed so far in this directory tree (parsed/*.json and homepage/parsed/*.json). No network request was made. Re-run after adding/parsing new sources to refresh.",
   "summary": {
-    "resolvedCount": 12,
-    "nameOnlyCount": 303,
-    "totalDistinctGamesKnown": 315
+    "resolvedCount": 316,
+    "nameOnlyCount": 0,
+    "totalDistinctGamesKnown": 316,
+    "nonGameHitsCount": 1
   },
   "resolved": [
+    {
+      "gameId": "3959",
+      "name": "7 Days to Die",
+      "slug": "7-Days-to-Die",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
+      "sampleCount": 525,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3651",
+      "name": "ABZU",
+      "slug": "ABZU",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ABZU/3651/0.0.0.0.0",
+      "sampleCount": 53,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3652",
+      "name": "ADR1FT",
+      "slug": "ADR1FT",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
+      "sampleCount": 39,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3654",
+      "name": "AdVenture Capitalist",
+      "slug": "AdVenture-Capitalist",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
+      "sampleCount": 57,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3655",
+      "name": "Age of Empires II: HD Edition",
+      "slug": "Age-of-Empires-II--HD-Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
+      "sampleCount": 429,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3656",
+      "name": "Alien: Isolation",
+      "slug": "Alien--Isolation",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0",
+      "sampleCount": 211,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3657",
+      "name": "American Truck Simulator",
+      "slug": "American-Truck-Simulator",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-American-Truck-Simulator/3657/0.0.0.0.0",
+      "sampleCount": 688,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3658",
+      "name": "Anno 2205",
+      "slug": "Anno-2205",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Anno-2205/3658/0.0.0.0.0",
+      "sampleCount": 246,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4036",
+      "name": "Apex Legends",
+      "slug": "Apex-Legends",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0",
+      "sampleCount": 15084,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3653",
+      "name": "ARK: Survival Evolved",
+      "slug": "ARK--Survival-Evolved",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0",
+      "sampleCount": 5765,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3659",
+      "name": "Arma 2",
+      "slug": "Arma-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-2/3659/0.0.0.0.0",
+      "sampleCount": 162,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3660",
+      "name": "Arma 3",
+      "slug": "Arma-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0",
+      "sampleCount": 4108,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4032",
+      "name": "Assassin's Creed Odyssey",
+      "slug": "Assassins-Creed-Odyssey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0",
+      "sampleCount": 4838,
+      "caption": "FPS Estimates (ACO)",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3960",
+      "name": "Assassin's Creed Origins",
+      "slug": "Assassins-Creed-Origins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0",
+      "sampleCount": 2016,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3661",
+      "name": "Assetto Corsa",
+      "slug": "Assetto-Corsa",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0",
+      "sampleCount": 848,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3662",
+      "name": "Axiom Verge",
+      "slug": "Axiom-Verge",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Axiom-Verge/3662/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3663",
+      "name": "Batman: Arkham Knight",
+      "slug": "Batman--Arkham-Knight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0",
+      "sampleCount": 559,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
     {
       "gameId": "3664",
       "name": "Battlefield 1",
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
       "sampleCount": 28457,
+      "caption": "FPS Estimates (BF1)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3665",
+      "name": "Battlefield 4",
+      "slug": "Battlefield-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0",
+      "sampleCount": 12753,
+      "caption": "FPS Estimates (BF4)",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3961",
+      "name": "Battlefield 5",
+      "slug": "Battlefield-5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0",
+      "sampleCount": 8948,
+      "caption": "FPS Estimates (BFV)",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4186",
+      "name": "Battlefield 6",
+      "slug": "Battlefield-6",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates (BF6)",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3666",
+      "name": "Battlerite",
+      "slug": "Battlerite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
+      "sampleCount": 50,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3962",
+      "name": "BeamNG",
+      "slug": "BeamNG",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BeamNG/3962/0.0.0.0.0",
+      "sampleCount": 363,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4024",
+      "name": "Biomutant",
+      "slug": "Biomutant",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Biomutant/4024/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3667",
+      "name": "BioShock Infinite",
+      "slug": "BioShock-Infinite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BioShock-Infinite/3667/0.0.0.0.0",
+      "sampleCount": 331,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3963",
+      "name": "Black Desert",
+      "slug": "Black-Desert",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0",
+      "sampleCount": 975,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3964",
+      "name": "Black Squad",
+      "slug": "Black-Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Squad/3964/0.0.0.0.0",
+      "sampleCount": 173,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3668",
+      "name": "Blackguards 2",
+      "slug": "Blackguards-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Blackguards-2/3668/0.0.0.0.0",
+      "sampleCount": 7,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4023",
+      "name": "Bless Online",
+      "slug": "Bless-Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Bless-Online/4023/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3669",
+      "name": "Borderlands 2",
+      "slug": "Borderlands-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0",
+      "sampleCount": 1086,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3670",
+      "name": "Brawlhalla",
+      "slug": "Brawlhalla",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Brawlhalla/3670/0.0.0.0.0",
+      "sampleCount": 92,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3671",
+      "name": "Broken Age: Act 2",
+      "slug": "Broken-Age--Act-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Broken-Age--Act-2/3671/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3966",
+      "name": "Call of Duty modern warfare 2",
+      "slug": "Call-of-Duty-modern-warfare-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-modern-warfare-2/3966/0.0.0.0.0",
+      "sampleCount": 551,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3967",
+      "name": "Call of Duty WWII",
+      "slug": "Call-of-Duty-WWII",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-WWII/3967/0.0.0.0.0",
+      "sampleCount": 471,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3965",
+      "name": "Call of Duty: Black Ops 4",
+      "slug": "Call-of-Duty--Black-Ops-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0",
+      "sampleCount": 7698,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3672",
+      "name": "Call of Duty: Black Ops III",
+      "slug": "Call-of-Duty--Black-Ops-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0",
+      "sampleCount": 1512,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4114",
+      "name": "Call of Duty: Warzone",
+      "slug": "Call-of-Duty--Warzone",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Warzone/4114/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3673",
+      "name": "Call of Duty: World at War",
+      "slug": "Call-of-Duty--World-at-War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--World-at-War/3673/0.0.0.0.0",
+      "sampleCount": 651,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3674",
+      "name": "Child of Light",
+      "slug": "Child-of-Light",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Child-of-Light/3674/0.0.0.0.0",
+      "sampleCount": 19,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3675",
+      "name": "Chivalry: Medieval Warfare",
+      "slug": "Chivalry--Medieval-Warfare",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Chivalry--Medieval-Warfare/3675/0.0.0.0.0",
+      "sampleCount": 62,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3676",
+      "name": "Cities: Skylines",
+      "slug": "Cities--Skylines",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0",
+      "sampleCount": 1229,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3677",
+      "name": "Citizens of Earth",
+      "slug": "Citizens-of-Earth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Citizens-of-Earth/3677/0.0.0.0.0",
+      "sampleCount": 11,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3678",
+      "name": "Clicker Heroes",
+      "slug": "Clicker-Heroes",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Clicker-Heroes/3678/0.0.0.0.0",
+      "sampleCount": 24,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3679",
+      "name": "Company of Heroes 2",
+      "slug": "Company-of-Heroes-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Company-of-Heroes-2/3679/0.0.0.0.0",
+      "sampleCount": 204,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3968",
+      "name": "Conan Exiles",
+      "slug": "Conan-Exiles",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Conan-Exiles/3968/0.0.0.0.0",
+      "sampleCount": 113,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4187",
+      "name": "Counter-Strike: 2",
+      "slug": "Counter-Strike--2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--2/4187/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates (CS2)",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -25,10 +523,254 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
       "sampleCount": 151690,
+      "caption": "FPS Estimates (CSGO)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3969",
+      "name": "Crash Bandicoot N.Sane Trilogy",
+      "slug": "Crash-Bandicoot-NSane-Trilogy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crash-Bandicoot-NSane-Trilogy/3969/0.0.0.0.0",
+      "sampleCount": 29,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3681",
+      "name": "Crusader Kings II",
+      "slug": "Crusader-Kings-II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crusader-Kings-II/3681/0.0.0.0.0",
+      "sampleCount": 53,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3682",
+      "name": "Crypt of the NecroDancer",
+      "slug": "Crypt-of-the-NecroDancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crypt-of-the-NecroDancer/3682/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4092",
+      "name": "Cyberpunk 2077",
+      "slug": "Cyberpunk-2077",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cyberpunk-2077/4092/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3685",
+      "name": "Dark Souls",
+      "slug": "Dark-Souls",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls/3685/0.0.0.0.0",
+      "sampleCount": 157,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3686",
+      "name": "Dark Souls II",
+      "slug": "Dark-Souls-II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls-II/3686/0.0.0.0.0",
+      "sampleCount": 115,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3687",
+      "name": "Dark Souls III",
+      "slug": "Dark-Souls-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls-III/3687/0.0.0.0.0",
+      "sampleCount": 619,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4022",
+      "name": "Dark Souls: Remastered",
+      "slug": "Dark-Souls--Remastered",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls--Remastered/4022/0.0.0.0.0",
+      "sampleCount": 24,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3688",
+      "name": "Darkest Dungeon",
+      "slug": "Darkest-Dungeon",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Darkest-Dungeon/3688/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4021",
+      "name": "Darksiders 3",
+      "slug": "Darksiders-3--",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Darksiders-3--/4021/0.0.0.0.0",
+      "sampleCount": 42,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3971",
+      "name": "Dauntless",
+      "slug": "Dauntless",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dauntless/3971/0.0.0.0.0",
+      "sampleCount": 66,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3689",
+      "name": "Day of the Tentacle Remastered",
+      "slug": "Day-of-the-Tentacle-Remastered",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Day-of-the-Tentacle-Remastered/3689/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3690",
+      "name": "DayZ",
+      "slug": "DayZ",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DayZ/3690/0.0.0.0.0",
+      "sampleCount": 598,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3691",
+      "name": "Dead by Daylight",
+      "slug": "Dead-by-Daylight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dead-by-Daylight/3691/0.0.0.0.0",
+      "sampleCount": 528,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4061",
+      "name": "Destiny 2",
+      "slug": "Destiny-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Destiny-2/4061/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3692",
+      "name": "Deus Ex: Mankind Divided",
+      "slug": "Deus-Ex--Mankind-Divided",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Deus-Ex--Mankind-Divided/3692/0.0.0.0.0",
+      "sampleCount": 248,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3694",
+      "name": "Diablo III",
+      "slug": "Diablo-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Diablo-III/3694/0.0.0.0.0",
+      "sampleCount": 1322,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3693",
+      "name": "DiRT Rally",
+      "slug": "DiRT-Rally",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DiRT-Rally/3693/0.0.0.0.0",
+      "sampleCount": 455,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3695",
+      "name": "Divinity: Original Sin",
+      "slug": "Divinity--Original-Sin",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Divinity--Original-Sin/3695/0.0.0.0.0",
+      "sampleCount": 35,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4020",
+      "name": "Divinity: Original Sin 2",
+      "slug": "Divinity--Original-Sin-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Divinity--Original-Sin-2/4020/0.0.0.0.0",
+      "sampleCount": 74,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3696",
+      "name": "Don't Starve Together",
+      "slug": "Dont-Starve-Together",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dont-Starve-Together/3696/0.0.0.0.0",
+      "sampleCount": 43,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3683",
+      "name": "DOOM",
+      "slug": "DOOM",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOOM/3683/0.0.0.0.0",
+      "sampleCount": 2403,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -36,10 +778,320 @@
       "name": "DOTA 2",
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOTA-2/3684/0.0.0.0.0",
-      "sampleCount": null,
+      "sampleCount": 20239,
+      "caption": "FPS Estimates",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3697",
+      "name": "Downfall",
+      "slug": "Downfall",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Downfall/3697/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3698",
+      "name": "Downwell",
+      "slug": "Downwell",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Downwell/3698/0.0.0.0.0",
+      "sampleCount": 6,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3699",
+      "name": "Dragon Age: Inquisition",
+      "slug": "Dragon-Age--Inquisition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dragon-Age--Inquisition/3699/0.0.0.0.0",
+      "sampleCount": 241,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3700",
+      "name": "Dragon's Dogma: Dark Arisen",
+      "slug": "Dragons-Dogma--Dark-Arisen",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dragons-Dogma--Dark-Arisen/3700/0.0.0.0.0",
+      "sampleCount": 23,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3701",
+      "name": "Dreamfall Chapters: The Longest Journey",
+      "slug": "Dreamfall-Chapters--The-Longest-Journey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dreamfall-Chapters--The-Longest-Journey/3701/0.0.0.0.0",
+      "sampleCount": 9,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3702",
+      "name": "Dropsy",
+      "slug": "Dropsy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dropsy/3702/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3703",
+      "name": "Dying Light",
+      "slug": "Dying-Light",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dying-Light/3703/0.0.0.0.0",
+      "sampleCount": 432,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3705",
+      "name": "Elite: Dangerous",
+      "slug": "Elite--Dangerous",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Elite--Dangerous/3705/0.0.0.0.0",
+      "sampleCount": 452,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3706",
+      "name": "Empire: Total War",
+      "slug": "Empire--Total-War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Empire--Total-War/3706/0.0.0.0.0",
+      "sampleCount": 61,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3707",
+      "name": "Endless Legend",
+      "slug": "Endless-Legend",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Endless-Legend/3707/0.0.0.0.0",
+      "sampleCount": 10,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3708",
+      "name": "Enter the Gungeon",
+      "slug": "Enter-the-Gungeon",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Enter-the-Gungeon/3708/0.0.0.0.0",
+      "sampleCount": 32,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4019",
+      "name": "Escape from Tarkov",
+      "slug": "Escape-from-Tarkov",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Escape-from-Tarkov/4019/0.0.0.0.0",
+      "sampleCount": 931,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3709",
+      "name": "Euro Truck Simulator 2",
+      "slug": "Euro-Truck-Simulator-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Euro-Truck-Simulator-2/3709/0.0.0.0.0",
+      "sampleCount": 2632,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3710",
+      "name": "Europa Universalis IV",
+      "slug": "Europa-Universalis-IV",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Europa-Universalis-IV/3710/0.0.0.0.0",
+      "sampleCount": 164,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3711",
+      "name": "Everlasting Summer",
+      "slug": "Everlasting-Summer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Everlasting-Summer/3711/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3704",
+      "name": "EVGA Precision XOC",
+      "slug": "EVGA-Precision-XOC",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-EVGA-Precision-XOC/3704/0.0.0.0.0",
+      "sampleCount": 6,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3712",
+      "name": "Evolve",
+      "slug": "Evolve",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Evolve/3712/0.0.0.0.0",
+      "sampleCount": 31,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3713",
+      "name": "Fable Anniversary",
+      "slug": "Fable-Anniversary",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fable-Anniversary/3713/0.0.0.0.0",
+      "sampleCount": 15,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3714",
+      "name": "Factorio",
+      "slug": "Factorio",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Factorio/3714/0.0.0.0.0",
+      "sampleCount": 106,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3715",
+      "name": "Fallout 4",
+      "slug": "Fallout-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fallout-4/3715/0.0.0.0.0",
+      "sampleCount": 10024,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3716",
+      "name": "Fallout: New Vegas",
+      "slug": "Fallout--New-Vegas",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fallout--New-Vegas/3716/0.0.0.0.0",
+      "sampleCount": 365,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3973",
+      "name": "Far Cry 5",
+      "slug": "Far-Cry-5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Far-Cry-5/3973/0.0.0.0.0",
+      "sampleCount": 3610,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3717",
+      "name": "Farming Simulator 15",
+      "slug": "Farming-Simulator-15",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Farming-Simulator-15/3717/0.0.0.0.0",
+      "sampleCount": 291,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3718",
+      "name": "Final Fantasy XIV Online",
+      "slug": "Final-Fantasy-XIV-Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Final-Fantasy-XIV-Online/3718/0.0.0.0.0",
+      "sampleCount": 339,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3719",
+      "name": "Final Fantasy XIV: A Realm Reborn",
+      "slug": "Final-Fantasy-XIV--A-Realm-Reborn",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Final-Fantasy-XIV--A-Realm-Reborn/3719/0.0.0.0.0",
+      "sampleCount": 843,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3720",
+      "name": "Firewatch",
+      "slug": "Firewatch",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Firewatch/3720/0.0.0.0.0",
+      "sampleCount": 37,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3721",
+      "name": "Football Manager 2015",
+      "slug": "Football-Manager-2015",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Football-Manager-2015/3721/0.0.0.0.0",
+      "sampleCount": 24,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3722",
+      "name": "Football Manager 2016",
+      "slug": "Football-Manager-2016",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Football-Manager-2016/3722/0.0.0.0.0",
+      "sampleCount": 180,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -48,10 +1100,100 @@
       "slug": "Fortnite",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
       "sampleCount": 87737,
+      "caption": "FPS Estimates",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "4018",
+      "name": "Forza Horizon 3",
+      "slug": "Forza-Horizon-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Forza-Horizon-3/4018/0.0.0.0.0",
+      "sampleCount": 853,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4067",
+      "name": "Forza Horizon 4",
+      "slug": "Forza-Horizon-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Forza-Horizon-4/4067/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4017",
+      "name": "Forza Motorsport 7",
+      "slug": "Forza-Motorsport-7",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Forza-Motorsport-7/4017/0.0.0.0.0",
+      "sampleCount": 221,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3723",
+      "name": "Fran Bow",
+      "slug": "Fran-Bow",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fran-Bow/3723/0.0.0.0.0",
+      "sampleCount": 4,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3975",
+      "name": "Frostpunk",
+      "slug": "Frostpunk",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Frostpunk/3975/0.0.0.0.0",
+      "sampleCount": 53,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3724",
+      "name": "Game of Thrones",
+      "slug": "Game-of-Thrones",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Game-of-Thrones/3724/0.0.0.0.0",
+      "sampleCount": 11,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3725",
+      "name": "Garry's Mod",
+      "slug": "Garrys-Mod",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Garrys-Mod/3725/0.0.0.0.0",
+      "sampleCount": 786,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3726",
+      "name": "Gnomoria",
+      "slug": "Gnomoria",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Gnomoria/3726/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -60,10 +1202,419 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grand-Theft-Auto-V/3727/0.0.0.0.0",
       "sampleCount": 71870,
+      "caption": "FPS Estimates (GTAV)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3728",
+      "name": "Grey Goo",
+      "slug": "Grey-Goo",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grey-Goo/3728/0.0.0.0.0",
+      "sampleCount": 7,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3729",
+      "name": "Grim Dawn",
+      "slug": "Grim-Dawn",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grim-Dawn/3729/0.0.0.0.0",
+      "sampleCount": 64,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3730",
+      "name": "Grim Fandango Remastered",
+      "slug": "Grim-Fandango-Remastered",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grim-Fandango-Remastered/3730/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3731",
+      "name": "Grow Home",
+      "slug": "Grow-Home",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grow-Home/3731/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4016",
+      "name": "GTFO",
+      "slug": "GTFO-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-GTFO-/4016/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3732",
+      "name": "Guacamelee! Super Turbo Championship Edition",
+      "slug": "Guacamelee--Super-Turbo-Championship-Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Guacamelee--Super-Turbo-Championship-Edition/3732/0.0.0.0.0",
+      "sampleCount": 4,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3734",
+      "name": "Guild of Dungeoneering",
+      "slug": "Guild-of-Dungeoneering",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Guild-of-Dungeoneering/3734/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3733",
+      "name": "Guild Wars 2",
+      "slug": "Guild-Wars-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Guild-Wars-2/3733/0.0.0.0.0",
+      "sampleCount": 1192,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3735",
+      "name": "H1Z1: King of the Kill",
+      "slug": "H1Z1--King-of-the-Kill",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-H1Z1--King-of-the-Kill/3735/0.0.0.0.0",
+      "sampleCount": 1482,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3736",
+      "name": "Hard West",
+      "slug": "Hard-West",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hard-West/3736/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3737",
+      "name": "Hatred",
+      "slug": "Hatred",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hatred/3737/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3738",
+      "name": "Hearthstone: Heroes of Warcraft",
+      "slug": "Hearthstone--Heroes-of-Warcraft",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hearthstone--Heroes-of-Warcraft/3738/0.0.0.0.0",
+      "sampleCount": 158,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3739",
+      "name": "Hearts of Iron IV",
+      "slug": "Hearts-of-Iron-IV",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hearts-of-Iron-IV/3739/0.0.0.0.0",
+      "sampleCount": 232,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3740",
+      "name": "Her Story",
+      "slug": "Her-Story",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Her-Story/3740/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3741",
+      "name": "Heroes & Generals",
+      "slug": "Heroes-and-Generals",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Heroes-and-Generals/3741/0.0.0.0.0",
+      "sampleCount": 284,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3742",
+      "name": "Heroes of the Storm",
+      "slug": "Heroes-of-the-Storm",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Heroes-of-the-Storm/3742/0.0.0.0.0",
+      "sampleCount": 718,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3743",
+      "name": "Hitman",
+      "slug": "Hitman",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hitman/3743/0.0.0.0.0",
+      "sampleCount": 301,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3744",
+      "name": "Homefront: The Revolution",
+      "slug": "Homefront--The-Revolution",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Homefront--The-Revolution/3744/0.0.0.0.0",
+      "sampleCount": 28,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3745",
+      "name": "Homesick",
+      "slug": "Homesick",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Homesick/3745/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3746",
+      "name": "Homeworld Remastered Collection",
+      "slug": "Homeworld-Remastered-Collection",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Homeworld-Remastered-Collection/3746/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3747",
+      "name": "Homeworld: Deserts of Kharak",
+      "slug": "Homeworld--Deserts-of-Kharak",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Homeworld--Deserts-of-Kharak/3747/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3748",
+      "name": "Hotline Miami 2: Wrong Number",
+      "slug": "Hotline-Miami-2--Wrong-Number",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hotline-Miami-2--Wrong-Number/3748/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3749",
+      "name": "HuniePop",
+      "slug": "HuniePop",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-HuniePop/3749/0.0.0.0.0",
+      "sampleCount": 13,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3750",
+      "name": "Hyper Light Drifter",
+      "slug": "Hyper-Light-Drifter",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hyper-Light-Drifter/3750/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3751",
+      "name": "Inside",
+      "slug": "Inside",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Inside/3751/0.0.0.0.0",
+      "sampleCount": 15,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3752",
+      "name": "Insurgency",
+      "slug": "Insurgency",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Insurgency/3752/0.0.0.0.0",
+      "sampleCount": 296,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3753",
+      "name": "Invisible inc.",
+      "slug": "Invisible-inc",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Invisible-inc/3753/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4068",
+      "name": "iRacing",
+      "slug": "iRacing",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-iRacing/4068/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4015",
+      "name": "Jurassic World Evolution",
+      "slug": "Jurassic-World-Evolution",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Jurassic-World-Evolution/4015/0.0.0.0.0",
+      "sampleCount": 47,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3754",
+      "name": "Just Cause 3",
+      "slug": "Just-Cause-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Just-Cause-3/3754/0.0.0.0.0",
+      "sampleCount": 563,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3755",
+      "name": "Kerbal Space Program",
+      "slug": "Kerbal-Space-Program",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Kerbal-Space-Program/3755/0.0.0.0.0",
+      "sampleCount": 333,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3756",
+      "name": "Kholat",
+      "slug": "Kholat",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Kholat/3756/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4014",
+      "name": "Killing Floor 2",
+      "slug": "Killing-Floor-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Killing-Floor-2/4014/0.0.0.0.0",
+      "sampleCount": 88,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3757",
+      "name": "Knight Online",
+      "slug": "Knight-Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Knight-Online/3757/0.0.0.0.0",
+      "sampleCount": 54,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3758",
+      "name": "Labyrinth",
+      "slug": "Labyrinth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Labyrinth/3758/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3759",
+      "name": "Lara Croft GO",
+      "slug": "Lara-Croft-GO",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Lara-Croft-GO/3759/0.0.0.0.0",
+      "sampleCount": 18,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3760",
+      "name": "Layers of Fear",
+      "slug": "Layers-of-Fear",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Layers-of-Fear/3760/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -72,10 +1623,155 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-League-of-Legends/3761/0.0.0.0.0",
       "sampleCount": 68277,
+      "caption": "FPS Estimates (LoL)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3762",
+      "name": "Left 4 Dead 2",
+      "slug": "Left-4-Dead-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Left-4-Dead-2/3762/0.0.0.0.0",
+      "sampleCount": 467,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3763",
+      "name": "Legend of Grimrock 2",
+      "slug": "Legend-of-Grimrock-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Legend-of-Grimrock-2/3763/0.0.0.0.0",
+      "sampleCount": 7,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3764",
+      "name": "Life is Strange",
+      "slug": "Life-is-Strange",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Life-is-Strange/3764/0.0.0.0.0",
+      "sampleCount": 94,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3765",
+      "name": "Luftrausers",
+      "slug": "Luftrausers",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Luftrausers/3765/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3767",
+      "name": "Mafia III",
+      "slug": "Mafia-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Mafia-III/3767/0.0.0.0.0",
+      "sampleCount": 391,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3768",
+      "name": "Magic Duels",
+      "slug": "Magic-Duels",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Magic-Duels/3768/0.0.0.0.0",
+      "sampleCount": 6,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3769",
+      "name": "Magicka: Wizard Wars",
+      "slug": "Magicka--Wizard-Wars",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Magicka--Wizard-Wars/3769/0.0.0.0.0",
+      "sampleCount": 6,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3770",
+      "name": "Medieval II: Total War",
+      "slug": "Medieval-II--Total-War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Medieval-II--Total-War/3770/0.0.0.0.0",
+      "sampleCount": 39,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3771",
+      "name": "Mercenary Kings",
+      "slug": "Mercenary-Kings",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Mercenary-Kings/3771/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3772",
+      "name": "Metal Gear Solid V: The Phantom Pain",
+      "slug": "Metal-Gear-Solid-V--The-Phantom-Pain",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Metal-Gear-Solid-V--The-Phantom-Pain/3772/0.0.0.0.0",
+      "sampleCount": 197,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3773",
+      "name": "Metro Redux",
+      "slug": "Metro-Redux",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Metro-Redux/3773/0.0.0.0.0",
+      "sampleCount": 294,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3774",
+      "name": "Microsoft Flight Simulator X",
+      "slug": "Microsoft-Flight-Simulator-X",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Microsoft-Flight-Simulator-X/3774/0.0.0.0.0",
+      "sampleCount": 1008,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3775",
+      "name": "Middle-earth: Shadow of Mordor",
+      "slug": "Middle-earth--Shadow-of-Mordor",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Middle-earth--Shadow-of-Mordor/3775/0.0.0.0.0",
+      "sampleCount": 404,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -84,10 +1780,155 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Minecraft/3776/0.0.0.0.0",
       "sampleCount": 23472,
+      "caption": "FPS Estimates",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3777",
+      "name": "Moebius: Empire Rising",
+      "slug": "Moebius--Empire-Rising",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Moebius--Empire-Rising/3777/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4013",
+      "name": "Moonlighter",
+      "slug": "Moonlighter",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Moonlighter/4013/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3778",
+      "name": "Mortal Kombat X",
+      "slug": "Mortal-Kombat-X",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Mortal-Kombat-X/3778/0.0.0.0.0",
+      "sampleCount": 202,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3779",
+      "name": "Mount & Blade: Warband",
+      "slug": "Mount-and-Blade--Warband",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Mount-and-Blade--Warband/3779/0.0.0.0.0",
+      "sampleCount": 107,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3780",
+      "name": "NBA 2K15",
+      "slug": "NBA-2K15",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-NBA-2K15/3780/0.0.0.0.0",
+      "sampleCount": 51,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3781",
+      "name": "NBA 2K17",
+      "slug": "NBA-2K17",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-NBA-2K17/3781/0.0.0.0.0",
+      "sampleCount": 181,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3782",
+      "name": "Need for Speed",
+      "slug": "Need-for-Speed",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Need-for-Speed/3782/0.0.0.0.0",
+      "sampleCount": 999,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3783",
+      "name": "Neon Space",
+      "slug": "Neon-Space",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Neon-Space/3783/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3784",
+      "name": "Neon Space 2",
+      "slug": "Neon-Space-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Neon-Space-2/3784/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3785",
+      "name": "No Thing",
+      "slug": "No-Thing",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-No-Thing/3785/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3786",
+      "name": "Not a Hero",
+      "slug": "Not-a-Hero",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Not-a-Hero/3786/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3787",
+      "name": "Ori and the Blind Forest",
+      "slug": "Ori-and-the-Blind-Forest",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Ori-and-the-Blind-Forest/3787/0.0.0.0.0",
+      "sampleCount": 34,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3788",
+      "name": "Overpower",
+      "slug": "Overpower",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overpower/3788/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -96,10 +1937,133 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch/3789/0.0.0.0.0",
       "sampleCount": 54796,
+      "caption": "FPS Estimates",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "4135",
+      "name": "Overwatch 2",
+      "slug": "Overwatch-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch-2/4135/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3790",
+      "name": "Oxenfree",
+      "slug": "Oxenfree",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Oxenfree/3790/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3791",
+      "name": "Paladins",
+      "slug": "Paladins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Paladins/3791/0.0.0.0.0",
+      "sampleCount": 1200,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3792",
+      "name": "Path of Exile",
+      "slug": "Path-of-Exile",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Path-of-Exile/3792/0.0.0.0.0",
+      "sampleCount": 1002,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3793",
+      "name": "Payday 2",
+      "slug": "Payday-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Payday-2/3793/0.0.0.0.0",
+      "sampleCount": 461,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3794",
+      "name": "Pillars of Eternity",
+      "slug": "Pillars-of-Eternity",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Pillars-of-Eternity/3794/0.0.0.0.0",
+      "sampleCount": 27,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4011",
+      "name": "Pillars of Eternity II: Deadfire",
+      "slug": "Pillars-of-Eternity-II--Deadfire",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Pillars-of-Eternity-II--Deadfire/4011/0.0.0.0.0",
+      "sampleCount": 19,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3795",
+      "name": "Plague Inc: Evolved",
+      "slug": "Plague-Inc--Evolved",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Plague-Inc--Evolved/3795/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4010",
+      "name": "Planet Alpha",
+      "slug": "Planet-Alpha-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Planet-Alpha-/4010/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4009",
+      "name": "Planet Coaster",
+      "slug": "Planet-Coaster",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Planet-Coaster/4009/0.0.0.0.0",
+      "sampleCount": 111,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3796",
+      "name": "PlanetSide 2",
+      "slug": "PlanetSide-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlanetSide-2/3796/0.0.0.0.0",
+      "sampleCount": 487,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -108,10 +2072,958 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0",
       "sampleCount": 75383,
+      "caption": "FPS Estimates (PUBG)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3797",
+      "name": "Pony Island",
+      "slug": "Pony-Island",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Pony-Island/3797/0.0.0.0.0",
+      "sampleCount": 12,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3976",
+      "name": "Prey",
+      "slug": "Prey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Prey/3976/0.0.0.0.0",
+      "sampleCount": 31,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3798",
+      "name": "Prison Architect",
+      "slug": "Prison-Architect",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Prison-Architect/3798/0.0.0.0.0",
+      "sampleCount": 23,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3799",
+      "name": "Pro Evolution Soccer 2017",
+      "slug": "Pro-Evolution-Soccer-2017",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Pro-Evolution-Soccer-2017/3799/0.0.0.0.0",
+      "sampleCount": 791,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3800",
+      "name": "Project cars",
+      "slug": "Project-cars",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Project-cars/3800/0.0.0.0.0",
+      "sampleCount": 274,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4008",
+      "name": "Project Cars 2",
+      "slug": "Project-Cars-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Project-Cars-2/4008/0.0.0.0.0",
+      "sampleCount": 214,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3801",
+      "name": "Punch Club",
+      "slug": "Punch-Club",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Punch-Club/3801/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3802",
+      "name": "Quadrilateral Cowboy",
+      "slug": "Quadrilateral-Cowboy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Quadrilateral-Cowboy/3802/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "1214",
+      "name": "Quake 2",
+      "slug": "Quake-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Quake-2/1214/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates - $29",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3803",
+      "name": "Read Only Memories",
+      "slug": "Read-Only-Memories",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Read-Only-Memories/3803/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3804",
+      "name": "Rebel Galaxy",
+      "slug": "Rebel-Galaxy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rebel-Galaxy/3804/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3805",
+      "name": "Resident Evil - HD Remaster",
+      "slug": "Resident-Evil---HD-Remaster",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Resident-Evil---HD-Remaster/3805/0.0.0.0.0",
+      "sampleCount": 70,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4007",
+      "name": "Resident Evil 7: Biohazard",
+      "slug": "Resident-Evil-7--Biohazard",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Resident-Evil-7--Biohazard/4007/0.0.0.0.0",
+      "sampleCount": 153,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3806",
+      "name": "Resident Evil HD Remaster",
+      "slug": "Resident-Evil-HD-Remaster",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Resident-Evil-HD-Remaster/3806/0.0.0.0.0",
+      "sampleCount": 33,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3807",
+      "name": "Riders of Icarus",
+      "slug": "Riders-of-Icarus",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Riders-of-Icarus/3807/0.0.0.0.0",
+      "sampleCount": 30,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3808",
+      "name": "RimWorld",
+      "slug": "RimWorld",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-RimWorld/3808/0.0.0.0.0",
+      "sampleCount": 33,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3809",
+      "name": "Rise of the Tomb Raider",
+      "slug": "Rise-of-the-Tomb-Raider",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rise-of-the-Tomb-Raider/3809/0.0.0.0.0",
+      "sampleCount": 4867,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4025",
+      "name": "Roblox",
+      "slug": "Roblox",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Roblox/4025/0.0.0.0.0",
+      "sampleCount": 564,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3810",
+      "name": "Robocraft",
+      "slug": "Robocraft",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Robocraft/3810/0.0.0.0.0",
+      "sampleCount": 95,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3811",
+      "name": "Rocket League",
+      "slug": "Rocket-League",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rocket-League/3811/0.0.0.0.0",
+      "sampleCount": 5632,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3812",
+      "name": "Ronin",
+      "slug": "Ronin",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Ronin/3812/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4006",
+      "name": "Rules Of Survival",
+      "slug": "Rules-Of-Survival",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rules-Of-Survival/4006/0.0.0.0.0",
+      "sampleCount": 102,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3977",
+      "name": "Runescape 3",
+      "slug": "Runescape-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Runescape-3/3977/0.0.0.0.0",
+      "sampleCount": 172,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3813",
+      "name": "Rust",
+      "slug": "Rust",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rust/3813/0.0.0.0.0",
+      "sampleCount": 6199,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3816",
+      "name": "Saints Row IV",
+      "slug": "Saints-Row-IV",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Saints-Row-IV/3816/0.0.0.0.0",
+      "sampleCount": 107,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4005",
+      "name": "School Girl/Zombie Hunter",
+      "slug": "School-GirlZombie-Hunter",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-School-GirlZombie-Hunter/4005/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4004",
+      "name": "Shadow of the Tomb Raider",
+      "slug": "Shadow-of-the-Tomb-Raider-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadow-of-the-Tomb-Raider-/4004/0.0.0.0.0",
+      "sampleCount": 857,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4003",
+      "name": "Shadow Tactics: Blades of the Shogun",
+      "slug": "Shadow-Tactics--Blades-of-the-Shogun",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadow-Tactics--Blades-of-the-Shogun/4003/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3817",
+      "name": "Shadow Warrior 2",
+      "slug": "Shadow-Warrior-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadow-Warrior-2/3817/0.0.0.0.0",
+      "sampleCount": 34,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3818",
+      "name": "Shadowrun: Hong Kong",
+      "slug": "Shadowrun--Hong-Kong",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadowrun--Hong-Kong/3818/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4002",
+      "name": "Shadowverse",
+      "slug": "Shadowverse",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadowverse/4002/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3819",
+      "name": "Sherlock Holmes: Crimes & Punishments",
+      "slug": "Sherlock-Holmes--Crimes-and-Punishments",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Sherlock-Holmes--Crimes-and-Punishments/3819/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3820",
+      "name": "Shovel Knight",
+      "slug": "Shovel-Knight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shovel-Knight/3820/0.0.0.0.0",
+      "sampleCount": 7,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3821",
+      "name": "Sid Meier's Civilization V",
+      "slug": "Sid-Meiers-Civilization-V",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Sid-Meiers-Civilization-V/3821/0.0.0.0.0",
+      "sampleCount": 371,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3822",
+      "name": "Sid Meier's Starships",
+      "slug": "Sid-Meiers-Starships",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Sid-Meiers-Starships/3822/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4001",
+      "name": "Slay the Spire",
+      "slug": "Slay-the-Spire",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Slay-the-Spire/4001/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3814",
+      "name": "SMITE",
+      "slug": "SMITE",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-SMITE/3814/0.0.0.0.0",
+      "sampleCount": 716,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4000",
+      "name": "Sniper Elite 4",
+      "slug": "Sniper-Elite-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Sniper-Elite-4/4000/0.0.0.0.0",
+      "sampleCount": 101,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3815",
+      "name": "SOMA",
+      "slug": "SOMA",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-SOMA/3815/0.0.0.0.0",
+      "sampleCount": 10,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3999",
+      "name": "Soulcalibur VI",
+      "slug": "Soulcalibur-VI",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Soulcalibur-VI/3999/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3823",
+      "name": "South Park: The Stick of Truth",
+      "slug": "South-Park--The-Stick-of-Truth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-South-Park--The-Stick-of-Truth/3823/0.0.0.0.0",
+      "sampleCount": 30,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3824",
+      "name": "Space Engineers",
+      "slug": "Space-Engineers",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Space-Engineers/3824/0.0.0.0.0",
+      "sampleCount": 280,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3825",
+      "name": "Spider Solitaire",
+      "slug": "Spider-Solitaire",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Spider-Solitaire/3825/0.0.0.0.0",
+      "sampleCount": 15,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3826",
+      "name": "Squad",
+      "slug": "Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Squad/3826/0.0.0.0.0",
+      "sampleCount": 502,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3998",
+      "name": "Star Citizen",
+      "slug": "Star-Citizen",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Star-Citizen/3998/0.0.0.0.0",
+      "sampleCount": 423,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3827",
+      "name": "Star Wars:The Old Republic",
+      "slug": "Star-Wars-The-Old-Republic",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Star-Wars-The-Old-Republic/3827/0.0.0.0.0",
+      "sampleCount": 325,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3829",
+      "name": "Starbound",
+      "slug": "Starbound",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Starbound/3829/0.0.0.0.0",
+      "sampleCount": 39,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3828",
+      "name": "StarCraft II",
+      "slug": "StarCraft-II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-StarCraft-II/3828/0.0.0.0.0",
+      "sampleCount": 924,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3830",
+      "name": "Stardew Valley",
+      "slug": "Stardew-Valley",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Stardew-Valley/3830/0.0.0.0.0",
+      "sampleCount": 41,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3831",
+      "name": "Stellaris",
+      "slug": "Stellaris",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Stellaris/3831/0.0.0.0.0",
+      "sampleCount": 102,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3997",
+      "name": "Stellaris: Apocalypse",
+      "slug": "Stellaris--Apocalypse",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Stellaris--Apocalypse/3997/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3996",
+      "name": "Stellaris: Distant Stars Story Pack",
+      "slug": "Stellaris--Distant-Stars-Story-Pack",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Stellaris--Distant-Stars-Story-Pack/3996/0.0.0.0.0",
+      "sampleCount": 4,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3995",
+      "name": "Strange Brigade",
+      "slug": "Strange-Brigade-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Strange-Brigade-/3995/0.0.0.0.0",
+      "sampleCount": 9,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "775",
+      "name": "Street Fighter 2 Turbo",
+      "slug": "Street-Fighter-2-Turbo",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Street-Fighter-2-Turbo/775/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates - $29",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3978",
+      "name": "Subnautica",
+      "slug": "Subnautica",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Subnautica/3978/0.0.0.0.0",
+      "sampleCount": 263,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4192",
+      "name": "Subnautica 2",
+      "slug": "Subnautica-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Subnautica-2/4192/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3832",
+      "name": "Sunless Sea",
+      "slug": "Sunless-Sea",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Sunless-Sea/3832/0.0.0.0.0",
+      "sampleCount": 4,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "1143",
+      "name": "Super Mario Kart",
+      "slug": "Super-Mario-Kart",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Super-Mario-Kart/1143/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3833",
+      "name": "Super Time Force Ultra",
+      "slug": "Super-Time-Force-Ultra",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Super-Time-Force-Ultra/3833/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3994",
+      "name": "Superhot",
+      "slug": "Superhot",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Superhot/3994/0.0.0.0.0",
+      "sampleCount": 8,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "774",
+      "name": "Supreme Commander: Forged Alliance",
+      "slug": "Supreme-Commander--Forged-Alliance",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Supreme-Commander--Forged-Alliance/774/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates - $14",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3835",
+      "name": "Tails",
+      "slug": "Tails",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tails/3835/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3836",
+      "name": "Tales from the Borderlands",
+      "slug": "Tales-from-the-Borderlands",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tales-from-the-Borderlands/3836/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3837",
+      "name": "Team Fortress 2",
+      "slug": "Team-Fortress-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Team-Fortress-2/3837/0.0.0.0.0",
+      "sampleCount": 1706,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3834",
+      "name": "TERA",
+      "slug": "TERA",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-TERA/3834/0.0.0.0.0",
+      "sampleCount": 299,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3838",
+      "name": "Terraria",
+      "slug": "Terraria",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Terraria/3838/0.0.0.0.0",
+      "sampleCount": 208,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3839",
+      "name": "That Dragon, Cancer",
+      "slug": "That-Dragon-Cancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-That-Dragon-Cancer/3839/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3840",
+      "name": "The Banner Saga",
+      "slug": "The-Banner-Saga",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Banner-Saga/3840/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3841",
+      "name": "The Banner Saga 2",
+      "slug": "The-Banner-Saga-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Banner-Saga-2/3841/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3842",
+      "name": "The Beginner's Guide",
+      "slug": "The-Beginners-Guide",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Beginners-Guide/3842/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3843",
+      "name": "The Binding of Isaac: Afterbirth",
+      "slug": "The-Binding-of-Isaac--Afterbirth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Binding-of-Isaac--Afterbirth/3843/0.0.0.0.0",
+      "sampleCount": 38,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3844",
+      "name": "The Binding of Isaac: Rebirth",
+      "slug": "The-Binding-of-Isaac--Rebirth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Binding-of-Isaac--Rebirth/3844/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3845",
+      "name": "The Book of Unwritten Tales 2",
+      "slug": "The-Book-of-Unwritten-Tales-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Book-of-Unwritten-Tales-2/3845/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3993",
+      "name": "The Crew 2",
+      "slug": "The-Crew-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Crew-2/3993/0.0.0.0.0",
+      "sampleCount": 91,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3972",
+      "name": "The Elder Scrolls Online",
+      "slug": "The-Elder-Scrolls-Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-Online/3972/0.0.0.0.0",
+      "sampleCount": 222,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3846",
+      "name": "The Elder Scrolls Online: Tamriel Unlimited",
+      "slug": "The-Elder-Scrolls-Online--Tamriel-Unlimited",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-Online--Tamriel-Unlimited/3846/0.0.0.0.0",
+      "sampleCount": 468,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3847",
+      "name": "The Elder Scrolls V: Skyrim",
+      "slug": "The-Elder-Scrolls-V--Skyrim",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-V--Skyrim/3847/0.0.0.0.0",
+      "sampleCount": 2423,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3848",
+      "name": "The Flame in the Flood",
+      "slug": "The-Flame-in-the-Flood",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Flame-in-the-Flood/3848/0.0.0.0.0",
+      "sampleCount": 3,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3974",
+      "name": "The Forest",
+      "slug": "The-Forest",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Forest/3974/0.0.0.0.0",
+      "sampleCount": 163,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3849",
+      "name": "The Incredible Adventures of Van Helsing III",
+      "slug": "The-Incredible-Adventures-of-Van-Helsing-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Incredible-Adventures-of-Van-Helsing-III/3849/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3850",
+      "name": "The Secret Monster Society",
+      "slug": "The-Secret-Monster-Society",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Secret-Monster-Society/3850/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3851",
+      "name": "The Sims 3",
+      "slug": "The-Sims-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Sims-3/3851/0.0.0.0.0",
+      "sampleCount": 337,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3992",
+      "name": "The Sims 4",
+      "slug": "The-Sims-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Sims-4/3992/0.0.0.0.0",
+      "sampleCount": 360,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3852",
+      "name": "The Talos Principle",
+      "slug": "The-Talos-Principle",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Talos-Principle/3852/0.0.0.0.0",
+      "sampleCount": 23,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3853",
+      "name": "The Technomancer",
+      "slug": "The-Technomancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Technomancer/3853/0.0.0.0.0",
+      "sampleCount": 9,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3854",
+      "name": "The Walking Dead",
+      "slug": "The-Walking-Dead",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Walking-Dead/3854/0.0.0.0.0",
+      "sampleCount": 42,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -120,10 +3032,408 @@
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Witcher-3--Wild-Hunt/3855/0.0.0.0.0",
       "sampleCount": 25546,
+      "caption": "FPS Estimates",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3856",
+      "name": "The Witness",
+      "slug": "The-Witness",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Witness/3856/0.0.0.0.0",
+      "sampleCount": 6,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3857",
+      "name": "Titan Souls",
+      "slug": "Titan-Souls",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Titan-Souls/3857/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3858",
+      "name": "Titanfall",
+      "slug": "Titanfall",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Titanfall/3858/0.0.0.0.0",
+      "sampleCount": 127,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3991",
+      "name": "Titanfall 2",
+      "slug": "Titanfall-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Titanfall-2/3991/0.0.0.0.0",
+      "sampleCount": 116,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3859",
+      "name": "Tom Clancy's Rainbow Six Siege",
+      "slug": "Tom-Clancys-Rainbow-Six-Siege",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tom-Clancys-Rainbow-Six-Siege/3859/0.0.0.0.0",
+      "sampleCount": 16591,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3860",
+      "name": "Tom Clancy's The Division",
+      "slug": "Tom-Clancys-The-Division",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tom-Clancys-The-Division/3860/0.0.0.0.0",
+      "sampleCount": 1403,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3990",
+      "name": "Torment: Tides of Numenera",
+      "slug": "Torment--Tides-of-Numenera",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Torment--Tides-of-Numenera/3990/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3861",
+      "name": "Tormentum - Dark Sorrow",
+      "slug": "Tormentum---Dark-Sorrow",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tormentum---Dark-Sorrow/3861/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3989",
+      "name": "Total War Saga: Thrones of Britannia",
+      "slug": "Total-War-Saga--Thrones-of-Britannia",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War-Saga--Thrones-of-Britannia/3989/0.0.0.0.0",
+      "sampleCount": 30,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3862",
+      "name": "Total War: Attila",
+      "slug": "Total-War--Attila",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War--Attila/3862/0.0.0.0.0",
+      "sampleCount": 127,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3863",
+      "name": "Total War: Rome II - Emperor Edition",
+      "slug": "Total-War--Rome-II---Emperor-Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War--Rome-II---Emperor-Edition/3863/0.0.0.0.0",
+      "sampleCount": 248,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3864",
+      "name": "Total War: Shogun 2",
+      "slug": "Total-War--Shogun-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War--Shogun-2/3864/0.0.0.0.0",
+      "sampleCount": 74,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3865",
+      "name": "Total War: Warhammer",
+      "slug": "Total-War--Warhammer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War--Warhammer/3865/0.0.0.0.0",
+      "sampleCount": 613,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3988",
+      "name": "Tower of Time",
+      "slug": "Tower-of-Time",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tower-of-Time/3988/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3866",
+      "name": "Transformers: Devastation",
+      "slug": "Transformers--Devastation",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Transformers--Devastation/3866/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3867",
+      "name": "Transistor",
+      "slug": "Transistor",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Transistor/3867/0.0.0.0.0",
+      "sampleCount": 5,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3868",
+      "name": "Tree of Savior",
+      "slug": "Tree-of-Savior",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tree-of-Savior/3868/0.0.0.0.0",
+      "sampleCount": 13,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3869",
+      "name": "Trove",
+      "slug": "Trove",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Trove/3869/0.0.0.0.0",
+      "sampleCount": 75,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3870",
+      "name": "Undertale",
+      "slug": "Undertale",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Undertale/3870/0.0.0.0.0",
+      "sampleCount": 53,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3871",
+      "name": "Unravel",
+      "slug": "Unravel",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Unravel/3871/0.0.0.0.0",
+      "sampleCount": 7,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3872",
+      "name": "Unturned",
+      "slug": "Unturned",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Unturned/3872/0.0.0.0.0",
+      "sampleCount": 279,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4106",
+      "name": "Valheim",
+      "slug": "Valheim",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Valheim/4106/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3873",
+      "name": "Valiant Hearts: The Great War",
+      "slug": "Valiant-Hearts--The-Great-War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Valiant-Hearts--The-Great-War/3873/0.0.0.0.0",
+      "sampleCount": 2,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "4093",
+      "name": "Valorant",
+      "slug": "Valorant",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Valorant/4093/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3987",
+      "name": "Vampyr",
+      "slug": "Vampyr",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Vampyr/3987/0.0.0.0.0",
+      "sampleCount": 17,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3874",
+      "name": "Victor Vran",
+      "slug": "Victor-Vran",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Victor-Vran/3874/0.0.0.0.0",
+      "sampleCount": 9,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3875",
+      "name": "Volume",
+      "slug": "Volume",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Volume/3875/0.0.0.0.0",
+      "sampleCount": null,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3876",
+      "name": "War Thunder",
+      "slug": "War-Thunder",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-War-Thunder/3876/0.0.0.0.0",
+      "sampleCount": 2735,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3877",
+      "name": "Warface",
+      "slug": "Warface",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warface/3877/0.0.0.0.0",
+      "sampleCount": 668,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3878",
+      "name": "Warframe",
+      "slug": "Warframe",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warframe/3878/0.0.0.0.0",
+      "sampleCount": 2172,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3879",
+      "name": "Warhammer: End Times - Vermintide",
+      "slug": "Warhammer--End-Times---Vermintide",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warhammer--End-Times---Vermintide/3879/0.0.0.0.0",
+      "sampleCount": 46,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3979",
+      "name": "Warhammer: Vermintide 2",
+      "slug": "Warhammer--Vermintide-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warhammer--Vermintide-2/3979/0.0.0.0.0",
+      "sampleCount": 114,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3986",
+      "name": "Watch Dogs 2",
+      "slug": "Watch-Dogs-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Watch-Dogs-2/3986/0.0.0.0.0",
+      "sampleCount": 317,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3985",
+      "name": "We Happy Few",
+      "slug": "We-Happy-Few-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-We-Happy-Few-/3985/0.0.0.0.0",
+      "sampleCount": 9,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page3-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3984",
+      "name": "Wolfenstein 2: The New Colossus",
+      "slug": "Wolfenstein-2--The-New-Colossus",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Wolfenstein-2--The-New-Colossus/3984/0.0.0.0.0",
+      "sampleCount": 98,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3880",
+      "name": "Wolfenstein: The New Order",
+      "slug": "Wolfenstein--The-New-Order",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Wolfenstein--The-New-Order/3880/0.0.0.0.0",
+      "sampleCount": 207,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
       ]
     },
     {
@@ -131,9 +3441,11 @@
       "name": "World of Tanks",
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Tanks/3881/0.0.0.0.0",
-      "sampleCount": null,
+      "sampleCount": 17710,
+      "caption": "FPS Estimates (WoT)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
       ]
     },
@@ -142,1837 +3454,86 @@
       "name": "World of Warcraft",
       "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft/3882/0.0.0.0.0",
-      "sampleCount": null,
+      "sampleCount": 17930,
+      "caption": "FPS Estimates (WoW)",
       "sources": [
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3980",
+      "name": "World of Warcraft: Battle for Azeroth",
+      "slug": "World-of-Warcraft--Battle-for-Azeroth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft--Battle-for-Azeroth/3980/0.0.0.0.0",
+      "sampleCount": 4659,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3983",
+      "name": "World of Warships",
+      "slug": "World-of-Warships",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warships/3983/0.0.0.0.0",
+      "sampleCount": 1210,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3981",
+      "name": "X-Plane 11",
+      "slug": "X-Plane-11",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-X-Plane-11/3981/0.0.0.0.0",
+      "sampleCount": 982,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page1-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3883",
+      "name": "XCOM 2",
+      "slug": "XCOM-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-XCOM-2/3883/0.0.0.0.0",
+      "sampleCount": 192,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
+      ]
+    },
+    {
+      "gameId": "3884",
+      "name": "Youtubers Life",
+      "slug": "Youtubers-Life",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Youtubers-Life/3884/0.0.0.0.0",
+      "sampleCount": 87,
+      "caption": "FPS Estimates",
+      "sources": [
+        "homepage:Search-FPS-page2-ajax.xml:searchResultGames"
       ]
     }
   ],
-  "nameOnly": [
-    {
-      "name": "7 Days to Die",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "ABZU",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "ADR1FT",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "AdVenture Capitalist",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Age of Empires II  HD Edition",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Alien  Isolation",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "American Truck Simulator",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Anno 2205",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Apex Legends",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "ARK  Survival Evolved",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Arma 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Arma 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Assassin's Creed Odyssey",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Assassin's Creed Origins",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Assetto Corsa",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Axiom Verge",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Batman  Arkham Knight",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Battlefield 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Battlefield 5",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Battlefield 6",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Battlerite",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "BeamNG",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Biomutant",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "BioShock Infinite",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Black Desert",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Black Squad",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Blackguards 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Bless Online",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Borderlands 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Brawlhalla",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Broken Age  Act 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty  Black Ops 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty  Black Ops III",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty  Warzone",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty  World at War",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty modern warfare 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Call of Duty WWII",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Child of Light",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Chivalry  Medieval Warfare",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Cities  Skylines",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Citizens of Earth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Clicker Heroes",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Company of Heroes 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Conan Exiles",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Counter-Strike  2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Crash Bandicoot N.Sane Trilogy",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Crusader Kings II",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Crypt of the NecroDancer",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Cyberpunk 2077",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dark Souls",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dark Souls  Remastered",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dark Souls II",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dark Souls III",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Darkest Dungeon",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Darksiders 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dauntless",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Day of the Tentacle Remastered",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "DayZ",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dead by Daylight",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Destiny 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Deus Ex  Mankind Divided",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Diablo III",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "DiRT Rally",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Divinity  Original Sin",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Divinity  Original Sin 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Don't Starve Together",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "DOOM",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Downfall",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Downwell",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dragon Age  Inquisition",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dragon's Dogma  Dark Arisen",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dreamfall Chapters  The Longest Journey",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dropsy",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Dying Light",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Elite  Dangerous",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Empire  Total War",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Endless Legend",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Enter the Gungeon",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Escape from Tarkov",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Euro Truck Simulator 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Europa Universalis IV",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Everlasting Summer",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "EVGA Precision XOC",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Evolve",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Fable Anniversary",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Factorio",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Fallout  New Vegas",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Fallout 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Far Cry 5",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Farming Simulator 15",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Final Fantasy XIV  A Realm Reborn",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Final Fantasy XIV Online",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Firewatch",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Football Manager 2015",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Football Manager 2016",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Forza Horizon 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Forza Horizon 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Forza Motorsport 7",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Fran Bow",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Frostpunk",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Game of Thrones",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Garry's Mod",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Gnomoria",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Grey Goo",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Grim Dawn",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Grim Fandango Remastered",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Grow Home",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "GTFO",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Guacamelee! Super Turbo Championship Edition",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Guild of Dungeoneering",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Guild Wars 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "H1Z1  King of the Kill",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hard West",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hatred",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hearthstone  Heroes of Warcraft",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hearts of Iron IV",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Her Story",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Heroes & Generals",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Heroes of the Storm",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hitman",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Homefront  The Revolution",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Homesick",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Homeworld  Deserts of Kharak",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Homeworld Remastered Collection",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hotline Miami 2  Wrong Number",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "HuniePop",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Hyper Light Drifter",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Inside",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Insurgency",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Invisible inc.",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "iRacing",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Jurassic World Evolution",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Just Cause 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Kerbal Space Program",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Kholat",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Killing Floor 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Knight Online",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Labyrinth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Lara Croft GO",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Layers of Fear",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Left 4 Dead 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Legend of Grimrock 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Life is Strange",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Luftrausers",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Mafia III",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Magic Duels",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Magicka  Wizard Wars",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Medieval II  Total War",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Mercenary Kings",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Metal Gear Solid V  The Phantom Pain",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Metro Redux",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Microsoft Flight Simulator X",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Middle-earth  Shadow of Mordor",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Moebius  Empire Rising",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Moonlighter",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Mortal Kombat X",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Mount & Blade  Warband",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "NBA 2K15",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "NBA 2K17",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Need for Speed",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Neon Space",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Neon Space 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "No Thing",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Not a Hero",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Ori and the Blind Forest",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Overpower",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Overwatch 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Oxenfree",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Paladins",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Path of Exile",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Payday 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Pillars of Eternity",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Pillars of Eternity II  Deadfire",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Plague Inc  Evolved",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Planet Alpha",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Planet Coaster",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "PlanetSide 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Pony Island",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Prey",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Prison Architect",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Pro Evolution Soccer 2017",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Project cars",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Project Cars 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Punch Club",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Quadrilateral Cowboy",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Quake 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Read Only Memories",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Rebel Galaxy",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Resident Evil 7  Biohazard",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Resident Evil HD Remaster",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog",
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Riders of Icarus",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "RimWorld",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Rise of the Tomb Raider",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Roblox",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Robocraft",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Rocket League",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Ronin",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Rules Of Survival",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Runescape 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Rust",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Saints Row IV",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "School Girl/Zombie Hunter",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shadow of the Tomb Raider",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shadow Tactics  Blades of the Shogun",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shadow Warrior 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shadowrun  Hong Kong",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shadowverse",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Sherlock Holmes  Crimes & Punishments",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Shovel Knight",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Sid Meier's Civilization V",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Sid Meier's Starships",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Slay the Spire",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "SMITE",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Sniper Elite 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "SOMA",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Soulcalibur VI",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "South Park  The Stick of Truth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Space Engineers",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Spider Solitaire",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Squad",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Star Citizen",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Star Wars The Old Republic",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Starbound",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "StarCraft II",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Stardew Valley",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Stellaris",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Stellaris  Apocalypse",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Stellaris  Distant Stars Story Pack",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Strange Brigade",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Street Fighter 2 Turbo",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Subnautica",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Subnautica 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Sunless Sea",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Super Mario Kart",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Super Time Force Ultra",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Superhot",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Supreme Commander  Forged Alliance",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tails",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tales from the Borderlands",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Team Fortress 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "TERA",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Terraria",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "That Dragon, Cancer",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Banner Saga",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Banner Saga 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Beginner's Guide",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Binding of Isaac  Afterbirth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Binding of Isaac  Rebirth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Book of Unwritten Tales 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Crew 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Elder Scrolls Online",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Elder Scrolls Online  Tamriel Unlimited",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Elder Scrolls V  Skyrim",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Flame in the Flood",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Forest",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Incredible Adventures of Van Helsing III",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Secret Monster Society",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Sims 3",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Sims 4",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Talos Principle",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Technomancer",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Walking Dead",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "The Witness",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Titan Souls",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Titanfall",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Titanfall 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tom Clancy's Rainbow Six Siege",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tom Clancy's The Division",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Torment  Tides of Numenera",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tormentum Dark Sorrow",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Total War  Attila",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Total War  Rome II Emperor Edition",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Total War  Shogun 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Total War  Warhammer",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Total War Saga  Thrones of Britannia",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tower of Time",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Transformers  Devastation",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Transistor",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Tree of Savior",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Trove",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Undertale",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Unravel",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Unturned",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Valheim",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Valiant Hearts  The Great War",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Valorant",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Vampyr",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Victor Vran",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Volume",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "War Thunder",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Warface",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Warframe",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Warhammer  End Times Vermintide",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Warhammer  Vermintide 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Watch Dogs 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "We Happy Few",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Wolfenstein  The New Order",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Wolfenstein 2  The New Colossus",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "World of Warcraft  Battle for Azeroth",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "World of Warships",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "X-Plane 11",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "XCOM 2",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
-      ]
-    },
-    {
-      "name": "Youtubers Life",
-      "sources": [
-        "homepage:Search-FPS.html:autocompleteCatalog"
+  "nameOnly": [],
+  "nonGameHits": [
+    {
+      "name": "DZI9B2GJKEOMEC-FPS 1x12GB",
+      "caption": "Blade",
+      "desc": "1 User benchmark, average bench 63%",
+      "url": "https://ram.userbenchmark.com/SpeedTest/1474350/Blade-DZI9B2GJKEOMEC-FPS-1x12GB",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/generic/ram/base.jpg",
+      "sources": [
+        "homepage:Search-FPS-page4-ajax.xml:nonGameSearchHits"
       ]
     }
   ],
   "howToResolveMore": [
     "Save the specific game's own FPS-Estimates page (as done for Fortnite) — that resolves one name-only entry to a full id/url/sample-count record.",
-    "Save the AJAX response the \"308 MORE »\" button on the search page triggers, if it can be captured manually (e.g. via browser devtools Network tab) — that could resolve many at once. This tool cannot trigger that request itself.",
+    "Save the AJAX response the \"308 MORE »\" button (and its \"Next »\" follow-ons) on the search page triggers, captured manually via browser devtools Network tab — this is how the 4-page capture that resolved most of the catalog was obtained. This tool cannot trigger that request itself.",
     "Search the site for a specific name-only game by hand and save that search result page."
   ]
 }

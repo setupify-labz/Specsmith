@@ -74,29 +74,38 @@ function extractHitsSummary(html) {
 
 /** The `tl-tag` result cards — this page's actual FPS-Estimates game
  * search results, each carrying a sample count that the "Can You Run It?"
- * carousel and the raw autocomplete array both lack. */
+ * carousel and the raw autocomplete array both lack. Not every `tl-tag`
+ * hit is a game — a search for "FPS" also turns up unrelated product hits
+ * (e.g. a "Blade" RAM kit whose SpeedTest URL happens to match "FPS" in
+ * its own title). Those are split out into `nonGameHits` rather than
+ * miscategorized as a game with a null gameId. */
 function extractSearchResultGames(html) {
   const warnings = [];
   const re = /<a\s+class='tl-tag'\s+href='([^']+)'>[\s\S]*?<img class='tl-icon' src='([^']+)'\/>[\s\S]*?<span class='tl-title'>([^<]+)<\/span><span class='tl-caption'>([^<]*)<\/span><span class='tl-desc'>([^<]*)<\/span>/g;
   const results = [];
+  const nonGameHits = [];
   let m;
   while ((m = re.exec(html)) !== null) {
     const [, href, iconUrl, title, caption, desc] = m;
     const url = decodeEntities(href);
     const idMatch = url.match(/\/PCGame\/FPS-Estimates-([^/]+)\/(\d+)\//);
     const samplesMatch = desc.match(/([\d,]+)\s*samples/);
+    if (!idMatch) {
+      nonGameHits.push({ name: decodeEntities(title), caption: decodeEntities(caption), desc: decodeEntities(desc), url, iconUrl: decodeEntities(iconUrl) });
+      continue;
+    }
     results.push({
       name: decodeEntities(title),
       caption: decodeEntities(caption),
       sampleCount: samplesMatch ? parseIntLoose(samplesMatch[1]) : null,
-      gameId: idMatch ? idMatch[2] : null,
-      slug: idMatch ? idMatch[1] : null,
+      gameId: idMatch[2],
+      slug: idMatch[1],
       url,
       iconUrl: decodeEntities(iconUrl),
     });
   }
-  if (results.length === 0) warnings.push('No tl-tag search result entries matched.');
-  return { value: results, warnings };
+  if (results.length === 0 && nonGameHits.length === 0) warnings.push('No tl-tag search result entries matched.');
+  return { value: { games: results, nonGameHits }, warnings };
 }
 
 /** The facet sidebar (Subdomain / Type / Category / Brand), each entry a
@@ -122,17 +131,41 @@ function extractFacets(html) {
   return { value: facets, warnings };
 }
 
-/** The "308 MORE »" control is a JSF/Mojarra AJAX postback
- * (mojarra.ab(...)), not a navigable URL — this function records that
- * fact rather than a fetchable link. */
+/** The "308 MORE »" control (page 1 of the search page as first loaded) is
+ * a JSF/Mojarra AJAX postback (mojarra.ab(...)), not a navigable URL — this
+ * function records that fact rather than a fetchable link. A page captured
+ * from one of those AJAX postbacks (page 2, 3, ...) instead shows the
+ * `mh-ajaxpager` widget + a "Page N of M" nav with "« Prev"/"Next »"
+ * controls carrying the PGMP (page number) value each postback needs —
+ * still not a GET URL, but recorded with its own page/of/PGMP fields. */
 function extractPaginationGap(html, totalHits, shownCount) {
   const warnings = [];
-  const moreMatch = html.match(/(\d+)\s*MORE\s*»/);
   const isAjaxPostback = /mojarra\.ab\(this,event,'action','@form','@form'/.test(html);
+  const pagerMatch = html.match(/<div class="mh-ajaxpager" data-ajpnpp="(\d+)" data-ajpcp="(\d+)">/);
+  const pageOfMatch = html.match(/Page (\d+) of (\d+)/);
+  const nextMatch = html.match(/'PGMP':'(\d+)'[^}]*\}\);return false">Next\s*»/);
+  const prevMatch = html.match(/'PGMP':'(\d+)'[^}]*\}\);return false">«\s*Prev/);
+  if (pagerMatch || pageOfMatch) {
+    return {
+      value: {
+        source: 'ajax-page',
+        resultsPerPage: pagerMatch ? parseIntLoose(pagerMatch[1]) : null,
+        currentPage: pagerMatch ? parseIntLoose(pagerMatch[2]) : pageOfMatch ? parseIntLoose(pageOfMatch[1]) : null,
+        totalPages: pageOfMatch ? parseIntLoose(pageOfMatch[2]) : null,
+        nextPagePGMP: nextMatch ? parseIntLoose(nextMatch[1]) : null,
+        prevPagePGMP: prevMatch ? parseIntLoose(prevMatch[1]) : null,
+        reachableViaStaticUrl: false,
+        mechanism: 'JSF/Mojarra AJAX form postback (mojarra.ab), captured by hand from a browser devtools Network tab — no GET URL exists for this page.',
+      },
+      warnings,
+    };
+  }
+  const moreMatch = html.match(/(\d+)\s*MORE\s*»/);
   const remaining = moreMatch ? parseIntLoose(moreMatch[1]) : totalHits != null && shownCount != null ? totalHits - shownCount : null;
-  if (!moreMatch) warnings.push('No "N MORE »" pagination control found (may mean all hits fit on one page).');
+  if (!moreMatch) warnings.push('No "N MORE »" pagination control and no "Page N of M" ajax-pager found (may mean all hits fit on one page).');
   return {
     value: {
+      source: 'initial-page',
       remainingHitsNotShown: remaining,
       reachableViaStaticUrl: false,
       mechanism: isAjaxPostback ? 'JSF/Mojarra AJAX form postback (mojarra.ab), requires executing JS and submitting a form — no GET URL exists for page 2+' : 'unknown — did not match the expected mojarra.ab(...) pattern',
@@ -288,7 +321,7 @@ function buildGapReport(parsed) {
   });
   gaps.push({
     dimension: 'Full FPS-Estimates game catalog with IDs',
-    embeddedOnThisPage: `Only 9 of ${parsed.hitsSummary.totalHits ?? '(unknown)'} total hits carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists ${parsed.autocompleteCatalog.fpsEstimatesGameNames.length} "FPS Estimates <Game>" NAMES, but with zero ids/URLs attached to any of them.`,
+    embeddedOnThisPage: `${parsed.searchResultGames.length} of ${parsed.hitsSummary.totalHits ?? '(unknown)'} total hits on this specific page carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists ${parsed.autocompleteCatalog.fpsEstimatesGameNames.length} "FPS Estimates <Game>" NAMES, but with zero ids/URLs attached to any of them.`,
     wouldRequire: 'The "308 MORE »" AJAX pagination control (a JSF/Mojarra form postback, not a GET URL — see paginationGap below) to resolve the remaining hits\' ids/URLs, or visiting each named game individually via search.',
   });
   gaps.push({
@@ -331,7 +364,8 @@ function parsePage(html, sourceFile) {
     },
     pageContext: pageContext.value,
     hitsSummary: hitsSummary.value,
-    searchResultGames: searchResultGames.value,
+    searchResultGames: searchResultGames.value.games,
+    nonGameSearchHits: searchResultGames.value.nonGameHits,
     facets: facets.value,
     paginationGap: paginationGap.value,
     bestTable: bestTable.value,
@@ -349,7 +383,7 @@ async function main() {
 
   let files;
   try {
-    files = (await fs.readdir(pagesDir)).filter((f) => /\.(html?|xhtml|txt)$/i.test(f));
+    files = (await fs.readdir(pagesDir)).filter((f) => /\.(html?|xhtml|txt|xml)$/i.test(f));
   } catch {
     console.error(`No pages/ directory found at ${pagesDir} — see README.md.`);
     process.exitCode = 1;
@@ -357,7 +391,7 @@ async function main() {
   }
   if (arg) files = files.filter((f) => f === arg);
   if (files.length === 0) {
-    console.error(arg ? `File "${arg}" not found in ${pagesDir}` : `No .html/.htm/.xhtml/.txt files found in ${pagesDir}.`);
+    console.error(arg ? `File "${arg}" not found in ${pagesDir}` : `No .html/.htm/.xhtml/.txt/.xml files found in ${pagesDir}.`);
     process.exitCode = 1;
     return;
   }
@@ -373,6 +407,7 @@ async function main() {
       outputFile: outName,
       totalHits: parsed.hitsSummary.totalHits,
       searchResultGamesFound: parsed.searchResultGames.length,
+      nonGameSearchHitsFound: parsed.nonGameSearchHits.length,
       carouselGamesFound: parsed.carouselGames.length,
       autocompleteItemsFound: parsed.autocompleteCatalog.totalItems,
       autocompleteFpsGameNamesFound: parsed.autocompleteCatalog.fpsEstimatesGameNames.length,

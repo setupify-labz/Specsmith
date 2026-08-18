@@ -1,7 +1,7 @@
 {
   "_meta": {
     "sourceFile": "Search-FPS.html",
-    "parsedAt": "2026-08-18T01:15:22.071Z",
+    "parsedAt": "2026-08-18T01:44:44.967Z",
     "parserNote": "RESEARCH DATA — extracted from a locally saved UserBenchmark page source. Not fetched by this tool. Not a BenchmarkRecord.",
     "warnings": []
   },
@@ -98,6 +98,7 @@
       "iconUrl": "https://static.userbenchmark.com/resources/static/games/minecraft.png"
     }
   ],
+  "nonGameSearchHits": [],
   "facets": {
     "Subdomain": [
       {
@@ -149,9 +150,14 @@
     ]
   },
   "paginationGap": {
-    "remainingHitsNotShown": 308,
+    "source": "ajax-page",
+    "resultsPerPage": 9,
+    "currentPage": 1,
+    "totalPages": null,
+    "nextPagePGMP": null,
+    "prevPagePGMP": null,
     "reachableViaStaticUrl": false,
-    "mechanism": "JSF/Mojarra AJAX form postback (mojarra.ab), requires executing JS and submitting a form — no GET URL exists for page 2+"
+    "mechanism": "JSF/Mojarra AJAX form postback (mojarra.ab), captured by hand from a browser devtools Network tab — no GET URL exists for this page."
   },
   "bestTable": {
     "columns": [
@@ -2063,7 +2069,7 @@
     },
     {
       "dimension": "Full FPS-Estimates game catalog with IDs",
-      "embeddedOnThisPage": "Only 9 of 317 total hits carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists 316 \"FPS Estimates <Game>\" NAMES, but with zero ids/URLs attached to any of them.",
+      "embeddedOnThisPage": "9 of 317 total hits on this specific page carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists 316 \"FPS Estimates <Game>\" NAMES, but with zero ids/URLs attached to any of them.",
       "wouldRequire": "The \"308 MORE »\" AJAX pagination control (a JSF/Mojarra form postback, not a GET URL — see paginationGap below) to resolve the remaining hits' ids/URLs, or visiting each named game individually via search."
     },
     {

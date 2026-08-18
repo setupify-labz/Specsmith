@@ -38,16 +38,18 @@ async function listJsonFiles(dir) {
 
 const games = new Map(); // gameId -> entry
 const nameOnly = new Map(); // normalized name -> entry
+const nonGameHits = new Map(); // url -> entry (search hits that matched "FPS" but aren't FPS-Estimates games)
 
-function addResolved({ gameId, name, slug, url, sampleCount, source }) {
+function addResolved({ gameId, name, slug, url, sampleCount, caption, source }) {
   if (!gameId) return;
   const existing = games.get(gameId);
   if (existing) {
     existing.sources.push(source);
     if (sampleCount != null && existing.sampleCount == null) existing.sampleCount = sampleCount;
+    if (caption != null && existing.caption == null) existing.caption = caption;
     return;
   }
-  games.set(gameId, { gameId, name, slug: slug ?? null, url, sampleCount: sampleCount ?? null, sources: [source] });
+  games.set(gameId, { gameId, name, slug: slug ?? null, url, sampleCount: sampleCount ?? null, caption: caption ?? null, sources: [source] });
 }
 function addNameOnly(name, source) {
   const key = name.trim().toLowerCase();
@@ -76,7 +78,11 @@ for (const file of await listJsonFiles(path.join(here, 'homepage', 'parsed'))) {
   if (!d) continue;
   const label = `homepage:${d._meta?.sourceFile ?? path.basename(file)}`;
   for (const g of d.searchResultGames ?? []) {
-    addResolved({ gameId: g.gameId, name: g.name, slug: g.slug, url: g.url, sampleCount: g.sampleCount, source: `${label}:searchResultGames` });
+    addResolved({ gameId: g.gameId, name: g.name, slug: g.slug, url: g.url, sampleCount: g.sampleCount, caption: g.caption, source: `${label}:searchResultGames` });
+  }
+  for (const h of d.nonGameSearchHits ?? []) {
+    if (!nonGameHits.has(h.url)) nonGameHits.set(h.url, { ...h, sources: [`${label}:nonGameSearchHits`] });
+    else nonGameHits.get(h.url).sources.push(`${label}:nonGameSearchHits`);
   }
   for (const g of d.carouselGames ?? []) {
     addResolved({ gameId: g.gameId, name: g.name, slug: g.slug, url: g.url, source: `${label}:carouselGames` });
@@ -104,6 +110,7 @@ for (const key of [...nameOnly.keys()]) {
 
 const resolved = [...games.values()].sort((a, b) => a.name.localeCompare(b.name));
 const unresolved = [...nameOnly.values()].sort((a, b) => a.name.localeCompare(b.name));
+const nonGames = [...nonGameHits.values()].sort((a, b) => a.name.localeCompare(b.name));
 
 const output = {
   generatedAt: new Date().toISOString(),
@@ -112,16 +119,18 @@ const output = {
     resolvedCount: resolved.length,
     nameOnlyCount: unresolved.length,
     totalDistinctGamesKnown: resolved.length + unresolved.length,
+    nonGameHitsCount: nonGames.length,
   },
   resolved,
   nameOnly: unresolved,
+  nonGameHits: nonGames,
   howToResolveMore: [
     'Save the specific game\'s own FPS-Estimates page (as done for Fortnite) — that resolves one name-only entry to a full id/url/sample-count record.',
-    'Save the AJAX response the "308 MORE »" button on the search page triggers, if it can be captured manually (e.g. via browser devtools Network tab) — that could resolve many at once. This tool cannot trigger that request itself.',
+    'Save the AJAX response the "308 MORE »" button (and its "Next »" follow-ons) on the search page triggers, captured manually via browser devtools Network tab — this is how the 4-page capture that resolved most of the catalog was obtained. This tool cannot trigger that request itself.',
     'Search the site for a specific name-only game by hand and save that search result page.',
   ],
 };
 
 await fs.writeFile(outFile, JSON.stringify(output, null, 2) + '\n');
 console.log(`Wrote ${outFile}`);
-console.log(`${resolved.length} resolved (id+url), ${unresolved.length} name-only, ${resolved.length + unresolved.length} total distinct games known.`);
+console.log(`${resolved.length} resolved (id+url), ${unresolved.length} name-only, ${resolved.length + unresolved.length} total distinct games known, ${nonGames.length} non-game hit(s) set aside.`);
