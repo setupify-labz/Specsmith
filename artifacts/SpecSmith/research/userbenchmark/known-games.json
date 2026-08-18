@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T04:31:59.830Z",
+  "generatedAt": "2026-08-18T04:45:24.320Z",
   "note": "RESEARCH DATA — merged from every locally saved UserBenchmark source parsed so far in this directory tree (parsed/*.json and homepage/parsed/*.json). No network request was made. Re-run after adding/parsing new sources to refresh.",
   "summary": {
     "resolvedCount": 316,
@@ -203,7 +203,9 @@
       "sampleCount": 28457,
       "caption": "FPS Estimates (BF1)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -520,12 +522,14 @@
     {
       "gameId": "3680",
       "name": "Counter-Strike: Global Offensive",
-      "slug": null,
+      "slug": "Counter-Strike--Global-Offensive",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
       "sampleCount": 151690,
       "caption": "FPS Estimates (CSGO)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -781,7 +785,9 @@
       "sampleCount": 20239,
       "caption": "FPS Estimates",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
       ]
@@ -1097,12 +1103,14 @@
     {
       "gameId": "3954",
       "name": "Fortnite",
-      "slug": "Fortnite",
+      "slug": null,
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
       "sampleCount": 87737,
       "caption": "FPS Estimates",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -1204,7 +1212,9 @@
       "sampleCount": 71870,
       "caption": "FPS Estimates (GTAV)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -1625,7 +1635,9 @@
       "sampleCount": 68277,
       "caption": "FPS Estimates (LoL)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -1782,7 +1794,9 @@
       "sampleCount": 23472,
       "caption": "FPS Estimates",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -1939,7 +1953,9 @@
       "sampleCount": 54796,
       "caption": "FPS Estimates",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -2074,7 +2090,9 @@
       "sampleCount": 75383,
       "caption": "FPS Estimates (PUBG)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -3034,7 +3052,9 @@
       "sampleCount": 25546,
       "caption": "FPS Estimates",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
@@ -3444,7 +3464,9 @@
       "sampleCount": 17710,
       "caption": "FPS Estimates (WoT)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
       ]
@@ -3457,7 +3479,9 @@
       "sampleCount": 17930,
       "caption": "FPS Estimates (WoW)",
       "sources": [
+        "game-page:FPS-Estimates-Counter-Strike--Global-Offensive-3680.html:relatedGamePages",
         "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "game-page:FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html:relatedGamePages",
         "homepage:Search-FPS-page1-ajax.xml:searchResultGames",
         "homepage:Search-FPS.html:carouselGames"
       ]

@@ -57,9 +57,15 @@ export function extractGameIdentity(html) {
   return { value: { gameId, slug, name, canonicalUrl, filterSegments }, warnings };
 }
 
+/** Average FPS may be an integer or a decimal — Counter-Strike: Global
+ * Offensive publishes `153`, PlayerUnknown's Battlegrounds publishes `75.5`.
+ * The value is captured verbatim and never rounded: `75.5` stays `75.5`.
+ *
+ * The separator before `<span>` is a pair of non-breaking spaces (U+00A0) in
+ * the real markup; JavaScript's `\s` already covers those. */
 export function extractSampleSummary(html) {
   const warnings = [];
-  const m = html.match(/Average Fps:\s*(\d+)\s*<span class="mutedtext">\s*([\d,]+)\s*samples<\/span>/);
+  const m = html.match(/Average Fps:\s*(\d+(?:\.\d+)?)\s*<span class="mutedtext">\s*([\d,]+)\s*samples<\/span>/);
   if (!m) {
     warnings.push('No "Average Fps: N ... samples" block found.');
     return { value: { averageFps: null, totalSamples: null }, warnings };
@@ -68,9 +74,16 @@ export function extractSampleSummary(html) {
 }
 
 /** Pulls `labels: [...]` and the ARRAY-valued `data: [...]` out of the
- * Chart.js config for a canvas id. The `\[` immediately after `data:` is what
- * distinguishes the dataset's array from the outer config's `data: {...}`
- * object. A bounded window keeps this from reading into a later chart. */
+ * Chart.js config for a canvas id. The `\[` immediately after the colon is
+ * what distinguishes the dataset's array from the outer config's
+ * `data: {...}` object. A bounded window keeps this from reading into a later
+ * chart.
+ *
+ * Whitespace before the colon is optional because the real markup is
+ * inconsistent WITHIN A SINGLE PAGE: the Counter-Strike source writes
+ * `labels:` for the FPS histogram but `labels :` for the settings and
+ * resolution pie charts. Requiring no space silently returned empty arrays for
+ * those two charts on both newly captured pages. */
 export function extractChart(html, elementId) {
   const warnings = [];
   const idx = html.indexOf(`getElementById("${elementId}")`);
@@ -79,8 +92,8 @@ export function extractChart(html, elementId) {
     return { value: { labels: [], data: [] }, warnings };
   }
   const window_ = html.slice(idx, idx + 3000);
-  const labelsMatch = window_.match(/labels:\s*\[([^\]]*)\]/);
-  const dataMatch = window_.match(/data:\s*\[([^\]]*)\]/);
+  const labelsMatch = window_.match(/labels\s*:\s*\[([^\]]*)\]/);
+  const dataMatch = window_.match(/data\s*:\s*\[([^\]]*)\]/);
   if (!labelsMatch) warnings.push(`#${elementId}: found the chart but no "labels: [...]" array.`);
   if (!dataMatch) warnings.push(`#${elementId}: found the chart but no "data: [...]" array.`);
   const labels = labelsMatch ? parseArrayLiteral(labelsMatch[1]) : [];

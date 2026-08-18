@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-18T04:32:00.011Z  
+Generated: 2026-08-18T04:45:24.472Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,26 +13,26 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 1 |
-| Pages successfully parsed | 1 |
+| Pages actually available (captured) | 3 |
+| Pages successfully parsed | 3 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **315** |
-| Capture coverage | 0.32% |
+| **Not captured** | **313** |
+| Capture coverage | 0.95% |
 
-Source files discovered: 1 · parsed as game pages: 1 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 3 · parsed as game pages: 3 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 1 |
-| EFPS — total | 200 |
-| EFPS — direct | 27 |
-| EFPS — comparisons | 173 |
-| GPU observations | 20 |
-| CPU observations | 20 |
-| Configurations | 49 |
-| Distributions | 3 |
+| Games | 3 |
+| EFPS — total | 600 |
+| EFPS — direct | 81 |
+| EFPS — comparisons | 519 |
+| GPU observations | 60 |
+| CPU observations | 60 |
+| Configurations | 147 |
+| Distributions | 9 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
 | Rejected | 0 |
@@ -41,9 +41,9 @@ Source files discovered: 1 · parsed as game pages: 1 · skipped (not game pages
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 1 | 1 |
-| Settings distribution | 1 | 1 |
-| Resolution distribution | 1 | 1 |
+| FPS histogram | 3 | 3 |
+| Settings distribution | 3 | 3 |
+| Resolution distribution | 3 | 3 |
 
 ## Configuration decoding
 
@@ -61,7 +61,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | Filter path position2 | unresolved |
 | Filter path position3 | unresolved |
 
-- EFPS records fully configuration-decoded: **200**
+- EFPS records fully configuration-decoded: **600**
 - EFPS records with an unresolved field: **0**
 - Configurations with an unresolved position: **0**
 
@@ -69,7 +69,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 ## EFPS cross-validation
 
-338 comparison sides were checked against the direct record for the same (game, GPU, CPU): **338 agreed exactly, 0 mismatched.**
+1014 comparison sides were checked against the direct record for the same (game, GPU, CPU): **1014 agreed exactly, 0 mismatched.**
 
 ## Validation
 
@@ -79,18 +79,19 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 | Game | ID | Avg FPS | Samples | EFPS | Direct | Cmp | GPU rows | CPU rows | Warnings |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
+| PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
 
 ## Biggest remaining gaps
 
-- 315 of 316 known games have no saved source (99.68% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 313 of 316 known games have no saved source (99.05% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
-- Only 1 game page(s) parsed — too few to confirm the parser generalizes across page-template variants.
 
 ## Uncaptured games
 
-315 of 316 known games have no saved source. Each row below is a page a human
+313 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -138,4 +139,4 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Call of Duty: World at War | 3673 | `FPS-Estimates-Call-of-Duty-World-at-War-3673.html` |
 | Child of Light | 3674 | `FPS-Estimates-Child-of-Light-3674.html` |
 | Chivalry: Medieval Warfare | 3675 | `FPS-Estimates-Chivalry-Medieval-Warfare-3675.html` |
-| _…275 more_ | | _see capture-manifest.json_ |
+| _…273 more_ | | _see capture-manifest.json_ |

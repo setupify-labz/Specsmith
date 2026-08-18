@@ -10,10 +10,10 @@ the five game-page filter-path positions are proven from the source's own
 markup. The rest are explicitly marked unresolved and preserved raw. No
 meaning has been assigned to any field that the evidence does not support.
 
-**Evidence base:** the saved Fortnite source
-(`pages/FPS-Estimates-Fortnite-3954.html`, game id 3954), containing **200
-EFPS objects** and **49 distinct filter paths**. PUBG and CS:GO pages are
-**not currently captured** — see [Limitations](#limitations).
+**Evidence base:** three saved sources — Fortnite (3954), PlayerUnknown's
+Battlegrounds (3944) and Counter-Strike: Global Offensive (3680) — containing
+**600 EFPS objects** and **147 distinct filter paths** in total. Every
+structural claim below holds identically on all three.
 
 ---
 
@@ -37,14 +37,15 @@ results: [{
 - `t` — a human-readable title
 - `p` — the FPS value(s), as a string
 
-All 200 objects in the saved source parse into this shape; none deviate.
+All 600 objects across the three saved sources parse into this shape; none
+deviate.
 
 ---
 
 ## 2. URL payload structure — PROVEN
 
 The path after `/EFps/` is **three `_`-separated groups of four `,`-separated
-fields**. This holds for 200/200 objects with no exceptions:
+fields**. This holds for 600/600 objects with no exceptions:
 
 ```
 /EFps/  ,1660-Ti,,  _  ,5700-XT,,  _  Fortnite,,9400F,
@@ -52,17 +53,17 @@ fields**. This holds for 200/200 objects with no exceptions:
          variant A       variant B        base / shared
 ```
 
-Measured arity across all 200 records: group count `3` (200/200), field count
-per group `4` (600/600 groups).
+Measured arity across all 600 records: group count `3` (600/600), field count
+per group `4` (1,800/1,800 groups).
 
 ### Field positions
 
 | Field | Meaning | Status | Evidence |
 |---|---|---|---|
-| 0 | **Game** | **proven** | Non-empty in exactly one group (group 3) across all 200 records, always the literal `Fortnite`, matching the page's own `gameId`/slug. Never populated in groups 1–2. |
-| 1 | **GPU** | **proven** | 15–16 distinct values, all GPU models, disjoint from field 2's value set. |
-| 2 | **CPU** | **proven** | 10–11 distinct values, all CPU models, disjoint from field 1's value set. |
-| 3 | *unknown* | **UNRESOLVED** | Never populated in any of the 600 groups. No page link, filter control, or script populates it. |
+| 0 | **Game** | **proven** | Non-empty in exactly one group (group 3) across all 600 records. Holds three distinct values — `Fortnite`, `PUBG`, `CSGO` — each matching its own page's identity. Never populated in groups 1–2. |
+| 1 | **GPU** | **proven** | 15 distinct values, all GPU models, disjoint from field 2's value set. |
+| 2 | **CPU** | **proven** | 11 distinct values, all CPU models, disjoint from field 1's value set. |
+| 3 | *unknown* | **UNRESOLVED** | Never populated in any of the 1,800 groups. No page link, filter control, or script populates it. |
 
 Observed field-1 values (all GPUs): `1050-Ti, 1060-3GB, 1060-6GB, 1070, 1650,
 1660, 1660-Ti, 1660S, 2060, 2060S, 2070S, 2080, 570, 5700, 5700-XT, 580`
@@ -99,7 +100,7 @@ lives in groups 1–2; the fixed dimension lives in group 3.
 
 Classification uses the **URL structure**: groups 1 and 2 entirely empty ⇒
 `direct`; any value present ⇒ `comparison`. This is name-independent and
-correct for 200/200 records.
+correct for 600/600 records.
 
 ### Why the game-name prefix approach is wrong
 
@@ -127,15 +128,16 @@ resolved.
 **The order of the two sides in `t` does not reliably match the order of URL
 groups 1 and 2.**
 
-Measured across the 173 comparison records in the saved source:
+Measured across all 519 comparison records in the three saved sources:
 
 | Title side A corresponds to | Count |
 |---|---:|
-| URL group 1 | 91 |
-| URL group 2 | 82 |
+| URL group 1 | 273 |
+| URL group 2 | 246 |
 
-**A parser assuming `title side A === URL group 1` is wrong on 82 of 173
-records — 47.4%.**
+**A parser assuming `title side A === URL group 1` is wrong on 246 of 519
+records — 47.4%.** (The Fortnite page alone gives 91 / 82 — the same ratio,
+independently reproduced on each source.)
 
 Two records that demonstrate the inconsistency directly:
 
@@ -172,8 +174,10 @@ itself makes possible: many comparison sides describe a `(game, GPU, CPU)`
 configuration that **also** appears as a standalone direct record. Those two
 independently-encoded values must agree.
 
-> **338 comparison sides were cross-checkable against a direct record.
-> 338 agreed exactly. 0 mismatches.**
+> **1,014 comparison sides were cross-checkable against a direct record.
+> 1,014 agreed exactly. 0 mismatches.** (338 of these come from Fortnite; the
+> remainder from PUBG and CS:GO, captured later and parsed with no code change
+> to the decoding itself.)
 
 This simultaneously validates the field assignment (field 1 = GPU, field 2 =
 CPU), the title/value pairing, and the token-based variant resolution. Any of
@@ -269,21 +273,48 @@ pipeline records this as `configurationStatus` and never fills the gap.
 
 ---
 
+## Cross-game confirmation
+
+The two limitations the first version of this report listed have since been
+resolved by capturing PUBG and CS:GO. Both were parsed by the **same code**,
+with no change to any decoding rule:
+
+| | Fortnite (3954) | PUBG (3944) | CS:GO (3680) |
+|---|---:|---:|---:|
+| EFPS objects | 200 | 200 | 200 |
+| Direct / comparison | 27 / 173 | 27 / 173 | 27 / 173 |
+| Rejected | 0 | 0 | 0 |
+| Cross-checked sides | 338 | 338 | 338 |
+| Mismatches | 0 | 0 | 0 |
+| Field 3 populated | never | never | never |
+| Filter positions 2–3 populated | never | never | never |
+
+**Field 0 now holds three distinct values** — `Fortnite`, `PUBG`, `CSGO` — each
+matching its own page's identity, so "field 0 = game" is confirmed across
+games rather than for a single value.
+
+Two of the three tokens are **not** the catalog name:
+
+| Catalog name | EFPS token |
+|---|---|
+| Fortnite | `Fortnite` |
+| PlayerUnknown's Battlegrounds | `PUBG` |
+| Counter-Strike: Global Offensive | `CSGO` |
+
+This is direct evidence for §3's argument: a classifier that strips a
+`gameName + " "` prefix from the title matches on **one** of these three. The
+structural rule matched all 600 records.
+
 ## Limitations
 
-1. **Single-source evidence.** All conclusions rest on one saved game page.
-   The structure is highly regular and internally cross-validated (§5), but a
-   second and third page would confirm the decoding generalizes across
-   template variants. **PUBG (id 3712) and CS:GO (id 3680) are not currently
-   captured** — see `../capture-manifest.json`.
-2. **One game token observed.** Field 0 has only ever held `Fortnite`, so
-   "field 0 = game" is proven for one value. A second page confirms it
-   immediately.
-3. **Absence of evidence for fields 3 / positions 2–3.** These being unused on
-   every saved source does not prove they are meaningless — only that nothing
-   available exercises them. They are preserved raw so a future source that
-   populates them is detected rather than silently misread.
-4. **No page JavaScript was executed.** Conclusions come from reading markup
+1. **Absence of evidence for field 3 / positions 2–3.** These being unused on
+   all three saved sources does not prove they are meaningless — only that
+   nothing available exercises them. They are preserved raw so a future source
+   that populates them is detected rather than silently misread.
+2. **Three of 316 games captured.** The decoding is now confirmed across
+   template variants, but the corpus is still small. Nothing in the analysis
+   depends on the missing pages; only the volume of extracted records does.
+3. **No page JavaScript was executed.** Conclusions come from reading markup
    and inline script text statically.
 
 ## Reproducing

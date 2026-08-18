@@ -28,9 +28,12 @@ for (const f of files) {
 const gamePages = parsed.filter((p) => p._meta.parsedSuccessfully);
 
 // The three reference games the brief names, by UserBenchmark game id.
+// PUBG is 3944. An earlier version of this file guessed 3712, which is
+// actually the game "Evolve" — the ids here are taken from known-games.json
+// and the pages' own canonical URLs, never invented.
 const REFERENCE_GAMES = [
   { key: 'Fortnite', gameId: '3954' },
-  { key: 'PUBG', gameId: '3712' },
+  { key: 'PUBG', gameId: '3944' },
   { key: 'CS:GO', gameId: '3680' },
 ];
 
@@ -198,6 +201,35 @@ describe('Corpus: reference-game published values', () => {
       });
     }
 
+    if (ref.key === 'CS:GO') {
+      it('CS:GO: 3600 + 2060S = 233 and 9600K + 2060S = 280 (exact)', () => {
+        assert.equal(findDirect('2060S', '3600')?.fps, 233);
+        assert.equal(findDirect('2060S', '9600K')?.fps, 280);
+      });
+      it('CS:GO: average FPS 153 over 151,690 samples', () => {
+        assert.equal(p.sampleSummary.averageFps, 153);
+        assert.equal(p.sampleSummary.totalSamples, 151690);
+      });
+      it('CS:GO: settings and resolution charts extract with the source\'s exact labels', () => {
+        // These two charts use `labels :` (space before the colon) while the
+        // FPS histogram on the SAME page uses `labels:`. Before the parser
+        // tolerated both, these came back empty.
+        assert.deepEqual(p.settingsDistribution.labels, ['Low', 'Max', 'High', 'Med']);
+        assert.deepEqual(p.settingsDistribution.data, [62256, 51577, 19478, 18379]);
+        assert.deepEqual(p.resolutionDistribution.labels, ['1080p', '720p', '1440p', '4K']);
+        assert.deepEqual(p.resolutionDistribution.data, [96858, 49871, 4809, 152]);
+      });
+      it('CS:GO: a comparison where the "faster" card loses stays verbatim', () => {
+        // 5700-XT reports LOWER than 1660-Ti here. Crowd-sourced data is not
+        // ordered by expected performance; nothing may reorder or "correct" it.
+        const c = p.efps.records.find((r) => r.exactTitle === 'CSGO 5700-XT vs 1660-Ti - 9400F');
+        assert.ok(c, 'record present');
+        assert.equal(c.exactValue, '211 vs 219');
+        assert.equal(c.sides[0].fps, 211);
+        assert.equal(c.sides[1].fps, 219);
+      });
+    }
+
     if (ref.key === 'PUBG') {
       // These are the values the brief cites for PUBG. They activate as real
       // assertions as soon as the PUBG page is saved.
@@ -215,6 +247,25 @@ describe('Corpus: reference-game published values', () => {
       });
     }
   }
+});
+
+describe('Corpus: EFPS game token vs catalog name', () => {
+  it('the EFPS token is not the catalog name for PUBG and CSGO', () => {
+    // This is exactly why classification must be structural. A parser that
+    // strips a `gameName + " "` prefix from the title finds no match here.
+    const tokens = new Map(gamePages.map((p) => [p.game.gameId, p.efps.records[0]?.efpsGameToken]));
+    if (tokens.has('3944')) assert.equal(tokens.get('3944'), 'PUBG', "catalog name is \"PlayerUnknown's Battlegrounds\"");
+    if (tokens.has('3680')) assert.equal(tokens.get('3680'), 'CSGO', 'catalog name is "Counter-Strike: Global Offensive"');
+    if (tokens.has('3954')) assert.equal(tokens.get('3954'), 'Fortnite', 'this one happens to match');
+  });
+
+  it('every page still classifies and cross-checks correctly despite the token mismatch', () => {
+    for (const p of gamePages) {
+      assert.ok(p.efps.stats.direct > 0, `${p.game.name}: no direct records`);
+      assert.ok(p.efps.stats.comparisons > 0, `${p.game.name}: no comparison records`);
+      assert.equal(p.efps.stats.rejected, 0, `${p.game.name}: records rejected`);
+    }
+  });
 });
 
 describe('Corpus: capture status of the three reference games', () => {

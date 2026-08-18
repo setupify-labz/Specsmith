@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-18T04:32:00.011Z",
+  "generatedAt": "2026-08-18T04:45:24.472Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
-    "captured": 1,
-    "notCaptured": 315,
-    "parsed": 1,
+    "captured": 3,
+    "notCaptured": 313,
+    "parsed": 3,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0,
-    "capturePercent": 0.32
+    "capturePercent": 0.95
   },
   "unlistedSavedGames": [],
   "rows": [
@@ -890,20 +890,20 @@
       "gameId": "3680",
       "name": "Counter-Strike: Global Offensive",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
-      "captured": false,
-      "sourceFile": null,
+      "captured": true,
+      "sourceFile": "FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
       "expectedFilename": "FPS-Estimates-Counter-Strike-Global-Offensive-3680.html",
-      "parsed": false,
-      "efpsCount": 0,
-      "efpsDirectCount": 0,
-      "efpsComparisonCount": 0,
-      "gpuRowCount": 0,
-      "cpuRowCount": 0,
-      "averageFps": null,
-      "totalSamples": null,
+      "parsed": true,
+      "efpsCount": 200,
+      "efpsDirectCount": 27,
+      "efpsComparisonCount": 173,
+      "gpuRowCount": 20,
+      "cpuRowCount": 20,
+      "averageFps": 153,
+      "totalSamples": 151690,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": null
+      "lastProcessedAt": "2026-08-18T04:45:24.485Z"
     },
     {
       "gameId": "3969",
@@ -1891,7 +1891,7 @@
       "totalSamples": 87737,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T04:32:00.025Z"
+      "lastProcessedAt": "2026-08-18T04:45:24.493Z"
     },
     {
       "gameId": "4018",
@@ -3531,20 +3531,20 @@
       "gameId": "3944",
       "name": "PlayerUnknown's Battlegrounds",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0",
-      "captured": false,
-      "sourceFile": null,
+      "captured": true,
+      "sourceFile": "FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html",
       "expectedFilename": "FPS-Estimates-PlayerUnknown-s-Battlegrounds-3944.html",
-      "parsed": false,
-      "efpsCount": 0,
-      "efpsDirectCount": 0,
-      "efpsComparisonCount": 0,
-      "gpuRowCount": 0,
-      "cpuRowCount": 0,
-      "averageFps": null,
-      "totalSamples": null,
+      "parsed": true,
+      "efpsCount": 200,
+      "efpsDirectCount": 27,
+      "efpsComparisonCount": 173,
+      "gpuRowCount": 20,
+      "cpuRowCount": 20,
+      "averageFps": 75.5,
+      "totalSamples": 75383,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": null
+      "lastProcessedAt": "2026-08-18T04:45:24.501Z"
     },
     {
       "gameId": "3797",

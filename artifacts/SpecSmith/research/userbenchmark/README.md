@@ -24,16 +24,20 @@
 | | |
 |---|---|
 | Known games in catalog | **316** |
-| Pages captured | **1** (Fortnite, id 3954) |
-| Pages parsed | 1 |
-| EFPS records extracted | 200 (27 direct, 173 comparisons) |
-| GPU / CPU observations | 20 / 20 |
+| Pages captured | **3** — Fortnite (3954), PUBG (3944), CS:GO (3680) |
+| Pages parsed | 3, with **0 warnings** |
+| EFPS records extracted | 600 (81 direct, 519 comparisons), 0 rejected |
+| GPU / CPU observations | 60 / 60 |
+| EFPS cross-validation | **1,014 / 1,014 sides agree, 0 mismatches** |
 | Validation | 0 errors, 1 warning (the capture gap) |
-| Tests | 166 passing |
+| Tests | 176 passing |
 
 **The binding constraint is capture, not code.** The machine is finished; it is
-waiting on saved pages. 315 of 316 games have no source. See
+waiting on saved pages. 313 of 316 games have no source. See
 [Capture workflow](#capture-workflow).
+
+The decoding is now confirmed across three games parsed by identical code — see
+[Configuration decoding status](#configuration-decoding-status).
 
 ---
 
@@ -44,7 +48,7 @@ waiting on saved pages. 315 of 316 games have no source. See
 # discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
 node research/userbenchmark/ingest.mjs
 
-# Test suite (166 tests, zero dependencies)
+# Test suite (176 tests, zero dependencies)
 node research/userbenchmark/test/run-tests.mjs
 
 # Single-page parse only (writes parsed/<slug>.json)
@@ -55,7 +59,7 @@ node research/userbenchmark/build-known-games.mjs
 ```
 
 `ingest.mjs` exits non-zero **only** on validation *errors* (tooling faults).
-Warnings — including "315 games not captured" — are ordinary data findings and
+Warnings — including "313 games not captured" — are ordinary data findings and
 do not fail the run.
 
 ---
@@ -83,7 +87,7 @@ research/userbenchmark/
 ├── efps/
 │   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
 ├── homepage/                 search/hub page parser (separate page type)
-├── test/                     166 tests + fixtures
+├── test/                     176 tests + fixtures
 ├── capture-manifest.json     per-game capture status (all 316)
 ├── coverage-report.md        generated coverage breakdown
 └── known-games.json          the 316-game catalog
@@ -238,10 +242,15 @@ Two findings worth knowing before using this data:
    `title`/`value` — which *is* reliable — then resolves the URL group by token
    match, never by position.
 
-The decoding is independently confirmed: **338 comparison sides were
+The decoding is independently confirmed: **1,014 comparison sides were
 cross-checked against the standalone direct record for the same
-`(game, GPU, CPU)`; 338 agreed exactly, 0 mismatched.** This check runs on
-every ingest and as a test.
+`(game, GPU, CPU)`; 1,014 agreed exactly, 0 mismatched**, across all three
+captured games. This check runs on every ingest and as a test.
+
+Two of the three EFPS game tokens are **not** the catalog name — `PUBG` for
+"PlayerUnknown's Battlegrounds" and `CSGO` for "Counter-Strike: Global
+Offensive". That is direct evidence for classifying structurally: a
+`gameName + " "` prefix matcher would have matched one game in three.
 
 Undocumented fields are preserved raw as `position2`/`position3`/`field3` and
 listed in `unresolvedPositions`/`unresolvedFields`. They are deliberately **not**
@@ -362,13 +371,14 @@ never be presented as such.
 
 ## Known limitations
 
-1. **1 of 316 games captured.** Every extracted count is bounded by this, not
+1. **3 of 316 games captured.** Every extracted count is bounded by this, not
    by the parser.
-2. **Single-source evidence for the decoding.** Highly regular and
-   cross-validated (338/338), but a second and third page would confirm it
-   generalizes across template variants. PUBG (3712) and CS:GO (3680) are the
-   highest-value next captures — the test suite already contains their
-   assertions, keyed by game id, and activates them automatically once saved.
+2. **Decoding confirmed across three games, not yet across many.** Fortnite,
+   PUBG and CS:GO were parsed by identical code with 1,014/1,014 cross-checks
+   agreeing, so the decoding is no longer single-source. The template variance
+   found so far was formatting only (decimal averages, optional space before a
+   chart key's colon), never structure — but three pages is still a small
+   sample of 316.
 3. **No resolution/settings per observation** (see above). This is a property of
    the source, not a parser gap.
 4. **EFPS field 3 and filter positions 2–3 unproven.** Never exercised by any

@@ -1,7 +1,40 @@
 {
-  "generatedAt": "2026-08-18T04:31:59.756Z",
+  "generatedAt": "2026-08-18T04:45:24.178Z",
   "note": "Index of all parsed UserBenchmark page sources. Research data only.",
   "pages": [
+    {
+      "sourceFile": "FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
+      "outputFile": "Counter-Strike--Global-Offensive.json",
+      "gameId": "3680",
+      "slug": "Counter-Strike--Global-Offensive",
+      "name": "Counter-Strike: Global Offensive",
+      "canonicalUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
+      "filterSegments": {
+        "raw": "0.0.0.0.0",
+        "positions": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "gpuId": null,
+        "cpuId": null,
+        "cpuFamilyFilter": null,
+        "position2": null,
+        "position3": null,
+        "unresolvedPositions": []
+      },
+      "averageFps": 153,
+      "totalSamples": 151690,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "efpsRecords": 200,
+      "efpsDirect": 27,
+      "efpsComparisons": 173,
+      "efpsRejected": 0,
+      "warningCount": 0
+    },
     {
       "sourceFile": "FPS-Estimates-Fortnite-3954.html",
       "outputFile": "Fortnite.json",
@@ -27,6 +60,39 @@
       },
       "averageFps": 96,
       "totalSamples": 87737,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "efpsRecords": 200,
+      "efpsDirect": 27,
+      "efpsComparisons": 173,
+      "efpsRejected": 0,
+      "warningCount": 0
+    },
+    {
+      "sourceFile": "FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html",
+      "outputFile": "PlayerUnknowns-Battlegrounds.json",
+      "gameId": "3944",
+      "slug": "PlayerUnknowns-Battlegrounds",
+      "name": "PlayerUnknown's Battlegrounds",
+      "canonicalUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0",
+      "filterSegments": {
+        "raw": "0.0.0.0.0",
+        "positions": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        "gpuId": null,
+        "cpuId": null,
+        "cpuFamilyFilter": null,
+        "position2": null,
+        "position3": null,
+        "unresolvedPositions": []
+      },
+      "averageFps": 75.5,
+      "totalSamples": 75383,
       "gpuRows": 20,
       "cpuRows": 20,
       "efpsRecords": 200,
