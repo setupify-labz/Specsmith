@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T04:45:24.472Z",
+  "generatedAt": "2026-08-18T04:56:19.938Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
@@ -903,7 +903,7 @@
       "totalSamples": 151690,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T04:45:24.485Z"
+      "lastProcessedAt": "2026-08-18T04:56:19.964Z"
     },
     {
       "gameId": "3969",
@@ -1891,7 +1891,7 @@
       "totalSamples": 87737,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T04:45:24.493Z"
+      "lastProcessedAt": "2026-08-18T04:56:19.990Z"
     },
     {
       "gameId": "4018",
@@ -3544,7 +3544,7 @@
       "totalSamples": 75383,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T04:45:24.501Z"
+      "lastProcessedAt": "2026-08-18T04:56:20.006Z"
     },
     {
       "gameId": "3797",

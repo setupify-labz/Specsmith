@@ -1,0 +1,309 @@
+{
+  "generatedAt": "2026-08-18T04:55:00.742Z",
+  "note": "Capture batch. No network request was made to produce this. Each entry must be saved by a human from their own browser.",
+  "requested": 50,
+  "batchSize": 50,
+  "totalUncaptured": 313,
+  "games": [
+    {
+      "gameId": "3959",
+      "name": "7 Days to Die",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-7-Days-to-Die-3959.html"
+    },
+    {
+      "gameId": "3651",
+      "name": "ABZU",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ABZU/3651/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ABZU-3651.html"
+    },
+    {
+      "gameId": "3652",
+      "name": "ADR1FT",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ADR1FT-3652.html"
+    },
+    {
+      "gameId": "3654",
+      "name": "AdVenture Capitalist",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-AdVenture-Capitalist-3654.html"
+    },
+    {
+      "gameId": "3655",
+      "name": "Age of Empires II: HD Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html"
+    },
+    {
+      "gameId": "3656",
+      "name": "Alien: Isolation",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html"
+    },
+    {
+      "gameId": "3657",
+      "name": "American Truck Simulator",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-American-Truck-Simulator/3657/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-American-Truck-Simulator-3657.html"
+    },
+    {
+      "gameId": "3658",
+      "name": "Anno 2205",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Anno-2205/3658/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Anno-2205-3658.html"
+    },
+    {
+      "gameId": "4036",
+      "name": "Apex Legends",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Apex-Legends-4036.html"
+    },
+    {
+      "gameId": "3653",
+      "name": "ARK: Survival Evolved",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ARK-Survival-Evolved-3653.html"
+    },
+    {
+      "gameId": "3659",
+      "name": "Arma 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-2/3659/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Arma-2-3659.html"
+    },
+    {
+      "gameId": "3660",
+      "name": "Arma 3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Arma-3-3660.html"
+    },
+    {
+      "gameId": "4032",
+      "name": "Assassin's Creed Odyssey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assassins-Creed-Odyssey-4032.html"
+    },
+    {
+      "gameId": "3960",
+      "name": "Assassin's Creed Origins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assassins-Creed-Origins-3960.html"
+    },
+    {
+      "gameId": "3661",
+      "name": "Assetto Corsa",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assetto-Corsa-3661.html"
+    },
+    {
+      "gameId": "3662",
+      "name": "Axiom Verge",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Axiom-Verge/3662/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Axiom-Verge-3662.html"
+    },
+    {
+      "gameId": "3663",
+      "name": "Batman: Arkham Knight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Batman-Arkham-Knight-3663.html"
+    },
+    {
+      "gameId": "3664",
+      "name": "Battlefield 1",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-1-3664.html"
+    },
+    {
+      "gameId": "3665",
+      "name": "Battlefield 4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-4-3665.html"
+    },
+    {
+      "gameId": "3961",
+      "name": "Battlefield 5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-5-3961.html"
+    },
+    {
+      "gameId": "4186",
+      "name": "Battlefield 6",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-6-4186.html"
+    },
+    {
+      "gameId": "3666",
+      "name": "Battlerite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlerite-3666.html"
+    },
+    {
+      "gameId": "3962",
+      "name": "BeamNG",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BeamNG/3962/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-BeamNG-3962.html"
+    },
+    {
+      "gameId": "4024",
+      "name": "Biomutant",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Biomutant/4024/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Biomutant-4024.html"
+    },
+    {
+      "gameId": "3667",
+      "name": "BioShock Infinite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BioShock-Infinite/3667/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-BioShock-Infinite-3667.html"
+    },
+    {
+      "gameId": "3963",
+      "name": "Black Desert",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Black-Desert-3963.html"
+    },
+    {
+      "gameId": "3964",
+      "name": "Black Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Squad/3964/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Black-Squad-3964.html"
+    },
+    {
+      "gameId": "3668",
+      "name": "Blackguards 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Blackguards-2/3668/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Blackguards-2-3668.html"
+    },
+    {
+      "gameId": "4023",
+      "name": "Bless Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Bless-Online/4023/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Bless-Online-4023.html"
+    },
+    {
+      "gameId": "3669",
+      "name": "Borderlands 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Borderlands-2-3669.html"
+    },
+    {
+      "gameId": "3670",
+      "name": "Brawlhalla",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Brawlhalla/3670/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Brawlhalla-3670.html"
+    },
+    {
+      "gameId": "3671",
+      "name": "Broken Age: Act 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Broken-Age--Act-2/3671/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Broken-Age-Act-2-3671.html"
+    },
+    {
+      "gameId": "3966",
+      "name": "Call of Duty modern warfare 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-modern-warfare-2/3966/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-modern-warfare-2-3966.html"
+    },
+    {
+      "gameId": "3967",
+      "name": "Call of Duty WWII",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-WWII/3967/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-WWII-3967.html"
+    },
+    {
+      "gameId": "3965",
+      "name": "Call of Duty: Black Ops 4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html"
+    },
+    {
+      "gameId": "3672",
+      "name": "Call of Duty: Black Ops III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html"
+    },
+    {
+      "gameId": "4114",
+      "name": "Call of Duty: Warzone",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Warzone/4114/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Warzone-4114.html"
+    },
+    {
+      "gameId": "3673",
+      "name": "Call of Duty: World at War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--World-at-War/3673/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-World-at-War-3673.html"
+    },
+    {
+      "gameId": "3674",
+      "name": "Child of Light",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Child-of-Light/3674/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Child-of-Light-3674.html"
+    },
+    {
+      "gameId": "3675",
+      "name": "Chivalry: Medieval Warfare",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Chivalry--Medieval-Warfare/3675/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Chivalry-Medieval-Warfare-3675.html"
+    },
+    {
+      "gameId": "3676",
+      "name": "Cities: Skylines",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Cities-Skylines-3676.html"
+    },
+    {
+      "gameId": "3677",
+      "name": "Citizens of Earth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Citizens-of-Earth/3677/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Citizens-of-Earth-3677.html"
+    },
+    {
+      "gameId": "3678",
+      "name": "Clicker Heroes",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Clicker-Heroes/3678/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Clicker-Heroes-3678.html"
+    },
+    {
+      "gameId": "3679",
+      "name": "Company of Heroes 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Company-of-Heroes-2/3679/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Company-of-Heroes-2-3679.html"
+    },
+    {
+      "gameId": "3968",
+      "name": "Conan Exiles",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Conan-Exiles/3968/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Conan-Exiles-3968.html"
+    },
+    {
+      "gameId": "4187",
+      "name": "Counter-Strike: 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--2/4187/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Counter-Strike-2-4187.html"
+    },
+    {
+      "gameId": "3969",
+      "name": "Crash Bandicoot N.Sane Trilogy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crash-Bandicoot-NSane-Trilogy/3969/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crash-Bandicoot-NSane-Trilogy-3969.html"
+    },
+    {
+      "gameId": "3681",
+      "name": "Crusader Kings II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crusader-Kings-II/3681/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crusader-Kings-II-3681.html"
+    },
+    {
+      "gameId": "3682",
+      "name": "Crypt of the NecroDancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crypt-of-the-NecroDancer/3682/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crypt-of-the-NecroDancer-3682.html"
+    },
+    {
+      "gameId": "4092",
+      "name": "Cyberpunk 2077",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cyberpunk-2077/4092/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Cyberpunk-2077-4092.html"
+    }
+  ]
+}

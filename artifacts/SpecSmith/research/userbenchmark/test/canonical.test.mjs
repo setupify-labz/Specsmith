@@ -105,6 +105,37 @@ describe('Canonical layout: one writer per derived directory', () => {
   });
 });
 
+describe('Canonical layout: capture tooling stays human-driven', () => {
+  const captureScripts = sources.filter((s) => s.file.startsWith('capture/'));
+
+  it('the capture scripts exist and contain no network code', () => {
+    assert.ok(captureScripts.length >= 2, 'expected plan-capture.mjs and verify-capture.mjs');
+    const netRe = /\bfetch\s*\(|https?\.(?:get|request)\s*\(|from\s+['"](?:node-fetch|axios|got|playwright|puppeteer)['"]/;
+    const bad = captureScripts.filter((s) => netRe.test(s.text));
+    assert.equal(bad.length, 0, `capture tooling must never fetch: ${bad.map((b) => b.file).join(', ')}`);
+  });
+
+  it('the capture scripts never drive a browser', () => {
+    // A capture helper that automates the browser would be a crawler wearing a
+    // different hat. Opening a link must stay a human action.
+    const driveRe = /playwright|puppeteer|webdriver|selenium|chromium\.launch|\.goto\s*\(/i;
+    const bad = captureScripts.filter((s) => driveRe.test(s.text));
+    assert.equal(bad.length, 0, `capture tooling must not drive a browser: ${bad.map((b) => b.file).join(', ')}`);
+  });
+
+  it('verify-capture decides identity from the canonical URL, not the filename', () => {
+    const v = captureScripts.find((s) => s.file.endsWith('verify-capture.mjs'));
+    assert.ok(v, 'verify-capture.mjs present');
+    assert.ok(/rel="canonical"/.test(v.text), 'must read the page\'s canonical URL');
+    assert.ok(/wrong-game/.test(v.text), 'must be able to report a wrong-game mis-save');
+  });
+
+  it('verify-capture never renames, moves or deletes a saved page', () => {
+    const v = captureScripts.find((s) => s.file.endsWith('verify-capture.mjs'));
+    assert.notOk(/fs\.rename|fs\.rm\b|fs\.unlink|fs\.copyFile/.test(v.text), 'verification must report, not repair');
+  });
+});
+
 describe('Canonical layout: research-only invariants', () => {
   it('no script contains network code', () => {
     const netRe = /\b(?:await\s+)?fetch\s*\(|require\(['"](?:node-fetch|axios|got)['"]\)|from\s+['"](?:node-fetch|axios|got)['"]|https?\.(?:get|request)\s*\(|new\s+XMLHttpRequest/;

@@ -30,7 +30,7 @@
 | GPU / CPU observations | 60 / 60 |
 | EFPS cross-validation | **1,014 / 1,014 sides agree, 0 mismatches** |
 | Validation | 0 errors, 1 warning (the capture gap) |
-| Tests | 176 passing |
+| Tests | 180 passing |
 
 **The binding constraint is capture, not code.** The machine is finished; it is
 waiting on saved pages. 313 of 316 games have no source. See
@@ -48,7 +48,7 @@ The decoding is now confirmed across three games parsed by identical code — se
 # discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
 node research/userbenchmark/ingest.mjs
 
-# Test suite (176 tests, zero dependencies)
+# Test suite (180 tests, zero dependencies)
 node research/userbenchmark/test/run-tests.mjs
 
 # Single-page parse only (writes parsed/<slug>.json)
@@ -77,6 +77,7 @@ research/userbenchmark/
 │   ├── dedupe.mjs            deterministic dedup + conflict detection
 │   ├── validate.mjs          validation rules, error vs warning severity
 │   └── capture.mjs           capture-status tracking across the catalog
+├── capture/                  browser-assisted capture planner + verifier
 ├── ingest.mjs                ⇦ the one command
 ├── parse.mjs                 single-page entry point (thin wrapper over lib/)
 ├── build-known-games.mjs     catalog consolidator
@@ -87,7 +88,7 @@ research/userbenchmark/
 ├── efps/
 │   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
 ├── homepage/                 search/hub page parser (separate page type)
-├── test/                     176 tests + fixtures
+├── test/                     180 tests + fixtures
 ├── capture-manifest.json     per-game capture status (all 316)
 ├── coverage-report.md        generated coverage breakdown
 └── known-games.json          the 316-game catalog
@@ -114,7 +115,61 @@ Automatic page acquisition is **deliberately not implemented**:
 So the capture side is a **manifest**, not a crawler. It turns the missing-source
 problem from manual bookkeeping into a mechanical checklist.
 
-### Adding a saved page
+### Browser-assisted capture (`capture/`)
+
+For capturing a batch, `capture/` turns the manual job into a tracked checklist.
+It removes the **bookkeeping**, not the human:
+
+```bash
+# 1. Plan the next N uncaptured games (default 5)
+node research/userbenchmark/capture/plan-capture.mjs 50
+
+# 2. Open capture/capture-helper.html in YOUR browser and work through it.
+#    Each row: click Open → save the page → tick "saved". Progress persists.
+
+# 3. Check what actually arrived, then ingest
+node research/userbenchmark/capture/verify-capture.mjs --ingest
+```
+
+`plan-capture.mjs` emits `worklist.json`, `worklist.md` (plain checklist) and
+`capture-helper.html` — a self-contained local page listing each game with a
+click-to-open link, the exact filename to save as with a copy button, and
+localStorage progress tracking.
+
+**What it deliberately does not do.** It never fetches, crawls, automates or
+scripts anything against the site. It *cannot* from this environment — the
+egress proxy refuses CONNECT for that host (verified: HTTP 403 for `curl`, for
+`WebFetch`, and for a browser launched here). More to the point, it shouldn't:
+50 automated page loads at an aggregator is bulk collection regardless of
+pacing. Every page load stays a person clicking a link in their own browser,
+their own session, at their own pace — which is just browsing. There is no
+CAPTCHA handling, no rate-limit evasion, and no access-control circumvention;
+the helper contains no `fetch`, no auto-open, and no timers, and a guard test
+enforces that.
+
+**`verify-capture.mjs` checks identity from each file's own canonical URL, not
+its filename**, and reports one of:
+
+| Status | Meaning |
+|---|---|
+| `captured` | file exists and its canonical URL is the game requested |
+| `missing` | nothing arrived |
+| `wrong-game` | a file with that name exists but is a **different** game's page |
+| `not-a-page` | exists but isn't an FPS-Estimates game page (e.g. an interstitial) |
+| `unreadable` | exists but could not be read |
+
+The `wrong-game` and `not-a-page` checks matter more than they sound. Saving
+dozens of pages by hand is exactly where a mis-clicked tab gets saved under the
+right filename, or a browser writes out a "Checking your browser…" page. Trusting
+the filename would then file one game's numbers under another game's id — a
+data-integrity failure that is very hard to spot downstream. Both modes are
+tested against real injected mis-saves.
+
+It **never renames, moves or repairs** anything, and `--ingest` refuses to run
+when nothing was captured rather than reporting a successful pipeline over zero
+new sources.
+
+### Adding a single saved page by hand
 
 1. Open the game's FPS-Estimates page in a browser. `capture-manifest.json`
    has the exact URL for every one of the 316 games.

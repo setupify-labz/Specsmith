@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UserBenchmark capture helper — 50 pages</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#111; --mut:#666; --line:#e3e3e3; --acc:#0b5cd5; --ok:#0a7a3d; --card:#fafafa; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161a; --fg:#e9e9ea; --mut:#9aa0a6; --line:#2a2e35; --acc:#7aa9ff; --ok:#57d98a; --card:#1b1e24; } }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:2rem 1rem 4rem; background:var(--bg); color:var(--fg);
+         font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size:1.35rem; margin:0 0 .35rem; }
+  .sub { color:var(--mut); margin:0 0 1.25rem; }
+  .note { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--acc);
+          border-radius:6px; padding:.85rem 1rem; margin:0 0 1.5rem; font-size:.92rem; }
+  .note b { font-weight:650; }
+  .note ol { margin:.5rem 0 0; padding-left:1.2rem; }
+  .note li { margin:.25rem 0; }
+  .bar { position:sticky; top:0; background:var(--bg); border-bottom:1px solid var(--line);
+         padding:.6rem 0 .7rem; margin-bottom:.5rem; display:flex; gap:.75rem; align-items:center; }
+  .bar progress { flex:1; height:9px; }
+  .count { font-variant-numeric:tabular-nums; color:var(--mut); font-size:.9rem; white-space:nowrap; }
+  ol.list { list-style:none; margin:0; padding:0; }
+  .row { display:flex; gap:.9rem; align-items:flex-start; padding:.85rem .9rem; border:1px solid var(--line);
+         border-radius:8px; margin-bottom:.55rem; background:var(--card); }
+  .row.is-done { opacity:.5; }
+  .n { color:var(--mut); font-variant-numeric:tabular-nums; min-width:1.6rem; }
+  .main { flex:1; min-width:0; }
+  .name { font-weight:600; }
+  .meta { color:var(--mut); font-size:.85rem; }
+  .fname { margin-top:.4rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+  code { background:rgba(127,127,127,.14); padding:.16rem .4rem; border-radius:4px;
+         font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; word-break:break-all; }
+  .actions { display:flex; flex-direction:column; gap:.45rem; align-items:flex-end; }
+  a.open { color:var(--acc); text-decoration:none; font-weight:600; white-space:nowrap; }
+  a.open:hover { text-decoration:underline; }
+  button.copy { font:inherit; font-size:.8rem; padding:.2rem .5rem; cursor:pointer;
+                background:transparent; color:var(--mut); border:1px solid var(--line); border-radius:4px; }
+  button.copy:hover { color:var(--fg); }
+  .done { font-size:.85rem; color:var(--mut); white-space:nowrap; cursor:pointer; }
+  footer { margin-top:2rem; padding-top:1rem; border-top:1px solid var(--line); color:var(--mut); font-size:.87rem; }
+  .reset { font:inherit; font-size:.85rem; background:none; border:none; color:var(--acc); cursor:pointer; padding:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>UserBenchmark capture helper</h1>
+  <p class="sub">50 pages in this batch · generated 2026-08-18T04:55:00.742Z</p>
+
+  <div class="note">
+    <b>How to use this.</b> This page does not download anything. It opens links in your
+    normal browser so you can save each page yourself, and keeps track of where you are.
+    <ol>
+      <li>Click <b>Open page</b>. It opens in a new tab in your usual session.</li>
+      <li>Save the complete page: <code>Ctrl</code>/<code>Cmd</code>+<code>S</code> → <b>“Webpage, HTML Only”</b>.
+          (<code>Ctrl</code>+<code>U</code> then save also works.)</li>
+      <li>Name it <b>exactly</b> the filename shown, and put it in
+          <code>research/userbenchmark/pages/</code>.</li>
+      <li>Tick <b>saved</b> and move to the next one. Your progress is remembered in this browser.</li>
+    </ol>
+    Go at a normal reading pace — one page at a time. Nothing here bypasses CAPTCHAs,
+    rate limits, or any site protection; if a page asks you to verify you are human,
+    just do it as you normally would.
+  </div>
+
+  <div class="bar">
+    <progress id="prog" max="50" value="0"></progress>
+    <span class="count"><span id="doneN">0</span> / 50 saved</span>
+  </div>
+
+  <ol class="list">
+      <li class="row" data-id="3959">
+        <div class="n">1</div>
+        <div class="main">
+          <div class="name">7 Days to Die</div>
+          <div class="meta">game id 3959</div>
+          <div class="fname"><code id="fn-3959">FPS-Estimates-7-Days-to-Die-3959.html</code>
+            <button class="copy" data-fn="FPS-Estimates-7-Days-to-Die-3959.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3651">
+        <div class="n">2</div>
+        <div class="main">
+          <div class="name">ABZU</div>
+          <div class="meta">game id 3651</div>
+          <div class="fname"><code id="fn-3651">FPS-Estimates-ABZU-3651.html</code>
+            <button class="copy" data-fn="FPS-Estimates-ABZU-3651.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-ABZU/3651/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3652">
+        <div class="n">3</div>
+        <div class="main">
+          <div class="name">ADR1FT</div>
+          <div class="meta">game id 3652</div>
+          <div class="fname"><code id="fn-3652">FPS-Estimates-ADR1FT-3652.html</code>
+            <button class="copy" data-fn="FPS-Estimates-ADR1FT-3652.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3654">
+        <div class="n">4</div>
+        <div class="main">
+          <div class="name">AdVenture Capitalist</div>
+          <div class="meta">game id 3654</div>
+          <div class="fname"><code id="fn-3654">FPS-Estimates-AdVenture-Capitalist-3654.html</code>
+            <button class="copy" data-fn="FPS-Estimates-AdVenture-Capitalist-3654.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3655">
+        <div class="n">5</div>
+        <div class="main">
+          <div class="name">Age of Empires II: HD Edition</div>
+          <div class="meta">game id 3655</div>
+          <div class="fname"><code id="fn-3655">FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3656">
+        <div class="n">6</div>
+        <div class="main">
+          <div class="name">Alien: Isolation</div>
+          <div class="meta">game id 3656</div>
+          <div class="fname"><code id="fn-3656">FPS-Estimates-Alien-Isolation-3656.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Alien-Isolation-3656.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3657">
+        <div class="n">7</div>
+        <div class="main">
+          <div class="name">American Truck Simulator</div>
+          <div class="meta">game id 3657</div>
+          <div class="fname"><code id="fn-3657">FPS-Estimates-American-Truck-Simulator-3657.html</code>
+            <button class="copy" data-fn="FPS-Estimates-American-Truck-Simulator-3657.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-American-Truck-Simulator/3657/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3658">
+        <div class="n">8</div>
+        <div class="main">
+          <div class="name">Anno 2205</div>
+          <div class="meta">game id 3658</div>
+          <div class="fname"><code id="fn-3658">FPS-Estimates-Anno-2205-3658.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Anno-2205-3658.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Anno-2205/3658/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4036">
+        <div class="n">9</div>
+        <div class="main">
+          <div class="name">Apex Legends</div>
+          <div class="meta">game id 4036</div>
+          <div class="fname"><code id="fn-4036">FPS-Estimates-Apex-Legends-4036.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Apex-Legends-4036.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3653">
+        <div class="n">10</div>
+        <div class="main">
+          <div class="name">ARK: Survival Evolved</div>
+          <div class="meta">game id 3653</div>
+          <div class="fname"><code id="fn-3653">FPS-Estimates-ARK-Survival-Evolved-3653.html</code>
+            <button class="copy" data-fn="FPS-Estimates-ARK-Survival-Evolved-3653.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3659">
+        <div class="n">11</div>
+        <div class="main">
+          <div class="name">Arma 2</div>
+          <div class="meta">game id 3659</div>
+          <div class="fname"><code id="fn-3659">FPS-Estimates-Arma-2-3659.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Arma-2-3659.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-2/3659/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3660">
+        <div class="n">12</div>
+        <div class="main">
+          <div class="name">Arma 3</div>
+          <div class="meta">game id 3660</div>
+          <div class="fname"><code id="fn-3660">FPS-Estimates-Arma-3-3660.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Arma-3-3660.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4032">
+        <div class="n">13</div>
+        <div class="main">
+          <div class="name">Assassin's Creed Odyssey</div>
+          <div class="meta">game id 4032</div>
+          <div class="fname"><code id="fn-4032">FPS-Estimates-Assassins-Creed-Odyssey-4032.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Assassins-Creed-Odyssey-4032.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3960">
+        <div class="n">14</div>
+        <div class="main">
+          <div class="name">Assassin's Creed Origins</div>
+          <div class="meta">game id 3960</div>
+          <div class="fname"><code id="fn-3960">FPS-Estimates-Assassins-Creed-Origins-3960.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Assassins-Creed-Origins-3960.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3661">
+        <div class="n">15</div>
+        <div class="main">
+          <div class="name">Assetto Corsa</div>
+          <div class="meta">game id 3661</div>
+          <div class="fname"><code id="fn-3661">FPS-Estimates-Assetto-Corsa-3661.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Assetto-Corsa-3661.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3662">
+        <div class="n">16</div>
+        <div class="main">
+          <div class="name">Axiom Verge</div>
+          <div class="meta">game id 3662</div>
+          <div class="fname"><code id="fn-3662">FPS-Estimates-Axiom-Verge-3662.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Axiom-Verge-3662.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Axiom-Verge/3662/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3663">
+        <div class="n">17</div>
+        <div class="main">
+          <div class="name">Batman: Arkham Knight</div>
+          <div class="meta">game id 3663</div>
+          <div class="fname"><code id="fn-3663">FPS-Estimates-Batman-Arkham-Knight-3663.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Batman-Arkham-Knight-3663.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3664">
+        <div class="n">18</div>
+        <div class="main">
+          <div class="name">Battlefield 1</div>
+          <div class="meta">game id 3664</div>
+          <div class="fname"><code id="fn-3664">FPS-Estimates-Battlefield-1-3664.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Battlefield-1-3664.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3665">
+        <div class="n">19</div>
+        <div class="main">
+          <div class="name">Battlefield 4</div>
+          <div class="meta">game id 3665</div>
+          <div class="fname"><code id="fn-3665">FPS-Estimates-Battlefield-4-3665.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Battlefield-4-3665.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3961">
+        <div class="n">20</div>
+        <div class="main">
+          <div class="name">Battlefield 5</div>
+          <div class="meta">game id 3961</div>
+          <div class="fname"><code id="fn-3961">FPS-Estimates-Battlefield-5-3961.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Battlefield-5-3961.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4186">
+        <div class="n">21</div>
+        <div class="main">
+          <div class="name">Battlefield 6</div>
+          <div class="meta">game id 4186</div>
+          <div class="fname"><code id="fn-4186">FPS-Estimates-Battlefield-6-4186.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Battlefield-6-4186.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3666">
+        <div class="n">22</div>
+        <div class="main">
+          <div class="name">Battlerite</div>
+          <div class="meta">game id 3666</div>
+          <div class="fname"><code id="fn-3666">FPS-Estimates-Battlerite-3666.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Battlerite-3666.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3962">
+        <div class="n">23</div>
+        <div class="main">
+          <div class="name">BeamNG</div>
+          <div class="meta">game id 3962</div>
+          <div class="fname"><code id="fn-3962">FPS-Estimates-BeamNG-3962.html</code>
+            <button class="copy" data-fn="FPS-Estimates-BeamNG-3962.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-BeamNG/3962/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4024">
+        <div class="n">24</div>
+        <div class="main">
+          <div class="name">Biomutant</div>
+          <div class="meta">game id 4024</div>
+          <div class="fname"><code id="fn-4024">FPS-Estimates-Biomutant-4024.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Biomutant-4024.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Biomutant/4024/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3667">
+        <div class="n">25</div>
+        <div class="main">
+          <div class="name">BioShock Infinite</div>
+          <div class="meta">game id 3667</div>
+          <div class="fname"><code id="fn-3667">FPS-Estimates-BioShock-Infinite-3667.html</code>
+            <button class="copy" data-fn="FPS-Estimates-BioShock-Infinite-3667.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-BioShock-Infinite/3667/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3963">
+        <div class="n">26</div>
+        <div class="main">
+          <div class="name">Black Desert</div>
+          <div class="meta">game id 3963</div>
+          <div class="fname"><code id="fn-3963">FPS-Estimates-Black-Desert-3963.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Black-Desert-3963.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3964">
+        <div class="n">27</div>
+        <div class="main">
+          <div class="name">Black Squad</div>
+          <div class="meta">game id 3964</div>
+          <div class="fname"><code id="fn-3964">FPS-Estimates-Black-Squad-3964.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Black-Squad-3964.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Squad/3964/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3668">
+        <div class="n">28</div>
+        <div class="main">
+          <div class="name">Blackguards 2</div>
+          <div class="meta">game id 3668</div>
+          <div class="fname"><code id="fn-3668">FPS-Estimates-Blackguards-2-3668.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Blackguards-2-3668.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Blackguards-2/3668/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4023">
+        <div class="n">29</div>
+        <div class="main">
+          <div class="name">Bless Online</div>
+          <div class="meta">game id 4023</div>
+          <div class="fname"><code id="fn-4023">FPS-Estimates-Bless-Online-4023.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Bless-Online-4023.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Bless-Online/4023/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3669">
+        <div class="n">30</div>
+        <div class="main">
+          <div class="name">Borderlands 2</div>
+          <div class="meta">game id 3669</div>
+          <div class="fname"><code id="fn-3669">FPS-Estimates-Borderlands-2-3669.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Borderlands-2-3669.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3670">
+        <div class="n">31</div>
+        <div class="main">
+          <div class="name">Brawlhalla</div>
+          <div class="meta">game id 3670</div>
+          <div class="fname"><code id="fn-3670">FPS-Estimates-Brawlhalla-3670.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Brawlhalla-3670.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Brawlhalla/3670/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3671">
+        <div class="n">32</div>
+        <div class="main">
+          <div class="name">Broken Age: Act 2</div>
+          <div class="meta">game id 3671</div>
+          <div class="fname"><code id="fn-3671">FPS-Estimates-Broken-Age-Act-2-3671.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Broken-Age-Act-2-3671.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Broken-Age--Act-2/3671/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3966">
+        <div class="n">33</div>
+        <div class="main">
+          <div class="name">Call of Duty modern warfare 2</div>
+          <div class="meta">game id 3966</div>
+          <div class="fname"><code id="fn-3966">FPS-Estimates-Call-of-Duty-modern-warfare-2-3966.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-modern-warfare-2-3966.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-modern-warfare-2/3966/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3967">
+        <div class="n">34</div>
+        <div class="main">
+          <div class="name">Call of Duty WWII</div>
+          <div class="meta">game id 3967</div>
+          <div class="fname"><code id="fn-3967">FPS-Estimates-Call-of-Duty-WWII-3967.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-WWII-3967.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-WWII/3967/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3965">
+        <div class="n">35</div>
+        <div class="main">
+          <div class="name">Call of Duty: Black Ops 4</div>
+          <div class="meta">game id 3965</div>
+          <div class="fname"><code id="fn-3965">FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3672">
+        <div class="n">36</div>
+        <div class="main">
+          <div class="name">Call of Duty: Black Ops III</div>
+          <div class="meta">game id 3672</div>
+          <div class="fname"><code id="fn-3672">FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4114">
+        <div class="n">37</div>
+        <div class="main">
+          <div class="name">Call of Duty: Warzone</div>
+          <div class="meta">game id 4114</div>
+          <div class="fname"><code id="fn-4114">FPS-Estimates-Call-of-Duty-Warzone-4114.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-Warzone-4114.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Warzone/4114/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3673">
+        <div class="n">38</div>
+        <div class="main">
+          <div class="name">Call of Duty: World at War</div>
+          <div class="meta">game id 3673</div>
+          <div class="fname"><code id="fn-3673">FPS-Estimates-Call-of-Duty-World-at-War-3673.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Call-of-Duty-World-at-War-3673.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--World-at-War/3673/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3674">
+        <div class="n">39</div>
+        <div class="main">
+          <div class="name">Child of Light</div>
+          <div class="meta">game id 3674</div>
+          <div class="fname"><code id="fn-3674">FPS-Estimates-Child-of-Light-3674.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Child-of-Light-3674.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Child-of-Light/3674/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3675">
+        <div class="n">40</div>
+        <div class="main">
+          <div class="name">Chivalry: Medieval Warfare</div>
+          <div class="meta">game id 3675</div>
+          <div class="fname"><code id="fn-3675">FPS-Estimates-Chivalry-Medieval-Warfare-3675.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Chivalry-Medieval-Warfare-3675.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Chivalry--Medieval-Warfare/3675/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3676">
+        <div class="n">41</div>
+        <div class="main">
+          <div class="name">Cities: Skylines</div>
+          <div class="meta">game id 3676</div>
+          <div class="fname"><code id="fn-3676">FPS-Estimates-Cities-Skylines-3676.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Cities-Skylines-3676.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3677">
+        <div class="n">42</div>
+        <div class="main">
+          <div class="name">Citizens of Earth</div>
+          <div class="meta">game id 3677</div>
+          <div class="fname"><code id="fn-3677">FPS-Estimates-Citizens-of-Earth-3677.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Citizens-of-Earth-3677.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Citizens-of-Earth/3677/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3678">
+        <div class="n">43</div>
+        <div class="main">
+          <div class="name">Clicker Heroes</div>
+          <div class="meta">game id 3678</div>
+          <div class="fname"><code id="fn-3678">FPS-Estimates-Clicker-Heroes-3678.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Clicker-Heroes-3678.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Clicker-Heroes/3678/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3679">
+        <div class="n">44</div>
+        <div class="main">
+          <div class="name">Company of Heroes 2</div>
+          <div class="meta">game id 3679</div>
+          <div class="fname"><code id="fn-3679">FPS-Estimates-Company-of-Heroes-2-3679.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Company-of-Heroes-2-3679.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Company-of-Heroes-2/3679/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3968">
+        <div class="n">45</div>
+        <div class="main">
+          <div class="name">Conan Exiles</div>
+          <div class="meta">game id 3968</div>
+          <div class="fname"><code id="fn-3968">FPS-Estimates-Conan-Exiles-3968.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Conan-Exiles-3968.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Conan-Exiles/3968/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4187">
+        <div class="n">46</div>
+        <div class="main">
+          <div class="name">Counter-Strike: 2</div>
+          <div class="meta">game id 4187</div>
+          <div class="fname"><code id="fn-4187">FPS-Estimates-Counter-Strike-2-4187.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Counter-Strike-2-4187.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--2/4187/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3969">
+        <div class="n">47</div>
+        <div class="main">
+          <div class="name">Crash Bandicoot N.Sane Trilogy</div>
+          <div class="meta">game id 3969</div>
+          <div class="fname"><code id="fn-3969">FPS-Estimates-Crash-Bandicoot-NSane-Trilogy-3969.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Crash-Bandicoot-NSane-Trilogy-3969.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Crash-Bandicoot-NSane-Trilogy/3969/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3681">
+        <div class="n">48</div>
+        <div class="main">
+          <div class="name">Crusader Kings II</div>
+          <div class="meta">game id 3681</div>
+          <div class="fname"><code id="fn-3681">FPS-Estimates-Crusader-Kings-II-3681.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Crusader-Kings-II-3681.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Crusader-Kings-II/3681/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="3682">
+        <div class="n">49</div>
+        <div class="main">
+          <div class="name">Crypt of the NecroDancer</div>
+          <div class="meta">game id 3682</div>
+          <div class="fname"><code id="fn-3682">FPS-Estimates-Crypt-of-the-NecroDancer-3682.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Crypt-of-the-NecroDancer-3682.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Crypt-of-the-NecroDancer/3682/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+      <li class="row" data-id="4092">
+        <div class="n">50</div>
+        <div class="main">
+          <div class="name">Cyberpunk 2077</div>
+          <div class="meta">game id 4092</div>
+          <div class="fname"><code id="fn-4092">FPS-Estimates-Cyberpunk-2077-4092.html</code>
+            <button class="copy" data-fn="FPS-Estimates-Cyberpunk-2077-4092.html">copy filename</button>
+          </div>
+        </div>
+        <div class="actions">
+          <a class="open" href="https://www.userbenchmark.com/PCGame/FPS-Estimates-Cyberpunk-2077/4092/0.0.0.0.0" target="_blank" rel="noopener noreferrer">Open page ↗</a>
+          <label class="done"><input type="checkbox" class="chk"> saved</label>
+        </div>
+      </li>
+  </ol>
+
+  <footer>
+    When you have saved what you want, run:<br>
+    <code>node research/userbenchmark/capture/verify-capture.mjs</code><br>
+    It reports exactly which files arrived, which are missing, and whether each one is
+    the game it claims to be — then you can run the ingest.
+    <p><button class="reset" id="reset">clear saved progress for this batch</button></p>
+  </footer>
+</div>
+<script>
+  var KEY = 'ub-capture-' + "3959,3651,3652,3654,3655,3656,3657,3658,4036,3653,3659,3660,4032,3960,3661,3662,3663,3664,3665,3961,4186,3666,3962,4024,3667,3963,3964,3668,4023,3669,3670,3671,3966,3967,3965,3672,4114,3673,3674,3675,3676,3677,3678,3679,3968,4187,3969,3681,3682,4092".length + '-3959-3651-3652-3654-3655-3656-3657-3658-';
+  var done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { done = {}; }
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {} }
+  function refresh() {
+    var n = 0;
+    document.querySelectorAll('.row').forEach(function (row) {
+      var id = row.getAttribute('data-id');
+      var on = !!done[id];
+      row.classList.toggle('is-done', on);
+      row.querySelector('.chk').checked = on;
+      if (on) n++;
+    });
+    document.getElementById('doneN').textContent = n;
+    document.getElementById('prog').value = n;
+  }
+
+  document.querySelectorAll('.row').forEach(function (row) {
+    var id = row.getAttribute('data-id');
+    row.querySelector('.chk').addEventListener('change', function (e) {
+      if (e.target.checked) done[id] = true; else delete done[id];
+      save(); refresh();
+    });
+  });
+
+  document.querySelectorAll('button.copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var fn = b.getAttribute('data-fn');
+      navigator.clipboard.writeText(fn).then(function () {
+        var old = b.textContent; b.textContent = 'copied ✓';
+        setTimeout(function () { b.textContent = old; }, 1200);
+      }, function () {});
+    });
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    done = {}; save(); refresh();
+  });
+
+  refresh();
+</script>
+</body>
+</html>

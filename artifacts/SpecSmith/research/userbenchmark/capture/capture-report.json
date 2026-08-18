@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-08-18T04:54:53.444Z",
+  "note": "Capture verification. No network request was made. Status is decided by each file's own canonical URL, not by its filename.",
+  "worklistGeneratedAt": "2026-08-18T04:54:53.367Z",
+  "summary": {
+    "planned": 5,
+    "captured": 0,
+    "missing": 5,
+    "wrongGame": 0,
+    "notAPage": 0,
+    "unreadable": 0
+  },
+  "results": [
+    {
+      "gameId": "3959",
+      "name": "7 Days to Die",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-7-Days-to-Die-3959.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3651",
+      "name": "ABZU",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ABZU/3651/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ABZU-3651.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3652",
+      "name": "ADR1FT",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ADR1FT-3652.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3654",
+      "name": "AdVenture Capitalist",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-AdVenture-Capitalist-3654.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3655",
+      "name": "Age of Empires II: HD Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    }
+  ]
+}
