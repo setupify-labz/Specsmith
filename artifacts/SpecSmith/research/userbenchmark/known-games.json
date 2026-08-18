@@ -1,0 +1,1978 @@
+{
+  "generatedAt": "2026-08-18T01:23:02.917Z",
+  "note": "RESEARCH DATA — merged from every locally saved UserBenchmark source parsed so far in this directory tree (parsed/*.json and homepage/parsed/*.json). No network request was made. Re-run after adding/parsing new sources to refresh.",
+  "summary": {
+    "resolvedCount": 12,
+    "nameOnlyCount": 303,
+    "totalDistinctGamesKnown": 315
+  },
+  "resolved": [
+    {
+      "gameId": "3664",
+      "name": "Battlefield 1",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
+      "sampleCount": 28457,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3680",
+      "name": "Counter-Strike: Global Offensive",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
+      "sampleCount": 151690,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3684",
+      "name": "DOTA 2",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOTA-2/3684/0.0.0.0.0",
+      "sampleCount": null,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3954",
+      "name": "Fortnite",
+      "slug": "Fortnite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
+      "sampleCount": 87737,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3727",
+      "name": "Grand Theft Auto V",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grand-Theft-Auto-V/3727/0.0.0.0.0",
+      "sampleCount": 71870,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3761",
+      "name": "League of Legends",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-League-of-Legends/3761/0.0.0.0.0",
+      "sampleCount": 68277,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3776",
+      "name": "Minecraft",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Minecraft/3776/0.0.0.0.0",
+      "sampleCount": 23472,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3789",
+      "name": "Overwatch",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch/3789/0.0.0.0.0",
+      "sampleCount": 54796,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3944",
+      "name": "PlayerUnknown's Battlegrounds",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0",
+      "sampleCount": 75383,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3855",
+      "name": "The Witcher 3: Wild Hunt",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Witcher-3--Wild-Hunt/3855/0.0.0.0.0",
+      "sampleCount": 25546,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:searchResultGames",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3881",
+      "name": "World of Tanks",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Tanks/3881/0.0.0.0.0",
+      "sampleCount": null,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    },
+    {
+      "gameId": "3882",
+      "name": "World of Warcraft",
+      "slug": null,
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft/3882/0.0.0.0.0",
+      "sampleCount": null,
+      "sources": [
+        "game-page:FPS-Estimates-Fortnite-3954.html:relatedGamePages",
+        "homepage:Search-FPS.html:carouselGames"
+      ]
+    }
+  ],
+  "nameOnly": [
+    {
+      "name": "7 Days to Die",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "ABZU",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "ADR1FT",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "AdVenture Capitalist",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Age of Empires II  HD Edition",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Alien  Isolation",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "American Truck Simulator",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Anno 2205",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Apex Legends",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "ARK  Survival Evolved",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Arma 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Arma 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Assassin's Creed Odyssey",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Assassin's Creed Origins",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Assetto Corsa",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Axiom Verge",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Batman  Arkham Knight",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Battlefield 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Battlefield 5",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Battlefield 6",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Battlerite",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "BeamNG",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Biomutant",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "BioShock Infinite",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Black Desert",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Black Squad",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Blackguards 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Bless Online",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Borderlands 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Brawlhalla",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Broken Age  Act 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty  Black Ops 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty  Black Ops III",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty  Warzone",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty  World at War",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty modern warfare 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Call of Duty WWII",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Child of Light",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Chivalry  Medieval Warfare",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Cities  Skylines",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Citizens of Earth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Clicker Heroes",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Company of Heroes 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Conan Exiles",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Counter-Strike  2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Crash Bandicoot N.Sane Trilogy",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Crusader Kings II",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Crypt of the NecroDancer",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Cyberpunk 2077",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dark Souls",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dark Souls  Remastered",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dark Souls II",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dark Souls III",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Darkest Dungeon",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Darksiders 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dauntless",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Day of the Tentacle Remastered",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "DayZ",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dead by Daylight",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Destiny 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Deus Ex  Mankind Divided",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Diablo III",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "DiRT Rally",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Divinity  Original Sin",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Divinity  Original Sin 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Don't Starve Together",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "DOOM",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Downfall",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Downwell",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dragon Age  Inquisition",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dragon's Dogma  Dark Arisen",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dreamfall Chapters  The Longest Journey",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dropsy",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Dying Light",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Elite  Dangerous",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Empire  Total War",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Endless Legend",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Enter the Gungeon",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Escape from Tarkov",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Euro Truck Simulator 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Europa Universalis IV",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Everlasting Summer",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "EVGA Precision XOC",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Evolve",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Fable Anniversary",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Factorio",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Fallout  New Vegas",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Fallout 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Far Cry 5",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Farming Simulator 15",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Final Fantasy XIV  A Realm Reborn",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Final Fantasy XIV Online",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Firewatch",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Football Manager 2015",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Football Manager 2016",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Forza Horizon 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Forza Horizon 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Forza Motorsport 7",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Fran Bow",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Frostpunk",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Game of Thrones",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Garry's Mod",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Gnomoria",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Grey Goo",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Grim Dawn",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Grim Fandango Remastered",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Grow Home",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "GTFO",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Guacamelee! Super Turbo Championship Edition",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Guild of Dungeoneering",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Guild Wars 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "H1Z1  King of the Kill",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hard West",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hatred",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hearthstone  Heroes of Warcraft",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hearts of Iron IV",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Her Story",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Heroes & Generals",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Heroes of the Storm",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hitman",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Homefront  The Revolution",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Homesick",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Homeworld  Deserts of Kharak",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Homeworld Remastered Collection",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hotline Miami 2  Wrong Number",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "HuniePop",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Hyper Light Drifter",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Inside",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Insurgency",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Invisible inc.",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "iRacing",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Jurassic World Evolution",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Just Cause 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Kerbal Space Program",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Kholat",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Killing Floor 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Knight Online",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Labyrinth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Lara Croft GO",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Layers of Fear",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Left 4 Dead 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Legend of Grimrock 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Life is Strange",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Luftrausers",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Mafia III",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Magic Duels",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Magicka  Wizard Wars",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Medieval II  Total War",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Mercenary Kings",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Metal Gear Solid V  The Phantom Pain",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Metro Redux",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Microsoft Flight Simulator X",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Middle-earth  Shadow of Mordor",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Moebius  Empire Rising",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Moonlighter",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Mortal Kombat X",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Mount & Blade  Warband",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "NBA 2K15",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "NBA 2K17",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Need for Speed",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Neon Space",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Neon Space 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "No Thing",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Not a Hero",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Ori and the Blind Forest",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Overpower",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Overwatch 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Oxenfree",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Paladins",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Path of Exile",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Payday 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Pillars of Eternity",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Pillars of Eternity II  Deadfire",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Plague Inc  Evolved",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Planet Alpha",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Planet Coaster",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "PlanetSide 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Pony Island",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Prey",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Prison Architect",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Pro Evolution Soccer 2017",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Project cars",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Project Cars 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Punch Club",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Quadrilateral Cowboy",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Quake 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Read Only Memories",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Rebel Galaxy",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Resident Evil 7  Biohazard",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Resident Evil HD Remaster",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog",
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Riders of Icarus",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "RimWorld",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Rise of the Tomb Raider",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Roblox",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Robocraft",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Rocket League",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Ronin",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Rules Of Survival",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Runescape 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Rust",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Saints Row IV",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "School Girl/Zombie Hunter",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shadow of the Tomb Raider",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shadow Tactics  Blades of the Shogun",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shadow Warrior 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shadowrun  Hong Kong",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shadowverse",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Sherlock Holmes  Crimes & Punishments",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Shovel Knight",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Sid Meier's Civilization V",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Sid Meier's Starships",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Slay the Spire",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "SMITE",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Sniper Elite 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "SOMA",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Soulcalibur VI",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "South Park  The Stick of Truth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Space Engineers",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Spider Solitaire",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Squad",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Star Citizen",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Star Wars The Old Republic",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Starbound",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "StarCraft II",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Stardew Valley",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Stellaris",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Stellaris  Apocalypse",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Stellaris  Distant Stars Story Pack",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Strange Brigade",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Street Fighter 2 Turbo",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Subnautica",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Subnautica 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Sunless Sea",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Super Mario Kart",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Super Time Force Ultra",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Superhot",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Supreme Commander  Forged Alliance",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tails",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tales from the Borderlands",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Team Fortress 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "TERA",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Terraria",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "That Dragon, Cancer",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Banner Saga",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Banner Saga 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Beginner's Guide",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Binding of Isaac  Afterbirth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Binding of Isaac  Rebirth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Book of Unwritten Tales 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Crew 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Elder Scrolls Online",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Elder Scrolls Online  Tamriel Unlimited",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Elder Scrolls V  Skyrim",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Flame in the Flood",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Forest",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Incredible Adventures of Van Helsing III",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Secret Monster Society",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Sims 3",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Sims 4",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Talos Principle",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Technomancer",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Walking Dead",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "The Witness",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Titan Souls",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Titanfall",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Titanfall 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tom Clancy's Rainbow Six Siege",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tom Clancy's The Division",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Torment  Tides of Numenera",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tormentum Dark Sorrow",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Total War  Attila",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Total War  Rome II Emperor Edition",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Total War  Shogun 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Total War  Warhammer",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Total War Saga  Thrones of Britannia",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tower of Time",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Transformers  Devastation",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Transistor",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Tree of Savior",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Trove",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Undertale",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Unravel",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Unturned",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Valheim",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Valiant Hearts  The Great War",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Valorant",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Vampyr",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Victor Vran",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Volume",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "War Thunder",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Warface",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Warframe",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Warhammer  End Times Vermintide",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Warhammer  Vermintide 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Watch Dogs 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "We Happy Few",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Wolfenstein  The New Order",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Wolfenstein 2  The New Colossus",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "World of Warcraft  Battle for Azeroth",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "World of Warships",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "X-Plane 11",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "XCOM 2",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    },
+    {
+      "name": "Youtubers Life",
+      "sources": [
+        "homepage:Search-FPS.html:autocompleteCatalog"
+      ]
+    }
+  ],
+  "howToResolveMore": [
+    "Save the specific game's own FPS-Estimates page (as done for Fortnite) — that resolves one name-only entry to a full id/url/sample-count record.",
+    "Save the AJAX response the \"308 MORE »\" button on the search page triggers, if it can be captured manually (e.g. via browser devtools Network tab) — that could resolve many at once. This tool cannot trigger that request itself.",
+    "Search the site for a specific name-only game by hand and save that search result page."
+  ]
+}

@@ -78,6 +78,34 @@ dynamically from a search endpoint at request time, or embedded per-page
 the way it is on the FPS-Estimates game pages themselves (see `parse.mjs`
 above) — it isn't shipped inside this shared JS bundle.
 
+## Known-games consolidator (`build-known-games.mjs`)
+
+A third tool that doesn't parse a new source — it merges what every other
+parser in this directory has *already* extracted into one deduplicated
+catalog, so "how many games do we actually know about, and how completely"
+has a single answer instead of being scattered across `parsed/*.json` and
+`homepage/parsed/*.json`. Run it any time after (re-)running the other
+parsers:
+```
+node research/userbenchmark/build-known-games.mjs
+```
+Output: `known-games.json`, with every game split into:
+- **`resolved`** — has a `gameId` + URL (+ sample count, where known) and
+  is directly reachable. Pulled from the single-game pages' own identity
+  and `relatedGamePages`, and the search page's `searchResultGames` and
+  `carouselGames`.
+- **`nameOnly`** — only a name is known, from the search page's site-wide
+  autocomplete list. **Not reachable** without either saving that specific
+  game's own page, or capturing the "308 MORE »" AJAX response by hand.
+
+As of the two sources saved so far: **12 resolved**, **303 name-only**,
+**315 total distinct games known** (from an autocomplete list of 316 raw
+"FPS Estimates …" name occurrences, minus 12 that turned out to already be
+resolved elsewhere, minus 1 genuine duplicate string in the source list
+itself — see `parse.mjs`'s `duplicateLabels`). This count only grows when
+a new source is saved and parsed — this tool performs no lookups of its
+own, it only re-aggregates existing parsed output.
+
 ## What gets extracted (parse.mjs)
 
 Per saved page, `parsed/<slug>.json` contains:
