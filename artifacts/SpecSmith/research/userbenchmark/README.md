@@ -1,4 +1,4 @@
-# UserBenchmark FPS-Estimates Parser
+# UserBenchmark FPS-Estimates Parser & Catalog Extractor
 
 > **Research-only. No network code anywhere in this directory.** This tool
 > parses page sources that a human has already saved to disk. It never
@@ -45,7 +45,40 @@ you already saved yourself.
 That's the entire workflow. There is no fetch step — adding a new source
 is purely "save it yourself, then run the parser."
 
-## What gets extracted
+## Game catalog extractor (`extract-game-catalog.mjs`)
+
+A second, separate tool for a different kind of source: a saved
+UserBenchmark **JavaScript asset** (not an HTML page), scanned for an
+embedded `/PCGame/FPS-Estimates-<slug>/<id>/` catalog of game name/ID
+pairs. Same rules as `parse.mjs` — reads only local files, no network code.
+
+1. Save the `.js` file to `research/userbenchmark/scripts/`.
+2. Run:
+   ```
+   node research/userbenchmark/extract-game-catalog.mjs
+   ```
+3. Output goes to `research/userbenchmark/game-catalog.json`: every
+   `/PCGame/FPS-Estimates-.../` entry found (id, slug, derived name,
+   occurrence count), plus duplicate-id and duplicate-name detection, plus
+   an explicit per-file **conclusion** — including "this file contains no
+   game-catalog data" when that's the honest answer. It reports a negative
+   finding openly rather than silently writing an empty array with no
+   explanation.
+
+The first file run through it (`scripts/userbenchmark.js`, UserBenchmark's
+generic site bundle — jQuery UI internals, Select2, the star-rating
+plugin, and UserBenchmark's own ad/nav/autocomplete-wiring helpers)
+contains **zero** game entries: no `/PCGame/` URLs, no literal "FPS
+Estimates" string, not even the substring "game" anywhere in the 402KB
+file (checked case-insensitively). That's expected once you look at what
+the file actually is — it's the *code* that wires up UserBenchmark's
+search box (`mcCoreSelect2Options`, a Select2 remote-data matcher/
+formatter), not a data file. The actual searchable catalog is loaded
+dynamically from a search endpoint at request time, or embedded per-page
+the way it is on the FPS-Estimates game pages themselves (see `parse.mjs`
+above) — it isn't shipped inside this shared JS bundle.
+
+## What gets extracted (parse.mjs)
 
 Per saved page, `parsed/<slug>.json` contains:
 

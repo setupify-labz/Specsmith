@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-08-18T01:00:44.174Z",
+  "note": "RESEARCH DATA — extracted from locally saved UserBenchmark JavaScript asset(s) in scripts/. No network request was made to produce this file.",
+  "filesScanned": [
+    {
+      "sourceFile": "userbenchmark.js",
+      "sourceFileSizeBytes": 402071,
+      "sourceFileLines": 9255,
+      "gameEntriesFound": 0,
+      "conclusion": "No game-catalog data of any kind found in this file — it contains neither the /PCGame/FPS-Estimates-.../  URL shape, the literal string \"FPS Estimates\", nor even the substring \"game\" (checked case-insensitively across the whole file). This file does not embed a searchable game catalog."
+    }
+  ],
+  "totalGameEntries": 0,
+  "duplicates": {
+    "duplicateGameIds": [],
+    "duplicateGameNames": []
+  },
+  "games": []
+}
