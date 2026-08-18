@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-08-18T01:15:22.090Z",
+  "note": "Index of all parsed UserBenchmark homepage/search page sources. Research data only.",
+  "pages": [
+    {
+      "sourceFile": "Search-FPS.html",
+      "outputFile": "Search-FPS.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 9,
+      "carouselGamesFound": 12,
+      "autocompleteItemsFound": 1347,
+      "autocompleteFpsGameNamesFound": 316,
+      "bestTableRows": 3,
+      "warningCount": 0
+    }
+  ]
+}
