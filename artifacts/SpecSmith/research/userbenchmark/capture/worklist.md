@@ -1,6 +1,6 @@
 # Capture worklist
 
-50 uncaptured game(s) · generated 2026-08-18T04:55:00.742Z
+50 uncaptured game(s) · generated 2026-08-18T05:26:03.611Z
 
 Open `capture/capture-helper.html` in your browser for the click-through version.
 This file is the same list in plain text.

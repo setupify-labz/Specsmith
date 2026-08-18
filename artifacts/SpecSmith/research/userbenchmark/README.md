@@ -30,7 +30,7 @@
 | GPU / CPU observations | 60 / 60 |
 | EFPS cross-validation | **1,014 / 1,014 sides agree, 0 mismatches** |
 | Validation | 0 errors, 1 warning (the capture gap) |
-| Tests | 180 passing |
+| Tests | 182 passing |
 
 **The binding constraint is capture, not code.** The machine is finished; it is
 waiting on saved pages. 313 of 316 games have no source. See
@@ -48,7 +48,7 @@ The decoding is now confirmed across three games parsed by identical code — se
 # discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
 node research/userbenchmark/ingest.mjs
 
-# Test suite (180 tests, zero dependencies)
+# Test suite (182 tests, zero dependencies)
 node research/userbenchmark/test/run-tests.mjs
 
 # Single-page parse only (writes parsed/<slug>.json)
@@ -88,7 +88,7 @@ research/userbenchmark/
 ├── efps/
 │   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
 ├── homepage/                 search/hub page parser (separate page type)
-├── test/                     180 tests + fixtures
+├── test/                     182 tests + fixtures
 ├── capture-manifest.json     per-game capture status (all 316)
 ├── coverage-report.md        generated coverage breakdown
 └── known-games.json          the 316-game catalog
@@ -152,11 +152,30 @@ its filename**, and reports one of:
 
 | Status | Meaning |
 |---|---|
-| `captured` | file exists and its canonical URL is the game requested |
+| `captured` | right game, and the save is complete |
 | `missing` | nothing arrived |
 | `wrong-game` | a file with that name exists but is a **different** game's page |
+| `incomplete-save` | right game, but the page's inline scripts were stripped |
 | `not-a-page` | exists but isn't an FPS-Estimates game page (e.g. an interstitial) |
 | `unreadable` | exists but could not be read |
+
+**`incomplete-save` deserves its own note.** The EFPS records and all three
+chart datasets live inside inline `<script>` blocks, not the rendered DOM, and
+many "save complete page" tools strip scripts by default. Such a file passes
+every other check — correct canonical URL, name, average FPS, sample count, and
+all 40 GPU/CPU rows — while carrying **0 EFPS records instead of ~200**.
+Measured on the real CS:GO page against a script-stripped copy of itself.
+Without this status a batch would report "50/50 captured" and the ingest "0
+validation errors" at the exact moment ~10,000 EFPS records were lost.
+
+Detection keys on the presence of inline script **bodies**, not on the EFPS
+count: a genuinely low-sample game may publish no EFPS records and must not be
+flagged for it, but it cannot arrive with its script bodies emptied. The
+separation is categorical rather than a tuned threshold — real pages carry 17
+non-empty inline scripts (72k–102k chars); a stripped save carries 0 while
+keeping the same 26 `<script>` tags. Verified against four cases: genuine,
+fully stripped, partially stripped (JS alive but data blocks removed), and
+sparse-but-genuine (charts intact, 0 EFPS → correctly `captured`).
 
 The `wrong-game` and `not-a-page` checks matter more than they sound. Saving
 dozens of pages by hand is exactly where a mis-clicked tab gets saved under the

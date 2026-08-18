@@ -130,6 +130,27 @@ describe('Canonical layout: capture tooling stays human-driven', () => {
     assert.ok(/wrong-game/.test(v.text), 'must be able to report a wrong-game mis-save');
   });
 
+  it('verify-capture detects incomplete (script-stripped) saves', () => {
+    // The EFPS records and chart data live in inline <script> blocks. A saver
+    // that strips scripts produces a file that passes every other check —
+    // right canonical URL, right name, right average FPS, all 40 table rows —
+    // and yields 0 EFPS instead of ~200. Without this status the batch reports
+    // "captured" and the ingest reports "0 errors" at the exact moment the
+    // primary dataset is gone.
+    const v = captureScripts.find((s) => s.file.endsWith('verify-capture.mjs'));
+    assert.ok(/incomplete-save/.test(v.text), 'must be able to report an incomplete save');
+    assert.ok(/inlineScriptStats|withBody/.test(v.text), 'must inspect inline script bodies');
+    assert.ok(/parseGamePage/.test(v.text), 'must measure completeness through the canonical parser, not a second one');
+  });
+
+  it('verify-capture does not flag a sparse game merely for having 0 EFPS', () => {
+    // A low-sample game may legitimately publish no EFPS records. The strip
+    // signal must be the missing script BODIES, not the record count alone.
+    const v = captureScripts.find((s) => s.file.endsWith('verify-capture.mjs'));
+    assert.ok(/chartsWithData/.test(v.text), 'must consider chart presence when EFPS count is 0');
+    assert.notOk(/efpsCount === 0\s*\)\s*\{\s*return[^}]*incomplete-save/.test(v.text), 'a bare 0-EFPS test must not by itself mark a save incomplete');
+  });
+
   it('verify-capture never renames, moves or deletes a saved page', () => {
     const v = captureScripts.find((s) => s.file.endsWith('verify-capture.mjs'));
     assert.notOk(/fs\.rename|fs\.rm\b|fs\.unlink|fs\.copyFile/.test(v.text), 'verification must report, not repair');
