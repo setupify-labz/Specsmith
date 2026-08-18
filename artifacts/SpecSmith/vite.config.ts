@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -66,5 +67,15 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+  },
+  test: {
+    // research/ holds research-only tooling that is not part of the shipped
+    // app. Its suites use a self-contained zero-dependency harness and are run
+    // by `node research/userbenchmark/test/run-tests.mjs`, not by Vitest.
+    // Vitest's default glob picks up their *.test.mjs files, finds no Vitest
+    // suite in them, and fails — which made `pnpm test` exit 1 even though all
+    // 94 application tests passed. Excluding the directory keeps one runner per
+    // suite instead of having Vitest half-adopt files it cannot execute.
+    exclude: ["**/node_modules/**", "**/dist/**", "research/**"],
   },
 });
