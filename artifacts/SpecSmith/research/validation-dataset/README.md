@@ -70,6 +70,25 @@ large enough that a stratified random split stops being fragile:
 node research/validation-dataset/build-dataset.mjs --strategy=random --seed=1 --holdout-fraction=0.35
 ```
 
+## Extension: collection-plan.mjs
+
+Built on top of the same coverage analysis, `collection-plan.mjs` turns
+`coverage-report.md`'s gap list into a concrete, prioritized list of the
+next 50 benchmark *targets* to go find real sources for — not measured
+data. Run it with:
+```
+node research/validation-dataset/collection-plan.mjs
+```
+It writes `collection-matrix.json` (machine-readable) and
+`collection-plan.md` (the research plan). See that file for the full
+rationale; in short, every target changes exactly one dimension away from
+an existing verified record (resolution, GPU, CPU, upscaler, or RT) so
+whatever number eventually gets collected has a direct, apples-to-apples
+comparison already in the dataset. No FPS values are invented — every
+target row is unmeasured by design, and the script validates every
+game/GPU/CPU id it references against the real catalogs before writing
+anything.
+
 ## Current numbers (see `coverage-report.md` for the full breakdown)
 
 - 23 total records, all usable for average-FPS validation; 10 of 23 also
