@@ -93,6 +93,15 @@
      --ff-card-hover — under WCAG AA's 4.5:1 floor for normal text, found via
      an axe-core audit. Same hue/saturation, nudged lighter to clear both. */
   --ff-text-3:    #8686B0;
+  /* AUDITING NOTE — do not lighten --ff-text-2/-3 again without checking this
+     first. An axe-core run against the home page reports both as ~3.9–4.1:1
+     failures if it scans too early: several cards fade in via an entrance
+     animation, and mid-fade the ancestor's opacity (~0.16 at 500ms, ~0.6
+     shortly after) blends the text toward the background. Effective opacity
+     reaches 1 by ~1.5s, and at that settled state both tokens pass with zero
+     violations. Give axe ~2.5s to settle before trusting a contrast result
+     here; lightening the tokens to satisfy the transient reading would wash
+     out this text everywhere it is used without an animation. */
   --ff-accent:    #6C63FF;
   /* Lighter than --ff-accent specifically for small accent-colored text on
      dark backgrounds — the base #6C63FF only hits ~3.9:1 contrast there,

@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-08-18T04:45:24.418Z",
+  "note": "Index of all parsed UserBenchmark homepage/search page sources. Research data only.",
+  "pages": [
+    {
+      "sourceFile": "Search-FPS-page1-ajax.xml",
+      "outputFile": "Search-FPS-page1-ajax.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 100,
+      "nonGameSearchHitsFound": 0,
+      "carouselGamesFound": 0,
+      "autocompleteItemsFound": 0,
+      "autocompleteFpsGameNamesFound": 0,
+      "bestTableRows": 0,
+      "warningCount": 4
+    },
+    {
+      "sourceFile": "Search-FPS-page2-ajax.xml",
+      "outputFile": "Search-FPS-page2-ajax.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 100,
+      "nonGameSearchHitsFound": 0,
+      "carouselGamesFound": 0,
+      "autocompleteItemsFound": 0,
+      "autocompleteFpsGameNamesFound": 0,
+      "bestTableRows": 0,
+      "warningCount": 4
+    },
+    {
+      "sourceFile": "Search-FPS-page3-ajax.xml",
+      "outputFile": "Search-FPS-page3-ajax.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 100,
+      "nonGameSearchHitsFound": 0,
+      "carouselGamesFound": 0,
+      "autocompleteItemsFound": 0,
+      "autocompleteFpsGameNamesFound": 0,
+      "bestTableRows": 0,
+      "warningCount": 4
+    },
+    {
+      "sourceFile": "Search-FPS-page4-ajax.xml",
+      "outputFile": "Search-FPS-page4-ajax.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 16,
+      "nonGameSearchHitsFound": 1,
+      "carouselGamesFound": 0,
+      "autocompleteItemsFound": 0,
+      "autocompleteFpsGameNamesFound": 0,
+      "bestTableRows": 0,
+      "warningCount": 4
+    },
+    {
+      "sourceFile": "Search-FPS.html",
+      "outputFile": "Search-FPS.json",
+      "totalHits": 317,
+      "searchResultGamesFound": 9,
+      "nonGameSearchHitsFound": 0,
+      "carouselGamesFound": 12,
+      "autocompleteItemsFound": 1347,
+      "autocompleteFpsGameNamesFound": 316,
+      "bestTableRows": 3,
+      "warningCount": 0
+    }
+  ]
+}

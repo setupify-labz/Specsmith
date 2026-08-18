@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-08-18T05:26:03.674Z",
+  "source": "UserBenchmark",
+  "parserVersion": "ub-research/2.0.0",
+  "efpsExtractorVersion": "ub-efps/1.0.0",
+  "researchOnly": true,
+  "dataQualityNote": "These are crowd-sourced, self-reported values extracted from a third-party aggregator. Parsing cleanly makes a record \"structurally-validated\" and nothing more. None of this is a SpecSmith verified benchmark record.",
+  "catalog": {
+    "totalKnownGames": 316,
+    "captured": 3,
+    "notCaptured": 313,
+    "capturePercent": 0.95,
+    "parsed": 3,
+    "capturedButNotParsed": 0,
+    "unlistedSavedGames": 0
+  },
+  "sources": {
+    "filesDiscovered": 3,
+    "parsedAsGamePages": 3,
+    "skippedNotGamePages": 0,
+    "parserThrew": 0
+  },
+  "records": {
+    "games": 3,
+    "efpsDirect": 81,
+    "efpsComparisons": 519,
+    "efpsTotal": 600,
+    "cpuObservations": 60,
+    "gpuObservations": 60,
+    "configurations": 147,
+    "distributions": 9,
+    "rejected": 0,
+    "duplicatesRemoved": 0,
+    "conflictKeys": 0
+  },
+  "chartCoverage": {
+    "gamesWithFpsHistogram": 3,
+    "gamesWithSettingsDistribution": 3,
+    "gamesWithResolutionDistribution": 3,
+    "ofGamesParsed": 3
+  },
+  "configurationDecoding": {
+    "efpsFieldsProven": [
+      "field0=game",
+      "field1=GPU",
+      "field2=CPU"
+    ],
+    "efpsFieldsUnresolved": [
+      "field3 — never populated in any saved source"
+    ],
+    "filterPathProven": [
+      "position0=gpuId",
+      "position1=cpuId",
+      "position4=cpuFamilyFilter"
+    ],
+    "filterPathUnresolved": [
+      "position2",
+      "position3"
+    ],
+    "efpsRecordsFullyDecoded": 600,
+    "efpsRecordsUnresolved": 0,
+    "configurationsUnresolved": 0,
+    "resolutionAndSettingsDimensions": "NOT present in either the EFPS URL or the game-page filter path on any saved source. Resolution/settings appear only as page-level chart aggregates, which cannot be joined to a specific (GPU, CPU) EFPS observation."
+  },
+  "efpsCrossValidation": {
+    "checked": 1014,
+    "agreed": 1014,
+    "mismatched": 0
+  },
+  "validation": {
+    "total": 1,
+    "errors": 0,
+    "warnings": 1,
+    "byRule": {
+      "warning:catalog.pages-not-captured": 1
+    }
+  },
+  "biggestGaps": [
+    "313 of 316 known games have no saved source (99.05% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
+    "EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.",
+    "Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven."
+  ],
+  "perGame": [
+    {
+      "gameId": "3680",
+      "name": "Counter-Strike: Global Offensive",
+      "parsed": true,
+      "averageFps": 153,
+      "totalSamples": 151690,
+      "efpsTotal": 200,
+      "efpsDirect": 27,
+      "efpsComparisons": 173,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 0
+    },
+    {
+      "gameId": "3954",
+      "name": "Fortnite",
+      "parsed": true,
+      "averageFps": 96,
+      "totalSamples": 87737,
+      "efpsTotal": 200,
+      "efpsDirect": 27,
+      "efpsComparisons": 173,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 0
+    },
+    {
+      "gameId": "3944",
+      "name": "PlayerUnknown's Battlegrounds",
+      "parsed": true,
+      "averageFps": 75.5,
+      "totalSamples": 75383,
+      "efpsTotal": 200,
+      "efpsDirect": 27,
+      "efpsComparisons": 173,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 0
+    }
+  ]
+}

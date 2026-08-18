@@ -1,0 +1,287 @@
+{
+  "_meta": {
+    "sourceFile": "Search-FPS-page4-ajax.xml",
+    "parsedAt": "2026-08-18T04:45:24.413Z",
+    "parserNote": "RESEARCH DATA — extracted from a locally saved UserBenchmark page source. Not fetched by this tool. Not a BenchmarkRecord.",
+    "warnings": [
+      "No <title> found.",
+      "[bestTable] No \"The Best\" table found.",
+      "[carouselGames] No \"Can You Run It?\" carousel entries found.",
+      "[autocompleteCatalog] No mhasearchcomp(...) autocomplete array found."
+    ]
+  },
+  "pageContext": {
+    "title": null,
+    "robotsMeta": null,
+    "searchFormAction": "/pages/search.xhtml?searchTerm=FPS",
+    "searchTerm": null
+  },
+  "hitsSummary": {
+    "totalHits": 317,
+    "shownCount": 17
+  },
+  "searchResultGames": [
+    {
+      "name": "Downfall",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3697",
+      "slug": "Downfall",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Downfall/3697/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "iRacing",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4068",
+      "slug": "iRacing",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-iRacing/4068/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Forza Horizon 4",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4067",
+      "slug": "Forza-Horizon-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Forza-Horizon-4/4067/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Shadowverse",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4002",
+      "slug": "Shadowverse",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadowverse/4002/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Tower of Time",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3988",
+      "slug": "Tower-of-Time",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tower-of-Time/3988/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Titan Souls",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3857",
+      "slug": "Titan-Souls",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Titan-Souls/3857/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "The Beginner's Guide",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3842",
+      "slug": "The-Beginners-Guide",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Beginners-Guide/3842/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "That Dragon, Cancer",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3839",
+      "slug": "That-Dragon-Cancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-That-Dragon-Cancer/3839/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Super Time Force Ultra",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3833",
+      "slug": "Super-Time-Force-Ultra",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Super-Time-Force-Ultra/3833/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Quadrilateral Cowboy",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3802",
+      "slug": "Quadrilateral-Cowboy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Quadrilateral-Cowboy/3802/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Moebius: Empire Rising",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3777",
+      "slug": "Moebius--Empire-Rising",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Moebius--Empire-Rising/3777/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Homesick",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "3745",
+      "slug": "Homesick",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Homesick/3745/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Quake 2",
+      "caption": "FPS Estimates - $29",
+      "sampleCount": null,
+      "gameId": "1214",
+      "slug": "Quake-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Quake-2/1214/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Super Mario Kart",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "1143",
+      "slug": "Super-Mario-Kart",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Super-Mario-Kart/1143/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Street Fighter 2 Turbo",
+      "caption": "FPS Estimates - $29",
+      "sampleCount": null,
+      "gameId": "775",
+      "slug": "Street-Fighter-2-Turbo",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Street-Fighter-2-Turbo/775/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Supreme Commander: Forged Alliance",
+      "caption": "FPS Estimates - $14",
+      "sampleCount": null,
+      "gameId": "774",
+      "slug": "Supreme-Commander--Forged-Alliance",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Supreme-Commander--Forged-Alliance/774/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    }
+  ],
+  "nonGameSearchHits": [
+    {
+      "name": "DZI9B2GJKEOMEC-FPS 1x12GB",
+      "caption": "Blade",
+      "desc": "1 User benchmark, average bench 63%",
+      "url": "https://ram.userbenchmark.com/SpeedTest/1474350/Blade-DZI9B2GJKEOMEC-FPS-1x12GB",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/generic/ram/base.jpg"
+    }
+  ],
+  "facets": {
+    "Subdomain": [
+      {
+        "label": "www",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BSubdomain%3A%22www%22+%2BFPS"
+      },
+      {
+        "label": "ram",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BSubdomain%3A%22ram%22+%2BFPS"
+      }
+    ],
+    "Type": [
+      {
+        "label": "Product",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BType%3A%22Product%22+%2BFPS"
+      },
+      {
+        "label": "Component",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BType%3A%22Component%22+%2BFPS"
+      }
+    ],
+    "Category": [
+      {
+        "label": "Computer Games",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BCategory%3A%22Computer+Games%22+%2BFPS"
+      },
+      {
+        "label": "Memory Kits",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BCategory%3A%22Memory+Kits%22+%2BFPS"
+      }
+    ],
+    "Brand": [
+      {
+        "label": "FPS Estimates",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BBrand%3A%22FPS+Estimates%22+%2BFPS"
+      },
+      {
+        "label": "Blade",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BBrand%3A%22Blade%22+%2BFPS"
+      }
+    ]
+  },
+  "paginationGap": {
+    "source": "ajax-page",
+    "resultsPerPage": 100,
+    "currentPage": 4,
+    "totalPages": 4,
+    "nextPagePGMP": null,
+    "prevPagePGMP": 3,
+    "reachableViaStaticUrl": false,
+    "mechanism": "JSF/Mojarra AJAX form postback (mojarra.ab), captured by hand from a browser devtools Network tab — no GET URL exists for this page."
+  },
+  "bestTable": {
+    "columns": [],
+    "rows": []
+  },
+  "carouselGames": [],
+  "autocompleteCatalog": {
+    "totalItems": 0,
+    "items": [],
+    "fpsEstimatesGameNames": [],
+    "duplicateLabels": []
+  },
+  "affiliateLinks": [],
+  "gapReport": [
+    {
+      "dimension": "RAM",
+      "embeddedOnThisPage": "Nav link only (ram.userbenchmark.com) + one facet count (\"ram\" subdomain: 1 hit; \"Memory Kits\" category: 1 hit). No RAM product names, scores, or rankings are embedded.",
+      "wouldRequire": "Fetching ram.userbenchmark.com directly — a separate subdomain/page this tool was not given and does not fetch."
+    },
+    {
+      "dimension": "Storage (HDD)",
+      "embeddedOnThisPage": "Nav link only (hdd.userbenchmark.com). Zero HDD products, scores, or data embedded anywhere on this page.",
+      "wouldRequire": "Fetching hdd.userbenchmark.com directly."
+    },
+    {
+      "dimension": "Storage (SSD)",
+      "embeddedOnThisPage": "Present, but only in \"The Best\" table: name + rating URL + live price. No bench/value score, no sample count.",
+      "wouldRequire": "Fetching the SSD's own /Rating/<id> page (e.g. ssd.userbenchmark.com/.../Rating/4188) for a score or sample count."
+    },
+    {
+      "dimension": "USB",
+      "embeddedOnThisPage": "Nav link only (usb.userbenchmark.com). Zero USB products or data embedded.",
+      "wouldRequire": "Fetching usb.userbenchmark.com directly."
+    },
+    {
+      "dimension": "CPU / GPU numeric benchmark score",
+      "embeddedOnThisPage": "Not present anywhere on this page. \"The Best\" table has name + price only, no bench%/value% (unlike the FPS-Estimates game pages' GPU/CPU tables, which do carry a Bench % and Value % — see ../parse.mjs).",
+      "wouldRequire": "Fetching the component's own /Rating/<id> page, or a game's FPS-Estimates page (which does carry bench/value percentages per part, for that specific game)."
+    },
+    {
+      "dimension": "Full FPS-Estimates game catalog with IDs",
+      "embeddedOnThisPage": "16 of 317 total hits on this specific page carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists 0 \"FPS Estimates <Game>\" NAMES, but with zero ids/URLs attached to any of them.",
+      "wouldRequire": "The \"308 MORE »\" AJAX pagination control (a JSF/Mojarra form postback, not a GET URL — see paginationGap below) to resolve the remaining hits' ids/URLs, or visiting each named game individually via search."
+    },
+    {
+      "dimension": "Explicit numeric ranking/position",
+      "embeddedOnThisPage": "\"The Best\" table's 3 rows are presented top-to-bottom without an explicit rank number, price tier label, or score attached to that ordering — the ranking is positional/implicit only, not a labeled field.",
+      "wouldRequire": "Nothing on this page makes the ranking criteria explicit; would need the site's own ranking/methodology page or each part's dedicated Rating page."
+    }
+  ]
+}

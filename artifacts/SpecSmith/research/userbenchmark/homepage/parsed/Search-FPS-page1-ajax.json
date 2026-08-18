@@ -1,0 +1,1035 @@
+{
+  "_meta": {
+    "sourceFile": "Search-FPS-page1-ajax.xml",
+    "parsedAt": "2026-08-18T04:45:24.394Z",
+    "parserNote": "RESEARCH DATA — extracted from a locally saved UserBenchmark page source. Not fetched by this tool. Not a BenchmarkRecord.",
+    "warnings": [
+      "No <title> found.",
+      "[bestTable] No \"The Best\" table found.",
+      "[carouselGames] No \"Can You Run It?\" carousel entries found.",
+      "[autocompleteCatalog] No mhasearchcomp(...) autocomplete array found."
+    ]
+  },
+  "pageContext": {
+    "title": null,
+    "robotsMeta": null,
+    "searchFormAction": "/pages/search.xhtml?searchTerm=FPS",
+    "searchTerm": null
+  },
+  "hitsSummary": {
+    "totalHits": 317,
+    "shownCount": 100
+  },
+  "searchResultGames": [
+    {
+      "name": "Counter-Strike: Global Offensive",
+      "caption": "FPS Estimates (CSGO)",
+      "sampleCount": 151690,
+      "gameId": "3680",
+      "slug": "Counter-Strike--Global-Offensive",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/csgo.png"
+    },
+    {
+      "name": "Fortnite",
+      "caption": "FPS Estimates",
+      "sampleCount": 87737,
+      "gameId": "3954",
+      "slug": "Fortnite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/fortnite.png"
+    },
+    {
+      "name": "PlayerUnknown's Battlegrounds",
+      "caption": "FPS Estimates (PUBG)",
+      "sampleCount": 75383,
+      "gameId": "3944",
+      "slug": "PlayerUnknowns-Battlegrounds",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/PUBGT.png"
+    },
+    {
+      "name": "Grand Theft Auto V",
+      "caption": "FPS Estimates (GTAV)",
+      "sampleCount": 71870,
+      "gameId": "3727",
+      "slug": "Grand-Theft-Auto-V",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grand-Theft-Auto-V/3727/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/gtav2.png"
+    },
+    {
+      "name": "League of Legends",
+      "caption": "FPS Estimates (LoL)",
+      "sampleCount": 68277,
+      "gameId": "3761",
+      "slug": "League-of-Legends",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-League-of-Legends/3761/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/league_of_legends.png"
+    },
+    {
+      "name": "Overwatch",
+      "caption": "FPS Estimates",
+      "sampleCount": 54796,
+      "gameId": "3789",
+      "slug": "Overwatch",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch/3789/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/overwatch3.png"
+    },
+    {
+      "name": "Battlefield 1",
+      "caption": "FPS Estimates (BF1)",
+      "sampleCount": 28457,
+      "gameId": "3664",
+      "slug": "Battlefield-1",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/bf1.jpg"
+    },
+    {
+      "name": "The Witcher 3: Wild Hunt",
+      "caption": "FPS Estimates",
+      "sampleCount": 25546,
+      "gameId": "3855",
+      "slug": "The-Witcher-3--Wild-Hunt",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Witcher-3--Wild-Hunt/3855/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/the_witcher_3_wild_hunt.png"
+    },
+    {
+      "name": "Minecraft",
+      "caption": "FPS Estimates",
+      "sampleCount": 23472,
+      "gameId": "3776",
+      "slug": "Minecraft",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Minecraft/3776/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/minecraft.png"
+    },
+    {
+      "name": "DOTA 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 20239,
+      "gameId": "3684",
+      "slug": "DOTA-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOTA-2/3684/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/dota2.jpg"
+    },
+    {
+      "name": "World of Warcraft",
+      "caption": "FPS Estimates (WoW)",
+      "sampleCount": 17930,
+      "gameId": "3882",
+      "slug": "World-of-Warcraft",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft/3882/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/world_of_warcraft.png"
+    },
+    {
+      "name": "World of Tanks",
+      "caption": "FPS Estimates (WoT)",
+      "sampleCount": 17710,
+      "gameId": "3881",
+      "slug": "World-of-Tanks",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Tanks/3881/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/world_of_tanks.png"
+    },
+    {
+      "name": "Tom Clancy's Rainbow Six Siege",
+      "caption": "FPS Estimates",
+      "sampleCount": 16591,
+      "gameId": "3859",
+      "slug": "Tom-Clancys-Rainbow-Six-Siege",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tom-Clancys-Rainbow-Six-Siege/3859/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/rainbow6.png"
+    },
+    {
+      "name": "Apex Legends",
+      "caption": "FPS Estimates",
+      "sampleCount": 15084,
+      "gameId": "4036",
+      "slug": "Apex-Legends",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/apex_legends.jfif"
+    },
+    {
+      "name": "Battlefield 4",
+      "caption": "FPS Estimates (BF4)",
+      "sampleCount": 12753,
+      "gameId": "3665",
+      "slug": "Battlefield-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/bf4.jpg"
+    },
+    {
+      "name": "Fallout 4",
+      "caption": "FPS Estimates",
+      "sampleCount": 10024,
+      "gameId": "3715",
+      "slug": "Fallout-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fallout-4/3715/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/fallout4.png"
+    },
+    {
+      "name": "Battlefield 5",
+      "caption": "FPS Estimates (BFV)",
+      "sampleCount": 8948,
+      "gameId": "3961",
+      "slug": "Battlefield-5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/bf5.png"
+    },
+    {
+      "name": "Call of Duty: Black Ops 4",
+      "caption": "FPS Estimates",
+      "sampleCount": 7698,
+      "gameId": "3965",
+      "slug": "Call-of-Duty--Black-Ops-4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codblackops4.png"
+    },
+    {
+      "name": "Rust",
+      "caption": "FPS Estimates",
+      "sampleCount": 6199,
+      "gameId": "3813",
+      "slug": "Rust",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rust/3813/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/rust.png"
+    },
+    {
+      "name": "ARK: Survival Evolved",
+      "caption": "FPS Estimates",
+      "sampleCount": 5765,
+      "gameId": "3653",
+      "slug": "ARK--Survival-Evolved",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/ark.png"
+    },
+    {
+      "name": "Rocket League",
+      "caption": "FPS Estimates",
+      "sampleCount": 5632,
+      "gameId": "3811",
+      "slug": "Rocket-League",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rocket-League/3811/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/rocketleague.png"
+    },
+    {
+      "name": "Rise of the Tomb Raider",
+      "caption": "FPS Estimates",
+      "sampleCount": 4867,
+      "gameId": "3809",
+      "slug": "Rise-of-the-Tomb-Raider",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Rise-of-the-Tomb-Raider/3809/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/rise_of_the_tomb_raider.jpg"
+    },
+    {
+      "name": "Assassin's Creed Odyssey",
+      "caption": "FPS Estimates (ACO)",
+      "sampleCount": 4838,
+      "gameId": "4032",
+      "slug": "Assassins-Creed-Odyssey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/assassinscreedodyssey.png"
+    },
+    {
+      "name": "World of Warcraft: Battle for Azeroth",
+      "caption": "FPS Estimates",
+      "sampleCount": 4659,
+      "gameId": "3980",
+      "slug": "World-of-Warcraft--Battle-for-Azeroth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft--Battle-for-Azeroth/3980/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/wow_azeroth.png"
+    },
+    {
+      "name": "Arma 3",
+      "caption": "FPS Estimates",
+      "sampleCount": 4108,
+      "gameId": "3660",
+      "slug": "Arma-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/arma3.png"
+    },
+    {
+      "name": "Far Cry 5",
+      "caption": "FPS Estimates",
+      "sampleCount": 3610,
+      "gameId": "3973",
+      "slug": "Far-Cry-5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Far-Cry-5/3973/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/farcry5.png"
+    },
+    {
+      "name": "The Elder Scrolls V: Skyrim",
+      "caption": "FPS Estimates",
+      "sampleCount": 2423,
+      "gameId": "3847",
+      "slug": "The-Elder-Scrolls-V--Skyrim",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-V--Skyrim/3847/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/skyrim.png"
+    },
+    {
+      "name": "DOOM",
+      "caption": "FPS Estimates",
+      "sampleCount": 2403,
+      "gameId": "3683",
+      "slug": "DOOM",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOOM/3683/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/doom.png"
+    },
+    {
+      "name": "Warframe",
+      "caption": "FPS Estimates",
+      "sampleCount": 2172,
+      "gameId": "3878",
+      "slug": "Warframe",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warframe/3878/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/warframe.png"
+    },
+    {
+      "name": "Assassin's Creed Origins",
+      "caption": "FPS Estimates",
+      "sampleCount": 2016,
+      "gameId": "3960",
+      "slug": "Assassins-Creed-Origins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/assassinscreedorigins.png"
+    },
+    {
+      "name": "Call of Duty: Black Ops III",
+      "caption": "FPS Estimates",
+      "sampleCount": 1512,
+      "gameId": "3672",
+      "slug": "Call-of-Duty--Black-Ops-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codblackops3.png"
+    },
+    {
+      "name": "Cities: Skylines",
+      "caption": "FPS Estimates",
+      "sampleCount": 1229,
+      "gameId": "3676",
+      "slug": "Cities--Skylines",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/cskylines.png"
+    },
+    {
+      "name": "World of Warships",
+      "caption": "FPS Estimates",
+      "sampleCount": 1210,
+      "gameId": "3983",
+      "slug": "World-of-Warships",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warships/3983/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/world_of_warships.png"
+    },
+    {
+      "name": "Borderlands 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 1086,
+      "gameId": "3669",
+      "slug": "Borderlands-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/borderlands2.png"
+    },
+    {
+      "name": "Microsoft Flight Simulator X",
+      "caption": "FPS Estimates",
+      "sampleCount": 1008,
+      "gameId": "3774",
+      "slug": "Microsoft-Flight-Simulator-X",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Microsoft-Flight-Simulator-X/3774/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/flightsim.png"
+    },
+    {
+      "name": "Black Desert",
+      "caption": "FPS Estimates",
+      "sampleCount": 975,
+      "gameId": "3963",
+      "slug": "Black-Desert",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/black_desert.png"
+    },
+    {
+      "name": "Garry's Mod",
+      "caption": "FPS Estimates",
+      "sampleCount": 786,
+      "gameId": "3725",
+      "slug": "Garrys-Mod",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Garrys-Mod/3725/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/garrysmod.png"
+    },
+    {
+      "name": "American Truck Simulator",
+      "caption": "FPS Estimates",
+      "sampleCount": 688,
+      "gameId": "3657",
+      "slug": "American-Truck-Simulator",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-American-Truck-Simulator/3657/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/atsimulator.png"
+    },
+    {
+      "name": "Call of Duty: World at War",
+      "caption": "FPS Estimates",
+      "sampleCount": 651,
+      "gameId": "3673",
+      "slug": "Call-of-Duty--World-at-War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--World-at-War/3673/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codworldatwar.png"
+    },
+    {
+      "name": "Dark Souls III",
+      "caption": "FPS Estimates",
+      "sampleCount": 619,
+      "gameId": "3687",
+      "slug": "Dark-Souls-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls-III/3687/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/darksouls3.png"
+    },
+    {
+      "name": "Total War: Warhammer",
+      "caption": "FPS Estimates",
+      "sampleCount": 613,
+      "gameId": "3865",
+      "slug": "Total-War--Warhammer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Total-War--Warhammer/3865/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/totalwar.png"
+    },
+    {
+      "name": "Call of Duty modern warfare 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 551,
+      "gameId": "3966",
+      "slug": "Call-of-Duty-modern-warfare-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-modern-warfare-2/3966/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codmw2.png"
+    },
+    {
+      "name": "7 Days to Die",
+      "caption": "FPS Estimates",
+      "sampleCount": 525,
+      "gameId": "3959",
+      "slug": "7-Days-to-Die",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/7daystodie.png"
+    },
+    {
+      "name": "Call of Duty WWII",
+      "caption": "FPS Estimates",
+      "sampleCount": 471,
+      "gameId": "3967",
+      "slug": "Call-of-Duty-WWII",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-WWII/3967/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codww2.png"
+    },
+    {
+      "name": "BeamNG",
+      "caption": "FPS Estimates",
+      "sampleCount": 363,
+      "gameId": "3962",
+      "slug": "BeamNG",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BeamNG/3962/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/beamng.png"
+    },
+    {
+      "name": "Subnautica",
+      "caption": "FPS Estimates",
+      "sampleCount": 263,
+      "gameId": "3978",
+      "slug": "Subnautica",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Subnautica/3978/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/subnautica.png"
+    },
+    {
+      "name": "The Elder Scrolls Online",
+      "caption": "FPS Estimates",
+      "sampleCount": 222,
+      "gameId": "3972",
+      "slug": "The-Elder-Scrolls-Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-Online/3972/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/elderonline.png"
+    },
+    {
+      "name": "Black Squad",
+      "caption": "FPS Estimates",
+      "sampleCount": 173,
+      "gameId": "3964",
+      "slug": "Black-Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Squad/3964/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/blacksquad.png"
+    },
+    {
+      "name": "Runescape 3",
+      "caption": "FPS Estimates",
+      "sampleCount": 172,
+      "gameId": "3977",
+      "slug": "Runescape-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Runescape-3/3977/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/rs3.png"
+    },
+    {
+      "name": "The Forest",
+      "caption": "FPS Estimates",
+      "sampleCount": 163,
+      "gameId": "3974",
+      "slug": "The-Forest",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Forest/3974/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/forest.png"
+    },
+    {
+      "name": "Hearthstone: Heroes of Warcraft",
+      "caption": "FPS Estimates",
+      "sampleCount": 158,
+      "gameId": "3738",
+      "slug": "Hearthstone--Heroes-of-Warcraft",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Hearthstone--Heroes-of-Warcraft/3738/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/hearthstone.png"
+    },
+    {
+      "name": "Warhammer: Vermintide 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 114,
+      "gameId": "3979",
+      "slug": "Warhammer--Vermintide-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warhammer--Vermintide-2/3979/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/vermintide.png"
+    },
+    {
+      "name": "Conan Exiles",
+      "caption": "FPS Estimates",
+      "sampleCount": 113,
+      "gameId": "3968",
+      "slug": "Conan-Exiles",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Conan-Exiles/3968/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/conanexiles.png"
+    },
+    {
+      "name": "Dauntless",
+      "caption": "FPS Estimates",
+      "sampleCount": 66,
+      "gameId": "3971",
+      "slug": "Dauntless",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dauntless/3971/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/dauntless.png"
+    },
+    {
+      "name": "Frostpunk",
+      "caption": "FPS Estimates",
+      "sampleCount": 53,
+      "gameId": "3975",
+      "slug": "Frostpunk",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Frostpunk/3975/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/frostpunk.png"
+    },
+    {
+      "name": "Prey",
+      "caption": "FPS Estimates",
+      "sampleCount": 31,
+      "gameId": "3976",
+      "slug": "Prey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Prey/3976/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/prey.jpg"
+    },
+    {
+      "name": "Crash Bandicoot N.Sane Trilogy",
+      "caption": "FPS Estimates",
+      "sampleCount": 29,
+      "gameId": "3969",
+      "slug": "Crash-Bandicoot-NSane-Trilogy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crash-Bandicoot-NSane-Trilogy/3969/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/crashbandicootnsane.png"
+    },
+    {
+      "name": "Subnautica 2",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4192",
+      "slug": "Subnautica-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Subnautica-2/4192/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/subnautica2.png"
+    },
+    {
+      "name": "Counter-Strike: 2",
+      "caption": "FPS Estimates (CS2)",
+      "sampleCount": null,
+      "gameId": "4187",
+      "slug": "Counter-Strike--2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--2/4187/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/cs2.jpg"
+    },
+    {
+      "name": "Battlefield 6",
+      "caption": "FPS Estimates (BF6)",
+      "sampleCount": null,
+      "gameId": "4186",
+      "slug": "Battlefield-6",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/bf6.jpg"
+    },
+    {
+      "name": "Overwatch 2",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4135",
+      "slug": "Overwatch-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch-2/4135/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/overwatch2.png"
+    },
+    {
+      "name": "Call of Duty: Warzone",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4114",
+      "slug": "Call-of-Duty--Warzone",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Warzone/4114/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/codwarzone.png"
+    },
+    {
+      "name": "Valheim",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4106",
+      "slug": "Valheim",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Valheim/4106/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/valheim.png"
+    },
+    {
+      "name": "Valorant",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4093",
+      "slug": "Valorant",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Valorant/4093/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/valorant.png"
+    },
+    {
+      "name": "Cyberpunk 2077",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4092",
+      "slug": "Cyberpunk-2077",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cyberpunk-2077/4092/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/cyberpunk.png"
+    },
+    {
+      "name": "Destiny 2",
+      "caption": "FPS Estimates",
+      "sampleCount": null,
+      "gameId": "4061",
+      "slug": "Destiny-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Destiny-2/4061/0.0.0.0.0",
+      "iconUrl": "https://static.userbenchmark.com/resources/static/games/destiny2.png"
+    },
+    {
+      "name": "War Thunder",
+      "caption": "FPS Estimates",
+      "sampleCount": 2735,
+      "gameId": "3876",
+      "slug": "War-Thunder",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-War-Thunder/3876/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Euro Truck Simulator 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 2632,
+      "gameId": "3709",
+      "slug": "Euro-Truck-Simulator-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Euro-Truck-Simulator-2/3709/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Team Fortress 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 1706,
+      "gameId": "3837",
+      "slug": "Team-Fortress-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Team-Fortress-2/3837/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "H1Z1: King of the Kill",
+      "caption": "FPS Estimates",
+      "sampleCount": 1482,
+      "gameId": "3735",
+      "slug": "H1Z1--King-of-the-Kill",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-H1Z1--King-of-the-Kill/3735/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Tom Clancy's The Division",
+      "caption": "FPS Estimates",
+      "sampleCount": 1403,
+      "gameId": "3860",
+      "slug": "Tom-Clancys-The-Division",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Tom-Clancys-The-Division/3860/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Diablo III",
+      "caption": "FPS Estimates",
+      "sampleCount": 1322,
+      "gameId": "3694",
+      "slug": "Diablo-III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Diablo-III/3694/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Paladins",
+      "caption": "FPS Estimates",
+      "sampleCount": 1200,
+      "gameId": "3791",
+      "slug": "Paladins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Paladins/3791/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Guild Wars 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 1192,
+      "gameId": "3733",
+      "slug": "Guild-Wars-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Guild-Wars-2/3733/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Path of Exile",
+      "caption": "FPS Estimates",
+      "sampleCount": 1002,
+      "gameId": "3792",
+      "slug": "Path-of-Exile",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Path-of-Exile/3792/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Need for Speed",
+      "caption": "FPS Estimates",
+      "sampleCount": 999,
+      "gameId": "3782",
+      "slug": "Need-for-Speed",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Need-for-Speed/3782/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "X-Plane 11",
+      "caption": "FPS Estimates",
+      "sampleCount": 982,
+      "gameId": "3981",
+      "slug": "X-Plane-11",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-X-Plane-11/3981/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Escape from Tarkov",
+      "caption": "FPS Estimates",
+      "sampleCount": 931,
+      "gameId": "4019",
+      "slug": "Escape-from-Tarkov",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Escape-from-Tarkov/4019/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "StarCraft II",
+      "caption": "FPS Estimates",
+      "sampleCount": 924,
+      "gameId": "3828",
+      "slug": "StarCraft-II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-StarCraft-II/3828/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Shadow of the Tomb Raider",
+      "caption": "FPS Estimates",
+      "sampleCount": 857,
+      "gameId": "4004",
+      "slug": "Shadow-of-the-Tomb-Raider-",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Shadow-of-the-Tomb-Raider-/4004/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Forza Horizon 3",
+      "caption": "FPS Estimates",
+      "sampleCount": 853,
+      "gameId": "4018",
+      "slug": "Forza-Horizon-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Forza-Horizon-3/4018/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Assetto Corsa",
+      "caption": "FPS Estimates",
+      "sampleCount": 848,
+      "gameId": "3661",
+      "slug": "Assetto-Corsa",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Final Fantasy XIV: A Realm Reborn",
+      "caption": "FPS Estimates",
+      "sampleCount": 843,
+      "gameId": "3719",
+      "slug": "Final-Fantasy-XIV--A-Realm-Reborn",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Final-Fantasy-XIV--A-Realm-Reborn/3719/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Pro Evolution Soccer 2017",
+      "caption": "FPS Estimates",
+      "sampleCount": 791,
+      "gameId": "3799",
+      "slug": "Pro-Evolution-Soccer-2017",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Pro-Evolution-Soccer-2017/3799/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Heroes of the Storm",
+      "caption": "FPS Estimates",
+      "sampleCount": 718,
+      "gameId": "3742",
+      "slug": "Heroes-of-the-Storm",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Heroes-of-the-Storm/3742/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "SMITE",
+      "caption": "FPS Estimates",
+      "sampleCount": 716,
+      "gameId": "3814",
+      "slug": "SMITE",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-SMITE/3814/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Warface",
+      "caption": "FPS Estimates",
+      "sampleCount": 668,
+      "gameId": "3877",
+      "slug": "Warface",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Warface/3877/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "DayZ",
+      "caption": "FPS Estimates",
+      "sampleCount": 598,
+      "gameId": "3690",
+      "slug": "DayZ",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DayZ/3690/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Roblox",
+      "caption": "FPS Estimates",
+      "sampleCount": 564,
+      "gameId": "4025",
+      "slug": "Roblox",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Roblox/4025/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Just Cause 3",
+      "caption": "FPS Estimates",
+      "sampleCount": 563,
+      "gameId": "3754",
+      "slug": "Just-Cause-3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Just-Cause-3/3754/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Batman: Arkham Knight",
+      "caption": "FPS Estimates",
+      "sampleCount": 559,
+      "gameId": "3663",
+      "slug": "Batman--Arkham-Knight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Dead by Daylight",
+      "caption": "FPS Estimates",
+      "sampleCount": 528,
+      "gameId": "3691",
+      "slug": "Dead-by-Daylight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dead-by-Daylight/3691/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Squad",
+      "caption": "FPS Estimates",
+      "sampleCount": 502,
+      "gameId": "3826",
+      "slug": "Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Squad/3826/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "PlanetSide 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 487,
+      "gameId": "3796",
+      "slug": "PlanetSide-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlanetSide-2/3796/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "The Elder Scrolls Online: Tamriel Unlimited",
+      "caption": "FPS Estimates",
+      "sampleCount": 468,
+      "gameId": "3846",
+      "slug": "The-Elder-Scrolls-Online--Tamriel-Unlimited",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Elder-Scrolls-Online--Tamriel-Unlimited/3846/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Left 4 Dead 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 467,
+      "gameId": "3762",
+      "slug": "Left-4-Dead-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Left-4-Dead-2/3762/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Payday 2",
+      "caption": "FPS Estimates",
+      "sampleCount": 461,
+      "gameId": "3793",
+      "slug": "Payday-2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Payday-2/3793/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "DiRT Rally",
+      "caption": "FPS Estimates",
+      "sampleCount": 455,
+      "gameId": "3693",
+      "slug": "DiRT-Rally",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DiRT-Rally/3693/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Elite: Dangerous",
+      "caption": "FPS Estimates",
+      "sampleCount": 452,
+      "gameId": "3705",
+      "slug": "Elite--Dangerous",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Elite--Dangerous/3705/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    },
+    {
+      "name": "Dying Light",
+      "caption": "FPS Estimates",
+      "sampleCount": 432,
+      "gameId": "3703",
+      "slug": "Dying-Light",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dying-Light/3703/0.0.0.0.0",
+      "iconUrl": "https://www.userbenchmark.com/resources/img/icons/Gaming_128.png"
+    }
+  ],
+  "nonGameSearchHits": [],
+  "facets": {
+    "Subdomain": [
+      {
+        "label": "www",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BSubdomain%3A%22www%22+%2BFPS"
+      },
+      {
+        "label": "ram",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BSubdomain%3A%22ram%22+%2BFPS"
+      }
+    ],
+    "Type": [
+      {
+        "label": "Product",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BType%3A%22Product%22+%2BFPS"
+      },
+      {
+        "label": "Component",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BType%3A%22Component%22+%2BFPS"
+      }
+    ],
+    "Category": [
+      {
+        "label": "Computer Games",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BCategory%3A%22Computer+Games%22+%2BFPS"
+      },
+      {
+        "label": "Memory Kits",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BCategory%3A%22Memory+Kits%22+%2BFPS"
+      }
+    ],
+    "Brand": [
+      {
+        "label": "FPS Estimates",
+        "count": 316,
+        "filterUrl": "/Search?searchTerm=%2BBrand%3A%22FPS+Estimates%22+%2BFPS"
+      },
+      {
+        "label": "Blade",
+        "count": 1,
+        "filterUrl": "/Search?searchTerm=%2BBrand%3A%22Blade%22+%2BFPS"
+      }
+    ]
+  },
+  "paginationGap": {
+    "source": "ajax-page",
+    "resultsPerPage": 100,
+    "currentPage": 1,
+    "totalPages": 4,
+    "nextPagePGMP": 2,
+    "prevPagePGMP": null,
+    "reachableViaStaticUrl": false,
+    "mechanism": "JSF/Mojarra AJAX form postback (mojarra.ab), captured by hand from a browser devtools Network tab — no GET URL exists for this page."
+  },
+  "bestTable": {
+    "columns": [],
+    "rows": []
+  },
+  "carouselGames": [],
+  "autocompleteCatalog": {
+    "totalItems": 0,
+    "items": [],
+    "fpsEstimatesGameNames": [],
+    "duplicateLabels": []
+  },
+  "affiliateLinks": [],
+  "gapReport": [
+    {
+      "dimension": "RAM",
+      "embeddedOnThisPage": "Nav link only (ram.userbenchmark.com) + one facet count (\"ram\" subdomain: 1 hit; \"Memory Kits\" category: 1 hit). No RAM product names, scores, or rankings are embedded.",
+      "wouldRequire": "Fetching ram.userbenchmark.com directly — a separate subdomain/page this tool was not given and does not fetch."
+    },
+    {
+      "dimension": "Storage (HDD)",
+      "embeddedOnThisPage": "Nav link only (hdd.userbenchmark.com). Zero HDD products, scores, or data embedded anywhere on this page.",
+      "wouldRequire": "Fetching hdd.userbenchmark.com directly."
+    },
+    {
+      "dimension": "Storage (SSD)",
+      "embeddedOnThisPage": "Present, but only in \"The Best\" table: name + rating URL + live price. No bench/value score, no sample count.",
+      "wouldRequire": "Fetching the SSD's own /Rating/<id> page (e.g. ssd.userbenchmark.com/.../Rating/4188) for a score or sample count."
+    },
+    {
+      "dimension": "USB",
+      "embeddedOnThisPage": "Nav link only (usb.userbenchmark.com). Zero USB products or data embedded.",
+      "wouldRequire": "Fetching usb.userbenchmark.com directly."
+    },
+    {
+      "dimension": "CPU / GPU numeric benchmark score",
+      "embeddedOnThisPage": "Not present anywhere on this page. \"The Best\" table has name + price only, no bench%/value% (unlike the FPS-Estimates game pages' GPU/CPU tables, which do carry a Bench % and Value % — see ../parse.mjs).",
+      "wouldRequire": "Fetching the component's own /Rating/<id> page, or a game's FPS-Estimates page (which does carry bench/value percentages per part, for that specific game)."
+    },
+    {
+      "dimension": "Full FPS-Estimates game catalog with IDs",
+      "embeddedOnThisPage": "100 of 317 total hits on this specific page carry a resolvable gameId/URL (the tl-tag search results). The autocomplete array separately lists 0 \"FPS Estimates <Game>\" NAMES, but with zero ids/URLs attached to any of them.",
+      "wouldRequire": "The \"308 MORE »\" AJAX pagination control (a JSF/Mojarra form postback, not a GET URL — see paginationGap below) to resolve the remaining hits' ids/URLs, or visiting each named game individually via search."
+    },
+    {
+      "dimension": "Explicit numeric ranking/position",
+      "embeddedOnThisPage": "\"The Best\" table's 3 rows are presented top-to-bottom without an explicit rank number, price tier label, or score attached to that ordering — the ranking is positional/implicit only, not a labeled field.",
+      "wouldRequire": "Nothing on this page makes the ranking criteria explicit; would need the site's own ranking/methodology page or each part's dedicated Rating page."
+    }
+  ]
+}

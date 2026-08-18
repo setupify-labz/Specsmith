@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-08-18T05:25:41.102Z",
+  "note": "Capture verification. No network request was made. Status is decided by each file's own canonical URL, not by its filename.",
+  "worklistGeneratedAt": "2026-08-18T04:55:00.742Z",
+  "summary": {
+    "planned": 4,
+    "captured": 2,
+    "missing": 0,
+    "wrongGame": 0,
+    "incompleteSave": 2,
+    "notAPage": 0,
+    "unreadable": 0,
+    "totalEfpsRecords": 200
+  },
+  "results": [
+    {
+      "gameId": "3680",
+      "name": "CSGO (GENUINE)",
+      "url": "x",
+      "expectedFilename": "FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
+      "status": "captured",
+      "bytes": 155737,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 73049,
+      "efpsCount": 200,
+      "chartsWithData": 3,
+      "detail": "canonical URL matches; 200 EFPS records, 3/3 charts"
+    },
+    {
+      "gameId": "3656",
+      "name": "A: fully stripped",
+      "url": "x",
+      "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html",
+      "status": "incomplete-save",
+      "bytes": 81695,
+      "inlineScriptsWithBody": 0,
+      "inlineScriptChars": 0,
+      "efpsCount": 0,
+      "chartsWithData": 0,
+      "detail": "the right game, but all 26 inline <script> blocks are empty — the EFPS records and chart data live in those blocks, so this save yields 0 EFPS records instead of ~200. Re-save with \"Webpage, HTML Only\", or enable script retention in whatever tool produced it."
+    },
+    {
+      "gameId": "3651",
+      "name": "B: partial strip (JS alive, data gone)",
+      "url": "x",
+      "expectedFilename": "FPS-Estimates-ABZU-3651.html",
+      "status": "incomplete-save",
+      "bytes": 126948,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 45828,
+      "efpsCount": 0,
+      "chartsWithData": 0,
+      "detail": "the right game and 17 inline script(s) survived, but the page carries no EFPS records AND no chart data — the data-bearing scripts appear to have been removed or rewritten. Re-save with \"Webpage, HTML Only\"."
+    },
+    {
+      "gameId": "3662",
+      "name": "C: sparse but genuine (charts OK, 0 EFPS)",
+      "url": "x",
+      "expectedFilename": "FPS-Estimates-Axiom-Verge-3662.html",
+      "status": "captured",
+      "bytes": 131095,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 49583,
+      "efpsCount": 0,
+      "chartsWithData": 3,
+      "detail": "complete save, but 0 EFPS records (3/3 charts present) — plausible for a low-sample game; verify against the live page if it matters"
+    }
+  ]
+}
