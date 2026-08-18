@@ -11,5 +11,6 @@ import './dedupe.test.mjs';
 import './validate.test.mjs';
 import './capture.test.mjs';
 import './corpus.test.mjs';
+import './canonical.test.mjs';
 
 await run();

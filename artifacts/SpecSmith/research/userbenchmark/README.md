@@ -29,7 +29,7 @@
 | EFPS records extracted | 200 (27 direct, 173 comparisons) |
 | GPU / CPU observations | 20 / 20 |
 | Validation | 0 errors, 1 warning (the capture gap) |
-| Tests | 153 passing |
+| Tests | 166 passing |
 
 **The binding constraint is capture, not code.** The machine is finished; it is
 waiting on saved pages. 315 of 316 games have no source. See
@@ -44,7 +44,7 @@ waiting on saved pages. 315 of 316 games have no source. See
 # discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
 node research/userbenchmark/ingest.mjs
 
-# Test suite (153 tests, zero dependencies)
+# Test suite (166 tests, zero dependencies)
 node research/userbenchmark/test/run-tests.mjs
 
 # Single-page parse only (writes parsed/<slug>.json)
@@ -83,7 +83,7 @@ research/userbenchmark/
 ├── efps/
 │   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
 ├── homepage/                 search/hub page parser (separate page type)
-├── test/                     153 tests + fixtures
+├── test/                     166 tests + fixtures
 ├── capture-manifest.json     per-game capture status (all 316)
 ├── coverage-report.md        generated coverage breakdown
 └── known-games.json          the 316-game catalog
@@ -388,27 +388,55 @@ never be presented as such.
 - **`extract-game-catalog.mjs`** — scans a saved JS asset for an embedded game
   catalog. Reports a negative finding explicitly rather than writing a silent
   empty array. (The saved `scripts/userbenchmark.js` contains none.)
-- **`efps/extract-efps.mjs`** — single-page EFPS CLI. Delegates to
-  `lib/efps.mjs`; see `efps/README.md`.
+- **`efps/`** — the EFPS research report
+  ([`configuration-analysis.md`](efps/configuration-analysis.md)). Documentation
+  only; no code.
 - **`homepage/`** — parser for the search/hub page type, including the
   hand-captured AJAX pagination responses. See `homepage/README.md`.
-- **`build-research-dataset.mjs`** — **superseded, exits without doing
-  anything.** Kept as an explicit stub because it used to write
-  `dataset/coverage.json` and `dataset/validation-report.md` — the same paths
-  `ingest.mjs` writes, with a different schema — so leaving it runnable meant
-  whichever ran last silently overwrote the other's output.
 
-### Note on the two EFPS implementations
+---
 
-A parallel session added `efps/extract-efps.mjs` with its own standalone
-extraction core. Running it against the saved Fortnite page showed it reported
-**27 records and `"warnings": []`** where the page contains 200: its
-`Number(p)` guard silently skipped every comparison (`"137 vs 108"` is `NaN`),
-discarding 86.5% of the data while reporting a clean run. It also classified by
-game-name prefix and split the URL into two parts rather than three.
+## Reconciliation record
 
-Rather than maintain two parsers, that CLI now delegates to `lib/efps.mjs` —
-its interface and output path are unchanged, and it now reports the correct
-200 / 27 / 173. The specific defects are documented in its header, and a named
-regression test (`EFPS: regression — comparison records must survive numeric
-coercion`) locks the behaviour in.
+Two sessions built UserBenchmark ingestion on this branch in parallel, which
+left duplicate implementations and three separate writers of derived output.
+That has been collapsed to one canonical surface. What was removed, and why:
+
+### `efps/extract-efps.mjs` and `efps/parsed/` — removed
+
+A second EFPS extractor with its own standalone core. Running it against the
+saved Fortnite page showed it reporting **27 records and `"warnings": []`**
+where the page contains 200 — its `Number(p)` guard skipped every comparison
+(`Number("137 vs 108")` is `NaN`), discarding 86.5% of the data while reporting
+a clean run. It also classified by game-name prefix (unreliable for `PUBG` /
+`CSGO`, whose EFPS token is not the catalog name) and split the URL payload
+into two groups rather than three, which cannot represent a comparison's two
+variants.
+
+It was first rewritten to delegate to `lib/efps.mjs`, then removed outright: as
+a delegating wrapper it was a redundant entry point whose `efps/parsed/` tree
+held a byte-identical **third** copy of records already in `parsed/` and
+`dataset/`. `parse.mjs` already covers single-page parsing through the same
+core.
+
+The defect it embodied is locked out by a named regression test —
+`EFPS: regression — comparison records must survive numeric coercion`.
+
+### `build-research-dataset.mjs` — removed
+
+An earlier consolidator, superseded by `ingest.mjs`. It wrote
+`dataset/coverage.json` and `dataset/validation-report.md` — the same paths
+`ingest.mjs` writes, with a different schema — so whichever ran last silently
+overwrote the other's output with an incompatible shape. It was briefly kept as
+a loud stub to prevent that; deleting it removes the collision entirely, since
+there is nothing left to run.
+
+### What remains, and why it is not duplication
+
+`parse.mjs` (single page) and `ingest.mjs` (corpus) both write `parsed/*.json`,
+but both call the same `lib/game-page.mjs` core and produce **byte-identical**
+output for the same input — verified, not assumed. They are complementary entry
+points to one implementation, not competing writers. `ingest.mjs` additionally
+prunes stale `parsed/` files whose source no longer exists.
+
+Git history retains every removed file.

@@ -310,7 +310,8 @@ describe('EFPS: unexpected titles', () => {
 
 describe('EFPS: regression — comparison records must survive numeric coercion', () => {
   it('does not drop a record whose value is "N vs M"', () => {
-    // The exact defect in the superseded efps/extract-efps.mjs core: it did
+    // The exact defect in the removed efps/extract-efps.mjs core (see the
+    // reconciliation record in ../README.md): it did
     //   const fps = Number(p); if (!Number.isFinite(fps)) continue;
     // Number('137 vs 108') is NaN, so every comparison was silently skipped.
     // On the real Fortnite page that discarded 173 of 200 records (86.5%)
