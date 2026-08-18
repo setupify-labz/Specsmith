@@ -307,3 +307,25 @@ describe('EFPS: unexpected titles', () => {
     assert.ok(r.records[0].warnings.some((w) => w.includes('disagrees')), 'disagreement is surfaced, not hidden');
   });
 });
+
+describe('EFPS: regression — comparison records must survive numeric coercion', () => {
+  it('does not drop a record whose value is "N vs M"', () => {
+    // The exact defect in the superseded efps/extract-efps.mjs core: it did
+    //   const fps = Number(p); if (!Number.isFinite(fps)) continue;
+    // Number('137 vs 108') is NaN, so every comparison was silently skipped.
+    // On the real Fortnite page that discarded 173 of 200 records (86.5%)
+    // while reporting zero warnings.
+    const src = `[{ id: 'https://www.userbenchmark.com/EFps/,1660-Ti,,_,5700-XT,,_G,,9400F,', t: 'G 5700-XT vs 1660-Ti - 9400F', p: '137 vs 108' }]`;
+    const r = extractEfpsRecords(src, { gameId: '1', gameName: 'G' });
+    assert.equal(r.stats.accepted, 1, 'the comparison must be kept');
+    assert.equal(r.stats.comparisons, 1);
+    assert.equal(r.stats.rejected, 0);
+    assert.equal(r.records[0].sides[0].fps, 137);
+    assert.equal(r.records[0].sides[1].fps, 108);
+  });
+
+  it('keeps the full 173 comparisons from the real source, not just the 27 direct', () => {
+    assert.equal(efps.stats.comparisons, 173, 'regression: comparisons were being dropped');
+    assert.equal(efps.stats.accepted, 200, 'all 200 records, not 27');
+  });
+});

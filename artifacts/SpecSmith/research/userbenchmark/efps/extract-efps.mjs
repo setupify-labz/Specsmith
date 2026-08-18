@@ -1,134 +1,114 @@
-// Research-only extractor for the EFPS Select2 dataset embedded in saved
-// UserBenchmark FPS-Estimates pages. It reads local files only; no network.
+// Research-only EFPS extractor for locally saved UserBenchmark FPS-Estimates
+// pages. Reads local files only; no network.
 //
-// Usage:
-//   node artifacts/SpecSmith/research/userbenchmark/efps/extract-efps.mjs <saved-page.html>
+//   node research/userbenchmark/efps/extract-efps.mjs <saved-page.html>
 //
-// The page embeds objects shaped like:
-//   { id: 'https://www.userbenchmark.com/EFps/...', t: 'PUBG 3600 2060S', p: '119' }
+// ---------------------------------------------------------------------------
+// This CLI is preserved; its extraction core was replaced.
+// ---------------------------------------------------------------------------
+// The original standalone implementation of this script had three defects that
+// were found by running it against the saved Fortnite page and comparing its
+// output to the page's actual contents:
 //
-// We preserve the exact title, URL and FPS value. We also expose the raw
-// comma/underscore URL payload so a later, separately-validated decoder can
-// map CPU/GPU/configuration components. This script deliberately does NOT
-// invent that mapping.
+//   1. SILENT LOSS OF EVERY COMPARISON RECORD. It did `const fps =
+//      Number(fpsRaw); if (!Number.isFinite(fps)) continue;`. A comparison's
+//      `p` is a string like "137 vs 108", which is NaN, so every comparison was
+//      dropped by that `continue`. On the Fortnite page it reported 27 records
+//      and `"warnings": []` — silently discarding 173 of 200 records (86.5%)
+//      while reporting a clean run.
+//
+//   2. CLASSIFICATION BY GAME-NAME PREFIX. `classify()` stripped a
+//      `gameName + " "` prefix from the title before looking for " vs ". The
+//      EFPS token is often not the catalog name ("PUBG" vs "PlayerUnknown's
+//      Battlegrounds", "CSGO" vs "Counter-Strike: Global Offensive"), so the
+//      prefix does not match and classification is unreliable. Classification
+//      is now structural — see lib/efps.mjs.
+//
+//   3. TWO-PART URL SPLIT. `parseEfpsUrl()` split the payload into `left` /
+//      `right` on the first `_`. The payload actually has THREE groups of four
+//      fields (variant A, variant B, base) — see
+//      ./configuration-analysis.md. The two-part split cannot represent a
+//      comparison's two variants.
+//
+// Rather than maintain two EFPS parsers, this script now delegates to
+// lib/efps.mjs — the corrected, tested implementation shared by ingest.mjs,
+// parse.mjs and the test suite. The CLI, the output location
+// (efps/parsed/<slug>.json) and the summary shape are kept so any existing
+// usage keeps working; the numbers it reports are now correct.
+//
+// For the full corpus pipeline (normalize → dedupe → validate → datasets →
+// coverage) use:  node research/userbenchmark/ingest.mjs
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parseGamePage } from '../lib/game-page.mjs';
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(here, 'parsed');
 
-function decodeEntities(value) {
-  return String(value ?? '')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim();
-}
-
-function parseEfpsUrl(url) {
-  const decoded = decodeEntities(url);
-  const payload = decoded.split('/').at(-1) ?? '';
-  const pieces = payload.split('_');
-  const left = pieces[0] ?? '';
-  const right = pieces.slice(1).join('_');
-  return {
-    raw: decoded,
-    payload,
-    left,
-    right,
-    leftTokens: left.split(',').filter(Boolean),
-    rightTokens: right.split(',').filter(Boolean),
-  };
-}
-
-function extractGameIdentity(html) {
-  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/i)?.[1] ?? null;
-  const m = canonical?.match(/\/PCGame\/FPS-Estimates-([^/]+)\/(\d+)\//i);
-  return {
-    name: html.match(/<h1 class="pg-head-title">\s*<a[^>]*>([^<]+)<\/a>/i)?.[1]
-      ? decodeEntities(html.match(/<h1 class="pg-head-title">\s*<a[^>]*>([^<]+)<\/a>/i)[1])
-      : null,
-    gameId: m?.[2] ?? null,
-    slug: m?.[1] ?? null,
-    canonicalUrl: canonical ? decodeEntities(canonical) : null,
-  };
-}
-
-function classify(title, gameName) {
-  const suffix = gameName && title.toLowerCase().startsWith(`${gameName.toLowerCase()} `)
-    ? title.slice(gameName.length + 1)
-    : title;
-  return /\s+vs\s+/i.test(suffix) ? 'comparison' : 'single';
-}
-
-function extractEfps(html, game) {
-  const records = [];
-  const seen = new Set();
-  const re = /\{\s*id:\s*'([^']+)'\s*,\s*t:\s*'([^']+)'\s*,\s*p:\s*'([^']*)'\s*\}/g;
-  let match;
-  while ((match = re.exec(html)) !== null) {
-    const [, idRaw, titleRaw, fpsRaw] = match;
-    const fps = Number(fpsRaw);
-    if (!Number.isFinite(fps)) continue;
-    const id = decodeEntities(idRaw);
-    const title = decodeEntities(titleRaw);
-    const key = `${id}|${title}|${fps}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    records.push({
-      gameId: game.gameId,
-      game: game.name,
-      title,
-      fps,
-      url: id,
-      type: classify(title, game.name),
-      urlParts: parseEfpsUrl(id),
-    });
-  }
-  return records;
-}
-
-async function parseFile(filePath) {
-  const html = await fs.readFile(filePath, 'utf8');
-  const game = extractGameIdentity(html);
-  const records = extractEfps(html, game);
-  const warnings = [];
-  if (!game.gameId) warnings.push('Could not identify a gameId from the canonical URL.');
-  if (!records.length) warnings.push('No EFPS Select2 result objects matched the expected {id,t,p} shape.');
-  return {
-    _meta: {
-      sourceFile: path.basename(filePath),
-      parsedAt: new Date().toISOString(),
-      parser: 'research/userbenchmark/efps/extract-efps.mjs',
-      researchOnly: true,
-      warnings,
-    },
-    game,
-    counts: {
-      total: records.length,
-      single: records.filter((r) => r.type === 'single').length,
-      comparison: records.filter((r) => r.type === 'comparison').length,
-    },
-    records,
-  };
-}
-
 async function main() {
-  const input = process.argv[2];
-  if (!input) throw new Error('Usage: node extract-efps.mjs <saved-page.html>');
-  const result = await parseFile(input);
+  const arg = process.argv[2];
+  if (!arg) {
+    console.error('Usage: node research/userbenchmark/efps/extract-efps.mjs <saved-page.html>');
+    process.exitCode = 1;
+    return;
+  }
+
+  const file = path.resolve(process.cwd(), arg);
+  let html;
+  try {
+    html = await fs.readFile(file, 'utf8');
+  } catch (e) {
+    console.error(`Could not read "${arg}": ${e.message}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const parsed = parseGamePage(html, path.basename(file));
+  if (!parsed._meta.parsedSuccessfully) {
+    console.error(`"${arg}" is not an FPS-Estimates game page (detected: ${parsed._meta.sourceKind.kind}).`);
+    process.exitCode = 1;
+    return;
+  }
+
   await fs.mkdir(outDir, { recursive: true });
-  const slug = result.game.slug || path.basename(input, path.extname(input));
-  const output = path.join(outDir, `${slug || 'unknown'}.json`);
-  await fs.writeFile(output, JSON.stringify(result, null, 2) + '\n');
-  console.log(JSON.stringify({ output, ...result.counts, warnings: result._meta.warnings }, null, 2));
+  const slug = (parsed.game.slug || path.basename(file, path.extname(file))).replace(/[^A-Za-z0-9-]/g, '-');
+  const outFile = path.join(outDir, `${slug}.json`);
+
+  const output = {
+    note: 'RESEARCH DATA — EFPS records extracted from a locally saved page. Not fetched. Crowd-sourced third-party values, NOT verified benchmark records. Extraction core: lib/efps.mjs.',
+    game: {
+      gameId: parsed.game.gameId,
+      name: parsed.game.name,
+      slug: parsed.game.slug,
+      canonicalUrl: parsed.game.canonicalUrl,
+    },
+    stats: parsed.efps.stats,
+    records: parsed.efps.records,
+    rejected: parsed.efps.rejected,
+  };
+  await fs.writeFile(outFile, JSON.stringify(output, null, 2) + '\n');
+
+  const s = parsed.efps.stats;
+  console.log(
+    JSON.stringify(
+      {
+        output: outFile,
+        total: s.total,
+        direct: s.direct,
+        comparison: s.comparisons,
+        rejected: s.rejected,
+        exactDuplicates: s.exactDuplicates,
+        // Every rejection carries a reason and its raw source text in
+        // `rejected` — nothing is dropped without a record of it.
+        rejectedReasons: parsed.efps.rejected.map((r) => r.reason),
+      },
+      null,
+      2,
+    ),
+  );
 }
 
-main().catch((error) => {
-  console.error(error.stack || error.message);
-  process.exitCode = 1;
-});
+await main();

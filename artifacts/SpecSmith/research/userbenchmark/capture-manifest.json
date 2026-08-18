@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T04:15:58.566Z",
+  "generatedAt": "2026-08-18T04:19:36.333Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
@@ -1891,7 +1891,7 @@
       "totalSamples": 87737,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T04:15:58.584Z"
+      "lastProcessedAt": "2026-08-18T04:19:36.346Z"
     },
     {
       "gameId": "4018",

@@ -388,5 +388,27 @@ never be presented as such.
 - **`extract-game-catalog.mjs`** — scans a saved JS asset for an embedded game
   catalog. Reports a negative finding explicitly rather than writing a silent
   empty array. (The saved `scripts/userbenchmark.js` contains none.)
+- **`efps/extract-efps.mjs`** — single-page EFPS CLI. Delegates to
+  `lib/efps.mjs`; see `efps/README.md`.
 - **`homepage/`** — parser for the search/hub page type, including the
   hand-captured AJAX pagination responses. See `homepage/README.md`.
+- **`build-research-dataset.mjs`** — **superseded, exits without doing
+  anything.** Kept as an explicit stub because it used to write
+  `dataset/coverage.json` and `dataset/validation-report.md` — the same paths
+  `ingest.mjs` writes, with a different schema — so leaving it runnable meant
+  whichever ran last silently overwrote the other's output.
+
+### Note on the two EFPS implementations
+
+A parallel session added `efps/extract-efps.mjs` with its own standalone
+extraction core. Running it against the saved Fortnite page showed it reported
+**27 records and `"warnings": []`** where the page contains 200: its
+`Number(p)` guard silently skipped every comparison (`"137 vs 108"` is `NaN`),
+discarding 86.5% of the data while reporting a clean run. It also classified by
+game-name prefix and split the URL into two parts rather than three.
+
+Rather than maintain two parsers, that CLI now delegates to `lib/efps.mjs` —
+its interface and output path are unchanged, and it now reports the correct
+200 / 27 / 173. The specific defects are documented in its header, and a named
+regression test (`EFPS: regression — comparison records must survive numeric
+coercion`) locks the behaviour in.
