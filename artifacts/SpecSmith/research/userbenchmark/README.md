@@ -1,170 +1,392 @@
-# UserBenchmark FPS-Estimates Parser & Catalog Extractor
+# UserBenchmark Research Ingestion Pipeline
 
-> **Research-only. No network code anywhere in this directory.** This tool
-> parses page sources that a human has already saved to disk. It never
+> ## ⚠️ RESEARCH-ONLY — READ THIS FIRST
+>
+> **There is no network code anywhere in this directory tree.** Nothing here
 > fetches, crawls, or requests anything from userbenchmark.com or any other
-> domain. Nothing here is wired into production, and nothing here has been
-> or should be added to `src/data/benchmarkRecords.json` without
-> independently re-verifying every field against that schema's strict
-> provenance rules (see `src/lib/benchmarks/README_evidence-quality.md`) —
-> this tool's output is raw extracted data, not a `BenchmarkRecord`.
+> host. Every tool reads files a human already saved to disk.
+>
+> **Nothing here is a verified benchmark record.** The data extracted by this
+> pipeline is *crowd-sourced, self-reported* values published by a third-party
+> aggregator. Parsing cleanly proves the extraction worked — it proves nothing
+> about the numbers. See [Data quality classification](#data-quality-classification).
+>
+> **Nothing here is wired into production.** `src/`, `package.json`, and
+> `src/data/benchmarkRecords.json` are untouched and must stay that way. No
+> record produced here may be added to `benchmarkRecords.json` without going
+> through that schema's own provenance rules independently
+> (`src/lib/benchmarks/README_evidence-quality.md`).
 
-## What this is
+---
 
-UserBenchmark's "FPS Estimates" pages (`/PCGame/FPS-Estimates-<Game>/<id>/...`)
-publish crowd-sourced, self-reported FPS data per game: an average FPS and
-sample count, a histogram of FPS values, a breakdown of which quality
-preset and resolution respondents used, and two ranked tables (GPU, CPU)
-of which specific parts respondents ran the game on, each with its own
-sample count and a link that re-filters the page to just that part.
+## Current state
 
-`parse.mjs` extracts all of that into structured JSON — from a page source
-you already saved yourself.
+| | |
+|---|---|
+| Known games in catalog | **316** |
+| Pages captured | **1** (Fortnite, id 3954) |
+| Pages parsed | 1 |
+| EFPS records extracted | 200 (27 direct, 173 comparisons) |
+| GPU / CPU observations | 20 / 20 |
+| Validation | 0 errors, 1 warning (the capture gap) |
+| Tests | 153 passing |
 
-## How to add a saved page
+**The binding constraint is capture, not code.** The machine is finished; it is
+waiting on saved pages. 315 of 316 games have no source. See
+[Capture workflow](#capture-workflow).
 
-1. In a browser, open the UserBenchmark FPS-Estimates page for a game.
-2. Save the full page source — View Source → Save As, or Ctrl+U then
-   Ctrl+S, or Ctrl+S "Webpage, HTML only." Right-click → "Save As" also
-   works. Copy/pasting the page's HTML into a `.txt` file works too (that's
-   exactly how the first sample page in `pages/` was captured).
-3. Drop the file into `research/userbenchmark/pages/`. Any `.html`,
-   `.htm`, `.xhtml`, or `.txt` extension is picked up. Name it however you
-   like — a `<GameSlug>-<gameId>.html` pattern (matching the URL) is a
-   reasonable convention, but the parser doesn't depend on the filename;
-   everything is read from the page content itself.
-4. Run:
-   ```
-   node research/userbenchmark/parse.mjs
-   ```
-   (or `node research/userbenchmark/parse.mjs <exact-filename>` to parse
-   just one file). This reads every source in `pages/` and writes one JSON
-   file per game into `research/userbenchmark/parsed/`, named after the
-   game's URL slug, plus an `index.json` summarizing all parsed pages.
+---
 
-That's the entire workflow. There is no fetch step — adding a new source
-is purely "save it yourself, then run the parser."
+## Commands
 
-## Game catalog extractor (`extract-game-catalog.mjs`)
+```bash
+# Full corpus pipeline — the main entry point.
+# discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
+node research/userbenchmark/ingest.mjs
 
-A second, separate tool for a different kind of source: a saved
-UserBenchmark **JavaScript asset** (not an HTML page), scanned for an
-embedded `/PCGame/FPS-Estimates-<slug>/<id>/` catalog of game name/ID
-pairs. Same rules as `parse.mjs` — reads only local files, no network code.
+# Test suite (153 tests, zero dependencies)
+node research/userbenchmark/test/run-tests.mjs
 
-1. Save the `.js` file to `research/userbenchmark/scripts/`.
-2. Run:
-   ```
-   node research/userbenchmark/extract-game-catalog.mjs
-   ```
-3. Output goes to `research/userbenchmark/game-catalog.json`: every
-   `/PCGame/FPS-Estimates-.../` entry found (id, slug, derived name,
-   occurrence count), plus duplicate-id and duplicate-name detection, plus
-   an explicit per-file **conclusion** — including "this file contains no
-   game-catalog data" when that's the honest answer. It reports a negative
-   finding openly rather than silently writing an empty array with no
-   explanation.
+# Single-page parse only (writes parsed/<slug>.json)
+node research/userbenchmark/parse.mjs [filename]
 
-The first file run through it (`scripts/userbenchmark.js`, UserBenchmark's
-generic site bundle — jQuery UI internals, Select2, the star-rating
-plugin, and UserBenchmark's own ad/nav/autocomplete-wiring helpers)
-contains **zero** game entries: no `/PCGame/` URLs, no literal "FPS
-Estimates" string, not even the substring "game" anywhere in the 402KB
-file (checked case-insensitively). That's expected once you look at what
-the file actually is — it's the *code* that wires up UserBenchmark's
-search box (`mcCoreSelect2Options`, a Select2 remote-data matcher/
-formatter), not a data file. The actual searchable catalog is loaded
-dynamically from a search endpoint at request time, or embedded per-page
-the way it is on the FPS-Estimates game pages themselves (see `parse.mjs`
-above) — it isn't shipped inside this shared JS bundle.
-
-## Known-games consolidator (`build-known-games.mjs`)
-
-A third tool that doesn't parse a new source — it merges what every other
-parser in this directory has *already* extracted into one deduplicated
-catalog, so "how many games do we actually know about, and how completely"
-has a single answer instead of being scattered across `parsed/*.json` and
-`homepage/parsed/*.json`. Run it any time after (re-)running the other
-parsers:
-```
+# Rebuild the merged game catalog from all parsed sources
 node research/userbenchmark/build-known-games.mjs
 ```
-Output: `known-games.json`, with every game split into:
-- **`resolved`** — has a `gameId` + URL (+ sample count and caption, where
-  known) and is directly reachable. Pulled from the single-game pages' own
-  identity and `relatedGamePages`, and the search page's
-  `searchResultGames` and `carouselGames`.
-- **`nameOnly`** — only a name is known, from the search page's site-wide
-  autocomplete list. **Not reachable** without either saving that specific
-  game's own page, or capturing the "308 MORE »" AJAX response by hand.
-- **`nonGameHits`** — search hits that matched the term "FPS" but aren't
-  FPS-Estimates games at all (found one: a "Blade" RAM kit's SpeedTest
-  page). Kept separate so it's never miscounted as a game.
 
-As of all sources saved so far — including the 4 hand-captured AJAX
-pagination pages that cover the full 317-hit result set (see
-`homepage/README.md`'s "AJAX pagination pages" section) — **316
-resolved**, **0 name-only**, **316 total distinct games known**, plus
-**1 non-game hit** set aside. This count only grows when a new source is
-saved and parsed — this tool performs no lookups of its own, it only
-re-aggregates existing parsed output.
+`ingest.mjs` exits non-zero **only** on validation *errors* (tooling faults).
+Warnings — including "315 games not captured" — are ordinary data findings and
+do not fail the run.
 
-## What gets extracted (parse.mjs)
+---
 
-Per saved page, `parsed/<slug>.json` contains:
+## Architecture
 
-- **`game`** — `gameId`, URL `slug`, display `name`, canonical URL, and the
-  parsed 5-segment filter path from that URL (`[gpuId, cpuId,
-  resolutionFilter, settingsFilter, cpuFamilyFilter]` — positions 2/3's
-  exact encoding isn't labeled anywhere on the page itself, so they're
-  preserved as raw values, not reinterpreted).
-- **`sampleSummary`** — `averageFps`, `totalSamples`.
-- **`fpsHistogram`** — the `labels`/`data` arrays backing the FPS bar
-  chart (FPS-value buckets → sample counts).
-- **`settingsDistribution`** — the quality-preset pie chart (`Low` /
-  `Med` / `High` / `Max` → sample counts).
-- **`resolutionDistribution`** — the resolution pie chart (`720p` /
-  `1080p` / `1440p` / `4K` → sample counts).
-- **`gpuTable`** / **`cpuTable`** — every row from the "Choose GPU" /
-  "Choose CPU" tables: part name, samples, bench %, value %, live price
-  (amount + store + URL, when shown), the page's own re-filtered URL for
-  that part, and the link to that part's dedicated UserBenchmark page.
-  Rows are classified GPU vs. CPU by which domain their "Bench" link
-  points at (`gpu.userbenchmark.com` vs `cpu.userbenchmark.com`), not by
-  which literal table they're in, so it stays correct even if heading text
-  changes.
-- **`brandFilterUrls`** — the quick-filter buttons on the page (e.g. the
-  i9/i7/i5/i3/Pentium/Ryzen/FX/Athlon CPU-family buttons in the sample
-  page).
-- **`relatedGamePages`** — the strip of other FPS-Estimates games linked
-  from the page. **Discovered, not fetched** — these are just URLs sitting
-  in the JSON for a human to decide whether to go save. This tool never
-  follows them.
-- **`_meta.warnings`** — anything the parser expected to find but
-  couldn't (e.g. a chart or table that didn't match the known markup
-  shape). An empty `warnings` array means every section extracted cleanly;
-  a non-empty one means check that section by hand before trusting it.
+```
+research/userbenchmark/
+├── lib/                      shared extraction core (pure, no I/O, no network)
+│   ├── version.mjs           parser/extractor version constants
+│   ├── html.mjs              entity decoding, number parsing, filter-path decoder
+│   ├── efps.mjs              EFPS object extraction + classification
+│   ├── game-page.mjs         full game-page extraction (uses efps.mjs)
+│   ├── normalize.mjs         parsed page → flat records + provenance
+│   ├── dedupe.mjs            deterministic dedup + conflict detection
+│   ├── validate.mjs          validation rules, error vs warning severity
+│   └── capture.mjs           capture-status tracking across the catalog
+├── ingest.mjs                ⇦ the one command
+├── parse.mjs                 single-page entry point (thin wrapper over lib/)
+├── build-known-games.mjs     catalog consolidator
+├── extract-game-catalog.mjs  JS-bundle catalog scanner
+├── pages/                    ⇦ SAVED PAGE SOURCES GO HERE
+├── parsed/                   per-page raw extraction JSON
+├── dataset/                  normalized JSONL datasets + coverage + validation
+├── efps/
+│   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
+├── homepage/                 search/hub page parser (separate page type)
+├── test/                     153 tests + fixtures
+├── capture-manifest.json     per-game capture status (all 316)
+├── coverage-report.md        generated coverage breakdown
+└── known-games.json          the 316-game catalog
+```
 
-## Extending the parser for a differently-shaped page
+One extraction implementation lives in `lib/`; `parse.mjs`, `ingest.mjs` and
+the tests all share it, so there is exactly one place to keep correct.
 
-Every extractor in `parse.mjs` is a small, independent function
-(`extractGameIdentity`, `extractSampleSummary`, `extractChart`,
-`extractComponentTables`, `extractBrandFilters`, `extractRelatedGamePages`)
-built against the exact markup in `pages/FPS-Estimates-Fortnite-3954.html`.
-If a future saved page's markup differs (a template change, a different
-page type, a locale variant), that section's regex won't match, its output
-comes back empty, and a `warnings` entry says so — it fails loud, not
-silent. Fix the relevant extractor's regex against the new sample rather
-than loosening it broadly, and re-run.
+---
 
-## Explicitly out of scope
+## Capture workflow
 
-- No fetching, crawling, pagination, or link-following of any kind.
-- No CAPTCHA/auth/rate-limit/robots handling of any kind — moot, since
-  nothing here ever makes a network request.
-- No production file touched — `src/`, `package.json`, and everything the
-  app ships are unaffected by this directory.
-- No FPS numbers are treated as verified — this is raw crowd-sourced data
-  extraction for research reference, not a substitute for the strict
-  single-source, disclosed-gap provenance process the rest of this
-  project's `benchmarkRecords.json` entries go through.
+### Why there is no fetcher
+
+Automatic page acquisition is **deliberately not implemented**:
+
+1. **It isn't reachable.** userbenchmark.com is blocked by this environment's
+   egress proxy (`HTTP 403` on the CONNECT tunnel). Nothing here could fetch it.
+2. **It wouldn't be appropriate.** Walking a 316-URL catalog on an aggregator's
+   own site is bulk collection of their proprietary aggregated database,
+   regardless of rate limiting or robots handling. Out of scope by the
+   project's rules, and not something this tooling should be built around.
+
+So the capture side is a **manifest**, not a crawler. It turns the missing-source
+problem from manual bookkeeping into a mechanical checklist.
+
+### Adding a saved page
+
+1. Open the game's FPS-Estimates page in a browser. `capture-manifest.json`
+   has the exact URL for every one of the 316 games.
+2. Save the full page source (Ctrl+U → Ctrl+S, or "Save Page As → HTML only").
+3. Drop it in `pages/`, named `FPS-Estimates-<Slug>-<gameId>.html`.
+   `capture-manifest.json` states the exact expected filename per game — using
+   it lets the manifest match the file to its game even if parsing later fails.
+4. Run `node research/userbenchmark/ingest.mjs`.
+
+That's the whole loop. Everything downstream is automatic and batch-capable —
+adding 50 pages and re-running works exactly the same as adding one.
+
+### Capture status tracking
+
+`capture-manifest.json` carries one row per known game:
+
+```json
+{
+  "gameId": "3954", "name": "Fortnite",
+  "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
+  "captured": true, "sourceFile": "FPS-Estimates-Fortnite-3954.html",
+  "expectedFilename": "FPS-Estimates-Fortnite-3954.html",
+  "parsed": true, "efpsCount": 200, "efpsDirectCount": 27,
+  "gpuRowCount": 20, "cpuRowCount": 20,
+  "warnings": [], "lastProcessedAt": "..."
+}
+```
+
+**`captured` is true only when a real file exists.** It is never inferred. A
+saved-but-unparseable file shows `captured: true, parsed: false` so a broken
+save is visible rather than looking like a missing page. Filename matching is
+strict (`FPS-Estimates-<slug>-<id>`) precisely so an unrelated file such as
+`notes-2024.html` can never be read as evidence that game 2024 was captured.
+
+---
+
+## What gets extracted
+
+### Per game page (`parsed/<slug>.json`)
+
+- **`game`** — id, name, slug, canonical URL, raw filter path + components
+- **`sampleSummary`** — average FPS, total samples
+- **`fpsHistogram`** — labels, data, and the raw array text
+- **`settingsDistribution`** — the source's exact labels (`Low`/`Med`/`High`/`Max`), values, raw arrays
+- **`resolutionDistribution`** — exact labels (`720p`/`1080p`/`1440p`/`4K`), values, raw arrays
+- **`gpuTable` / `cpuTable`** — per row: name, game-specific sample count,
+  Bench %, Value %, game filter URL + parsed segments, dedicated component page
+  URL, rating id, and price/store/URL when present. Rows are classified GPU vs
+  CPU by which domain their bench link points at, not by table position.
+- **`brandFilterUrls`** — the CPU-family quick filters
+- **`ownFilterPaths`** — every distinct filter path the page links to for itself
+- **`relatedGamePages`** — other games linked from the page. **Discovered, not
+  fetched** — URLs recorded for a human to decide about.
+- **`efps`** — stats, records, and rejected objects (below)
+- **`_meta.warnings`** — anything expected but not found. Empty means clean.
+
+### EFPS schema
+
+A direct record:
+
+```json
+{
+  "recordType": "efps-direct",
+  "gameId": "3954", "gameName": "Fortnite", "efpsGameToken": "Fortnite",
+  "exactTitle": "Fortnite 3600 2060S", "exactValue": "131", "fps": 131,
+  "gpu": "2060S", "cpu": "3600",
+  "efpsUrl": "https://www.userbenchmark.com/EFps/,,,_,,,_Fortnite,2060S,3600,",
+  "rawUrlPayload": ",,,_,,,_Fortnite,2060S,3600,",
+  "configurationStatus": "configuration-decoded",
+  "unresolvedFields": [], "quality": "structurally-validated",
+  "observationKey": "3954efps-direct2060s3600",
+  "provenance": { "source": "UserBenchmark", "sourceFile": "...", "sourceContentSha256": "...", "parserVersion": "...", "extractionMethod": "efps:direct", "rawSourceIdentifier": "efps[0]" }
+}
+```
+
+A comparison record keeps **both sides** and is never split into two direct
+records — doing so would manufacture standalone observations the source didn't
+publish:
+
+```json
+{
+  "recordType": "efps-comparison",
+  "exactTitle": "Fortnite 5700-XT vs 1660-Ti - 9400F", "exactValue": "137 vs 108",
+  "sides": [
+    { "label": "5700-XT", "fps": 137, "gpu": "5700-XT", "cpu": "9400F", "resolvedVariant": "B", "variantResolvedByTokenMatch": true },
+    { "label": "1660-Ti", "fps": 108, "gpu": "1660-Ti", "cpu": "9400F", "resolvedVariant": "A", "variantResolvedByTokenMatch": true }
+  ],
+  "sharedConfig": { "game": "Fortnite", "gpu": null, "cpu": "9400F", "sharedLabel": "9400F" },
+  "variantA": { "gpu": "1660-Ti", ... }, "variantB": { "gpu": "5700-XT", ... }
+}
+```
+
+**Malformed records are never silently dropped.** Each lands in
+`dataset/rejected-records.jsonl` with a reason and its raw source text.
+
+---
+
+## Configuration decoding status
+
+Full evidence: [`efps/configuration-analysis.md`](efps/configuration-analysis.md).
+
+**Partially proven.**
+
+| Field | Status |
+|---|---|
+| EFPS field 0 = game | **proven** |
+| EFPS field 1 = GPU | **proven** |
+| EFPS field 2 = CPU | **proven** |
+| EFPS field 3 | **unresolved** — never populated on any saved source |
+| Filter path position 0 = GPU id | **proven** |
+| Filter path position 1 = CPU id | **proven** |
+| Filter path position 4 = CPU family | **proven** |
+| Filter path positions 2, 3 | **unresolved** — never populated |
+
+Two findings worth knowing before using this data:
+
+1. **No resolution or settings dimension exists per observation.** Neither the
+   EFPS URL nor the filter path encodes them. They appear only as page-level
+   aggregate charts, which cannot be joined to an individual `(GPU, CPU, FPS)`
+   record. An EFPS value is *FPS at an unspecified mix of resolutions and
+   presets* — attributing it to 1080p or to High would be fabrication.
+
+2. **Title order does not match URL group order** (measured: wrong on 47.4% of
+   comparisons). The extractor pairs label-to-FPS positionally within
+   `title`/`value` — which *is* reliable — then resolves the URL group by token
+   match, never by position.
+
+The decoding is independently confirmed: **338 comparison sides were
+cross-checked against the standalone direct record for the same
+`(game, GPU, CPU)`; 338 agreed exactly, 0 mismatched.** This check runs on
+every ingest and as a test.
+
+Undocumented fields are preserved raw as `position2`/`position3`/`field3` and
+listed in `unresolvedPositions`/`unresolvedFields`. They are deliberately **not**
+named `resolutionFilter`/`settingsFilter` — an earlier version of the parser did
+that, and it was an invented meaning with no supporting evidence.
+
+---
+
+## Dataset outputs (`dataset/`)
+
+| File | Contents |
+|---|---|
+| `games.jsonl` | One record per game page |
+| `efps.jsonl` | Direct EFPS observations |
+| `efps-comparisons.jsonl` | Comparison EFPS records, both sides preserved |
+| `cpu-observations.jsonl` | CPU table rows |
+| `gpu-observations.jsonl` | GPU table rows |
+| `configurations.jsonl` | Every distinct filter-path configuration |
+| `distributions.jsonl` | FPS histogram, settings, resolution charts |
+| `conflicts.jsonl` | Same key, different values — **never collapsed** |
+| `duplicates.jsonl` | Same key, same values — collapsed but recorded |
+| `rejected-records.jsonl` | Everything rejected, with reason + raw text |
+| `coverage.json` | Machine-readable coverage + config-decoding status |
+| `validation-report.md` | Human-readable validation breakdown |
+
+Every record carries `provenance`: source, game id, source URL, source
+filename, **source content SHA-256**, parser version, extraction method, and a
+raw source identifier.
+
+Records also carry an `observationKey` — the identity used for dedup and
+conflict detection. Its parts are joined with `U+0001`, a control character
+that cannot occur in component names or ids, so no combination of field values
+can collide with a different combination (a plain separator like `-` or `:`
+would let `["ab","c"]` and `["a","bc"]` produce the same key).
+
+**Datasets are byte-for-byte deterministic** — identical inputs produce
+identical files. Per-record provenance deliberately carries *no* timestamp (that
+would make every run differ and destroy diffability); the content hash serves as
+the provenance anchor instead, and pins each record to the exact source bytes.
+Run time is recorded once, in `coverage.json` and the reports.
+
+---
+
+## Deduplication and conflicts
+
+| | Meaning | Behaviour |
+|---|---|---|
+| **Duplicate** | Same identity key, **same** values | Collapsed; extra copies recorded in `duplicates.jsonl` |
+| **Conflict** | Same identity key, **different** values | **Never collapsed.** All variants kept and flagged `conflicting`, plus a row in `conflicts.jsonl` |
+
+Records are never merged because values merely "look similar" — equality is
+exact on declared comparison fields. Choosing a winner between conflicting
+observations would be inventing data, so the pipeline refuses to.
+
+Grouping is Map/Set-based (O(n)), not pairwise.
+
+---
+
+## Validation rules
+
+Two severities, and the distinction is load-bearing:
+
+- **error** — the pipeline produced something structurally impossible or
+  self-contradictory. A **tooling fault**. Fails the run.
+- **warning** — the source data is incomplete, odd, or unresolved. An
+  **ordinary research finding**. Does not fail the run.
+
+Checked: invalid/missing game ids · missing names/URLs · zero, negative or
+implausible FPS · negative sample counts · GPU/CPU rows whose bench link
+contradicts their classification · malformed EFPS values and comparisons ·
+comparison sides resolving to the same URL variant · the same EFPS URL
+reporting different FPS · comparison-vs-direct contradictions · chart
+label/data length mismatches · negative chart values · filter paths that aren't
+5 positions · unresolved configuration fields · duplicate source pages ·
+saved files that aren't FPS-Estimates game pages · catalog URLs that aren't
+canonical · games saved but absent from the catalog.
+
+---
+
+## Data quality classification
+
+Applied per record as `quality` / `configurationStatus`:
+
+| Level | Meaning |
+|---|---|
+| `extracted` | Pulled from the source. Structure not fully verified. |
+| `structurally-validated` | Parsed cleanly and passed every structural rule. **This is the ceiling for anything here.** |
+| `configuration-decoded` | Every configuration field maps to a proven meaning. |
+| `configuration-unresolved` | An undocumented field is populated; preserved raw. |
+| `conflicting` | Contradicts another observation with the same key. |
+| `rejected` | Malformed. Kept with a reason, never silently dropped. |
+
+### The distinction that matters
+
+- **Source-extracted** — the value appears in a saved page. Says nothing about
+  accuracy.
+- **Structurally validated** — internally consistent and correctly shaped. Still
+  a crowd-sourced, self-reported number from a third party.
+- **Configuration-decoded** — we know *what hardware* it refers to. We still do
+  **not** know the resolution or settings.
+- **SpecSmith verified benchmark record** — **nothing in this directory.** Those
+  live in `src/data/benchmarkRecords.json` and come from single-source,
+  disclosed-gap, independently verified measurements.
+
+`structurally-validated` is **not** "verified benchmark ground truth" and must
+never be presented as such.
+
+### Never done here
+
+- No FPS inferred, interpolated, averaged, or filled in.
+- **Bench % / Value % are never converted into FPS.** They are UserBenchmark's
+  own composite scores with no published FPS relationship. They ride in the
+  datasets as their own fields with an explicit non-convertibility note.
+- No meaning assigned to undocumented URL fields.
+- No coverage manufactured for uncaptured pages.
+
+---
+
+## Known limitations
+
+1. **1 of 316 games captured.** Every extracted count is bounded by this, not
+   by the parser.
+2. **Single-source evidence for the decoding.** Highly regular and
+   cross-validated (338/338), but a second and third page would confirm it
+   generalizes across template variants. PUBG (3712) and CS:GO (3680) are the
+   highest-value next captures — the test suite already contains their
+   assertions, keyed by game id, and activates them automatically once saved.
+3. **No resolution/settings per observation** (see above). This is a property of
+   the source, not a parser gap.
+4. **EFPS field 3 and filter positions 2–3 unproven.** Never exercised by any
+   saved source. Preserved raw so a future source that populates them is
+   detected rather than misread.
+5. **Component id ↔ EFPS token mapping unknown.** Filter paths use numeric ids
+   (`153864`); EFPS uses short names (`2060S`). Nothing on the page maps them,
+   so no mapping is asserted.
+6. **Page JavaScript is never executed** — extraction is static text analysis.
+
+---
+
+## Other tools in this directory
+
+- **`build-known-games.mjs`** — merges every game discovered across all parsed
+  sources into `known-games.json` (316 resolved, 0 name-only, 1 non-game hit).
+- **`extract-game-catalog.mjs`** — scans a saved JS asset for an embedded game
+  catalog. Reports a negative finding explicitly rather than writing a silent
+  empty array. (The saved `scripts/userbenchmark.js` contains none.)
+- **`homepage/`** — parser for the search/hub page type, including the
+  hand-captured AJAX pagination responses. See `homepage/README.md`.
