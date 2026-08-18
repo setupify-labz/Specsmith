@@ -1,0 +1,970 @@
+{
+  "_meta": {
+    "sourceFile": "FPS-Estimates-Fortnite-3954.html",
+    "parsedAt": "2026-08-18T00:54:57.044Z",
+    "parserNote": "RESEARCH DATA — extracted from a locally saved UserBenchmark page source. Not fetched by this tool. Not a BenchmarkRecord; do not add to src/data/ without independently re-verifying against the schema's provenance rules.",
+    "warnings": []
+  },
+  "game": {
+    "gameId": "3954",
+    "slug": "Fortnite",
+    "name": "Fortnite",
+    "canonicalUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
+    "filterSegments": {
+      "raw": "0.0.0.0.0",
+      "gpuId": null,
+      "cpuId": null,
+      "resolutionFilter": null,
+      "settingsFilter": null,
+      "cpuFamilyFilter": null
+    }
+  },
+  "sampleSummary": {
+    "averageFps": 96,
+    "totalSamples": 87737
+  },
+  "fpsHistogram": {
+    "description": "X-axis buckets are FPS values (labels), Y-axis is sample count per bucket (data) — a coarse-grained noisy sample distribution, not a smooth curve.",
+    "labels": [
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100,
+      110,
+      120,
+      130,
+      140,
+      150,
+      160,
+      170,
+      180,
+      190,
+      200,
+      210,
+      220,
+      230,
+      240,
+      250
+    ],
+    "data": [
+      356314,
+      1303540,
+      361003,
+      506968,
+      118753,
+      309244,
+      423450,
+      252128,
+      599647,
+      79507,
+      861225,
+      95753,
+      544494,
+      165221,
+      89174,
+      36582,
+      77899,
+      12029,
+      282461,
+      4216,
+      12513,
+      7613,
+      88572,
+      96
+    ]
+  },
+  "settingsDistribution": {
+    "description": "How many samples were reported at each in-game quality preset.",
+    "labels": [
+      "Low",
+      "Max",
+      "High",
+      "Med"
+    ],
+    "data": [
+      35239,
+      24091,
+      14531,
+      13876
+    ]
+  },
+  "resolutionDistribution": {
+    "description": "How many samples were reported at each display resolution.",
+    "labels": [
+      "1080p",
+      "720p",
+      "1440p",
+      "4K"
+    ],
+    "data": [
+      54761,
+      29451,
+      3447,
+      78
+    ]
+  },
+  "gpuTable": [
+    {
+      "name": "Nvidia GTX 1060-6GB",
+      "samples": 6210,
+      "benchPercent": 24,
+      "valuePercent": 51,
+      "priceUsd": 110,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1060-6GB/Rating/3639#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/153864.0.0.0.0",
+      "filterSegments": {
+        "raw": "153864.0.0.0.0",
+        "gpuId": "153864",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1060-6GB/Rating/3639"
+    },
+    {
+      "name": "Nvidia GTX 1050-Ti",
+      "samples": 6047,
+      "benchPercent": 12,
+      "valuePercent": 25,
+      "priceUsd": 117,
+      "priceStore": "Amazon",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1050-Ti/Rating/3649#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/188434.0.0.0.0",
+      "filterSegments": {
+        "raw": "188434.0.0.0.0",
+        "gpuId": "188434",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1050-Ti/Rating/3649"
+    },
+    {
+      "name": "Nvidia GTX 1060-3GB",
+      "samples": 3786,
+      "benchPercent": 22,
+      "valuePercent": 37,
+      "priceUsd": 140,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1060-3GB/Rating/3646#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/165268.0.0.0.0",
+      "filterSegments": {
+        "raw": "165268.0.0.0.0",
+        "gpuId": "165268",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1060-3GB/Rating/3646"
+    },
+    {
+      "name": "Nvidia GTX 1070",
+      "samples": 3703,
+      "benchPercent": 33,
+      "valuePercent": 38,
+      "priceUsd": 211,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1070/Rating/3609#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/141989.0.0.0.0",
+      "filterSegments": {
+        "raw": "141989.0.0.0.0",
+        "gpuId": "141989",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1070/Rating/3609"
+    },
+    {
+      "name": "AMD RX 580",
+      "samples": 2704,
+      "benchPercent": 22,
+      "valuePercent": 73,
+      "priceUsd": 70,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/AMD-RX-580/Rating/3923#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/268793.0.0.0.0",
+      "filterSegments": {
+        "raw": "268793.0.0.0.0",
+        "gpuId": "268793",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/AMD-RX-580/Rating/3923"
+    },
+    {
+      "name": "Nvidia GTX 1080",
+      "samples": 2472,
+      "benchPercent": 43,
+      "valuePercent": 97,
+      "priceUsd": 105,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1080/Rating/3603#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/137575.0.0.0.0",
+      "filterSegments": {
+        "raw": "137575.0.0.0.0",
+        "gpuId": "137575",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1080/Rating/3603"
+    },
+    {
+      "name": "Nvidia GTX 1050",
+      "samples": 2395,
+      "benchPercent": 11,
+      "valuePercent": 36,
+      "priceUsd": 70,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1050/Rating/3650#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/191450.0.0.0.0",
+      "filterSegments": {
+        "raw": "191450.0.0.0.0",
+        "gpuId": "191450",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1050/Rating/3650"
+    },
+    {
+      "name": "Nvidia GTX 970",
+      "samples": 1951,
+      "benchPercent": 21,
+      "valuePercent": 29,
+      "priceUsd": 166,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-970/Rating/2577#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/14719.0.0.0.0",
+      "filterSegments": {
+        "raw": "14719.0.0.0.0",
+        "gpuId": "14719",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-970/Rating/2577"
+    },
+    {
+      "name": "Nvidia GTX 960",
+      "samples": 1672,
+      "benchPercent": 14,
+      "valuePercent": 16,
+      "priceUsd": 198,
+      "priceStore": "Amazon",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-960/Rating/3165#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/22173.0.0.0.0",
+      "filterSegments": {
+        "raw": "22173.0.0.0.0",
+        "gpuId": "22173",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-960/Rating/3165"
+    },
+    {
+      "name": "Nvidia GTX 1070-Ti",
+      "samples": 1649,
+      "benchPercent": 39,
+      "valuePercent": 102,
+      "priceUsd": 91,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1070-Ti/Rating/3943#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/372317.0.0.0.0",
+      "filterSegments": {
+        "raw": "372317.0.0.0.0",
+        "gpuId": "372317",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1070-Ti/Rating/3943"
+    },
+    {
+      "name": "Nvidia GTX 750-Ti",
+      "samples": 1442,
+      "benchPercent": 7,
+      "valuePercent": 18,
+      "priceUsd": 92,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-750-Ti/Rating/2187#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/7824.0.0.0.0",
+      "filterSegments": {
+        "raw": "7824.0.0.0.0",
+        "gpuId": "7824",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-750-Ti/Rating/2187"
+    },
+    {
+      "name": "Nvidia GTX 1080-Ti",
+      "samples": 1442,
+      "benchPercent": 52,
+      "valuePercent": 61,
+      "priceUsd": 200,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1080-Ti/Rating/3918#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/251565.0.0.0.0",
+      "filterSegments": {
+        "raw": "251565.0.0.0.0",
+        "gpuId": "251565",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-GTX-1080-Ti/Rating/3918"
+    },
+    {
+      "name": "HD 620 (Mobile Kaby Lake)",
+      "samples": 1400,
+      "benchPercent": 2,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/153579.0.0.0.0",
+      "filterSegments": {
+        "raw": "153579.0.0.0.0",
+        "gpuId": "153579",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/153579/IntelR-HD-Graphics-620"
+    },
+    {
+      "name": "Nvidia RTX 2070",
+      "samples": 1150,
+      "benchPercent": 43,
+      "valuePercent": 41,
+      "priceUsd": 244,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/Nvidia-RTX-2070/Rating/4029#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/608001.0.0.0.0",
+      "filterSegments": {
+        "raw": "608001.0.0.0.0",
+        "gpuId": "608001",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/Nvidia-RTX-2070/Rating/4029"
+    },
+    {
+      "name": "HD 4000 (Mobile 1.25 GHz)",
+      "samples": 1144,
+      "benchPercent": 1,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/7653.0.0.0.0",
+      "filterSegments": {
+        "raw": "7653.0.0.0.0",
+        "gpuId": "7653",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000"
+    },
+    {
+      "name": "Intel HD 520 (Mobile Skylake)",
+      "samples": 1111,
+      "benchPercent": 2,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/36797.0.0.0.0",
+      "filterSegments": {
+        "raw": "36797.0.0.0.0",
+        "gpuId": "36797",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520"
+    },
+    {
+      "name": "AMD RX 570",
+      "samples": 1099,
+      "benchPercent": 19,
+      "valuePercent": 63,
+      "priceUsd": 70,
+      "priceStore": "Ebay",
+      "priceUrl": "https://gpu.userbenchmark.com/AMD-RX-570/Rating/3924#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/270031.0.0.0.0",
+      "filterSegments": {
+        "raw": "270031.0.0.0.0",
+        "gpuId": "270031",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/AMD-RX-570/Rating/3924"
+    },
+    {
+      "name": "UHD Graphics 620 (Mobile Kaby Lake R)",
+      "samples": 1096,
+      "benchPercent": 2,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/320744.0.0.0.0",
+      "filterSegments": {
+        "raw": "320744.0.0.0.0",
+        "gpuId": "320744",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/320744/IntelR-UHD-Graphics-620"
+    },
+    {
+      "name": "Intel HD Graphics 630",
+      "samples": 1076,
+      "benchPercent": 2,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/185230.0.0.0.0",
+      "filterSegments": {
+        "raw": "185230.0.0.0.0",
+        "gpuId": "185230",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/185230/IntelR-HD-Graphics-630"
+    },
+    {
+      "name": "HD 4400 (Mobile 1.0/1.1 GHz)",
+      "samples": 1000,
+      "benchPercent": 1,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/7668.0.0.0.0",
+      "filterSegments": {
+        "raw": "7668.0.0.0.0",
+        "gpuId": "7668",
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family"
+    }
+  ],
+  "cpuTable": [
+    {
+      "name": "AMD Ryzen 5 2600",
+      "samples": 2579,
+      "benchPercent": 73,
+      "valuePercent": 74,
+      "priceUsd": 265,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-2600/Rating/3955#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.476362.0.0.0",
+      "filterSegments": {
+        "raw": "0.476362.0.0.0",
+        "gpuId": null,
+        "cpuId": "476362",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-2600/Rating/3955"
+    },
+    {
+      "name": "Intel Core i5-7400",
+      "samples": 2074,
+      "benchPercent": 64,
+      "valuePercent": 92,
+      "priceUsd": 73,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-7400/Rating/3886#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.211583.0.0.0",
+      "filterSegments": {
+        "raw": "0.211583.0.0.0",
+        "gpuId": null,
+        "cpuId": "211583",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-7400/Rating/3886"
+    },
+    {
+      "name": "Intel Core i7-8700K",
+      "samples": 2043,
+      "benchPercent": 88,
+      "valuePercent": 97,
+      "priceUsd": 199,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-8700K/Rating/3937#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.347462.0.0.0",
+      "filterSegments": {
+        "raw": "0.347462.0.0.0",
+        "gpuId": null,
+        "cpuId": "347462",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-8700K/Rating/3937"
+    },
+    {
+      "name": "Intel Core i5-8400",
+      "samples": 1950,
+      "benchPercent": 82,
+      "valuePercent": 103,
+      "priceUsd": 120,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-8400/Rating/3939#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.355255.0.0.0",
+      "filterSegments": {
+        "raw": "0.355255.0.0.0",
+        "gpuId": null,
+        "cpuId": "355255",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-8400/Rating/3939"
+    },
+    {
+      "name": "Intel Core i7-7700HQ",
+      "samples": 1892,
+      "benchPercent": 62,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.211019.0.0.0",
+      "filterSegments": {
+        "raw": "0.211019.0.0.0",
+        "gpuId": null,
+        "cpuId": "211019",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz"
+    },
+    {
+      "name": "AMD Ryzen 5 1600",
+      "samples": 1689,
+      "benchPercent": 70,
+      "valuePercent": 103,
+      "priceUsd": 68,
+      "priceStore": "Ebay",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-1600/Rating/3919#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.258318.0.0.0",
+      "filterSegments": {
+        "raw": "0.258318.0.0.0",
+        "gpuId": null,
+        "cpuId": "258318",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-1600/Rating/3919"
+    },
+    {
+      "name": "AMD FX-6300",
+      "samples": 1475,
+      "benchPercent": 55,
+      "valuePercent": 78,
+      "priceUsd": 78,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-FX-6300/Rating/1555#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.299.0.0.0",
+      "filterSegments": {
+        "raw": "0.299.0.0.0",
+        "gpuId": null,
+        "cpuId": "299",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-FX-6300/Rating/1555"
+    },
+    {
+      "name": "Intel Core i7-8700",
+      "samples": 1289,
+      "benchPercent": 87,
+      "valuePercent": 98,
+      "priceUsd": 179,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-8700/Rating/3940#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.356806.0.0.0",
+      "filterSegments": {
+        "raw": "0.356806.0.0.0",
+        "gpuId": null,
+        "cpuId": "356806",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-8700/Rating/3940"
+    },
+    {
+      "name": "Intel Core i7-7700K",
+      "samples": 1284,
+      "benchPercent": 84,
+      "valuePercent": 92,
+      "priceUsd": 199,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-7700K/Rating/3647#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.178732.0.0.0",
+      "filterSegments": {
+        "raw": "0.178732.0.0.0",
+        "gpuId": null,
+        "cpuId": "178732",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-7700K/Rating/3647"
+    },
+    {
+      "name": "Intel Core i5-4460",
+      "samples": 1256,
+      "benchPercent": 62,
+      "valuePercent": 69,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.10022.0.0.0",
+      "filterSegments": {
+        "raw": "0.10022.0.0.0",
+        "gpuId": null,
+        "cpuId": "10022",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-4460/Rating/2310"
+    },
+    {
+      "name": "Intel Core i5-8600K",
+      "samples": 1155,
+      "benchPercent": 91,
+      "valuePercent": 118,
+      "priceUsd": 106,
+      "priceStore": "Ebay",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-8600K/Rating/3941#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.356837.0.0.0",
+      "filterSegments": {
+        "raw": "0.356837.0.0.0",
+        "gpuId": null,
+        "cpuId": "356837",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-8600K/Rating/3941"
+    },
+    {
+      "name": "AMD Ryzen 7 2700X",
+      "samples": 1148,
+      "benchPercent": 76,
+      "valuePercent": 92,
+      "priceUsd": 136,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-7-2700X/Rating/3958#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.475904.0.0.0",
+      "filterSegments": {
+        "raw": "0.475904.0.0.0",
+        "gpuId": null,
+        "cpuId": "475904",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-7-2700X/Rating/3958"
+    },
+    {
+      "name": "Intel Core i7-8750H",
+      "samples": 1145,
+      "benchPercent": 70,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.470418.0.0.0",
+      "filterSegments": {
+        "raw": "0.470418.0.0.0",
+        "gpuId": null,
+        "cpuId": "470418",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/470418/IntelR-CoreTM-i7-8750H-CPU---220GHz"
+    },
+    {
+      "name": "AMD Ryzen 3 2200G",
+      "samples": 1126,
+      "benchPercent": 60,
+      "valuePercent": 80,
+      "priceUsd": 100,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.441832.0.0.0",
+      "filterSegments": {
+        "raw": "0.441832.0.0.0",
+        "gpuId": null,
+        "cpuId": "441832",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics"
+    },
+    {
+      "name": "Intel Core i7-7700",
+      "samples": 1112,
+      "benchPercent": 76,
+      "valuePercent": 80,
+      "priceUsd": 234,
+      "priceStore": "Ebay",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-7700/Rating/3887#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.197769.0.0.0",
+      "filterSegments": {
+        "raw": "0.197769.0.0.0",
+        "gpuId": null,
+        "cpuId": "197769",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i7-7700/Rating/3887"
+    },
+    {
+      "name": "Intel Core i5-6400",
+      "samples": 1082,
+      "benchPercent": 61,
+      "valuePercent": 88,
+      "priceUsd": 73,
+      "priceStore": "Amazon",
+      "priceUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-6400/Rating/3512#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.35537.0.0.0",
+      "filterSegments": {
+        "raw": "0.35537.0.0.0",
+        "gpuId": null,
+        "cpuId": "35537",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/Intel-Core-i5-6400/Rating/3512"
+    },
+    {
+      "name": "AMD FX-8350",
+      "samples": 1052,
+      "benchPercent": 61,
+      "valuePercent": 75,
+      "priceUsd": 130,
+      "priceStore": "BHPhoto",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-FX-8350/Rating/1489#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.314.0.0.0",
+      "filterSegments": {
+        "raw": "0.314.0.0.0",
+        "gpuId": null,
+        "cpuId": "314",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-FX-8350/Rating/1489"
+    },
+    {
+      "name": "AMD Ryzen 5 2600X",
+      "samples": 1003,
+      "benchPercent": 74,
+      "valuePercent": 82,
+      "priceUsd": 189,
+      "priceStore": "Ebay",
+      "priceUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-2600X/Rating/3956#Prices",
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.466081.0.0.0",
+      "filterSegments": {
+        "raw": "0.466081.0.0.0",
+        "gpuId": null,
+        "cpuId": "466081",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/AMD-Ryzen-5-2600X/Rating/3956"
+    },
+    {
+      "name": "Intel Core i5-7300HQ",
+      "samples": 1001,
+      "benchPercent": 57,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.223877.0.0.0",
+      "filterSegments": {
+        "raw": "0.223877.0.0.0",
+        "gpuId": null,
+        "cpuId": "223877",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/223877/IntelR-CoreTM-i5-7300HQ-CPU---250GHz"
+    },
+    {
+      "name": "Intel Core i5-7200U",
+      "samples": 929,
+      "benchPercent": 45,
+      "valuePercent": null,
+      "priceUsd": null,
+      "priceStore": null,
+      "priceUrl": null,
+      "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.153577.0.0.0",
+      "filterSegments": {
+        "raw": "0.153577.0.0.0",
+        "gpuId": null,
+        "cpuId": "153577",
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/153577/IntelR-CoreTM-i5-7200U-CPU---250GHz"
+    }
+  ],
+  "unclassifiedTableRows": [],
+  "brandFilterUrls": [
+    {
+      "label": "i9",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.i9"
+    },
+    {
+      "label": "i7",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.i7"
+    },
+    {
+      "label": "i5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.i5"
+    },
+    {
+      "label": "i3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.i3"
+    },
+    {
+      "label": "Pentium",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.Pentium"
+    },
+    {
+      "label": "Ryzen",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.Ryzen"
+    },
+    {
+      "label": "FX",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.FX"
+    },
+    {
+      "label": "Athlon",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.Athlon"
+    }
+  ],
+  "relatedGamePages": {
+    "note": "Discovered on this page, NOT fetched by this tool. A human must explicitly go save any of these before they can be parsed.",
+    "games": [
+      {
+        "gameId": "3680",
+        "title": "Counter-Strike: Global Offensive",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.0.0.0.0"
+      },
+      {
+        "gameId": "3944",
+        "title": "PlayerUnknown's Battlegrounds",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-PlayerUnknowns-Battlegrounds/3944/0.0.0.0.0"
+      },
+      {
+        "gameId": "3727",
+        "title": "Grand Theft Auto V",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Grand-Theft-Auto-V/3727/0.0.0.0.0"
+      },
+      {
+        "gameId": "3761",
+        "title": "League of Legends",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-League-of-Legends/3761/0.0.0.0.0"
+      },
+      {
+        "gameId": "3789",
+        "title": "Overwatch",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Overwatch/3789/0.0.0.0.0"
+      },
+      {
+        "gameId": "3664",
+        "title": "Battlefield 1",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0"
+      },
+      {
+        "gameId": "3855",
+        "title": "The Witcher 3: Wild Hunt",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-The-Witcher-3--Wild-Hunt/3855/0.0.0.0.0"
+      },
+      {
+        "gameId": "3776",
+        "title": "Minecraft",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Minecraft/3776/0.0.0.0.0"
+      },
+      {
+        "gameId": "3684",
+        "title": "DOTA 2",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DOTA-2/3684/0.0.0.0.0"
+      },
+      {
+        "gameId": "3882",
+        "title": "World of Warcraft",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Warcraft/3882/0.0.0.0.0"
+      },
+      {
+        "gameId": "3881",
+        "title": "World of Tanks",
+        "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-World-of-Tanks/3881/0.0.0.0.0"
+      }
+    ]
+  }
+}

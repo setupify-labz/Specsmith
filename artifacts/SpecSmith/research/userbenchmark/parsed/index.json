@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-08-18T00:54:57.077Z",
+  "note": "Index of all parsed UserBenchmark page sources. Research data only.",
+  "pages": [
+    {
+      "sourceFile": "FPS-Estimates-Fortnite-3954.html",
+      "outputFile": "Fortnite.json",
+      "gameId": "3954",
+      "slug": "Fortnite",
+      "name": "Fortnite",
+      "canonicalUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0",
+      "filterSegments": {
+        "raw": "0.0.0.0.0",
+        "gpuId": null,
+        "cpuId": null,
+        "resolutionFilter": null,
+        "settingsFilter": null,
+        "cpuFamilyFilter": null
+      },
+      "averageFps": 96,
+      "totalSamples": 87737,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warningCount": 0
+    }
+  ]
+}
