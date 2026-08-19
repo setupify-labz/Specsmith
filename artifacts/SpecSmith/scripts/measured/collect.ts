@@ -196,7 +196,13 @@ async function main(argv: string[]): Promise<void> {
   console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} dropped, ${parsed.discardedFirstFrames} discarded)`);
 
   const { detectWindowsEnvironment, detectExecutableVersion } = await import('./environment');
-  const hardware = detectWindowsEnvironment();
+  // --gpu-name disambiguates a machine with more than one rendering adapter.
+  // Without it the probe REFUSES rather than picking one, because a wrong pick
+  // records the wrong GPU and the wrong driver version together, silently.
+  const hardware = detectWindowsEnvironment(undefined, arg(argv, 'gpu-name'));
+  if (hardware.adaptersSeen.length > 1) {
+    console.log(`Adapters present: ${hardware.adaptersSeen.join(', ')}`);
+  }
   console.log(`Hardware: ${hardware.gpuRaw} / ${hardware.cpuRaw} / driver ${hardware.gpuDriverVersion}`);
 
   const exePath = arg(argv, 'game-exe');

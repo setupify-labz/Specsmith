@@ -27,6 +27,7 @@ pnpm collect:measured -- \
   --game-id <catalog id> --gpu-id <catalog id> --cpu-id <catalog id> \
   --resolution 1440p --preset high \
   --ram-channels 2 --settings-file settings.txt \
+  [--gpu-name "NVIDIA GeForce RTX 4070"] \
   [--game-exe "C:\path\YourGame.exe"] [--upscaler dlss --upscaler-mode quality] \
   [--ray-tracing] [--frame-generation --frame-generation-factor 2] \
   [--render-scale 100] [--gpu-overclocked] [--dry-run]
@@ -67,6 +68,14 @@ against and PresentMon reports `0` for it.
 **Multi-process captures are rejected** without an explicit `--process`.
 Interleaving two applications' frames would produce a meaningless run.
 
+**The GPU adapter is never guessed.** On a machine with one rendering adapter
+it is selected automatically; virtual and fallback display devices (Microsoft
+Basic Display, DisplayLink, Parsec, VMware…) are excluded. With more than one —
+any iGPU + discrete card combination — the collector **refuses** and asks for
+`--gpu-name "<exact name>"`. Picking wrongly would record the wrong GPU *and*
+the wrong driver version together, silently, since both are read from the same
+adapter object.
+
 **Catalog ids are operator-supplied, and labelled `manual`.** No fuzzy matcher
 runs. A wrong automatic match — a laptop part sharing a desktop part's name —
 would be invisible afterwards. The raw detected strings are stored beside the
@@ -105,7 +114,13 @@ against synthetic fixtures on Linux:
   capture may carry columns, ordering, or quoting these fixtures do not model.
 - **Cap detection, the 60s/3,000-frame minimums, and the plausibility bounds**
   have still never met a real capture.
-- **`--game-exe` version detection** is untested against a real executable.
+- **`--game-exe` version detection** is untested against a real executable. The
+  path is now passed through an environment variable rather than interpolated
+  into the PowerShell command, so the escaping defect is fixed, but no real
+  executable has been read.
+- **Adapter selection has never seen a real multi-GPU machine.** The exclusion
+  list of virtual display devices is reasoned from common device names, not
+  from observed output.
 - The CLI has been run end-to-end on Linux only as far as the platform gate:
   it parses a 9,000-row fixture correctly, then refuses to fabricate hardware.
 

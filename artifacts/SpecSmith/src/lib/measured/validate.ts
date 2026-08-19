@@ -104,6 +104,19 @@ export function validateMeasuredObservation(
   }
   if (!obs.settingsHash) issues.push(err(id, 'conditions.settings-hash-missing', 'No settingsHash; two runs cannot be proven to share settings.'));
 
+  // --- memory --------------------------------------------------------------
+  // Win32_PhysicalMemory returns nothing on some systems (certain VMs, locked
+  // -down hosts), and the probe's byte sum then collapses to 0. Without this
+  // rule a record claiming 0 GB of RAM validates cleanly, which is exactly the
+  // confident-but-wrong output this pipeline exists to refuse. Absent memory
+  // is a failed read, not a machine with no memory.
+  if (!(obs.ram.totalGb > 0)) {
+    issues.push(err(id, 'ram.total-invalid', `RAM total is ${obs.ram.totalGb} GB — the machine's memory could not be read. This is a failed detection, not a valid measurement.`));
+  }
+  if (!(obs.ram.channels > 0) || !Number.isInteger(obs.ram.channels)) {
+    issues.push(err(id, 'ram.channels-invalid', `RAM channel count is ${obs.ram.channels}; it must be a positive integer.`));
+  }
+
   // --- hardware resolution -------------------------------------------------
   // A detected string that did not resolve to exactly one catalog id must not
   // be guessed at — a laptop part sharing a desktop part's name is the exact

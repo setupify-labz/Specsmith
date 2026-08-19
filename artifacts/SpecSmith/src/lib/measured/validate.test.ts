@@ -136,6 +136,39 @@ describe('conditions that make a run reproducible', () => {
   });
 });
 
+// FIX 4: a failed memory read collapsed the probe's byte sum to 0, and no rule
+// caught it — a record claiming 0 GB of RAM validated cleanly. Absent memory is
+// a failed detection, not a machine with no memory.
+describe('memory must have been read, not defaulted', () => {
+  it('rejects a zero RAM total', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ram: { totalGb: 0, channels: 2 } });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('ram.total-invalid');
+  });
+
+  it.each([[NaN], [-8], [undefined as unknown as number]])('rejects a RAM total of %s', (totalGb) => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ram: { totalGb, channels: 2 } });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('ram.total-invalid');
+  });
+
+  it('rejects a zero or fractional channel count', () => {
+    const frames = goodFrames();
+    for (const channels of [0, -1, 1.5]) {
+      const obs = makeObservation(frames, { ram: { totalGb: 32, channels } });
+      expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('ram.channels-invalid');
+    }
+  });
+
+  // Single-channel is a real, valid configuration — it warns, it does not fail.
+  it('accepts a real single-channel machine, warning rather than rejecting', () => {
+    const frames = goodFrames();
+    const issues = validateMeasuredObservation(makeObservation(frames, { ram: { totalGb: 16, channels: 1 } }), frames);
+    expect(errors(issues)).toEqual([]);
+    expect(warnings(issues).map((i) => i.rule)).toContain('ram.single-channel');
+  });
+});
+
 describe('frame generation', () => {
   // FG frames are displayed, not rendered. Without a factor the figure cannot
   // be related to a native one at all.
