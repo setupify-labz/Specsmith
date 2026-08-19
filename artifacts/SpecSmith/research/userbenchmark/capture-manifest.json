@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-18T05:26:03.674Z",
+  "generatedAt": "2026-08-19T00:39:58.129Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
-    "captured": 3,
-    "notCaptured": 313,
-    "parsed": 3,
+    "captured": 4,
+    "notCaptured": 312,
+    "parsed": 4,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0,
-    "capturePercent": 0.95
+    "capturePercent": 1.27
   },
   "unlistedSavedGames": [],
   "rows": [
@@ -16,20 +16,22 @@
       "gameId": "3959",
       "name": "7 Days to Die",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
-      "captured": false,
-      "sourceFile": null,
+      "captured": true,
+      "sourceFile": "FPS-Estimates-7-Days-to-Die-3959.html",
       "expectedFilename": "FPS-Estimates-7-Days-to-Die-3959.html",
-      "parsed": false,
+      "parsed": true,
       "efpsCount": 0,
       "efpsDirectCount": 0,
       "efpsComparisonCount": 0,
-      "gpuRowCount": 0,
-      "cpuRowCount": 0,
-      "averageFps": null,
-      "totalSamples": null,
-      "warnings": [],
-      "warningCount": 0,
-      "lastProcessedAt": null
+      "gpuRowCount": 20,
+      "cpuRowCount": 20,
+      "averageFps": 47.8,
+      "totalSamples": 525,
+      "warnings": [
+        "[efps] 200 EFPS object(s) rejected — see efps.rejected."
+      ],
+      "warningCount": 1,
+      "lastProcessedAt": "2026-08-19T00:39:58.154Z"
     },
     {
       "gameId": "3651",
@@ -903,7 +905,7 @@
       "totalSamples": 151690,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T05:26:03.692Z"
+      "lastProcessedAt": "2026-08-19T00:39:58.166Z"
     },
     {
       "gameId": "3969",
@@ -1891,7 +1893,7 @@
       "totalSamples": 87737,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T05:26:03.701Z"
+      "lastProcessedAt": "2026-08-19T00:39:58.181Z"
     },
     {
       "gameId": "4018",
@@ -3544,7 +3546,7 @@
       "totalSamples": 75383,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-18T05:26:03.710Z"
+      "lastProcessedAt": "2026-08-19T00:39:58.194Z"
     },
     {
       "gameId": "3797",

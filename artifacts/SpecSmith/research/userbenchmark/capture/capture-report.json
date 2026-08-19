@@ -1,69 +1,422 @@
 {
-  "generatedAt": "2026-08-18T05:25:41.102Z",
+  "generatedAt": "2026-08-19T00:35:12.389Z",
   "note": "Capture verification. No network request was made. Status is decided by each file's own canonical URL, not by its filename.",
-  "worklistGeneratedAt": "2026-08-18T04:55:00.742Z",
+  "worklistGeneratedAt": "2026-08-19T00:35:12.121Z",
   "summary": {
-    "planned": 4,
-    "captured": 2,
-    "missing": 0,
+    "planned": 50,
+    "captured": 1,
+    "missing": 49,
     "wrongGame": 0,
-    "incompleteSave": 2,
+    "incompleteSave": 0,
     "notAPage": 0,
     "unreadable": 0,
     "totalEfpsRecords": 200
   },
   "results": [
     {
-      "gameId": "3680",
-      "name": "CSGO (GENUINE)",
-      "url": "x",
-      "expectedFilename": "FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
+      "gameId": "3959",
+      "name": "7 Days to Die",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-7-Days-to-Die-3959.html",
       "status": "captured",
-      "bytes": 155737,
+      "bytes": 163453,
       "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 73049,
+      "inlineScriptChars": 72758,
       "efpsCount": 200,
       "chartsWithData": 3,
       "detail": "canonical URL matches; 200 EFPS records, 3/3 charts"
     },
     {
-      "gameId": "3656",
-      "name": "A: fully stripped",
-      "url": "x",
-      "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html",
-      "status": "incomplete-save",
-      "bytes": 81695,
-      "inlineScriptsWithBody": 0,
-      "inlineScriptChars": 0,
-      "efpsCount": 0,
-      "chartsWithData": 0,
-      "detail": "the right game, but all 26 inline <script> blocks are empty — the EFPS records and chart data live in those blocks, so this save yields 0 EFPS records instead of ~200. Re-save with \"Webpage, HTML Only\", or enable script retention in whatever tool produced it."
+      "gameId": "3651",
+      "name": "ABZU",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ABZU/3651/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ABZU-3651.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
     },
     {
-      "gameId": "3651",
-      "name": "B: partial strip (JS alive, data gone)",
-      "url": "x",
-      "expectedFilename": "FPS-Estimates-ABZU-3651.html",
-      "status": "incomplete-save",
-      "bytes": 126948,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 45828,
-      "efpsCount": 0,
-      "chartsWithData": 0,
-      "detail": "the right game and 17 inline script(s) survived, but the page carries no EFPS records AND no chart data — the data-bearing scripts appear to have been removed or rewritten. Re-save with \"Webpage, HTML Only\"."
+      "gameId": "3652",
+      "name": "ADR1FT",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ADR1FT-3652.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3654",
+      "name": "AdVenture Capitalist",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-AdVenture-Capitalist-3654.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3655",
+      "name": "Age of Empires II: HD Edition",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3656",
+      "name": "Alien: Isolation",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3657",
+      "name": "American Truck Simulator",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-American-Truck-Simulator/3657/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-American-Truck-Simulator-3657.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3658",
+      "name": "Anno 2205",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Anno-2205/3658/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Anno-2205-3658.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4036",
+      "name": "Apex Legends",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Apex-Legends-4036.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3653",
+      "name": "ARK: Survival Evolved",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-ARK-Survival-Evolved-3653.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3659",
+      "name": "Arma 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-2/3659/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Arma-2-3659.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3660",
+      "name": "Arma 3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Arma-3-3660.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4032",
+      "name": "Assassin's Creed Odyssey",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assassins-Creed-Odyssey-4032.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3960",
+      "name": "Assassin's Creed Origins",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assassins-Creed-Origins-3960.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3661",
+      "name": "Assetto Corsa",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Assetto-Corsa-3661.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
     },
     {
       "gameId": "3662",
-      "name": "C: sparse but genuine (charts OK, 0 EFPS)",
-      "url": "x",
+      "name": "Axiom Verge",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Axiom-Verge/3662/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Axiom-Verge-3662.html",
-      "status": "captured",
-      "bytes": 131095,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 49583,
-      "efpsCount": 0,
-      "chartsWithData": 3,
-      "detail": "complete save, but 0 EFPS records (3/3 charts present) — plausible for a low-sample game; verify against the live page if it matters"
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3663",
+      "name": "Batman: Arkham Knight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Batman-Arkham-Knight-3663.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3664",
+      "name": "Battlefield 1",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-1-3664.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3665",
+      "name": "Battlefield 4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-4-3665.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3961",
+      "name": "Battlefield 5",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-5-3961.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4186",
+      "name": "Battlefield 6",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlefield-6-4186.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3666",
+      "name": "Battlerite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Battlerite-3666.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3962",
+      "name": "BeamNG",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BeamNG/3962/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-BeamNG-3962.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4024",
+      "name": "Biomutant",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Biomutant/4024/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Biomutant-4024.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3667",
+      "name": "BioShock Infinite",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-BioShock-Infinite/3667/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-BioShock-Infinite-3667.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3963",
+      "name": "Black Desert",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Black-Desert-3963.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3964",
+      "name": "Black Squad",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Squad/3964/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Black-Squad-3964.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3668",
+      "name": "Blackguards 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Blackguards-2/3668/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Blackguards-2-3668.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4023",
+      "name": "Bless Online",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Bless-Online/4023/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Bless-Online-4023.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3669",
+      "name": "Borderlands 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Borderlands-2-3669.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3670",
+      "name": "Brawlhalla",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Brawlhalla/3670/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Brawlhalla-3670.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3671",
+      "name": "Broken Age: Act 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Broken-Age--Act-2/3671/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Broken-Age-Act-2-3671.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3966",
+      "name": "Call of Duty modern warfare 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-modern-warfare-2/3966/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-modern-warfare-2-3966.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3967",
+      "name": "Call of Duty WWII",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty-WWII/3967/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-WWII-3967.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3965",
+      "name": "Call of Duty: Black Ops 4",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3672",
+      "name": "Call of Duty: Black Ops III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4114",
+      "name": "Call of Duty: Warzone",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Warzone/4114/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-Warzone-4114.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3673",
+      "name": "Call of Duty: World at War",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--World-at-War/3673/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Call-of-Duty-World-at-War-3673.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3674",
+      "name": "Child of Light",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Child-of-Light/3674/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Child-of-Light-3674.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3675",
+      "name": "Chivalry: Medieval Warfare",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Chivalry--Medieval-Warfare/3675/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Chivalry-Medieval-Warfare-3675.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3676",
+      "name": "Cities: Skylines",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Cities-Skylines-3676.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3677",
+      "name": "Citizens of Earth",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Citizens-of-Earth/3677/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Citizens-of-Earth-3677.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3678",
+      "name": "Clicker Heroes",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Clicker-Heroes/3678/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Clicker-Heroes-3678.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3679",
+      "name": "Company of Heroes 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Company-of-Heroes-2/3679/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Company-of-Heroes-2-3679.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3968",
+      "name": "Conan Exiles",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Conan-Exiles/3968/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Conan-Exiles-3968.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4187",
+      "name": "Counter-Strike: 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--2/4187/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Counter-Strike-2-4187.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3969",
+      "name": "Crash Bandicoot N.Sane Trilogy",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crash-Bandicoot-NSane-Trilogy/3969/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crash-Bandicoot-NSane-Trilogy-3969.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3681",
+      "name": "Crusader Kings II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crusader-Kings-II/3681/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crusader-Kings-II-3681.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "3682",
+      "name": "Crypt of the NecroDancer",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Crypt-of-the-NecroDancer/3682/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Crypt-of-the-NecroDancer-3682.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
+    },
+    {
+      "gameId": "4092",
+      "name": "Cyberpunk 2077",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cyberpunk-2077/4092/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Cyberpunk-2077-4092.html",
+      "status": "missing",
+      "detail": "no file at the expected filename"
     }
   ]
 }

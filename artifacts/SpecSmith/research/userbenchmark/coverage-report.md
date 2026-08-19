@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-18T05:26:03.674Z  
+Generated: 2026-08-19T00:39:58.129Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,37 +13,37 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 3 |
-| Pages successfully parsed | 3 |
+| Pages actually available (captured) | 4 |
+| Pages successfully parsed | 4 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **313** |
-| Capture coverage | 0.95% |
+| **Not captured** | **312** |
+| Capture coverage | 1.27% |
 
-Source files discovered: 3 · parsed as game pages: 3 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 4 · parsed as game pages: 4 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 3 |
+| Games | 4 |
 | EFPS — total | 600 |
 | EFPS — direct | 81 |
 | EFPS — comparisons | 519 |
-| GPU observations | 60 |
-| CPU observations | 60 |
-| Configurations | 147 |
-| Distributions | 9 |
+| GPU observations | 80 |
+| CPU observations | 80 |
+| Configurations | 196 |
+| Distributions | 12 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
-| Rejected | 0 |
+| Rejected | 200 |
 
 ## Chart coverage
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 3 | 3 |
-| Settings distribution | 3 | 3 |
-| Resolution distribution | 3 | 3 |
+| FPS histogram | 4 | 4 |
+| Settings distribution | 4 | 4 |
+| Resolution distribution | 4 | 4 |
 
 ## Configuration decoding
 
@@ -79,19 +79,20 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 | Game | ID | Avg FPS | Samples | EFPS | Direct | Cmp | GPU rows | CPU rows | Warnings |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 7 Days to Die | 3959 | 47.8 | 525 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
 | PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
 
 ## Biggest remaining gaps
 
-- 313 of 316 known games have no saved source (99.05% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 312 of 316 known games have no saved source (98.73% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
 
 ## Uncaptured games
 
-313 of 316 known games have no saved source. Each row below is a page a human
+312 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -99,7 +100,6 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 
 | Game | ID | Save as |
 |---|---|---|
-| 7 Days to Die | 3959 | `FPS-Estimates-7-Days-to-Die-3959.html` |
 | ABZU | 3651 | `FPS-Estimates-ABZU-3651.html` |
 | ADR1FT | 3652 | `FPS-Estimates-ADR1FT-3652.html` |
 | AdVenture Capitalist | 3654 | `FPS-Estimates-AdVenture-Capitalist-3654.html` |
@@ -139,4 +139,5 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Call of Duty: World at War | 3673 | `FPS-Estimates-Call-of-Duty-World-at-War-3673.html` |
 | Child of Light | 3674 | `FPS-Estimates-Child-of-Light-3674.html` |
 | Chivalry: Medieval Warfare | 3675 | `FPS-Estimates-Chivalry-Medieval-Warfare-3675.html` |
-| _…273 more_ | | _see capture-manifest.json_ |
+| Cities: Skylines | 3676 | `FPS-Estimates-Cities-Skylines-3676.html` |
+| _…272 more_ | | _see capture-manifest.json_ |

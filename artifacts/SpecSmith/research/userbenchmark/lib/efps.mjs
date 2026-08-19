@@ -159,7 +159,14 @@ function resolveVariantForLabel(label, parsedUrl) {
  * @param {object} context { sourceFile, gameId, gameName, sourceUrl }
  */
 export function extractEfpsRecords(html, context = {}) {
-  const { sourceFile = null, gameId = null, gameName = null, sourceUrl = null } = context;
+  const { sourceFile = null, gameId = null, gameName = null, sourceUrl = null, expectedGameTokens = null } = context;
+  // Normalized set of tokens this page is allowed to publish EFPS for. When
+  // null (synthetic fixtures, direct unit tests) the check is skipped — it is
+  // a page-level integrity rule, not a property of the object format.
+  const allowedTokens =
+    Array.isArray(expectedGameTokens) && expectedGameTokens.length > 0
+      ? new Set(expectedGameTokens.map((t) => String(t).toLowerCase()))
+      : null;
   const records = [];
   const rejected = [];
   const seenRaw = new Map(); // exact raw object text -> first index, for duplicate detection
@@ -199,6 +206,32 @@ export function extractEfpsRecords(html, context = {}) {
         rawUrl: url,
         rawTitle: title,
         rawValue: pRaw,
+        sourceFile,
+        index,
+      });
+      continue;
+    }
+
+    // --- page-ownership check -------------------------------------------------
+    // The EFPS array lives in a select2 "compare" widget, and it is NOT
+    // guaranteed to describe the page it sits on. The 7 Days to Die page
+    // (gameId 3959, 525 samples) embeds 200 records whose game token is CSGO —
+    // evidently a fallback dataset for a low-sample title. Attributing those to
+    // 7 Days to Die would file Counter-Strike's measurements under another
+    // game, which is precisely the misattribution this project exists to
+    // prevent. Note that the direct-vs-comparison cross-check cannot catch
+    // this: the borrowed records are internally consistent with each other.
+    const baseToken = parsedUrl.base.game;
+    if (allowedTokens && baseToken && !allowedTokens.has(baseToken.toLowerCase())) {
+      rejected.push({
+        reason: 'efps-game-token-mismatch',
+        detail: `record's game token "${baseToken}" is not one this page may publish (expected one of: ${[...allowedTokens].join(', ')}) — the page's EFPS widget is showing another game's dataset`,
+        rawObject,
+        rawUrl: url,
+        rawTitle: title,
+        rawValue: pRaw,
+        efpsGameToken: baseToken,
+        pageGameId: gameId,
         sourceFile,
         index,
       });

@@ -57,15 +57,30 @@ export function extractGameIdentity(html) {
   return { value: { gameId, slug, name, canonicalUrl, filterSegments }, warnings };
 }
 
-/** Average FPS may be an integer or a decimal — Counter-Strike: Global
- * Offensive publishes `153`, PlayerUnknown's Battlegrounds publishes `75.5`.
- * The value is captured verbatim and never rounded: `75.5` stays `75.5`.
+/**
+ * Whitespace as it survives BOTH capture routes.
  *
- * The separator before `<span>` is a pair of non-breaking spaces (U+00A0) in
- * the real markup; JavaScript's `\s` already covers those. */
+ * A page saved from view-source keeps the server's raw bytes, so the
+ * non-breaking spaces around the average-FPS value arrive as literal U+00A0
+ * (matched by JavaScript's `\s`). A page saved with the browser's own
+ * "Save Page As" is re-serialized from the live DOM instead, and the browser
+ * writes those same characters back out as the ENTITY `&nbsp;` — six literal
+ * characters that `\s` does not match at all. Both are correct saves of the
+ * same page; only the serialization differs.
+ */
+const WS = '(?:\\s|&nbsp;|&#160;|&#xa0;|&#xA0;)*';
+/** Attribute quoting also differs by capture route: raw source uses single
+ * quotes, DOM re-serialization normalizes to double. Never assume one. */
+const Q = '["\']';
+
+/** Average FPS may be an integer or a decimal — Counter-Strike: Global
+ * Offensive publishes `153`, PlayerUnknown's Battlegrounds `75.5`, 7 Days to
+ * Die `47.8`. The value is captured verbatim and never rounded. */
 export function extractSampleSummary(html) {
   const warnings = [];
-  const m = html.match(/Average Fps:\s*(\d+(?:\.\d+)?)\s*<span class="mutedtext">\s*([\d,]+)\s*samples<\/span>/);
+  const m = html.match(
+    new RegExp(`Average Fps:${WS}(\\d+(?:\\.\\d+)?)${WS}<span class=${Q}mutedtext${Q}>${WS}([\\d,]+)${WS}samples</span>`),
+  );
   if (!m) {
     warnings.push('No "Average Fps: N ... samples" block found.');
     return { value: { averageFps: null, totalSamples: null }, warnings };
@@ -108,8 +123,18 @@ export function extractChart(html, elementId) {
  * their "Bench" link points at, not by table position. */
 export function extractComponentTables(html) {
   const warnings = [];
-  const rowRe =
-    /<tr>\s*<td style='padding:0;text-align:left'>\s*<a[^>]*href='([^']+)'[^>]*>([^<]+)<\/a>\s*<\/td>\s*<td>([^<]*)<\/td>\s*<td>\s*(?:<a class='bglink' href='([^']+)'>([^<]*)<\/a>)?\s*<\/td>\s*<td>([^<]*)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<\/tr>/g;
+  // Quote-agnostic: a view-source save keeps the server's single-quoted
+  // attributes, a browser "Save Page As" re-serializes the DOM with double
+  // quotes. Anchoring on one style silently returned ZERO rows for the other —
+  // on a page whose save was otherwise complete.
+  const rowRe = new RegExp(
+    `<tr>\\s*<td style=${Q}padding:0;text-align:left${Q}>\\s*<a[^>]*href=${Q}([^"']+)${Q}[^>]*>([^<]+)</a>\\s*</td>` +
+      `\\s*<td>([^<]*)</td>` +
+      `\\s*<td>\\s*(?:<a class=${Q}bglink${Q} href=${Q}([^"']+)${Q}>([^<]*)</a>)?\\s*</td>` +
+      `\\s*<td>([^<]*)</td>` +
+      `\\s*<td>([\\s\\S]*?)</td>\\s*</tr>`,
+    'g',
+  );
 
   const gpuRows = [];
   const cpuRows = [];
@@ -124,7 +149,7 @@ export function extractComponentTables(html) {
     let priceUsd = null;
     let priceUrl = null;
     let priceStore = null;
-    const priceMatch = priceCell.match(/href='([^']+)'[^>]*title='Live (\w+) price'[\s\S]*?\$([\d,.]+)/);
+    const priceMatch = priceCell.match(new RegExp(`href=${Q}([^"']+)${Q}[^>]*title=${Q}Live (\\w+) price${Q}[\\s\\S]*?\\$([\\d,.]+)`));
     if (priceMatch) {
       priceUrl = decodeEntities(priceMatch[1]);
       priceStore = priceMatch[2];
@@ -199,6 +224,36 @@ export function extractOwnFilterPaths(html, gameId) {
   return { value: [...seen].sort().map((p) => parseFilterSegments(p)), warnings: [] };
 }
 
+/**
+ * The EFPS game token(s) this page is legitimately allowed to publish.
+ *
+ * Needed because the embedded EFPS array is NOT reliably the page's own game —
+ * see the ownership check in efps.mjs. Two forms are accepted, and both are
+ * read from the page itself rather than assumed:
+ *
+ *   1. The parenthetical abbreviation in <title>, which is exactly the token
+ *      for games whose short name differs from their catalog name —
+ *      "…Can I Run Counter-Strike: Global Offensive (CSGO)" → CSGO,
+ *      "…Can I Run PlayerUnknown's Battlegrounds (PUBG)"    → PUBG.
+ *   2. The game name with non-alphanumerics stripped, for games that have no
+ *      abbreviation — "Fortnite" → Fortnite, "7 Days to Die" → 7DaystoDie.
+ *
+ * Verified against all four captured pages: Fortnite, CS:GO and PUBG each
+ * match one of their own candidates; 7 Days to Die matches neither of its
+ * candidates against the CSGO token its widget actually carries, which is the
+ * mismatch that must be caught.
+ */
+export function expectedEfpsTokens(html, gameName) {
+  const tokens = new Set();
+  const paren = html.match(/\(([A-Za-z0-9]+)\)\s*<\/title>/);
+  if (paren) tokens.add(paren[1]);
+  if (gameName) {
+    const stripped = gameName.replace(/[^A-Za-z0-9]/g, '');
+    if (stripped) tokens.add(stripped);
+  }
+  return [...tokens];
+}
+
 // ---------------------------------------------------------------------------
 // Source-kind detection
 // ---------------------------------------------------------------------------
@@ -261,6 +316,7 @@ export function parseGamePage(html, sourceFile) {
     gameId: identity.value.gameId,
     gameName: identity.value.name,
     sourceUrl: identity.value.canonicalUrl,
+    expectedGameTokens: expectedEfpsTokens(html, identity.value.name),
   });
   if (efps.rejected.length > 0) warnings.push(`[efps] ${efps.rejected.length} EFPS object(s) rejected — see efps.rejected.`);
   if (efps.stats.withWarnings > 0) warnings.push(`[efps] ${efps.stats.withWarnings} EFPS record(s) carry their own warnings.`);

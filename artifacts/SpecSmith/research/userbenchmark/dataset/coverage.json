@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T05:26:03.674Z",
+  "generatedAt": "2026-08-19T00:39:58.129Z",
   "source": "UserBenchmark",
   "parserVersion": "ub-research/2.0.0",
   "efpsExtractorVersion": "ub-efps/1.0.0",
@@ -7,37 +7,37 @@
   "dataQualityNote": "These are crowd-sourced, self-reported values extracted from a third-party aggregator. Parsing cleanly makes a record \"structurally-validated\" and nothing more. None of this is a SpecSmith verified benchmark record.",
   "catalog": {
     "totalKnownGames": 316,
-    "captured": 3,
-    "notCaptured": 313,
-    "capturePercent": 0.95,
-    "parsed": 3,
+    "captured": 4,
+    "notCaptured": 312,
+    "capturePercent": 1.27,
+    "parsed": 4,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0
   },
   "sources": {
-    "filesDiscovered": 3,
-    "parsedAsGamePages": 3,
+    "filesDiscovered": 4,
+    "parsedAsGamePages": 4,
     "skippedNotGamePages": 0,
     "parserThrew": 0
   },
   "records": {
-    "games": 3,
+    "games": 4,
     "efpsDirect": 81,
     "efpsComparisons": 519,
     "efpsTotal": 600,
-    "cpuObservations": 60,
-    "gpuObservations": 60,
-    "configurations": 147,
-    "distributions": 9,
-    "rejected": 0,
+    "cpuObservations": 80,
+    "gpuObservations": 80,
+    "configurations": 196,
+    "distributions": 12,
+    "rejected": 200,
     "duplicatesRemoved": 0,
     "conflictKeys": 0
   },
   "chartCoverage": {
-    "gamesWithFpsHistogram": 3,
-    "gamesWithSettingsDistribution": 3,
-    "gamesWithResolutionDistribution": 3,
-    "ofGamesParsed": 3
+    "gamesWithFpsHistogram": 4,
+    "gamesWithSettingsDistribution": 4,
+    "gamesWithResolutionDistribution": 4,
+    "ofGamesParsed": 4
   },
   "configurationDecoding": {
     "efpsFieldsProven": [
@@ -76,11 +76,24 @@
     }
   },
   "biggestGaps": [
-    "313 of 316 known games have no saved source (99.05% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
+    "312 of 316 known games have no saved source (98.73% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
     "EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.",
     "Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven."
   ],
   "perGame": [
+    {
+      "gameId": "3959",
+      "name": "7 Days to Die",
+      "parsed": true,
+      "averageFps": 47.8,
+      "totalSamples": 525,
+      "efpsTotal": 0,
+      "efpsDirect": 0,
+      "efpsComparisons": 0,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 1
+    },
     {
       "gameId": "3680",
       "name": "Counter-Strike: Global Offensive",

@@ -12,7 +12,7 @@
 //     silently passing a suite that only ever saw one page.
 
 import { describe, it, assert } from './harness.mjs';
-import { parseGamePage } from '../lib/game-page.mjs';
+import { parseGamePage, expectedEfpsTokens } from '../lib/game-page.mjs';
 import { normalizeAll } from '../lib/normalize.mjs';
 import { listSourceFiles, loadOptional } from './fixtures/load.mjs';
 import fs from 'node:fs/promises';
@@ -26,6 +26,10 @@ for (const f of files) {
   parsed.push(parseGamePage(html, f));
 }
 const gamePages = parsed.filter((p) => p._meta.parsedSuccessfully);
+// Raw source kept alongside the parse so ownership assertions can recompute a
+// page's allowed tokens from the page itself rather than trusting the parse.
+const rawHtmlBySource = new Map();
+for (const f of files) rawHtmlBySource.set(f, await fs.readFile(path.join(pagesDir, f), 'utf-8'));
 
 // The three reference games the brief names, by UserBenchmark game id.
 // PUBG is 3944. An earlier version of this file guessed 3712, which is
@@ -259,8 +263,18 @@ describe('Corpus: EFPS game token vs catalog name', () => {
     if (tokens.has('3954')) assert.equal(tokens.get('3954'), 'Fortnite', 'this one happens to match');
   });
 
-  it('every page still classifies and cross-checks correctly despite the token mismatch', () => {
+  it('every page whose EFPS block is its own classifies and cross-checks correctly', () => {
+    // Scoped to pages that actually own their EFPS block. A page whose widget
+    // carries another game's dataset (7 Days to Die) legitimately ends with
+    // zero accepted records — that is the ownership rule working, not a
+    // classification failure. Asserting ">0 direct" for every page would make
+    // the correct behaviour look like a regression.
     for (const p of gamePages) {
+      const quarantined = p.efps.rejected.filter((r) => r.reason === 'efps-game-token-mismatch').length;
+      if (quarantined > 0) {
+        assert.equal(p.efps.stats.accepted, 0, `${p.game.name}: partially-borrowed EFPS block is not an expected shape`);
+        continue;
+      }
       assert.ok(p.efps.stats.direct > 0, `${p.game.name}: no direct records`);
       assert.ok(p.efps.stats.comparisons > 0, `${p.game.name}: no comparison records`);
       assert.equal(p.efps.stats.rejected, 0, `${p.game.name}: records rejected`);
@@ -310,6 +324,77 @@ describe('Corpus: determinism and provenance', () => {
       const n = normalizeAll(p);
       assert.equal(n.games[0].provenance.sourceContentSha256, p._meta.sourceContentSha256);
       assert.ok(/^[0-9a-f]{64}$/.test(p._meta.sourceContentSha256), 'looks like a sha256');
+    }
+  });
+});
+
+describe('Corpus: capture-serialization tolerance', () => {
+  it('parses pages saved as raw source AND pages re-serialized by the browser', () => {
+    // A view-source save keeps the server's single-quoted attributes and raw
+    // U+00A0; a browser "Save Page As" re-serializes the DOM with double
+    // quotes and &nbsp; entities. Both are complete, correct saves. Anchoring
+    // on one form silently produced 0 GPU/CPU rows and a null average FPS on
+    // the other, on a page that was otherwise fully intact.
+    for (const p of gamePages) {
+      assert.ok(p.sampleSummary.averageFps > 0, `${p._meta.sourceFile}: average FPS did not parse`);
+      assert.ok(p.sampleSummary.totalSamples > 0, `${p._meta.sourceFile}: sample count did not parse`);
+      assert.ok(p.gpuTable.length > 0, `${p._meta.sourceFile}: GPU table produced no rows`);
+      assert.ok(p.cpuTable.length > 0, `${p._meta.sourceFile}: CPU table produced no rows`);
+    }
+  });
+
+  it('reads a decimal average FPS without rounding it', () => {
+    for (const p of gamePages) {
+      const a = p.sampleSummary.averageFps;
+      assert.equal(a, Number(a), `${p._meta.sourceFile}: average FPS is not a clean number`);
+    }
+  });
+});
+
+describe('Corpus: EFPS records must belong to the page carrying them', () => {
+  it('never attributes another game\'s EFPS dataset to this page', () => {
+    // The EFPS array sits in a select2 "compare" widget and is NOT guaranteed
+    // to describe its host page. The 7 Days to Die page (3959, 525 samples)
+    // ships 200 records tokened CSGO — a fallback dataset for a low-sample
+    // title. Filing those under 7 Days to Die would misattribute
+    // Counter-Strike's measurements to another game.
+    for (const p of gamePages) {
+      const allowed = new Set(expectedEfpsTokens(rawHtmlBySource.get(p._meta.sourceFile), p.game.name).map((t) => t.toLowerCase()));
+      for (const r of p.efps.records) {
+        assert.ok(
+          !r.efpsGameToken || allowed.has(r.efpsGameToken.toLowerCase()),
+          `${p._meta.sourceFile}: accepted an EFPS record tokened "${r.efpsGameToken}" that this page may not publish`,
+        );
+      }
+    }
+  });
+
+  it('quarantines the mismatched records instead of dropping them', () => {
+    const withMismatch = gamePages.filter((p) => p.efps.rejected.some((r) => r.reason === 'efps-game-token-mismatch'));
+    for (const p of withMismatch) {
+      const bad = p.efps.rejected.filter((r) => r.reason === 'efps-game-token-mismatch');
+      assert.equal(p.efps.stats.accepted + p.efps.stats.rejected, p.efps.stats.total, `${p._meta.sourceFile}: accounting does not balance`);
+      for (const r of bad) {
+        assert.ok(r.rawObject && r.rawObject.length > 0, 'raw source text preserved');
+        assert.ok(r.efpsGameToken, 'the offending token is recorded');
+        assert.ok(/is not one this page may publish/.test(r.detail), 'reason states what happened');
+      }
+    }
+  });
+
+  it('the cross-check alone cannot catch this, so the ownership rule is load-bearing', () => {
+    // Borrowed records are internally consistent with each other, so
+    // direct-vs-comparison agreement stays perfect while the whole block
+    // belongs to a different game. Recorded so nobody removes the ownership
+    // check on the grounds that "the cross-check already validates EFPS".
+    for (const p of gamePages) {
+      const byConfig = new Map(p.efps.records.filter((r) => r.kind === 'direct').map((d) => [`${d.config.gpu}|${d.config.cpu}`, d.fps]));
+      for (const c of p.efps.records.filter((r) => r.kind === 'comparison')) {
+        for (const s of c.sides) {
+          const key = `${s.gpu ?? c.sharedConfig.gpu}|${s.cpu ?? c.sharedConfig.cpu}`;
+          if (byConfig.has(key)) assert.equal(s.fps, byConfig.get(key));
+        }
+      }
     }
   });
 });

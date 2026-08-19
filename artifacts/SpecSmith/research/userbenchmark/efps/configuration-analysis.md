@@ -60,7 +60,7 @@ per group `4` (1,800/1,800 groups).
 
 | Field | Meaning | Status | Evidence |
 |---|---|---|---|
-| 0 | **Game** | **proven** | Non-empty in exactly one group (group 3) across all 600 records. Holds three distinct values — `Fortnite`, `PUBG`, `CSGO` — each matching its own page's identity. Never populated in groups 1–2. |
+| 0 | **Game** | **proven as the record's own game — NOT as the host page's game** | Non-empty in exactly one group (group 3) across all 800 records seen. Holds three distinct values — `Fortnite`, `PUBG`, `CSGO`. **Correction:** an earlier version of this report said each value matches "its own page's identity." That was true of the first three captures and is false in general — see §5a. The token identifies the record; it does not certify the page. |
 | 1 | **GPU** | **proven** | 15 distinct values, all GPU models, disjoint from field 2's value set. |
 | 2 | **CPU** | **proven** | 11 distinct values, all CPU models, disjoint from field 1's value set. |
 | 3 | *unknown* | **UNRESOLVED** | Never populated in any of the 1,800 groups. No page link, filter control, or script populates it. |
@@ -193,6 +193,55 @@ chain:
 This check runs on every ingest (`efpsCrossValidation` in `dataset/coverage.json`)
 and as a test, so a future regression in any of the three mechanisms fails
 loudly.
+
+---
+
+## 5a. The EFPS block does not always belong to its host page — CORRECTION
+
+**This supersedes a claim made in the first version of this report.**
+
+The EFPS array is rendered inside a select2 "compare" widget
+(`$(".select_choose_yt").select2({... data:{ results: [...] }})`). Capturing a
+fourth page showed that this widget is **not guaranteed to describe the page it
+sits on**:
+
+| Page | gameId | Page samples | EFPS tokens in its widget |
+|---|---:|---:|---|
+| Fortnite | 3954 | 87,737 | `Fortnite` × 200 |
+| Counter-Strike: Global Offensive | 3680 | 151,690 | `CSGO` × 200 |
+| PlayerUnknown's Battlegrounds | 3944 | 75,383 | `PUBG` × 200 |
+| **7 Days to Die** | **3959** | **525** | **`CSGO` × 200** |
+
+7 Days to Die publishes 200 EFPS records that are entirely Counter-Strike's —
+apparently a fallback dataset for a low-sample title (525 samples against
+151,690 for CS:GO). The first three captures all happened to own their blocks,
+which is what made the original "matches its own page's identity" reading look
+proven. Three agreeing samples were not enough.
+
+**Why the §5 cross-check could not catch this.** The borrowed records are
+internally consistent *with each other* — CS:GO's comparison sides agree
+perfectly with CS:GO's direct records regardless of which page they are printed
+on. The cross-check therefore reported 1352/1352 agreement while an entire
+block belonged to another game. Self-consistency validates the decoding; it
+says nothing about ownership. The two checks are independent and both are
+required.
+
+**The rule now enforced.** A page may publish EFPS only for tokens it can be
+shown to own, derived from the page itself:
+
+1. the parenthetical abbreviation in `<title>` — `(CSGO)`, `(PUBG)`;
+2. the game name with non-alphanumerics stripped — `Fortnite`, `7DaystoDie`.
+
+Records whose token matches neither are **quarantined**, not attributed: they
+go to `dataset/rejected-records.jsonl` with reason
+`efps-game-token-mismatch`, keeping their raw source text. They are never
+re-filed under the token's game either — we hold no evidence that this page's
+copy is a faithful capture of that game's page, and we already have the real
+CS:GO page.
+
+The affected page keeps everything it genuinely owns: 7 Days to Die still
+contributes its average FPS (47.8), sample count (525), 20 GPU rows, 20 CPU
+rows and all three charts. Only the borrowed block is withheld.
 
 ---
 
