@@ -49,6 +49,52 @@ describe('reading frame times', () => {
   });
 });
 
+// REGRESSION: the real PresentMon header, copied verbatim from an actual
+// Windows capture (Roblox, PresentMon 1.x). The parser originally matched
+// column names case-sensitively against "MsBetweenPresents" and REJECTED this
+// file — while listing "msBetweenPresents" in its own error message. PresentMon
+// has shipped both casings, so real captures were a hard block.
+//
+// This header is pinned exactly as it appeared on disk. Nothing about it is
+// reconstructed or assumed.
+const REAL_HEADER =
+  'Application,ProcessID,SwapChainAddress,Runtime,SyncInterval,PresentFlags,Dropped,TimeInSeconds,' +
+  'msInPresentAPI,msBetweenPresents,AllowsTearing,PresentMode,msUntilRenderComplete,msUntilDisplayed,' +
+  'msBetweenDisplayChange,msFlipDelay,msUntilRenderStart,msGPUActive,msSinceInput';
+
+const realRow = (dropped: number, msBetweenPresents: number) =>
+  `RobloxPlayerBeta.exe,7980,0x000002154358A010,DXGI,0,0,${dropped},0.00317310000000,0.13830000000000,` +
+  `${msBetweenPresents},0,Composed: Copy with GPU GDI,1.18630000000000,0.00000000000000,0.00000000000000,` +
+  '0.00000000000000,-0.67060000000000,1.15150000000000,0.00000000000000';
+
+describe('a real PresentMon capture', () => {
+  it('accepts the actual on-disk header, which uses lowercase msBetweenPresents', () => {
+    const csv = [REAL_HEADER, realRow(0, 16.61), realRow(0, 16.7)].join('\n');
+    expect(parsePresentMonCsv(csv, 'RobloxPlayerBeta.exe').frameTimesMs).toEqual([16.61, 16.7]);
+  });
+
+  it('reads Dropped from the real header too', () => {
+    const csv = [REAL_HEADER, realRow(1, 1.8099), realRow(0, 16.61)].join('\n');
+    const r = parsePresentMonCsv(csv, 'RobloxPlayerBeta.exe');
+    expect(r.droppedFrames).toBe(1);
+    expect(r.frameTimesMs).toEqual([16.61]);
+  });
+
+  // "Composed: Copy with GPU GDI" sits in an unquoted field. It contains no
+  // comma, but it does contain a colon and spaces — worth pinning that it does
+  // not disturb field alignment.
+  it('keeps field alignment despite the PresentMode text value', () => {
+    const csv = [REAL_HEADER, realRow(0, 16.61)].join('\n');
+    expect(parsePresentMonCsv(csv, 'RobloxPlayerBeta.exe').frameTimesMs).toEqual([16.61]);
+  });
+
+  it('matches column names case-insensitively but never by prefix', () => {
+    // A similarly-named column is a different measurement and must not match.
+    const wrong = REAL_HEADER.replace('msBetweenPresents', 'msBetweenPresentsDelta');
+    expect(() => parsePresentMonCsv([wrong, realRow(0, 16.61)].join('\n'), 'RobloxPlayerBeta.exe')).toThrow(PresentMonFormatError);
+  });
+});
+
 describe('formats it refuses rather than guesses at', () => {
   // The failure this guards is invisible downstream: a wrong column would
   // produce entirely plausible frame times.

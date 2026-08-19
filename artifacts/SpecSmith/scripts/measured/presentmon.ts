@@ -69,7 +69,17 @@ export function parsePresentMonCsv(csv: string, processFilter?: string): Present
   if (lines.length < 2) throw new PresentMonFormatError('CSV contains no data rows.');
 
   const header = splitCsvLine(lines[0]).map((h) => h.trim());
-  const col = (name: string) => header.indexOf(name);
+
+  // Column lookup is CASE-INSENSITIVE. PresentMon has shipped both casings:
+  // real 1.x output writes `msBetweenPresents`, while its own documentation and
+  // some builds use `MsBetweenPresents`. An exact match rejected a perfectly
+  // valid capture with a message claiming the column was absent while listing
+  // that very column — confusing, and a hard block on real data.
+  //
+  // Matching is still on the WHOLE name, never a prefix or a fuzzy match: a
+  // column that is merely similarly named is a different measurement.
+  const normalized = header.map((h) => h.toLowerCase());
+  const col = (name: string) => normalized.indexOf(name.toLowerCase());
 
   const frameTimeIdx = col(REQUIRED_COLUMN);
   if (frameTimeIdx < 0) {
