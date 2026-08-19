@@ -3,7 +3,8 @@
 
 import { describe, it, assert } from './harness.mjs';
 import { buildCaptureManifest, expectedFilename, checkCatalogUrl } from '../lib/capture.mjs';
-import { classifyCapture } from '../capture/verify-capture.mjs';
+import { classifyCapture, matchFilesToGames, scanPages } from '../capture/verify-capture.mjs';
+import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -194,5 +195,111 @@ describe('verify-capture identity agrees with the ingest', () => {
     assert.equal(r.efpsQuarantinedAsOtherGame, 200);
     assert.ok(/belong to\s+another game/.test(r.detail), `detail must name the borrowed-dataset cause, got: ${r.detail}`);
     assert.equal(/low-sample game/.test(r.detail), false, 'must not be misdescribed as a low-sample game');
+  });
+});
+
+// --- browser-default filenames ---------------------------------------------
+// A browser names a saved page after its <title>, so an ordinary Ctrl+S on a
+// UserBenchmark FPS-Estimates page writes
+//
+//     "UserBenchmark_ Can I Run ADR1FT.html"
+//
+// not the manifest's "FPS-Estimates-ADR1FT-3652.html". The verifier used to
+// look files up BY the manifest name, so a perfectly good save reported as
+// `missing` — and at 50 pages that put 50 manual renames between a correct
+// capture batch and a green run. Files are now found by the identity resolved
+// from the page's own HTML; the manifest still says which games are wanted and
+// what each one's canonical name is.
+describe('verify-capture accepts browser-default filenames', () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ub-capture-'));
+  const adr1ft = fs.readFileSync(path.join(pagesDir, 'FPS-Estimates-ADR1FT-3652.html'), 'utf-8');
+  const alien = fs.readFileSync(path.join(pagesDir, 'FPS-Estimates-Alien-Isolation-3656.html'), 'utf-8');
+
+  // Exactly what Chrome/Opera write: title-derived, ':' replaced by '_',
+  // spaces kept. Written literally so a regression cannot pass by matching
+  // some normalised form of the name instead of ignoring the name.
+  fs.writeFileSync(path.join(fixtureDir, 'UserBenchmark_ Can I Run ADR1FT.html'), adr1ft);
+  fs.writeFileSync(path.join(fixtureDir, 'UserBenchmark_ Can I Run Alien_ Isolation.html'), alien);
+
+  const games = [
+    { gameId: '3652', name: 'ADR1FT', expectedFilename: 'FPS-Estimates-ADR1FT-3652.html' },
+    { gameId: '3656', name: 'Alien: Isolation', expectedFilename: 'FPS-Estimates-Alien-Isolation-3656.html' },
+    { gameId: '3651', name: 'ABZU', expectedFilename: 'FPS-Estimates-ABZU-3651.html' },
+  ];
+
+  it('captures a page saved under the browser default name', async () => {
+    const { results } = matchFilesToGames(await scanPages(fixtureDir), games);
+    const r = results.find((x) => x.gameId === '3652');
+    assert.equal(r.status, 'captured');
+    assert.equal(r.savedAs, 'UserBenchmark_ Can I Run ADR1FT.html');
+  });
+
+  // ADR1FT has no canonical <link>, Alien: Isolation does. Both must resolve
+  // from content, or the fix only works for the easy half of the corpus.
+  it('works whether identity came from a canonical link or from inference', async () => {
+    const { results } = matchFilesToGames(await scanPages(fixtureDir), games);
+    const adr = results.find((x) => x.gameId === '3652');
+    const ali = results.find((x) => x.gameId === '3656');
+    assert.equal(adr.status, 'captured');
+    assert.equal(adr.identitySource, 'inferred-from-self-links');
+    assert.equal(ali.status, 'captured');
+    assert.equal(ali.identitySource, 'canonical');
+  });
+
+  it('reports that the name differs from the manifest name, without failing it', async () => {
+    const { results } = matchFilesToGames(await scanPages(fixtureDir), games);
+    const r = results.find((x) => x.gameId === '3656');
+    assert.equal(r.filenameMatchesExpected, false);
+    assert.includes(r.detail, 'FPS-Estimates-Alien-Isolation-3656.html');
+    assert.includes(r.detail, 'matched by page identity');
+  });
+
+  it('still reports a game with no saved page as missing', async () => {
+    const { results } = matchFilesToGames(await scanPages(fixtureDir), games);
+    assert.equal(results.find((x) => x.gameId === '3651').status, 'missing');
+  });
+
+  // Accepting any filename must not become "accept anything". A file is still
+  // only ever counted as the game it actually contains.
+  it('counts a mis-saved tab as the game it really is, and says so', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ub-capture-'));
+    fs.writeFileSync(path.join(dir, 'FPS-Estimates-ABZU-3651.html'), adr1ft);
+
+    const { results } = matchFilesToGames(await scanPages(dir), games);
+    assert.equal(results.find((x) => x.gameId === '3652').status, 'captured', 'the file is ADR1FT and must count as ADR1FT');
+
+    const abzu = results.find((x) => x.gameId === '3651');
+    assert.equal(abzu.status, 'missing');
+    assert.includes(abzu.detail, '3652');
+  });
+
+  it('never counts a non-game file as a capture', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ub-capture-'));
+    fs.writeFileSync(path.join(dir, 'FPS-Estimates-ADR1FT-3652.html'), '<html><body>Access denied</body></html>');
+
+    const { results, unclassified } = matchFilesToGames(await scanPages(dir), games);
+    assert.equal(results.find((x) => x.gameId === '3652').status, 'missing');
+    assert.equal(unclassified.length, 1);
+  });
+
+  // Two saves of one game can differ. Which one fed the dataset must be stated,
+  // and must not depend on directory listing order.
+  it('reports duplicate saves of one game and prefers the manifest name', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ub-capture-'));
+    fs.writeFileSync(path.join(dir, 'UserBenchmark_ Can I Run ADR1FT.html'), adr1ft);
+    fs.writeFileSync(path.join(dir, 'FPS-Estimates-ADR1FT-3652.html'), adr1ft);
+
+    const { results } = matchFilesToGames(await scanPages(dir), games);
+    const r = results.find((x) => x.gameId === '3652');
+    assert.equal(r.status, 'captured');
+    assert.equal(r.savedAs, 'FPS-Estimates-ADR1FT-3652.html');
+    assert.equal(r.duplicateSources.length, 2);
+    assert.includes(r.detail, '2 saved files resolve to this game');
+  });
+
+  it('lists a saved page belonging to a game outside the batch', async () => {
+    const { unmatched } = matchFilesToGames(await scanPages(fixtureDir), [games[0]]);
+    assert.equal(unmatched.length, 1);
+    assert.equal(unmatched[0].gameId, '3656');
   });
 });

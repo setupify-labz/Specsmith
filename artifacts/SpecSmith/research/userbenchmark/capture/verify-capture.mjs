@@ -53,6 +53,25 @@
 // threshold: real pages carry 17 non-empty inline scripts (72k–102k chars);
 // a stripped save carries 0, while keeping the same 26 <script> tags.
 //
+// HOW FILES ARE MATCHED TO GAMES
+// ------------------------------
+// Files are found by scanning pages/ and reading each one's identity out of
+// the HTML — never by looking for a name. Browsers name a saved page after
+// its <title>, so a normal Ctrl+S produces
+//
+//     "UserBenchmark_ Can I Run ADR1FT.html"
+//
+// not the manifest's "FPS-Estimates-ADR1FT-3652.html". Requiring the manifest
+// name meant a correctly saved page reported as `missing`, and at 50 pages
+// that is 50 renames standing between a good capture batch and a green run.
+//
+// The manifest is still authoritative for WHICH games are wanted and what each
+// one's canonical filename is; it just no longer decides what a file contains.
+// That is strictly safer than the old behaviour, because the old lookup would
+// happily read a file purely because of its name. Now a mis-saved tab counts
+// as the game it actually is, and the game it was supposed to be is reported
+// as missing with the mix-up spelled out.
+//
 // This script never edits, renames, moves or repairs anything. It reports.
 
 import fs from 'node:fs/promises';
@@ -95,16 +114,125 @@ function inlineScriptStats(html) {
   return { tags, withBody, bodyChars };
 }
 
-async function verifyOne(game) {
-  const file = path.join(pagesDir, game.expectedFilename);
-  let html;
+/** Resolves which game a saved page IS, from the page itself.
+ *
+ * Same rule the ingest uses, in the same precedence: the canonical <link>
+ * when the page has one, otherwise the core's corroborated self-link
+ * inference. Returns null for anything that is not an FPS-Estimates game
+ * page, which is what keeps an error page or an unrelated save from being
+ * matched to a game just because of where it sits. */
+export function resolveIdentity(html) {
+  if (detectSourceKind(html).kind !== 'fps-estimates-game-page') return null;
+
+  const canon = canonicalGameId(html);
+  if (canon) return { gameId: canon.gameId, slug: canon.slug, source: 'canonical' };
+
+  // Only pages without a canonical link pay for this second parse.
+  const parsed = parseGamePage(html, 'identity-probe');
+  if (!parsed.game?.gameId) return null;
+  return {
+    gameId: String(parsed.game.gameId),
+    slug: parsed.game.slug ?? null,
+    source: parsed.game.identitySource ?? 'inferred',
+    evidence: parsed.game.identityEvidence ?? null,
+  };
+}
+
+/** Reads every saved page in a directory once and resolves what each one is.
+ *
+ * Takes the directory as an argument so tests can point it at a fixture dir
+ * holding browser-named files without disturbing the real pages/. */
+export async function scanPages(dir) {
+  let names;
   try {
-    html = await fs.readFile(file, 'utf-8');
-  } catch (e) {
-    if (e.code === 'ENOENT') return { ...game, status: 'missing', detail: 'no file at the expected filename' };
-    return { ...game, status: 'unreadable', detail: e.message };
+    names = await fs.readdir(dir);
+  } catch {
+    return [];
   }
-  return classifyCapture(html, game);
+  const out = [];
+  for (const file of names.filter((n) => /\.html?$/i.test(n)).sort()) {
+    let html;
+    try {
+      html = await fs.readFile(path.join(dir, file), 'utf-8');
+    } catch (e) {
+      out.push({ file, html: null, identity: null, readError: e.message });
+      continue;
+    }
+    out.push({ file, html, identity: resolveIdentity(html) });
+  }
+  return out;
+}
+
+/** Matches scanned files to the games the manifest asked for.
+ *
+ * Matching is on resolved identity alone. The manifest supplies each game's
+ * expectedFilename, which is reported (and used to break ties when two saves
+ * claim the same game) but never used to find a file. */
+export function matchFilesToGames(files, games) {
+  const byGameId = new Map();
+  for (const f of files) {
+    if (!f.identity) continue;
+    const list = byGameId.get(f.identity.gameId) ?? [];
+    list.push(f);
+    byGameId.set(f.identity.gameId, list);
+  }
+
+  const claimed = new Set();
+  const results = games.map((game) => {
+    const candidates = byGameId.get(game.gameId) ?? [];
+
+    if (candidates.length === 0) {
+      // Nothing IS this game. If something is nonetheless sitting under this
+      // game's manifest filename, say what it actually turned out to be —
+      // that is the mis-saved-tab case, and it is exactly what a bare
+      // "missing" would hide.
+      const atExpectedName = files.find((f) => f.file === game.expectedFilename);
+      let detail = 'no saved page in pages/ resolves to this game';
+      if (atExpectedName?.identity) {
+        detail +=
+          ` — note: "${game.expectedFilename}" exists but is game ${atExpectedName.identity.gameId}` +
+          ` (${atExpectedName.identity.slug}), so it was counted as that game instead`;
+      } else if (atExpectedName) {
+        detail += ` — note: "${game.expectedFilename}" exists but is not an FPS-Estimates game page`;
+      }
+      return { ...game, status: 'missing', detail };
+    }
+
+    // Deterministic pick: the canonically named file wins if one exists, so a
+    // rename never changes which save is used; otherwise the first by name.
+    const chosen = candidates.find((c) => c.file === game.expectedFilename) ?? candidates[0];
+    claimed.add(chosen.file);
+
+    const r = classifyCapture(chosen.html, game);
+    r.savedAs = chosen.file;
+    r.filenameMatchesExpected = chosen.file === game.expectedFilename;
+
+    const notes = [];
+    if (!r.filenameMatchesExpected) {
+      notes.push(`matched by page identity, saved as "${chosen.file}" (manifest name: "${game.expectedFilename}")`);
+    }
+    if (candidates.length > 1) {
+      // Never silently pick one. Two saves of the same game may differ, and
+      // which one fed the dataset has to be visible.
+      r.duplicateSources = candidates.map((c) => c.file);
+      notes.push(`${candidates.length} saved files resolve to this game (${candidates.map((c) => `"${c.file}"`).join(', ')}); used "${chosen.file}"`);
+    }
+    if (notes.length > 0) r.detail = `${r.detail} — ${notes.join('; ')}`;
+    return r;
+  });
+
+  // Files that resolved to a real game outside this batch, and files that
+  // resolved to nothing at all. Neither is a batch failure, but a file sitting
+  // in pages/ that nothing accounts for should never be invisible.
+  const wantedIds = new Set(games.map((g) => g.gameId));
+  const unmatched = files
+    .filter((f) => f.identity && !claimed.has(f.file) && !wantedIds.has(f.identity.gameId))
+    .map((f) => ({ file: f.file, gameId: f.identity.gameId, slug: f.identity.slug, reason: 'resolves to a game outside this batch' }));
+  const unclassified = files
+    .filter((f) => !f.identity)
+    .map((f) => ({ file: f.file, reason: f.readError ? `unreadable: ${f.readError}` : 'not an FPS-Estimates game page' }));
+
+  return { results, unmatched, unclassified };
 }
 
 /** Decides a capture's status from the page content alone.
@@ -253,8 +381,8 @@ async function main() {
     return;
   }
 
-  const results = [];
-  for (const g of worklist.games) results.push(await verifyOne(g));
+  const files = await scanPages(pagesDir);
+  const { results, unmatched, unclassified } = matchFilesToGames(files, worklist.games);
 
   const by = (s) => results.filter((r) => r.status === s);
   const captured = by('captured');
@@ -265,10 +393,18 @@ async function main() {
   for (const r of results) {
     const mark = { captured: '✓', missing: '·', 'wrong-game': '✗', 'incomplete-save': '⚠', 'not-a-page': '✗', unreadable: '✗' }[r.status];
     const size = r.bytes ? ` [${(r.bytes / 1024).toFixed(0)} KB]` : '';
-    console.log(`  ${mark} ${r.status.padEnd(11)} ${r.name} (${r.gameId})${size}`);
+    const renamed = r.status === 'captured' && r.filenameMatchesExpected === false ? '  ← browser-named save' : '';
+    console.log(`  ${mark} ${r.status.padEnd(11)} ${r.name} (${r.gameId})${size}${renamed}`);
     if (r.status !== 'captured') console.log(`      ${r.detail}`);
   }
   console.log('='.repeat(72));
+
+  if (unmatched.length > 0 || unclassified.length > 0) {
+    console.log('Files in pages/ not counted toward this batch:');
+    for (const u of unmatched) console.log(`  · ${u.file} → game ${u.gameId} (${u.slug}) — outside this batch`);
+    for (const u of unclassified) console.log(`  ✗ ${u.file} — ${u.reason}`);
+    console.log('='.repeat(72));
+  }
   const efpsTotal = captured.reduce((n, r) => n + (r.efpsCount ?? 0), 0);
   console.log(
     `captured ${captured.length}/${results.length} · missing ${by('missing').length} · incomplete ${by('incomplete-save').length} · ` +
@@ -280,7 +416,11 @@ async function main() {
     JSON.stringify(
       {
         generatedAt: new Date().toISOString(),
-        note: 'Capture verification. No network request was made. Status is decided by each file\'s own canonical URL, not by its filename.',
+        note:
+          'Capture verification. No network request was made. Files are matched to games by the identity ' +
+          'resolved from each page\'s own HTML, never by filename, so browser-default names such as ' +
+          '"UserBenchmark_ Can I Run ADR1FT.html" are accepted. The manifest supplies each game\'s expected ' +
+          'filename for reporting only.',
         worklistGeneratedAt: worklist.generatedAt,
         summary: {
           planned: results.length,
@@ -291,8 +431,12 @@ async function main() {
           notAPage: by('not-a-page').length,
           unreadable: by('unreadable').length,
           totalEfpsRecords: captured.reduce((n, r) => n + (r.efpsCount ?? 0), 0),
+          filesScanned: files.length,
+          matchedByBrowserName: captured.filter((r) => r.filenameMatchesExpected === false).length,
         },
         results,
+        filesOutsideBatch: unmatched,
+        filesNotClassified: unclassified,
       },
       null,
       2,
