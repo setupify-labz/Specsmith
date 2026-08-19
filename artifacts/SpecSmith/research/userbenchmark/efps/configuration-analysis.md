@@ -321,10 +321,9 @@ the compare widget**, which is why it turns up under every other game's name.
    component rows as well, and still yields CS:GO.
 2. A normal "Save Page As" is the correct capture method. It records the page
    as rendered, which is the only state in which the game's data exists.
-3. No browser capture route observed so far recovers a page's own EFPS block.
-   Fortnite, PUBG and CS:GO carry theirs; how those three were produced is
-   **not established**, and is deliberately left open rather than explained by
-   a third guess.
+3. No browser capture route recovers a page's own EFPS block. Why Fortnite,
+   PUBG and CS:GO carry theirs is answered in §5d — it is a property of the
+   game, not of how the page was saved.
 4. The quarantine rule is unaffected and remains load-bearing. It keys on the
    game token, so it was never relying on §5b's explanation — which is exactly
    why the wrong explanation never produced wrong data.
@@ -334,6 +333,87 @@ corpus available at the time, and each was overturned by a capture that
 directly tested the mechanism. The quarantine has survived both because it was
 built on the observable property (which game does this record name?) rather
 than on the theory of why.
+
+## 5d. The mechanism — RESOLVED
+
+§5a and §5b each proposed a cause and each was wrong. This section states what
+the HTML and JS actually do.
+
+### The widget never changes after load
+
+The EFPS array is a server-rendered inline literal:
+
+```js
+$(".select_choose_yt").select2(
+    $.extend({
+        data:{ results: [{id:'…/EFps/,,,_,,,_CSGO,2060S,3600,',t:'CSGO 3600 2060S',p:'233'}, …] },
+        placeholder: 'EFps Game Bottlenecks' …
+    },mcCoreSelect2Options)
+).on("select2-selecting", function(e) {
+    MHAjaxStart();
+    var urlpayload = e.val.toString();
+    location = urlpayload;          // navigate away
+    e.preventDefault();
+});
+```
+
+There is exactly one handler and it navigates away. **No code path repopulates
+`data.results`.** So the array in a saved file is precisely what the server
+sent, and the capture route cannot influence it. This is what definitively
+kills §5b — not the correlation being weak, but the mechanism making it
+impossible.
+
+### The server sends ONE fixed array to almost every page
+
+Across the 19-page corpus the extracted 200-record array is **byte-identical —
+same records, same order — on 17 pages, CS:GO's own page included**. There are
+only three distinct arrays in the whole corpus: the default (which is CS:GO's
+data), Fortnite's, and PUBG's.
+
+CS:GO's page never "owned" its block in any special sense. The global default
+simply *is* CS:GO's dataset, so that page agrees with itself by coincidence —
+which is exactly what made §5a's and §5b's readings look plausible.
+
+### It is genuinely CS:GO's data, not the page's own mislabelled
+
+The important safety check. If these were each page's real numbers carrying a
+wrong game token, the quarantine would be destroying measurements. They are
+not: on every borrowing page, all 27 direct configurations carry **exactly**
+CS:GO's published values (`2060S|3600 → 233`, `1660-Ti|9400F → 219`, …), and
+the 173 comparison records match too. The quarantine discards duplicates.
+
+### What decides it: sample count
+
+| Samples | EFPS block |
+|---:|---|
+| 151,690 CS:GO | own |
+| 87,737 Fortnite | own |
+| 75,383 PUBG | own |
+| 28,457 Battlefield 1 | **default** |
+| 12,750 → 5 (everything below) | **default** |
+
+Only the highest-sample titles get a computed bottleneck dataset; every other
+game is served the CS:GO exemplar. The cutoff is **bracketed, not pinned**: it
+lies somewhere in (28,457 … 75,383]. Nothing in this corpus narrows it
+further, and whether the rule is a sample threshold or simply "the site's top N
+titles" is **not** determined — with only three self-publishing games the two
+readings are indistinguishable. A captured page with a sample count inside the
+gap would settle it.
+
+### Consequences for the capture programme
+
+- **Capturing the remaining ~297 pages will yield no additional EFPS records.**
+  Only a handful of games at the very top of the sample distribution publish
+  their own, and those three are already captured. This is a planning fact, not
+  a tooling limitation.
+- What those captures *do* yield remains real and worth having: average FPS,
+  sample count, 20 GPU and 20 CPU rows, and three chart distributions per game.
+- The quarantine stays exactly as it is. It has now survived two wrong
+  explanations because it keys on the observable property — which game does
+  this record name? — rather than on any theory of why.
+
+Pinned by `Corpus: the borrowed EFPS block is a single fixed server default`
+in `test/corpus.test.mjs`.
 
 ## 6. Game-page filter path — PARTIALLY PROVEN
 

@@ -16,6 +16,8 @@ import { parseGamePage, expectedEfpsTokens } from '../lib/game-page.mjs';
 import { normalizeAll } from '../lib/normalize.mjs';
 import { listSourceFiles, loadOptional } from './fixtures/load.mjs';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
+import { extractEfpsRecords } from '../lib/efps.mjs';
 import path from 'node:path';
 import { pagesDir } from './fixtures/load.mjs';
 
@@ -443,5 +445,101 @@ describe('Corpus: identity provenance', () => {
     assert.ok(inferred.some((i) => i.rule === 'game.url-inferred'));
     const unknown = V.validateGames([{ ...base, canonicalUrl: null, identitySource: null }]);
     assert.ok(unknown.some((i) => i.severity === 'error' && i.rule === 'game.url-missing'), 'unidentifiable page must still error');
+  });
+});
+
+// --- why other games' pages carry CS:GO's EFPS block ------------------------
+// The mechanism, not the correlation. The "EFps Game Bottlenecks" widget is a
+// select2 seeded from a server-rendered inline array:
+//
+//   $(".select_choose_yt").select2($.extend({ data:{ results:[ … ] } …
+//
+// Its only handler is `select2-selecting`, which does `location = urlpayload`.
+// Nothing ever repopulates that array client-side, so whatever a saved file
+// contains is exactly what the server sent — the capture route cannot affect
+// it, and no way of saving the page can turn the default into the page's own
+// data.
+//
+// What the server sends is one FIXED dataset, CS:GO's, on every page except a
+// few very high-sample titles. That is why the quarantine fires so often.
+describe('Corpus: the borrowed EFPS block is a single fixed server default', () => {
+  const csgoFile = 'FPS-Estimates-Counter-Strike--Global-Offensive-3680.html';
+  const efpsOf = (file) =>
+    extractEfpsRecords(fsSync.readFileSync(path.join(pagesDir, file), 'utf-8'), {}).records;
+  const signature = (records) => records.map((r) => r.rawObject).join('|');
+
+  const csgoSignature = signature(efpsOf(csgoFile));
+  const files = fsSync.readdirSync(pagesDir).filter((f) => f.endsWith('.html')).sort();
+
+  it('every page carrying a foreign block carries the IDENTICAL block', () => {
+    const foreign = [];
+    for (const f of files) {
+      const recs = efpsOf(f);
+      if (recs.length === 0) continue;
+      const token = recs[0].efpsGameToken;
+      if (f !== csgoFile && token === 'CSGO') foreign.push(f);
+    }
+    assert.ok(foreign.length > 0, 'corpus should contain pages carrying the default block');
+
+    for (const f of foreign) {
+      assert.equal(
+        signature(efpsOf(f)),
+        csgoSignature,
+        `${f} carries a CSGO-token block that is NOT byte-identical to CS:GO's own — ` +
+          'the single-fixed-default finding would no longer hold',
+      );
+    }
+  });
+
+  // The decisive check that the quarantine discards duplicates rather than
+  // real measurements: if these were the page's own numbers merely mislabelled,
+  // the FPS values would differ from CS:GO's for the same (GPU, CPU).
+  it('the borrowed values are genuinely CS:GO’s, not the page’s own mislabelled', () => {
+    const direct = (file) => {
+      const m = new Map();
+      for (const r of efpsOf(file)) if (r.kind === 'direct' && r.config) m.set(`${r.config.gpu}|${r.config.cpu}`, r.fps);
+      return m;
+    };
+    const csgo = direct(csgoFile);
+    assert.ok(csgo.size > 0);
+
+    for (const f of files) {
+      const recs = efpsOf(f);
+      if (f === csgoFile || recs.length === 0 || recs[0].efpsGameToken !== 'CSGO') continue;
+      for (const [config, fps] of direct(f)) {
+        assert.equal(fps, csgo.get(config), `${f} config ${config} differs from CS:GO's value — it would be real data, not a duplicate`);
+      }
+    }
+  });
+
+  // Pages that DO publish their own block are the highest-sample titles. The
+  // boundary is only bracketed, not pinned: Battlefield 1 (28,457) gets the
+  // default and PUBG (75,383) gets its own, so the cutoff lies somewhere
+  // between. Asserted as a bracket so a future page inside that gap tightens
+  // the finding instead of silently contradicting it.
+  it('only the highest-sample games publish their own block', () => {
+    const own = [];
+    const borrowed = [];
+    for (const f of files) {
+      const recs = efpsOf(f);
+      if (recs.length === 0) continue;
+      const m = f.match(/-(\d+)\.html$/);
+      (recs[0].efpsGameToken === 'CSGO' && f !== csgoFile ? borrowed : own).push(m?.[1]);
+    }
+    const samplesById = new Map(
+      fsSync
+        .readFileSync(path.join(pagesDir, '..', 'dataset', 'games.jsonl'), 'utf-8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l))
+        .map((g) => [String(g.gameId), g.totalSamples ?? 0]),
+    );
+    const minOwn = Math.min(...own.map((id) => samplesById.get(id) ?? 0));
+    const maxBorrowed = Math.max(...borrowed.map((id) => samplesById.get(id) ?? 0));
+    assert.ok(
+      maxBorrowed < minOwn,
+      `sample counts must separate the two groups: highest borrowing page has ${maxBorrowed}, ` +
+        `lowest self-publishing page has ${minOwn}`,
+    );
   });
 });

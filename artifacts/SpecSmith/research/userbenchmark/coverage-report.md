@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-19T01:38:19.375Z  
+Generated: 2026-08-19T01:46:04.130Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
