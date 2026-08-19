@@ -140,10 +140,48 @@ export function robotsAllows(rules, pathname) {
   return a >= d;
 }
 
+/** Raised for conditions the operator can act on, and reported without a
+ * stack trace — a Node traceback tells someone running a capture batch
+ * nothing they can use. */
+class OperatorError extends Error {}
+
 async function loadRobots() {
-  const res = await fetch(`${ORIGIN}/robots.txt`, { redirect: 'follow' });
-  if (res.status === 404) return { rules: { disallow: [], allow: [], crawlDelayMs: 0 }, note: 'no robots.txt (404) — treated as unrestricted' };
-  if (!res.ok) throw new Error(`robots.txt returned HTTP ${res.status}. Refusing to proceed without knowing the rules.`);
+  let res;
+  try {
+    res = await fetch(`${ORIGIN}/robots.txt`, { redirect: 'follow' });
+  } catch (e) {
+    throw new OperatorError(
+      `Could not reach ${ORIGIN} at all (${e.cause?.code ?? e.message}).\n` +
+        'This machine has no route to the site — check connectivity, VPN, or proxy settings.\n' +
+        'Nothing was fetched.',
+    );
+  }
+
+  if (res.status === 404) {
+    return { rules: { disallow: [], allow: [], crawlDelayMs: 0 }, note: 'no robots.txt (404) — treated as unrestricted' };
+  }
+
+  if (!res.ok) {
+    // A 403 here is genuinely ambiguous and the two causes call for opposite
+    // responses. An intercepting proxy or corporate filter refusing CONNECT
+    // looks identical from here to the site itself refusing — the research
+    // container returns exactly this, and it is the proxy, not UserBenchmark.
+    // Guessing would either send someone chasing a network fault that does not
+    // exist, or tell them to retry against a site that just said no. So the
+    // run stops and names both possibilities rather than picking one.
+    const ambiguous =
+      res.status === 403 || res.status === 407
+        ? '\nThis is either the site declining, or a proxy/filter on this network intercepting the request.\n' +
+          'Check whether a plain browser on this machine can open the URL above. If it can, the block is\n' +
+          'local to this environment. If it cannot, the site is declining and you should stop here.'
+        : '';
+    throw new OperatorError(
+      `${ORIGIN}/robots.txt returned HTTP ${res.status}.\n` +
+        'Refusing to crawl without knowing the rules. Nothing was fetched.' +
+        ambiguous,
+    );
+  }
+
   const text = await res.text();
   return { rules: parseRobots(text), note: `robots.txt fetched (${text.length} bytes)` };
 }
@@ -387,4 +425,13 @@ async function main() {
 
 const invokedDirectly =
   process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (invokedDirectly) await main();
+if (invokedDirectly) {
+  try {
+    await main();
+  } catch (e) {
+    // Operator-facing problems get the message; genuine bugs keep their stack.
+    if (e instanceof OperatorError) console.error(`\n${e.message}`);
+    else console.error(e);
+    process.exitCode = 1;
+  }
+}

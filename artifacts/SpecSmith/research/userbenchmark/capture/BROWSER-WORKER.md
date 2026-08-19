@@ -82,3 +82,18 @@ captures over HTTP (no request to the real site):
 
 **Untested:** the live site's actual response. That is what your `--compare 2`
 run settles.
+
+## If robots.txt cannot be read
+
+The run stops before fetching anything and says so. A 403 there is ambiguous —
+it is either the site declining or a proxy/filter on your network intercepting
+the request, and those call for opposite responses. The worker names both
+rather than guessing.
+
+To tell them apart: open `https://www.userbenchmark.com/robots.txt` in a normal
+browser on the same machine. If it loads, the block is local to that
+environment. If it does not, the site is declining and you should stop.
+
+Running `--compare 2` inside the research container produces exactly this,
+because the container's proxy refuses the CONNECT. It is not evidence about
+UserBenchmark either way.
