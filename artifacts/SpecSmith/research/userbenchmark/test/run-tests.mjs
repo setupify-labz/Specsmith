@@ -13,6 +13,7 @@ import './capture.test.mjs';
 import './view-source.test.mjs';
 import './browser-worker.test.mjs';
 import './corpus.test.mjs';
+import './generalization.test.mjs';
 import './canonical.test.mjs';
 
 await run();
