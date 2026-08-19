@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T09:07:45.292Z",
+  "generatedAt": "2026-08-19T21:40:38.481Z",
   "note": "Capture verification. No network request was made. Files are matched to games by the identity resolved from each page's own HTML, never by filename, so browser-default names such as \"UserBenchmark_ Can I Run ADR1FT.html\" are accepted. The manifest supplies each game's expected filename for reporting only.",
   "worklistGeneratedAt": "2026-08-19T00:35:12.121Z",
   "summary": {

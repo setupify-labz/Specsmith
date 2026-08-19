@@ -9,6 +9,10 @@
       "note": "no canonical link; identity inferred from 65 self-links to ADR1FT/3652 corroborated by the page's own <h1>"
     },
     "parsedSuccessfully": true,
+    "crossCheck": {
+      "gpuComponentsLinked": 20,
+      "cpuComponentsLinked": 20
+    },
     "parserNote": "RESEARCH DATA — extracted from a locally saved UserBenchmark page source. Not fetched by this tool. NOT a verified BenchmarkRecord; these are crowd-sourced self-reported values.",
     "warnings": [
       "Source kind detected with low confidence: no canonical link; identity inferred from 65 self-links to ADR1FT/3652 corroborated by the page's own <h1>",

@@ -13,6 +13,39 @@
 //             on a page that genuinely doesn't have one.)
 //
 // A run's exit status keys off ERRORs only.
+//
+// CROSS-REGION INVARIANTS
+// -----------------------
+// Most rules here inspect one field in isolation. Two do not, and they are the
+// only checks capable of catching a parser that returns plausible-looking but
+// incomplete output:
+//
+//   source.<kind>-rows-short
+//       Every component row carries a per-component filter link. Those links
+//       are counted by the parser from an anchor the row regex does not use
+//       (_meta.crossCheck), so the count is INDEPENDENT of the extraction being
+//       checked. A regex cannot report that it failed to match something, so
+//       without this a table parsed short is indistinguishable from a short
+//       table. Measured 1:1 with no slack on all 19 captured pages.
+//
+//   source.<settings|resolution>-sum-mismatch
+//       The settings and resolution distributions are SAMPLE COUNTS, not
+//       percentages, and each sums EXACTLY to the page's own total sample
+//       count. Verified on all 19 captured pages with no rounding slack, over a
+//       range from 5 to 151,690 samples. This links the header summary block to
+//       the inline chart scripts — two independently extracted regions — so
+//       drift in either is caught.
+//
+//       The FPS histogram is deliberately excluded: its totals bear no fixed
+//       relationship to the sample count (16 distinct ratios across 19 pages),
+//       so asserting one would invent an invariant rather than observe one.
+//
+//       RISK, recorded honestly: this asserts a property of UserBenchmark's
+//       DATA, not of our code, and all 19 samples come from a single capture
+//       window, so temporal stability is unverified. TRIPWIRE — if it ever
+//       fires on a page that is otherwise healthy, re-examine the invariant
+//       BEFORE changing the parser to satisfy it. Editing a correct parser to
+//       satisfy a stale assumption would be the worse failure.
 
 export const SEVERITY = Object.freeze({ ERROR: 'error', WARNING: 'warning' });
 
@@ -103,7 +136,56 @@ export function validateComponentObservations(rows, kind) {
     if (r.unresolvedFilterPositions?.length > 0) {
       issues.push(issue(SEVERITY.WARNING, `${kind}.filter-position-unresolved`, `Filter path uses undocumented position(s): ${JSON.stringify(r.unresolvedFilterPositions)}.`, ctx));
     }
+
+    // A row that HAS a component page URL but yielded no id means we failed to
+    // parse a URL shape that was right there. That is a tooling fault, and it
+    // is the exact historical bug where ids in `/SpeedTest/<id>/<slug>` were
+    // dropped because only `/Rating/<id>` was matched — 199 of 730 rows lost an
+    // id that the page was publishing.
+    //
+    // Conditional on the URL existing. A row with no component URL at all is a
+    // source gap, already reported as `${kind}.page-url-missing` at WARNING,
+    // and must not be escalated to ERROR here.
+    if (r.componentPageUrl && !r.componentRatingId) {
+      issues.push(
+        issue(
+          SEVERITY.ERROR,
+          `${kind}.rating-id-unparsed`,
+          `Row has a component page URL but no component id could be read from it: ${r.componentPageUrl}`,
+          ctx,
+        ),
+      );
+    }
   }
+
+  // The component id IS the component's identity, so the same id twice in one
+  // game's table means the row regex matched overlapping regions — structurally
+  // impossible output, and a tooling fault.
+  //
+  // Keyed on the id rather than the name deliberately. Two rows sharing a
+  // display NAME is only probably a fault (the source could legitimately list
+  // two variants under one string), so that case is left to the test-layer
+  // detector rather than failing a run.
+  const byGame = new Map();
+  for (const r of rows) {
+    if (!r.componentRatingId) continue;
+    const key = r.gameId;
+    if (!byGame.has(key)) byGame.set(key, new Map());
+    const seen = byGame.get(key);
+    if (seen.has(r.componentRatingId)) {
+      issues.push(
+        issue(
+          SEVERITY.ERROR,
+          `${kind}.duplicate-rating-id`,
+          `Component id ${r.componentRatingId} appears on more than one ${kind} row ("${seen.get(r.componentRatingId)}" and "${r.componentName}").`,
+          { gameId: r.gameId, component: r.componentName, sourceFile: r.provenance?.sourceFile },
+        ),
+      );
+    } else {
+      seen.set(r.componentRatingId, r.componentName);
+    }
+  }
+
   return issues;
 }
 
@@ -234,6 +316,80 @@ export function validateSources(parsedPages, duplicateSourcePages) {
       issues.push(issue(SEVERITY.WARNING, 'source.not-a-game-page', `"${p._meta.sourceFile}" is not an FPS-Estimates game page (detected: ${p._meta.sourceKind?.kind}) — skipped.`, { sourceFile: p._meta.sourceFile }));
       continue;
     }
+    // --- component rows short -------------------------------------------
+    // The page links N distinct components; the parser read M. The data is in
+    // the file and we failed to read it, so there is no way for the source to
+    // cause this — a tooling fault by construction.
+    //
+    // The linked count comes from `_meta.crossCheck`, computed by the parser
+    // from an anchor the row regex does not use. That independence is the whole
+    // point: a regex cannot report that it failed to match something, so a
+    // table parsed short is otherwise indistinguishable from a short table.
+    // Measured 1:1 with no slack on all 19 captured pages.
+    const crossCheck = p._meta.crossCheck;
+    if (crossCheck) {
+      for (const [table, linkedKey, kind] of [
+        ['gpuTable', 'gpuComponentsLinked', 'gpu'],
+        ['cpuTable', 'cpuComponentsLinked', 'cpu'],
+      ]) {
+        const parsedRows = p[table]?.length ?? 0;
+        const linked = crossCheck[linkedKey];
+        if (linked != null && parsedRows !== linked) {
+          issues.push(
+            issue(
+              SEVERITY.ERROR,
+              `source.${kind}-rows-short`,
+              `"${p._meta.sourceFile}" links ${linked} distinct ${kind.toUpperCase()} component(s) but only ${parsedRows} row(s) were parsed — the table was read incompletely.`,
+              { gameId: p.game?.gameId, sourceFile: p._meta.sourceFile },
+            ),
+          );
+        }
+      }
+    }
+
+    // --- distribution sum invariant ---------------------------------------
+    // THE INVARIANT: the settings and resolution distributions are SAMPLE
+    // COUNTS, not percentages, and each sums EXACTLY to the page's own total
+    // sample count.
+    //
+    // Verified on all 19 captured pages with no rounding slack, across a range
+    // spanning 5 to 151,690 samples. It is the only cross-region check in this
+    // file — every other rule inspects one field in isolation — and it works by
+    // linking two INDEPENDENTLY extracted regions: the header summary block and
+    // the inline chart scripts. If either drifts, the sums stop agreeing.
+    //
+    // The FPS histogram is deliberately excluded. Its totals bear no fixed
+    // relationship to the sample count (16 distinct ratios across 19 pages), so
+    // asserting one would be inventing an invariant rather than observing one.
+    //
+    // ERROR because the overwhelmingly likely cause is our own extraction
+    // grabbing the wrong array. But note the risk honestly: this asserts a
+    // property of UserBenchmark's DATA, and all 19 samples come from a single
+    // capture window, so temporal stability is unverified. TRIPWIRE — if this
+    // ever fires on a page that is otherwise healthy, re-examine the invariant
+    // BEFORE changing the parser to satisfy it.
+    const totalSamples = p.sampleSummary?.totalSamples;
+    if (totalSamples != null) {
+      for (const [key, label] of [
+        ['settingsDistribution', 'settings'],
+        ['resolutionDistribution', 'resolution'],
+      ]) {
+        const data = p[key]?.data ?? [];
+        if (data.length === 0) continue; // absence is a source gap, already reported as dist.empty
+        const sum = data.reduce((a, b) => a + (Number(b) || 0), 0);
+        if (sum !== totalSamples) {
+          issues.push(
+            issue(
+              SEVERITY.ERROR,
+              `source.${label}-sum-mismatch`,
+              `"${p._meta.sourceFile}": the ${label} distribution sums to ${sum} but the page reports ${totalSamples} total samples — the header summary and the chart data disagree.`,
+              { gameId: p.game?.gameId, sourceFile: p._meta.sourceFile },
+            ),
+          );
+        }
+      }
+    }
+
     if (p._meta.sourceKind && p._meta.sourceKind.confident === false) {
       issues.push(issue(SEVERITY.WARNING, 'source.low-confidence', `"${p._meta.sourceFile}" matched a game page only weakly: ${p._meta.sourceKind.note}`, { sourceFile: p._meta.sourceFile }));
     }

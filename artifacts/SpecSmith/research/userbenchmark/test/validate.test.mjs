@@ -63,6 +63,9 @@ describe('Validate: component observations', () => {
     gameId: '3954',
     componentName: 'Nvidia GTX 1060-6GB',
     componentPageUrl: 'https://gpu.userbenchmark.com/Nvidia-GTX-1060-6GB/Rating/3639',
+    // Present on every real row that has a component URL (0 of 730 captured
+    // rows lack one), and required by gpu.rating-id-unparsed.
+    componentRatingId: '3639',
     samples: 6210,
     benchPercent: 24,
     valuePercent: 51,
@@ -218,5 +221,128 @@ describe('Validate: summarize', () => {
     assert.equal(s.errors, 1);
     assert.equal(s.warnings, 2);
     assert.equal(s.byRule['warning:b'], 2);
+  });
+});
+
+// --- promoted extraction rules ---------------------------------------------
+// Four detectors promoted from the test layer into production validation.
+// Each is an ERROR because each can only be caused by our own tooling failing
+// to read data that is present in the source — never by a gap in the source
+// itself. The severity model in validate.mjs's header is the contract:
+// ERROR = tooling fault, WARNING = source data gap.
+//
+// The negative controls matter as much as the positives. An over-eager ERROR
+// fails ingestion on legitimate pages, which is its own kind of data loss.
+describe('Validation: component rows short (ERROR)', () => {
+  const page = (over) => ({
+    _meta: { sourceFile: 's.html', parsedSuccessfully: true, sourceKind: { kind: 'fps-estimates-game-page', confident: true }, warnings: [], crossCheck: { gpuComponentsLinked: 20, cpuComponentsLinked: 20 }, ...over?._meta },
+    game: { gameId: '1' },
+    sampleSummary: { totalSamples: null },
+    gpuTable: Array.from({ length: 20 }, (_, i) => ({ name: `g${i}` })),
+    cpuTable: Array.from({ length: 20 }, (_, i) => ({ name: `c${i}` })),
+    ...over,
+  });
+
+  it('accepts a page whose parsed rows match the linked components', () => {
+    const errors = V.validateSources([page()], []).filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.deepEqual(errors, []);
+  });
+
+  it('is an ERROR when fewer rows were parsed than the page links', () => {
+    const short = page({ gpuTable: Array.from({ length: 19 }, (_, i) => ({ name: `g${i}` })) });
+    const errors = V.validateSources([short], []).filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].rule, 'source.gpu-rows-short');
+  });
+
+  // A page parsed before crossCheck existed must not fail; absence of the
+  // cross-check input is not evidence of a short table.
+  it('stays silent when no cross-check data is available', () => {
+    const noCross = page({ _meta: { crossCheck: undefined } });
+    noCross._meta = { sourceFile: 's.html', parsedSuccessfully: true, sourceKind: { kind: 'fps-estimates-game-page', confident: true }, warnings: [] };
+    const errors = V.validateSources([noCross], []).filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.deepEqual(errors, []);
+  });
+});
+
+describe('Validation: distribution sum invariant (ERROR)', () => {
+  // THE INVARIANT: settings and resolution distributions are sample COUNTS and
+  // each sums exactly to the page's own total sample count. Verified on all 19
+  // captures with no rounding slack, from 5 to 151,690 samples. It links two
+  // independently extracted regions — the header block and the chart scripts —
+  // so drift in either is caught.
+  const page = (over) => ({
+    _meta: { sourceFile: 's.html', parsedSuccessfully: true, sourceKind: { kind: 'fps-estimates-game-page', confident: true }, warnings: [] },
+    game: { gameId: '1' },
+    sampleSummary: { totalSamples: 100 },
+    gpuTable: [],
+    cpuTable: [],
+    settingsDistribution: { labels: ['a', 'b'], data: [60, 40] },
+    resolutionDistribution: { labels: ['x'], data: [100] },
+    ...over,
+  });
+
+  it('accepts distributions that sum to the page total', () => {
+    assert.deepEqual(V.validateSources([page()], []).filter((i) => i.severity === V.SEVERITY.ERROR), []);
+  });
+
+  it('is an ERROR when a distribution disagrees with the page total', () => {
+    const drift = page({ settingsDistribution: { labels: ['a', 'b'], data: [61, 40] } });
+    const errors = V.validateSources([drift], []).filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].rule, 'source.settings-sum-mismatch');
+  });
+
+  // An absent chart is a source gap, already reported as dist.empty at WARNING.
+  // Escalating it here would fail runs over pages that legitimately lack one.
+  it('does not treat an absent distribution as a mismatch', () => {
+    const empty = page({ settingsDistribution: { labels: [], data: [] } });
+    assert.deepEqual(V.validateSources([empty], []).filter((i) => i.severity === V.SEVERITY.ERROR), []);
+  });
+
+  it('stays silent when the page has no total sample count to compare against', () => {
+    const noTotal = page({ sampleSummary: { totalSamples: null } });
+    assert.deepEqual(V.validateSources([noTotal], []).filter((i) => i.severity === V.SEVERITY.ERROR), []);
+  });
+});
+
+describe('Validation: component id rules (ERROR)', () => {
+  const row = (over) => ({ gameId: '1', componentName: 'Part', componentPageUrl: 'https://gpu.userbenchmark.com/x/Rating/5', componentRatingId: '5', samples: 1, provenance: {}, ...over });
+
+  it('is an ERROR when a row has a component URL but no id was read from it', () => {
+    const errors = V.validateComponentObservations([row({ componentPageUrl: 'https://gpu.userbenchmark.com/Odd/Shape', componentRatingId: null })], 'gpu')
+      .filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].rule, 'gpu.rating-id-unparsed');
+  });
+
+  // The conditional that keeps a source gap out of ERROR. A row with no
+  // component URL at all is already page-url-missing at WARNING.
+  it('leaves a row with no component URL at WARNING, never ERROR', () => {
+    const issues = V.validateComponentObservations([row({ componentPageUrl: null, componentRatingId: null })], 'gpu');
+    assert.deepEqual(issues.filter((i) => i.severity === V.SEVERITY.ERROR), []);
+    assert.ok(issues.some((i) => i.rule === 'gpu.page-url-missing' && i.severity === V.SEVERITY.WARNING));
+  });
+
+  it('is an ERROR when one component id appears on two rows of the same game', () => {
+    const errors = V.validateComponentObservations([row({ componentName: 'A' }), row({ componentName: 'B' })], 'gpu')
+      .filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].rule, 'gpu.duplicate-rating-id');
+  });
+
+  // The same component legitimately appears across many games' tables.
+  it('does not flag the same component id across different games', () => {
+    const errors = V.validateComponentObservations([row({ gameId: '1' }), row({ gameId: '2' })], 'gpu')
+      .filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.deepEqual(errors, []);
+  });
+
+  // Keyed on id, not name, deliberately: a shared display name is only
+  // probably a fault, so it stays a test-layer detector.
+  it('does not flag two rows sharing a name but carrying distinct ids', () => {
+    const errors = V.validateComponentObservations([row({ componentName: 'Same', componentRatingId: '5' }), row({ componentName: 'Same', componentRatingId: '6' })], 'gpu')
+      .filter((i) => i.severity === V.SEVERITY.ERROR);
+    assert.deepEqual(errors, []);
   });
 });
