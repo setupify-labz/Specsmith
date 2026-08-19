@@ -264,6 +264,45 @@ export function detectBlock(html) {
   return null;
 }
 
+
+// ---------------------------------------------------------------------------
+// robots.txt is now KNOWN, not merely fetched-and-hoped-for
+// ---------------------------------------------------------------------------
+//
+// The real userbenchmark.com robots.txt has been retrieved (by a human, since
+// this tool cannot reach the network to fetch it itself) and reads:
+//
+//   User-agent: *
+//   Disallow: /
+//
+//   User-agent: Googlebot / bingbot / DuckDuckBot / YandexBot / proximic
+//   Disallow: /Go/  /Search  /PCBuilder/  …(narrow — most paths open)…
+//
+//   User-agent: Google-Extended
+//   Disallow:
+//
+// This worker identifies as itself, not as one of the five named crawlers, so
+// it falls under the wildcard group: Disallow: /, everything, including every
+// /PCGame/... FPS-Estimates page this project needs. Pinned in
+// test/fixtures/userbenchmark-robots.txt and test/browser-worker.test.mjs.
+//
+// The correct behaviour is therefore not "try the live fetch and see" — it is
+// an unconditional refusal to run against the real site at all, checked BEFORE
+// any network access is attempted and independent of whether that access would
+// even succeed. UB_ORIGIN exists solely so this file's own logic can be
+// rehearsed against a local mirror; it is not a way around this refusal, and
+// switching it to anything other than the real origin does not change what a
+// live run against userbenchmark.com would do.
+const REAL_ORIGIN = 'https://www.userbenchmark.com';
+const KNOWN_DISALLOWED_MESSAGE =
+  `robots.txt for ${REAL_ORIGIN} disallows the wildcard user-agent (Disallow: /) from every path this\n` +
+  'worker needs, including /PCGame/... — the FPS-Estimates pages. Only five named search-engine crawlers\n' +
+  '(Googlebot, bingbot, DuckDuckBot, YandexBot, proximic) are permitted, and this worker is not, and must\n' +
+  'never claim to be, one of them. There is no compliant way to run automated capture against this site.\n' +
+  '\n' +
+  'This is not a fetch failure — it is confirmed, checked before any request is made.\n' +
+  'Manual, human-driven Ctrl+S capture is unaffected and remains the way to add pages to this corpus.';
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------------------
@@ -323,6 +362,11 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+
+  if (ORIGIN === REAL_ORIGIN) {
+    throw new OperatorError(KNOWN_DISALLOWED_MESSAGE);
+  }
+
   const manifest = JSON.parse(await fs.readFile(manifestFile, 'utf-8'));
 
   const chrome = await findChrome();

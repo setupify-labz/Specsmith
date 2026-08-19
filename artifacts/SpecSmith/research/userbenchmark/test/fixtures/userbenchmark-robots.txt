@@ -1,0 +1,42 @@
+# UserBenchmark Robot.txt
+#######################
+
+User-agent: *
+Disallow: /
+
+User-agent: Googlebot
+User-agent: bingbot
+User-agent: DuckDuckBot
+User-agent: YandexBot
+User-agent: proximic
+Disallow: /Go/
+Disallow: /Search
+Disallow: /PCBuilder/
+Disallow: /pages/home
+Disallow: /pages/product
+Disallow: /pages/user
+Disallow: /pages/rankings
+Disallow: /pages/search
+Disallow: /*Crawl=no
+Disallow: /*categoryPath=
+Disallow: /*ratingPath=
+Disallow: /*datePath=
+Disallow: /*userPath=
+Disallow: /*numRatingsPath=
+Disallow: /*searchTerm=
+Disallow: /*page=*page=
+Disallow: /*sort=
+Disallow: /*tab=RList
+Disallow: /*tab=RTurntable
+Disallow: /*tab=RGridList
+Disallow: /*tab=SRatings
+Disallow: /*tab=SCategories
+Disallow: /*tab=SUsers
+Disallow: /*tab=PNews
+Disallow: /*tab=PWall
+Disallow: /*tab=PCircle
+Disallow: /*tab=PProfile
+Disallow: /*tab=PRatings
+
+User-agent: Google-Extended
+Disallow:

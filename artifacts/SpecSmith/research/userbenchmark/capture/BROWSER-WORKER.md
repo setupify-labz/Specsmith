@@ -5,6 +5,50 @@ the headless equivalent of the manual Ctrl+S captures this corpus is built
 from. **It must run on an internet-connected machine; it cannot run in the
 research container, which has no outbound network access at all.**
 
+## STATUS: closed for live use against UserBenchmark
+
+The real robots.txt has been read (a human retrieved it and pasted its
+content back; this tool still cannot reach the network to fetch it itself):
+
+```
+User-agent: *
+Disallow: /
+
+User-agent: Googlebot
+User-agent: bingbot
+User-agent: DuckDuckBot
+User-agent: YandexBot
+User-agent: proximic
+Disallow: /Go/
+Disallow: /Search
+...(narrow, specific disallows — most paths, including /PCGame/, are open)...
+
+User-agent: Google-Extended
+Disallow:
+```
+
+**`/PCGame/...` — every FPS-Estimates page this project needs — is disallowed
+for the wildcard user-agent.** Only five NAMED crawlers (the search engines
+listed) get the permissive list. This worker identifies as itself, not as one
+of those five, so it falls under `User-agent: *`: `Disallow: /`, everything,
+no exceptions.
+
+There is no legitimate reading of this file under which the worker may run
+against the live site. The only way around it would be sending a User-Agent
+string claiming to be Googlebot or one of the other four while not being
+them — which is exactly the anti-bot bypass this project was built to refuse,
+not a loophole in it.
+
+**Consequence:** the worker's own `--compare`/live-capture path is disabled
+below and will refuse to run against the real origin. Manual, human-driven
+Ctrl+S capture is unaffected — a person using their own browser to view and
+save a page they can see is not what robots.txt governs, and remains the
+capture method for this project going forward.
+
+Pinned in `test/fixtures/userbenchmark-robots.txt` and
+`test/browser-worker.test.mjs`, so this conclusion is tested, not just
+written down.
+
 ## Requirements
 
 Chrome or Chromium, and Node 18+. No npm install — `--dump-dom` is a stock
