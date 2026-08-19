@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-19T01:16:40.796Z  
+Generated: 2026-08-19T01:27:31.888Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,37 +13,37 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 8 |
-| Pages successfully parsed | 8 |
+| Pages actually available (captured) | 18 |
+| Pages successfully parsed | 18 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **308** |
-| Capture coverage | 2.53% |
+| **Not captured** | **298** |
+| Capture coverage | 5.7% |
 
-Source files discovered: 8 · parsed as game pages: 8 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 18 · parsed as game pages: 18 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 8 |
+| Games | 18 |
 | EFPS — total | 600 |
 | EFPS — direct | 81 |
 | EFPS — comparisons | 519 |
-| GPU observations | 160 |
-| CPU observations | 160 |
-| Configurations | 392 |
-| Distributions | 24 |
+| GPU observations | 345 |
+| CPU observations | 345 |
+| Configurations | 852 |
+| Distributions | 54 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
-| Rejected | 1000 |
+| Rejected | 3000 |
 
 ## Chart coverage
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 8 | 8 |
-| Settings distribution | 8 | 8 |
-| Resolution distribution | 8 | 8 |
+| FPS histogram | 18 | 18 |
+| Settings distribution | 18 | 18 |
+| Resolution distribution | 18 | 18 |
 
 ## Configuration decoding
 
@@ -73,7 +73,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 ## Validation
 
-**0 error(s), 5 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
+**0 error(s), 8 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
 
 ## Per-game breakdown
 
@@ -84,19 +84,29 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | AdVenture Capitalist | 3654 | 97.7 | 57 | 0 | 0 | 0 | 20 | 20 | 3 |
 | Age of Empires II: HD Edition | 3655 | 48.1 | 429 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Alien: Isolation | 3656 | 57 | 211 | 0 | 0 | 0 | 20 | 20 | 1 |
+| ARK: Survival Evolved | 3653 | 50.8 | 5765 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Arma 3 | 3660 | 45.9 | 4108 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Assassin's Creed Odyssey | 4032 | 51.6 | 4838 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Assassin's Creed Origins | 3960 | 48.5 | 2016 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Assetto Corsa | 3661 | 79.3 | 848 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Axiom Verge | 3662 | 195 | 5 | 0 | 0 | 0 | 5 | 5 | 4 |
+| Batman: Arkham Knight | 3663 | 51.1 | 559 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Battlefield 1 | 3664 | 69.5 | 28457 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Battlefield 4 | 3665 | 68.6 | 12750 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Battlefield 5 | 3961 | 80.8 | 8948 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
 | PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
 
 ## Biggest remaining gaps
 
-- 308 of 316 known games have no saved source (97.47% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 298 of 316 known games have no saved source (94.30% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
 
 ## Uncaptured games
 
-308 of 316 known games have no saved source. Each row below is a page a human
+298 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -108,17 +118,7 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | American Truck Simulator | 3657 | `FPS-Estimates-American-Truck-Simulator-3657.html` |
 | Anno 2205 | 3658 | `FPS-Estimates-Anno-2205-3658.html` |
 | Apex Legends | 4036 | `FPS-Estimates-Apex-Legends-4036.html` |
-| ARK: Survival Evolved | 3653 | `FPS-Estimates-ARK-Survival-Evolved-3653.html` |
 | Arma 2 | 3659 | `FPS-Estimates-Arma-2-3659.html` |
-| Arma 3 | 3660 | `FPS-Estimates-Arma-3-3660.html` |
-| Assassin's Creed Odyssey | 4032 | `FPS-Estimates-Assassins-Creed-Odyssey-4032.html` |
-| Assassin's Creed Origins | 3960 | `FPS-Estimates-Assassins-Creed-Origins-3960.html` |
-| Assetto Corsa | 3661 | `FPS-Estimates-Assetto-Corsa-3661.html` |
-| Axiom Verge | 3662 | `FPS-Estimates-Axiom-Verge-3662.html` |
-| Batman: Arkham Knight | 3663 | `FPS-Estimates-Batman-Arkham-Knight-3663.html` |
-| Battlefield 1 | 3664 | `FPS-Estimates-Battlefield-1-3664.html` |
-| Battlefield 4 | 3665 | `FPS-Estimates-Battlefield-4-3665.html` |
-| Battlefield 5 | 3961 | `FPS-Estimates-Battlefield-5-3961.html` |
 | Battlefield 6 | 4186 | `FPS-Estimates-Battlefield-6-4186.html` |
 | Battlerite | 3666 | `FPS-Estimates-Battlerite-3666.html` |
 | BeamNG | 3962 | `FPS-Estimates-BeamNG-3962.html` |
@@ -144,4 +144,14 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Clicker Heroes | 3678 | `FPS-Estimates-Clicker-Heroes-3678.html` |
 | Company of Heroes 2 | 3679 | `FPS-Estimates-Company-of-Heroes-2-3679.html` |
 | Conan Exiles | 3968 | `FPS-Estimates-Conan-Exiles-3968.html` |
-| _…268 more_ | | _see capture-manifest.json_ |
+| Counter-Strike: 2 | 4187 | `FPS-Estimates-Counter-Strike-2-4187.html` |
+| Crash Bandicoot N.Sane Trilogy | 3969 | `FPS-Estimates-Crash-Bandicoot-NSane-Trilogy-3969.html` |
+| Crusader Kings II | 3681 | `FPS-Estimates-Crusader-Kings-II-3681.html` |
+| Crypt of the NecroDancer | 3682 | `FPS-Estimates-Crypt-of-the-NecroDancer-3682.html` |
+| Cyberpunk 2077 | 4092 | `FPS-Estimates-Cyberpunk-2077-4092.html` |
+| Dark Souls | 3685 | `FPS-Estimates-Dark-Souls-3685.html` |
+| Dark Souls II | 3686 | `FPS-Estimates-Dark-Souls-II-3686.html` |
+| Dark Souls III | 3687 | `FPS-Estimates-Dark-Souls-III-3687.html` |
+| Dark Souls: Remastered | 4022 | `FPS-Estimates-Dark-Souls-Remastered-4022.html` |
+| Darkest Dungeon | 3688 | `FPS-Estimates-Darkest-Dungeon-3688.html` |
+| _…258 more_ | | _see capture-manifest.json_ |

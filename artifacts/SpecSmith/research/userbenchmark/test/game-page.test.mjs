@@ -1,7 +1,12 @@
 // Game-page parser tests, asserting real values from the saved source.
 
 import { describe, it, assert } from './harness.mjs';
-import { parseGamePage, detectSourceKind, extractChart } from '../lib/game-page.mjs';
+import { parseGamePage, detectSourceKind, extractChart, extractSampleSummary } from '../lib/game-page.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const pagesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'pages');
 import { parseFilterSegments } from '../lib/html.mjs';
 import { loadFortnite } from './fixtures/load.mjs';
 
@@ -240,5 +245,56 @@ describe('Game page: EFPS is wired into the page parse', () => {
     assert.equal(p.efps.stats.direct, 27);
     assert.equal(p.efps.stats.comparisons, 173);
     assert.equal(p.efps.rejected.length, 0);
+  });
+});
+
+// --- low-sample average FPS -------------------------------------------------
+// UserBenchmark renders the sample count in one of two spans, and which one it
+// picks is itself a data-quality signal:
+//
+//   enough data   Average Fps: 45.9  <span class="mutedtext">4,108 samples</span>
+//   too little    Average Fps: 195   <span class="redtext">… only 5 samples</span>
+//
+// Matching only the neutral form dropped BOTH figures on the warning form —
+// Axiom Verge published 195 FPS from 5 samples and parsed as null/null, with
+// its 5 GPU and 5 CPU rows left as the only trace that the page had content.
+describe('sample summary: both published forms', () => {
+  const low = fs.readFileSync(path.join(pagesDir, 'FPS-Estimates-Axiom-Verge-3662.html'), 'utf-8');
+  const normal = fs.readFileSync(path.join(pagesDir, 'FPS-Estimates-Arma-3-3660.html'), 'utf-8');
+
+  it('reads the average and count from the low-sample warning form', () => {
+    const r = extractSampleSummary(low);
+    assert.equal(r.value.averageFps, 195);
+    assert.equal(r.value.totalSamples, 5);
+  });
+
+  it('still reads the ordinary form, with its thousands separator', () => {
+    const r = extractSampleSummary(normal);
+    assert.equal(r.value.averageFps, 45.9);
+    assert.equal(r.value.totalSamples, 4108);
+  });
+
+  // The two forms must stay distinguishable. A 5-sample 195 and a
+  // 4,108-sample 45.9 are not the same kind of number, and the flag is the
+  // source's own disclaimer, not a threshold invented here.
+  it('records the publisher low-sample flag, and only on the flagged page', () => {
+    assert.equal(extractSampleSummary(low).value.lowSampleWarning, true);
+    assert.equal(extractSampleSummary(normal).value.lowSampleWarning, false);
+  });
+
+  it('warns when the source disclaimed the average, and stays quiet otherwise', () => {
+    assert.equal(extractSampleSummary(low).warnings.length, 1);
+    assert.includes(extractSampleSummary(low).warnings[0], 'only 5 samples');
+    assert.equal(extractSampleSummary(normal).warnings.length, 0);
+  });
+
+  // Absent must stay distinguishable from present-but-flagged: a page with no
+  // block at all reports null, never a fabricated zero.
+  it('reports null rather than inventing a figure when no block exists', () => {
+    const r = extractSampleSummary('<html><body><h3>no summary here</h3></body></html>');
+    assert.equal(r.value.averageFps, null);
+    assert.equal(r.value.totalSamples, null);
+    assert.equal(r.value.lowSampleWarning, null);
+    assert.equal(r.warnings.length, 1);
   });
 });

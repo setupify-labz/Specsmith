@@ -37,7 +37,8 @@
   },
   "sampleSummary": {
     "averageFps": 96,
-    "totalSamples": 87737
+    "totalSamples": 87737,
+    "lowSampleWarning": false
   },
   "fpsHistogram": {
     "description": "X-axis buckets are FPS values (labels); Y-axis is sample count per bucket (data). Coarse, noisy crowd-sourced distribution.",

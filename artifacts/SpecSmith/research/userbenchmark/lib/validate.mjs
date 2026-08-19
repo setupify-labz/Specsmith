@@ -54,6 +54,18 @@ export function validateGames(games) {
     } else if (g.averageFps > MAX_PLAUSIBLE_FPS) {
       issues.push(issue(SEVERITY.ERROR, 'game.avg-fps-implausible', `Average FPS ${g.averageFps} exceeds ${MAX_PLAUSIBLE_FPS}; likely a parse error.`, ctx));
     }
+    // Not a judgement of ours — the source published this average behind its
+    // own low-sample warning, and that has to survive into the report.
+    if (g.lowSampleWarning === true) {
+      issues.push(
+        issue(
+          SEVERITY.WARNING,
+          'game.low-sample-source-warning',
+          `Source marks this game low-sample (${g.totalSamples} sample(s)) and flags its ${g.averageFps} average as unreliable. Recorded as published.`,
+          ctx,
+        ),
+      );
+    }
     if (g.totalSamples != null && g.totalSamples < 0) {
       issues.push(issue(SEVERITY.ERROR, 'game.samples-negative', `Total samples is ${g.totalSamples}.`, ctx));
     }

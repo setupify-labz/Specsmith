@@ -245,6 +245,46 @@ rows and all three charts. Only the borrowed block is withheld.
 
 ---
 
+## 5b. The cause is the CAPTURE ROUTE, not the game — CORRECTION TO §5a
+
+**This supersedes the explanation given in §5a.** The quarantine rule itself was
+right and is unchanged; the *reason* stated for it was wrong.
+
+§5a attributed 7 Days to Die's borrowed CS:GO block to it being a low-sample
+title (525 samples). A corpus of 18 pages disproves that. Battlefield 1 has
+thousands of samples and carries CS:GO's block too. Sample count does not
+predict it. Capture route does — perfectly, across all 18 pages:
+
+| Pages | How saved | Widget state in the file | EFPS tokens |
+|---|---|---|---|
+| Fortnite, PUBG, CS:GO | raw page source | `select_choose_yt` un-enhanced | **the page's own game** |
+| the other 15 | live DOM ("Save Page As") | select2 applied (`s2id_autogen…`) | **`CSGO` × 200, every time** |
+
+The tell is in the markup. A raw-source save preserves `<div
+class="select_choose_yt" style="width:100%">` exactly as the server sent it. A
+live-DOM save shows select2 has already run and rewritten that subtree
+(`id="s2id_autogen1"`, `select2-choice`, `select2-chosen`). Every file with the
+un-enhanced widget carries its own game's EFPS data; every file with the
+enhanced widget carries Counter-Strike's.
+
+CS:GO's own page is the ambiguous case — its own data *is* CS:GO's, so it
+agrees with both readings and proves nothing either way. Fortnite and PUBG are
+what make the correlation decisive.
+
+**Consequence for capture.** A plain Ctrl+S "Save Page As" yields **zero usable
+EFPS records** for the target game, whatever the game's popularity. Everything
+else on the page survives that route intact — average FPS, sample count, 20 GPU
+and 20 CPU rows, all three charts — so such a save is still a valid capture,
+just an EFPS-less one. Saving the raw page source instead (Ctrl+U, then save)
+is what preserves the EFPS block.
+
+**What did not change.** The ownership quarantine in `lib/efps.mjs` is
+load-bearing exactly as before, and more so than §5a implied: on this corpus it
+rejected 3,000 records across 15 pages that would otherwise have been published
+under 15 different game names. It rejected none of the three pages that own
+their blocks. The rule keys on the game token, not on sample count, so it was
+never relying on the mistaken explanation.
+
 ## 6. Game-page filter path — PARTIALLY PROVEN
 
 Game page URLs end in five `.`-separated positions, e.g.

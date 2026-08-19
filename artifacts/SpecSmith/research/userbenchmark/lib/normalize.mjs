@@ -80,6 +80,12 @@ export function normalizeGame(parsed) {
     filterSegments: parsed.game.filterSegments,
     averageFps: parsed.sampleSummary.averageFps,
     totalSamples: parsed.sampleSummary.totalSamples,
+    /* UserBenchmark's OWN reliability flag, not a threshold of ours. Pages
+     * with too little data render their average in a red "only N samples"
+     * warning instead of the neutral count. Carried into the dataset so a
+     * consumer never has to guess whether a figure was published with
+     * confidence: true means the source itself disclaimed it. */
+    lowSampleWarning: parsed.sampleSummary.lowSampleWarning ?? null,
     gpuRowCount: parsed.gpuTable.length,
     cpuRowCount: parsed.cpuTable.length,
     efpsRecordCount: parsed.efps.stats.accepted,
