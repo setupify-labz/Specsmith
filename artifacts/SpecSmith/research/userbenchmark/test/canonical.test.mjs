@@ -63,6 +63,19 @@ const sources = (
   // Scanning the test directory would make them permanently self-failing.
   .filter((s) => !s.file.startsWith('test/'));
 
+// The ONE file allowed to reach the network or drive a browser.
+//
+// Every other script in this tree is offline by construction, and the guards
+// below enforce that. browser-worker.mjs is the deliberate, user-requested
+// exception: it renders pages on an operator's own machine. It is exempted BY
+// NAME rather than by relaxing the rules, so any other file that grows a
+// fetch() or a browser launch still fails these tests.
+//
+// Nothing in the pipeline imports it. The parser, verifier, ingest and dataset
+// stay reachable without it.
+const NETWORK_CAPABLE_EXEMPTION = 'capture/browser-worker.mjs';
+const exempt = (s) => !s.file.endsWith('browser-worker.mjs');
+
 describe('Canonical layout: one EFPS implementation', () => {
   it('exactly one module defines the EFPS extractor', () => {
     const definers = sources.filter((s) => /export\s+function\s+extractEfpsRecords/.test(s.text));
@@ -112,16 +125,16 @@ describe('Canonical layout: capture tooling stays human-driven', () => {
   it('the capture scripts exist and contain no network code', () => {
     assert.ok(captureScripts.length >= 2, 'expected plan-capture.mjs and verify-capture.mjs');
     const netRe = /\bfetch\s*\(|https?\.(?:get|request)\s*\(|from\s+['"](?:node-fetch|axios|got|playwright|puppeteer)['"]/;
-    const bad = captureScripts.filter((s) => netRe.test(s.text));
-    assert.equal(bad.length, 0, `capture tooling must never fetch: ${bad.map((b) => b.file).join(', ')}`);
+    const bad = captureScripts.filter(exempt).filter((s) => netRe.test(s.text));
+    assert.equal(bad.length, 0, `capture tooling must never fetch (only ${NETWORK_CAPABLE_EXEMPTION} may): ${bad.map((b) => b.file).join(', ')}`);
   });
 
   it('the capture scripts never drive a browser', () => {
     // A capture helper that automates the browser would be a crawler wearing a
     // different hat. Opening a link must stay a human action.
     const driveRe = /playwright|puppeteer|webdriver|selenium|chromium\.launch|\.goto\s*\(/i;
-    const bad = captureScripts.filter((s) => driveRe.test(s.text));
-    assert.equal(bad.length, 0, `capture tooling must not drive a browser: ${bad.map((b) => b.file).join(', ')}`);
+    const bad = captureScripts.filter(exempt).filter((s) => driveRe.test(s.text));
+    assert.equal(bad.length, 0, `capture tooling must not drive a browser (only ${NETWORK_CAPABLE_EXEMPTION} may): ${bad.map((b) => b.file).join(', ')}`);
   });
 
   it('verify-capture decides identity from the canonical URL, not the filename', () => {
@@ -161,7 +174,7 @@ describe('Canonical layout: capture tooling stays human-driven', () => {
 describe('Canonical layout: research-only invariants', () => {
   it('no script contains network code', () => {
     const netRe = /\b(?:await\s+)?fetch\s*\(|require\(['"](?:node-fetch|axios|got)['"]\)|from\s+['"](?:node-fetch|axios|got)['"]|https?\.(?:get|request)\s*\(|new\s+XMLHttpRequest/;
-    const offenders = sources.filter((s) => netRe.test(s.text));
+    const offenders = sources.filter(exempt).filter((s) => netRe.test(s.text));
     assert.equal(offenders.length, 0, `network code found in: ${offenders.map((o) => o.file).join(', ')}`);
   });
 
@@ -197,5 +210,25 @@ describe('the test runner imports every suite', () => {
     const onDisk = fsSync.readdirSync(testDir).filter((f) => f.endsWith('.test.mjs')).sort();
     const missing = onDisk.filter((f) => !runner.includes(`'./${f}'`));
     assert.deepEqual(missing, [], `test file(s) present but never imported by run-tests.mjs: ${missing.join(', ')}`);
+  });
+});
+
+// --- the network exemption must stay exactly one file -----------------------
+describe('Canonical layout: the network exemption is contained', () => {
+  it('the ingest pipeline never imports the worker', () => {
+    const dir = path.dirname(fileURLToPath(import.meta.url));
+    const root = path.join(dir, '..');
+    const pipeline = ['ingest.mjs', 'lib/game-page.mjs', 'lib/efps.mjs', 'lib/normalize.mjs', 'lib/validate.mjs', 'lib/capture.mjs', 'capture/verify-capture.mjs'];
+    for (const f of pipeline) {
+      const text = fsSync.readFileSync(path.join(root, f), 'utf-8');
+      assert.equal(/browser-worker/.test(text), false, `${f} must not depend on the network-capable worker`);
+    }
+  });
+
+  it('the worker never writes to the dataset', () => {
+    const dir = path.dirname(fileURLToPath(import.meta.url));
+    const text = fsSync.readFileSync(path.join(dir, '..', 'capture', 'browser-worker.mjs'), 'utf-8');
+    assert.equal(/dataset\//.test(text), false, 'the worker captures pages; it must never write dataset output');
+    assert.equal(/src\/data/.test(text), false, 'the worker must never reference production data');
   });
 });
