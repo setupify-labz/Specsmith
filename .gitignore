@@ -55,3 +55,9 @@ Thumbs.db
 
 # Cloudflare Workers local dev state
 .wrangler/
+
+# SpecSmith measured-benchmark raw frame-time blobs (see
+# artifacts/SpecSmith/scripts/measured/frameTimeStore.mjs). Millions of floats
+# per corpus, rewritten wholesale on every capture; the observation records
+# keep a content hash instead.
+.frametimes/

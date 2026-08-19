@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "note": "SpecSmith's own measured observations. SEPARATE STORE by design: source-derived records live in benchmarkRecords.json and estimated values in games.json, and the three are never merged. Empty in V1 — the schema and validation ship first, measurement runs follow. Raw frame times are stored outside git; each record carries only a content hash referencing its blob.",
+  "observations": []
+}
