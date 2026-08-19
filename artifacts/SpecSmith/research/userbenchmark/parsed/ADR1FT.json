@@ -129,7 +129,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7696/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7696"
     },
     {
       "name": "Nvidia GeForce 9500 GT",
@@ -157,7 +157,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7816/NVIDIA-GeForce-9500-GT",
-      "componentRatingId": null
+      "componentRatingId": "7816"
     },
     {
       "name": "Nvidia GTX 750-Ti",
@@ -269,7 +269,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/185230/IntelR-HD-Graphics-630",
-      "componentRatingId": null
+      "componentRatingId": "185230"
     },
     {
       "name": "HD 3000 (Mobile V1 1.1/1.2 GHz)",
@@ -297,7 +297,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7646/IntelR-HD-Graphics-3000",
-      "componentRatingId": null
+      "componentRatingId": "7646"
     },
     {
       "name": "HD 3000 (Mobile V2 1.3 GHz)",
@@ -325,14 +325,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7647/IntelR-HD-Graphics-3000",
-      "componentRatingId": null
+      "componentRatingId": "7647"
     },
     {
       "name": "Nvidia GTX 770",
       "samples": 1,
       "benchPercent": 14,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 279,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/7658.0.0.0.0",
@@ -381,14 +381,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7659/NVIDIA-GeForce-8600-GT",
-      "componentRatingId": null
+      "componentRatingId": "7659"
     },
     {
       "name": "Nvidia GTX 650",
       "samples": 1,
       "benchPercent": 3,
       "valuePercent": 7,
-      "priceUsd": null,
+      "priceUsd": 112,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/7682.0.0.0.0",
@@ -416,7 +416,7 @@
       "samples": 1,
       "benchPercent": 10,
       "valuePercent": 5,
-      "priceUsd": null,
+      "priceUsd": 450,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/7690.0.0.0.0",
@@ -465,7 +465,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7697/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7697"
     },
     {
       "name": "HD Graphics (Bay Trail 0.667 - 0.854 GHz)",
@@ -493,7 +493,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7698/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7698"
     },
     {
       "name": "AMD HD 7750",
@@ -521,7 +521,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7709/AMD-Radeon-HD-7700",
-      "componentRatingId": null
+      "componentRatingId": "7709"
     },
     {
       "name": "Nvidia GeForce GT 440",
@@ -549,7 +549,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7783/NVIDIA-GeForce-GT-440",
-      "componentRatingId": null
+      "componentRatingId": "7783"
     },
     {
       "name": "AMD Radeon HD 6310",
@@ -577,7 +577,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7807/AMD-Radeon-HD-6310-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7807"
     },
     {
       "name": "Nvidia GeForce 8400 GS",
@@ -605,7 +605,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7917/NVIDIA-GeForce-8400-GS",
-      "componentRatingId": null
+      "componentRatingId": "7917"
     },
     {
       "name": "Graphics Media Accelerator 3600",
@@ -633,7 +633,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7918/IntelR-Graphics-Media-Accelerator-3600",
-      "componentRatingId": null
+      "componentRatingId": "7918"
     },
     {
       "name": "AMD Radeon HD 7660D",
@@ -661,7 +661,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7929/AMD-Radeon-HD-7660D",
-      "componentRatingId": null
+      "componentRatingId": "7929"
     }
   ],
   "cpuTable": [
@@ -691,7 +691,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/793/IntelR-CoreTM-i5-3570-CPU---340GHz",
-      "componentRatingId": null
+      "componentRatingId": "793"
     },
     {
       "name": "Intel Core2 Quad Q6600",
@@ -747,7 +747,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/244/IntelR-CoreTM2-Quad-CPU----Q9400----266GHz",
-      "componentRatingId": null
+      "componentRatingId": "244"
     },
     {
       "name": "AMD FX-6300",
@@ -859,14 +859,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Phenom II X4 965",
       "samples": 1,
       "benchPercent": 53,
       "valuePercent": 63,
-      "priceUsd": null,
+      "priceUsd": 144,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.154.0.0.0",
@@ -971,14 +971,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/934/IntelR-CoreTM-i3-2350M-CPU---230GHz",
-      "componentRatingId": null
+      "componentRatingId": "934"
     },
     {
       "name": "A10-5800K APU (2012 D.Tr)",
       "samples": 1,
       "benchPercent": 50,
       "valuePercent": 63,
-      "priceUsd": null,
+      "priceUsd": 119,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.983.0.0.0",
@@ -1027,7 +1027,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/1599/PentiumR-Dual-Core--CPU------E5200----250GHz",
-      "componentRatingId": null
+      "componentRatingId": "1599"
     },
     {
       "name": "Intel Core i5-2540M",
@@ -1055,7 +1055,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/1616/IntelR-CoreTM-i5-2540M-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "1616"
     },
     {
       "name": "Intel Pentium G620",
@@ -1083,7 +1083,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2636/IntelR-PentiumR-CPU-G620---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "2636"
     },
     {
       "name": "Intel Pentium D 3.00GHz",
@@ -1111,7 +1111,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/3363/IntelR-PentiumR-D-CPU-300GHz",
-      "componentRatingId": null
+      "componentRatingId": "3363"
     },
     {
       "name": "Intel Xeon X5450",
@@ -1139,7 +1139,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/5169/IntelR-XeonR-CPU-----------X5450----300GHz",
-      "componentRatingId": null
+      "componentRatingId": "5169"
     },
     {
       "name": "AMD E-350",
@@ -1167,7 +1167,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/5356/AMD-E-350-Processor",
-      "componentRatingId": null
+      "componentRatingId": "5356"
     },
     {
       "name": "Intel Xeon X5460",
@@ -1195,7 +1195,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/5754/IntelR-XeonR-CPU-----------X5460----316GHz",
-      "componentRatingId": null
+      "componentRatingId": "5754"
     },
     {
       "name": "Intel Celeron G1620",
@@ -1223,7 +1223,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/6930/IntelR-CeleronR-CPU-G1620---270GHz",
-      "componentRatingId": null
+      "componentRatingId": "6930"
     }
   ],
   "unclassifiedTableRows": [],

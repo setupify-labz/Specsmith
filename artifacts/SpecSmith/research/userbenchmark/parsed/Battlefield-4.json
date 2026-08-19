@@ -398,7 +398,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "Nvidia GTX 1080-Ti",
@@ -433,7 +433,7 @@
       "samples": 181,
       "benchPercent": 11,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 209,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/7650.0.0.0.0",
@@ -482,7 +482,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "Nvidia GTX 980-Ti",
@@ -517,7 +517,7 @@
       "samples": 166,
       "benchPercent": 25,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 500,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/14746.0.0.0.0",
@@ -545,7 +545,7 @@
       "samples": 160,
       "benchPercent": 14,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 279,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/7658.0.0.0.0",
@@ -594,7 +594,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/153579/IntelR-HD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "153579"
     },
     {
       "name": "HD 5500 (Mobile 0.95 GHz)",
@@ -622,7 +622,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/16570/IntelR-HD-Graphics-5500",
-      "componentRatingId": null
+      "componentRatingId": "16570"
     },
     {
       "name": "Nvidia GTX 1050",
@@ -771,7 +771,7 @@
       "samples": 312,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.11601.0.0.0",
@@ -876,7 +876,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/34954/IntelR-CoreTM-i7-6700HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "34954"
     },
     {
       "name": "Intel Core i5-4690K",
@@ -911,7 +911,7 @@
       "samples": 183,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.10022.0.0.0",
@@ -988,7 +988,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "Intel Core i5-6500",
@@ -1079,7 +1079,7 @@
       "samples": 135,
       "benchPercent": 71,
       "valuePercent": 68,
-      "priceUsd": null,
+      "priceUsd": 319,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.118.0.0.0",
@@ -1107,7 +1107,7 @@
       "samples": 131,
       "benchPercent": 69,
       "valuePercent": 68,
-      "priceUsd": null,
+      "priceUsd": 297,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.95.0.0.0",
@@ -1191,7 +1191,7 @@
       "samples": 125,
       "benchPercent": 66,
       "valuePercent": 68,
-      "priceUsd": null,
+      "priceUsd": 246,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.46.0.0.0",

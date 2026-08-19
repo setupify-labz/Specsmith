@@ -281,7 +281,7 @@
       "samples": 14,
       "benchPercent": 6,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 120,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/8223.0.0.0.0",
@@ -414,7 +414,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/12582/NVIDIA-GeForce-GT-730",
-      "componentRatingId": null
+      "componentRatingId": "12582"
     },
     {
       "name": "Nvidia GTX 1050 (Mobile)",
@@ -442,7 +442,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/211022/NVIDIA-GeForce-GTX-1050",
-      "componentRatingId": null
+      "componentRatingId": "211022"
     },
     {
       "name": "Nvidia GTX 1080-Ti",
@@ -554,7 +554,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "Nvidia GTX 980-Ti",
@@ -610,7 +610,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520",
-      "componentRatingId": null
+      "componentRatingId": "36797"
     },
     {
       "name": "Nvidia GTX 1060-3GB",
@@ -752,7 +752,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Ryzen 5 2600",
@@ -815,7 +815,7 @@
       "samples": 12,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.10022.0.0.0",
@@ -843,7 +843,7 @@
       "samples": 11,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.11601.0.0.0",
@@ -1032,7 +1032,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/433194/AMD-Ryzen-5-2400G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "433194"
     },
     {
       "name": "AMD Ryzen 7 2700X",
@@ -1200,7 +1200,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/1735/IntelR-CoreTM-i5-2320-CPU---300GHz",
-      "componentRatingId": null
+      "componentRatingId": "1735"
     },
     {
       "name": "Intel Core i5-6400",

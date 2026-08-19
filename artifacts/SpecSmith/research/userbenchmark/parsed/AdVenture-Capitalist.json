@@ -205,7 +205,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7698/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7698"
     },
     {
       "name": "Nvidia GTX 1080",
@@ -317,14 +317,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/283726/NVIDIA-GeForce-GT-1030",
-      "componentRatingId": null
+      "componentRatingId": "283726"
     },
     {
       "name": "Nvidia GTX 670",
       "samples": 2,
       "benchPercent": 12,
       "valuePercent": 6,
-      "priceUsd": null,
+      "priceUsd": 435,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/7672.0.0.0.0",
@@ -373,7 +373,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7697/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7697"
     },
     {
       "name": "ATI Mobility Radeon HD 5470",
@@ -401,7 +401,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7794/ATI-Mobility-Radeon-HD-5470",
-      "componentRatingId": null
+      "componentRatingId": "7794"
     },
     {
       "name": "Nvidia GTX 970",
@@ -485,14 +485,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/330029/Radeon-RX-560",
-      "componentRatingId": null
+      "componentRatingId": "330029"
     },
     {
       "name": "Nvidia GTX 780",
       "samples": 1,
       "benchPercent": 19,
       "valuePercent": 14,
-      "priceUsd": null,
+      "priceUsd": 329,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/7666.0.0.0.0",
@@ -541,7 +541,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "HD 2500 (Desktop 1.05 GHz)",
@@ -569,7 +569,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7696/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7696"
     },
     {
       "name": "HD Graphics (G2 Pentium/Celeron 1.1/1.15 GHz)",
@@ -597,7 +597,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7699/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7699"
     },
     {
       "name": "Intel G41 Express Chipset",
@@ -625,7 +625,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7732/IntelR-G41-Express-Chipset",
-      "componentRatingId": null
+      "componentRatingId": "7732"
     },
     {
       "name": "AMD Radeon HD 7540D",
@@ -653,7 +653,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7756/AMD-Radeon-HD-7540D",
-      "componentRatingId": null
+      "componentRatingId": "7756"
     },
     {
       "name": "Nvidia GeForce GTS 450",
@@ -681,7 +681,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7762/NVIDIA-GeForce-GTS-450",
-      "componentRatingId": null
+      "componentRatingId": "7762"
     },
     {
       "name": "Nvidia GeForce GT 630",
@@ -709,7 +709,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7766/NVIDIA-GeForce-GT-630",
-      "componentRatingId": null
+      "componentRatingId": "7766"
     },
     {
       "name": "AMD Radeon HD 6310",
@@ -737,7 +737,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7807/AMD-Radeon-HD-6310-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7807"
     }
   ],
   "cpuTable": [
@@ -795,7 +795,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/161/IntelR-CoreTM-i5-3450-CPU---310GHz",
-      "componentRatingId": null
+      "componentRatingId": "161"
     },
     {
       "name": "Intel Core i7-4770",
@@ -851,7 +851,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/15842/IntelR-PentiumR-CPU--N3540----216GHz",
-      "componentRatingId": null
+      "componentRatingId": "15842"
     },
     {
       "name": "Intel Core i7-7700HQ",
@@ -879,7 +879,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Ryzen 5 1600",
@@ -935,7 +935,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "441832"
     },
     {
       "name": "AMD Ryzen 5 2600X",
@@ -991,7 +991,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/13/IntelR-CoreTM2-Duo-CPU-----E8500----316GHz",
-      "componentRatingId": null
+      "componentRatingId": "13"
     },
     {
       "name": "Intel Core i3 M 370",
@@ -1019,7 +1019,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/259/IntelR-CoreTM-i3-CPU-------M-370----240GHz",
-      "componentRatingId": null
+      "componentRatingId": "259"
     },
     {
       "name": "Intel Core i7-950",
@@ -1075,7 +1075,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/517/IntelR-CoreTM-i5-2500-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "517"
     },
     {
       "name": "Intel Core i5 M 520",
@@ -1103,7 +1103,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/812/IntelR-CoreTM-i5-CPU-------M-520----240GHz",
-      "componentRatingId": null
+      "componentRatingId": "812"
     },
     {
       "name": "Intel Core i5-3550",
@@ -1131,7 +1131,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/846/IntelR-CoreTM-i5-3550-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "846"
     },
     {
       "name": "AMD FX-8320",
@@ -1187,7 +1187,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/1038/IntelR-PentiumR-CPU-B960---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "1038"
     },
     {
       "name": "Intel Core i7-4820K",
@@ -1243,7 +1243,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2030/PentiumR-Dual-Core--CPU------E6700----320GHz",
-      "componentRatingId": null
+      "componentRatingId": "2030"
     },
     {
       "name": "Intel Core i3-3240",
@@ -1271,7 +1271,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2133/IntelR-CoreTM-i3-3240-CPU---340GHz",
-      "componentRatingId": null
+      "componentRatingId": "2133"
     },
     {
       "name": "Intel Core i3-3220T",
@@ -1299,7 +1299,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2602/IntelR-CoreTM-i3-3220T-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "2602"
     }
   ],
   "unclassifiedTableRows": [],

@@ -231,7 +231,7 @@
       "samples": 5,
       "benchPercent": 19,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 399,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/7664.0.0.0.0",
@@ -308,7 +308,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/22984/AMD-Radeon-R7-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "22984"
     },
     {
       "name": "Intel HD 520 (Mobile Skylake)",
@@ -336,7 +336,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520",
-      "componentRatingId": null
+      "componentRatingId": "36797"
     },
     {
       "name": "HD 4000 (Mobile 1.25 GHz)",
@@ -364,7 +364,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "HD 4600 (Mobile 1.15 GHz)",
@@ -392,7 +392,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7676/IntelR-HD-Graphics-4600",
-      "componentRatingId": null
+      "componentRatingId": "7676"
     },
     {
       "name": "Nvidia GeForce GT 610",
@@ -420,14 +420,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7736/NVIDIA-GeForce-GT-610",
-      "componentRatingId": null
+      "componentRatingId": "7736"
     },
     {
       "name": "Nvidia GTX 750",
       "samples": 4,
       "benchPercent": 6,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 120,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/8223.0.0.0.0",
@@ -476,7 +476,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/8608/AMD-Radeon-R7-200",
-      "componentRatingId": null
+      "componentRatingId": "8608"
     },
     {
       "name": "Nvidia GTX 960M",
@@ -504,7 +504,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/27242/NVIDIA-GeForce-GTX-960M",
-      "componentRatingId": null
+      "componentRatingId": "27242"
     },
     {
       "name": "Intel HD 530 (Mobile Skylake)",
@@ -532,7 +532,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/34955/IntelR-HD-Graphics-530",
-      "componentRatingId": null
+      "componentRatingId": "34955"
     },
     {
       "name": "HD 3000 (Mobile V1 1.1/1.2 GHz)",
@@ -560,7 +560,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7646/IntelR-HD-Graphics-3000",
-      "componentRatingId": null
+      "componentRatingId": "7646"
     },
     {
       "name": "HD 4400 (Mobile 1.0/1.1 GHz)",
@@ -588,7 +588,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "HD Graphics (Arrandale 0.667/0.766 GHz)",
@@ -616,7 +616,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7694/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7694"
     },
     {
       "name": "AMD Radeon HD 6670",
@@ -644,7 +644,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7738/AMD-Radeon-HD-6670",
-      "componentRatingId": null
+      "componentRatingId": "7738"
     },
     {
       "name": "AMD R7 250X",
@@ -672,7 +672,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/8719/AMD-Radeon-R7-200",
-      "componentRatingId": null
+      "componentRatingId": "8719"
     }
   ],
   "cpuTable": [
@@ -758,7 +758,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/34954/IntelR-CoreTM-i7-6700HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "34954"
     },
     {
       "name": "Intel Core i3-2120",
@@ -786,7 +786,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2227/IntelR-CoreTM-i3-2120-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "2227"
     },
     {
       "name": "Intel Core i5-6500",
@@ -842,7 +842,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "Intel Core i5-2500",
@@ -870,7 +870,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/517/IntelR-CoreTM-i5-2500-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "517"
     },
     {
       "name": "Intel Core i5-750",
@@ -926,14 +926,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/3048/AMD-A6-6400K-APU-with-Radeontm-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "3048"
     },
     {
       "name": "Intel Core i5-4460",
       "samples": 3,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.10022.0.0.0",
@@ -961,7 +961,7 @@
       "samples": 3,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.11601.0.0.0",
@@ -1066,7 +1066,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/35089/AMD-FX-8800P-Radeon-R7-12-Compute-Cores-4C-8G",
-      "componentRatingId": null
+      "componentRatingId": "35089"
     },
     {
       "name": "Intel Core i5-7600K",
@@ -1129,7 +1129,7 @@
       "samples": 2,
       "benchPercent": 69,
       "valuePercent": 68,
-      "priceUsd": null,
+      "priceUsd": 297,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.95.0.0.0",
@@ -1157,7 +1157,7 @@
       "samples": 2,
       "benchPercent": 71,
       "valuePercent": 68,
-      "priceUsd": null,
+      "priceUsd": 319,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.118.0.0.0",
@@ -1234,7 +1234,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/374/IntelR-CoreTM2-Quad-CPU-------------240GHz",
-      "componentRatingId": null
+      "componentRatingId": "374"
     }
   ],
   "unclassifiedTableRows": [],

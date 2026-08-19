@@ -458,7 +458,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "Nvidia GTX 1080-Ti",
@@ -542,14 +542,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "Nvidia GTX 760",
       "samples": 1566,
       "benchPercent": 11,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 209,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/7650.0.0.0.0",
@@ -598,7 +598,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/12582/NVIDIA-GeForce-GT-730",
-      "componentRatingId": null
+      "componentRatingId": "12582"
     },
     {
       "name": "Nvidia GTX 1070-Ti",
@@ -682,7 +682,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/16570/IntelR-HD-Graphics-5500",
-      "componentRatingId": null
+      "componentRatingId": "16570"
     },
     {
       "name": "HD 620 (Mobile Kaby Lake)",
@@ -710,7 +710,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/153579/IntelR-HD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "153579"
     }
   ],
   "cpuTable": [
@@ -747,7 +747,7 @@
       "samples": 3055,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.10022.0.0.0",
@@ -880,7 +880,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Ryzen 5 1600",
@@ -999,7 +999,7 @@
       "samples": 2273,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Counter-Strike--Global-Offensive/3680/0.11601.0.0.0",
@@ -1160,7 +1160,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/34954/IntelR-CoreTM-i7-6700HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "34954"
     },
     {
       "name": "Intel Core i5-7600K",

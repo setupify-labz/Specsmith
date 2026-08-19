@@ -152,7 +152,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520",
-      "componentRatingId": null
+      "componentRatingId": "36797"
     },
     {
       "name": "HD 4400 (Mobile 1.0/1.1 GHz)",
@@ -180,7 +180,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "HD 4000 (Mobile 1.25 GHz)",
@@ -208,7 +208,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "HD 620 (Mobile Kaby Lake)",
@@ -236,7 +236,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/153579/IntelR-HD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "153579"
     },
     {
       "name": "HD 3000 (Mobile V1 1.1/1.2 GHz)",
@@ -264,7 +264,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7646/IntelR-HD-Graphics-3000",
-      "componentRatingId": null
+      "componentRatingId": "7646"
     },
     {
       "name": "HD 5500 (Mobile 0.95 GHz)",
@@ -292,7 +292,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/16570/IntelR-HD-Graphics-5500",
-      "componentRatingId": null
+      "componentRatingId": "16570"
     },
     {
       "name": "HD Graphics (Arrandale 0.667/0.766 GHz)",
@@ -320,7 +320,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7694/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7694"
     },
     {
       "name": "Nvidia GTX 1050-Ti",
@@ -376,7 +376,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/33102/IntelR-HD-Graphics-530",
-      "componentRatingId": null
+      "componentRatingId": "33102"
     },
     {
       "name": "HD Graphics (G2 Pentium/Celeron 1.1/1.15 GHz)",
@@ -404,7 +404,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7699/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7699"
     },
     {
       "name": "Intel HD Graphics",
@@ -432,7 +432,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/28104/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "28104"
     },
     {
       "name": "HD 2500 (Desktop 1.05 GHz)",
@@ -460,7 +460,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7696/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7696"
     },
     {
       "name": "HD 2000 (Desktop 1.1 GHz)",
@@ -488,7 +488,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7697/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7697"
     },
     {
       "name": "HD 4600 (Mobile 1.15 GHz)",
@@ -516,7 +516,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7676/IntelR-HD-Graphics-4600",
-      "componentRatingId": null
+      "componentRatingId": "7676"
     },
     {
       "name": "HD Graphics (Bay Trail 0.667 - 0.854 GHz)",
@@ -544,7 +544,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7698/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7698"
     },
     {
       "name": "Intel G41 Express Chipset",
@@ -572,7 +572,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7732/IntelR-G41-Express-Chipset",
-      "componentRatingId": null
+      "componentRatingId": "7732"
     },
     {
       "name": "Nvidia GTX 960",
@@ -684,7 +684,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/320744/IntelR-UHD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "320744"
     }
   ],
   "cpuTable": [
@@ -714,7 +714,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/153577/IntelR-CoreTM-i5-7200U-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "153577"
     },
     {
       "name": "Intel Core i5-6200U",
@@ -742,7 +742,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/36796/IntelR-CoreTM-i5-6200U-CPU---230GHz",
-      "componentRatingId": null
+      "componentRatingId": "36796"
     },
     {
       "name": "Intel Core i7-6500U",
@@ -770,7 +770,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/36930/IntelR-CoreTM-i7-6500U-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "36930"
     },
     {
       "name": "Intel Core i7-6700",
@@ -826,7 +826,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/338266/IntelR-CoreTM-i5-8250U-CPU---160GHz",
-      "componentRatingId": null
+      "componentRatingId": "338266"
     },
     {
       "name": "Intel Core2 Duo E8400",
@@ -882,7 +882,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/987/IntelR-CoreTM2-Duo-CPU-----E7500----293GHz",
-      "componentRatingId": null
+      "componentRatingId": "987"
     },
     {
       "name": "Intel Core i3-3240",
@@ -910,7 +910,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2133/IntelR-CoreTM-i3-3240-CPU---340GHz",
-      "componentRatingId": null
+      "componentRatingId": "2133"
     },
     {
       "name": "Intel Core i3-2120",
@@ -938,7 +938,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2227/IntelR-CoreTM-i3-2120-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "2227"
     },
     {
       "name": "Intel Core i7-3770K",
@@ -994,7 +994,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/623/IntelR-CoreTM-i5-CPU-------M-560----267GHz",
-      "componentRatingId": null
+      "componentRatingId": "623"
     },
     {
       "name": "Intel Core i5 760",
@@ -1022,7 +1022,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/717/IntelR-CoreTM-i5-CPU---------760----280GHz",
-      "componentRatingId": null
+      "componentRatingId": "717"
     },
     {
       "name": "Intel Core i5-3470",
@@ -1078,7 +1078,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/885/AMD-Athlontm-II-X2-215-Processor",
-      "componentRatingId": null
+      "componentRatingId": "885"
     },
     {
       "name": "Intel Core i7-4720HQ",
@@ -1106,7 +1106,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/20045/IntelR-CoreTM-i7-4720HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "20045"
     },
     {
       "name": "Intel Core i5-5200U",
@@ -1134,7 +1134,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/22169/IntelR-CoreTM-i5-5200U-CPU---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "22169"
     },
     {
       "name": "Intel Core i3-5005U",
@@ -1162,7 +1162,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/24957/IntelR-CoreTM-i3-5005U-CPU---200GHz",
-      "componentRatingId": null
+      "componentRatingId": "24957"
     },
     {
       "name": "Intel Core i7-6700K",
@@ -1218,7 +1218,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/34954/IntelR-CoreTM-i7-6700HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "34954"
     },
     {
       "name": "AMD FX-8120",
@@ -1246,7 +1246,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/173/AMD-FXtm-8120-Eight-Core-Processor",
-      "componentRatingId": null
+      "componentRatingId": "173"
     }
   ],
   "unclassifiedTableRows": [],

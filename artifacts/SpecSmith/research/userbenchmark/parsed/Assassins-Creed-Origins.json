@@ -440,7 +440,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/211022/NVIDIA-GeForce-GTX-1050",
-      "componentRatingId": null
+      "componentRatingId": "211022"
     },
     {
       "name": "AMD RX 570",
@@ -496,7 +496,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/164336/NVIDIA-GeForce-GTX-1060",
-      "componentRatingId": null
+      "componentRatingId": "164336"
     },
     {
       "name": "Nvidia RTX 2080",
@@ -608,7 +608,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/223242/NVIDIA-GeForce-GTX-1050-Ti",
-      "componentRatingId": null
+      "componentRatingId": "223242"
     },
     {
       "name": "Nvidia GTX 750-Ti",
@@ -694,7 +694,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Ryzen 5 2600",
@@ -785,7 +785,7 @@
       "samples": 44,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.10022.0.0.0",
@@ -946,7 +946,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/470418/IntelR-CoreTM-i7-8750H-CPU---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "470418"
     },
     {
       "name": "AMD FX-8350",
@@ -1002,7 +1002,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/34954/IntelR-CoreTM-i7-6700HQ-CPU---260GHz",
-      "componentRatingId": null
+      "componentRatingId": "34954"
     },
     {
       "name": "AMD Ryzen 7 2700X",
@@ -1170,7 +1170,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/223877/IntelR-CoreTM-i5-7300HQ-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "223877"
     },
     {
       "name": "AMD Ryzen 3 2200G",
@@ -1198,7 +1198,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "441832"
     },
     {
       "name": "AMD FX-6300",

@@ -819,7 +819,7 @@
       "samples": 254,
       "benchPercent": 97,
       "valuePercent": 99,
-      "priceUsd": null,
+      "priceUsd": 259,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.609597.0.0.0",
@@ -875,7 +875,7 @@
       "samples": 239,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.11601.0.0.0",
@@ -1176,7 +1176,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "Intel Core i5-4690K",

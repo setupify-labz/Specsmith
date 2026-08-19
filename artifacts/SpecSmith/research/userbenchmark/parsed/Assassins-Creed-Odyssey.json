@@ -580,7 +580,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/164336/NVIDIA-GeForce-GTX-1060",
-      "componentRatingId": null
+      "componentRatingId": "164336"
     },
     {
       "name": "AMD RX 480",
@@ -778,14 +778,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/470418/IntelR-CoreTM-i7-8750H-CPU---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "470418"
     },
     {
       "name": "Intel Core i7-4790K",
       "samples": 112,
       "benchPercent": 79,
       "valuePercent": 74,
-      "priceUsd": null,
+      "priceUsd": 348,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.11601.0.0.0",
@@ -946,7 +946,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "Intel Core i5-8400",

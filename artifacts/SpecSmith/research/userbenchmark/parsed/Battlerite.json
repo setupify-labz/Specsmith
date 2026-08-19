@@ -127,7 +127,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7699/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7699"
     },
     {
       "name": "HD 4400 (Mobile 1.0/1.1 GHz)",
@@ -155,7 +155,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     },
     {
       "name": "Nvidia GTX 1070",
@@ -239,7 +239,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/164336/NVIDIA-GeForce-GTX-1060",
-      "componentRatingId": null
+      "componentRatingId": "164336"
     },
     {
       "name": "Nvidia GTX 1060-3GB",
@@ -323,14 +323,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7646/IntelR-HD-Graphics-3000",
-      "componentRatingId": null
+      "componentRatingId": "7646"
     },
     {
       "name": "Nvidia GTX 760",
       "samples": 1,
       "benchPercent": 11,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 209,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/7650.0.0.0.0",
@@ -379,14 +379,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "Nvidia GTX 670",
       "samples": 1,
       "benchPercent": 12,
       "valuePercent": 6,
-      "priceUsd": null,
+      "priceUsd": 435,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/7672.0.0.0.0",
@@ -414,7 +414,7 @@
       "samples": 1,
       "benchPercent": 3,
       "valuePercent": 7,
-      "priceUsd": null,
+      "priceUsd": 112,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/7682.0.0.0.0",
@@ -442,7 +442,7 @@
       "samples": 1,
       "benchPercent": 8,
       "valuePercent": 12,
-      "priceUsd": null,
+      "priceUsd": 170,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/7683.0.0.0.0",
@@ -491,7 +491,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7698/IntelR-HD-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "7698"
     },
     {
       "name": "AMD Radeon HD 6770",
@@ -519,7 +519,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7704/AMD-Radeon-HD-6700",
-      "componentRatingId": null
+      "componentRatingId": "7704"
     },
     {
       "name": "AMD HD 7750",
@@ -547,7 +547,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7709/AMD-Radeon-HD-7700",
-      "componentRatingId": null
+      "componentRatingId": "7709"
     },
     {
       "name": "AMD Radeon HD 5450",
@@ -575,7 +575,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7719/AMD-Radeon-HD-5450",
-      "componentRatingId": null
+      "componentRatingId": "7719"
     },
     {
       "name": "Nvidia GeForce GT 610",
@@ -603,7 +603,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7736/NVIDIA-GeForce-GT-610",
-      "componentRatingId": null
+      "componentRatingId": "7736"
     },
     {
       "name": "Nvidia GeForce GT 220",
@@ -631,7 +631,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7737/NVIDIA-GeForce-GT-220",
-      "componentRatingId": null
+      "componentRatingId": "7737"
     },
     {
       "name": "Nvidia GeForce GTS 450",
@@ -659,7 +659,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7762/NVIDIA-GeForce-GTS-450",
-      "componentRatingId": null
+      "componentRatingId": "7762"
     }
   ],
   "cpuTable": [
@@ -689,7 +689,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/8441/IntelR-CeleronR-CPU-B830---180GHz",
-      "componentRatingId": null
+      "componentRatingId": "8441"
     },
     {
       "name": "AMD FX-8350",
@@ -773,7 +773,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/41/IntelR-CoreTM-i3-2100-CPU---310GHz",
-      "componentRatingId": null
+      "componentRatingId": "41"
     },
     {
       "name": "Intel Core i7-3630QM",
@@ -829,7 +829,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/132/IntelR-CoreTM-i3-CPU---------530----293GHz",
-      "componentRatingId": null
+      "componentRatingId": "132"
     },
     {
       "name": "Intel Core i7 Q 720",
@@ -857,14 +857,14 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/140/IntelR-CoreTM-i7-CPU-------Q-720----160GHz",
-      "componentRatingId": null
+      "componentRatingId": "140"
     },
     {
       "name": "AMD Phenom II X4 965",
       "samples": 1,
       "benchPercent": 53,
       "valuePercent": 63,
-      "priceUsd": null,
+      "priceUsd": 144,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.154.0.0.0",
@@ -941,7 +941,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/242/IntelR-CoreTM2-Duo-CPU-----T6600----220GHz",
-      "componentRatingId": null
+      "componentRatingId": "242"
     },
     {
       "name": "Intel Core2 Quad Q9400",
@@ -969,7 +969,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/244/IntelR-CoreTM2-Quad-CPU----Q9400----266GHz",
-      "componentRatingId": null
+      "componentRatingId": "244"
     },
     {
       "name": "Intel Core i3-3220",
@@ -997,7 +997,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/272/IntelR-CoreTM-i3-3220-CPU---330GHz",
-      "componentRatingId": null
+      "componentRatingId": "272"
     },
     {
       "name": "Intel Core i5-3230M",
@@ -1137,7 +1137,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/1853/IntelR-CoreTM-i3-2330M-CPU---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "1853"
     },
     {
       "name": "AMD Athlon II X2 245",
@@ -1165,7 +1165,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2018/AMD-Athlontm-II-X2-245-Processor",
-      "componentRatingId": null
+      "componentRatingId": "2018"
     },
     {
       "name": "AMD Phenom II X4 940",
@@ -1193,7 +1193,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/2203/AMD-Phenomtm-II-X4-940-Processor",
-      "componentRatingId": null
+      "componentRatingId": "2203"
     },
     {
       "name": "Athlon 64 X2 Dual Core 4200+",
@@ -1221,7 +1221,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/3258/AMD-Athlontm-64-X2-Dual-Core-Processor-4200-",
-      "componentRatingId": null
+      "componentRatingId": "3258"
     }
   ],
   "unclassifiedTableRows": [],

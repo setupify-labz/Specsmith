@@ -494,7 +494,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/153579/IntelR-HD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "153579"
     },
     {
       "name": "Nvidia RTX 2070",
@@ -550,7 +550,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7653/IntelR-HD-Graphics-4000",
-      "componentRatingId": null
+      "componentRatingId": "7653"
     },
     {
       "name": "Intel HD 520 (Mobile Skylake)",
@@ -578,7 +578,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520",
-      "componentRatingId": null
+      "componentRatingId": "36797"
     },
     {
       "name": "AMD RX 570",
@@ -634,7 +634,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/320744/IntelR-UHD-Graphics-620",
-      "componentRatingId": null
+      "componentRatingId": "320744"
     },
     {
       "name": "Intel HD Graphics 630",
@@ -662,7 +662,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/185230/IntelR-HD-Graphics-630",
-      "componentRatingId": null
+      "componentRatingId": "185230"
     },
     {
       "name": "HD 4400 (Mobile 1.0/1.1 GHz)",
@@ -690,7 +690,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/7668/IntelR-HD-Graphics-Family",
-      "componentRatingId": null
+      "componentRatingId": "7668"
     }
   ],
   "cpuTable": [
@@ -832,7 +832,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/211019/IntelR-CoreTM-i7-7700HQ-CPU---280GHz",
-      "componentRatingId": null
+      "componentRatingId": "211019"
     },
     {
       "name": "AMD Ryzen 5 1600",
@@ -951,7 +951,7 @@
       "samples": 1256,
       "benchPercent": 62,
       "valuePercent": 69,
-      "priceUsd": null,
+      "priceUsd": 194,
       "priceStore": null,
       "priceUrl": null,
       "gameFilterUrl": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.10022.0.0.0",
@@ -1056,7 +1056,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/470418/IntelR-CoreTM-i7-8750H-CPU---220GHz",
-      "componentRatingId": null
+      "componentRatingId": "470418"
     },
     {
       "name": "AMD Ryzen 3 2200G",
@@ -1084,7 +1084,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "441832"
     },
     {
       "name": "Intel Core i7-7700",
@@ -1224,7 +1224,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/223877/IntelR-CoreTM-i5-7300HQ-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "223877"
     },
     {
       "name": "Intel Core i5-7200U",
@@ -1252,7 +1252,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/153577/IntelR-CoreTM-i5-7200U-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "153577"
     }
   ],
   "unclassifiedTableRows": [],

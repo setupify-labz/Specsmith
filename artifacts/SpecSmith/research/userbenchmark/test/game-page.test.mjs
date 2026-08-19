@@ -298,3 +298,59 @@ describe('sample summary: both published forms', () => {
     assert.equal(r.warnings.length, 1);
   });
 });
+
+// --- component rows: both published forms of price and component id ---------
+// The reliability risk in these tables is not a crash, it is a silent null.
+// A row that renders a price the parser does not recognise looks exactly like
+// a row with no price, and nothing downstream can tell the two apart.
+describe('component rows: price and id in both published forms', () => {
+  const sevenDays = fs.readFileSync(path.join(pagesDir, 'FPS-Estimates-7-Days-to-Die-3959.html'), 'utf-8');
+  const parsed = parseGamePage(sevenDays, 'FPS-Estimates-7-Days-to-Die-3959.html');
+  const gpu = (name) => parsed.gpuTable.find((r) => r.name === name);
+
+  // <td>$120</td> — no retailer link. Previously dropped entirely.
+  it('reads a plain-text price', () => {
+    const r = gpu('Nvidia GTX 750');
+    assert.equal(r.priceUsd, 120);
+    assert.equal(r.priceStore, null, 'a plain price has no retailer to attribute it to');
+    assert.equal(r.priceUrl, null);
+  });
+
+  // <td><a title="Live Amazon price"><span>$198</span></a></td>
+  it('reads a linked price together with its retailer', () => {
+    const r = gpu('Nvidia GTX 960');
+    assert.equal(r.priceUsd, 198);
+    assert.equal(r.priceStore, 'Amazon');
+    assert.ok(String(r.priceUrl).startsWith('https://'));
+  });
+
+  // <td>-</td> — the genuine "no price" case, which must stay distinct from
+  // "price present but unparsed". This is the assertion that stops the price
+  // fallback from turning into a guess.
+  it('leaves a dash as null rather than inventing a figure', () => {
+    const r = gpu('Nvidia GeForce GT 730');
+    assert.equal(r.priceUsd, null);
+    assert.equal(r.valuePercent, null);
+  });
+
+  // Two URL shapes carry the id in different positions:
+  //   …/Nvidia-GTX-750/Rating/3162   and   …/SpeedTest/12582/NVIDIA-GeForce-GT-730
+  it('recovers the component id from both URL shapes', () => {
+    assert.equal(gpu('Nvidia GTX 750').componentRatingId, '3162', '/Rating/<id> form');
+    assert.equal(gpu('Nvidia GeForce GT 730').componentRatingId, '12582', '/SpeedTest/<id>/ form');
+  });
+
+  it('never leaves a component id unread when the row has a bench link', () => {
+    for (const r of [...parsed.gpuTable, ...parsed.cpuTable]) {
+      if (r.componentPageUrl) {
+        assert.ok(r.componentRatingId, `${r.name}: bench link ${r.componentPageUrl} yielded no component id`);
+      }
+    }
+  });
+
+  it('never records a non-positive price', () => {
+    for (const r of [...parsed.gpuTable, ...parsed.cpuTable]) {
+      if (r.priceUsd != null) assert.ok(r.priceUsd > 0, `${r.name}: price ${r.priceUsd}`);
+    }
+  });
+});

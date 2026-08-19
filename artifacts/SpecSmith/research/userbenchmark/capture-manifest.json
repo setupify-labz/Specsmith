@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T01:46:04.130Z",
+  "generatedAt": "2026-08-19T01:54:05.934Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,

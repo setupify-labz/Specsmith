@@ -543,3 +543,71 @@ describe('Corpus: the borrowed EFPS block is a single fixed server default', () 
     );
   });
 });
+
+// --- extraction reliability across every saved page -------------------------
+// These are the fields the capture programme actually exists to collect. The
+// failure mode that matters is not a crash but a silent null or a quietly
+// short table, so each page is checked for completeness rather than for
+// merely parsing.
+describe('Corpus: the core per-game fields are extracted from every page', () => {
+  const files = fsSync.readdirSync(pagesDir).filter((f) => f.endsWith('.html')).sort();
+  const parsedAll = files.map((f) => [f, parseGamePage(fsSync.readFileSync(path.join(pagesDir, f), 'utf-8'), f)]);
+
+  it('every page yields an average FPS and a sample count', () => {
+    for (const [f, p] of parsedAll) {
+      assert.ok(p.sampleSummary.averageFps != null, `${f}: no average FPS`);
+      assert.ok(p.sampleSummary.averageFps > 0, `${f}: average FPS ${p.sampleSummary.averageFps}`);
+      assert.ok(p.sampleSummary.totalSamples != null, `${f}: no sample count`);
+    }
+  });
+
+  it('every page yields GPU and CPU rows', () => {
+    for (const [f, p] of parsedAll) {
+      assert.ok(p.gpuTable.length > 0, `${f}: zero GPU rows`);
+      assert.ok(p.cpuTable.length > 0, `${f}: zero CPU rows`);
+    }
+  });
+
+  it('every component row carries the fields that make it usable', () => {
+    for (const [f, p] of parsedAll) {
+      for (const r of [...p.gpuTable, ...p.cpuTable]) {
+        assert.ok(r.name, `${f}: a row has no component name`);
+        assert.ok(r.samples != null, `${f}/${r.name}: no sample count`);
+        assert.ok(r.benchPercent != null, `${f}/${r.name}: no bench percent`);
+        assert.ok(r.componentRatingId, `${f}/${r.name}: no component id`);
+      }
+    }
+  });
+
+  it('every page yields all three chart distributions', () => {
+    for (const [f, p] of parsedAll) {
+      for (const chart of ['fpsHistogram', 'settingsDistribution', 'resolutionDistribution']) {
+        const c = p[chart];
+        assert.ok((c?.labels?.length ?? 0) > 0, `${f}: ${chart} has no labels`);
+        assert.equal(c.labels.length, c.data.length, `${f}: ${chart} labels/data length mismatch`);
+      }
+    }
+  });
+
+  // Independent of the row regex, so it catches the failure that regex cannot
+  // report on itself: rows quietly dropped because one row's markup differed.
+  // Every component row carries a per-component filter link, and those links
+  // can be counted straight out of the page. If the two counts ever diverge,
+  // the table was parsed short.
+  it('extracts every component row the page links to', () => {
+    for (const [f, p] of parsedAll) {
+      const id = p.game?.gameId;
+      assert.ok(id, `${f}: no game id`);
+      const linked = (pattern) =>
+        new Set(
+          [...fsSync.readFileSync(path.join(pagesDir, f), 'utf-8').matchAll(pattern)]
+            .map((m) => m[1])
+            .filter((x) => x !== '0'),
+        ).size;
+      const gpuLinks = linked(new RegExp(`FPS-Estimates-[^/"']+/${id}/(\\d+)\\.0\\.0\\.0\\.0`, 'g'));
+      const cpuLinks = linked(new RegExp(`FPS-Estimates-[^/"']+/${id}/0\\.(\\d+)\\.0\\.0\\.0`, 'g'));
+      assert.equal(p.gpuTable.length, gpuLinks, `${f}: ${gpuLinks} GPU components linked but ${p.gpuTable.length} rows parsed`);
+      assert.equal(p.cpuTable.length, cpuLinks, `${f}: ${cpuLinks} CPU components linked but ${p.cpuTable.length} rows parsed`);
+    }
+  });
+});

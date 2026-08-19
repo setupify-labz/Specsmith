@@ -178,7 +178,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/36797/IntelR-HD-Graphics-520",
-      "componentRatingId": null
+      "componentRatingId": "36797"
     },
     {
       "name": "Intel HD Graphics 630",
@@ -206,7 +206,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/185230/IntelR-HD-Graphics-630",
-      "componentRatingId": null
+      "componentRatingId": "185230"
     },
     {
       "name": "Nvidia GT 1030",
@@ -234,7 +234,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/283726/NVIDIA-GeForce-GT-1030",
-      "componentRatingId": null
+      "componentRatingId": "283726"
     },
     {
       "name": "AMD RX Vega 11 (Ryzen iGPU)",
@@ -262,7 +262,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/401440/AMD-RadeonTM-RX-Vega-11-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "401440"
     },
     {
       "name": "AMD RX Vega 8 (Ryzen iGPU)",
@@ -290,7 +290,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://gpu.userbenchmark.com/SpeedTest/441833/AMD-RadeonTM-Vega-8-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "441833"
     }
   ],
   "cpuTable": [
@@ -320,7 +320,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/41/IntelR-CoreTM-i3-2100-CPU---310GHz",
-      "componentRatingId": null
+      "componentRatingId": "41"
     },
     {
       "name": "Intel Core i5-6300U",
@@ -348,7 +348,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/27864/IntelR-CoreTM-i5-6300U-CPU---240GHz",
-      "componentRatingId": null
+      "componentRatingId": "27864"
     },
     {
       "name": "Intel Core i5-7300HQ",
@@ -376,7 +376,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/223877/IntelR-CoreTM-i5-7300HQ-CPU---250GHz",
-      "componentRatingId": null
+      "componentRatingId": "223877"
     },
     {
       "name": "AMD Ryzen 5 2400G",
@@ -404,7 +404,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/433194/AMD-Ryzen-5-2400G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "433194"
     },
     {
       "name": "AMD Ryzen 3 2200G",
@@ -432,7 +432,7 @@
         "unresolvedPositions": []
       },
       "componentPageUrl": "https://cpu.userbenchmark.com/SpeedTest/441832/AMD-Ryzen-3-2200G-with-Radeon-Vega-Graphics",
-      "componentRatingId": null
+      "componentRatingId": "441832"
     }
   ],
   "unclassifiedTableRows": [],
