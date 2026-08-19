@@ -11,6 +11,7 @@
 
 import { describe, it, assert } from './harness.mjs';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -180,5 +181,21 @@ describe('Canonical layout: research-only invariants', () => {
     // A path escaping the research tree would be a production-safety failure.
     const offenders = sources.filter((s) => /writeFile[\s\S]{0,200}?\.\.\/\.\.\/\.\./.test(s.text) || /src\/data\//.test(s.text));
     assert.equal(offenders.length, 0, `these files reference paths outside the research tree: ${offenders.map((o) => o.file).join(', ')}`);
+  });
+});
+
+// --- the runner must actually run every suite -------------------------------
+// run-tests.mjs imports each suite by name. A new test file is therefore
+// silently ignored until someone remembers to add a line — the suite passes
+// green while its tests never execute, which is the one failure mode a test
+// suite must not have. Adding view-source.test.mjs hit exactly this: 9 tests,
+// 0 run, "210 passed".
+describe('the test runner imports every suite', () => {
+  it('has no unregistered test file', () => {
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const runner = fsSync.readFileSync(path.join(testDir, 'run-tests.mjs'), 'utf-8');
+    const onDisk = fsSync.readdirSync(testDir).filter((f) => f.endsWith('.test.mjs')).sort();
+    const missing = onDisk.filter((f) => !runner.includes(`'./${f}'`));
+    assert.deepEqual(missing, [], `test file(s) present but never imported by run-tests.mjs: ${missing.join(', ')}`);
   });
 });

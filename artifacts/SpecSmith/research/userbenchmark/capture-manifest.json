@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-19T01:27:31.888Z",
+  "generatedAt": "2026-08-19T01:38:19.375Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
-    "captured": 18,
-    "notCaptured": 298,
-    "parsed": 18,
+    "captured": 19,
+    "notCaptured": 297,
+    "parsed": 19,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0,
-    "capturePercent": 5.7
+    "capturePercent": 6.01
   },
   "unlistedSavedGames": [],
   "rows": [
@@ -452,20 +452,24 @@
       "gameId": "3666",
       "name": "Battlerite",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
-      "captured": false,
-      "sourceFile": null,
+      "captured": true,
+      "sourceFile": "FPS-Estimates-Battlerite-3666.html",
       "expectedFilename": "FPS-Estimates-Battlerite-3666.html",
-      "parsed": false,
+      "parsed": true,
       "efpsCount": 0,
       "efpsDirectCount": 0,
       "efpsComparisonCount": 0,
-      "gpuRowCount": 0,
-      "cpuRowCount": 0,
-      "averageFps": null,
-      "totalSamples": null,
-      "warnings": [],
-      "warningCount": 0,
-      "sourceContentSha256": null
+      "gpuRowCount": 20,
+      "cpuRowCount": 20,
+      "averageFps": 57.7,
+      "totalSamples": 50,
+      "warnings": [
+        "Source kind detected with low confidence: no canonical link; identity inferred from 65 self-links to Battlerite/3666 corroborated by the page's own <h1>",
+        "No canonical URL on this page — identity inferred from its own self-links (Battlerite/3666, 65 occurrences vs 3 for the next candidate, and the slug matches the page's <h1>). Treat as inferred, not confirmed; a re-save that includes a canonical link would upgrade it.",
+        "[efps] 200 EFPS object(s) rejected — see efps.rejected."
+      ],
+      "warningCount": 3,
+      "sourceContentSha256": "2dcf418e4dd153eb3857aa87de549327de376d1567aed7fed6904db2cd4c3929"
     },
     {
       "gameId": "3962",

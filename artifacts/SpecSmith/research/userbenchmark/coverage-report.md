@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-19T01:27:31.888Z  
+Generated: 2026-08-19T01:38:19.375Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,37 +13,37 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 18 |
-| Pages successfully parsed | 18 |
+| Pages actually available (captured) | 19 |
+| Pages successfully parsed | 19 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **298** |
-| Capture coverage | 5.7% |
+| **Not captured** | **297** |
+| Capture coverage | 6.01% |
 
-Source files discovered: 18 · parsed as game pages: 18 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 19 · parsed as game pages: 19 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 18 |
+| Games | 19 |
 | EFPS — total | 600 |
 | EFPS — direct | 81 |
 | EFPS — comparisons | 519 |
-| GPU observations | 345 |
-| CPU observations | 345 |
-| Configurations | 852 |
-| Distributions | 54 |
+| GPU observations | 365 |
+| CPU observations | 365 |
+| Configurations | 901 |
+| Distributions | 57 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
-| Rejected | 3000 |
+| Rejected | 3200 |
 
 ## Chart coverage
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 18 | 18 |
-| Settings distribution | 18 | 18 |
-| Resolution distribution | 18 | 18 |
+| FPS histogram | 19 | 19 |
+| Settings distribution | 19 | 19 |
+| Resolution distribution | 19 | 19 |
 
 ## Configuration decoding
 
@@ -73,7 +73,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 ## Validation
 
-**0 error(s), 8 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
+**0 error(s), 10 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
 
 ## Per-game breakdown
 
@@ -94,19 +94,20 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | Battlefield 1 | 3664 | 69.5 | 28457 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Battlefield 4 | 3665 | 68.6 | 12750 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Battlefield 5 | 3961 | 80.8 | 8948 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Battlerite | 3666 | 57.7 | 50 | 0 | 0 | 0 | 20 | 20 | 3 |
 | Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
 | PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
 
 ## Biggest remaining gaps
 
-- 298 of 316 known games have no saved source (94.30% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 297 of 316 known games have no saved source (93.99% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
 
 ## Uncaptured games
 
-298 of 316 known games have no saved source. Each row below is a page a human
+297 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -120,7 +121,6 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Apex Legends | 4036 | `FPS-Estimates-Apex-Legends-4036.html` |
 | Arma 2 | 3659 | `FPS-Estimates-Arma-2-3659.html` |
 | Battlefield 6 | 4186 | `FPS-Estimates-Battlefield-6-4186.html` |
-| Battlerite | 3666 | `FPS-Estimates-Battlerite-3666.html` |
 | BeamNG | 3962 | `FPS-Estimates-BeamNG-3962.html` |
 | Biomutant | 4024 | `FPS-Estimates-Biomutant-4024.html` |
 | BioShock Infinite | 3667 | `FPS-Estimates-BioShock-Infinite-3667.html` |
@@ -154,4 +154,5 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Dark Souls III | 3687 | `FPS-Estimates-Dark-Souls-III-3687.html` |
 | Dark Souls: Remastered | 4022 | `FPS-Estimates-Dark-Souls-Remastered-4022.html` |
 | Darkest Dungeon | 3688 | `FPS-Estimates-Darkest-Dungeon-3688.html` |
-| _…258 more_ | | _see capture-manifest.json_ |
+| Darksiders 3 | 4021 | `FPS-Estimates-Darksiders-3-4021.html` |
+| _…257 more_ | | _see capture-manifest.json_ |

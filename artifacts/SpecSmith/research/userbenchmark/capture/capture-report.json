@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-08-19T01:27:32.323Z",
+  "generatedAt": "2026-08-19T01:38:19.892Z",
   "note": "Capture verification. No network request was made. Files are matched to games by the identity resolved from each page's own HTML, never by filename, so browser-default names such as \"UserBenchmark_ Can I Run ADR1FT.html\" are accepted. The manifest supplies each game's expected filename for reporting only.",
   "worklistGeneratedAt": "2026-08-19T00:35:12.121Z",
   "summary": {
     "planned": 50,
-    "captured": 15,
-    "missing": 35,
+    "captured": 16,
+    "missing": 34,
     "wrongGame": 0,
     "incompleteSave": 0,
     "notAPage": 0,
     "unreadable": 0,
     "totalEfpsRecords": 0,
-    "filesScanned": 18,
+    "filesScanned": 19,
     "matchedByBrowserName": 0
   },
   "results": [
@@ -338,8 +338,18 @@
       "name": "Battlerite",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Battlerite-3666.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 160129,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72712,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "inferred-from-self-links",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to Battlerite/3666 corroborated by the page's own <h1>",
+      "savedAs": "FPS-Estimates-Battlerite-3666.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "3962",

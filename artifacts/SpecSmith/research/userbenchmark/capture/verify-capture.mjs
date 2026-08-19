@@ -80,6 +80,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
 import { detectSourceKind, parseGamePage } from '../lib/game-page.mjs';
+import { isViewSourceWrapper, unwrapIfViewSource } from '../lib/view-source.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
@@ -151,14 +152,18 @@ export async function scanPages(dir) {
   }
   const out = [];
   for (const file of names.filter((n) => /\.html?$/i.test(n)).sort()) {
-    let html;
+    let raw;
     try {
-      html = await fs.readFile(path.join(dir, file), 'utf-8');
+      raw = await fs.readFile(path.join(dir, file), 'utf-8');
     } catch (e) {
       out.push({ file, html: null, identity: null, readError: e.message });
       continue;
     }
-    out.push({ file, html, identity: resolveIdentity(html) });
+    // Recovered before anything looks at it, so a view-source capture is
+    // judged on what it actually contains rather than on its wrapper.
+    const wasViewSource = isViewSourceWrapper(raw);
+    const html = wasViewSource ? unwrapIfViewSource(raw) : raw;
+    out.push({ file, html, wasViewSource, identity: resolveIdentity(html) });
   }
   return out;
 }
@@ -228,9 +233,22 @@ export function matchFilesToGames(files, games) {
   const unmatched = files
     .filter((f) => f.identity && !claimed.has(f.file) && !wantedIds.has(f.identity.gameId))
     .map((f) => ({ file: f.file, gameId: f.identity.gameId, slug: f.identity.slug, reason: 'resolves to a game outside this batch' }));
-  const unclassified = files
-    .filter((f) => !f.identity)
-    .map((f) => ({ file: f.file, reason: f.readError ? `unreadable: ${f.readError}` : 'not an FPS-Estimates game page' }));
+  const unclassified = files.filter((f) => !f.identity).map((f) => {
+    if (f.readError) return { file: f.file, reason: `unreadable: ${f.readError}` };
+    // Worth naming explicitly: a view-source save looks like a reasonable
+    // capture but holds the server's pre-JavaScript skeleton, which carries no
+    // game name, no average FPS and no component rows. Reporting it as merely
+    // "not a game page" would send someone hunting for a corrupt download.
+    if (f.wasViewSource) {
+      return {
+        file: f.file,
+        reason:
+          'a "view source" save — unwrapped successfully, but it holds the server response before ' +
+          'JavaScript populates the page, so it has no game data. Re-save the rendered page instead.',
+      };
+    }
+    return { file: f.file, reason: 'not an FPS-Estimates game page' };
+  });
 
   return { results, unmatched, unclassified };
 }

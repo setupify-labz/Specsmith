@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T01:27:31.888Z",
+  "generatedAt": "2026-08-19T01:38:19.375Z",
   "source": "UserBenchmark",
   "parserVersion": "ub-research/2.0.0",
   "efpsExtractorVersion": "ub-efps/1.0.0",
@@ -7,37 +7,37 @@
   "dataQualityNote": "These are crowd-sourced, self-reported values extracted from a third-party aggregator. Parsing cleanly makes a record \"structurally-validated\" and nothing more. None of this is a SpecSmith verified benchmark record.",
   "catalog": {
     "totalKnownGames": 316,
-    "captured": 18,
-    "notCaptured": 298,
-    "capturePercent": 5.7,
-    "parsed": 18,
+    "captured": 19,
+    "notCaptured": 297,
+    "capturePercent": 6.01,
+    "parsed": 19,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0
   },
   "sources": {
-    "filesDiscovered": 18,
-    "parsedAsGamePages": 18,
+    "filesDiscovered": 19,
+    "parsedAsGamePages": 19,
     "skippedNotGamePages": 0,
     "parserThrew": 0
   },
   "records": {
-    "games": 18,
+    "games": 19,
     "efpsDirect": 81,
     "efpsComparisons": 519,
     "efpsTotal": 600,
-    "cpuObservations": 345,
-    "gpuObservations": 345,
-    "configurations": 852,
-    "distributions": 54,
-    "rejected": 3000,
+    "cpuObservations": 365,
+    "gpuObservations": 365,
+    "configurations": 901,
+    "distributions": 57,
+    "rejected": 3200,
     "duplicatesRemoved": 0,
     "conflictKeys": 0
   },
   "chartCoverage": {
-    "gamesWithFpsHistogram": 18,
-    "gamesWithSettingsDistribution": 18,
-    "gamesWithResolutionDistribution": 18,
-    "ofGamesParsed": 18
+    "gamesWithFpsHistogram": 19,
+    "gamesWithSettingsDistribution": 19,
+    "gamesWithResolutionDistribution": 19,
+    "ofGamesParsed": 19
   },
   "configurationDecoding": {
     "efpsFieldsProven": [
@@ -68,18 +68,18 @@
     "mismatched": 0
   },
   "validation": {
-    "total": 8,
+    "total": 10,
     "errors": 0,
-    "warnings": 8,
+    "warnings": 10,
     "byRule": {
-      "warning:source.low-confidence": 3,
-      "warning:game.url-inferred": 3,
+      "warning:source.low-confidence": 4,
+      "warning:game.url-inferred": 4,
       "warning:game.low-sample-source-warning": 1,
       "warning:catalog.pages-not-captured": 1
     }
   },
   "biggestGaps": [
-    "298 of 316 known games have no saved source (94.30% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
+    "297 of 316 known games have no saved source (93.99% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
     "EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.",
     "Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven."
   ],
@@ -278,6 +278,19 @@
       "gpuRows": 20,
       "cpuRows": 20,
       "warnings": 1
+    },
+    {
+      "gameId": "3666",
+      "name": "Battlerite",
+      "parsed": true,
+      "averageFps": 57.7,
+      "totalSamples": 50,
+      "efpsTotal": 0,
+      "efpsDirect": 0,
+      "efpsComparisons": 0,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 3
     },
     {
       "gameId": "3680",

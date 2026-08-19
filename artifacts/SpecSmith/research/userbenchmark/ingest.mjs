@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseGamePage } from './lib/game-page.mjs';
+import { unwrapIfViewSource } from './lib/view-source.mjs';
 import { normalizeAll, QUALITY } from './lib/normalize.mjs';
 import { dedupe, VALUE_FIELDS, findDuplicateSourcePages } from './lib/dedupe.mjs';
 import * as V from './lib/validate.mjs';
@@ -72,7 +73,11 @@ async function main() {
   const parsedPages = [];
   const failedSources = [];
   for (const file of files) {
-    const html = await fs.readFile(path.join(pagesDir, file), 'utf-8');
+    const rawFile = await fs.readFile(path.join(pagesDir, file), 'utf-8');
+    // A "view source then save" capture is the browser's RENDERING of the
+    // source, not the source. Unwrapped here so it reaches the one parser as
+    // ordinary HTML instead of failing as an unrecognised page shape.
+    const html = unwrapIfViewSource(rawFile);
     let parsed;
     try {
       parsed = parseGamePage(html, file);

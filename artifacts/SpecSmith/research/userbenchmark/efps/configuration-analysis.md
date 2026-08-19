@@ -245,7 +245,14 @@ rows and all three charts. Only the borrowed block is withheld.
 
 ---
 
-## 5b. The cause is the CAPTURE ROUTE, not the game — CORRECTION TO §5a
+## 5b. The cause is the CAPTURE ROUTE, not the game — WITHDRAWN, see §5c
+
+> **WITHDRAWN.** The correlation reported below is real, but the conclusion
+> drawn from it — that a raw-source capture preserves the page's own EFPS
+> records — is false. A genuine view-source capture (§5c) shows CS:GO is what
+> the SERVER sends. The recommendation to capture raw source was wrong and
+> should not be followed. Kept here unedited because the reasoning that
+> produced it is what §5c corrects.
 
 **This supersedes the explanation given in §5a.** The quarantine rule itself was
 right and is unchanged; the *reason* stated for it was wrong.
@@ -284,6 +291,49 @@ rejected 3,000 records across 15 pages that would otherwise have been published
 under 15 different game names. It rejected none of the three pages that own
 their blocks. The rule keys on the game token, not on sample count, so it was
 never relying on the mistaken explanation.
+
+## 5c. What a view-source capture actually contains — SUPERSEDES §5b
+
+§5b inferred from an 18-page correlation that raw source preserves a page's own
+EFPS block, and recommended capturing raw source. A direct test refutes it.
+
+`test/fixtures/view-source-save-Battlefield-6-4186.html` is a browser
+view-source save of Battlefield 6 (4186), unwrapped by `lib/view-source.mjs`
+back to the exact bytes the server sent. That response contains:
+
+| | in the server response |
+|---|---|
+| `<link rel="canonical">` | **absent** |
+| `Average Fps:` block | **absent** |
+| game name in `<h1 class="pg-head-title">` | **empty** |
+| GPU / CPU table rows | 3 skeleton rows, no data |
+| EFPS records | **`CSGO` × 200** |
+
+The FPS-Estimates page is a JSF shell. Everything that makes it a game page —
+its canonical URL, its title, its average FPS, its component tables — is
+injected client-side after load. **CS:GO is the server-side default seed for
+the compare widget**, which is why it turns up under every other game's name.
+
+**Consequences.**
+
+1. Raw-source capture is not a workaround for the borrowed-EFPS problem; it is
+   strictly worse. It loses the canonical URL, the average FPS and the
+   component rows as well, and still yields CS:GO.
+2. A normal "Save Page As" is the correct capture method. It records the page
+   as rendered, which is the only state in which the game's data exists.
+3. No browser capture route observed so far recovers a page's own EFPS block.
+   Fortnite, PUBG and CS:GO carry theirs; how those three were produced is
+   **not established**, and is deliberately left open rather than explained by
+   a third guess.
+4. The quarantine rule is unaffected and remains load-bearing. It keys on the
+   game token, so it was never relying on §5b's explanation — which is exactly
+   why the wrong explanation never produced wrong data.
+
+**Method note.** §5a and §5b were each inferred from a correlation across the
+corpus available at the time, and each was overturned by a capture that
+directly tested the mechanism. The quarantine has survived both because it was
+built on the observable property (which game does this record name?) rather
+than on the theory of why.
 
 ## 6. Game-page filter path — PARTIALLY PROVEN
 
