@@ -121,6 +121,25 @@ export interface FrameTimeStats {
   clusteredFraction: number;
 }
 
+/**
+ * A field the collector could not obtain automatically on this platform.
+ *
+ * The alternative to recording these is guessing, and a guessed RAM channel
+ * count or overclock flag is indistinguishable from a detected one once it is
+ * in the store. Every field that was not read from the machine itself is named
+ * here with why, so a reader can tell measurement from attestation.
+ *
+ * `unresolved` means nobody supplied a value — the field is genuinely unknown.
+ * `operator-supplied` means a human asserted it; that is weaker evidence than
+ * detection and is recorded as such rather than being laundered into the same
+ * shape as a detected value.
+ */
+export interface DetectionGap {
+  field: string;
+  reason: string;
+  resolution: 'operator-supplied' | 'unresolved';
+}
+
 export interface MeasuredObservation {
   id: string;
   tier: ObservationTier;
@@ -177,6 +196,11 @@ export interface MeasuredObservation {
   measuredAt: string;
   collectorVersion: string;
   collectorBuildHash: string;
+  /**
+   * Fields the collector could not detect. Empty means everything in this
+   * record was read from the machine; non-empty is a disclosure, not a defect.
+   */
+  detectionGaps: DetectionGap[];
   notes?: string;
 }
 

@@ -9,7 +9,8 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts"
+    "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts",
+    "collect:measured": "tsx scripts/measured/collect.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
