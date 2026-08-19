@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-19T00:39:58.129Z  
+Generated: 2026-08-19T00:50:09.948Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,37 +13,37 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 4 |
-| Pages successfully parsed | 4 |
+| Pages actually available (captured) | 5 |
+| Pages successfully parsed | 5 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **312** |
-| Capture coverage | 1.27% |
+| **Not captured** | **311** |
+| Capture coverage | 1.58% |
 
-Source files discovered: 4 · parsed as game pages: 4 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 5 · parsed as game pages: 5 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 4 |
+| Games | 5 |
 | EFPS — total | 600 |
 | EFPS — direct | 81 |
 | EFPS — comparisons | 519 |
-| GPU observations | 80 |
-| CPU observations | 80 |
-| Configurations | 196 |
-| Distributions | 12 |
+| GPU observations | 100 |
+| CPU observations | 100 |
+| Configurations | 245 |
+| Distributions | 15 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
-| Rejected | 200 |
+| Rejected | 400 |
 
 ## Chart coverage
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 4 | 4 |
-| Settings distribution | 4 | 4 |
-| Resolution distribution | 4 | 4 |
+| FPS histogram | 5 | 5 |
+| Settings distribution | 5 | 5 |
+| Resolution distribution | 5 | 5 |
 
 ## Configuration decoding
 
@@ -73,26 +73,27 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 ## Validation
 
-**0 error(s), 1 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
+**0 error(s), 3 warning(s).** Full breakdown in [dataset/validation-report.md](dataset/validation-report.md).
 
 ## Per-game breakdown
 
 | Game | ID | Avg FPS | Samples | EFPS | Direct | Cmp | GPU rows | CPU rows | Warnings |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 7 Days to Die | 3959 | 47.8 | 525 | 0 | 0 | 0 | 20 | 20 | 1 |
+| ADR1FT | 3652 | 40.7 | 39 | 0 | 0 | 0 | 20 | 20 | 3 |
 | Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
 | PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
 
 ## Biggest remaining gaps
 
-- 312 of 316 known games have no saved source (98.73% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 311 of 316 known games have no saved source (98.42% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
 
 ## Uncaptured games
 
-312 of 316 known games have no saved source. Each row below is a page a human
+311 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -101,7 +102,6 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Game | ID | Save as |
 |---|---|---|
 | ABZU | 3651 | `FPS-Estimates-ABZU-3651.html` |
-| ADR1FT | 3652 | `FPS-Estimates-ADR1FT-3652.html` |
 | AdVenture Capitalist | 3654 | `FPS-Estimates-AdVenture-Capitalist-3654.html` |
 | Age of Empires II: HD Edition | 3655 | `FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html` |
 | Alien: Isolation | 3656 | `FPS-Estimates-Alien-Isolation-3656.html` |
@@ -140,4 +140,5 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Child of Light | 3674 | `FPS-Estimates-Child-of-Light-3674.html` |
 | Chivalry: Medieval Warfare | 3675 | `FPS-Estimates-Chivalry-Medieval-Warfare-3675.html` |
 | Cities: Skylines | 3676 | `FPS-Estimates-Cities-Skylines-3676.html` |
-| _…272 more_ | | _see capture-manifest.json_ |
+| Citizens of Earth | 3677 | `FPS-Estimates-Citizens-of-Earth-3677.html` |
+| _…271 more_ | | _see capture-manifest.json_ |

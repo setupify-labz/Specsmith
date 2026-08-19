@@ -24,19 +24,19 @@
 | | |
 |---|---|
 | Known games in catalog | **316** |
-| Pages captured | **4** — Fortnite (3954), PUBG (3944), CS:GO (3680), 7 Days to Die (3959) |
-| Pages parsed | 4, with **0 warnings** |
-| EFPS records extracted | 600 accepted (81 direct, 519 comparisons) · **200 quarantined** |
-| GPU / CPU observations | 80 / 80 |
+| Pages captured | **5** — Fortnite (3954), PUBG (3944), CS:GO (3680), 7 Days to Die (3959), ADR1FT (3652) |
+| Pages parsed | 5 — 3 clean, 2 with disclosed source gaps |
+| EFPS records extracted | 600 accepted (81 direct, 519 comparisons) · **400 quarantined** |
+| GPU / CPU observations | 100 / 100 |
 | EFPS cross-validation | **1,014 / 1,014 sides agree, 0 mismatches** |
 | Validation | 0 errors, 1 warning (the capture gap) |
-| Tests | 187 passing |
+| Tests | 191 passing |
 
 **The binding constraint is capture, not code.** The machine is finished; it is
-waiting on saved pages. 312 of 316 games have no source. See
+waiting on saved pages. 311 of 316 games have no source. See
 [Capture workflow](#capture-workflow).
 
-The decoding is now confirmed across four games parsed by identical code — see
+The decoding is now confirmed across five games parsed by identical code — see
 [Configuration decoding status](#configuration-decoding-status).
 
 ---
@@ -48,7 +48,7 @@ The decoding is now confirmed across four games parsed by identical code — see
 # discover → parse → EFPS → normalize → dedupe → validate → datasets → coverage
 node research/userbenchmark/ingest.mjs
 
-# Test suite (187 tests, zero dependencies)
+# Test suite (191 tests, zero dependencies)
 node research/userbenchmark/test/run-tests.mjs
 
 # Single-page parse only (writes parsed/<slug>.json)
@@ -59,7 +59,7 @@ node research/userbenchmark/build-known-games.mjs
 ```
 
 `ingest.mjs` exits non-zero **only** on validation *errors* (tooling faults).
-Warnings — including "312 games not captured" — are ordinary data findings and
+Warnings — including "311 games not captured" — are ordinary data findings and
 do not fail the run.
 
 ---
@@ -88,7 +88,7 @@ research/userbenchmark/
 ├── efps/
 │   └── configuration-analysis.md   ⇦ the URL-decoding evidence report
 ├── homepage/                 search/hub page parser (separate page type)
-├── test/                     187 tests + fixtures
+├── test/                     191 tests + fixtures
 ├── capture-manifest.json     per-game capture status (all 316)
 ├── coverage-report.md        generated coverage breakdown
 └── known-games.json          the 316-game catalog
@@ -305,6 +305,17 @@ Full evidence: [`efps/configuration-analysis.md`](efps/configuration-analysis.md
 
 Two findings worth knowing before using this data:
 
+00. **Not every page carries a canonical link.** The ADR1FT page (3652, 39
+   samples) has no `rel="canonical"` and no `og:url`. Rather than skip it or
+   guess, identity is inferred only when three independent signals agree: one
+   slug/id pair dominates every FPS-Estimates URL on the page, by at least 5x
+   over the runner-up, and its slug matches the page's own `<h1>` once
+   normalized (ADR1FT: 65 occurrences vs 3, margin 22x, names equal). The
+   result is recorded as `identitySource: 'inferred-from-self-links'` with its
+   evidence and is never presented as canonical. A page failing any of the
+   three is left unresolved rather than resolved by a thin plurality.
+
+
 0. **An EFPS block does not always belong to the page carrying it.** The
    7 Days to Die page (525 samples) ships 200 records that are entirely
    Counter-Strike's — a fallback dataset for a low-sample title. Records are
@@ -459,17 +470,20 @@ never be presented as such.
 
 1. **3 of 316 games captured.** Every extracted count is bounded by this, not
    by the parser.
-2. **Decoding confirmed across four games, but the corpus is still tiny.**
-   Fortnite, PUBG, CS:GO and 7 Days to Die parse through identical code with
-   1,014/1,014 cross-checks agreeing. Template variance found so far is
-   formatting only — decimal averages, an optional space before a chart key's
-   colon, and single- vs double-quoted attributes plus `&nbsp;` entities
-   depending on whether a page was saved from view-source or re-serialized by
-   the browser. Never structure.
+2. **Decoding confirmed across five games, but the corpus is still tiny.**
+   Fortnite, PUBG, CS:GO, 7 Days to Die and ADR1FT parse through identical
+   code with 1,014/1,014 cross-checks agreeing. Template variance found so far
+   is formatting and completeness, never structure: decimal averages, an
+   optional space before a chart key's colon, single- vs double-quoted
+   attributes plus `&nbsp;` entities depending on save route, and a page with
+   no canonical link at all.
 
-   The fourth page is a caution, not a victory: it disproved a claim the first
-   three appeared to establish (that an EFPS block belongs to its host page).
-   Three agreeing samples were not enough then, and four are not proof now.
+   Each page past the third has cost an assumption rather than confirming one.
+   The fourth disproved "an EFPS block belongs to its host page"; the fifth
+   disproved "every game page has a canonical link". Both looked settled after
+   three agreeing samples. Five are not proof either — expect the next
+   obscure title to break something else, and prefer capturing a few and
+   checking over capturing fifty and trusting.
 3. **No resolution/settings per observation** (see above). This is a property of
    the source, not a parser gap.
 4. **EFPS field 3 and filter positions 2–3 unproven.** Never exercised by any

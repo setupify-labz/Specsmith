@@ -69,6 +69,13 @@ export function normalizeGame(parsed) {
     name: parsed.game.name,
     slug: parsed.game.slug,
     canonicalUrl: parsed.game.canonicalUrl,
+    /** How this page's game identity was established: 'canonical' when the
+     * page carried a canonical link, 'inferred-from-self-links' when it did
+     * not and identity came from corroborated self-references. Carried into
+     * the dataset so a consumer can tell the two apart rather than assuming
+     * every row was canonically anchored. */
+    identitySource: parsed.game.identitySource ?? null,
+    identityEvidence: parsed.game.identityEvidence ?? null,
     rawFilterPath: parsed.game.filterSegments?.raw ?? null,
     filterSegments: parsed.game.filterSegments,
     averageFps: parsed.sampleSummary.averageFps,

@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-19T00:39:58.129Z",
+  "generatedAt": "2026-08-19T00:50:09.948Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
-    "captured": 4,
-    "notCaptured": 312,
-    "parsed": 4,
+    "captured": 5,
+    "notCaptured": 311,
+    "parsed": 5,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0,
-    "capturePercent": 1.27
+    "capturePercent": 1.58
   },
   "unlistedSavedGames": [],
   "rows": [
@@ -31,7 +31,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "lastProcessedAt": "2026-08-19T00:39:58.154Z"
+      "lastProcessedAt": "2026-08-19T00:50:09.965Z"
     },
     {
       "gameId": "3651",
@@ -56,20 +56,24 @@
       "gameId": "3652",
       "name": "ADR1FT",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
-      "captured": false,
-      "sourceFile": null,
+      "captured": true,
+      "sourceFile": "FPS-Estimates-ADR1FT-3652.html",
       "expectedFilename": "FPS-Estimates-ADR1FT-3652.html",
-      "parsed": false,
+      "parsed": true,
       "efpsCount": 0,
       "efpsDirectCount": 0,
       "efpsComparisonCount": 0,
-      "gpuRowCount": 0,
-      "cpuRowCount": 0,
-      "averageFps": null,
-      "totalSamples": null,
-      "warnings": [],
-      "warningCount": 0,
-      "lastProcessedAt": null
+      "gpuRowCount": 20,
+      "cpuRowCount": 20,
+      "averageFps": 40.7,
+      "totalSamples": 39,
+      "warnings": [
+        "Source kind detected with low confidence: no canonical link; identity inferred from 65 self-links to ADR1FT/3652 corroborated by the page's own <h1>",
+        "No canonical URL on this page — identity inferred from its own self-links (ADR1FT/3652, 65 occurrences vs 3 for the next candidate, and the slug matches the page's <h1>). Treat as inferred, not confirmed; a re-save that includes a canonical link would upgrade it.",
+        "[efps] 200 EFPS object(s) rejected — see efps.rejected."
+      ],
+      "warningCount": 3,
+      "lastProcessedAt": "2026-08-19T00:50:09.975Z"
     },
     {
       "gameId": "3654",
@@ -905,7 +909,7 @@
       "totalSamples": 151690,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-19T00:39:58.166Z"
+      "lastProcessedAt": "2026-08-19T00:50:09.986Z"
     },
     {
       "gameId": "3969",
@@ -1893,7 +1897,7 @@
       "totalSamples": 87737,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-19T00:39:58.181Z"
+      "lastProcessedAt": "2026-08-19T00:50:10.001Z"
     },
     {
       "gameId": "4018",
@@ -3546,7 +3550,7 @@
       "totalSamples": 75383,
       "warnings": [],
       "warningCount": 0,
-      "lastProcessedAt": "2026-08-19T00:39:58.194Z"
+      "lastProcessedAt": "2026-08-19T00:50:10.010Z"
     },
     {
       "gameId": "3797",

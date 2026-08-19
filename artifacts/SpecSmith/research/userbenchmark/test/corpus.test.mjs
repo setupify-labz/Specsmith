@@ -46,11 +46,17 @@ describe('Corpus: shared invariants across every saved game page', () => {
     assert.ok(gamePages.length > 0, 'no FPS-Estimates game pages saved in pages/');
   });
 
-  it('every page yields a numeric game id, a name and a canonical URL', () => {
+  it('every page yields a numeric game id, a name, and an established identity', () => {
+    // Not "a canonical URL": some real game pages ship without one (ADR1FT,
+    // 3652). What must always hold is that identity was ESTABLISHED and its
+    // source recorded — canonical when present, corroborated self-links
+    // otherwise. Asserting the canonical URL itself would reject a page the
+    // pipeline handles correctly and discloses honestly.
     for (const p of gamePages) {
       assert.ok(/^\d+$/.test(p.game.gameId), `${p._meta.sourceFile}: bad game id`);
       assert.ok(p.game.name, `${p._meta.sourceFile}: no name`);
-      assert.includes(p.game.canonicalUrl, '/PCGame/FPS-Estimates-', `${p._meta.sourceFile}`);
+      assert.ok(p.game.identitySource, `${p._meta.sourceFile}: identity source not recorded`);
+      if (p.game.canonicalUrl) assert.includes(p.game.canonicalUrl, '/PCGame/FPS-Estimates-', `${p._meta.sourceFile}`);
     }
   });
 
@@ -396,5 +402,46 @@ describe('Corpus: EFPS records must belong to the page carrying them', () => {
         }
       }
     }
+  });
+});
+
+describe('Corpus: identity provenance', () => {
+  it('every page records HOW its identity was established', () => {
+    for (const p of gamePages) {
+      assert.ok(['canonical', 'inferred-from-self-links'].includes(p.game.identitySource), `${p._meta.sourceFile}: identitySource is "${p.game.identitySource}"`);
+    }
+  });
+
+  it('an inferred identity always carries its corroborating evidence', () => {
+    for (const p of gamePages.filter((x) => x.game.identitySource === 'inferred-from-self-links')) {
+      const e = p.game.identityEvidence;
+      assert.ok(e, `${p._meta.sourceFile}: inferred identity without evidence`);
+      assert.ok(e.occurrences > 0, 'self-link count recorded');
+      assert.ok(e.slugMatchesPageName === true, 'slug must agree with the page name');
+      assert.ok(e.dominanceMargin === 'no-runner-up' || e.dominanceMargin >= 5, `margin ${e.dominanceMargin} below the 5x floor`);
+      assert.equal(p.game.canonicalUrl, null, 'inference only applies when no canonical exists');
+    }
+  });
+
+  it('refuses to infer identity on weak or contradictory evidence', async () => {
+    const { inferGameIdentity } = await import('../lib/game-page.mjs');
+    // Thin plurality — no clear owner.
+    const thin = 'FPS-Estimates-A/1/ FPS-Estimates-A/1/ FPS-Estimates-B/2/';
+    assert.notOk(inferGameIdentity(thin, 'A')?.accepted, 'a 2:1 margin must not be enough');
+    // Dominant, but the page name disagrees with the slug.
+    const wrongName = Array(30).fill('FPS-Estimates-Alpha/1/').join(' ');
+    assert.notOk(inferGameIdentity(wrongName, 'Beta')?.accepted, 'slug/name disagreement must block inference');
+    // Dominant and corroborated.
+    assert.ok(inferGameIdentity(wrongName, 'Alpha')?.accepted, 'dominant + corroborated should be accepted');
+  });
+
+  it('a missing canonical is a warning when identity is inferred, not a tooling error', async () => {
+    const V = await import('../lib/validate.mjs');
+    const base = { gameId: '1', name: 'X', averageFps: 60, totalSamples: 10, hasFpsHistogram: true, hasSettingsDistribution: true, hasResolutionDistribution: true, gpuRowCount: 1, cpuRowCount: 1, provenance: {} };
+    const inferred = V.validateGames([{ ...base, canonicalUrl: null, identitySource: 'inferred-from-self-links', identityEvidence: {} }]);
+    assert.equal(inferred.filter((i) => i.severity === 'error').length, 0, 'disclosed inference must not fail the run');
+    assert.ok(inferred.some((i) => i.rule === 'game.url-inferred'));
+    const unknown = V.validateGames([{ ...base, canonicalUrl: null, identitySource: null }]);
+    assert.ok(unknown.some((i) => i.severity === 'error' && i.rule === 'game.url-missing'), 'unidentifiable page must still error');
   });
 });

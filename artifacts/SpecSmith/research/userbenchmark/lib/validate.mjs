@@ -34,7 +34,19 @@ export function validateGames(games) {
       issues.push(issue(SEVERITY.ERROR, 'game.id-invalid', `Game id "${g.gameId}" is missing or not numeric.`, ctx));
     }
     if (!g.name) issues.push(issue(SEVERITY.ERROR, 'game.name-missing', 'Game has no name.', ctx));
-    if (!g.canonicalUrl) issues.push(issue(SEVERITY.ERROR, 'game.url-missing', 'Game has no canonical URL.', ctx));
+    if (!g.canonicalUrl) {
+      // A missing canonical link is a property of the SOURCE, not a fault in
+      // this pipeline — the ADR1FT page (3652) ships without one. When identity
+      // was still established from corroborated self-links and that inference
+      // is recorded, this is a disclosed gap (warning). It stays an error only
+      // when the page's identity could not be established at all, since that
+      // genuinely means the record cannot be trusted to belong to any game.
+      if (g.identitySource) {
+        issues.push(issue(SEVERITY.WARNING, 'game.url-inferred', `Game has no canonical URL; identity established via ${g.identitySource}. Evidence: ${JSON.stringify(g.identityEvidence)}.`, ctx));
+      } else {
+        issues.push(issue(SEVERITY.ERROR, 'game.url-missing', 'Game has no canonical URL and no identity could be inferred.', ctx));
+      }
+    }
     if (g.averageFps == null) {
       issues.push(issue(SEVERITY.WARNING, 'game.avg-fps-missing', 'No average FPS on this page.', ctx));
     } else if (!(g.averageFps > 0)) {
