@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-08-19T00:35:12.389Z",
+  "generatedAt": "2026-08-19T01:07:08.439Z",
   "note": "Capture verification. No network request was made. Status is decided by each file's own canonical URL, not by its filename.",
   "worklistGeneratedAt": "2026-08-19T00:35:12.121Z",
   "summary": {
     "planned": 50,
-    "captured": 1,
-    "missing": 49,
+    "captured": 5,
+    "missing": 45,
     "wrongGame": 0,
     "incompleteSave": 0,
     "notAPage": 0,
     "unreadable": 0,
-    "totalEfpsRecords": 200
+    "totalEfpsRecords": 0
   },
   "results": [
     {
@@ -22,9 +22,12 @@
       "bytes": 163453,
       "inlineScriptsWithBody": 17,
       "inlineScriptChars": 72758,
-      "efpsCount": 200,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
       "chartsWithData": 3,
-      "detail": "canonical URL matches; 200 EFPS records, 3/3 charts"
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present."
     },
     {
       "gameId": "3651",
@@ -39,32 +42,64 @@
       "name": "ADR1FT",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-ADR1FT-3652.html",
-      "status": "missing",
-      "detail": "no file at the expected filename"
+      "status": "captured",
+      "bytes": 158974,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72712,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "inferred-from-self-links",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to ADR1FT/3652 corroborated by the page's own <h1>"
     },
     {
       "gameId": "3654",
       "name": "AdVenture Capitalist",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-AdVenture-Capitalist-3654.html",
-      "status": "missing",
-      "detail": "no file at the expected filename"
+      "status": "captured",
+      "bytes": 160141,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72942,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "inferred-from-self-links",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to AdVenture-Capitalist/3654 corroborated by the page's own <h1>"
     },
     {
       "gameId": "3655",
       "name": "Age of Empires II: HD Edition",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
-      "status": "missing",
-      "detail": "no file at the expected filename"
+      "status": "captured",
+      "bytes": 162756,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72785,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present."
     },
     {
       "gameId": "3656",
       "name": "Alien: Isolation",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html",
-      "status": "missing",
-      "detail": "no file at the expected filename"
+      "status": "captured",
+      "bytes": 161055,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72764,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present."
     },
     {
       "gameId": "3657",

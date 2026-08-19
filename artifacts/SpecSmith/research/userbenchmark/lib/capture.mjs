@@ -84,7 +84,10 @@ export function buildCaptureManifest(knownGames, parsedPages, savedFiles) {
       totalSamples: parsed?.sampleSummary?.totalSamples ?? null,
       warnings: parsed?._meta?.warnings ?? [],
       warningCount: parsed?._meta?.warnings?.length ?? 0,
-      lastProcessedAt: parsed?._meta?.parsedAt ?? null,
+      // Deliberately the source content hash, not a processing timestamp: the
+      // manifest is committed, and a wall-clock field would dirty every row on
+      // every run, burying real changes in noise.
+      sourceContentSha256: parsed?._meta?.sourceContentSha256 ?? null,
     };
   });
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T00:50:09.948Z",
+  "generatedAt": "2026-08-19T01:07:08.532Z",
   "source": "UserBenchmark",
   "parserVersion": "ub-research/2.0.0",
   "efpsExtractorVersion": "ub-efps/1.0.0",
@@ -7,37 +7,37 @@
   "dataQualityNote": "These are crowd-sourced, self-reported values extracted from a third-party aggregator. Parsing cleanly makes a record \"structurally-validated\" and nothing more. None of this is a SpecSmith verified benchmark record.",
   "catalog": {
     "totalKnownGames": 316,
-    "captured": 5,
-    "notCaptured": 311,
-    "capturePercent": 1.58,
-    "parsed": 5,
+    "captured": 8,
+    "notCaptured": 308,
+    "capturePercent": 2.53,
+    "parsed": 8,
     "capturedButNotParsed": 0,
     "unlistedSavedGames": 0
   },
   "sources": {
-    "filesDiscovered": 5,
-    "parsedAsGamePages": 5,
+    "filesDiscovered": 8,
+    "parsedAsGamePages": 8,
     "skippedNotGamePages": 0,
     "parserThrew": 0
   },
   "records": {
-    "games": 5,
+    "games": 8,
     "efpsDirect": 81,
     "efpsComparisons": 519,
     "efpsTotal": 600,
-    "cpuObservations": 100,
-    "gpuObservations": 100,
-    "configurations": 245,
-    "distributions": 15,
-    "rejected": 400,
+    "cpuObservations": 160,
+    "gpuObservations": 160,
+    "configurations": 392,
+    "distributions": 24,
+    "rejected": 1000,
     "duplicatesRemoved": 0,
     "conflictKeys": 0
   },
   "chartCoverage": {
-    "gamesWithFpsHistogram": 5,
-    "gamesWithSettingsDistribution": 5,
-    "gamesWithResolutionDistribution": 5,
-    "ofGamesParsed": 5
+    "gamesWithFpsHistogram": 8,
+    "gamesWithSettingsDistribution": 8,
+    "gamesWithResolutionDistribution": 8,
+    "ofGamesParsed": 8
   },
   "configurationDecoding": {
     "efpsFieldsProven": [
@@ -68,17 +68,17 @@
     "mismatched": 0
   },
   "validation": {
-    "total": 3,
+    "total": 5,
     "errors": 0,
-    "warnings": 3,
+    "warnings": 5,
     "byRule": {
-      "warning:source.low-confidence": 1,
-      "warning:game.url-inferred": 1,
+      "warning:source.low-confidence": 2,
+      "warning:game.url-inferred": 2,
       "warning:catalog.pages-not-captured": 1
     }
   },
   "biggestGaps": [
-    "311 of 316 known games have no saved source (98.42% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
+    "308 of 316 known games have no saved source (97.47% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.",
     "EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.",
     "Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven."
   ],
@@ -108,6 +108,45 @@
       "gpuRows": 20,
       "cpuRows": 20,
       "warnings": 3
+    },
+    {
+      "gameId": "3654",
+      "name": "AdVenture Capitalist",
+      "parsed": true,
+      "averageFps": 97.7,
+      "totalSamples": 57,
+      "efpsTotal": 0,
+      "efpsDirect": 0,
+      "efpsComparisons": 0,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 3
+    },
+    {
+      "gameId": "3655",
+      "name": "Age of Empires II: HD Edition",
+      "parsed": true,
+      "averageFps": 48.1,
+      "totalSamples": 429,
+      "efpsTotal": 0,
+      "efpsDirect": 0,
+      "efpsComparisons": 0,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 1
+    },
+    {
+      "gameId": "3656",
+      "name": "Alien: Isolation",
+      "parsed": true,
+      "averageFps": 57,
+      "totalSamples": 211,
+      "efpsTotal": 0,
+      "efpsDirect": 0,
+      "efpsComparisons": 0,
+      "gpuRows": 20,
+      "cpuRows": 20,
+      "warnings": 1
     },
     {
       "gameId": "3680",

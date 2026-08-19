@@ -3,6 +3,12 @@
 
 import { describe, it, assert } from './harness.mjs';
 import { buildCaptureManifest, expectedFilename, checkCatalogUrl } from '../lib/capture.mjs';
+import { classifyCapture } from '../capture/verify-capture.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const pagesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'pages');
 
 const known = [
   { gameId: '3954', name: 'Fortnite', url: 'https://www.userbenchmark.com/PCGame/FPS-Estimates-Fortnite/3954/0.0.0.0.0' },
@@ -11,7 +17,7 @@ const known = [
 ];
 
 const parsedFortnite = {
-  _meta: { sourceFile: 'FPS-Estimates-Fortnite-3954.html', parsedSuccessfully: true, parsedAt: '2026-01-01T00:00:00.000Z', warnings: [] },
+  _meta: { sourceFile: 'FPS-Estimates-Fortnite-3954.html', parsedSuccessfully: true, sourceContentSha256: 'a'.repeat(64), warnings: [] },
   game: { gameId: '3954', name: 'Fortnite' },
   sampleSummary: { averageFps: 96, totalSamples: 87737 },
   gpuTable: new Array(20).fill({}),
@@ -41,7 +47,7 @@ describe('Capture: manifest honesty', () => {
     assert.equal(csgo.sourceFile, null);
     assert.equal(csgo.averageFps, null);
     assert.equal(csgo.efpsCount, 0);
-    assert.equal(csgo.lastProcessedAt, null);
+    assert.equal(csgo.sourceContentSha256, null);
     assert.notOk(csgo.parsed);
   });
 
@@ -81,7 +87,7 @@ describe('Capture: captured vs parsed are tracked separately', () => {
 describe('Capture: unlisted games', () => {
   it('flags a saved game that is not in the known catalog', () => {
     const stranger = {
-      _meta: { sourceFile: 'FPS-Estimates-Mystery-9999.html', parsedSuccessfully: true, parsedAt: 'x', warnings: [] },
+      _meta: { sourceFile: 'FPS-Estimates-Mystery-9999.html', parsedSuccessfully: true, sourceContentSha256: 'b'.repeat(64), warnings: [] },
       game: { gameId: '9999', name: 'Mystery' },
       sampleSummary: {},
       gpuTable: [],
@@ -123,5 +129,70 @@ describe('Capture: catalog URL checking', () => {
   it('rejects a non-game URL', () => {
     assert.notOk(checkCatalogUrl('https://www.userbenchmark.com/Search?searchTerm=FPS').ok);
     assert.notOk(checkCatalogUrl(null).ok);
+  });
+});
+
+// --- verifier identity agreement -------------------------------------------
+// The verifier once carried its own canonical-only identity regex, separate
+// from the one the ingest uses. Real pages exist that ship no canonical <link>
+// (ADR1FT 3652, AdVenture Capitalist 3654), and the pipeline ingests both
+// cleanly via corroborated self-link inference. The verifier reported those
+// same files as "not-a-page" — a false capture failure on data that was fine.
+// These tests pin the two tools to one answer.
+describe('verify-capture identity agrees with the ingest', () => {
+  const noCanonical = path.join(pagesDir, 'FPS-Estimates-AdVenture-Capitalist-3654.html');
+  const withCanonical = path.join(pagesDir, 'FPS-Estimates-Alien-Isolation-3656.html');
+
+  it('accepts a page whose identity is inferred, and says so', () => {
+    const html = fs.readFileSync(noCanonical, 'utf-8');
+    assert.equal(/<link rel="canonical"/.test(html), false, 'fixture must genuinely lack a canonical link');
+
+    const r = classifyCapture(html, { gameId: '3654', name: 'AdVenture Capitalist', expectedFilename: 'x.html' });
+    assert.equal(r.status, 'captured');
+    assert.equal(r.identitySource, 'inferred-from-self-links');
+    assert.ok(/no canonical/i.test(r.detail), 'the weaker evidence must be disclosed in the report, not hidden');
+  });
+
+  it('still reports a canonical page as canonical', () => {
+    const html = fs.readFileSync(withCanonical, 'utf-8');
+    const r = classifyCapture(html, { gameId: '3656', name: 'Alien: Isolation', expectedFilename: 'x.html' });
+    assert.equal(r.status, 'captured');
+    assert.equal(r.identitySource, 'canonical');
+  });
+
+  // The whole point of checking identity is catching a mis-saved tab. Inferred
+  // identity must not become a loophole that lets any page pass under any id.
+  it('catches a wrong game even when identity had to be inferred', () => {
+    const html = fs.readFileSync(noCanonical, 'utf-8');
+    const r = classifyCapture(html, { gameId: '9999', name: 'Not This Game', expectedFilename: 'x.html' });
+    assert.equal(r.status, 'wrong-game');
+    assert.equal(r.actualGameId, '3654');
+  });
+
+  it('catches a wrong game on a canonical page', () => {
+    const html = fs.readFileSync(withCanonical, 'utf-8');
+    const r = classifyCapture(html, { gameId: '9999', name: 'Not This Game', expectedFilename: 'x.html' });
+    assert.equal(r.status, 'wrong-game');
+    assert.equal(r.actualGameId, '3656');
+  });
+
+  // A stripped save must still be caught — the identity change must not have
+  // weakened the completeness checks that sit behind it.
+  it('still reports a script-stripped save as incomplete', () => {
+    const html = fs.readFileSync(withCanonical, 'utf-8').replace(/(<script\b[^>]*>)[\s\S]*?(<\/script>)/gi, '$1$2');
+    const r = classifyCapture(html, { gameId: '3656', name: 'Alien: Isolation', expectedFilename: 'x.html' });
+    assert.equal(r.status, 'incomplete-save');
+  });
+
+  // Zero accepted EFPS has two very different causes. A page carrying another
+  // game's dataset must not be described as a thin low-sample game.
+  it('distinguishes a quarantined borrowed dataset from a genuinely empty page', () => {
+    const html = fs.readFileSync(withCanonical, 'utf-8');
+    const r = classifyCapture(html, { gameId: '3656', name: 'Alien: Isolation', expectedFilename: 'x.html' });
+    assert.equal(r.efpsCount, 0);
+    assert.equal(r.efpsObjectsOnPage, 200);
+    assert.equal(r.efpsQuarantinedAsOtherGame, 200);
+    assert.ok(/belong to\s+another game/.test(r.detail), `detail must name the borrowed-dataset cause, got: ${r.detail}`);
+    assert.equal(/low-sample game/.test(r.detail), false, 'must not be misdescribed as a low-sample game');
   });
 });

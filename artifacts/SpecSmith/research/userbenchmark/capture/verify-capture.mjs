@@ -18,8 +18,16 @@
 // tab, or a browser writes out an error/interstitial page under the right
 // filename. Trusting the filename alone would then feed the wrong game's
 // numbers into the dataset under another game's id — a data-integrity failure
-// that is very hard to spot later. So identity is confirmed from the page's
-// own canonical URL, never from what the file is called.
+// that is very hard to spot later. So identity is confirmed from the page
+// itself, never from what the file is called.
+//
+// Identity is decided by the same canonical core the ingest uses, so this tool
+// and the pipeline can never disagree about what a file is. A canonical <link>
+// is the preferred evidence; a real minority of saved pages ship without one
+// (ADR1FT and AdVenture Capitalist both do), and for those the core establishes
+// identity by corroborated self-link dominance and says so. Re-deriving
+// identity here from a canonical-only regex would report pages the pipeline
+// ingests cleanly as failed captures.
 //
 // WHY incomplete-save EXISTS
 // --------------------------
@@ -96,36 +104,77 @@ async function verifyOne(game) {
     if (e.code === 'ENOENT') return { ...game, status: 'missing', detail: 'no file at the expected filename' };
     return { ...game, status: 'unreadable', detail: e.message };
   }
+  return classifyCapture(html, game);
+}
 
+/** Decides a capture's status from the page content alone.
+ *
+ * Split out from verifyOne (which owns the file IO) purely so the
+ * classification rules — identity, wrong-game, completeness — are reachable
+ * from tests without staging fixture files in pages/. */
+export function classifyCapture(html, game) {
   const bytes = Buffer.byteLength(html);
   const kind = detectSourceKind(html);
   if (kind.kind !== 'fps-estimates-game-page') {
     return { ...game, status: 'not-a-page', bytes, detail: `detected as "${kind.kind}"${kind.note ? ` — ${kind.note}` : ''}` };
   }
 
+  // --- identity -------------------------------------------------------------
+  // Parsed through the canonical core so this reports exactly what the ingest
+  // would extract, and decides identity exactly the way the ingest decides it
+  // — no second parser, no separate EFPS scanner, no second identity rule.
+  const scripts = inlineScriptStats(html);
+  const parsed = parseGamePage(html, game.expectedFilename);
+
   const canon = canonicalGameId(html);
-  if (!canon) return { ...game, status: 'not-a-page', bytes, detail: 'no canonical FPS-Estimates URL in the file' };
-  if (canon.gameId !== game.gameId) {
+  const identity = canon
+    ? { gameId: canon.gameId, slug: canon.slug, source: 'canonical' }
+    : parsed.game?.gameId
+      ? {
+          gameId: String(parsed.game.gameId),
+          slug: parsed.game.slug ?? null,
+          source: parsed.game.identitySource ?? 'inferred',
+          evidence: parsed.game.identityEvidence ?? null,
+        }
+      : null;
+
+  if (!identity) {
+    return {
+      ...game,
+      status: 'not-a-page',
+      bytes,
+      detail: 'no canonical FPS-Estimates URL, and no identity could be established from the page itself',
+    };
+  }
+  if (identity.gameId !== game.gameId) {
     return {
       ...game,
       status: 'wrong-game',
       bytes,
-      actualGameId: canon.gameId,
-      actualSlug: canon.slug,
-      detail: `file is named for game ${game.gameId} but its canonical URL says game ${canon.gameId} (${canon.slug})`,
+      actualGameId: identity.gameId,
+      actualSlug: identity.slug,
+      identitySource: identity.source,
+      detail:
+        `file is named for game ${game.gameId} but the page identifies itself as game ` +
+        `${identity.gameId} (${identity.slug}) via ${identity.source}`,
     };
   }
 
   // --- completeness ---------------------------------------------------------
-  // Parsed through the canonical core so this reports exactly what the ingest
-  // would extract — no second parser, no separate EFPS scanner.
-  const scripts = inlineScriptStats(html);
-  const parsed = parseGamePage(html, game.expectedFilename);
   const efpsCount = parsed.efps?.stats?.accepted ?? 0;
   const chartsWithData = ['fpsHistogram', 'settingsDistribution', 'resolutionDistribution'].filter(
     (k) => (parsed[k]?.labels?.length ?? 0) > 0,
   ).length;
-  const detail = { bytes, inlineScriptsWithBody: scripts.withBody, inlineScriptChars: scripts.bodyChars, efpsCount, chartsWithData };
+  const detail = {
+    bytes,
+    inlineScriptsWithBody: scripts.withBody,
+    inlineScriptChars: scripts.bodyChars,
+    efpsCount,
+    efpsObjectsOnPage: parsed.efps?.stats?.total ?? 0,
+    efpsQuarantinedAsOtherGame: (parsed.efps?.rejected ?? []).filter((r) => r.reason === 'efps-game-token-mismatch').length,
+    chartsWithData,
+    identitySource: identity.source,
+  };
 
   if (scripts.withBody === 0) {
     return {
@@ -152,14 +201,37 @@ async function verifyOne(game) {
     };
   }
 
-  // Zero EFPS with charts intact is plausible for a low-sample game. Reported
-  // as captured, with the count surfaced so it is never silently assumed.
-  const note =
-    efpsCount === 0
-      ? `complete save, but 0 EFPS records (${chartsWithData}/3 charts present) — plausible for a low-sample game; verify against the live page if it matters`
-      : `canonical URL matches; ${efpsCount} EFPS records, ${chartsWithData}/3 charts`;
+  // Zero accepted EFPS is reported, never assumed away — but WHY it is zero
+  // matters and the two causes look identical in a bare count. A genuinely
+  // low-sample game ships no EFPS objects at all. A low-profile game's page
+  // ships ~200 objects belonging to a DIFFERENT game (CSGO's dataset is the
+  // usual filler), which the core quarantines by game token. Collapsing both
+  // to "plausible for a low-sample game" would hide the borrowed-dataset case
+  // entirely, so the quarantine is called out by name and count.
+  const efpsSeen = parsed.efps?.stats?.total ?? 0;
+  const borrowed = (parsed.efps?.rejected ?? []).filter((r) => r.reason === 'efps-game-token-mismatch');
+  const borrowedTokens = [...new Set(borrowed.map((r) => r.efpsGameToken).filter(Boolean))];
 
-  return { ...game, status: 'captured', ...detail, detail: kind.confident ? note : `${note} — but: ${kind.note}` };
+  let note;
+  if (efpsCount > 0) {
+    note = `identity confirmed; ${efpsCount} EFPS records, ${chartsWithData}/3 charts`;
+  } else if (borrowed.length > 0) {
+    note =
+      `complete save, but 0 usable EFPS records: all ${borrowed.length} of the ${efpsSeen} EFPS objects on the page belong to ` +
+      `another game (${borrowedTokens.join(', ')}) and were quarantined. This is the page's own content, not a capture fault — ` +
+      `re-saving will not change it. ${chartsWithData}/3 charts present.`;
+  } else {
+    note = `complete save, but 0 EFPS records (${chartsWithData}/3 charts present) — plausible for a low-sample game; verify against the live page if it matters`;
+  }
+
+  // An inferred identity is never passed off as a canonical one — a reader of
+  // this report must be able to see which pages were matched on weaker evidence.
+  const idNote =
+    identity.source === 'canonical'
+      ? note
+      : `${note} — identity established via ${identity.source} (no canonical <link> on this page)`;
+
+  return { ...game, status: 'captured', ...detail, detail: kind.confident ? idNote : `${idNote} — but: ${kind.note}` };
 }
 
 function runIngest() {
@@ -265,4 +337,9 @@ async function main() {
   }
 }
 
-await main();
+// Only run when invoked as a script. classifyCapture is imported by the test
+// suite, and an unguarded top-level `await main()` would run a full 50-page
+// verification (and possibly an ingest) as a side effect of that import.
+const invokedDirectly =
+  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) await main();
