@@ -21,16 +21,18 @@ PresentMon.exe --process_name YourGame.exe --v1_metrics --output_file run.csv
 # 2. Write down the settings you used, verbatim.
 notepad settings.txt
 
-# 3. Assemble, validate, save.
+# 3. Assemble, validate, save. The GPU and CPU are resolved from what Windows
+#    reports; --gpu-id/--cpu-id only disambiguate cards that share a name.
 pnpm collect:measured -- \
   --csv run.csv --process YourGame.exe \
-  --game-id <catalog id> --gpu-id <catalog id> --cpu-id <catalog id> \
+  --game-id <catalog id> \
   --resolution 1440p --preset high \
   --ram-channels 2 --settings-file settings.txt \
   [--gpu-name "NVIDIA GeForce RTX 4070"] \
   [--game-exe "C:\path\YourGame.exe"] [--upscaler dlss --upscaler-mode quality] \
   [--ray-tracing] [--frame-generation --frame-generation-factor 2] \
-  [--render-scale 100] [--gpu-overclocked] [--dry-run]
+  [--render-scale 100] [--gpu-overclocked] [--dry-run] \
+  [--swap-chain 0x...] [--gpu-id <id>] [--cpu-id <id>]
 ```
 
 `--dry-run` validates and prints without writing anything.
@@ -63,7 +65,25 @@ instead.
 **The first present is discarded.** It has no prior frame to be measured
 against and PresentMon reports `0` for it.
 
-**Dropped frames are excluded** and counted.
+**Dropped presents are RETAINED** and counted. PresentMon 1.9.2 defines
+`Dropped` as "whether the frame was dropped (1) or displayed (0)" — it means
+NOT DISPLAYED. The application still called Present() and the GPU still
+rendered the frame, and `msBetweenPresents` is defined over Present() calls
+regardless. Excluding them, which this parser used to do, both discarded real
+rendered frames and broke the delta chain: each row's interval is measured
+against the previous present row, so removing a row leaves its successor's
+interval spanning a gap, and the kept intervals stop summing to the capture
+duration. Exclusion is correct for `msBetweenDisplayChange`, which is undefined
+for a frame that never reached the screen; it is not correct here.
+
+**Only the first present may have no interval.** PresentMon reports 0 for it
+because there is no previous Present() to measure against. Any later
+non-positive or non-finite value, and any short row before the last line, is
+REJECTED with its CSV line number rather than skipped — skipping quietly
+shortens the run and reports a plausible-looking count for it.
+
+**Multi-swap-chain captures are rejected** without an explicit `--swap-chain`.
+Two swap chains are two independent present series and cannot be interleaved.
 
 **Multi-process captures are rejected** without an explicit `--process`.
 Interleaving two applications' frames would produce a meaningless run.

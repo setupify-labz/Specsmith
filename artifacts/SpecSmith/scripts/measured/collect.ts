@@ -1,8 +1,14 @@
 // V1 measured-observation collector.
 //
 //   npx tsx scripts/measured/collect.ts --csv <presentmon.csv> --game-id <id> \
-//     --gpu-id <id> --cpu-id <id> --resolution 1440p --preset high \
-//     --ram-channels 2 --settings-file <path> [--process <name>] [--dry-run]
+//     --resolution 1440p --preset high --ram-channels 2 \
+//     --settings-file <path> [--process <name>] [--swap-chain <addr>] \
+//     [--gpu-id <id>] [--cpu-id <id>] [--dry-run]
+//
+// The GPU and CPU are RESOLVED from what Windows reports, not supplied.
+// --gpu-id/--cpu-id are optional and may only disambiguate between catalog
+// entries the detected name genuinely could mean (Windows reports one name for
+// cards that differ only by memory size). See ./catalog.ts.
 //
 // SCOPE: one controlled run, on Windows, producing one observation. No
 // community submission, no accounts, no UI, no scheduling, no multi-game
@@ -24,9 +30,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
-import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
+import { errors, validateMeasuredObservation, warnings, type MeasuredCatalogs, type MeasuredIssue } from '../../src/lib/measured/validate';
 import {
+  MAX_FRAME_GENERATION_FACTOR,
+  MAX_RENDER_SCALE_PERCENT,
+  MEASURED_PRESETS,
   MEASURED_SCHEMA_VERSION,
+  MIN_FRAME_GENERATION_FACTOR,
+  MIN_RENDER_SCALE_PERCENT,
+  RESOLUTIONS,
+  UPSCALERS,
+  type CatalogMatchMethod,
   PINNED_ONE_PERCENT_LOW_METHOD,
   type DetectionGap,
   type MeasuredObservation,
@@ -39,6 +53,7 @@ import {
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 import { parsePresentMonCsv } from './presentmon';
 import { KNOWN_DETECTION_GAPS, type DetectedHardware } from './environment';
+import { loadCatalogs, resolveHardware } from './catalog';
 
 export const COLLECTOR_VERSION = '0.1.0';
 
@@ -54,6 +69,12 @@ export function collectorBuildHash(files: readonly string[] = ['collect.ts', 'pr
 
 export interface CollectInputs {
   gameId: string; gpuId: string; cpuId: string;
+  /**
+   * How gpuId/cpuId were arrived at. Defaults to 'manual' only so existing
+   * assembly tests keep working; the CLI always supplies the real method from
+   * catalog resolution, because 'manual' would now be a false claim.
+   */
+  gpuMatchMethod?: CatalogMatchMethod; cpuMatchMethod?: CatalogMatchMethod;
   resolution: Resolution; preset: MeasuredPreset; presetLabel?: string;
   upscaler: Upscaler; upscalerMode?: string;
   rayTracing: boolean; frameGeneration: boolean; frameGenerationFactor?: number;
@@ -110,12 +131,11 @@ export function buildObservation(args: {
     detected: {
       gpuRaw: hardware.gpuRaw,
       cpuRaw: hardware.cpuRaw,
-      // 'manual' is the honest label: the operator supplied the catalog ids and
-      // the collector recorded what the machine reported beside them. No fuzzy
-      // matcher is used, because a wrong automatic match (a laptop part sharing
-      // a desktop part's name) would be invisible afterwards.
-      gpuMatchMethod: 'manual',
-      cpuMatchMethod: 'manual',
+      // Set from catalog resolution against the detected names — see
+      // ./catalog.ts. It was previously hardcoded to 'manual', which claimed
+      // an operator-verified attribution that nothing had verified.
+      gpuMatchMethod: inputs.gpuMatchMethod ?? 'manual',
+      cpuMatchMethod: inputs.cpuMatchMethod ?? 'manual',
       gpuOverclockDetected: inputs.gpuOverclocked,
     },
     gameVersion: inputs.gameVersion,
@@ -164,8 +184,9 @@ export function validateAndSave(
   storePath: string,
   featureProfiles: readonly GameFeatureProfile[] = [],
   write: (p: string, contents: string) => void = (p, c) => fs.writeFileSync(p, c),
+  catalogs: MeasuredCatalogs = {},
 ): SaveOutcome {
-  const issues = validateMeasuredObservation(observation, frameTimesMs, featureProfiles);
+  const issues = validateMeasuredObservation(observation, frameTimesMs, featureProfiles, catalogs);
   if (errors(issues).length > 0) return { saved: false, issues, observation };
 
   const store = JSON.parse(fs.readFileSync(storePath, 'utf-8')) as MeasuredObservationStore;
@@ -193,53 +214,119 @@ export function shouldPersistFrameTimes(dryRun: boolean, issues: readonly Measur
 // CLI
 // ---------------------------------------------------------------------------
 
+export class CliInputError extends Error {}
+
+/**
+ * Reads a flag's value.
+ *
+ * A value that itself starts with `--` is refused rather than accepted: a
+ * mistyped command line like `--preset --dry-run` would otherwise set preset
+ * to the literal string "--dry-run", which type-checks as a Preset and lands
+ * in the store.
+ */
 function arg(argv: string[], name: string): string | undefined {
   const i = argv.indexOf(`--${name}`);
-  return i >= 0 ? argv[i + 1] : undefined;
+  if (i < 0) return undefined;
+  // A repeated flag silently used the first occurrence, so a command line that
+  // sets --resolution twice recorded the one the operator probably did not
+  // mean. There is no legitimate reason to pass one twice.
+  if (argv.indexOf(`--${name}`, i + 1) >= 0) {
+    throw new CliInputError(`--${name} was given more than once; remove the duplicate rather than relying on which one wins.`);
+  }
+  const v = argv[i + 1];
+  if (v === undefined || v.startsWith('--')) {
+    throw new CliInputError(`--${name} needs a value (got ${v === undefined ? 'end of arguments' : JSON.stringify(v)}).`);
+  }
+  return v;
 }
+
 const required = (argv: string[], name: string): string => {
   const v = arg(argv, name);
-  if (v === undefined) throw new Error(`Missing required --${name}`);
+  if (v === undefined || v.trim() === '') throw new CliInputError(`Missing required --${name}`);
   return v;
 };
 
-async function main(argv: string[]): Promise<void> {
-  const csvPath = required(argv, 'csv');
-  const dryRun = argv.includes('--dry-run');
-
-  const parsed = parsePresentMonCsv(fs.readFileSync(csvPath, 'utf-8'), arg(argv, 'process'));
-  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} dropped, ${parsed.discardedFirstFrames} discarded)`);
-
-  const { detectWindowsEnvironment, detectExecutableVersion } = await import('./environment');
-  // --gpu-name disambiguates a machine with more than one rendering adapter.
-  // Without it the probe REFUSES rather than picking one, because a wrong pick
-  // records the wrong GPU and the wrong driver version together, silently.
-  const hardware = detectWindowsEnvironment(undefined, arg(argv, 'gpu-name'));
-  if (hardware.adaptersSeen.length > 1) {
-    console.log(`Adapters present: ${hardware.adaptersSeen.join(', ')}`);
+/**
+ * Checks a flag against the values the schema actually accepts.
+ *
+ * The unions in types.ts vanish at runtime, so `required(argv, 'preset') as
+ * MeasuredPreset` is a cast, not a check — the collector used to do exactly
+ * that for resolution, preset and upscaler, and any typo travelled straight
+ * into the record. Validation catches it again before the store, but failing
+ * here means the operator sees the mistake before a 90-second capture is
+ * assembled around it.
+ */
+export function oneOf<T extends string>(value: string, accepted: readonly T[], flag: string): T {
+  if (!(accepted as readonly string[]).includes(value)) {
+    throw new CliInputError(`--${flag} "${value}" is not valid; accepted values are ${accepted.join(', ')}.`);
   }
-  console.log(`Hardware: ${hardware.gpuRaw} / ${hardware.cpuRaw} / driver ${hardware.gpuDriverVersion}`);
+  return value as T;
+}
 
-  const exePath = arg(argv, 'game-exe');
-  const inputs: CollectInputs = {
-    gameId: required(argv, 'game-id'),
-    gpuId: required(argv, 'gpu-id'),
-    cpuId: required(argv, 'cpu-id'),
-    resolution: required(argv, 'resolution') as Resolution,
+/**
+ * A frame-generation multiplier.
+ *
+ * Kept separate from numberInRange so the lower bound reads as what it means:
+ * a factor of 1 says every displayed frame was rendered, which is a native run
+ * wearing a frame-generation label, not a frame-generation run.
+ */
+export function frameGenerationFactor(raw: string): number {
+  const n = numberInRange(raw, 'frame-generation-factor', -Infinity, MAX_FRAME_GENERATION_FACTOR);
+  if (n <= MIN_FRAME_GENERATION_FACTOR) {
+    throw new CliInputError(
+      `--frame-generation-factor is ${n}; it must be greater than ${MIN_FRAME_GENERATION_FACTOR}. A factor of ${MIN_FRAME_GENERATION_FACTOR} means every displayed frame was rendered, which is a native run.`,
+    );
+  }
+  return n;
+}
+
+/** As numberInRange, for a flag that counts things and cannot be fractional. */
+export function wholeNumberInRange(raw: string, flag: string, min: number, max: number): number {
+  const n = numberInRange(raw, flag, min, max);
+  if (!Number.isInteger(n)) throw new CliInputError(`--${flag} is ${n}; it must be a whole number.`);
+  return n;
+}
+
+/** Parses a numeric flag, refusing anything non-finite or out of range. */
+export function numberInRange(raw: string, flag: string, min: number, max: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) throw new CliInputError(`--${flag} "${raw}" is not a number.`);
+  if (n < min || n > max) throw new CliInputError(`--${flag} is ${n}; it must be between ${min} and ${max}.`);
+  return n;
+}
+
+/**
+ * Everything about the run that does NOT come from the machine.
+ *
+ * Split out and validated before the Windows probe runs, so a typo in
+ * --preset fails immediately instead of after a PowerShell round trip — and so
+ * these paths can be tested on any platform, which the probe cannot be.
+ */
+export type RunConditionInputs = Omit<CollectInputs, 'gpuId' | 'cpuId' | 'gpuMatchMethod' | 'cpuMatchMethod' | 'gameVersion'>;
+
+export function parseRunConditions(argv: string[], knownGameIds?: readonly string[]): RunConditionInputs {
+  const gameId = required(argv, 'game-id');
+  if (knownGameIds && !knownGameIds.includes(gameId)) {
+    throw new CliInputError(`--game-id "${gameId}" is not in the SpecSmith game catalog (${knownGameIds.join(', ')}).`);
+  }
+
+  const fgFactorRaw = arg(argv, 'frame-generation-factor');
+  return {
+    gameId,
+    resolution: oneOf<Resolution>(required(argv, 'resolution'), RESOLUTIONS, 'resolution'),
     // 'unmapped' is legitimate for games with no comparable tier (Roblox's
     // Manual 1-10). Validation then requires --preset-label.
-    preset: required(argv, 'preset') as MeasuredPreset,
+    preset: oneOf<MeasuredPreset>(required(argv, 'preset'), MEASURED_PRESETS, 'preset'),
     presetLabel: arg(argv, 'preset-label'),
-    upscaler: (arg(argv, 'upscaler') ?? 'native') as Upscaler,
+    upscaler: oneOf<Upscaler>(arg(argv, 'upscaler') ?? 'native', UPSCALERS, 'upscaler'),
     upscalerMode: arg(argv, 'upscaler-mode'),
     rayTracing: argv.includes('--ray-tracing'),
     frameGeneration: argv.includes('--frame-generation'),
-    frameGenerationFactor: arg(argv, 'frame-generation-factor') ? Number(arg(argv, 'frame-generation-factor')) : undefined,
-    renderScalePercent: Number(arg(argv, 'render-scale') ?? '100'),
-    ramChannels: Number(required(argv, 'ram-channels')),
+    frameGenerationFactor: fgFactorRaw === undefined ? undefined : frameGenerationFactor(fgFactorRaw),
+    renderScalePercent: numberInRange(arg(argv, 'render-scale') ?? '100', 'render-scale', MIN_RENDER_SCALE_PERCENT, MAX_RENDER_SCALE_PERCENT),
+    ramChannels: wholeNumberInRange(required(argv, 'ram-channels'), 'ram-channels', 1, 8),
     gpuOverclocked: argv.includes('--gpu-overclocked'),
     settingsText: fs.readFileSync(required(argv, 'settings-file'), 'utf-8'),
-    gameVersion: arg(argv, 'game-version') ?? (exePath ? detectExecutableVersion(exePath) : undefined),
     gameBuildId: arg(argv, 'game-build-id'),
     // Platform games only. contentId is what makes the run interpretable;
     // contentVersion is usually unobtainable and left unset rather than guessed.
@@ -252,6 +339,51 @@ async function main(argv: string[]): Promise<void> {
         }
       : undefined,
     notes: arg(argv, 'notes'),
+  };
+}
+
+async function main(argv: string[]): Promise<void> {
+  const csvPath = required(argv, 'csv');
+  const dryRun = argv.includes('--dry-run');
+
+  // Flags first. Nothing here needs the machine, so a mistyped value costs a
+  // second rather than a PowerShell round trip and a 90-second capture built
+  // around it.
+  const catalogs = loadCatalogs();
+  const runConditions = parseRunConditions(argv, catalogs.gameIds);
+  const preferredGpuId = arg(argv, 'gpu-id');
+  const preferredCpuId = arg(argv, 'cpu-id');
+
+  const parsed = parsePresentMonCsv(fs.readFileSync(csvPath, 'utf-8'), arg(argv, 'process'), arg(argv, 'swap-chain'));
+  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
+  if (parsed.truncatedTrailingRows > 0) console.log('Note: the final CSV line was cut off mid-write and was not read.');
+
+  const { detectWindowsEnvironment, detectExecutableVersion } = await import('./environment');
+  // --gpu-name disambiguates a machine with more than one rendering adapter.
+  // Without it the probe REFUSES rather than picking one, because a wrong pick
+  // records the wrong GPU and the wrong driver version together, silently.
+  const hardware = detectWindowsEnvironment(undefined, arg(argv, 'gpu-name'));
+  if (hardware.adaptersSeen.length > 1) {
+    console.log(`Adapters present: ${hardware.adaptersSeen.join(', ')}`);
+  }
+  console.log(`Hardware: ${hardware.gpuRaw} / ${hardware.cpuRaw} / driver ${hardware.gpuDriverVersion}`);
+
+  // Hardware attribution is DERIVED from what the machine reported, never
+  // taken on trust from the command line. --gpu-id/--cpu-id are optional and
+  // may only disambiguate between candidates the detected name supports; see
+  // ./catalog.ts.
+  const gpuMatch = resolveHardware(hardware.gpuRaw, 'gpu', catalogs.gpus, preferredGpuId);
+  const cpuMatch = resolveHardware(hardware.cpuRaw, 'cpu', catalogs.cpus, preferredCpuId);
+  console.log(`Attributed: ${gpuMatch.id} ("${gpuMatch.name}", ${gpuMatch.matchMethod}) / ${cpuMatch.id} ("${cpuMatch.name}", ${cpuMatch.matchMethod})`);
+
+  const exePath = arg(argv, 'game-exe');
+  const inputs: CollectInputs = {
+    ...runConditions,
+    gpuId: gpuMatch.id,
+    cpuId: cpuMatch.id,
+    gpuMatchMethod: gpuMatch.matchMethod,
+    cpuMatchMethod: cpuMatch.matchMethod,
+    gameVersion: arg(argv, 'game-version') ?? (exePath ? detectExecutableVersion(exePath) : undefined),
   };
 
   // Described, not yet written. Archiving the frames here would put a blob on
@@ -276,7 +408,11 @@ async function main(argv: string[]): Promise<void> {
   ) as GameFeatureProfile[];
   const storePath = path.join(repoRoot, 'src', 'data', 'measuredObservations.json');
 
-  const issues = validateMeasuredObservation(observation, parsed.frameTimesMs, profiles);
+  // The same catalogs the attribution used, re-checked at the store boundary:
+  // the CLI is one caller, and the store's guarantee must not depend on which
+  // caller wrote the record.
+  const idCatalogs: MeasuredCatalogs = { gameIds: catalogs.gameIds, gpuIds: catalogs.gpuIds, cpuIds: catalogs.cpuIds };
+  const issues = validateMeasuredObservation(observation, parsed.frameTimesMs, profiles, idCatalogs);
   for (const w of warnings(issues)) console.warn(`  WARNING ${w.rule}: ${w.message}`);
   for (const e of errors(issues)) console.error(`  ERROR   ${e.rule}: ${e.message}`);
 
@@ -287,7 +423,7 @@ async function main(argv: string[]): Promise<void> {
   let outcome: SaveOutcome = { saved: false, issues, observation };
   if (shouldPersistFrameTimes(dryRun, issues)) {
     await writeFrameTimes(parsed.frameTimesMs);
-    outcome = validateAndSave(observation, parsed.frameTimesMs, storePath, profiles);
+    outcome = validateAndSave(observation, parsed.frameTimesMs, storePath, profiles, undefined, idCatalogs);
   }
 
   console.log(`\navg ${observation.stats.averageFps} fps · 1% low ${observation.stats.onePercentLow} · 0.1% low ${observation.stats.zeroPointOnePercentLow}`);

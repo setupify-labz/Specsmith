@@ -356,3 +356,93 @@ describe('platform games', () => {
     expect(issues.map((i) => i.rule).filter((r) => r.startsWith('platform.'))).toEqual([]);
   });
 });
+
+// The unions in types.ts are erased at runtime, so a CLI string cast to
+// `Resolution` type-checks and travels straight into the store. These rules
+// are what actually stops that.
+describe('run-condition field values are checked at runtime', () => {
+  const bad = (over: Record<string, unknown>) => {
+    const f = goodFrames();
+    const obs = { ...makeObservation(f), ...over } as unknown as MeasuredObservation;
+    return validateMeasuredObservation(obs, f).map((i) => i.rule);
+  };
+
+  it('accepts a well-formed observation', () => {
+    const f = goodFrames();
+    const rules = validateMeasuredObservation(makeObservation(f), f).filter((i) => i.severity === 'error');
+    expect(rules).toEqual([]);
+  });
+
+  it('rejects a resolution outside the accepted set', () => {
+    expect(bad({ resolution: '1440' })).toContain('fields.resolution-invalid');
+    expect(bad({ resolution: '' })).toContain('fields.resolution-invalid');
+  });
+
+  it('rejects a misspelled preset', () => {
+    expect(bad({ preset: 'hihg' })).toContain('fields.preset-invalid');
+  });
+
+  it('accepts every preset the schema defines, including unmapped', () => {
+    for (const p of ['low', 'medium', 'high', 'ultra', 'extreme']) {
+      expect(bad({ preset: p })).not.toContain('fields.preset-invalid');
+    }
+  });
+
+  it('rejects an unknown upscaler', () => {
+    expect(bad({ upscaler: 'dlss4' })).toContain('fields.upscaler-invalid');
+  });
+
+  it('rejects a render scale that is not a usable number', () => {
+    for (const v of [0, -50, Number.NaN, 'sixty', 10000]) {
+      expect(bad({ renderScalePercent: v })).toContain('fields.render-scale-invalid');
+    }
+  });
+
+  it('allows supersampling above 100%', () => {
+    expect(bad({ renderScalePercent: 150 })).not.toContain('fields.render-scale-invalid');
+  });
+
+  it('rejects a frame-generation factor that is not frame generation', () => {
+    // A factor of 1 means every displayed frame was rendered — the record
+    // would claim FG while describing a native run.
+    expect(bad({ frameGenerationFactor: 1 })).toContain('fields.framegen-factor-invalid');
+    expect(bad({ frameGenerationFactor: 0 })).toContain('fields.framegen-factor-invalid');
+    expect(bad({ frameGenerationFactor: Number.NaN })).toContain('fields.framegen-factor-invalid');
+  });
+
+  it('leaves an absent frame-generation factor alone', () => {
+    expect(bad({ frameGenerationFactor: undefined })).not.toContain('fields.framegen-factor-invalid');
+  });
+
+  it('rejects an empty identifier', () => {
+    expect(bad({ gameId: '' })).toContain('fields.game-id-missing');
+    expect(bad({ gpuId: '   ' })).toContain('fields.gpu-id-missing');
+    expect(bad({ cpuId: undefined })).toContain('fields.cpu-id-missing');
+  });
+});
+
+describe('catalog membership, when the caller supplies the catalogs', () => {
+  const check = (over: Record<string, unknown>, catalogs: Parameters<typeof validateMeasuredObservation>[3]) => {
+    const f = goodFrames();
+    const obs = { ...makeObservation(f), ...over } as unknown as MeasuredObservation;
+    return validateMeasuredObservation(obs, f, [], catalogs).map((i) => i.rule);
+  };
+  const known = { gameIds: ['cs2'], gpuIds: ['rtx5070'], cpuIds: ['r5-5600x'] };
+
+  it('accepts ids that exist', () => {
+    const rules = check({ gameId: 'cs2', gpuId: 'rtx5070', cpuId: 'r5-5600x' }, known);
+    expect(rules).not.toContain('fields.game-id-unknown');
+    expect(rules).not.toContain('fields.gpu-id-unknown');
+    expect(rules).not.toContain('fields.cpu-id-unknown');
+  });
+
+  it('rejects an id that names nothing', () => {
+    expect(check({ gameId: 'halflife3' }, known)).toContain('fields.game-id-unknown');
+    expect(check({ gpuId: 'rtx9090' }, known)).toContain('fields.gpu-id-unknown');
+    expect(check({ cpuId: 'ryzen-1000x' }, known)).toContain('fields.cpu-id-unknown');
+  });
+
+  it('checks nothing when no catalogs are supplied, so the shape rules stay usable alone', () => {
+    expect(check({ gameId: 'halflife3' }, {})).not.toContain('fields.game-id-unknown');
+  });
+});

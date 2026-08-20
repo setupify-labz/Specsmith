@@ -279,3 +279,28 @@ export const MEASURED_SCHEMA_VERSION = 1;
 /** Minimums below which a run is too short to characterize performance. */
 export const MIN_RUN_DURATION_SEC = 60;
 export const MIN_FRAME_COUNT = 3000;
+
+/**
+ * The accepted values for the enum-typed fields, as runtime data.
+ *
+ * The unions above are erased at compile time, so a CLI string cast to
+ * `Resolution` type-checks and then travels all the way into the store. These
+ * arrays are what lets validation actually check the value. They are declared
+ * here, beside the types, so the two cannot drift apart.
+ */
+export const RESOLUTIONS: readonly Resolution[] = ['1080p', '1440p', '4k'];
+export const MEASURED_PRESETS: readonly MeasuredPreset[] = ['low', 'medium', 'high', 'ultra', 'extreme', 'unmapped'];
+export const UPSCALERS: readonly Upscaler[] = ['native', 'dlss', 'fsr', 'xess'];
+
+/**
+ * Bounds for the numeric run-condition fields.
+ *
+ * Wide on purpose: they exist to catch a typo or a mis-parsed flag entering
+ * the store, not to express an opinion about how a run should be configured.
+ * Render scale above 100% is legitimate supersampling; a frame-generation
+ * factor of 1 is not frame generation at all.
+ */
+export const MIN_RENDER_SCALE_PERCENT = 1;
+export const MAX_RENDER_SCALE_PERCENT = 400;
+export const MIN_FRAME_GENERATION_FACTOR = 1;
+export const MAX_FRAME_GENERATION_FACTOR = 8;

@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildObservation, collectorBuildHash, COLLECTOR_VERSION, shouldPersistFrameTimes, validateAndSave, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
+import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 
 // Frame times here are SYNTHETIC, used to exercise assembly and the save gate.
@@ -251,5 +252,100 @@ describe('when frames are archived', () => {
 
   it('still archives a run that only raised warnings, since that run is saved', () => {
     expect(shouldPersistFrameTimes(false, withWarning)).toBe(true);
+  });
+});
+
+// TypeScript's unions vanish at runtime, so the collector used to cast CLI
+// strings straight to Resolution/Preset/Upscaler. These helpers are the check
+// that cast never was.
+describe('CLI values are checked, not cast', () => {
+  it('accepts a value the schema defines', () => {
+    expect(oneOf('1440p', RESOLUTIONS, 'resolution')).toBe('1440p');
+    expect(oneOf('unmapped', MEASURED_PRESETS, 'preset')).toBe('unmapped');
+    expect(oneOf('dlss', UPSCALERS, 'upscaler')).toBe('dlss');
+  });
+
+  it('refuses one it does not, and says what is accepted', () => {
+    expect(() => oneOf('1440', RESOLUTIONS, 'resolution')).toThrow(CliInputError);
+    expect(() => oneOf('1440', RESOLUTIONS, 'resolution')).toThrow(/1080p, 1440p, 4k/);
+    expect(() => oneOf('hihg', MEASURED_PRESETS, 'preset')).toThrow(CliInputError);
+    expect(() => oneOf('DLSS', UPSCALERS, 'upscaler')).toThrow(CliInputError);
+  });
+
+  it('refuses a number that is not one', () => {
+    expect(() => numberInRange('sixty', 'render-scale', 1, 400)).toThrow(/is not a number/);
+    expect(() => numberInRange('', 'render-scale', 1, 400)).toThrow(CliInputError);
+  });
+
+  it('refuses a number outside its range', () => {
+    expect(() => numberInRange('0', 'render-scale', 1, 400)).toThrow(/between 1 and 400/);
+    expect(() => numberInRange('5000', 'render-scale', 1, 400)).toThrow(CliInputError);
+    expect(numberInRange('150', 'render-scale', 1, 400)).toBe(150);
+  });
+});
+
+// Hardware attribution is derived from the machine, so the record must say so
+// rather than claiming an operator verified it.
+describe('how the hardware attribution was reached', () => {
+  it('records the method the resolver reported', () => {
+    const obs = build({ gpuMatchMethod: 'normalized', cpuMatchMethod: 'exact' });
+    expect(obs.detected.gpuMatchMethod).toBe('normalized');
+    expect(obs.detected.cpuMatchMethod).toBe('exact');
+  });
+
+  it('keeps the raw detected names beside the ids, so the two can be compared', () => {
+    const obs = build();
+    expect(obs.detected.gpuRaw).toBe('NVIDIA GeForce RTX 4070');
+    expect(obs.detected.cpuRaw).toBe('AMD Ryzen 7 7800X3D 8-Core Processor');
+  });
+});
+
+describe('parsing a whole command line', () => {
+  const argv = (over: string[] = []) => [
+    '--game-id', 'cs2', '--resolution', '1440p', '--preset', 'high',
+    '--ram-channels', '2', '--settings-file', '/dev/null', ...over,
+  ];
+
+  it('reads a valid command line', () => {
+    const r = parseRunConditions(argv());
+    expect(r.gameId).toBe('cs2');
+    expect(r.resolution).toBe('1440p');
+    expect(r.preset).toBe('high');
+    expect(r.upscaler).toBe('native');
+    expect(r.renderScalePercent).toBe(100);
+    expect(r.frameGenerationFactor).toBeUndefined();
+  });
+
+  it('checks the game id against the catalog when one is supplied', () => {
+    expect(() => parseRunConditions(argv(), ['cs2'])).not.toThrow();
+    expect(() => parseRunConditions(argv(), ['fortnite'])).toThrow(/not in the SpecSmith game catalog/);
+  });
+
+  // The trap this guards: `--preset --dry-run` used to set preset to the
+  // literal string "--dry-run", which type-checks as a Preset.
+  it('refuses a flag whose value is the next flag', () => {
+    const bad = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', '--dry-run', '--ram-channels', '2', '--settings-file', '/dev/null'];
+    expect(() => parseRunConditions(bad)).toThrow(CliInputError);
+    expect(() => parseRunConditions(bad)).toThrow(/needs a value/);
+  });
+
+  it('refuses a flag given twice rather than silently taking the first', () => {
+    expect(() => parseRunConditions(argv(['--resolution', '1080p']))).toThrow(/more than once/);
+  });
+
+  it('refuses a missing required flag', () => {
+    expect(() => parseRunConditions(['--resolution', '1440p'])).toThrow(/Missing required --game-id/);
+  });
+
+  it('refuses a fractional channel count', () => {
+    const fractional = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', 'high', '--ram-channels', '2.5', '--settings-file', '/dev/null'];
+    expect(() => parseRunConditions(fractional)).toThrow(/whole number/);
+    expect(wholeNumberInRange('2', 'ram-channels', 1, 8)).toBe(2);
+  });
+
+  it('refuses a frame-generation factor that describes a native run', () => {
+    expect(() => frameGenerationFactor('1')).toThrow(/native run/);
+    expect(() => frameGenerationFactor('0.5')).toThrow(CliInputError);
+    expect(frameGenerationFactor('2')).toBe(2);
   });
 });

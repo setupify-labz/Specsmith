@@ -15,12 +15,32 @@
 import type { GameFeatureProfile } from '../benchmarks/types';
 import { computeFrameTimeStats, canonicalFrameTimeBytes } from './frameTimes';
 import {
+  MAX_FRAME_GENERATION_FACTOR,
+  MAX_RENDER_SCALE_PERCENT,
+  MEASURED_PRESETS,
   MIN_FRAME_COUNT,
+  MIN_FRAME_GENERATION_FACTOR,
+  MIN_RENDER_SCALE_PERCENT,
   MIN_RUN_DURATION_SEC,
   PINNED_ONE_PERCENT_LOW_METHOD,
+  RESOLUTIONS,
   TIER_ACCEPTED_V1,
+  UPSCALERS,
   type MeasuredObservation,
 } from './types';
+
+/**
+ * The catalog ids an observation is allowed to reference.
+ *
+ * Optional because these rules are about IDENTITY, not shape, and the pure
+ * validator has no business reading files. The collector passes the real
+ * catalogs; a caller that omits them still gets every shape rule.
+ */
+export interface MeasuredCatalogs {
+  gameIds?: readonly string[];
+  gpuIds?: readonly string[];
+  cpuIds?: readonly string[];
+}
 
 export type Severity = 'error' | 'warning';
 
@@ -32,6 +52,9 @@ export interface MeasuredIssue {
 }
 
 const err = (observationId: string, rule: string, message: string): MeasuredIssue => ({ severity: 'error', rule, message, observationId });
+/** `gpuId` -> `gpu-id`, so rule names read the way the CLI flags do. */
+const kebab = (field: string): string => field.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+
 const warn = (observationId: string, rule: string, message: string): MeasuredIssue => ({ severity: 'warning', rule, message, observationId });
 
 /**
@@ -45,6 +68,7 @@ export function validateMeasuredObservation(
   obs: MeasuredObservation,
   frameTimesMs: readonly number[],
   featureProfiles: readonly GameFeatureProfile[] = [],
+  catalogs: MeasuredCatalogs = {},
 ): MeasuredIssue[] {
   const issues: MeasuredIssue[] = [];
   const id = obs.id;
@@ -149,6 +173,66 @@ export function validateMeasuredObservation(
   }
   if (!(obs.ram.channels > 0) || !Number.isInteger(obs.ram.channels)) {
     issues.push(err(id, 'ram.channels-invalid', `RAM channel count is ${obs.ram.channels}; it must be a positive integer.`));
+  }
+
+  // --- run-condition field values ------------------------------------------
+  // TypeScript's unions are erased at runtime, so a CLI string cast to
+  // `Resolution` type-checks and then travels all the way into the store. A
+  // record carrying resolution "1440" or preset "hihg" is not a measurement of
+  // anything describable, and nothing downstream can recover the intent — so
+  // these are ERRORs, checked against the value arrays in types.ts.
+  const identifiers: Array<[string, string]> = [
+    ['gameId', obs.gameId],
+    ['gpuId', obs.gpuId],
+    ['cpuId', obs.cpuId],
+  ];
+  for (const [field, value] of identifiers) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      issues.push(err(id, `fields.${kebab(field)}-missing`, `${field} is ${JSON.stringify(value)}; a measured observation must name what it measured.`));
+    }
+  }
+
+  if (!RESOLUTIONS.includes(obs.resolution)) {
+    issues.push(err(id, 'fields.resolution-invalid', `resolution is ${JSON.stringify(obs.resolution)}; accepted values are ${RESOLUTIONS.join(', ')}.`));
+  }
+  if (!MEASURED_PRESETS.includes(obs.preset)) {
+    issues.push(err(id, 'fields.preset-invalid', `preset is ${JSON.stringify(obs.preset)}; accepted values are ${MEASURED_PRESETS.join(', ')}.`));
+  }
+  if (!UPSCALERS.includes(obs.upscaler)) {
+    issues.push(err(id, 'fields.upscaler-invalid', `upscaler is ${JSON.stringify(obs.upscaler)}; accepted values are ${UPSCALERS.join(', ')}.`));
+  }
+
+  if (
+    typeof obs.renderScalePercent !== 'number' ||
+    !Number.isFinite(obs.renderScalePercent) ||
+    obs.renderScalePercent < MIN_RENDER_SCALE_PERCENT ||
+    obs.renderScalePercent > MAX_RENDER_SCALE_PERCENT
+  ) {
+    issues.push(err(id, 'fields.render-scale-invalid', `renderScalePercent is ${JSON.stringify(obs.renderScalePercent)}; it must be a finite number between ${MIN_RENDER_SCALE_PERCENT} and ${MAX_RENDER_SCALE_PERCENT}.`));
+  }
+
+  // Absent is legitimate — that is a run without frame generation, and the
+  // framegen.factor-missing rule below covers the contradictory case.
+  if (obs.frameGenerationFactor !== undefined) {
+    const f = obs.frameGenerationFactor;
+    if (typeof f !== 'number' || !Number.isFinite(f) || f <= MIN_FRAME_GENERATION_FACTOR || f > MAX_FRAME_GENERATION_FACTOR) {
+      issues.push(err(id, 'fields.framegen-factor-invalid', `frameGenerationFactor is ${JSON.stringify(f)}; it must be a finite number greater than ${MIN_FRAME_GENERATION_FACTOR} and at most ${MAX_FRAME_GENERATION_FACTOR}. A factor of ${MIN_FRAME_GENERATION_FACTOR} or less is not frame generation.`));
+    }
+  }
+
+  // --- catalog membership --------------------------------------------------
+  // A syntactically fine id that names nothing is still unusable: the record
+  // cannot be joined to a game or a part, and the mistake is invisible in the
+  // store. Only checked when the caller supplied the catalogs.
+  const membership: Array<[string, string, readonly string[] | undefined]> = [
+    ['gameId', obs.gameId, catalogs.gameIds],
+    ['gpuId', obs.gpuId, catalogs.gpuIds],
+    ['cpuId', obs.cpuId, catalogs.cpuIds],
+  ];
+  for (const [field, value, known] of membership) {
+    if (known && value && !known.includes(value)) {
+      issues.push(err(id, `fields.${kebab(field)}-unknown`, `${field} "${value}" is not in the SpecSmith catalog.`));
+    }
   }
 
   // --- hardware resolution -------------------------------------------------
