@@ -57,8 +57,28 @@
 // REJECTED with the flag needed to produce one. A wrong column choice here
 // would be invisible downstream: the numbers would look entirely plausible.
 
+/**
+ * One retained present, aligned 1:1 with `frameTimesMs`.
+ *
+ * Carries the fields SEGMENTATION needs (see segmentation.ts) and nothing
+ * else. Aligned by construction rather than by index arithmetic: the discarded
+ * first frame is absent from BOTH arrays, so `frames[i]` always describes
+ * `frameTimesMs[i]` and a segmentation expressed in one is valid in the other.
+ */
+export interface PresentMonFrame {
+  frameTimeMs: number;
+  /** PresentMon's PresentMode verbatim; '' when the column is absent. */
+  presentMode: string;
+  /** TimeInSeconds verbatim; NaN when the column is absent. */
+  timeInSeconds: number;
+  /** 1-based CSV line, so a report points at the real row. */
+  csvLine: number;
+}
+
 export interface PresentMonParseResult {
   frameTimesMs: number[];
+  /** Per-frame detail, aligned 1:1 with frameTimesMs. */
+  frames: PresentMonFrame[];
   /** Rows present in the file for the selected process, before filtering. */
   totalRows: number;
   /**
@@ -139,10 +159,14 @@ export function parsePresentMonCsv(
   const appIdx = col('Application');
   const pidIdx = col('ProcessID');
   const swapChainIdx = col('SwapChainAddress');
+  // Optional: absent in older/reduced captures. Segmentation REQUIRES
+  // PresentMode and refuses without it rather than guessing a boundary.
+  const presentModeIdx = col('PresentMode');
+  const timeIdx = col('TimeInSeconds');
 
   const processes = new Set<string>();
   const swapChains = new Set<string>();
-  const rows: Array<{ app: string; pid: string; swapChain: string; dropped: boolean; frameTimeMs: number; line: number }> = [];
+  const rows: Array<{ app: string; pid: string; swapChain: string; dropped: boolean; frameTimeMs: number; line: number; presentMode: string; timeInSeconds: number }> = [];
 
   // A row too short to hold the frame-time column used to be skipped in
   // silence, which shortens the capture exactly as invisibly as the first-frame
@@ -178,6 +202,8 @@ export function parsePresentMonCsv(
       // PresentMon writes Dropped as 0/1. Anything non-zero is dropped.
       dropped: droppedIdx >= 0 ? Number(f[droppedIdx]) !== 0 : false,
       frameTimeMs: Number(f[frameTimeIdx]),
+      presentMode: presentModeIdx >= 0 && presentModeIdx < f.length ? f[presentModeIdx].trim() : '',
+      timeInSeconds: timeIdx >= 0 && timeIdx < f.length ? Number(f[timeIdx]) : Number.NaN,
       // 1-based CSV line, so a rejection message points at the actual row.
       line: i + 1,
     });
@@ -225,11 +251,13 @@ export function parsePresentMonCsv(
   // plausible-looking count.
   let discardedFirstFrames = 0;
   const frameTimesMs: number[] = [];
+  const frames: PresentMonFrame[] = [];
   for (let i = 0; i < rows.length; i += 1) {
     const r = rows[i];
     const usable = Number.isFinite(r.frameTimeMs) && r.frameTimeMs > 0;
     if (usable) {
       frameTimesMs.push(r.frameTimeMs);
+      frames.push({ frameTimeMs: r.frameTimeMs, presentMode: r.presentMode, timeInSeconds: r.timeInSeconds, csvLine: r.line });
       continue;
     }
     if (i === 0) {
@@ -247,6 +275,7 @@ export function parsePresentMonCsv(
 
   return {
     frameTimesMs,
+    frames,
     totalRows: rows.length,
     droppedFrames,
     discardedFirstFrames,

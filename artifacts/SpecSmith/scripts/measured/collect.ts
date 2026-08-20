@@ -76,6 +76,9 @@ export const DEFAULT_BUILD_HASH_FILES: readonly string[] = [
   // loading, and the assembly/CLI logic itself.
   'collect.ts',
   'presentmon.ts',
+  // Segmentation decides WHICH frames a figure is computed over, so it
+  // determines what the figure means just as directly as the statistics do.
+  'segmentation.ts',
   'environment.ts',
   'catalog.ts',
   // The pure src/lib/measured half: hardware attribution's actual resolver,

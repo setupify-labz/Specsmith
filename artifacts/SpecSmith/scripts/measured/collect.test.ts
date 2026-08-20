@@ -511,6 +511,7 @@ describe('collector build identity', () => {
     expect(DEFAULT_BUILD_HASH_FILES).toEqual(expect.arrayContaining([
       'collect.ts',
       'presentmon.ts',
+      'segmentation.ts',
       'environment.ts',
       'catalog.ts',
       '../../src/lib/measured/hardwareMatch.ts',
