@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
@@ -13,6 +14,8 @@ import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 // Frame times here are SYNTHETIC, used to exercise assembly and the save gate.
 // They are not a measurement of anything and never reach the committed store —
 // every test writes to a temp file.
+
+const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const frames = () => Array.from({ length: 8000 }, (_, i) => 8 + (i % 40) * 0.35);
 
@@ -460,6 +463,39 @@ describe('parsing a whole command line', () => {
     expect(() => frameGenerationFactor('1')).toThrow(/native run/);
     expect(() => frameGenerationFactor('0.5')).toThrow(CliInputError);
     expect(frameGenerationFactor('2')).toBe(2);
+  });
+});
+
+// Regression: a real capture of Red Dead Redemption 2 needed to validate
+// against the collector, and the question was whether the SpecSmith catalog
+// carried it under a canonical id. It already did — 'rdr2' was present in
+// both games.json (the CLI's --game-id whitelist) and gameFeatureProfiles.json
+// (what validateMeasuredObservation consults for preset/upscaler
+// compatibility) before this test was written. No catalog file was changed
+// for this; the test exists so that stays true.
+describe('the real catalog already supports Red Dead Redemption 2', () => {
+  const catalogs = loadCatalogs();
+
+  it('carries gameId "rdr2" in the CLI\'s --game-id whitelist', () => {
+    expect(catalogs.gameIds).toContain('rdr2');
+  });
+
+  it('accepts --game-id rdr2 on a full command line', () => {
+    const argv = [
+      '--game-id', 'rdr2', '--resolution', '1440p', '--preset', 'high',
+      '--ram-channels', '2', '--settings-file', '/dev/null',
+    ];
+    const r = parseRunConditions(argv, catalogs.gameIds);
+    expect(r.gameId).toBe('rdr2');
+  });
+
+  it('has a gameFeatureProfiles.json entry, so preset/upscaler compatibility checks run against real data rather than silently finding no profile', () => {
+    const profiles = JSON.parse(
+      fs.readFileSync(path.join(repoRoot, 'src', 'data', 'gameFeatureProfiles.json'), 'utf-8'),
+    ) as GameFeatureProfile[];
+    const profile = profiles.find((p) => p.gameId === 'rdr2');
+    expect(profile).toBeDefined();
+    expect(profile?.name).toBe('Red Dead Redemption 2');
   });
 });
 
