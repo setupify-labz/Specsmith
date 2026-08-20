@@ -71,6 +71,13 @@ export interface PresentMonFrame {
   presentMode: string;
   /** TimeInSeconds verbatim; NaN when the column is absent. */
   timeInSeconds: number;
+  /**
+   * GPU busy time for this frame, verbatim; NaN when the column is absent.
+   *
+   * The one column that says whether the GPU did any WORK, as opposed to how
+   * fast frames went out. Segmentation's second stage is built on it.
+   */
+  msGpuActive: number;
   /** 1-based CSV line, so a report points at the real row. */
   csvLine: number;
 }
@@ -163,10 +170,11 @@ export function parsePresentMonCsv(
   // PresentMode and refuses without it rather than guessing a boundary.
   const presentModeIdx = col('PresentMode');
   const timeIdx = col('TimeInSeconds');
+  const gpuActiveIdx = col('msGPUActive');
 
   const processes = new Set<string>();
   const swapChains = new Set<string>();
-  const rows: Array<{ app: string; pid: string; swapChain: string; dropped: boolean; frameTimeMs: number; line: number; presentMode: string; timeInSeconds: number }> = [];
+  const rows: Array<{ app: string; pid: string; swapChain: string; dropped: boolean; frameTimeMs: number; line: number; presentMode: string; timeInSeconds: number; msGpuActive: number }> = [];
 
   // A row too short to hold the frame-time column used to be skipped in
   // silence, which shortens the capture exactly as invisibly as the first-frame
@@ -204,6 +212,7 @@ export function parsePresentMonCsv(
       frameTimeMs: Number(f[frameTimeIdx]),
       presentMode: presentModeIdx >= 0 && presentModeIdx < f.length ? f[presentModeIdx].trim() : '',
       timeInSeconds: timeIdx >= 0 && timeIdx < f.length ? Number(f[timeIdx]) : Number.NaN,
+      msGpuActive: gpuActiveIdx >= 0 && gpuActiveIdx < f.length ? Number(f[gpuActiveIdx]) : Number.NaN,
       // 1-based CSV line, so a rejection message points at the actual row.
       line: i + 1,
     });
@@ -257,7 +266,7 @@ export function parsePresentMonCsv(
     const usable = Number.isFinite(r.frameTimeMs) && r.frameTimeMs > 0;
     if (usable) {
       frameTimesMs.push(r.frameTimeMs);
-      frames.push({ frameTimeMs: r.frameTimeMs, presentMode: r.presentMode, timeInSeconds: r.timeInSeconds, csvLine: r.line });
+      frames.push({ frameTimeMs: r.frameTimeMs, presentMode: r.presentMode, timeInSeconds: r.timeInSeconds, msGpuActive: r.msGpuActive, csvLine: r.line });
       continue;
     }
     if (i === 0) {

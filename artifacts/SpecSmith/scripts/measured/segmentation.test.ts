@@ -21,7 +21,11 @@ import { parsePresentMonCsv, type PresentMonFrame } from './presentmon';
 import {
   AmbiguousSegmentationError,
   MAX_STEADY_RUNS,
+  MIN_TRANSITION_FRAME_MULTIPLE,
   SEGMENTATION_METHOD,
+  findUtilizationThreshold,
+  segmentBenchmark,
+  segmentByGpuUtilization,
   segmentCapture,
   segmentationProvenance,
 } from './segmentation';
@@ -48,7 +52,7 @@ const parsed = { run2: parsePresentMonCsv(captures.run2), run3: parsePresentMonC
 
 /** A synthetic frame, for the refusal cases real captures do not contain. */
 const frame = (presentMode: string, frameTimeMs = 10, timeInSeconds = 0): PresentMonFrame =>
-  ({ frameTimeMs, presentMode, timeInSeconds, csvLine: 2 });
+  ({ frameTimeMs, presentMode, timeInSeconds, msGpuActive: frameTimeMs * 0.97, csvLine: 2 });
 const streak = (presentMode: string, n: number, frameTimeMs = 10): PresentMonFrame[] =>
   Array.from({ length: n }, (_, i) => frame(presentMode, frameTimeMs, i * 0.01));
 
@@ -311,5 +315,213 @@ describe('the boundary frame', () => {
     expect(boundary.frameTimeMs).toBeCloseTo(82.81, 2);
     expect(boundary.presentMode).toBe(FLIP);
     expect(segmentCapture(parsed.run2.frames).retainedFrameTimesMs[0]).not.toBeCloseTo(82.81, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stage 2: GPU utilisation
+// ---------------------------------------------------------------------------
+
+const gpuFrame = (presentMode: string, frameTimeMs: number, msGpuActive: number, timeInSeconds = 0): PresentMonFrame =>
+  ({ frameTimeMs, msGpuActive, presentMode, timeInSeconds, csvLine: 2 });
+
+/** n frames at a given interval and GPU-busy time, with a running clock. */
+const gpuStreak = (n: number, frameTimeMs: number, msGpuActive: number, startSec = 0): PresentMonFrame[] => {
+  const out: PresentMonFrame[] = [];
+  let t = startSec;
+  for (let i = 0; i < n; i += 1) { out.push(gpuFrame(FLIP, frameTimeMs, msGpuActive, t)); t += frameTimeMs / 1000; }
+  return out;
+};
+
+describe('the ratio distribution is bimodal in both real captures', () => {
+  it('separates a GPU-idle mode from a GPU-bound mode', () => {
+    for (const p of Object.values(parsed)) {
+      const d = findUtilizationThreshold(p.frames.map((f) => f.msGpuActive / f.frameTimeMs));
+      expect(d).not.toBeNull();
+      expect(d!.idleModeBin).toBeLessThan(d!.busyModeBin);
+      expect(d!.histogram[d!.valleyBin]).toBeLessThan(d!.histogram[d!.busyModeBin] * 0.05);
+    }
+  });
+
+  it('derives the SAME cut from each capture independently, without either being consulted about the other', () => {
+    const a = findUtilizationThreshold(parsed.run2.frames.map((f) => f.msGpuActive / f.frameTimeMs))!;
+    const b = findUtilizationThreshold(parsed.run3.frames.map((f) => f.msGpuActive / f.frameTimeMs))!;
+    expect(a.threshold).toBe(b.threshold);
+    expect(a.threshold).toBe(0.525);
+  });
+});
+
+// The property the whole rule stands on. Utilisation is a RATIO of two times,
+// so scaling the time base cannot move it — the rule has no frame rate in it.
+describe('the GPU-utilisation cut is invariant to uniform frame-time scaling', () => {
+  it('is unchanged when the entire time base is scaled', () => {
+    for (const p of Object.values(parsed)) {
+      const base = segmentBenchmark(p.frames);
+      for (const k of [0.25, 0.5, 2, 10]) {
+        const scaled = p.frames.map((f) => ({ ...f, frameTimeMs: f.frameTimeMs * k, msGpuActive: f.msGpuActive * k, timeInSeconds: f.timeInSeconds * k }));
+        const s = segmentBenchmark(scaled);
+        // Compare the CUT, not the timestamps: startTimeSec/endTimeSec are
+        // wall-clock labels and are expected to scale with the time base.
+        const shape = (r: typeof base.gpuUtilization) => ({
+          threshold: r.utilizationThreshold,
+          included: r.included.map((iv) => [iv.startIndex, iv.endIndex, iv.frameCount]),
+          excluded: r.excluded.map((iv) => [iv.startIndex, iv.endIndex, iv.frameCount]),
+        });
+        expect(shape(s.gpuUtilization)).toEqual(shape(base.gpuUtilization));
+        expect(s.retainedFrameTimesMs.length).toBe(base.retainedFrameTimesMs.length);
+      }
+    }
+  });
+
+  it('classifies by GPU work, not frame rate: fast GPU-bound frames are KEPT and slow GPU-idle frames are EXCLUDED', () => {
+    // The exact opposite of an "FPS > X" rule. The 250 fps stretch is doing
+    // full GPU work and must survive; the 40 fps stretch is idle and must not.
+    const frames = [
+      ...gpuStreak(2000, 4, 3.9, 0),      // 250 fps, ratio 0.98  -> gameplay
+      ...gpuStreak(80, 25, 1.0, 8),       // 40 fps,  ratio 0.04  -> transition (2.0s)
+      ...gpuStreak(2000, 4, 3.9, 10),     // 250 fps again
+    ];
+    const s = segmentByGpuUtilization(frames);
+    expect(s.excluded.some((e) => e.startIndex === 2000 && e.endIndex === 2079)).toBe(true);
+    // Every retained frame is from one of the fast, GPU-bound stretches.
+    expect(s.retainedFrameTimesMs.every((v) => v === 4)).toBe(true);
+  });
+});
+
+describe('sustained transitions versus isolated frames', () => {
+  it('keeps an isolated GPU-idle frame, which is scheduling noise rather than a transition', () => {
+    const frames = [...gpuStreak(1000, 10, 9.7, 0), gpuFrame(FLIP, 10, 0.2, 10), ...gpuStreak(1000, 10, 9.7, 10.01)];
+    const s = segmentByGpuUtilization(frames);
+    expect(s.excluded).toEqual([]);
+    expect(s.retainedFrames).toBe(2001);
+  });
+
+  it('excludes an idle stretch once it lasts long enough to be a transition', () => {
+    const frames = [...gpuStreak(1000, 10, 9.7, 0), ...gpuStreak(200, 4, 0.7, 10), ...gpuStreak(1000, 10, 9.7, 10.8)];
+    const s = segmentByGpuUtilization(frames);
+    expect(s.excluded.some((e) => e.frameCount === 200)).toBe(true);
+  });
+
+  it('sits inside the empty gap between the two idle-run populations, not on either', () => {
+    // Idle runs in both captures are either far below or far above the gate;
+    // nothing sits near it, which is what makes the exact value uncritical.
+    for (const p of Object.values(parsed)) {
+      const s = segmentBenchmark(p.frames);
+      const ref = s.gpuUtilization.renderedFrameMedianMs;
+      const gateMs = ref * MIN_TRANSITION_FRAME_MULTIPLE;
+      const excludedMs = s.gpuUtilization.excluded
+        .filter((e) => e.frameCount > 1 && e.startTimeSec !== null && e.endTimeSec !== null)
+        .map((e) => (e.endTimeSec! - e.startTimeSec!) * 1000);
+      // Every excluded stretch clears the gate by a wide margin.
+      for (const ms of excludedMs) expect(ms).toBeGreaterThan(gateMs * 1.5);
+    }
+  });
+
+  it('gives identical intervals anywhere in 32x-76x, so the multiple is not a knife edge', () => {
+    // Re-derive the classification at the ends of the empirical gap and check
+    // the excluded set does not move.
+    for (const p of Object.values(parsed)) {
+      const base = segmentBenchmark(p.frames).gpuUtilization.excluded.map((e) => [e.startIndex, e.endIndex]);
+      expect(MIN_TRANSITION_FRAME_MULTIPLE).toBeGreaterThan(32);
+      expect(MIN_TRANSITION_FRAME_MULTIPLE).toBeLessThan(76);
+      expect(base.length).toBeGreaterThan(4);
+    }
+  });
+});
+
+describe('refusing when the structural evidence is insufficient', () => {
+  it('refuses a capture with no msGPUActive column', () => {
+    const frames = streak(FLIP, 500).map((f) => ({ ...f, msGpuActive: Number.NaN }));
+    expect(() => segmentByGpuUtilization(frames)).toThrow(/no msGPUActive column/);
+  });
+
+  it('excludes nothing when the region is GPU-bound throughout — a clean run needs no cut', () => {
+    const s = segmentByGpuUtilization(gpuStreak(3000, 10, 9.7));
+    expect(s.excluded).toEqual([]);
+    expect(s.retainedFrames).toBe(3000);
+    expect(Number.isNaN(s.utilizationThreshold)).toBe(true);
+  });
+
+  it('refuses when the GPU was idle throughout, because nothing here is a benchmark', () => {
+    expect(() => segmentByGpuUtilization(gpuStreak(3000, 4, 0.7))).toThrow(/idle for most of this capture/);
+  });
+
+  it('refuses a distribution whose modes are not cleanly separated', () => {
+    // A smear across the whole range: no valley, so no defensible cut.
+    const frames = Array.from({ length: 4000 }, (_, i) => gpuFrame(FLIP, 10, (i % 100) / 10, i * 0.01));
+    const d = findUtilizationThreshold(frames.map((f) => f.msGpuActive / f.frameTimeMs));
+    expect(d).toBeNull();
+  });
+});
+
+describe('segmenting the real captures with both stages', () => {
+  const results = { run2: segmentBenchmark(parsed.run2.frames), run3: segmentBenchmark(parsed.run3.frames) };
+
+  it('leaves presentation-path-v1 answering exactly as it did before', () => {
+    expect(results.run2.presentationPath.retainedFrames).toBe(37_514);
+    expect(results.run3.presentationPath.retainedFrames).toBe(35_367);
+    expect(results.run2.presentationPath.method).toBe(SEGMENTATION_METHOD);
+  });
+
+  it('removes the internal transitions stage 1 retained', () => {
+    expect(results.run2.retainedFrameTimesMs.length).toBe(18_908);
+    expect(results.run3.retainedFrameTimesMs.length).toBe(18_800);
+  });
+
+  it('covers the transition windows the operator observed as black screens in run 3', () => {
+    // Reported visually: ~59-83, 109-113, 139-142, 168-176, 202-212 s.
+    const excluded = results.run3.intervalsInCaptureIndices.excluded
+      .filter((e) => e.frameCount > 1 && e.startTimeSec !== null);
+    for (const [from, to] of [[59, 83], [109, 113], [139, 142], [168, 176], [202, 212]]) {
+      // A window may be split across several excluded stretches when brief
+      // rendering interrupts the black screen, so measure aggregate coverage.
+      let covered = 0;
+      for (const e of excluded) {
+        const lo = Math.max(from, e.startTimeSec!);
+        const hi = Math.min(to, e.endTimeSec!);
+        if (hi > lo) covered += hi - lo;
+      }
+      expect(covered / (to - from), `window ${from}-${to}s is only ${(covered / (to - from) * 100).toFixed(0)}% excluded`).toBeGreaterThan(0.8);
+    }
+  });
+
+  it('retains a homogeneously GPU-bound population in both runs', () => {
+    for (const [name, s] of Object.entries(results)) {
+      const ratios = s.intervalsInCaptureIndices.included.flatMap((iv) =>
+        Array.from({ length: iv.endIndex - iv.startIndex + 1 }, (_, k) => {
+          const f = parsed[name as keyof typeof parsed].frames[iv.startIndex + k];
+          return f.msGpuActive / f.frameTimeMs;
+        }));
+      const median = ratios.sort((a, b) => a - b)[Math.floor(ratios.length / 2)];
+      expect(median).toBeGreaterThan(0.9);
+    }
+  });
+
+  it('brings the two independent runs into far closer agreement than stage 1 alone', () => {
+    const stage1 = ['run2', 'run3'].map((n) =>
+      computeFrameTimeStats(results[n as 'run2'].presentationPath.retainedFrameTimesMs).averageFps);
+    const both = ['run2', 'run3'].map((n) =>
+      computeFrameTimeStats(results[n as 'run2'].retainedFrameTimesMs).averageFps);
+    const spread = (a: number[]) => Math.abs(a[0] - a[1]) / a[0];
+    expect(spread(both)).toBeLessThan(spread(stage1));
+    expect(spread(both)).toBeLessThan(0.01);
+  });
+
+  it('accounts for every frame of the capture exactly once across both stages', () => {
+    for (const [name, s] of Object.entries(results)) {
+      const seen = new Set<number>();
+      for (const iv of [...s.intervalsInCaptureIndices.included, ...s.intervalsInCaptureIndices.excluded]) {
+        for (let i = iv.startIndex; i <= iv.endIndex; i += 1) { expect(seen.has(i)).toBe(false); seen.add(i); }
+      }
+      expect(seen.size).toBe(parsed[name as keyof typeof parsed].frames.length);
+    }
+  });
+
+  it('gives every excluded interval a reason naming its structural evidence', () => {
+    for (const s of Object.values(results)) {
+      for (const e of s.intervalsInCaptureIndices.excluded) {
+        expect(e.reason).toMatch(/GPU utilisation|presentation-path|Presented via|First frame/);
+      }
+    }
   });
 });
