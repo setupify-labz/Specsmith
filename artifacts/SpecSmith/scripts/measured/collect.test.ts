@@ -201,6 +201,56 @@ describe('the save gate', () => {
       expect(errors(outcome.issues).map((i) => i.rule)).toContain('hardware.cpu-attribution-mismatch');
       expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(0);
     });
+
+    // Regression: the store-boundary check originally re-resolved the detected
+    // name WITHOUT the claimed id, so a genuinely ambiguous real card threw on
+    // ambiguity before the claimed id was ever consulted — rejecting an
+    // observation the CLI itself would have accepted via --gpu-id. The real
+    // catalog carries both memory variants under this exact detected string.
+    describe('a legitimately ambiguous real card, resolved by the claimed id', () => {
+      it('confirms the catalog actually carries the ambiguous pair this test relies on', () => {
+        const names = catalogs.gpus.filter((g) => g.name.startsWith('RTX 4060 Ti')).map((g) => g.id);
+        expect(names.sort()).toEqual(['rtx4060ti', 'rtx4060ti16']);
+      });
+
+      // 1. The exact scenario reported: CLI correctly accepts --gpu-id
+      // rtx4060ti16 for a detected "NVIDIA GeForce RTX 4060 Ti"; the store
+      // must save it, not reject it as unresolvable.
+      it('accepts a save where a detected RTX 4060 Ti is paired with the claimed 16GB id', () => {
+        const p = tempStore();
+        const { obs, f } = bypassObservation({ gpuRaw: 'NVIDIA GeForce RTX 4060 Ti', gpuId: 'rtx4060ti16' });
+        const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+        expect(outcome.saved).toBe(true);
+        expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(1);
+      });
+
+      it('accepts the 8GB candidate just as validly', () => {
+        const p = tempStore();
+        const { obs, f } = bypassObservation({ gpuRaw: 'NVIDIA GeForce RTX 4060 Ti', gpuId: 'rtx4060ti' });
+        const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+        expect(outcome.saved).toBe(true);
+      });
+
+      // 2. Passing the claimed id as the resolver's disambiguator must not
+      // weaken the check for hardware it cannot possibly mean.
+      it('still rejects an unrelated id neither ambiguous candidate supports', () => {
+        const p = tempStore();
+        const { obs, f } = bypassObservation({ gpuRaw: 'NVIDIA GeForce RTX 4060 Ti', gpuId: 'rtx4090' });
+        const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+        expect(outcome.saved).toBe(false);
+        expect(errors(outcome.issues).map((i) => i.rule)).toContain('hardware.gpu-attribution-mismatch');
+        expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(0);
+      });
+
+      // 3. The original mismatch case must still be rejected after this fix.
+      it('still rejects a detected RTX 5070 paired with gpuId rtx4090', () => {
+        const p = tempStore();
+        const { obs, f } = bypassObservation({ gpuId: 'rtx4090' });
+        const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+        expect(outcome.saved).toBe(false);
+        expect(errors(outcome.issues).map((i) => i.rule)).toContain('hardware.gpu-attribution-mismatch');
+      });
+    });
   });
 
   it('does not write a run that is too short', () => {

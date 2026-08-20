@@ -260,6 +260,17 @@ export function validateMeasuredObservation(
   // record claims. Every caller capable of writing to the store funnels
   // through this function, so this is the one place the check cannot be
   // bypassed by construction rather than by discipline.
+  //
+  // claimedId is passed as the resolver's OWN checked disambiguator (its
+  // `preferredId` parameter), not compared against an unguided resolution
+  // afterwards. Some real hardware is genuinely ambiguous from the detected
+  // name alone — Windows reports "NVIDIA GeForce RTX 4060 Ti" for both the
+  // 8 GB and 16 GB cards — and resolving without the claimed id first would
+  // throw on that ambiguity before the claimed id is ever consulted, silently
+  // rejecting a legitimate, catalog-checked observation. Passing it through
+  // is still exactly as strict: resolveHardware refuses a preferredId that is
+  // not one of the candidates the detected name actually supports, so an
+  // unrelated or wrong id is refused precisely as before.
   for (const [field, raw, claimedId, catalog] of [
     ['gpu', obs.detected.gpuRaw, obs.gpuId, catalogs.gpus] as const,
     ['cpu', obs.detected.cpuRaw, obs.cpuId, catalogs.cpus] as const,
@@ -268,20 +279,13 @@ export function validateMeasuredObservation(
     // no claimed id (already covered by hardware.unresolved above).
     if (!catalog || !claimedId) continue;
     try {
-      const resolved = resolveHardware(raw, field, catalog);
-      if (resolved.id !== claimedId) {
-        issues.push(err(
-          id,
-          `hardware.${field}-attribution-mismatch`,
-          `${field}Id "${claimedId}" does not match what detected ${field.toUpperCase()} "${raw}" resolves to ("${resolved.id}"). The id must be exactly what the detected hardware supports; it cannot be substituted.`,
-        ));
-      }
+      resolveHardware(raw, field, catalog, claimedId);
     } catch (e) {
       const reason = e instanceof HardwareAttributionError ? e.message : String(e);
       issues.push(err(
         id,
-        `hardware.${field}-attribution-unresolvable`,
-        `Detected ${field.toUpperCase()} "${raw}" cannot be attributed to catalog id "${claimedId}": ${reason}`,
+        `hardware.${field}-attribution-mismatch`,
+        `${field}Id "${claimedId}" is not what detected ${field.toUpperCase()} "${raw}" supports: ${reason}`,
       ));
     }
   }

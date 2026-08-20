@@ -509,6 +509,11 @@ describe('hardware attribution is re-derived, not merely checked for existence',
     gpus: [
       { id: 'rtx5070', name: 'RTX 5070' },
       { id: 'rtx4090', name: 'RTX 4090' },
+      // Windows reports ONE name for parts that differ only by memory size —
+      // both entries below are legitimately reachable from the single
+      // detected string "NVIDIA GeForce RTX 4060 Ti".
+      { id: 'rtx4060ti', name: 'RTX 4060 Ti' },
+      { id: 'rtx4060ti16', name: 'RTX 4060 Ti 16GB' },
     ],
     cpus: [
       { id: 'r5-5600x', name: 'Ryzen 5 5600X' },
@@ -550,12 +555,43 @@ describe('hardware attribution is re-derived, not merely checked for existence',
       { gpuId: 'rtx5070', detected: { gpuRaw: 'NVIDIA GeForce RTX 3060 Laptop GPU', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor', gpuMatchMethod: 'manual', cpuMatchMethod: 'normalized', gpuOverclockDetected: false } },
       { ...catalogs, cpus: catalogs.cpus },
     );
-    expect(rules).toContain('hardware.gpu-attribution-unresolvable');
+    expect(rules).toContain('hardware.gpu-attribution-mismatch');
   });
 
   it('does nothing when the caller supplies no catalogs, so shape-only validation still works', () => {
     const rules = check({ gpuId: 'rtx4090' }, {});
     expect(rules).not.toContain('hardware.gpu-attribution-mismatch');
-    expect(rules).not.toContain('hardware.gpu-attribution-unresolvable');
+  });
+
+  // Regression: the store-boundary check originally called resolveHardware()
+  // WITHOUT the claimed id, so it resolved the detected name on its own first
+  // and only compared afterwards. A genuinely ambiguous card — Windows reports
+  // one name for both memory variants of the RTX 4060 Ti — then throws on
+  // ambiguity before the claimed id is ever consulted, rejecting a legitimate,
+  // catalog-checked observation outright.
+  describe('legitimately ambiguous hardware, resolved by the claimed id', () => {
+    const detected = {
+      gpuRaw: 'NVIDIA GeForce RTX 4060 Ti', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor',
+      gpuMatchMethod: 'manual' as const, cpuMatchMethod: 'normalized' as const, gpuOverclockDetected: false,
+    };
+
+    // 1. A legitimate candidate the CLI would have accepted via --gpu-id.
+    it('accepts the 16GB candidate when the claimed id says so', () => {
+      const rules = check({ gpuId: 'rtx4060ti16', cpuId: 'r5-5600x', detected }, catalogs);
+      expect(rules).not.toContain('hardware.gpu-attribution-mismatch');
+    });
+
+    it('accepts the 8GB candidate just as validly', () => {
+      const rules = check({ gpuId: 'rtx4060ti', cpuId: 'r5-5600x', detected }, catalogs);
+      expect(rules).not.toContain('hardware.gpu-attribution-mismatch');
+    });
+
+    // 2. An id unrelated to either legitimate candidate is still refused —
+    // passing claimedId as the disambiguator must not weaken the check for
+    // hardware it cannot possibly mean.
+    it('still rejects an id neither ambiguous candidate supports', () => {
+      const rules = check({ gpuId: 'rtx4090', cpuId: 'r5-5600x', detected }, catalogs);
+      expect(rules).toContain('hardware.gpu-attribution-mismatch');
+    });
   });
 });
