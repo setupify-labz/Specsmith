@@ -14,6 +14,7 @@
 
 import type { GameFeatureProfile } from '../benchmarks/types';
 import { computeFrameTimeStats, canonicalFrameTimeBytes } from './frameTimes';
+import { HardwareAttributionError, resolveHardware, type CatalogEntry } from './hardwareMatch';
 import {
   MAX_FRAME_GENERATION_FACTOR,
   MAX_RENDER_SCALE_PERCENT,
@@ -30,16 +31,22 @@ import {
 } from './types';
 
 /**
- * The catalog ids an observation is allowed to reference.
+ * The catalogs an observation is checked against.
  *
  * Optional because these rules are about IDENTITY, not shape, and the pure
  * validator has no business reading files. The collector passes the real
  * catalogs; a caller that omits them still gets every shape rule.
+ *
+ * `gameIds` is a plain id list — a game is not attributed to detected
+ * hardware, so membership is all there is to check. `gpus`/`cpus` carry full
+ * entries (id + name) because membership alone cannot prove attribution: it
+ * shows gpuId names something real, not that the DETECTED gpuRaw can
+ * legitimately mean it. See the hardware-attribution rule below.
  */
 export interface MeasuredCatalogs {
   gameIds?: readonly string[];
-  gpuIds?: readonly string[];
-  cpuIds?: readonly string[];
+  gpus?: readonly CatalogEntry[];
+  cpus?: readonly CatalogEntry[];
 }
 
 export type Severity = 'error' | 'warning';
@@ -226,8 +233,8 @@ export function validateMeasuredObservation(
   // store. Only checked when the caller supplied the catalogs.
   const membership: Array<[string, string, readonly string[] | undefined]> = [
     ['gameId', obs.gameId, catalogs.gameIds],
-    ['gpuId', obs.gpuId, catalogs.gpuIds],
-    ['cpuId', obs.cpuId, catalogs.cpuIds],
+    ['gpuId', obs.gpuId, catalogs.gpus?.map((e) => e.id)],
+    ['cpuId', obs.cpuId, catalogs.cpus?.map((e) => e.id)],
   ];
   for (const [field, value, known] of membership) {
     if (known && value && !known.includes(value)) {
@@ -243,11 +250,56 @@ export function validateMeasuredObservation(
     issues.push(err(id, 'hardware.unresolved', `Detected hardware did not resolve to catalog ids (gpu="${obs.detected.gpuRaw}", cpu="${obs.detected.cpuRaw}").`));
   }
 
+  // --- hardware attribution is RE-DERIVED, not merely checked for existence
+  // Catalog membership above proves gpuId/cpuId NAME something real. It does
+  // not prove the DETECTED hardware can legitimately mean that something — a
+  // caller that skips the CLI (or a future one) could pair a genuine
+  // detected.gpuRaw with an unrelated gpuId and pass every rule above this
+  // one. This re-runs the SAME resolver the CLI uses (hardwareMatch.ts)
+  // against the detected string and requires it to agree with what the
+  // record claims. Every caller capable of writing to the store funnels
+  // through this function, so this is the one place the check cannot be
+  // bypassed by construction rather than by discipline.
+  for (const [field, raw, claimedId, catalog] of [
+    ['gpu', obs.detected.gpuRaw, obs.gpuId, catalogs.gpus] as const,
+    ['cpu', obs.detected.cpuRaw, obs.cpuId, catalogs.cpus] as const,
+  ]) {
+    // Skipped when the caller supplied no catalog (shape-only validation) or
+    // no claimed id (already covered by hardware.unresolved above).
+    if (!catalog || !claimedId) continue;
+    try {
+      const resolved = resolveHardware(raw, field, catalog);
+      if (resolved.id !== claimedId) {
+        issues.push(err(
+          id,
+          `hardware.${field}-attribution-mismatch`,
+          `${field}Id "${claimedId}" does not match what detected ${field.toUpperCase()} "${raw}" resolves to ("${resolved.id}"). The id must be exactly what the detected hardware supports; it cannot be substituted.`,
+        ));
+      }
+    } catch (e) {
+      const reason = e instanceof HardwareAttributionError ? e.message : String(e);
+      issues.push(err(
+        id,
+        `hardware.${field}-attribution-unresolvable`,
+        `Detected ${field.toUpperCase()} "${raw}" cannot be attributed to catalog id "${claimedId}": ${reason}`,
+      ));
+    }
+  }
+
   // --- frame generation ----------------------------------------------------
   // FG frames are displayed, not independently rendered. A record that claims
   // FG without saying by how much cannot be interpreted at all.
   if (obs.frameGeneration && obs.frameGenerationFactor === undefined) {
     issues.push(err(id, 'framegen.factor-missing', 'frameGeneration is true but frameGenerationFactor is unset; displayed frames cannot be related to rendered ones.'));
+  }
+  // The reverse contradiction: a factor with frameGeneration explicitly
+  // false claims two things about the same run that cannot both be true. A
+  // reader trusting frameGeneration would report native rendering; a reader
+  // trusting the factor would apply a displayed-to-rendered ratio to a stat
+  // that was never inflated. Both readings are live in a record built by
+  // hand, so both are checked rather than assuming which one is right.
+  if (!obs.frameGeneration && obs.frameGenerationFactor !== undefined) {
+    issues.push(err(id, 'framegen.factor-without-frame-generation', `frameGenerationFactor is ${obs.frameGenerationFactor} but frameGeneration is false; a run cannot carry a frame-generation multiplier while claiming frame generation was off.`));
   }
 
   // --- feature support cross-check ----------------------------------------

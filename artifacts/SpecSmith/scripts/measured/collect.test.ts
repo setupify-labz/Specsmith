@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
+import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
 import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS } from '../../src/lib/measured/types';
@@ -138,6 +139,68 @@ describe('the save gate', () => {
     expect(outcome.saved).toBe(false);
     expect(errors(outcome.issues).map((i) => i.rule)).toContain('stats.averageFps-mismatch');
     expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(0);
+  });
+
+  // The store-boundary half of the merge blocker: buildObservation() alone
+  // accepts any gpuId/cpuId — it has no opinion about whether they match the
+  // detected hardware, because assembly is not where that gets decided.
+  // validateAndSave() is what every caller capable of writing to the store
+  // funnels through, so THIS is where a bypass must be caught. These tests
+  // construct an observation the way a non-CLI caller could — buildObservation
+  // called directly, skipping catalog.ts's resolveHardware() entirely — to
+  // prove the save-gate catches it anyway.
+  describe('hardware attribution cannot be bypassed at the store boundary', () => {
+    const catalogs = loadCatalogs();
+    const idCatalogs = { gameIds: catalogs.gameIds, gpus: catalogs.gpus, cpus: catalogs.cpus };
+
+    const bypassObservation = (over: { gpuRaw?: string; cpuRaw?: string; gpuId?: string; cpuId?: string }) => {
+      const f = frames();
+      const hw: DetectedHardware = {
+        ...hardware,
+        gpuRaw: over.gpuRaw ?? 'NVIDIA GeForce RTX 5070',
+        cpuRaw: over.cpuRaw ?? 'AMD Ryzen 5 5600X 6-Core Processor',
+      };
+      const obs = buildObservation({
+        frameTimesMs: f,
+        hardware: hw,
+        // gameId overridden to a real catalog id — idCatalogs below uses the
+        // real game catalog too, and the default 'marvel-rivals' test fixture id
+        // is not in it.
+        inputs: inputs({ gameId: 'cs2', gpuId: over.gpuId ?? 'rtx5070', cpuId: over.cpuId ?? 'r5-5600x' }),
+        frameTimeRef: { sha256: 'abc', frameCount: f.length, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+        measuredAt: '2026-08-19T12:00:00.000Z',
+        runNonce: '11111111-2222-3333-4444-555555555555',
+        buildHash: 'buildhash',
+      });
+      return { obs, f };
+    };
+
+    it('accepts a save when gpuId/cpuId genuinely match the detected hardware', () => {
+      const p = tempStore();
+      const { obs, f } = bypassObservation({});
+      const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+      expect(outcome.saved).toBe(true);
+    });
+
+    // The exact scenario the audit named: detected RTX 5070, claimed rtx4090.
+    it('rejects a save where a detected RTX 5070 is paired with gpuId rtx4090', () => {
+      const p = tempStore();
+      const { obs, f } = bypassObservation({ gpuId: 'rtx4090' });
+      const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+      expect(outcome.saved).toBe(false);
+      expect(errors(outcome.issues).map((i) => i.rule)).toContain('hardware.gpu-attribution-mismatch');
+      expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(0);
+    });
+
+    // The analogous CPU mismatch: detected Ryzen 5 5600X, claimed r9-9950x.
+    it('rejects a save where a detected Ryzen 5 5600X is paired with cpuId r9-9950x', () => {
+      const p = tempStore();
+      const { obs, f } = bypassObservation({ cpuId: 'r9-9950x' });
+      const outcome = validateAndSave(obs, f, p, [], undefined, idCatalogs);
+      expect(outcome.saved).toBe(false);
+      expect(errors(outcome.issues).map((i) => i.rule)).toContain('hardware.cpu-attribution-mismatch');
+      expect(JSON.parse(fs.readFileSync(p, 'utf-8')).observations).toHaveLength(0);
+    });
   });
 
   it('does not write a run that is too short', () => {
@@ -347,5 +410,52 @@ describe('parsing a whole command line', () => {
     expect(() => frameGenerationFactor('1')).toThrow(/native run/);
     expect(() => frameGenerationFactor('0.5')).toThrow(CliInputError);
     expect(frameGenerationFactor('2')).toBe(2);
+  });
+});
+
+// Provenance: collectorBuildHash claims two observations sharing its value
+// were produced by identical code. That claim was false the moment attribution
+// (catalog.ts, and the resolver it now re-exports from hardwareMatch.ts),
+// frame-time interpretation and statistics (frameTimes.ts), or
+// validation/schema semantics (validate.ts, types.ts) could change without the
+// hash moving — all four determine what a saved figure MEANS, and none of
+// them were being hashed.
+describe('collector build identity', () => {
+  it('covers hardware attribution, frame-time interpretation, statistics and validation semantics', () => {
+    expect(DEFAULT_BUILD_HASH_FILES).toEqual(expect.arrayContaining([
+      'collect.ts',
+      'presentmon.ts',
+      'environment.ts',
+      'catalog.ts',
+      '../../src/lib/measured/hardwareMatch.ts',
+      '../../src/lib/measured/frameTimes.ts',
+      '../../src/lib/measured/validate.ts',
+      '../../src/lib/measured/types.ts',
+    ]));
+  });
+
+  it('is deterministic — the same files produce the same digest every time', () => {
+    expect(collectorBuildHash()).toBe(collectorBuildHash());
+    expect(collectorBuildHash()).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it('changes when a dependency file\'s content changes', () => {
+    // Two directories holding byte-identical copies of the same file names —
+    // standing in for the real dependency set without depending on the real
+    // repository's current content, which is what makes this a test of the
+    // MECHANISM rather than a snapshot of today's source.
+    const dirA = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-hash-a-'));
+    const dirB = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-hash-b-'));
+    const names = ['collect.ts', 'hardwareMatch.ts', 'validate.ts'];
+    for (const n of names) {
+      fs.writeFileSync(path.join(dirA, n), `// ${n}, version 1`);
+      fs.writeFileSync(path.join(dirB, n), `// ${n}, version 1`);
+    }
+    expect(collectorBuildHash(names, dirA)).toBe(collectorBuildHash(names, dirB));
+
+    // Mutate ONE dependency, standing in for a change to validate.ts. The
+    // other files are untouched; the identity must still move.
+    fs.writeFileSync(path.join(dirB, 'validate.ts'), '// validate.ts, version 2');
+    expect(collectorBuildHash(names, dirA)).not.toBe(collectorBuildHash(names, dirB));
   });
 });

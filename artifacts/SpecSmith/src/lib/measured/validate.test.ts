@@ -183,6 +183,47 @@ describe('frame generation', () => {
     const obs = makeObservation(frames, { frameGeneration: true, frameGenerationFactor: 2 });
     expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).not.toContain('framegen.factor-missing');
   });
+
+  // The reverse contradiction. A reader trusting frameGeneration would report
+  // native rendering; a reader trusting the factor would apply a
+  // displayed-to-rendered ratio to a stat that was never inflated. Both
+  // readings are live in a hand-built record, so both directions are checked.
+  it('rejects a factor when frameGeneration is explicitly false', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { frameGeneration: false, frameGenerationFactor: 2 });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('framegen.factor-without-frame-generation');
+  });
+
+  it('accepts frameGeneration false with no factor, the ordinary native case', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { frameGeneration: false, frameGenerationFactor: undefined });
+    const rules = errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule);
+    expect(rules).not.toContain('framegen.factor-without-frame-generation');
+    expect(rules).not.toContain('framegen.factor-missing');
+  });
+
+  it('rejects both directions of the contradiction, never just one', () => {
+    // frameGeneration true, factor missing: covered above. frameGeneration
+    // false, factor set: covered above. This confirms the two rules do not
+    // overlap into a gap — every combination of the boolean and undefined-ness
+    // is checked.
+    const frames = goodFrames();
+    const cases: Array<[boolean, number | undefined, string | null]> = [
+      [true, undefined, 'framegen.factor-missing'],
+      [true, 2, null],
+      [false, 2, 'framegen.factor-without-frame-generation'],
+      [false, undefined, null],
+    ];
+    for (const [frameGeneration, frameGenerationFactor, expectedRule] of cases) {
+      const obs = makeObservation(frames, { frameGeneration, frameGenerationFactor });
+      const rules = errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule);
+      if (expectedRule) expect(rules).toContain(expectedRule);
+      else {
+        expect(rules).not.toContain('framegen.factor-missing');
+        expect(rules).not.toContain('framegen.factor-without-frame-generation');
+      }
+    }
+  });
 });
 
 describe('feature support cross-check', () => {
@@ -427,10 +468,17 @@ describe('catalog membership, when the caller supplies the catalogs', () => {
     const obs = { ...makeObservation(f), ...over } as unknown as MeasuredObservation;
     return validateMeasuredObservation(obs, f, [], catalogs).map((i) => i.rule);
   };
-  const known = { gameIds: ['cs2'], gpuIds: ['rtx5070'], cpuIds: ['r5-5600x'] };
+  // gpus/cpus deliberately name the SAME parts makeObservation's default
+  // detected.gpuRaw/cpuRaw resolve to, so a membership-only test does not
+  // incidentally also trip the attribution rule below.
+  const known = {
+    gameIds: ['cs2'],
+    gpus: [{ id: 'rtx4070', name: 'RTX 4070' }],
+    cpus: [{ id: 'r7-7800x3d', name: 'Ryzen 7 7800X3D' }],
+  };
 
   it('accepts ids that exist', () => {
-    const rules = check({ gameId: 'cs2', gpuId: 'rtx5070', cpuId: 'r5-5600x' }, known);
+    const rules = check({ gameId: 'cs2', gpuId: 'rtx4070', cpuId: 'r7-7800x3d' }, known);
     expect(rules).not.toContain('fields.game-id-unknown');
     expect(rules).not.toContain('fields.gpu-id-unknown');
     expect(rules).not.toContain('fields.cpu-id-unknown');
@@ -444,5 +492,70 @@ describe('catalog membership, when the caller supplies the catalogs', () => {
 
   it('checks nothing when no catalogs are supplied, so the shape rules stay usable alone', () => {
     expect(check({ gameId: 'halflife3' }, {})).not.toContain('fields.game-id-unknown');
+  });
+});
+
+// The store-boundary half of the merge blocker: catalog MEMBERSHIP above only
+// proves gpuId/cpuId names something real. It does not prove the DETECTED
+// hardware can legitimately mean it. This re-derives attribution with the
+// same resolver the CLI uses and requires it to agree with the record.
+describe('hardware attribution is re-derived, not merely checked for existence', () => {
+  const check = (over: Record<string, unknown>, catalogs: Parameters<typeof validateMeasuredObservation>[3]) => {
+    const f = goodFrames();
+    const obs = { ...makeObservation(f), ...over } as unknown as MeasuredObservation;
+    return validateMeasuredObservation(obs, f, [], catalogs).map((i) => i.rule);
+  };
+  const catalogs = {
+    gpus: [
+      { id: 'rtx5070', name: 'RTX 5070' },
+      { id: 'rtx4090', name: 'RTX 4090' },
+    ],
+    cpus: [
+      { id: 'r5-5600x', name: 'Ryzen 5 5600X' },
+      { id: 'r9-9950x', name: 'Ryzen 9 9950X' },
+    ],
+  };
+
+  it('accepts an id that matches what the detected hardware resolves to', () => {
+    const rules = check(
+      { gpuId: 'rtx5070', cpuId: 'r5-5600x', detected: { gpuRaw: 'NVIDIA GeForce RTX 5070', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor', gpuMatchMethod: 'normalized', cpuMatchMethod: 'normalized', gpuOverclockDetected: false } },
+      catalogs,
+    );
+    expect(rules).not.toContain('hardware.gpu-attribution-mismatch');
+    expect(rules).not.toContain('hardware.cpu-attribution-mismatch');
+  });
+
+  // The exact scenario the audit named: a detected RTX 5070 paired with the
+  // catalog id for an unrelated card.
+  it('rejects a detected RTX 5070 paired with gpuId rtx4090', () => {
+    const rules = check(
+      { gpuId: 'rtx4090', cpuId: 'r5-5600x', detected: { gpuRaw: 'NVIDIA GeForce RTX 5070', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor', gpuMatchMethod: 'manual', cpuMatchMethod: 'normalized', gpuOverclockDetected: false } },
+      catalogs,
+    );
+    expect(rules).toContain('hardware.gpu-attribution-mismatch');
+  });
+
+  // The analogous CPU case: a detected Ryzen 5 5600X paired with the catalog
+  // id for a Ryzen 9 9950X.
+  it('rejects a detected Ryzen 5 5600X paired with cpuId r9-9950x', () => {
+    const rules = check(
+      { gpuId: 'rtx5070', cpuId: 'r9-9950x', detected: { gpuRaw: 'NVIDIA GeForce RTX 5070', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor', gpuMatchMethod: 'normalized', cpuMatchMethod: 'manual', gpuOverclockDetected: false } },
+      catalogs,
+    );
+    expect(rules).toContain('hardware.cpu-attribution-mismatch');
+  });
+
+  it('rejects a claimed id the detected hardware cannot resolve to anything', () => {
+    const rules = check(
+      { gpuId: 'rtx5070', detected: { gpuRaw: 'NVIDIA GeForce RTX 3060 Laptop GPU', cpuRaw: 'AMD Ryzen 5 5600X 6-Core Processor', gpuMatchMethod: 'manual', cpuMatchMethod: 'normalized', gpuOverclockDetected: false } },
+      { ...catalogs, cpus: catalogs.cpus },
+    );
+    expect(rules).toContain('hardware.gpu-attribution-unresolvable');
+  });
+
+  it('does nothing when the caller supplies no catalogs, so shape-only validation still works', () => {
+    const rules = check({ gpuId: 'rtx4090' }, {});
+    expect(rules).not.toContain('hardware.gpu-attribution-mismatch');
+    expect(rules).not.toContain('hardware.gpu-attribution-unresolvable');
   });
 });

@@ -60,10 +60,43 @@ export const COLLECTOR_VERSION = '0.1.0';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, '..', '..');
 
-/** Ties an observation to the exact measurement code that produced it. */
-export function collectorBuildHash(files: readonly string[] = ['collect.ts', 'presentmon.ts', 'environment.ts']): string {
+/**
+ * Every file whose content determines what a saved observation MEANS.
+ *
+ * Not just this directory. Two observations claiming the same
+ * collectorBuildHash are claiming they were produced by code that behaves
+ * identically — which is false if hardware attribution, how a frame time is
+ * interpreted, how the statistics are computed, or what validation accepts
+ * could have changed between them. Paths are relative to `here` (this file's
+ * directory); `../../src/lib/measured/...` resolves correctly through
+ * path.join without a separate base.
+ */
+export const DEFAULT_BUILD_HASH_FILES: readonly string[] = [
+  // This directory: parsing, environment detection, the fs half of catalog
+  // loading, and the assembly/CLI logic itself.
+  'collect.ts',
+  'presentmon.ts',
+  'environment.ts',
+  'catalog.ts',
+  // The pure src/lib/measured half: hardware attribution's actual resolver,
+  // frame-time interpretation and statistics, and validation/schema semantics.
+  '../../src/lib/measured/hardwareMatch.ts',
+  '../../src/lib/measured/frameTimes.ts',
+  '../../src/lib/measured/validate.ts',
+  '../../src/lib/measured/types.ts',
+];
+
+/**
+ * Ties an observation to the exact measurement code that produced it.
+ *
+ * `baseDir` exists so this can be tested against a controlled set of files
+ * without depending on the real repository's current content — the property
+ * under test is "changing a dependency's bytes changes the digest", which
+ * holds for any file set, not specifically these ones.
+ */
+export function collectorBuildHash(files: readonly string[] = DEFAULT_BUILD_HASH_FILES, baseDir: string = here): string {
   const h = createHash('sha256');
-  for (const f of [...files].sort()) h.update(fs.readFileSync(path.join(here, f)));
+  for (const f of [...files].sort()) h.update(fs.readFileSync(path.join(baseDir, f)));
   return h.digest('hex').slice(0, 16);
 }
 
@@ -411,7 +444,12 @@ async function main(argv: string[]): Promise<void> {
   // The same catalogs the attribution used, re-checked at the store boundary:
   // the CLI is one caller, and the store's guarantee must not depend on which
   // caller wrote the record.
-  const idCatalogs: MeasuredCatalogs = { gameIds: catalogs.gameIds, gpuIds: catalogs.gpuIds, cpuIds: catalogs.cpuIds };
+  // Full entries, not just id lists — validation re-derives attribution
+  // from these against the detected hardware, the same resolver this file
+  // used above. That re-check is what makes it impossible for a non-CLI
+  // caller of validateAndSave to save a gpuId/cpuId the detected hardware
+  // does not actually support.
+  const idCatalogs: MeasuredCatalogs = { gameIds: catalogs.gameIds, gpus: catalogs.gpus, cpus: catalogs.cpus };
   const issues = validateMeasuredObservation(observation, parsed.frameTimesMs, profiles, idCatalogs);
   for (const w of warnings(issues)) console.warn(`  WARNING ${w.rule}: ${w.message}`);
   for (const e of errors(issues)) console.error(`  ERROR   ${e.rule}: ${e.message}`);
