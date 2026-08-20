@@ -26,9 +26,17 @@ import {
   findUtilizationThreshold,
   segmentBenchmark,
   segmentByGpuUtilization,
+  benchmarkSegmentationRecord,
   segmentCapture,
   segmentationProvenance,
 } from './segmentation';
+import {
+  GENERIC_BENCHMARK_PROTOCOL,
+  GPU_UTILIZATION_STAGE,
+  PRESENTATION_PATH_STAGE,
+  RDR2_BENCHMARK_PROTOCOL,
+  protocolForGame,
+} from '../../src/lib/measured/benchmarkProtocol';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
 
 const fixtureDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -356,10 +364,10 @@ describe('the ratio distribution is bimodal in both real captures', () => {
 describe('the GPU-utilisation cut is invariant to uniform frame-time scaling', () => {
   it('is unchanged when the entire time base is scaled', () => {
     for (const p of Object.values(parsed)) {
-      const base = segmentBenchmark(p.frames);
+      const base = segmentBenchmark(p.frames, RDR2_BENCHMARK_PROTOCOL);
       for (const k of [0.25, 0.5, 2, 10]) {
         const scaled = p.frames.map((f) => ({ ...f, frameTimeMs: f.frameTimeMs * k, msGpuActive: f.msGpuActive * k, timeInSeconds: f.timeInSeconds * k }));
-        const s = segmentBenchmark(scaled);
+        const s = segmentBenchmark(scaled, RDR2_BENCHMARK_PROTOCOL);
         // Compare the CUT, not the timestamps: startTimeSec/endTimeSec are
         // wall-clock labels and are expected to scale with the time base.
         const shape = (r: typeof base.gpuUtilization) => ({
@@ -406,7 +414,7 @@ describe('sustained transitions versus isolated frames', () => {
     // Idle runs in both captures are either far below or far above the gate;
     // nothing sits near it, which is what makes the exact value uncritical.
     for (const p of Object.values(parsed)) {
-      const s = segmentBenchmark(p.frames);
+      const s = segmentBenchmark(p.frames, RDR2_BENCHMARK_PROTOCOL);
       const ref = s.gpuUtilization.renderedFrameMedianMs;
       const gateMs = ref * MIN_TRANSITION_FRAME_MULTIPLE;
       const excludedMs = s.gpuUtilization.excluded
@@ -421,7 +429,7 @@ describe('sustained transitions versus isolated frames', () => {
     // Re-derive the classification at the ends of the empirical gap and check
     // the excluded set does not move.
     for (const p of Object.values(parsed)) {
-      const base = segmentBenchmark(p.frames).gpuUtilization.excluded.map((e) => [e.startIndex, e.endIndex]);
+      const base = segmentBenchmark(p.frames, RDR2_BENCHMARK_PROTOCOL).gpuUtilization.excluded.map((e) => [e.startIndex, e.endIndex]);
       expect(MIN_TRANSITION_FRAME_MULTIPLE).toBeGreaterThan(32);
       expect(MIN_TRANSITION_FRAME_MULTIPLE).toBeLessThan(76);
       expect(base.length).toBeGreaterThan(4);
@@ -455,7 +463,7 @@ describe('refusing when the structural evidence is insufficient', () => {
 });
 
 describe('segmenting the real captures with both stages', () => {
-  const results = { run2: segmentBenchmark(parsed.run2.frames), run3: segmentBenchmark(parsed.run3.frames) };
+  const results = { run2: segmentBenchmark(parsed.run2.frames, RDR2_BENCHMARK_PROTOCOL), run3: segmentBenchmark(parsed.run3.frames, RDR2_BENCHMARK_PROTOCOL) };
 
   it('leaves presentation-path-v1 answering exactly as it did before', () => {
     expect(results.run2.presentationPath.retainedFrames).toBe(37_514);
@@ -523,5 +531,135 @@ describe('segmenting the real captures with both stages', () => {
         expect(e.reason).toMatch(/GPU utilisation|presentation-path|Presented via|First frame/);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Protocol selection
+// ---------------------------------------------------------------------------
+//
+// The integrity concern this layer answers: sustained low GPU utilisation is a
+// black loading screen in RDR2 and legitimate CPU-bound gameplay in some other
+// title, and the capture alone cannot tell them apart. So the workload-based
+// stage runs only where a protocol declares the evidence for it.
+
+describe('protocol selection decides which stages may run', () => {
+  /**
+   * A synthetic CPU-BOUND gameplay capture.
+   *
+   * Sustained low GPU utilisation throughout the middle — exactly the pattern
+   * gpu-utilization-v1 keys on — but here it is real footage: the machine is
+   * CPU-limited, the GPU waiting on it. No frame of this may be removed by a
+   * generic collection.
+   */
+  const cpuBoundGameplay = (): PresentMonFrame[] => {
+    const out: PresentMonFrame[] = [];
+    let t = 0;
+    const push = (n: number, frameMs: number, gpuMs: number) => {
+      for (let i = 0; i < n; i += 1) { out.push(gpuFrame(FLIP, frameMs, gpuMs, t)); t += frameMs / 1000; }
+    };
+    push(1500, 12, 11.6);  // GPU-bound stretch      ratio 0.97
+    push(2500, 20, 3.0);   // 50s CPU-bound stretch  ratio 0.15  <- real gameplay
+    push(1500, 12, 11.6);  // GPU-bound again
+    return out;
+  };
+
+  it('a generic game KEEPS sustained low-GPU-utilisation gameplay', () => {
+    const frames = cpuBoundGameplay();
+    const s = segmentBenchmark(frames, GENERIC_BENCHMARK_PROTOCOL);
+
+    expect(s.stagesApplied).toEqual([PRESENTATION_PATH_STAGE]);
+    expect(s.gpuUtilization).toBeNull();
+    // Nothing removed: the whole capture is one steady presentation path.
+    expect(s.retainedFrameTimesMs).toHaveLength(frames.length);
+    // The CPU-bound stretch specifically survives.
+    expect(s.retainedFrameTimesMs.filter((v) => v === 20)).toHaveLength(2500);
+  });
+
+  it('the same frames under the RDR2 protocol WOULD be excluded — the difference is the protocol, not the data', () => {
+    const frames = cpuBoundGameplay();
+    const generic = segmentBenchmark(frames, GENERIC_BENCHMARK_PROTOCOL);
+    const rdr2 = segmentBenchmark(frames, RDR2_BENCHMARK_PROTOCOL);
+
+    expect(rdr2.stagesApplied).toEqual([PRESENTATION_PATH_STAGE, GPU_UTILIZATION_STAGE]);
+    expect(rdr2.retainedFrameTimesMs.length).toBeLessThan(generic.retainedFrameTimesMs.length);
+    expect(rdr2.retainedFrameTimesMs.filter((v) => v === 20)).toHaveLength(0);
+    // Which is exactly why the stage is opt-in: on this capture it would be wrong.
+  });
+
+  it('defaults to the conservative protocol when none is passed', () => {
+    const s = segmentBenchmark(cpuBoundGameplay());
+    expect(s.protocol.id).toBe(GENERIC_BENCHMARK_PROTOCOL.id);
+    expect(s.stagesApplied).not.toContain(GPU_UTILIZATION_STAGE);
+  });
+
+  it('routes RDR2 to the protocol that enables the workload stage, and everything else to the generic one', () => {
+    expect(protocolForGame('rdr2').id).toBe(RDR2_BENCHMARK_PROTOCOL.id);
+    expect(protocolForGame('rdr2').stages).toContain(GPU_UTILIZATION_STAGE);
+    for (const other of ['cs2', 'cyberpunk2077', 'marvelrivals', 'not-a-real-game']) {
+      expect(protocolForGame(other).id).toBe(GENERIC_BENCHMARK_PROTOCOL.id);
+      expect(protocolForGame(other).stages).not.toContain(GPU_UTILIZATION_STAGE);
+    }
+  });
+
+  it('records the exact protocol id, version and every stage applied', () => {
+    const s = segmentBenchmark(parsed.run3.frames, RDR2_BENCHMARK_PROTOCOL);
+    const rec = benchmarkSegmentationRecord(s, captures.run3);
+    expect(rec.protocolId).toBe('rdr2-builtin-benchmark');
+    expect(rec.protocolVersion).toBe(RDR2_BENCHMARK_PROTOCOL.version);
+    expect(rec.stages).toEqual([PRESENTATION_PATH_STAGE, GPU_UTILIZATION_STAGE]);
+    expect(rec.sourceSha256).toBe(ORIGINAL_SHA256.run3);
+    expect(rec.retainedSha256).toBe(s.retainedSha256);
+    expect(rec.totalFrames).toBe(35_470);
+    expect(rec.retainedFrames).toBe(s.retainedFrameTimesMs.length);
+  });
+
+  it('records only the generic stage when only that ran', () => {
+    const rec = benchmarkSegmentationRecord(segmentBenchmark(parsed.run3.frames), captures.run3);
+    expect(rec.protocolId).toBe('generic-fullscreen');
+    expect(rec.stages).toEqual([PRESENTATION_PATH_STAGE]);
+  });
+
+  it('every protocol justifies each stage it permits', () => {
+    for (const protocol of [GENERIC_BENCHMARK_PROTOCOL, RDR2_BENCHMARK_PROTOCOL]) {
+      for (const stage of protocol.stages) {
+        expect(protocol.justification[stage], `${protocol.id} does not justify ${stage}`).toBeTruthy();
+        expect(protocol.justification[stage]!.length).toBeGreaterThan(40);
+      }
+    }
+  });
+});
+
+// Documents stage 1's actual reach, which decides whether it is safe as a
+// GENERIC stage. It is fail-safe — it refuses rather than mis-segments — but
+// it is not universally applicable, and that distinction matters for titles
+// that never take exclusive fullscreen.
+describe('how far presentation-path-v1 generalises', () => {
+  const uniform = (mode: string, n = 3000) =>
+    Array.from({ length: n }, (_, i) => gpuFrame(mode, 10, 9.7, i * 0.01));
+
+  it('accepts every HARDWARE flip path, including modern borderless via MPO', () => {
+    for (const mode of ['Hardware: Legacy Flip', 'Hardware: Independent Flip', 'Hardware Composed: Independent Flip']) {
+      const s = segmentCapture(uniform(mode));
+      expect(s.retainedFrames, mode).toBe(3000);
+    }
+  });
+
+  it('REFUSES a genuinely composited session rather than measuring it', () => {
+    // Not a wrong answer — a refusal. But it does mean a windowed or
+    // legacy-composited title cannot be measured under this protocol at all,
+    // which is why stage 1's generality is bounded rather than universal.
+    for (const mode of ['Composed: Flip', 'Composed: Copy with GPU GDI']) {
+      expect(() => segmentCapture(uniform(mode)), mode).toThrow(/not a hardware flip mode/);
+    }
+  });
+
+  it('never removes frames on workload grounds, whatever the game was doing', () => {
+    // The property that makes it safe to apply generically: a fully CPU-bound
+    // capture that never changes presentation path loses nothing.
+    const cpuBound = Array.from({ length: 3000 }, (_, i) => gpuFrame(FLIP, 20, 3.0, i * 0.02));
+    const s = segmentCapture(cpuBound);
+    expect(s.retainedFrames).toBe(3000);
+    expect(s.excluded).toEqual([]);
   });
 });

@@ -40,13 +40,23 @@
 import { createHash } from 'node:crypto';
 
 import { canonicalFrameTimeBytes } from '../../src/lib/measured/frameTimes';
+import {
+  GENERIC_BENCHMARK_PROTOCOL,
+  GPU_UTILIZATION_STAGE,
+  PRESENTATION_PATH_STAGE,
+  protocolAllowsStage,
+  type BenchmarkProtocol,
+  type SegmentationRecord,
+  type SegmentationStageId,
+} from '../../src/lib/measured/benchmarkProtocol';
 import type { PresentMonFrame } from './presentmon';
 
-/** Pinned identifier for the stage-1 rule. Changing the rule must change this string. */
-export const SEGMENTATION_METHOD = 'presentation-path-v1';
-
-/** Pinned identifier for the stage-2 rule. */
-export const GPU_UTILIZATION_METHOD = 'gpu-utilization-v1';
+// The stage identifiers live in src/lib/measured/benchmarkProtocol.ts, which is
+// pure and browser-safe, so the store's validator can check a record's claimed
+// stages against its protocol without importing any of this node-side code.
+// Re-exported here under their original names for existing callers.
+export const SEGMENTATION_METHOD = PRESENTATION_PATH_STAGE;
+export const GPU_UTILIZATION_METHOD = GPU_UTILIZATION_STAGE;
 
 /**
  * The steady path must be most of the capture.
@@ -94,7 +104,7 @@ export interface ExcludedInterval extends SegmentInterval {
   reason: string;
 }
 
-export type SegmentationMethod = typeof SEGMENTATION_METHOD | typeof GPU_UTILIZATION_METHOD;
+export type SegmentationMethod = SegmentationStageId;
 
 export interface SegmentationResult {
   method: SegmentationMethod;
@@ -558,54 +568,125 @@ export function segmentByGpuUtilization(frames: readonly PresentMonFrame[]): Gpu
 }
 
 /**
- * Both stages, in the order they must run.
+ * The rules applied to a capture, and the protocol that permitted them.
  *
- * Stage 1 removes the fullscreen edges the compositor paced. Stage 2 removes
- * the game's own internal transitions from what stage 1 kept. They are
- * separate rules on separate evidence — a capture can need either, both, or
- * neither — and each records its own intervals, so a reader can see which
- * rule removed what.
+ * WHY A PROTOCOL AND NOT JUST "RUN EVERY STAGE"
+ * ---------------------------------------------
+ * `gpu-utilization-v1` excludes sustained stretches where the GPU was barely
+ * working. In RDR2 those are black screens between benchmark scenes — but the
+ * SAME frame-level pattern is what genuine CPU-bound gameplay looks like. The
+ * capture cannot tell the two apart; only knowledge about the specific game's
+ * benchmark can. So a stage runs only where a protocol declares it valid, and
+ * the default protocol declares only the workload-independent one.
  *
- * Indices in `gpuUtilization` are relative to STAGE 1's retained frames, not
- * to the original capture; `intervalsInCaptureIndices` maps them back.
+ * A stage the protocol does not permit is not silently skipped either — the
+ * result records exactly which stages ran, so a reader can see that a generic
+ * capture kept its low-utilisation frames on purpose.
  */
 export interface BenchmarkSegmentation {
-  presentationPath: SegmentationResult;
-  gpuUtilization: GpuUtilizationResult;
+  protocol: BenchmarkProtocol;
+  /** Stages actually applied, in order. */
+  stagesApplied: SegmentationStageId[];
+  presentationPath: SegmentationResult | null;
+  gpuUtilization: GpuUtilizationResult | null;
   retainedFrameTimesMs: number[];
   retainedSha256: string;
-  /** Included/excluded intervals from BOTH stages, in original capture indices. */
+  /** Included/excluded intervals from every applied stage, in capture indices. */
   intervalsInCaptureIndices: { included: SegmentInterval[]; excluded: ExcludedInterval[] };
 }
 
-export function segmentBenchmark(frames: readonly PresentMonFrame[]): BenchmarkSegmentation {
-  const presentationPath = segmentCapture(frames);
+/**
+ * Segments a capture using only the stages `protocol` permits.
+ *
+ * Defaults to the conservative generic protocol, so a caller that forgets to
+ * pass one gets presentation-path segmentation only — never workload-based
+ * exclusion it did not ask for.
+ */
+export function segmentBenchmark(
+  frames: readonly PresentMonFrame[],
+  protocol: BenchmarkProtocol = GENERIC_BENCHMARK_PROTOCOL,
+): BenchmarkSegmentation {
+  if (frames.length === 0) throw new AmbiguousSegmentationError('Cannot segment an empty capture.');
 
-  // Stage 1's retained frames, and the map back to original capture indices.
-  const keptIndices: number[] = [];
-  for (const iv of presentationPath.included) {
-    for (let i = iv.startIndex; i <= iv.endIndex; i += 1) keptIndices.push(i);
+  const stagesApplied: SegmentationStageId[] = [];
+  let included: SegmentInterval[] = [{
+    startIndex: 0,
+    endIndex: frames.length - 1,
+    frameCount: frames.length,
+    presentMode: frames[0].presentMode,
+    startTimeSec: finiteOrNull(frames[0].timeInSeconds),
+    endTimeSec: finiteOrNull(frames[frames.length - 1].timeInSeconds),
+  }];
+  const excluded: ExcludedInterval[] = [];
+
+  // Indices of the frames still standing, in capture order. Each stage runs on
+  // the previous stage's survivors, so this is also the map back to the
+  // original capture indices for everything a later stage reports.
+  let keptIndices = frames.map((_, i) => i);
+
+  let presentationPath: SegmentationResult | null = null;
+  if (protocolAllowsStage(protocol, PRESENTATION_PATH_STAGE)) {
+    presentationPath = segmentCapture(frames);
+    stagesApplied.push(PRESENTATION_PATH_STAGE);
+    excluded.push(...presentationPath.excluded);
+    included = presentationPath.included;
+    keptIndices = presentationPath.included.flatMap((iv) =>
+      Array.from({ length: iv.endIndex - iv.startIndex + 1 }, (_, k) => iv.startIndex + k));
   }
-  const stage1Frames = keptIndices.map((i) => frames[i]);
-  const gpuUtilization = segmentByGpuUtilization(stage1Frames);
 
-  const remap = (iv: SegmentInterval): SegmentInterval => ({
+  const remap = <T extends SegmentInterval>(iv: T): T => ({
     ...iv,
     startIndex: keptIndices[iv.startIndex],
     endIndex: keptIndices[iv.endIndex],
   });
 
+  let gpuUtilization: GpuUtilizationResult | null = null;
+  if (protocolAllowsStage(protocol, GPU_UTILIZATION_STAGE)) {
+    gpuUtilization = segmentByGpuUtilization(keptIndices.map((i) => frames[i]));
+    stagesApplied.push(GPU_UTILIZATION_STAGE);
+    excluded.push(...gpuUtilization.excluded.map(remap));
+    included = gpuUtilization.included.map(remap);
+    keptIndices = gpuUtilization.included.flatMap((iv) =>
+      Array.from({ length: iv.endIndex - iv.startIndex + 1 }, (_, k) => keptIndices[iv.startIndex + k]));
+  }
+
+  const retainedFrameTimesMs = keptIndices.map((i) => frames[i].frameTimeMs);
+  if (retainedFrameTimesMs.length === 0) {
+    throw new AmbiguousSegmentationError('Segmentation retained no frames at all; there is nothing to measure.');
+  }
+
   return {
+    protocol,
+    stagesApplied,
     presentationPath,
     gpuUtilization,
-    retainedFrameTimesMs: gpuUtilization.retainedFrameTimesMs,
-    retainedSha256: gpuUtilization.retainedSha256,
+    retainedFrameTimesMs,
+    retainedSha256: sha256(canonicalFrameTimeBytes(retainedFrameTimesMs)),
     intervalsInCaptureIndices: {
-      included: gpuUtilization.included.map(remap),
-      excluded: [
-        ...presentationPath.excluded,
-        ...gpuUtilization.excluded.map((e) => ({ ...remap(e), reason: e.reason })),
-      ].sort((a, b) => a.startIndex - b.startIndex),
+      included,
+      excluded: excluded.sort((a, b) => a.startIndex - b.startIndex),
     },
+  };
+}
+
+/**
+ * The record that travels with an observation.
+ *
+ * Names the protocol and version that authorised the cut and every stage that
+ * ran, so the store can check the rules applied were ones this game is allowed
+ * to use rather than trusting whatever produced the record.
+ */
+export function benchmarkSegmentationRecord(
+  segmentation: BenchmarkSegmentation,
+  csvBytes: string,
+): SegmentationRecord {
+  return {
+    protocolId: segmentation.protocol.id,
+    protocolVersion: segmentation.protocol.version,
+    stages: [...segmentation.stagesApplied],
+    sourceSha256: sha256(csvBytes),
+    retainedSha256: segmentation.retainedSha256,
+    totalFrames: segmentation.presentationPath?.totalFrames ?? segmentation.retainedFrameTimesMs.length,
+    retainedFrames: segmentation.retainedFrameTimesMs.length,
   };
 }
