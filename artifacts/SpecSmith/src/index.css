@@ -101,7 +101,13 @@
      reaches 1 by ~1.5s, and at that settled state both tokens pass with zero
      violations. Give axe ~2.5s to settle before trusting a contrast result
      here; lightening the tokens to satisfy the transient reading would wash
-     out this text everywhere it is used without an animation. */
+     out this text everywhere it is used without an animation.
+     Re-confirmed with measurements: scanning immediately after networkidle
+     reports 8 home-page nodes at 2.4-3.9:1, and BOTH themes then report a
+     near-black background — including light mode, where the real surface is
+     white. That impossible reading is the giveaway that the scan caught a
+     mid-fade blend rather than the settled page. The same sweep with a 3s
+     settle reports 0 violations across 17 pages in both themes. */
   --ff-accent:    #6C63FF;
   /* Lighter than --ff-accent specifically for small accent-colored text on
      dark backgrounds — the base #6C63FF only hits ~3.9:1 contrast there,

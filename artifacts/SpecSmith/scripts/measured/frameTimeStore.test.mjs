@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { canonicalFrameTimeBytes as canonicalNode, readFrameTimes, sha256Hex, writeFrameTimes } from './frameTimeStore.mjs';
+import { canonicalFrameTimeBytes as canonicalNode, describeFrameTimes, readFrameTimes, sha256Hex, writeFrameTimes } from './frameTimeStore.mjs';
 import { canonicalFrameTimeBytes as canonicalTs } from '../../src/lib/measured/frameTimes';
 
 const withTempRoot = async (fn) => {
@@ -76,5 +76,31 @@ describe('the two canonical serializers must not drift', () => {
   it('hash the canonical bytes, not the compressed form', () => {
     const frames = [16.7, 8.3];
     expect(sha256Hex(canonicalNode(frames))).toBe(sha256Hex(canonicalTs(frames)));
+  });
+});
+
+// A dry run and a rejected run both describe their frames without keeping
+// them. If describing ever wrote, the collector's "nothing written" would be
+// a lie and a rejected run would leave frames on disk to be found later.
+describe('describing frames without storing them', () => {
+  const frames = Array.from({ length: 4000 }, (_, i) => 8 + (i % 17) * 0.25);
+
+  it('writes nothing to the store', async () => {
+    await withTempRoot(async (dir) => {
+      await describeFrameTimes(frames);
+      expect(await fs.readdir(dir)).toEqual([]);
+    });
+  });
+
+  it('returns exactly the ref that writing would have returned', async () => {
+    await withTempRoot(async () => {
+      const { ref: described } = await describeFrameTimes(frames);
+      const written = await writeFrameTimes(frames);
+      expect(described).toEqual(written);
+    });
+  });
+
+  it('refuses an empty run just as writing does', async () => {
+    await expect(describeFrameTimes([])).rejects.toThrow(/empty frame-time array/);
   });
 });

@@ -177,6 +177,18 @@ export function validateAndSave(
   return { saved: true, issues, observation };
 }
 
+/**
+ * Whether this run's frames should be archived at all.
+ *
+ * Archiving is a side effect on the operator's disk, so it is tied to the run
+ * actually being recorded rather than merely being processed. A dry run keeps
+ * its promise of writing nothing, and a rejected run leaves nothing behind to
+ * be mistaken later for evidence of a measurement that was never accepted.
+ */
+export function shouldPersistFrameTimes(dryRun: boolean, issues: readonly MeasuredIssue[]): boolean {
+  return !dryRun && errors(issues).length === 0;
+}
+
 // ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
@@ -242,8 +254,12 @@ async function main(argv: string[]): Promise<void> {
     notes: arg(argv, 'notes'),
   };
 
-  const { writeFrameTimes } = await import('./frameTimeStore.mjs');
-  const frameTimeRef = await writeFrameTimes(parsed.frameTimesMs);
+  // Described, not yet written. Archiving the frames here would put a blob on
+  // disk for a run that may be a dry run or may be about to fail validation —
+  // and the program would then print "nothing written" over the top of it.
+  // The ref is identical either way, so the record is unaffected.
+  const { describeFrameTimes, writeFrameTimes } = await import('./frameTimeStore.mjs');
+  const { ref: frameTimeRef } = await describeFrameTimes(parsed.frameTimesMs);
 
   const observation = buildObservation({
     frameTimesMs: parsed.frameTimesMs,
@@ -260,18 +276,25 @@ async function main(argv: string[]): Promise<void> {
   ) as GameFeatureProfile[];
   const storePath = path.join(repoRoot, 'src', 'data', 'measuredObservations.json');
 
-  const outcome = dryRun
-    ? { saved: false, issues: validateMeasuredObservation(observation, parsed.frameTimesMs, profiles), observation }
-    : validateAndSave(observation, parsed.frameTimesMs, storePath, profiles);
+  const issues = validateMeasuredObservation(observation, parsed.frameTimesMs, profiles);
+  for (const w of warnings(issues)) console.warn(`  WARNING ${w.rule}: ${w.message}`);
+  for (const e of errors(issues)) console.error(`  ERROR   ${e.rule}: ${e.message}`);
 
-  for (const w of warnings(outcome.issues)) console.warn(`  WARNING ${w.rule}: ${w.message}`);
-  for (const e of errors(outcome.issues)) console.error(`  ERROR   ${e.rule}: ${e.message}`);
+  // The blob goes down BEFORE the record, so a saved observation never points
+  // at frames that are not there. The reverse ordering can leave a record
+  // referencing nothing; this ordering can at worst leave an orphan blob,
+  // which is content-addressed and harmless.
+  let outcome: SaveOutcome = { saved: false, issues, observation };
+  if (shouldPersistFrameTimes(dryRun, issues)) {
+    await writeFrameTimes(parsed.frameTimesMs);
+    outcome = validateAndSave(observation, parsed.frameTimesMs, storePath, profiles);
+  }
 
   console.log(`\navg ${observation.stats.averageFps} fps · 1% low ${observation.stats.onePercentLow} · 0.1% low ${observation.stats.zeroPointOnePercentLow}`);
-  if (dryRun) console.log('Dry run — nothing written.');
+  if (dryRun) console.log('Dry run — nothing written, including the frame-time archive.');
   else if (outcome.saved) console.log(`Saved ${observation.id}`);
   else {
-    console.error('\nNot saved: validation failed. The run is discarded, not parked.');
+    console.error('\nNot saved: validation failed. The run is discarded, not parked — no frames were archived.');
     process.exitCode = 1;
   }
 }

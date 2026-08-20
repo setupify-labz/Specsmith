@@ -43,12 +43,15 @@ export function frameTimeRoot() {
 }
 
 /**
- * Writes a run's frames and returns the FrameTimeRef to embed in the record.
+ * Computes the FrameTimeRef for a run WITHOUT touching the filesystem.
  *
- * The storage path is derived from the content hash, so writing the same
- * frames twice is idempotent and two different runs can never collide.
+ * Separate from writeFrameTimes so a caller can describe a run it is not
+ * going to keep — a dry run, or a run that is about to fail validation. The
+ * returned ref is byte-for-byte the one writeFrameTimes would return, because
+ * both derive it from the same canonical bytes, so describing then writing
+ * never produces a different answer from writing directly.
  */
-export async function writeFrameTimes(frameTimesMs) {
+export async function describeFrameTimes(frameTimesMs) {
   if (!Array.isArray(frameTimesMs) || frameTimesMs.length === 0) {
     throw new Error('refusing to store an empty frame-time array');
   }
@@ -56,19 +59,28 @@ export async function writeFrameTimes(frameTimesMs) {
   const sha256 = sha256Hex(canonical);
   const compressed = await gzip(Buffer.from(canonical, 'utf-8'));
 
-  const storagePath = path.join(sha256.slice(0, 2), `${sha256}.json.gz`);
-  const full = path.join(frameTimeRoot(), storagePath);
+  return {
+    ref: {
+      sha256,
+      frameCount: frameTimesMs.length,
+      encoding: 'json-array-ms',
+      compression: 'gzip',
+      // Derived from the content hash, so storing the same run twice is
+      // idempotent and two different runs can never collide.
+      storagePath: path.join(sha256.slice(0, 2), `${sha256}.json.gz`),
+      compressedByteLength: compressed.byteLength,
+    },
+    compressed,
+  };
+}
+
+/** Writes a run's frames and returns the FrameTimeRef to embed in the record. */
+export async function writeFrameTimes(frameTimesMs) {
+  const { ref, compressed } = await describeFrameTimes(frameTimesMs);
+  const full = path.join(frameTimeRoot(), ref.storagePath);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, compressed);
-
-  return {
-    sha256,
-    frameCount: frameTimesMs.length,
-    encoding: 'json-array-ms',
-    compression: 'gzip',
-    storagePath,
-    compressedByteLength: compressed.byteLength,
-  };
+  return ref;
 }
 
 /**

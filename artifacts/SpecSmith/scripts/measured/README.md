@@ -139,30 +139,52 @@ configured RAM speed, DIMM count. Note the driver version is the Windows build
 (`32.0.15.6636`), not the vendor marketing version (`566.36`) — that is the
 value that can be read reliably, so it is the one recorded.
 
+## What the first real Windows run verified
+
+One dry run has been performed on real hardware: a 90-second PresentMon
+capture of Roblox on an RTX 5070 / Ryzen 5 5600X / 32 GB Windows 11 machine,
+21,354 usable frames, run with `--dry-run` so nothing was recorded. It
+confirmed:
+
+- **The Windows probe executes and populates its fields.** GPU name, GPU
+  driver version, CPU name, OS build, total RAM and DIMM count all came back
+  populated on real hardware.
+- **Adapter selection excluded a real virtual display device.** The machine
+  reported two adapters — an RTX 5070 and a "Meta Virtual Monitor" — and the
+  probe selected the RTX 5070 without needing `--gpu-name`. This exercised the
+  virtual-device exclusion list against a real device name. It did **not**
+  exercise the refusal path for two genuine rendering GPUs, which still has
+  never been seen.
+- **A real PresentMon CSV parses.** It also found a defect: the real file
+  writes `msBetweenPresents`, not the documented `MsBetweenPresents`, and the
+  parser required the documented casing. Column matching is now
+  case-insensitive and the real 19-column header is pinned as a fixture.
+- **The frame-count and duration minimums, and the plausibility bounds, met a
+  real capture** and passed. 21,354 frames at the computed 237.31 fps average
+  implies 89.98 s, consistent with the 90-second timed capture.
+- **The CLI runs end to end on Windows** through hardware detection, parsing,
+  statistics and validation.
+
+Validation behaved as designed on that run: a warning for
+`settings.operator-attested` and an error for `conditions.game-version-missing`,
+since the run supplied no game version. The record was correctly not produced.
+
 ## What remains unverified
 
-**No real run has been performed.** Everything below has been exercised only
-against synthetic fixtures on Linux:
+- **No record has ever been saved.** Every run so far has been a dry run. The
+  store append path, and the frame-time archive being written for real, have
+  not been exercised on a real observation.
+- **`--game-exe` version detection** has never read a real executable. The
+  path is passed through an environment variable rather than interpolated into
+  the PowerShell command, so the escaping defect is fixed, but the detection
+  itself is unconfirmed.
+- **`--platform` / `--content-id` and `--preset unmapped`** have never been
+  used in a real run. Their validation rules are covered by tests only.
+- **The genuine multi-rendering-GPU refusal** has never been triggered. Only
+  the virtual-display exclusion has been seen on real hardware.
+- **Frame-generation and upscaler paths** have never been captured for real;
+  the `msBetweenPresents` choice that keeps generated frames out of the count
+  is reasoned from PresentMon's documentation, not observed.
 
-- **The Windows probe has never executed.** `detectWindowsEnvironment` shells
-  out to PowerShell/CIM and has been tested only for its refusal path off
-  Windows. The exact shape of its output, and whether every field is populated
-  on real hardware, is unconfirmed.
-- **No real PresentMon CSV has been parsed.** The parser is tested against
-  hand-written fixtures matching PresentMon 1.x's documented columns. A real
-  capture may carry columns, ordering, or quoting these fixtures do not model.
-- **Cap detection, the 60s/3,000-frame minimums, and the plausibility bounds**
-  have still never met a real capture.
-- **`--game-exe` version detection** is untested against a real executable. The
-  path is now passed through an environment variable rather than interpolated
-  into the PowerShell command, so the escaping defect is fixed, but no real
-  executable has been read.
-- **Adapter selection has never seen a real multi-GPU machine.** The exclusion
-  list of virtual display devices is reasoned from common device names, not
-  from observed output.
-- The CLI has been run end-to-end on Linux only as far as the platform gate:
-  it parses a 9,000-row fixture correctly, then refuses to fabricate hardware.
-
-The first real Windows run is what turns all of the above from "written" into
-"verified", and it should be treated as a test of this collector, not as a
-finished data point.
+A dry run proves the pipeline runs. It does not prove the pipeline records
+correctly, because the recording half never executed.

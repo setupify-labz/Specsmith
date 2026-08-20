@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildObservation, collectorBuildHash, COLLECTOR_VERSION, validateAndSave, type CollectInputs } from './collect';
+import { buildObservation, collectorBuildHash, COLLECTOR_VERSION, shouldPersistFrameTimes, validateAndSave, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
-import { errors, validateMeasuredObservation, warnings } from '../../src/lib/measured/validate';
+import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 
@@ -221,5 +221,35 @@ describe('integration with the real frame-time store', () => {
       if (prior === undefined) delete process.env.SPECSMITH_FRAMETIME_ROOT;
       else process.env.SPECSMITH_FRAMETIME_ROOT = prior;
     }
+  });
+});
+
+// The frame-time archive is a side effect on the operator's own disk. It is
+// tied to the run being RECORDED, not merely processed, so that "nothing was
+// written" is true when the collector says it and a rejected run leaves
+// nothing behind that could later be mistaken for accepted evidence.
+describe('when frames are archived', () => {
+  const clean: MeasuredIssue[] = [];
+  const withWarning: MeasuredIssue[] = [
+    { severity: 'warning', rule: 'settings.operator-attested', message: 'attested', observationId: 'x' },
+  ];
+  const withError: MeasuredIssue[] = [
+    { severity: 'error', rule: 'conditions.game-version-missing', message: 'missing', observationId: 'x' },
+  ];
+
+  it('archives a run that is being saved', () => {
+    expect(shouldPersistFrameTimes(false, clean)).toBe(true);
+  });
+
+  it('archives nothing on a dry run, however clean', () => {
+    expect(shouldPersistFrameTimes(true, clean)).toBe(false);
+  });
+
+  it('archives nothing for a run validation rejects', () => {
+    expect(shouldPersistFrameTimes(false, withError)).toBe(false);
+  });
+
+  it('still archives a run that only raised warnings, since that run is saved', () => {
+    expect(shouldPersistFrameTimes(false, withWarning)).toBe(true);
   });
 });

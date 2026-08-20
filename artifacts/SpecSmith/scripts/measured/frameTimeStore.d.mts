@@ -9,5 +9,8 @@ import type { FrameTimeRef } from '../../src/lib/measured/types';
 export function canonicalFrameTimeBytes(frameTimesMs: readonly number[]): string;
 export function sha256Hex(input: string): string;
 export function frameTimeRoot(): string;
+export function describeFrameTimes(
+  frameTimesMs: readonly number[],
+): Promise<{ ref: FrameTimeRef; compressed: Uint8Array }>;
 export function writeFrameTimes(frameTimesMs: readonly number[]): Promise<FrameTimeRef>;
 export function readFrameTimes(ref: FrameTimeRef): Promise<number[]>;
