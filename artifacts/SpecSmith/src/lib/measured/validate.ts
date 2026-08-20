@@ -104,6 +104,40 @@ export function validateMeasuredObservation(
   }
   if (!obs.settingsHash) issues.push(err(id, 'conditions.settings-hash-missing', 'No settingsHash; two runs cannot be proven to share settings.'));
 
+  // --- preset -------------------------------------------------------------
+  // `unmapped` says the game has no comparable preset tier. That is only
+  // honest if the verbatim setting is recorded — otherwise the run carries no
+  // description of its settings at all, which is worse than a forced bucket.
+  if (obs.preset === 'unmapped' && !obs.presetLabel?.trim()) {
+    issues.push(
+      err(
+        id,
+        'preset.unmapped-without-label',
+        'preset is "unmapped" but no presetLabel was recorded. When a game has no comparable tier, the verbatim in-game setting is the only description of what was run.',
+      ),
+    );
+  }
+
+  // --- platform content ---------------------------------------------------
+  // For a platform game the client version says nothing about what was
+  // rendered: two Roblox runs can be unrelated experiences. Without a content
+  // id the observation is not interpretable, so an incomplete block is a fault
+  // rather than a gap.
+  if (obs.platformContent) {
+    if (!obs.platformContent.platform?.trim()) {
+      issues.push(err(id, 'platform.name-missing', 'platformContent is present but names no platform.'));
+    }
+    if (!obs.platformContent.contentId?.trim()) {
+      issues.push(
+        err(
+          id,
+          'platform.content-id-missing',
+          'platformContent has no contentId. A platform run without the place/experience id cannot be interpreted — the client version does not identify what was rendered.',
+        ),
+      );
+    }
+  }
+
   // --- memory --------------------------------------------------------------
   // Win32_PhysicalMemory returns nothing on some systems (certain VMs, locked
   // -down hosts), and the probe's byte sum then collapses to 0. Without this
@@ -156,6 +190,18 @@ export function validateMeasuredObservation(
   // --- disclosed conditions (WARNING) --------------------------------------
   if (recomputed.capDetected !== 'none') {
     issues.push(warn(id, 'run.capped', `Frame times cluster tightly (${(recomputed.clusteredFraction * 100).toFixed(1)}% within ±0.5% of median), suggesting a ${recomputed.capDetected} limit. Average FPS may be measuring the cap rather than the hardware.`));
+  }
+  // The platform genuinely does not publish a player-visible content version
+  // in most cases (Roblox creators publish continuously with no such string).
+  // Disclosed, not treated as a fault.
+  if (obs.platformContent && !obs.platformContent.contentVersion?.trim()) {
+    issues.push(
+      warn(
+        id,
+        'platform.content-version-unavailable',
+        `No content version for ${obs.platformContent.platform} content "${obs.platformContent.contentId}". Most platforms expose this to creators only, so the exact build that was rendered is unknown.`,
+      ),
+    );
   }
   if (obs.settingsSource === 'operator-attested') {
     issues.push(warn(id, 'settings.operator-attested', 'Graphics settings were attested by the operator rather than parsed from the game config.'));

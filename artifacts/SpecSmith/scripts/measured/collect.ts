@@ -31,7 +31,8 @@ import {
   type DetectionGap,
   type MeasuredObservation,
   type MeasuredObservationStore,
-  type Preset,
+  type MeasuredPreset,
+  type PlatformContent,
   type Resolution,
   type Upscaler,
 } from '../../src/lib/measured/types';
@@ -53,7 +54,7 @@ export function collectorBuildHash(files: readonly string[] = ['collect.ts', 'pr
 
 export interface CollectInputs {
   gameId: string; gpuId: string; cpuId: string;
-  resolution: Resolution; preset: Preset; presetLabel?: string;
+  resolution: Resolution; preset: MeasuredPreset; presetLabel?: string;
   upscaler: Upscaler; upscalerMode?: string;
   rayTracing: boolean; frameGeneration: boolean; frameGenerationFactor?: number;
   renderScalePercent: number;
@@ -64,6 +65,7 @@ export interface CollectInputs {
   settingsText: string;
   gameVersion?: string;
   gameBuildId?: string;
+  platformContent?: PlatformContent;
   notes?: string;
 }
 
@@ -118,6 +120,7 @@ export function buildObservation(args: {
     },
     gameVersion: inputs.gameVersion,
     gameBuildId: inputs.gameBuildId,
+    platformContent: inputs.platformContent,
     gpuDriverVersion: hardware.gpuDriverVersion,
     osBuild: hardware.osBuild,
     resolution: inputs.resolution,
@@ -211,7 +214,9 @@ async function main(argv: string[]): Promise<void> {
     gpuId: required(argv, 'gpu-id'),
     cpuId: required(argv, 'cpu-id'),
     resolution: required(argv, 'resolution') as Resolution,
-    preset: required(argv, 'preset') as Preset,
+    // 'unmapped' is legitimate for games with no comparable tier (Roblox's
+    // Manual 1-10). Validation then requires --preset-label.
+    preset: required(argv, 'preset') as MeasuredPreset,
     presetLabel: arg(argv, 'preset-label'),
     upscaler: (arg(argv, 'upscaler') ?? 'native') as Upscaler,
     upscalerMode: arg(argv, 'upscaler-mode'),
@@ -224,6 +229,16 @@ async function main(argv: string[]): Promise<void> {
     settingsText: fs.readFileSync(required(argv, 'settings-file'), 'utf-8'),
     gameVersion: arg(argv, 'game-version') ?? (exePath ? detectExecutableVersion(exePath) : undefined),
     gameBuildId: arg(argv, 'game-build-id'),
+    // Platform games only. contentId is what makes the run interpretable;
+    // contentVersion is usually unobtainable and left unset rather than guessed.
+    platformContent: arg(argv, 'platform')
+      ? {
+          platform: String(arg(argv, 'platform')),
+          contentId: String(arg(argv, 'content-id') ?? ''),
+          contentName: arg(argv, 'content-name'),
+          contentVersion: arg(argv, 'content-version'),
+        }
+      : undefined,
     notes: arg(argv, 'notes'),
   };
 

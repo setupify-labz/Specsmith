@@ -85,6 +85,45 @@ ids so a bad pairing stays auditable.
 that holds invalid records is not a source of truth. Warnings never block; they
 are disclosures that travel with the record.
 
+## Platform games (Roblox, and anything like it)
+
+Roblox is not a game, it is a platform. Its client version says nothing about
+what was rendered — two runs of "Roblox" can be unrelated experiences with
+completely different performance. An observation carrying only a client version
+is not interpretable.
+
+| Field | Obtainable? |
+|---|---|
+| client version | **Yes** — each build lives in `%LOCALAPPDATA%\Roblox\Versions\version-<hash>\`; read it with `--game-exe` |
+| `contentId` (place/universe id) | **By the operator**, from the URL joined — not by the collector |
+| `contentVersion` | **Usually not.** Roblox exposes a place version to the experience's creator, not to players. Recorded as a disclosed warning, never guessed |
+
+```
+--game-exe "C:\Users\<you>\AppData\Local\Roblox\Versions\version-<hash>\RobloxPlayerBeta.exe" ^
+--platform roblox --content-id <place id> --content-name "<experience name>"
+```
+
+A `platformContent` block with no `contentId` is an ERROR, not a gap — without
+it the run cannot be interpreted at all.
+
+## Games with no comparable preset tier
+
+Roblox has no Low/Medium/High. It has a Manual slider from 1 to 10, and there
+is no honest answer to "is Manual 8 high or ultra?" — the scale is not
+calibrated against anything outside Roblox. Forcing a bucket would invent a
+cross-game equivalence and make the run silently comparable to another game's
+"high".
+
+Use `--preset unmapped` with the verbatim setting:
+
+```
+--preset unmapped --preset-label "Graphics Quality: Manual 8"
+```
+
+`presetLabel` is **required** when preset is `unmapped` — this records more
+than a forced bucket would, not less. The shared `Preset` union is deliberately
+unchanged, so the source-derived system's meaning of a preset is untouched.
+
 ## Fields that cannot be detected, and are marked rather than guessed
 
 Every observation carries a `detectionGaps` array naming these with a reason:

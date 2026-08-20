@@ -37,6 +37,59 @@ export type { Preset, Resolution, Upscaler };
  */
 export type ObservationTier = 'measured' | 'community';
 
+/**
+ * The normalized preset tiers, plus an explicit "does not map" value.
+ *
+ * The shared `Preset` union is a CROSS-GAME comparison bucket, and it is
+ * deliberately left untouched here — widening it would change what a preset
+ * means for the source-derived system too.
+ *
+ * Some games do not have preset tiers at all. Roblox exposes a Manual graphics
+ * slider from 1 to 10; there is no honest answer to "is Manual 8 high or
+ * ultra?", because the scale is not calibrated against anything outside
+ * Roblox. The existing doctrine in ../benchmarks/types.ts says to record the
+ * verbatim name "alongside the closest honest bucket" — but when no bucket is
+ * honest, picking one INVENTS a cross-game equivalence that no source
+ * supports, and it would then be silently comparable to another game's "high".
+ *
+ * `unmapped` states the true thing instead: this run's settings have no
+ * normalized tier. The verbatim setting still travels in `presetLabel`, which
+ * validation REQUIRES whenever preset is `unmapped` — so this records more
+ * than a forced bucket would, not less.
+ */
+export type MeasuredPreset = Preset | 'unmapped';
+
+/**
+ * What was actually being played on a platform game.
+ *
+ * Roblox, Fortnite Creative, Minecraft servers and similar are not single
+ * games: the client version says nothing about what was rendered. Two runs of
+ * "Roblox" can be unrelated experiences with completely different performance.
+ * An observation carrying only a client version is not interpretable.
+ *
+ * Honesty about what is obtainable:
+ *
+ *   clientVersion   OBTAINABLE. Roblox ships each client build in
+ *                   %LOCALAPPDATA%\Roblox\Versions\version-<hash>\, and the
+ *                   executable carries a file version. Read via --game-exe.
+ *   contentId       OBTAINABLE BY THE OPERATOR, not by the collector — it is
+ *                   the place/universe id from the URL they joined.
+ *   contentVersion  GENERALLY NOT OBTAINABLE. Roblox exposes a place version
+ *                   to the experience's creator, not to players. Creators
+ *                   publish updates continuously with no player-visible
+ *                   version string, so this is usually a genuine gap and is
+ *                   recorded as one rather than guessed.
+ */
+export interface PlatformContent {
+  /** e.g. 'roblox'. Free-form: this is a description, not a closed catalog. */
+  platform: string;
+  /** Place/universe/world id. Required — without it the run is uninterpretable. */
+  contentId: string;
+  contentName?: string;
+  /** Set ONLY when the platform genuinely exposes one. Absence is a disclosed gap. */
+  contentVersion?: string;
+}
+
 /** The only tier V1 will ingest. */
 export const TIER_ACCEPTED_V1: readonly ObservationTier[] = ['measured'];
 
@@ -155,6 +208,11 @@ export interface MeasuredObservation {
   gameVersion?: string;
   /** Preferred over gameVersion: patches reuse version strings. At least one of the two is required. */
   gameBuildId?: string;
+  /**
+   * Set for platform games, where the client version does not identify what
+   * was rendered. Absent for ordinary single games.
+   */
+  platformContent?: PlatformContent;
   gpuDriverVersion: string;
   osBuild: string;
 
@@ -162,8 +220,13 @@ export interface MeasuredObservation {
   /** Actual swapchain scale. A 1080p run at 70% render scale is not a 1080p record. */
   renderScalePercent: number;
 
-  preset: Preset;
-  /** Verbatim in-game label when it differs from the normalized bucket. Never invented from `preset`. */
+  /** `unmapped` when the game has no comparable preset tier; see MeasuredPreset. */
+  preset: MeasuredPreset;
+  /**
+   * Verbatim in-game setting, e.g. "Graphics Quality: Manual 8". Never
+   * invented from `preset`. REQUIRED when preset is `unmapped` — that is the
+   * only record of what was actually set.
+   */
   presetLabel?: string;
   settingsSource: SettingsSource;
   /** Hash over the full settings config, so two runs can be proven identical. */

@@ -275,3 +275,84 @@ describe('frame-time blob identity', () => {
     expect(verifyFrameTimeHash([16.7, 8.3], 'wrong', fakeSha)).toBe(false);
   });
 });
+
+// Roblox is the case that forced these rules. It has no preset tiers — only a
+// Manual 1-10 slider — and it is a platform, not a game: two runs of "Roblox"
+// can be unrelated experiences with different performance. The first real
+// capture was run with `--preset high`, which is a cross-game equivalence
+// nothing supports.
+describe('games with no comparable preset tier', () => {
+  it('accepts preset "unmapped" when the verbatim setting is recorded', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { preset: 'unmapped', presetLabel: 'Graphics Quality: Manual 8' });
+    expect(errors(validateMeasuredObservation(obs, frames))).toEqual([]);
+  });
+
+  // Without the label the run carries no description of its settings at all,
+  // which is worse than a forced bucket rather than better.
+  it('rejects "unmapped" with no presetLabel', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { preset: 'unmapped', presetLabel: undefined });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('preset.unmapped-without-label');
+  });
+
+  it('rejects a whitespace-only presetLabel', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { preset: 'unmapped', presetLabel: '   ' });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('preset.unmapped-without-label');
+  });
+
+  // The normalized tiers must keep working exactly as before for games that
+  // genuinely have them.
+  it('leaves normalized presets unaffected', () => {
+    const frames = goodFrames();
+    for (const preset of ['low', 'medium', 'high', 'ultra', 'extreme'] as const) {
+      expect(errors(validateMeasuredObservation(makeObservation(frames, { preset }), frames))).toEqual([]);
+    }
+  });
+});
+
+describe('platform games', () => {
+  const roblox = { platform: 'roblox', contentId: '920587237', contentName: 'Adopt Me!' };
+
+  it('accepts a platform run identified by its content id', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { platformContent: { ...roblox, contentVersion: '412' } });
+    expect(errors(validateMeasuredObservation(obs, frames))).toEqual([]);
+  });
+
+  // The client version does not identify what was rendered.
+  it('rejects a platform run with no content id', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { platformContent: { platform: 'roblox', contentId: '' } });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('platform.content-id-missing');
+  });
+
+  it('rejects a platform block that names no platform', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { platformContent: { platform: '', contentId: '123' } });
+    expect(errors(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).toContain('platform.name-missing');
+  });
+
+  // Roblox creators publish continuously with no player-visible version, so an
+  // absent content version is disclosed rather than treated as a fault.
+  it('warns, without rejecting, when the platform exposes no content version', () => {
+    const frames = goodFrames();
+    const issues = validateMeasuredObservation(makeObservation(frames, { platformContent: roblox }), frames);
+    expect(errors(issues)).toEqual([]);
+    expect(warnings(issues).map((i) => i.rule)).toContain('platform.content-version-unavailable');
+  });
+
+  it('does not warn when a content version genuinely exists', () => {
+    const frames = goodFrames();
+    const issues = validateMeasuredObservation(makeObservation(frames, { platformContent: { ...roblox, contentVersion: '412' } }), frames);
+    expect(warnings(issues).map((i) => i.rule)).not.toContain('platform.content-version-unavailable');
+  });
+
+  // Ordinary single games must be unaffected.
+  it('leaves non-platform observations alone', () => {
+    const frames = goodFrames();
+    const issues = validateMeasuredObservation(makeObservation(frames), frames);
+    expect(issues.map((i) => i.rule).filter((r) => r.startsWith('platform.'))).toEqual([]);
+  });
+});
