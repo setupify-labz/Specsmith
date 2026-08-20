@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T22:49:37.194Z",
+  "generatedAt": "2026-08-20T23:55:06.962Z",
   "note": "Per-game capture status across the known catalog. \"captured\" is true only when a real saved source exists — never inferred.",
   "summary": {
     "totalKnownGames": 316,
@@ -31,7 +31,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "4405fd457e6555e69ce580727e599ecc398468e2b225f63ae84af9c02b2380d7"
+      "sourceContentSha256": "aa11fd580e696143ec03b87794cb1563807c5191d77a2cc78f082bf9ad21be02"
     },
     {
       "gameId": "3651",
@@ -73,7 +73,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 3,
-      "sourceContentSha256": "ae4bcdabfafb3394f636113669d7941b8a835fbe1456eff9dfdceaf7f7343b04"
+      "sourceContentSha256": "b5d58151c9ba3774673fda76ef44827a0f622b29f8718e72939d8e6fbd17b791"
     },
     {
       "gameId": "3654",
@@ -96,7 +96,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 3,
-      "sourceContentSha256": "f5c6982f2fa5166b7a6e019b6935f7009e8c10d1d352d46f8c9da3ad115947ea"
+      "sourceContentSha256": "202cab467386a8d5b5f60c06d949a31e4426ee3a988244beced90fb9fd6b330a"
     },
     {
       "gameId": "3655",
@@ -117,7 +117,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "b9e4142f73b029843ba81a1127aff0039a6ee3641469cf989d61d78d7ef86648"
+      "sourceContentSha256": "cbee9f062c5cb54e99447cdccf759880df888f8f21c6b5d90e656f6c5ef0c683"
     },
     {
       "gameId": "3656",
@@ -138,7 +138,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "4aaad3ab605e4201a62525f64595b6f9eaa89401cd768568800a5aeac02f0364"
+      "sourceContentSha256": "6e69aa6f6698cbd79cbc83df83d42ccaf5a4f353d1a369297f1950f6ab054346"
     },
     {
       "gameId": "3657",
@@ -218,7 +218,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "ff3040a6cc0d0956a6857ef596da56ba3f999519243fee189ffabe37d9315afa"
+      "sourceContentSha256": "12c2ad1666b839f8aacaf441a5dce48149ba1d104490b909df2d6ae98360cfa4"
     },
     {
       "gameId": "3659",
@@ -258,7 +258,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "1d55cd97076de8c19156cec344f5ab18c78143aeaa300fb51d00a2ce91c59e75"
+      "sourceContentSha256": "f4a98caae3a3839371b4acce70574541e125f2979e604d33746a03e9dae0d436"
     },
     {
       "gameId": "4032",
@@ -279,7 +279,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "1613a13e8c906e50a759b5587d95f8c4ae28fb2a131d92b08a5bdc8adff9e56e"
+      "sourceContentSha256": "416b9b79abb708e024578dea654e8c34e5a286b7c3116f590917d7a4a0d99ca9"
     },
     {
       "gameId": "3960",
@@ -300,7 +300,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "7d8e310bb1639aca43b852858a46e6f3c88a44a2b672504cfb61342385333214"
+      "sourceContentSha256": "483209187a4a4d2065a3f846e98df75021aca34499aaa251e844b21d177a5a48"
     },
     {
       "gameId": "3661",
@@ -321,7 +321,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "768ae8ce09d6995ac4569a70d04c9dc455b294991c22c43e7e09ab4a361e7562"
+      "sourceContentSha256": "af77476cbc696fb33dfeac14bb2c400cff783ac7cfb46a2d660e66adfad6afb3"
     },
     {
       "gameId": "3662",
@@ -345,7 +345,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 4,
-      "sourceContentSha256": "13886863ab6072805ae533a8150599ac272e69bc803b5243662188010e130f5b"
+      "sourceContentSha256": "ffe2bf9367eb965e45542a103340e450d3ccb43533ebeda31915058865b07aa5"
     },
     {
       "gameId": "3663",
@@ -366,7 +366,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "f18318b328b576e666b79d3b26664923b546c51e27e3c8cdd18576260ede3a84"
+      "sourceContentSha256": "c9ff40ab5610d5c1bdfb3dc377ad2f567c5dbab4d7db186640c382639e1d7e46"
     },
     {
       "gameId": "3664",
@@ -387,7 +387,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "2c1d0d3e5e0512110ae3e31786ed78b91235f3303bf6355580990acc80c24644"
+      "sourceContentSha256": "6d0189803910b7e2c87f47601e83c4a51bb0b14818c561f8640c61cfb072a251"
     },
     {
       "gameId": "3665",
@@ -408,7 +408,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "0f7797d9cca54db9cdb909e840f8d80c18d4940b0fcb5d78ac6370b5bcdfa2dc"
+      "sourceContentSha256": "a639f7fd97ec68271381d30ffe01d5c3f340d8db4594a1ff286ac3ddd2fcfb11"
     },
     {
       "gameId": "3961",
@@ -429,7 +429,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 1,
-      "sourceContentSha256": "f2c19c5f67e2bef4b6716df39dc61432d1f507fa64d423e23c9e9ab8764e7cb2"
+      "sourceContentSha256": "0fdeb5a62972cc3fe930d228b574ff30117ea26299f9401e8c1049ceaba4a86f"
     },
     {
       "gameId": "4186",
@@ -471,7 +471,7 @@
         "[efps] 200 EFPS object(s) rejected — see efps.rejected."
       ],
       "warningCount": 3,
-      "sourceContentSha256": "c25f50e424d3441ed8d27395092536ae7bea9b4ff8153e6391346a64f8a5ed30"
+      "sourceContentSha256": "2dcf418e4dd153eb3857aa87de549327de376d1567aed7fed6904db2cd4c3929"
     },
     {
       "gameId": "3962",
@@ -956,7 +956,7 @@
       "totalSamples": 151690,
       "warnings": [],
       "warningCount": 0,
-      "sourceContentSha256": "94cd1359d78368fe7510643108bd3f3a8ec7fe80cca9624a72be591ecc4110f2"
+      "sourceContentSha256": "81ad965ce19fc55e0b9a302bf0def906ce3ef92127e3dd4a6c70a7a05bcb1bef"
     },
     {
       "gameId": "3969",
@@ -3627,7 +3627,7 @@
       "totalSamples": 75383,
       "warnings": [],
       "warningCount": 0,
-      "sourceContentSha256": "67ee6785f8f62ebd4f8718a5aab577810959d20c2d348f2d77f13e4b2305172f"
+      "sourceContentSha256": "7f9eb3dc30be4e1cc25a82e2a0672672c76012819bee90ffa3f70bac7be5d7b1"
     },
     {
       "gameId": "3797",

@@ -17,6 +17,7 @@ import { normalizeAll } from '../lib/normalize.mjs';
 import { listSourceFiles, loadOptional } from './fixtures/load.mjs';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
+import { createHash } from 'node:crypto';
 import { extractEfpsRecords } from '../lib/efps.mjs';
 import path from 'node:path';
 import { pagesDir } from './fixtures/load.mjs';
@@ -523,6 +524,59 @@ describe('Corpus: the core per-game fields are extracted from every page', () =>
       const cpuLinks = linked(new RegExp(`FPS-Estimates-[^/"']+/${id}/0\\.(\\d+)\\.0\\.0\\.0`, 'g'));
       assert.equal(p.gpuTable.length, gpuLinks, `${f}: ${gpuLinks} GPU components linked but ${p.gpuTable.length} rows parsed`);
       assert.equal(p.cpuTable.length, cpuLinks, `${f}: ${cpuLinks} CPU components linked but ${p.cpuTable.length} rows parsed`);
+    }
+  });
+});
+
+// Provenance is only worth something if it is checked. Each parsed artifact
+// claims "these numbers came from bytes hashing to X"; nothing verified that
+// claim against the page actually committed beside it. The 59-game corpus
+// landed with 18 artifacts whose claimed hash belonged to a re-captured HTML
+// that was never committed — the extracted values were still correct, but the
+// provenance was false and no test could tell.
+describe('Corpus: every parsed artifact matches the page it names', () => {
+  const parsedFiles = fsSync
+    .readdirSync(path.join(pagesDir, '..', 'parsed'))
+    .filter((f) => f.endsWith('.json') && f !== 'index.json');
+
+  it('names a source file that exists', () => {
+    for (const f of parsedFiles) {
+      const meta = JSON.parse(fsSync.readFileSync(path.join(pagesDir, '..', 'parsed', f), 'utf-8'))._meta;
+      assert.ok(meta.sourceFile, `${f}: no sourceFile recorded`);
+      assert.ok(fsSync.existsSync(path.join(pagesDir, meta.sourceFile)), `${f}: names missing page ${meta.sourceFile}`);
+    }
+  });
+
+  it('records the sha256 of exactly those bytes', () => {
+    const mismatches = [];
+    for (const f of parsedFiles) {
+      const meta = JSON.parse(fsSync.readFileSync(path.join(pagesDir, '..', 'parsed', f), 'utf-8'))._meta;
+      const actual = createHash('sha256').update(fsSync.readFileSync(path.join(pagesDir, meta.sourceFile))).digest('hex');
+      if (actual !== meta.sourceContentSha256) {
+        mismatches.push(`${f}: claims ${String(meta.sourceContentSha256).slice(0, 12)}… but ${meta.sourceFile} hashes to ${actual.slice(0, 12)}…`);
+      }
+    }
+    assert.equal(
+      mismatches.length,
+      0,
+      `${mismatches.length} parsed artifact(s) do not match their committed page — regenerate with ingest.mjs rather than editing:\n  ${mismatches.join('\n  ')}`,
+    );
+  });
+
+  it('carries the same source hash through into the dataset rows', () => {
+    const byFile = new Map();
+    for (const f of parsedFiles) {
+      const meta = JSON.parse(fsSync.readFileSync(path.join(pagesDir, '..', 'parsed', f), 'utf-8'))._meta;
+      byFile.set(meta.sourceFile, meta.sourceContentSha256);
+    }
+    const datasetDir = path.join(pagesDir, '..', 'dataset');
+    for (const ds of ['games.jsonl', 'gpu-observations.jsonl', 'cpu-observations.jsonl']) {
+      const rows = fsSync.readFileSync(path.join(datasetDir, ds), 'utf-8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l));
+      for (const r of rows) {
+        const p = r.provenance ?? {};
+        if (!p.sourceFile) continue;
+        assert.equal(p.sourceContentSha256, byFile.get(p.sourceFile), `${ds}: row for ${p.sourceFile} disagrees with its parsed artifact`);
+      }
     }
   });
 });

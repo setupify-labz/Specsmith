@@ -21,6 +21,7 @@ import {
 } from '../lib/hardware-normalize.mjs';
 import {
   FLAG,
+  MAX_BENCH_PERCENT,
   METRIC_DEFINITIONS,
   findDuplicates,
   findOutliers,
@@ -193,9 +194,30 @@ describe('clean-observations: flags rather than repairs', () => {
     assert.equal(flags[0].flag, FLAG.MALFORMED);
   });
 
-  it('flags a score outside 0-100 as impossible', () => {
+  it('flags a benchPercent above 100 as impossible', () => {
+    // benchPercent is a standing within one page's sample set, so it is bounded.
     assert.equal(inspectRow(row({ benchPercent: 140 }))[0].flag, FLAG.IMPOSSIBLE);
+  });
+
+  it('flags a negative score of either kind as impossible', () => {
     assert.equal(inspectRow(row({ valuePercent: -3 }))[0].flag, FLAG.IMPOSSIBLE);
+    assert.equal(inspectRow(row({ benchPercent: -1 }))[0].flag, FLAG.IMPOSSIBLE);
+  });
+
+  // Regression: valuePercent was checked against the same 0-100 bound as
+  // benchPercent, which flagged 254 faithfully-parsed rows across the 59-game
+  // corpus as impossible. It is price/performance against a baseline and
+  // legitimately exceeds 100 — the Arma 3 page publishes "39% | 102%" for the
+  // GTX 1070-Ti, and the corpus reaches 131%. The source is right; the rule
+  // was wrong, and a rule like that invites someone to "repair" correct data.
+  it('ACCEPTS a valuePercent above 100, which UserBenchmark really publishes', () => {
+    for (const v of [101, 102, 118, 131, 250]) {
+      assert.deepEqual(inspectRow(row({ valuePercent: v })), [], `valuePercent ${v} must not be flagged`);
+    }
+  });
+
+  it('still rejects a non-numeric valuePercent', () => {
+    assert.equal(inspectRow(row({ valuePercent: 'cheap' }))[0].flag, FLAG.MALFORMED);
   });
 
   it('flags a negative sample count and a non-positive price', () => {
