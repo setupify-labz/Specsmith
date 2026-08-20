@@ -102,15 +102,43 @@ describe('Canonical layout: one EFPS implementation', () => {
   });
 });
 
+/**
+ * Names the constants a file binds to a derived directory.
+ *
+ * Matching the CONSTANT rather than the word is what makes this guard precise.
+ * A file that merely mentions `datasetDir` is usually a reader; the previous
+ * form of this guard asked only "does the text contain datasetDir and the word
+ * writeFile", which flagged any script that reads the dataset and writes
+ * somewhere else entirely.
+ */
+function dirConstants(text, dirName) {
+  const re = new RegExp(`(?:const|let|var)\\s+(\\w+)\\s*=\\s*path\\.join\\([^)]*['"]${dirName}['"]\\s*\\)`, 'g');
+  return [...text.matchAll(re)].map((m) => m[1]);
+}
+
+/** True when one of those constants is the destination of a write call. */
+function writesInto(text, dirName) {
+  return dirConstants(text, dirName).some((name) =>
+    new RegExp(`write\\w*\\([^;]*\\b${name}\\b`).test(text));
+}
+
 describe('Canonical layout: one writer per derived directory', () => {
   it('only ingest.mjs writes dataset/', () => {
-    const writers = sources.filter((s) => /datasetDir|dataset['"]\s*\)|['"]dataset['"]/.test(s.text) && /writeFile/.test(s.text));
-    const names = writers.map((w) => w.file).sort();
+    const names = sources.filter((s) => writesInto(s.text, 'dataset')).map((w) => w.file).sort();
     assert.deepEqual(names, ['ingest.mjs'], `dataset/ must have exactly one writer, found: ${names.join(', ') || 'none'}`);
   });
 
+  it('a reader of dataset/ is not mistaken for a writer', () => {
+    // clean.mjs reads the dataset and writes only into clean/. If this guard
+    // ever flags it again, the guard is scanning vocabulary rather than code.
+    const clean = sources.find((s) => s.file === 'clean.mjs');
+    assert.ok(clean, 'clean.mjs should exist');
+    assert.ok(/datasetDir/.test(clean.text), 'clean.mjs does reference the dataset directory');
+    assert.notOk(writesInto(clean.text, 'dataset'), 'clean.mjs must not write into dataset/');
+  });
+
   it('only parse.mjs and ingest.mjs write parsed/, and both use the shared core', () => {
-    const writers = sources.filter((s) => /parsedDir|outDir/.test(s.text) && /writeFile/.test(s.text) && !s.file.startsWith('homepage/'));
+    const writers = sources.filter((s) => writesInto(s.text, 'parsed') && !s.file.startsWith('homepage/'));
     const names = writers.map((w) => w.file).sort();
     assert.deepEqual(names, ['ingest.mjs', 'parse.mjs'], `unexpected writers of parsed/: ${names.join(', ')}`);
     for (const w of writers) {

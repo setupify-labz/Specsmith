@@ -1,0 +1,30 @@
+{
+  "totalRawRows": 730,
+  "cleanedRows": 730,
+  "exactMatches": 0,
+  "fuzzyMatches": 0,
+  "unmatchedRows": 619,
+  "formFactorBlocked": 111,
+  "exactDuplicates": 0,
+  "suspiciousDuplicates": 0,
+  "outliers": 20,
+  "rowsNeedingReview": 730,
+  "byKind": {
+    "gpu": {
+      "raw": 365,
+      "exact": 0,
+      "fuzzy": 0,
+      "unmatched": 296,
+      "blocked": 69,
+      "review": 365
+    },
+    "cpu": {
+      "raw": 365,
+      "exact": 0,
+      "fuzzy": 0,
+      "unmatched": 323,
+      "blocked": 42,
+      "review": 365
+    }
+  }
+}

@@ -15,5 +15,6 @@ import './browser-worker.test.mjs';
 import './corpus.test.mjs';
 import './generalization.test.mjs';
 import './canonical.test.mjs';
+import './clean.test.mjs';
 
 await run();
