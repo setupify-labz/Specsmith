@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { describe, it, assert } from './harness.mjs';
 import {
@@ -27,7 +28,7 @@ import {
 } from '../lib/clean-observations.mjs';
 import { cleanRow, renderSummary } from '../clean.mjs';
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+const here = path.dirname(fileURLToPath(import.meta.url));
 const datasetDir = path.join(here, '..', 'dataset');
 
 /** A tiny stand-in catalog. Real catalogs are large; the rules are the same. */

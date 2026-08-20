@@ -419,7 +419,7 @@ describe('how the hardware attribution was reached', () => {
 describe('parsing a whole command line', () => {
   const argv = (over: string[] = []) => [
     '--game-id', 'cs2', '--resolution', '1440p', '--preset', 'high',
-    '--ram-channels', '2', '--settings-file', '/dev/null', ...over,
+    '--ram-channels', '2', '--settings-file', os.devNull, ...over,
   ];
 
   it('reads a valid command line', () => {
@@ -440,7 +440,7 @@ describe('parsing a whole command line', () => {
   // The trap this guards: `--preset --dry-run` used to set preset to the
   // literal string "--dry-run", which type-checks as a Preset.
   it('refuses a flag whose value is the next flag', () => {
-    const bad = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', '--dry-run', '--ram-channels', '2', '--settings-file', '/dev/null'];
+    const bad = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', '--dry-run', '--ram-channels', '2', '--settings-file', os.devNull];
     expect(() => parseRunConditions(bad)).toThrow(CliInputError);
     expect(() => parseRunConditions(bad)).toThrow(/needs a value/);
   });
@@ -454,7 +454,7 @@ describe('parsing a whole command line', () => {
   });
 
   it('refuses a fractional channel count', () => {
-    const fractional = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', 'high', '--ram-channels', '2.5', '--settings-file', '/dev/null'];
+    const fractional = ['--game-id', 'cs2', '--resolution', '1440p', '--preset', 'high', '--ram-channels', '2.5', '--settings-file', os.devNull];
     expect(() => parseRunConditions(fractional)).toThrow(/whole number/);
     expect(wholeNumberInRange('2', 'ram-channels', 1, 8)).toBe(2);
   });
@@ -483,7 +483,7 @@ describe('the real catalog already supports Red Dead Redemption 2', () => {
   it('accepts --game-id rdr2 on a full command line', () => {
     const argv = [
       '--game-id', 'rdr2', '--resolution', '1440p', '--preset', 'high',
-      '--ram-channels', '2', '--settings-file', '/dev/null',
+      '--ram-channels', '2', '--settings-file', os.devNull,
     ];
     const r = parseRunConditions(argv, catalogs.gameIds);
     expect(r.gameId).toBe('rdr2');

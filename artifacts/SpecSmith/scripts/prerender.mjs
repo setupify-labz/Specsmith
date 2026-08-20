@@ -1,7 +1,7 @@
 import { build } from 'vite';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PRICES_UPDATED } from '../src/lib/prices.ts';
 
 // ISO date (YYYY-MM-DD) for every page's <lastmod> — deliberately the last
@@ -139,7 +139,9 @@ async function main() {
   await buildSsrBundle();
 
   const entryPath = path.join(ssrOutDir, 'entry-server.js');
-  const { render, getRouteMeta, getPrerenderMeta, breadcrumbJsonLd, siteJsonLdGraph, PRERENDER_ROUTES, SITE_URL, DEFAULT_OG_IMAGE } = await import(`${entryPath}?t=${Date.now()}`);
+  const entryUrl = pathToFileURL(entryPath);
+  entryUrl.searchParams.set('t', String(Date.now()));
+  const { render, getRouteMeta, getPrerenderMeta, breadcrumbJsonLd, siteJsonLdGraph, PRERENDER_ROUTES, SITE_URL, DEFAULT_OG_IMAGE } = await import(entryUrl.href);
   const resolveMeta = getPrerenderMeta ?? getRouteMeta;
 
   for (const routePath of PRERENDER_ROUTES) {

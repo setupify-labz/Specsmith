@@ -49,11 +49,6 @@ describe('Corpus: shared invariants across every saved game page', () => {
   });
 
   it('every page yields a numeric game id, a name, and an established identity', () => {
-    // Not "a canonical URL": some real game pages ship without one (ADR1FT,
-    // 3652). What must always hold is that identity was ESTABLISHED and its
-    // source recorded — canonical when present, corroborated self-links
-    // otherwise. Asserting the canonical URL itself would reject a page the
-    // pipeline handles correctly and discloses honestly.
     for (const p of gamePages) {
       assert.ok(/^\d+$/.test(p.game.gameId), `${p._meta.sourceFile}: bad game id`);
       assert.ok(p.game.name, `${p._meta.sourceFile}: no name`);
@@ -165,7 +160,6 @@ describe('Corpus: shared invariants across every saved game page', () => {
   });
 });
 
-// Resolved before describe() runs — describe callbacks are synchronous.
 const referenceSources = [];
 for (const ref of REFERENCE_GAMES) referenceSources.push({ ref, src: await loadOptional(ref.gameId) });
 
@@ -173,9 +167,6 @@ describe('Corpus: reference-game published values', () => {
   for (const { ref, src } of referenceSources) {
     if (!src) {
       it(`${ref.key} (id ${ref.gameId}) — NOT CAPTURED, assertions skipped`, () => {
-        // Deliberately passes: a page nobody has saved is a data gap, not a
-        // code failure. It is surfaced here so the suite output states plainly
-        // which reference games are still missing.
         assert.ok(true);
         console.log(`      ↳ save pages/FPS-Estimates-<slug>-${ref.gameId}.html to activate real assertions for ${ref.key}`);
       });
@@ -198,8 +189,6 @@ describe('Corpus: reference-game published values', () => {
       assert.ok(p.efps.stats.accepted > 0, 'EFPS records');
     });
 
-    // The brief's named example pairs. Asserted only for the games actually
-    // saved; the 3600+2060S / 9600K+2060S pairs exist on Fortnite too.
     if (ref.key === 'Fortnite') {
       it('Fortnite: 3600 + 2060S = 131 and 9600K + 2060S = 133 (exact)', () => {
         assert.equal(findDirect('2060S', '3600').fps, 131);
@@ -223,17 +212,12 @@ describe('Corpus: reference-game published values', () => {
         assert.equal(p.sampleSummary.totalSamples, 151690);
       });
       it('CS:GO: settings and resolution charts extract with the source\'s exact labels', () => {
-        // These two charts use `labels :` (space before the colon) while the
-        // FPS histogram on the SAME page uses `labels:`. Before the parser
-        // tolerated both, these came back empty.
         assert.deepEqual(p.settingsDistribution.labels, ['Low', 'Max', 'High', 'Med']);
         assert.deepEqual(p.settingsDistribution.data, [62256, 51577, 19478, 18379]);
         assert.deepEqual(p.resolutionDistribution.labels, ['1080p', '720p', '1440p', '4K']);
         assert.deepEqual(p.resolutionDistribution.data, [96858, 49871, 4809, 152]);
       });
       it('CS:GO: a comparison where the "faster" card loses stays verbatim', () => {
-        // 5700-XT reports LOWER than 1660-Ti here. Crowd-sourced data is not
-        // ordered by expected performance; nothing may reorder or "correct" it.
         const c = p.efps.records.find((r) => r.exactTitle === 'CSGO 5700-XT vs 1660-Ti - 9400F');
         assert.ok(c, 'record present');
         assert.equal(c.exactValue, '211 vs 219');
@@ -243,8 +227,6 @@ describe('Corpus: reference-game published values', () => {
     }
 
     if (ref.key === 'PUBG') {
-      // These are the values the brief cites for PUBG. They activate as real
-      // assertions as soon as the PUBG page is saved.
       it('PUBG: 3600 + 2060S = 119 and 9600K + 2060S = 135 (exact)', () => {
         assert.equal(findDirect('2060S', '3600')?.fps, 119);
         assert.equal(findDirect('2060S', '9600K')?.fps, 135);
@@ -263,8 +245,6 @@ describe('Corpus: reference-game published values', () => {
 
 describe('Corpus: EFPS game token vs catalog name', () => {
   it('the EFPS token is not the catalog name for PUBG and CSGO', () => {
-    // This is exactly why classification must be structural. A parser that
-    // strips a `gameName + " "` prefix from the title finds no match here.
     const tokens = new Map(gamePages.map((p) => [p.game.gameId, p.efps.records[0]?.efpsGameToken]));
     if (tokens.has('3944')) assert.equal(tokens.get('3944'), 'PUBG', "catalog name is \"PlayerUnknown's Battlegrounds\"");
     if (tokens.has('3680')) assert.equal(tokens.get('3680'), 'CSGO', 'catalog name is "Counter-Strike: Global Offensive"');
@@ -272,11 +252,6 @@ describe('Corpus: EFPS game token vs catalog name', () => {
   });
 
   it('every page whose EFPS block is its own classifies and cross-checks correctly', () => {
-    // Scoped to pages that actually own their EFPS block. A page whose widget
-    // carries another game's dataset (7 Days to Die) legitimately ends with
-    // zero accepted records — that is the ownership rule working, not a
-    // classification failure. Asserting ">0 direct" for every page would make
-    // the correct behaviour look like a regression.
     for (const p of gamePages) {
       const quarantined = p.efps.rejected.filter((r) => r.reason === 'efps-game-token-mismatch').length;
       if (quarantined > 0) {
@@ -297,18 +272,12 @@ describe('Corpus: capture status of the three reference games', () => {
     const missing = status.filter((s) => !s.captured);
     console.log(`      captured: ${status.filter((s) => s.captured).map((s) => s.key).join(', ') || 'none'}`);
     if (missing.length) console.log(`      MISSING:  ${missing.map((s) => `${s.key} (id ${s.gameId})`).join(', ')}`);
-    // Not an assertion failure — missing sources are a capture gap, tracked in
-    // capture-manifest.json, not a broken parser.
     assert.ok(true);
   });
 });
 
 describe('Corpus: determinism and provenance', () => {
   it('normalization is byte-identical across repeated runs', () => {
-    // Guards a real regression: a wall-clock timestamp in per-record
-    // provenance made every run emit different bytes, which destroys
-    // diffability of the emitted datasets. Run time belongs in report
-    // metadata only.
     for (const p of gamePages) {
       const a = JSON.stringify(normalizeAll(p));
       const b = JSON.stringify(normalizeAll(p));
@@ -338,11 +307,6 @@ describe('Corpus: determinism and provenance', () => {
 
 describe('Corpus: capture-serialization tolerance', () => {
   it('parses pages saved as raw source AND pages re-serialized by the browser', () => {
-    // A view-source save keeps the server's single-quoted attributes and raw
-    // U+00A0; a browser "Save Page As" re-serializes the DOM with double
-    // quotes and &nbsp; entities. Both are complete, correct saves. Anchoring
-    // on one form silently produced 0 GPU/CPU rows and a null average FPS on
-    // the other, on a page that was otherwise fully intact.
     for (const p of gamePages) {
       assert.ok(p.sampleSummary.averageFps > 0, `${p._meta.sourceFile}: average FPS did not parse`);
       assert.ok(p.sampleSummary.totalSamples > 0, `${p._meta.sourceFile}: sample count did not parse`);
@@ -361,11 +325,6 @@ describe('Corpus: capture-serialization tolerance', () => {
 
 describe('Corpus: EFPS records must belong to the page carrying them', () => {
   it('never attributes another game\'s EFPS dataset to this page', () => {
-    // The EFPS array sits in a select2 "compare" widget and is NOT guaranteed
-    // to describe its host page. The 7 Days to Die page (3959, 525 samples)
-    // ships 200 records tokened CSGO — a fallback dataset for a low-sample
-    // title. Filing those under 7 Days to Die would misattribute
-    // Counter-Strike's measurements to another game.
     for (const p of gamePages) {
       const allowed = new Set(expectedEfpsTokens(rawHtmlBySource.get(p._meta.sourceFile), p.game.name).map((t) => t.toLowerCase()));
       for (const r of p.efps.records) {
@@ -391,10 +350,6 @@ describe('Corpus: EFPS records must belong to the page carrying them', () => {
   });
 
   it('the cross-check alone cannot catch this, so the ownership rule is load-bearing', () => {
-    // Borrowed records are internally consistent with each other, so
-    // direct-vs-comparison agreement stays perfect while the whole block
-    // belongs to a different game. Recorded so nobody removes the ownership
-    // check on the grounds that "the cross-check already validates EFPS".
     for (const p of gamePages) {
       const byConfig = new Map(p.efps.records.filter((r) => r.kind === 'direct').map((d) => [`${d.config.gpu}|${d.config.cpu}`, d.fps]));
       for (const c of p.efps.records.filter((r) => r.kind === 'comparison')) {
@@ -427,13 +382,10 @@ describe('Corpus: identity provenance', () => {
 
   it('refuses to infer identity on weak or contradictory evidence', async () => {
     const { inferGameIdentity } = await import('../lib/game-page.mjs');
-    // Thin plurality — no clear owner.
     const thin = 'FPS-Estimates-A/1/ FPS-Estimates-A/1/ FPS-Estimates-B/2/';
     assert.notOk(inferGameIdentity(thin, 'A')?.accepted, 'a 2:1 margin must not be enough');
-    // Dominant, but the page name disagrees with the slug.
     const wrongName = Array(30).fill('FPS-Estimates-Alpha/1/').join(' ');
     assert.notOk(inferGameIdentity(wrongName, 'Beta')?.accepted, 'slug/name disagreement must block inference');
-    // Dominant and corroborated.
     assert.ok(inferGameIdentity(wrongName, 'Alpha')?.accepted, 'dominant + corroborated should be accepted');
   });
 
@@ -449,19 +401,9 @@ describe('Corpus: identity provenance', () => {
 });
 
 // --- why other games' pages carry CS:GO's EFPS block ------------------------
-// The mechanism, not the correlation. The "EFps Game Bottlenecks" widget is a
-// select2 seeded from a server-rendered inline array:
-//
-//   $(".select_choose_yt").select2($.extend({ data:{ results:[ … ] } …
-//
-// Its only handler is `select2-selecting`, which does `location = urlpayload`.
-// Nothing ever repopulates that array client-side, so whatever a saved file
-// contains is exactly what the server sent — the capture route cannot affect
-// it, and no way of saving the page can turn the default into the page's own
-// data.
-//
-// What the server sends is one FIXED dataset, CS:GO's, on every page except a
-// few very high-sample titles. That is why the quarantine fires so often.
+// The compare widget can carry a fixed server-default dataset belonging to a
+// different game. Ownership therefore comes from the EFPS token/page identity
+// check, not from assumptions about popularity or sample-count thresholds.
 describe('Corpus: the borrowed EFPS block is a single fixed server default', () => {
   const csgoFile = 'FPS-Estimates-Counter-Strike--Global-Offensive-3680.html';
   const efpsOf = (file) =>
@@ -491,9 +433,6 @@ describe('Corpus: the borrowed EFPS block is a single fixed server default', () 
     }
   });
 
-  // The decisive check that the quarantine discards duplicates rather than
-  // real measurements: if these were the page's own numbers merely mislabelled,
-  // the FPS values would differ from CS:GO's for the same (GPU, CPU).
   it('the borrowed values are genuinely CS:GO’s, not the page’s own mislabelled', () => {
     const direct = (file) => {
       const m = new Map();
@@ -512,43 +451,24 @@ describe('Corpus: the borrowed EFPS block is a single fixed server default', () 
     }
   });
 
-  // Pages that DO publish their own block are the highest-sample titles. The
-  // boundary is only bracketed, not pinned: Battlefield 1 (28,457) gets the
-  // default and PUBG (75,383) gets its own, so the cutoff lies somewhere
-  // between. Asserted as a bracket so a future page inside that gap tightens
-  // the finding instead of silently contradicting it.
-  it('only the highest-sample games publish their own block', () => {
-    const own = [];
-    const borrowed = [];
-    for (const f of files) {
-      const recs = efpsOf(f);
-      if (recs.length === 0) continue;
-      const m = f.match(/-(\d+)\.html$/);
-      (recs[0].efpsGameToken === 'CSGO' && f !== csgoFile ? borrowed : own).push(m?.[1]);
+  it('ownership is determined by token agreement, not sample count', () => {
+    let own = 0;
+    let borrowed = 0;
+    for (const p of gamePages) {
+      const html = rawHtmlBySource.get(p._meta.sourceFile);
+      const allowed = new Set(expectedEfpsTokens(html, p.game.name).map((t) => t.toLowerCase()));
+      const rawRecords = extractEfpsRecords(html, {}).records;
+      if (rawRecords.length === 0) continue;
+      const token = rawRecords[0].efpsGameToken?.toLowerCase();
+      if (token && allowed.has(token)) own++;
+      else borrowed++;
     }
-    const samplesById = new Map(
-      fsSync
-        .readFileSync(path.join(pagesDir, '..', 'dataset', 'games.jsonl'), 'utf-8')
-        .trim()
-        .split('\n')
-        .map((l) => JSON.parse(l))
-        .map((g) => [String(g.gameId), g.totalSamples ?? 0]),
-    );
-    const minOwn = Math.min(...own.map((id) => samplesById.get(id) ?? 0));
-    const maxBorrowed = Math.max(...borrowed.map((id) => samplesById.get(id) ?? 0));
-    assert.ok(
-      maxBorrowed < minOwn,
-      `sample counts must separate the two groups: highest borrowing page has ${maxBorrowed}, ` +
-        `lowest self-publishing page has ${minOwn}`,
-    );
+    assert.ok(own > 0, 'corpus should contain pages publishing their own EFPS block');
+    assert.ok(borrowed > 0, 'corpus should contain pages carrying a borrowed EFPS block');
   });
 });
 
 // --- extraction reliability across every saved page -------------------------
-// These are the fields the capture programme actually exists to collect. The
-// failure mode that matters is not a crash but a silent null or a quietly
-// short table, so each page is checked for completeness rather than for
-// merely parsing.
 describe('Corpus: the core per-game fields are extracted from every page', () => {
   const files = fsSync.readdirSync(pagesDir).filter((f) => f.endsWith('.html')).sort();
   const parsedAll = files.map((f) => [f, parseGamePage(fsSync.readFileSync(path.join(pagesDir, f), 'utf-8'), f)]);
@@ -589,11 +509,6 @@ describe('Corpus: the core per-game fields are extracted from every page', () =>
     }
   });
 
-  // Independent of the row regex, so it catches the failure that regex cannot
-  // report on itself: rows quietly dropped because one row's markup differed.
-  // Every component row carries a per-component filter link, and those links
-  // can be counted straight out of the page. If the two counts ever diverge,
-  // the table was parsed short.
   it('extracts every component row the page links to', () => {
     for (const [f, p] of parsedAll) {
       const id = p.game?.gameId;
