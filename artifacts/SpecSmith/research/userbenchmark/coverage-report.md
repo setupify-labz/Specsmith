@@ -5,7 +5,7 @@
 > These are crowd-sourced, self-reported third-party values — **not** SpecSmith
 > verified benchmark records.
 
-Generated: 2026-08-19T21:40:36.563Z  
+Generated: 2026-08-20T22:49:37.194Z  
 Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 
 ## Catalog coverage
@@ -13,37 +13,37 @@ Parser: `ub-research/2.0.0` · EFPS extractor: `ub-efps/1.0.0`
 | Metric | Count |
 |---|---:|
 | Total known games | 316 |
-| Pages actually available (captured) | 19 |
-| Pages successfully parsed | 19 |
+| Pages actually available (captured) | 59 |
+| Pages successfully parsed | 59 |
 | Captured but failed to parse | 0 |
-| **Not captured** | **297** |
-| Capture coverage | 6.01% |
+| **Not captured** | **257** |
+| Capture coverage | 18.67% |
 
-Source files discovered: 19 · parsed as game pages: 19 · skipped (not game pages): 0 · parser threw: 0
+Source files discovered: 59 · parsed as game pages: 59 · skipped (not game pages): 0 · parser threw: 0
 
 ## Extracted records
 
 | Dataset | Records |
 |---|---:|
-| Games | 19 |
-| EFPS — total | 600 |
-| EFPS — direct | 81 |
-| EFPS — comparisons | 519 |
-| GPU observations | 365 |
-| CPU observations | 365 |
-| Configurations | 901 |
-| Distributions | 57 |
+| Games | 59 |
+| EFPS — total | 1000 |
+| EFPS — direct | 135 |
+| EFPS — comparisons | 865 |
+| GPU observations | 1165 |
+| CPU observations | 1165 |
+| Configurations | 2861 |
+| Distributions | 177 |
 | Duplicates removed | 0 |
 | Conflict keys | 0 |
-| Rejected | 3200 |
+| Rejected | 10800 |
 
 ## Chart coverage
 
 | Chart | Games with data | Of parsed |
 |---|---:|---:|
-| FPS histogram | 19 | 19 |
-| Settings distribution | 19 | 19 |
-| Resolution distribution | 19 | 19 |
+| FPS histogram | 59 | 59 |
+| Settings distribution | 59 | 59 |
+| Resolution distribution | 59 | 59 |
 
 ## Configuration decoding
 
@@ -61,7 +61,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | Filter path position2 | unresolved |
 | Filter path position3 | unresolved |
 
-- EFPS records fully configuration-decoded: **600**
+- EFPS records fully configuration-decoded: **1000**
 - EFPS records with an unresolved field: **0**
 - Configurations with an unresolved position: **0**
 
@@ -69,7 +69,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 
 ## EFPS cross-validation
 
-1014 comparison sides were checked against the direct record for the same (game, GPU, CPU): **1014 agreed exactly, 0 mismatched.**
+1690 comparison sides were checked against the direct record for the same (game, GPU, CPU): **1690 agreed exactly, 0 mismatched.**
 
 ## Validation
 
@@ -84,6 +84,7 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | AdVenture Capitalist | 3654 | 97.7 | 57 | 0 | 0 | 0 | 20 | 20 | 3 |
 | Age of Empires II: HD Edition | 3655 | 48.1 | 429 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Alien: Isolation | 3656 | 57 | 211 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Apex Legends | 4036 | 90.5 | 15084 | 0 | 0 | 0 | 20 | 20 | 1 |
 | ARK: Survival Evolved | 3653 | 50.8 | 5765 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Arma 3 | 3660 | 45.9 | 4108 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Assassin's Creed Odyssey | 4032 | 51.6 | 4838 | 0 | 0 | 0 | 20 | 20 | 1 |
@@ -95,19 +96,58 @@ Full evidence in [`efps/configuration-analysis.md`](efps/configuration-analysis.
 | Battlefield 4 | 3665 | 68.6 | 12750 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Battlefield 5 | 3961 | 80.8 | 8948 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Battlerite | 3666 | 57.7 | 50 | 0 | 0 | 0 | 20 | 20 | 3 |
+| Black Desert | 3963 | 64.1 | 975 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Borderlands 2 | 3669 | 77.4 | 1086 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Call of Duty: Black Ops 4 | 3965 | 87.3 | 7698 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Call of Duty: Black Ops III | 3672 | 70.8 | 1512 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Cities: Skylines | 3676 | 34.1 | 1229 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Counter-Strike: Global Offensive | 3680 | 153 | 151690 | 200 | 27 | 173 | 20 | 20 | 0 |
+| Diablo III | 3694 | 74.9 | 1322 | 0 | 0 | 0 | 20 | 20 | 1 |
+| DOOM | 3683 | 99.7 | 2403 | 0 | 0 | 0 | 20 | 20 | 1 |
+| DOTA 2 | 3684 | 78.8 | 20239 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Escape from Tarkov | 4019 | 67.8 | 931 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Euro Truck Simulator 2 | 3709 | 46.3 | 2632 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Fallout 4 | 3715 | 53 | 10024 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Far Cry 5 | 3973 | 61.2 | 3610 | 0 | 0 | 0 | 20 | 20 | 1 |
 | Fortnite | 3954 | 96 | 87737 | 200 | 27 | 173 | 20 | 20 | 0 |
+| Grand Theft Auto V | 3727 | 53.9 | 71870 | 200 | 27 | 173 | 20 | 20 | 0 |
+| Guild Wars 2 | 3733 | 48.2 | 1192 | 0 | 0 | 0 | 20 | 20 | 1 |
+| H1Z1: King of the Kill | 3735 | 75.1 | 1482 | 0 | 0 | 0 | 20 | 20 | 1 |
+| League of Legends | 3761 | 126 | 68277 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Microsoft Flight Simulator X | 3774 | 32 | 1008 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Minecraft | 3776 | 134 | 23472 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Need for Speed | 3782 | 43.3 | 999 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Overwatch | 3789 | 105 | 54796 | 200 | 27 | 173 | 20 | 20 | 0 |
+| Paladins | 3791 | 77.4 | 1200 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Path of Exile | 3792 | 73.1 | 1002 | 0 | 0 | 0 | 20 | 20 | 1 |
 | PlayerUnknown's Battlegrounds | 3944 | 75.5 | 75383 | 200 | 27 | 173 | 20 | 20 | 0 |
+| Rise of the Tomb Raider | 3809 | 53.7 | 4867 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Rocket League | 3811 | 139 | 5632 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Rust | 3813 | 66 | 6199 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Shadow of the Tomb Raider | 4004 | 62.8 | 857 | 0 | 0 | 0 | 20 | 20 | 1 |
+| StarCraft II | 3828 | 65.5 | 924 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Team Fortress 2 | 3837 | 104 | 1706 | 0 | 0 | 0 | 20 | 20 | 1 |
+| The Elder Scrolls V: Skyrim | 3847 | 48.2 | 2423 | 0 | 0 | 0 | 20 | 20 | 1 |
+| The Witcher 3: Wild Hunt | 3855 | 56.9 | 25546 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Tom Clancy's Rainbow Six Siege | 3859 | 105 | 16591 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Tom Clancy's The Division | 3860 | 69.8 | 1403 | 0 | 0 | 0 | 20 | 20 | 1 |
+| War Thunder | 3876 | 78.4 | 2735 | 0 | 0 | 0 | 20 | 20 | 1 |
+| Warframe | 3878 | 86.8 | 2172 | 0 | 0 | 0 | 20 | 20 | 1 |
+| World of Tanks | 3881 | 72.1 | 17710 | 0 | 0 | 0 | 20 | 20 | 1 |
+| World of Warcraft | 3882 | 71.4 | 17930 | 0 | 0 | 0 | 20 | 20 | 1 |
+| World of Warcraft: Battle for Azeroth | 3980 | 74.7 | 4659 | 0 | 0 | 0 | 20 | 20 | 1 |
+| World of Warships | 3983 | 63.6 | 1210 | 0 | 0 | 0 | 20 | 20 | 1 |
+| X-Plane 11 | 3981 | 31.4 | 982 | 0 | 0 | 0 | 20 | 20 | 1 |
 
 ## Biggest remaining gaps
 
-- 297 of 316 known games have no saved source (93.99% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
+- 257 of 316 known games have no saved source (81.33% of the catalog). Every extracted-record count in this report is bounded by that gap, not by the parser.
 - EFPS observations carry no resolution or settings dimension, so a given (GPU, CPU, FPS) triple cannot be attributed to a specific preset or resolution.
 - Filter-path positions 2 and 3 are never populated by any link on any saved source, so their meaning remains unproven.
 
 ## Uncaptured games
 
-297 of 316 known games have no saved source. Each row below is a page a human
+257 of 316 known games have no saved source. Each row below is a page a human
 would need to save into `pages/` under the given filename. This tool cannot
 acquire them — see the capture workflow in `README.md`.
 
@@ -118,28 +158,22 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | ABZU | 3651 | `FPS-Estimates-ABZU-3651.html` |
 | American Truck Simulator | 3657 | `FPS-Estimates-American-Truck-Simulator-3657.html` |
 | Anno 2205 | 3658 | `FPS-Estimates-Anno-2205-3658.html` |
-| Apex Legends | 4036 | `FPS-Estimates-Apex-Legends-4036.html` |
 | Arma 2 | 3659 | `FPS-Estimates-Arma-2-3659.html` |
 | Battlefield 6 | 4186 | `FPS-Estimates-Battlefield-6-4186.html` |
 | BeamNG | 3962 | `FPS-Estimates-BeamNG-3962.html` |
 | Biomutant | 4024 | `FPS-Estimates-Biomutant-4024.html` |
 | BioShock Infinite | 3667 | `FPS-Estimates-BioShock-Infinite-3667.html` |
-| Black Desert | 3963 | `FPS-Estimates-Black-Desert-3963.html` |
 | Black Squad | 3964 | `FPS-Estimates-Black-Squad-3964.html` |
 | Blackguards 2 | 3668 | `FPS-Estimates-Blackguards-2-3668.html` |
 | Bless Online | 4023 | `FPS-Estimates-Bless-Online-4023.html` |
-| Borderlands 2 | 3669 | `FPS-Estimates-Borderlands-2-3669.html` |
 | Brawlhalla | 3670 | `FPS-Estimates-Brawlhalla-3670.html` |
 | Broken Age: Act 2 | 3671 | `FPS-Estimates-Broken-Age-Act-2-3671.html` |
 | Call of Duty modern warfare 2 | 3966 | `FPS-Estimates-Call-of-Duty-modern-warfare-2-3966.html` |
 | Call of Duty WWII | 3967 | `FPS-Estimates-Call-of-Duty-WWII-3967.html` |
-| Call of Duty: Black Ops 4 | 3965 | `FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html` |
-| Call of Duty: Black Ops III | 3672 | `FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html` |
 | Call of Duty: Warzone | 4114 | `FPS-Estimates-Call-of-Duty-Warzone-4114.html` |
 | Call of Duty: World at War | 3673 | `FPS-Estimates-Call-of-Duty-World-at-War-3673.html` |
 | Child of Light | 3674 | `FPS-Estimates-Child-of-Light-3674.html` |
 | Chivalry: Medieval Warfare | 3675 | `FPS-Estimates-Chivalry-Medieval-Warfare-3675.html` |
-| Cities: Skylines | 3676 | `FPS-Estimates-Cities-Skylines-3676.html` |
 | Citizens of Earth | 3677 | `FPS-Estimates-Citizens-of-Earth-3677.html` |
 | Clicker Heroes | 3678 | `FPS-Estimates-Clicker-Heroes-3678.html` |
 | Company of Heroes 2 | 3679 | `FPS-Estimates-Company-of-Heroes-2-3679.html` |
@@ -155,4 +189,10 @@ The full list lives in `capture-manifest.json`; the first 40 are shown here.
 | Dark Souls: Remastered | 4022 | `FPS-Estimates-Dark-Souls-Remastered-4022.html` |
 | Darkest Dungeon | 3688 | `FPS-Estimates-Darkest-Dungeon-3688.html` |
 | Darksiders 3 | 4021 | `FPS-Estimates-Darksiders-3-4021.html` |
-| _…257 more_ | | _see capture-manifest.json_ |
+| Dauntless | 3971 | `FPS-Estimates-Dauntless-3971.html` |
+| Day of the Tentacle Remastered | 3689 | `FPS-Estimates-Day-of-the-Tentacle-Remastered-3689.html` |
+| DayZ | 3690 | `FPS-Estimates-DayZ-3690.html` |
+| Dead by Daylight | 3691 | `FPS-Estimates-Dead-by-Daylight-3691.html` |
+| Destiny 2 | 4061 | `FPS-Estimates-Destiny-2-4061.html` |
+| Deus Ex: Mankind Divided | 3692 | `FPS-Estimates-Deus-Ex-Mankind-Divided-3692.html` |
+| _…217 more_ | | _see capture-manifest.json_ |
