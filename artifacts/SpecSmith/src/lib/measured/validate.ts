@@ -15,6 +15,7 @@
 import type { GameFeatureProfile } from '../benchmarks/types';
 import { computeFrameTimeStats, canonicalFrameTimeBytes } from './frameTimes';
 import { HardwareAttributionError, resolveHardware, type CatalogEntry } from './hardwareMatch';
+import { ALL_SEGMENTATION_STAGES, protocolById, protocolForGame, type SegmentationStageId } from './benchmarkProtocol';
 import {
   MAX_FRAME_GENERATION_FACTOR,
   MAX_RENDER_SCALE_PERCENT,
@@ -354,6 +355,67 @@ export function validateMeasuredObservation(
   }
   if (obs.detected.gpuOverclockDetected) {
     issues.push(warn(id, 'gpu.overclocked', 'A non-stock GPU clock/power profile was detected; this is not a stock-hardware result.'));
+  }
+
+  // --- segmentation must be authorised by the game's benchmark protocol
+  // A record can claim any segmentation it likes; that claim is worth nothing
+  // unless the game was approved for those rules. gpu-utilization-v1 in
+  // particular removes sustained low-GPU-utilisation stretches, which in a
+  // CPU-bound title is real gameplay — so a record may only carry it if the
+  // protocol registered for THIS game declares the evidence for it.
+  if (obs.segmentation) {
+    const seg = obs.segmentation;
+    const expected = protocolForGame(obs.gameId);
+    const declared = protocolById(seg.protocolId);
+
+    if (!declared) {
+      issues.push(err(id, 'segmentation.unknown-protocol', `Segmentation names protocol "${seg.protocolId}", which is not a registered benchmark protocol.`));
+    } else if (declared.id !== expected.id) {
+      issues.push(err(
+        id,
+        'segmentation.protocol-mismatch',
+        `Segmentation claims protocol "${seg.protocolId}" but game "${obs.gameId}" is governed by "${expected.id}". A record cannot select a protocol other than its game's.`,
+      ));
+    } else if (declared.version !== seg.protocolVersion) {
+      issues.push(err(
+        id,
+        'segmentation.protocol-version-mismatch',
+        `Segmentation claims "${seg.protocolId}" version ${seg.protocolVersion}, but that protocol is at version ${declared.version}. The rules may have changed; re-segment rather than relabel.`,
+      ));
+    }
+
+    for (const stage of seg.stages) {
+      if (!ALL_SEGMENTATION_STAGES.includes(stage as SegmentationStageId)) {
+        issues.push(err(id, 'segmentation.unknown-stage', `Segmentation names unknown stage "${stage}".`));
+        continue;
+      }
+      if (!expected.stages.includes(stage as SegmentationStageId)) {
+        issues.push(err(
+          id,
+          'segmentation.stage-not-permitted',
+          `Stage "${stage}" was applied, but protocol "${expected.id}" for game "${obs.gameId}" does not permit it. ` +
+            'Workload-based stages remove frames a generic capture must keep — sustained low GPU utilisation is a black screen in one game and legitimate CPU-bound gameplay in another, and only the protocol says which.',
+        ));
+      }
+    }
+
+    if (seg.retainedFrames > seg.totalFrames) {
+      issues.push(err(id, 'segmentation.retained-exceeds-total', `Segmentation retains ${seg.retainedFrames} of ${seg.totalFrames} frames, which is impossible.`));
+    }
+    if (seg.retainedFrames !== obs.frameTimes.frameCount) {
+      issues.push(err(
+        id,
+        'segmentation.frame-count-mismatch',
+        `Segmentation retained ${seg.retainedFrames} frames but the stored frame-time blob holds ${obs.frameTimes.frameCount}. The statistics would not be computed over the frames the record claims.`,
+      ));
+    }
+    if (seg.retainedSha256 !== obs.frameTimes.sha256) {
+      issues.push(err(
+        id,
+        'segmentation.retained-hash-mismatch',
+        'The segmentation\'s retained-frame hash does not match the stored frame-time blob, so the record does not describe the frames its statistics came from.',
+      ));
+    }
   }
 
   return issues;

@@ -595,3 +595,84 @@ describe('hardware attribution is re-derived, not merely checked for existence',
     });
   });
 });
+
+// A record can claim any segmentation it likes. That claim is worth nothing
+// unless the game was approved for those rules — otherwise a caller could
+// grant itself a workload-based stage that deletes real CPU-bound gameplay.
+describe('segmentation must be authorised by the game\'s benchmark protocol', () => {
+  const seg = (over: Record<string, unknown> = {}) => {
+    const f = goodFrames();
+    const obs = makeObservation(f) as unknown as MeasuredObservation;
+    const record = {
+      protocolId: 'generic-fullscreen',
+      protocolVersion: '1.0.0',
+      stages: ['presentation-path-v1'],
+      sourceSha256: 'a'.repeat(64),
+      retainedSha256: obs.frameTimes.sha256,
+      totalFrames: f.length + 500,
+      retainedFrames: obs.frameTimes.frameCount,
+      ...over,
+    };
+    return validateMeasuredObservation({ ...obs, segmentation: record } as MeasuredObservation, f, []).map((i) => i.rule);
+  };
+
+  it('accepts the generic stage on a generic game', () => {
+    expect(seg()).not.toContain('segmentation.stage-not-permitted');
+  });
+
+  it('REJECTS gpu-utilization-v1 on a game whose protocol does not permit it', () => {
+    // makeObservation's gameId is not rdr2, so the generic protocol governs.
+    const rules = seg({ stages: ['presentation-path-v1', 'gpu-utilization-v1'] });
+    expect(rules).toContain('segmentation.stage-not-permitted');
+  });
+
+  it('accepts gpu-utilization-v1 for RDR2, whose protocol declares the evidence for it', () => {
+    const f = goodFrames();
+    const obs = { ...makeObservation(f), gameId: 'rdr2' } as unknown as MeasuredObservation;
+    const rules = validateMeasuredObservation({
+      ...obs,
+      segmentation: {
+        protocolId: 'rdr2-builtin-benchmark',
+        protocolVersion: '1.0.0',
+        stages: ['presentation-path-v1', 'gpu-utilization-v1'],
+        sourceSha256: 'a'.repeat(64),
+        retainedSha256: obs.frameTimes.sha256,
+        totalFrames: f.length + 500,
+        retainedFrames: obs.frameTimes.frameCount,
+      },
+    } as MeasuredObservation, f, []).map((i) => i.rule);
+    expect(rules).not.toContain('segmentation.stage-not-permitted');
+    expect(rules).not.toContain('segmentation.protocol-mismatch');
+  });
+
+  it('refuses a record that selects a protocol other than its game\'s', () => {
+    expect(seg({ protocolId: 'rdr2-builtin-benchmark' })).toContain('segmentation.protocol-mismatch');
+  });
+
+  it('refuses an unknown protocol', () => {
+    expect(seg({ protocolId: 'made-up' })).toContain('segmentation.unknown-protocol');
+  });
+
+  it('refuses a stale protocol version rather than relabelling it', () => {
+    expect(seg({ protocolVersion: '0.9.0' })).toContain('segmentation.protocol-version-mismatch');
+  });
+
+  it('refuses an unknown stage name', () => {
+    expect(seg({ stages: ['trim-until-it-looks-right'] })).toContain('segmentation.unknown-stage');
+  });
+
+  it('refuses a record whose retained frames do not match the stored blob', () => {
+    expect(seg({ retainedFrames: 12 })).toContain('segmentation.frame-count-mismatch');
+    expect(seg({ retainedSha256: 'b'.repeat(64) })).toContain('segmentation.retained-hash-mismatch');
+  });
+
+  it('refuses retaining more frames than the capture held', () => {
+    expect(seg({ totalFrames: 5 })).toContain('segmentation.retained-exceeds-total');
+  });
+
+  it('leaves a record with no segmentation alone', () => {
+    const f = goodFrames();
+    const rules = validateMeasuredObservation(makeObservation(f) as MeasuredObservation, f, []).map((i) => i.rule);
+    expect(rules.filter((r) => r.startsWith('segmentation.'))).toEqual([]);
+  });
+});
