@@ -56,13 +56,15 @@ describe('third-party boundary: cannot be confused with measured or verified dat
     }
   });
 
-  it('thirdParty does not import any production data store', () => {
+  it('thirdParty imports no production data store except its own EFPS file', () => {
     // No auto-loading of benchmarkRecords.json, measuredObservations.json, or
-    // the Estimator's games.json/gpus.json/cpus.json — this module converts
-    // rows a caller hands it; it does not go looking for data on its own.
+    // the Estimator's games.json/gpus.json/cpus.json. efpsStore.ts is the one
+    // exception and may read ONLY its own store — that is the point of giving
+    // third-party EFPS a separate database rather than a shared one.
     for (const { file, text } of thirdPartyFiles) {
       const dataImports = importsOf(text).filter((spec) => spec.endsWith('.json'));
-      expect(dataImports, `${file} must not import a data store`).toEqual([]);
+      const allowed = file === 'efpsStore.ts' ? ['../../data/thirdPartyEfps.json'] : [];
+      expect(dataImports, `${file} may import only ${JSON.stringify(allowed)}`).toEqual(allowed);
     }
   });
 
@@ -108,6 +110,26 @@ describe('third-party boundary: cannot be confused with measured or verified dat
       for (const forbidden of ['BenchmarkRecord', 'VerifiedFpsResult', 'MeasuredObservation']) {
         expect(code.includes(forbidden), `${file} must not use ${forbidden} in actual code`).toBe(false);
       }
+    }
+  });
+
+  it('the EFPS store is never merged into another tier\'s store file', () => {
+    // Structural, not editorial: the other stores must contain no EFPS record
+    // id and no third-party tier literal.
+    for (const other of ['benchmarkRecords.json', 'measuredObservations.json', 'games.json']) {
+      const text = read(path.join(srcRoot, 'data', other));
+      expect(text, `${other} must not carry EFPS records`).not.toContain('ub-efps-');
+      expect(text, `${other} must not carry the third-party tier`).not.toContain('third-party-crowd-sourced');
+    }
+  });
+
+  it('EFPS ingestion lives outside the browser bundle', () => {
+    // The node:fs half is in scripts/, so nothing under src/ can write the
+    // store at runtime.
+    const ingest = path.join(srcRoot, '..', 'scripts', 'thirdParty', 'ingest-efps.ts');
+    expect(fs.existsSync(ingest)).toBe(true);
+    for (const { file, text } of thirdPartyFiles) {
+      expect(codeOnly(text).includes('writeFileSync'), `${file} must not write`).toBe(false);
     }
   });
 
