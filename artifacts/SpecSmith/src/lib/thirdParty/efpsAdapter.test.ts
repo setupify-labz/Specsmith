@@ -149,32 +149,59 @@ describe('rejected EFPS cannot cross the boundary', () => {
 });
 
 describe('uncertain hardware mappings cannot become admissible', () => {
-  it('never exposes a canonical id, and says why', () => {
+  it('resolves a token only through the explicit map, never by resemblance', () => {
+    // The GPU tokens in this corpus are 2016-2019 parts with no catalog
+    // counterpart, so nothing resolves on the GPU side and no record can be
+    // joinable however the CPU side turns out.
     for (const row of [directRow(), comparisonRow()]) {
       const r = toThirdPartyEfpsRecord(row);
       expect(r.hardwareJoinable).toBe(false);
       expect(r.hardware.canonicalGpuId).toBeNull();
-      expect(r.hardware.canonicalCpuId).toBeNull();
-      expect(r.hardware.status).toBe('token-namespace-unresolved');
-      expect(r.hardware.reason).toMatch(/different namespace/i);
+      for (const d of r.datapoints) {
+        expect(d.hardware.gpu.status).toBe('blocked');
+        expect(d.hardware.joinable).toBe(false);
+      }
     }
   });
 
-  it('keeps form factor "unknown", which is not "desktop"', () => {
-    // EFPS shorthand carries no mobile/integrated marker either way, so the
-    // desktop/laptop/integrated boundary is preserved by refusing to claim one.
-    const r = toThirdPartyEfpsRecord(directRow());
+  it('keeps record form factor "unknown" whenever anything is unresolved', () => {
+    // 'unknown' is not 'desktop'. A record may not round up to desktop just
+    // because the one token that DID resolve happened to be a desktop part.
+    const r = toThirdPartyEfpsRecord(directRow({ cpu: '3600' }));
+    expect(r.datapoints[0].hardware.cpu.status).toBe('resolved');
     expect(r.hardware.formFactor).toBe('unknown');
     expect(r.hardware.formFactor).not.toBe('desktop');
   });
 
-  it('does not resolve the CPU token "3600" despite the lookalike component name', () => {
-    // The cleaning pipeline resolved "AMD Ryzen 5 3600" -> r5-3600. The EFPS
-    // token "3600" merely resembles it; treating that as a resolution would be
-    // an unreviewed fuzzy match.
+  it('resolves the CPU token "3600" to r5-3600 — and still refuses to join the record', () => {
+    // This is the mapping the previous phase deliberately withheld pending
+    // review. It is now an explicit, reviewed alias with independent
+    // corroboration (the cleaning pipeline resolved the full component name
+    // "AMD Ryzen 5 3600" to the same id from these same pages). Resolving it
+    // does NOT make the record joinable: the GPU token is still unknown.
     const r = toThirdPartyEfpsRecord(directRow({ cpu: '3600' }));
     expect(r.datapoints[0].cpuToken).toBe('3600');
-    expect(r.hardware.canonicalCpuId).toBeNull();
+    expect(r.datapoints[0].hardware.cpu.canonicalId).toBe('r5-3600');
+    expect(r.hardware.canonicalCpuId).toBe('r5-3600');
+    expect(r.hardware.status).toBe('partial');
+    expect(r.hardwareJoinable).toBe(false);
+  });
+
+  it('preserves the original shorthand token whether or not it resolved', () => {
+    const resolved = toThirdPartyEfpsRecord(directRow({ cpu: '3600', gpu: '2060S' }));
+    expect(resolved.datapoints[0].cpuToken).toBe('3600');
+    expect(resolved.datapoints[0].gpuToken).toBe('2060S');
+    const blocked = toThirdPartyEfpsRecord(directRow({ cpu: '9400F', gpu: '580' }));
+    expect(blocked.datapoints[0].cpuToken).toBe('9400F');
+    expect(blocked.datapoints[0].gpuToken).toBe('580');
+  });
+
+  it('gives a two-GPU comparison no single record-level GPU id', () => {
+    // Collapsing two compared parts into one field would attribute both
+    // figures to whichever side won the coin toss.
+    const r = toThirdPartyEfpsRecord(comparisonRow());
+    expect(r.datapoints[0].gpuToken).not.toBe(r.datapoints[1].gpuToken);
+    expect(r.hardware.canonicalGpuId).toBeNull();
   });
 
   it('exposes an empty hardware-joinable set', () => {

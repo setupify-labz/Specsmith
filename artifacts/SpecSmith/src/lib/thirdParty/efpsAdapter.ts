@@ -21,8 +21,14 @@ import {
   THIRD_PARTY_TIER,
   type EfpsClassification,
   type EfpsDatapoint,
+  type EfpsHardwareResolution,
   type ThirdPartyEfpsRecord,
 } from './efpsTypes';
+import {
+  isSafelyResolved,
+  resolveEfpsToken,
+  type EfpsTokenResolution,
+} from './efpsHardwareMap';
 
 /** Raw shapes as emitted by research/userbenchmark/dataset/efps*.jsonl. */
 export interface RawEfpsProvenance {
@@ -98,7 +104,7 @@ export const EFPS_ADMISSION_RULE =
  * rather than only in a comment.
  */
 export const EFPS_TOKEN_NAMESPACE_REASON =
-  'EFPS identifies hardware with UserBenchmark shorthand ("2060S", "3600", "5700-XT"), a different namespace from the component-table names the cleaning pipeline resolves. No EFPS token has been resolved by that pipeline, so no canonical id is exposed. Resolving them belongs upstream where it can be reviewed — inventing a token matcher here would be exactly the unreviewed fuzzy matching this boundary exists to prevent.';
+  'EFPS identifies hardware with UserBenchmark shorthand ("2060S", "3600", "5700-XT"), a different namespace from the component-table names the cleaning pipeline resolves. Tokens are resolved to canonical ids ONLY through the explicit, versioned alias table in efpsHardwareMap.ts — never by similarity, and never by digit overlap, which would map "580" (an AMD RX 580) onto Intel Arc A580. A token with no catalog counterpart, more than one plausible candidate, or no desktop evidence stays blocked with a null canonical id.';
 
 const isComparison = (row: RawEfpsRow): row is RawEfpsComparisonRow => row.recordType === COMPARISON_TYPE;
 
@@ -127,6 +133,62 @@ function requireFps(v: unknown, where: string): number {
 export function efpsRecordId(row: RawEfpsRow): string {
   const kind = isComparison(row) ? 'cmp' : 'dir';
   return `ub-efps-${row.gameId}-${kind}-${row.rawUrlPayload}`;
+}
+
+/**
+ * Attaches token resolution to a datapoint, leaving the tokens themselves
+ * untouched.
+ *
+ * Resolution is per-datapoint rather than per-record because a comparison
+ * record's two sides need not share hardware: 580 of the 865 comparisons pit
+ * two different GPUs against one another and 285 pit two different CPUs. A
+ * single record-level pair would have to pick one side and would therefore be
+ * wrong about the other.
+ */
+export function withHardware(d: Omit<EfpsDatapoint, 'hardware'>): EfpsDatapoint {
+  const gpu = resolveEfpsToken(d.gpuToken, 'gpu');
+  const cpu = resolveEfpsToken(d.cpuToken, 'cpu');
+  return {
+    ...d,
+    hardware: {
+      gpu,
+      cpu,
+      // Both sides, or neither. A datapoint with a resolved CPU and an unknown
+      // GPU describes no hardware pair anyone can look up.
+      joinable: isSafelyResolved(gpu) && isSafelyResolved(cpu),
+    },
+  };
+}
+
+/** The one id every datapoint agrees on, or null if they do not all agree. */
+function sharedCanonicalId(resolutions: readonly EfpsTokenResolution[]): string | null {
+  if (!resolutions.every(isSafelyResolved)) return null;
+  const ids = new Set(resolutions.map((r) => r.canonicalId));
+  // A two-GPU comparison has two ids and therefore no single record-level GPU.
+  // Returning either one would silently attribute both figures to one part.
+  return ids.size === 1 ? [...ids][0] : null;
+}
+
+/** Record-level summary of the per-datapoint resolutions. */
+export function aggregateHardware(
+  datapoints: readonly EfpsDatapoint[],
+  reason: string = EFPS_TOKEN_NAMESPACE_REASON,
+): EfpsHardwareResolution {
+  const gpus = datapoints.map((d) => d.hardware.gpu);
+  const cpus = datapoints.map((d) => d.hardware.cpu);
+  const allResolved = datapoints.every((d) => d.hardware.joinable);
+  const anyResolved = [...gpus, ...cpus].some(isSafelyResolved);
+
+  return {
+    status: allResolved ? 'resolved' : anyResolved ? 'partial' : 'unresolved',
+    canonicalGpuId: sharedCanonicalId(gpus),
+    canonicalCpuId: sharedCanonicalId(cpus),
+    // 'desktop' requires EVERY token to have resolved as desktop. One
+    // unresolved token means the record's form factor is genuinely unknown,
+    // and unknown must never round up to desktop.
+    formFactor: allResolved ? 'desktop' : 'unknown',
+    reason,
+  };
 }
 
 /**
@@ -168,18 +230,18 @@ export function toThirdPartyEfpsRecord(row: RawEfpsRow): ThirdPartyEfpsRecord {
   const classification: EfpsClassification = isComparison(row) ? 'comparison' : 'direct';
 
   const datapoints: EfpsDatapoint[] = isComparison(row)
-    ? row.sides.map((s, i) => ({
+    ? row.sides.map((s, i) => withHardware({
         sourceReportedFps: requireFps(s.fps, `comparison side ${i}`),
         gpuToken: requireString(s.gpu, `sides[${i}].gpu`),
         cpuToken: requireString(s.cpu, `sides[${i}].cpu`),
         label: s.label ?? null,
       }))
-    : [{
+    : [withHardware({
         sourceReportedFps: requireFps(row.fps, 'direct row'),
         gpuToken: requireString(row.gpu, 'gpu'),
         cpuToken: requireString(row.cpu, 'cpu'),
         label: null,
-      }];
+      })];
 
   if (isComparison(row) && datapoints.length !== 2) {
     throw new EfpsAdmissionError(`Comparison record has ${datapoints.length} sides; a published A-vs-B entry must have exactly 2.`);
@@ -192,19 +254,8 @@ export function toThirdPartyEfpsRecord(row: RawEfpsRow): ThirdPartyEfpsRecord {
     gameId: provenance.gameId,
     gameName: provenance.gameName,
     datapoints,
-    // Always false today. Set only by a future upstream resolution of the EFPS
-    // token namespace — never inferred here.
-    hardwareJoinable: false,
-    hardware: {
-      status: 'token-namespace-unresolved',
-      canonicalGpuId: null,
-      canonicalCpuId: null,
-      // EFPS shorthand carries no mobile/integrated marker either way, so the
-      // form factor is genuinely unknown — which is not 'desktop', and is its
-      // own reason this record cannot be joined to a desktop-only catalog.
-      formFactor: 'unknown',
-      reason: EFPS_TOKEN_NAMESPACE_REASON,
-    },
+    hardwareJoinable: datapoints.every((d) => d.hardware.joinable),
+    hardware: aggregateHardware(datapoints),
     ownership: {
       efpsGameToken: token,
       tokenAgreesWithPage: true,
@@ -241,7 +292,14 @@ export function toThirdPartyEfpsRecords(rows: readonly RawEfpsRow[]): ThirdParty
   return records.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** Records whose hardware may be joined to SpecSmith catalog ids. Empty today. */
+/**
+ * Records whose hardware may be joined to SpecSmith catalog ids.
+ *
+ * Empty today: no EFPS GPU token has a catalog counterpart, so no record can
+ * satisfy the both-sides rule. The re-check of the two ids is deliberate
+ * belt-and-braces — a caller cannot get a joinable record by flipping the
+ * boolean alone.
+ */
 export function hardwareJoinableEfpsRecords(records: readonly ThirdPartyEfpsRecord[]): ThirdPartyEfpsRecord[] {
   return records.filter((r) => r.hardwareJoinable && r.hardware.canonicalGpuId !== null && r.hardware.canonicalCpuId !== null);
 }

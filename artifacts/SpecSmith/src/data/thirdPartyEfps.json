@@ -1,19 +1,28 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "hardwareMapVersion": 1,
   "note": "Third-party crowd-sourced FPS estimates from UserBenchmark. SEPARATE STORE by design: SpecSmith measurements live in measuredObservations.json, cited third-party publications in benchmarkRecords.json, and estimator base data in games.json — none of them are merged with this. These figures do not feed the FPS estimator or the verified-benchmark lookup.",
-  "contentSha256": "5124dde27a615a208748277d6e4dc8d53111af24a5cbad69a31ebba499ad11c3",
+  "contentSha256": "37c7d8a5cc03e0d98a249b13394847307c71e19e855fadc29249f62ef2343b43",
   "counts": {
     "total": 1000,
     "direct": 135,
     "comparison": 865,
     "hardwareJoinable": 0,
-    "games": 5
+    "games": 5,
+    "hardware": {
+      "uniqueGpuTokens": 16,
+      "uniqueCpuTokens": 11,
+      "resolvedGpuTokens": 0,
+      "resolvedCpuTokens": 2,
+      "joinableDatapoints": 0,
+      "totalDatapoints": 1865
+    }
   },
   "constants": {
     "metricDefinition": "UserBenchmark's crowd-aggregated FPS estimate for this hardware pair in this game, as published on the game's FPS-Estimates page. Third-party and source-derived: SpecSmith did not measure it, and it is not a cited benchmark publication's result.",
     "notMeasuredWarning": "This is a third-party crowd-sourced estimate, not a SpecSmith measurement and not a verified benchmark record. It must never be presented as either, and it does not feed the FPS estimator.",
     "admissionRule": "The EFPS payload's embedded game token agrees with the page's own identity. Blocks whose token names a different game are UserBenchmark's default (usually CS:GO's) and are rejected upstream as efps-game-token-mismatch — 54 of the 59 captured games carry one.",
-    "hardwareResolutionReason": "EFPS identifies hardware with UserBenchmark shorthand (\"2060S\", \"3600\", \"5700-XT\"), a different namespace from the component-table names the cleaning pipeline resolves. No EFPS token has been resolved by that pipeline, so no canonical id is exposed. Resolving them belongs upstream where it can be reviewed — inventing a token matcher here would be exactly the unreviewed fuzzy matching this boundary exists to prevent."
+    "hardwareResolutionReason": "EFPS identifies hardware with UserBenchmark shorthand (\"2060S\", \"3600\", \"5700-XT\"), a different namespace from the component-table names the cleaning pipeline resolves. Tokens are resolved to canonical ids ONLY through the explicit, versioned alias table in efpsHardwareMap.ts — never by similarity, and never by digit overlap, which would map \"580\" (an AMD RX 580) onto Intel Arc A580. A token with no catalog counterpart, more than one plausible candidate, or no desktop evidence stays blocked with a null canonical id."
   },
   "sources": [
     {

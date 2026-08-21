@@ -15,6 +15,7 @@ import {
   rehydrateEfpsStore,
 } from './efpsStore';
 import { canonicalEfpsRecordBytes, EFPS_SCHEMA_VERSION, type PersistedEfpsStore } from './efpsTypes';
+import { EFPS_HARDWARE_MAP_VERSION } from './efpsHardwareMap';
 import { toThirdPartyEfpsRecords, type RawEfpsRow } from './efpsAdapter';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,84 @@ describe('the persisted EFPS store', () => {
     expect(getEfpsRecordsForGame('nope')).toHaveLength(0);
     expect(getEfpsRecordsByClassification('direct')).toHaveLength(135);
     expect(getEfpsRecordsByClassification('comparison')).toHaveLength(865);
+  });
+});
+
+describe('hardware token resolution in the persisted store', () => {
+  it('reports the real token coverage: 0/16 GPU, 2/11 CPU', () => {
+    const s = getEfpsStoreSummary();
+    expect(s.gpuTokens).toHaveLength(16);
+    expect(s.cpuTokens).toHaveLength(11);
+    expect(s.gpuTokens.filter((t) => t.resolved)).toHaveLength(0);
+    expect(s.cpuTokens.filter((t) => t.resolved).map((t) => t.token).sort()).toEqual(['3600', '3700X']);
+  });
+
+  it('no record is joinable, because no GPU token has a catalog counterpart', () => {
+    // The both-sides rule doing its job: 110 datapoints have a resolved CPU,
+    // and not one of them is joinable.
+    const s = getEfpsStoreSummary();
+    expect(s.joinableDatapoints).toBe(0);
+    expect(s.hardwareJoinable).toBe(0);
+    expect(getHardwareJoinableEfpsRecords()).toHaveLength(0);
+    const cpuResolved = getAllEfpsRecords().flatMap((r) => r.datapoints).filter((d) => d.hardware.cpu.status === 'resolved');
+    expect(cpuResolved).toHaveLength(110);
+    expect(cpuResolved.every((d) => d.hardware.joinable === false)).toBe(true);
+  });
+
+  it('keeps every original shorthand token, resolved or not', () => {
+    for (const r of getAllEfpsRecords()) {
+      for (const d of r.datapoints) {
+        expect(d.gpuToken.length).toBeGreaterThan(0);
+        expect(d.cpuToken.length).toBeGreaterThan(0);
+        expect(d.hardware.gpu.token).toBe(d.gpuToken);
+        expect(d.hardware.cpu.token).toBe(d.cpuToken);
+      }
+    }
+  });
+
+  it('never reports desktop form factor while anything is unresolved', () => {
+    // Desktop/laptop/integrated separation: 'unknown' must not round up.
+    for (const r of getAllEfpsRecords()) {
+      expect(r.hardware.formFactor).toBe('unknown');
+      expect(r.hardware.formFactor).not.toBe('desktop');
+    }
+  });
+
+  it('gives a two-GPU comparison no single record-level GPU id', () => {
+    const twoGpu = getAllEfpsRecords().filter(
+      (r) => r.classification === 'comparison' && r.datapoints[0].gpuToken !== r.datapoints[1].gpuToken,
+    );
+    expect(twoGpu).toHaveLength(580);
+    expect(twoGpu.every((r) => r.hardware.canonicalGpuId === null)).toBe(true);
+  });
+
+  it('records the block reason for every unresolved token', () => {
+    for (const t of [...getEfpsStoreSummary().gpuTokens, ...getEfpsStoreSummary().cpuTokens]) {
+      if (t.resolved) continue;
+      expect(t.canonicalId).toBeNull();
+      expect(t.blockReason, `${t.token} must say why it is blocked`).toBeTruthy();
+      expect((t.detail ?? '').length).toBeGreaterThan(0);
+    }
+  });
+
+  it('the committed review report is not stale', () => {
+    // The report states the store's content hash and token counts; if the
+    // corpus or the map moves without regenerating it, this catches the drift.
+    const report = fs.readFileSync(path.join(srcRoot, '..', 'research', 'userbenchmark', 'efps-token-resolution.md'), 'utf-8');
+    expect(report).toContain(getEfpsStore().contentSha256);
+    expect(report).toContain(`Token map version: **${EFPS_HARDWARE_MAP_VERSION}**`);
+  });
+
+  it('the store declares the map version it was built under', () => {
+    expect(getEfpsStore().hardwareMapVersion).toBe(EFPS_HARDWARE_MAP_VERSION);
+    expect(getEfpsStore().counts.hardware).toEqual({
+      uniqueGpuTokens: 16,
+      uniqueCpuTokens: 11,
+      resolvedGpuTokens: 0,
+      resolvedCpuTokens: 2,
+      joinableDatapoints: 0,
+      totalDatapoints: 1865,
+    });
   });
 });
 

@@ -31,12 +31,13 @@
 // page: this defines storage and read access, not influence.
 
 import { THIRD_PARTY_TIER, type ThirdPartyDataTier, type ThirdPartyFormFactor } from './types';
+import type { EfpsTokenResolution } from './efpsHardwareMap';
 
 export { THIRD_PARTY_TIER };
 export type { ThirdPartyDataTier };
 
 /** Schema version of the persisted EFPS store. Bump on any shape change. */
-export const EFPS_SCHEMA_VERSION = 1;
+export const EFPS_SCHEMA_VERSION = 2;
 
 /**
  * Direct: one page-published datapoint (one hardware pair -> one FPS).
@@ -51,39 +52,50 @@ export const EFPS_SCHEMA_VERSION = 1;
 export type EfpsClassification = 'direct' | 'comparison';
 
 /**
- * Why the record's hardware tokens are (or are not) resolvable to SpecSmith
- * catalog ids.
+ * Whether a RECORD's hardware resolved, aggregated over its datapoints.
  *
- * EFPS identifies hardware with its own shorthand — "2060S", "3600",
- * "5700-XT" — which is a DIFFERENT namespace from the component-table names
- * ("Nvidia GTX 1050-Ti") that research/userbenchmark's cleaning pipeline
- * resolves. The cleaning pipeline has never resolved an EFPS token, so today
- * every EFPS record carries 'token-namespace-unresolved'.
+ * Per-token resolution lives on each datapoint (see EfpsDatapointHardware);
+ * this summarises it, because a comparison record has two datapoints and they
+ * need not agree — 580 of the 865 comparisons pit two different GPUs against
+ * each other and 285 pit two different CPUs.
  *
- * The tempting shortcut is exactly the thing to refuse: the EFPS CPU token
- * "3600" looks like the component row "AMD Ryzen 5 3600", which the pipeline
- * DID resolve. Treating that resemblance as a resolution would be inventing a
- * token->catalog matcher here, in production, with no review — the fuzzy
- * matching this boundary exists to keep out. Resolution belongs upstream in
- * the cleaning pipeline where it can be reviewed at scale; until it happens
- * there, canonical ids stay null.
+ * 'resolved'  every datapoint resolved BOTH its GPU and CPU token.
+ * 'partial'   at least one token resolved, but not all of them.
+ * 'unresolved' nothing resolved.
  */
-export type EfpsHardwareResolutionStatus =
-  | 'token-namespace-unresolved'
-  | 'resolved-by-cleaning-pipeline';
+export type EfpsHardwareResolutionStatus = 'resolved' | 'partial' | 'unresolved';
 
 export interface EfpsHardwareResolution {
   status: EfpsHardwareResolutionStatus;
-  /** SpecSmith catalog id, or null. Null whenever status is not 'resolved-by-cleaning-pipeline'. */
+  /**
+   * SpecSmith catalog id, or null.
+   *
+   * Non-null ONLY when every datapoint in the record resolved to the same id.
+   * A comparison of two different GPUs therefore has a null canonicalGpuId
+   * even if both sides resolved individually — the record does not have "a"
+   * GPU, and collapsing two into one field is how a comparison silently turns
+   * into a claim about the wrong part. Per-side ids are on the datapoints.
+   */
   canonicalGpuId: string | null;
   canonicalCpuId: string | null;
   /**
-   * Form factor of the parts, when known. EFPS shorthand carries no mobile or
-   * integrated marker in either direction, so this is 'unknown' — which is NOT
-   * 'desktop', and is one of the reasons a record is not hardware-joinable.
+   * 'desktop' only when every resolved token was established as desktop.
+   * 'unknown' otherwise — which is NOT 'desktop', and blocks joining.
    */
   formFactor: ThirdPartyFormFactor;
   reason: string;
+}
+
+/** Resolution of one datapoint's two hardware tokens. */
+export interface EfpsDatapointHardware {
+  gpu: EfpsTokenResolution;
+  cpu: EfpsTokenResolution;
+  /**
+   * True only when BOTH sides resolved safely. A datapoint with a known CPU
+   * and an unknown GPU is not usable as a hardware pair, so there is no
+   * "half-joinable" state to be tempted by.
+   */
+  joinable: boolean;
 }
 
 /** One published FPS figure and the hardware pair it belongs to. */
@@ -96,11 +108,19 @@ export interface EfpsDatapoint {
    * type entirely and are not frames per second.
    */
   sourceReportedFps: number;
-  /** UserBenchmark's EFPS shorthand, verbatim (e.g. "2060S"). Not a catalog id. */
+  /**
+   * UserBenchmark's EFPS shorthand, verbatim (e.g. "2060S"). Not a catalog id.
+   *
+   * Preserved unchanged whether or not the token resolved, so the source's own
+   * identification is always recoverable and a resolution can be re-reviewed
+   * against it later.
+   */
   gpuToken: string;
   cpuToken: string;
   /** The side label as published, for comparison records (e.g. "5700-XT"). */
   label: string | null;
+  /** What those tokens resolve to, by explicit alias only. */
+  hardware: EfpsDatapointHardware;
 }
 
 /**
@@ -150,8 +170,11 @@ export interface ThirdPartyEfpsRecord {
 
   /**
    * Whether this record's hardware may be joined to SpecSmith catalog ids.
-   * False for every record today; see EfpsHardwareResolutionStatus. A record
-   * being stored and readable does NOT make it hardware-joinable.
+   *
+   * True only when EVERY datapoint resolved BOTH tokens to a desktop catalog
+   * entry. False for every record today, because no EFPS GPU token has a
+   * catalog counterpart at all. A record being stored and readable does NOT
+   * make it hardware-joinable.
    */
   hardwareJoinable: boolean;
   hardware: EfpsHardwareResolution;
@@ -177,6 +200,16 @@ export interface EfpsStoreCounts {
   comparison: number;
   hardwareJoinable: number;
   games: number;
+  /** Token-resolution outcome, so the store states its own coverage. */
+  hardware: {
+    uniqueGpuTokens: number;
+    uniqueCpuTokens: number;
+    resolvedGpuTokens: number;
+    resolvedCpuTokens: number;
+    /** Datapoints (not records) with both sides resolved. */
+    joinableDatapoints: number;
+    totalDatapoints: number;
+  };
 }
 
 /**
@@ -188,6 +221,7 @@ export interface EfpsStoreCounts {
  */
 export interface ThirdPartyEfpsStore {
   schemaVersion: number;
+  hardwareMapVersion: number;
   /** What this store is, stated in the data itself and not only in code. */
   note: string;
   /** Deterministic content hash over the canonicalised records. */
@@ -222,6 +256,24 @@ export interface PersistedEfpsSource {
   extractorVersion: string;
 }
 
+/**
+ * A datapoint as stored: the source's own figures and tokens, nothing derived.
+ *
+ * Hardware resolution is deliberately NOT persisted. It is a pure function of
+ * (token, kind, map version), and the map is the single place those rules
+ * live; writing the same 27 resolutions out across 1,865 datapoints would
+ * duplicate them and create a second copy that could disagree with the map.
+ * efpsStore.ts re-derives them on read, and because the content hash is
+ * computed over the REHYDRATED records, changing the map changes the hash —
+ * so a store built under older rules is detected by `--check`, not trusted.
+ */
+export interface PersistedEfpsDatapoint {
+  sourceReportedFps: number;
+  gpuToken: string;
+  cpuToken: string;
+  label: string | null;
+}
+
 export interface PersistedEfpsRecord {
   id: string;
   classification: EfpsClassification;
@@ -230,7 +282,7 @@ export interface PersistedEfpsRecord {
   efpsGameToken: string;
   extractionMethod: string;
   rawSourceIdentifier: string;
-  datapoints: EfpsDatapoint[];
+  datapoints: PersistedEfpsDatapoint[];
   exactTitle: string;
   exactValue: string;
   efpsUrl: string;
@@ -239,6 +291,8 @@ export interface PersistedEfpsRecord {
 
 export interface PersistedEfpsStore {
   schemaVersion: number;
+  /** Version of the token-resolution rules this file was built under. */
+  hardwareMapVersion: number;
   note: string;
   contentSha256: string;
   counts: EfpsStoreCounts;

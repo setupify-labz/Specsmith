@@ -31,10 +31,16 @@ import {
   type RawEfpsRow,
 } from '../../src/lib/thirdParty/efpsAdapter';
 import {
+  EFPS_HARDWARE_MAP_VERSION,
+  declaredCanonicalIds,
+  type EfpsTokenKind,
+} from '../../src/lib/thirdParty/efpsHardwareMap';
+import {
   canonicalEfpsRecordBytes,
   EFPS_METRIC_DEFINITION,
   EFPS_NOT_MEASURED_WARNING,
   EFPS_SCHEMA_VERSION,
+  type PersistedEfpsDatapoint,
   type PersistedEfpsRecord,
   type PersistedEfpsSource,
   type PersistedEfpsStore,
@@ -48,6 +54,45 @@ const outFile = path.join(repoRoot, 'src', 'data', 'thirdPartyEfps.json');
 const STORE_NOTE =
   'Third-party crowd-sourced FPS estimates from UserBenchmark. SEPARATE STORE by design: SpecSmith measurements live in measuredObservations.json, cited third-party publications in benchmarkRecords.json, and estimator base data in games.json — none of them are merged with this. These figures do not feed the FPS estimator or the verified-benchmark lookup.';
 
+/**
+ * Verifies every canonical id the token map claims actually exists in the
+ * catalog, with the name the map says it denotes.
+ *
+ * This check lives HERE rather than in the map because the third-party
+ * boundary forbids src/lib/thirdParty from importing the estimator's base data
+ * (separation.test.ts enforces it). The script is node-side and outside the
+ * bundle, so it can read the catalog and refuse to write a store whose
+ * mappings point at parts SpecSmith does not have — which is exactly what
+ * would happen if a catalog entry were later renamed or removed.
+ */
+function verifyDeclaredIdsAgainstCatalog(): void {
+  const catalogs: Record<EfpsTokenKind, { id: string; name: string; brand: string }[]> = {
+    gpu: JSON.parse(fs.readFileSync(path.join(repoRoot, 'src', 'data', 'gpus.json'), 'utf-8')),
+    cpu: JSON.parse(fs.readFileSync(path.join(repoRoot, 'src', 'data', 'cpus.json'), 'utf-8')),
+  };
+
+  for (const kind of ['gpu', 'cpu'] as const) {
+    for (const { token, canonicalId, denotes } of declaredCanonicalIds(kind)) {
+      const entry = catalogs[kind].find((e) => e.id === canonicalId);
+      if (!entry) {
+        throw new Error(
+          `Token map (v${EFPS_HARDWARE_MAP_VERSION}) maps ${kind} token "${token}" to "${canonicalId}", which is not in ${kind}s.json. Refusing to write a store containing an id the catalog does not have.`,
+        );
+      }
+      // The map says the token denotes e.g. "AMD Ryzen 5 3600"; the catalog
+      // stores brand and name separately. Comparing the two catches a mapping
+      // that points at a real id belonging to a different part.
+      const full = `${entry.brand} ${entry.name}`.toLowerCase();
+      const claimed = denotes.toLowerCase();
+      if (!full.includes(claimed.replace(/^amd |^intel |^nvidia /, ''))) {
+        throw new Error(
+          `Token map claims ${kind} token "${token}" denotes "${denotes}", but catalog id "${canonicalId}" is "${entry.brand} ${entry.name}". Refusing to write a mapping whose target does not match its stated part.`,
+        );
+      }
+    }
+  }
+}
+
 function readJsonl(file: string): RawEfpsRow[] {
   return fs
     .readFileSync(file, 'utf-8')
@@ -58,6 +103,8 @@ function readJsonl(file: string): RawEfpsRow[] {
 }
 
 export function buildStore(): PersistedEfpsStore {
+  verifyDeclaredIdsAgainstCatalog();
+
   const rows = [
     ...readJsonl(path.join(datasetDir, 'efps.jsonl')),
     ...readJsonl(path.join(datasetDir, 'efps-comparisons.jsonl')),
@@ -95,15 +142,33 @@ export function buildStore(): PersistedEfpsStore {
     efpsGameToken: r.ownership.efpsGameToken,
     extractionMethod: r.provenance.extractionMethod,
     rawSourceIdentifier: r.provenance.rawSourceIdentifier,
-    datapoints: r.datapoints,
+    // Resolution is derived from the token map on read, so only the source's
+    // own figures are stored — one copy of the rules, not 1,865.
+    datapoints: r.datapoints.map(
+      ({ sourceReportedFps, gpuToken, cpuToken, label }): PersistedEfpsDatapoint => ({
+        sourceReportedFps,
+        gpuToken,
+        cpuToken,
+        label,
+      }),
+    ),
     exactTitle: r.source.exactTitle,
     exactValue: r.source.exactValue,
     efpsUrl: r.source.efpsUrl,
     rawUrlPayload: r.source.rawUrlPayload,
   }));
 
+  const allDatapoints = records.flatMap((r) => r.datapoints);
+  const distinct = (kind: 'gpu' | 'cpu', onlyResolved: boolean) =>
+    new Set(
+      allDatapoints
+        .filter((d) => !onlyResolved || (kind === 'gpu' ? d.hardware.gpu : d.hardware.cpu).status === 'resolved')
+        .map((d) => (kind === 'gpu' ? d.gpuToken : d.cpuToken)),
+    ).size;
+
   return {
     schemaVersion: EFPS_SCHEMA_VERSION,
+    hardwareMapVersion: EFPS_HARDWARE_MAP_VERSION,
     note: STORE_NOTE,
     contentSha256,
     counts: {
@@ -112,6 +177,14 @@ export function buildStore(): PersistedEfpsStore {
       comparison: records.filter((r) => r.classification === 'comparison').length,
       hardwareJoinable: records.filter((r) => r.hardwareJoinable).length,
       games: new Set(records.map((r) => r.gameId)).size,
+      hardware: {
+        uniqueGpuTokens: distinct('gpu', false),
+        uniqueCpuTokens: distinct('cpu', false),
+        resolvedGpuTokens: distinct('gpu', true),
+        resolvedCpuTokens: distinct('cpu', true),
+        joinableDatapoints: allDatapoints.filter((d) => d.hardware.joinable).length,
+        totalDatapoints: allDatapoints.length,
+      },
     },
     constants: {
       metricDefinition: EFPS_METRIC_DEFINITION,
@@ -138,7 +211,10 @@ function main(argv: string[]): void {
   const unchanged = existing === serialized;
 
   console.log(`EFPS records: ${store.counts.total} (${store.counts.direct} direct, ${store.counts.comparison} comparison) across ${store.counts.games} games`);
-  console.log(`Hardware-joinable: ${store.counts.hardwareJoinable}`);
+  const h = store.counts.hardware;
+  console.log(`Token map v${EFPS_HARDWARE_MAP_VERSION}: GPU ${h.resolvedGpuTokens}/${h.uniqueGpuTokens} tokens resolved, CPU ${h.resolvedCpuTokens}/${h.uniqueCpuTokens} tokens resolved`);
+  console.log(`Datapoints with both sides resolved: ${h.joinableDatapoints}/${h.totalDatapoints}`);
+  console.log(`Hardware-joinable records: ${store.counts.hardwareJoinable} (blocked: ${store.counts.total - store.counts.hardwareJoinable})`);
   console.log(`contentSha256: ${store.contentSha256}`);
 
   if (checkOnly) {
