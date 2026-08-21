@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, ArrowUpDown, Sparkles } from 'lucide-react';
+import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, Sparkles } from 'lucide-react';
 import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
@@ -77,22 +77,6 @@ const exploreLinks = [
     cta: 'Take the Quiz',
   },
   {
-    icon: <Package size={22} className="text-[#FFD700]" />,
-    glow: 'rgba(255,215,0,0.3)',
-    title: 'Build Crate',
-    description: 'Open a randomized build, one part at a time — every crate guaranteed to fit together, rarity pulls for how good it lands.',
-    to: '/crate',
-    cta: 'Open a Crate',
-  },
-  {
-    icon: <Users size={22} className="text-[var(--ff-green)]" />,
-    glow: 'rgba(0,230,118,0.3)',
-    title: 'Build Gallery',
-    description: 'Browse real builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
-    to: '/gallery',
-    cta: 'Browse Builds',
-  },
-  {
     icon: <TrendingUp size={22} className="text-[var(--ff-cyan)]" />,
     glow: 'rgba(0,212,255,0.3)',
     title: 'Upgrade Guides',
@@ -109,6 +93,14 @@ const exploreLinks = [
     cta: 'See the Rankings',
   },
   {
+    icon: <Users size={22} className="text-[var(--ff-green)]" />,
+    glow: 'rgba(0,230,118,0.3)',
+    title: 'Build Gallery',
+    description: 'Browse real builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
+    to: '/gallery',
+    cta: 'Browse Builds',
+  },
+  {
     icon: <BookOpen size={22} className="text-[#6C63FF]" />,
     glow: 'rgba(108,99,255,0.3)',
     title: 'Parts Guides',
@@ -117,12 +109,12 @@ const exploreLinks = [
     cta: 'Browse Guides',
   },
   {
-    icon: <ArrowUpDown size={22} className="text-[var(--ff-red)]" />,
-    glow: 'rgba(255,23,68,0.3)',
-    title: 'Higher or Lower',
-    description: 'Guess whether the next GPU or CPU costs more or less than the last, using real prices from our Builder. Beat your streak.',
-    to: '/price-guesser',
-    cta: 'Play Now',
+    icon: <Package size={22} className="text-[#FFD700]" />,
+    glow: 'rgba(255,215,0,0.3)',
+    title: 'Build Crate',
+    description: 'Open a randomized compatible build one part at a time for a quick, game-like way to discover new combinations.',
+    to: '/crate',
+    cta: 'Open a Crate',
   },
 ];
 
@@ -138,14 +130,14 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd()) }} />
+
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-        {/* Glow orbs */}
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden pt-16">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6C63FF]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/8 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -183,13 +175,20 @@ export default function Home() {
               </div>
             </motion.div>
 
-            <HeroFpsCard />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.08 }}
+              className="lg:scale-110 lg:origin-center"
+            >
+              <HeroFpsCard />
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Stats bar */}
-      <section className="border-y border-subtle bg-surface py-8">
+      <section className="border-y border-subtle bg-surface py-7">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((s, i) => (
@@ -210,7 +209,7 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="relative py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="relative py-16 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
         <CircuitAccent />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -230,7 +229,7 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
-              className="rounded-2xl border border-subtle bg-card-dark p-6 card-hover"
+              className={`rounded-2xl border bg-card-dark p-6 card-hover ${i === 1 ? 'border-[#00D4FF]/30 shadow-[0_16px_50px_rgba(0,212,255,0.06)]' : 'border-subtle'}`}
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
@@ -246,16 +245,16 @@ export default function Home() {
       </section>
 
       {/* Prebuilts preview */}
-      <section className="py-16 bg-ff-bg">
+      <section className="py-14 bg-ff-bg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-end justify-between mb-8 gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Popular Builds</h2>
               <p className="text-secondary-custom text-sm mt-1">Ready-to-go configurations for every budget</p>
             </div>
             <Link
               to="/prebuilts"
-              className="flex items-center gap-1 text-[var(--ff-accent-text)] hover:text-[var(--ff-cyan)] text-sm font-medium transition-colors"
+              className="flex items-center gap-1 text-[var(--ff-accent-text)] hover:text-[var(--ff-cyan)] text-sm font-medium transition-colors whitespace-nowrap"
             >
               View all <ChevronRight size={16} />
             </Link>
@@ -269,14 +268,20 @@ export default function Home() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex-shrink-0 w-64 rounded-2xl border border-subtle bg-card-dark p-5 card-hover"
+                className="flex-shrink-0 w-72 rounded-2xl border border-subtle bg-card-dark p-5 card-hover"
               >
                 <div className="text-xl font-black text-ff-primary mb-1">{p.name}</div>
-                <p className="text-secondary-custom text-xs mb-4">{p.tagline}</p>
-                <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
+                <p className="text-secondary-custom text-xs mb-4 min-h-8">{p.tagline}</p>
+                <div className="flex items-end justify-between gap-3 mb-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-secondary-custom mb-1">Build total</div>
+                    <div className="text-2xl font-black gradient-text">${p.price.toLocaleString()}</div>
+                  </div>
+                  <span className="text-[11px] text-secondary-custom">Customizable</span>
+                </div>
                 <Link
                   to={`/prebuilts/${p.id}`}
-                  className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[var(--ff-accent-text)] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
+                  className="w-full flex items-center justify-center gap-1 py-2.5 px-4 rounded-lg text-sm font-semibold text-[var(--ff-accent-text)] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
                 >
                   View Build <ChevronRight size={14} />
                 </Link>
@@ -287,7 +292,7 @@ export default function Home() {
       </section>
 
       {/* Explore more */}
-      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-14 lg:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -298,7 +303,7 @@ export default function Home() {
           <p className="text-secondary-custom text-sm mt-1">Tools and content beyond the basic builder</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {exploreLinks.map((f, i) => (
             <motion.div
               key={f.title}
@@ -328,19 +333,19 @@ export default function Home() {
       </section>
 
       {/* CTA section */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="rounded-3xl overflow-hidden relative p-12 text-center"
+          className="rounded-3xl overflow-hidden relative p-10 sm:p-12 text-center"
           style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,212,255,0.08))' }}
         >
           <div className="absolute inset-0 border border-[#6C63FF]/20 rounded-3xl" />
           <div className="relative z-10">
             <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Ready to Build?</h2>
             <p className="text-secondary-custom text-lg mb-8 max-w-lg mx-auto">
-              Pick your parts, check compatibility, and see exactly what FPS you'll get — all for free.
+              Pick your parts, check compatibility, and see what your build is expected to do in the games you care about.
             </p>
             <Link
               to="/builder"
@@ -355,13 +360,22 @@ export default function Home() {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-14 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Quick Answers</h2>
+          <p className="text-secondary-custom text-sm mt-2">How SpecSmith works and what the numbers mean.</p>
+        </div>
         <div className="space-y-3">
           {homeFaqs.map((f) => (
-            <div key={f.title} className="rounded-xl p-4 border border-subtle bg-card-dark">
-              <h2 className="font-bold text-sm mb-1.5 text-ff-primary">{f.title}</h2>
-              <p className="text-xs leading-relaxed text-secondary-custom">{f.content}</p>
-            </div>
+            <details key={f.title} className="group rounded-xl border border-subtle bg-card-dark overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 font-bold text-sm text-ff-primary">
+                {f.title}
+                <span className="text-[var(--ff-accent-text)] transition-transform group-open:rotate-90">
+                  <ChevronRight size={16} />
+                </span>
+              </summary>
+              <p className="px-4 pb-4 text-sm leading-relaxed text-secondary-custom">{f.content}</p>
+            </details>
           ))}
         </div>
       </section>
