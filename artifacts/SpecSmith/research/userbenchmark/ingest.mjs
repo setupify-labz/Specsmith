@@ -214,7 +214,6 @@ async function main() {
 
   const distByName = (n) => deduped.distributions.filter((d) => d.distribution === n && d.labelCount > 0).length;
   const coverage = {
-    generatedAt: startedAt,
     source: SOURCE_NAME,
     parserVersion: PARSER_VERSION,
     efpsExtractorVersion: EFPS_EXTRACTOR_VERSION,
