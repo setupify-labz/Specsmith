@@ -1,0 +1,31 @@
+Red Dead Redemption 2 benchmark settings
+
+Resolution: 2560x1440
+Display mode: Fullscreen
+Graphics API: Vulkan
+VSync: Off
+Resolution Scale: Off / native 100%
+
+Preset label: Ultra / Custom Advanced
+
+Advanced Settings: Unlocked
+Near Volumetric Resolution: High
+Far Volumetric Resolution: High
+Volumetric Lighting Quality: High
+Unlocked Volumetric Raymarch Resolution: On
+Particle Lighting Quality: High
+Soft Shadows: Ultra
+Grass Shadows: High
+Long Shadows: On
+Full Resolution Screen Space Ambient Occlusion: On
+Water Refraction Quality: High
+Water Reflection Quality: High
+Reflection MSAA: x8
+Geometry Level of Detail: Maximum
+Grass Level of Detail: Maximum
+Tree Quality: Ultra
+Parallax Occlusion Mapping Quality: Ultra
+Decal Quality: High
+Fur Quality: High
+Tree Tessellation: On
+Motion Blur: On

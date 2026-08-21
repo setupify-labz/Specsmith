@@ -27,8 +27,10 @@
 // There is deliberately no code path that upgrades a tier.
 
 import type { Preset, Resolution, Upscaler } from '../benchmarks/types';
+import type { SegmentationRecord } from './benchmarkProtocol';
 
 export type { Preset, Resolution, Upscaler };
+export type { SegmentationRecord };
 
 /**
  * `community` exists in the schema so the boundary is designed in from the
@@ -247,6 +249,16 @@ export interface MeasuredObservation {
 
   // --- results: ALL derived from the frame times, never collector-reported -
   frameTimes: FrameTimeRef;
+  /**
+   * How the measured region was selected from the raw capture, when any
+   * segmentation was applied.
+   *
+   * Optional: a record produced from a capture used whole carries none. When
+   * present the store REJECTS it unless every stage it names is permitted by
+   * the benchmark protocol registered for this game — a record cannot grant
+   * itself a rule the game was never approved for. See benchmarkProtocol.ts.
+   */
+  segmentation?: SegmentationRecord;
   stats: FrameTimeStats;
   onePercentLowMethod: OnePercentLowMethod;
 
