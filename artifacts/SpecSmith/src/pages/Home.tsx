@@ -43,14 +43,7 @@ const stats = [
   { value: '50+', label: 'GPUs Tracked' },
   { value: '50+', label: 'CPUs Tracked' },
   { value: '20', label: 'Games Estimated' },
-  { value: 'Free', label: 'No Account Needed' },
-];
-
-const steps = [
-  { number: '01', label: 'Pick your parts' },
-  { number: '02', label: 'Check compatibility' },
-  { number: '03', label: 'See estimated FPS' },
-  { number: '04', label: 'Compare upgrades' },
+  { value: 'Free', label: 'Forever' },
 ];
 
 const features = [
@@ -58,19 +51,19 @@ const features = [
     icon: <Cpu size={24} className="text-[#6C63FF]" />,
     glow: 'rgba(108,99,255,0.35)',
     title: 'Part Picker',
-    description: 'Choose real components and catch compatibility problems before you spend money on the wrong parts.',
+    description: 'Choose from 100+ real components with live compatibility checks to ensure everything works together perfectly.',
   },
   {
     icon: <Zap size={24} className="text-[var(--ff-cyan)]" />,
     glow: 'rgba(0,212,255,0.35)',
     title: 'FPS Estimator',
-    description: 'Compare estimated gaming performance at 1080p, 1440p, and 4K across 20 games and multiple quality presets.',
+    description: 'See estimated FPS in 20 games at 1080p, 1440p, and 4K — across all quality presets before you spend a cent.',
   },
   {
     icon: <DollarSign size={24} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.35)',
-    title: 'Build Pricing',
-    description: 'See your full build cost as you pick parts, with current pricing references and direct purchase links.',
+    title: 'Price Tracker',
+    description: 'Know your total build cost instantly. Every component shows real pricing with direct links to purchase.',
   },
 ];
 
@@ -103,7 +96,7 @@ const exploreLinks = [
     icon: <Users size={22} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.3)',
     title: 'Build Gallery',
-    description: 'Browse builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
+    description: 'Browse real builds published by other users, with full part lists, buy links, and a most-viewed leaderboard.',
     to: '/gallery',
     cta: 'Browse Builds',
   },
@@ -111,7 +104,7 @@ const exploreLinks = [
     icon: <BookOpen size={22} className="text-[#6C63FF]" />,
     glow: 'rgba(108,99,255,0.3)',
     title: 'Parts Guides',
-    description: 'Budget-to-premium picks for motherboards, RAM, storage, cases, coolers, and peripherals.',
+    description: 'Budget-to-premium picks for every part — motherboards, RAM, storage, cases, coolers, and peripherals.',
     to: '/parts-guides',
     cta: 'Browse Guides',
   },
@@ -139,7 +132,7 @@ export default function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd()) }} />
 
       {/* Hero */}
-      <section className="relative min-h-[84vh] flex items-center overflow-hidden pt-20">
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden pt-16">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6C63FF]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/8 blur-3xl pointer-events-none" />
 
@@ -155,12 +148,13 @@ export default function Home() {
                 <Monitor size={14} />
                 Free PC Builder + FPS Estimator
               </span>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-[1.05]">
-                Build Your Gaming PC.<br />
-                <span className="gradient-text">Know the FPS Before You Buy.</span>
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
+                Build the Fastest Gaming PC<br />
+                <span className="gradient-text">for Your Budget</span>
               </h1>
-              <p className="text-xl text-secondary-custom max-w-2xl mx-auto lg:mx-0 mb-8 leading-relaxed">
-                Pick real parts, catch compatibility problems, compare performance, and see estimated FPS across 20 games — free, no account required.
+              <p className="text-xl text-secondary-custom max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+                Pick real parts, know your FPS in 20 top games before you buy, and catch compatibility
+                problems instantly — free, no account needed.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link
@@ -169,31 +163,22 @@ export default function Home() {
                   style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
                 >
                   <Zap size={18} />
-                  Build My PC
+                  Start Building
                 </Link>
                 <Link
                   to="/prebuilts"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-ff-primary font-bold text-lg border border-subtle hover:border-[#6C63FF]/50 hover:bg-[#6C63FF]/10 transition-all"
                 >
-                  Browse Ready Builds
+                  See Build Guides
                   <ChevronRight size={18} />
                 </Link>
-              </div>
-
-              <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto lg:mx-0">
-                {steps.map((step) => (
-                  <div key={step.number} className="rounded-xl border border-subtle bg-card-dark/60 px-3 py-3 text-left">
-                    <div className="text-[11px] font-black tracking-wider text-[var(--ff-accent-text)] mb-1">{step.number}</div>
-                    <div className="text-xs font-semibold text-ff-primary leading-snug">{step.label}</div>
-                  </div>
-                ))}
               </div>
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
+              transition={{ duration: 0.7, delay: 0.08 }}
               className="lg:scale-110 lg:origin-center"
             >
               <HeroFpsCard />
@@ -223,7 +208,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Core features */}
+      {/* Features */}
       <section className="relative py-16 lg:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
         <CircuitAccent />
         <motion.div
@@ -232,10 +217,8 @@ export default function Home() {
           viewport={{ once: true }}
           className="relative z-10 text-center mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Build. Check. Know.</h2>
-          <p className="text-secondary-custom text-lg max-w-2xl mx-auto">
-            One place to choose your hardware, catch bad combinations, and understand the performance you are paying for.
-          </p>
+          <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Everything You Need</h2>
+          <p className="text-secondary-custom text-lg max-w-xl mx-auto">Build smarter with tools designed for real hardware decisions.</p>
         </motion.div>
 
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -246,7 +229,7 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.15 }}
-              className={`rounded-2xl border bg-card-dark p-6 card-hover ${i === 1 ? 'border-[#00D4FF]/35 md:-translate-y-2 shadow-[0_16px_50px_rgba(0,212,255,0.08)]' : 'border-subtle'}`}
+              className={`rounded-2xl border bg-card-dark p-6 card-hover ${i === 1 ? 'border-[#00D4FF]/30 shadow-[0_16px_50px_rgba(0,212,255,0.06)]' : 'border-subtle'}`}
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
@@ -266,8 +249,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-8 gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Popular Starting Points</h2>
-              <p className="text-secondary-custom text-sm mt-1">Ready-to-go builds you can open, inspect, and customize.</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Popular Builds</h2>
+              <p className="text-secondary-custom text-sm mt-1">Ready-to-go configurations for every budget</p>
             </div>
             <Link
               to="/prebuilts"
@@ -300,7 +283,7 @@ export default function Home() {
                   to={`/prebuilts/${p.id}`}
                   className="w-full flex items-center justify-center gap-1 py-2.5 px-4 rounded-lg text-sm font-semibold text-[var(--ff-accent-text)] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"
                 >
-                  Inspect Build <ChevronRight size={14} />
+                  View Build <ChevronRight size={14} />
                 </Link>
               </motion.div>
             ))}
@@ -316,8 +299,8 @@ export default function Home() {
           viewport={{ once: true }}
           className="text-center mb-10"
         >
-          <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">More Tools When You Need Them</h2>
-          <p className="text-secondary-custom text-sm mt-1">Go deeper with upgrade advice, rankings, guides, and community builds.</p>
+          <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">More Than a Part Picker</h2>
+          <p className="text-secondary-custom text-sm mt-1">Tools and content beyond the basic builder</p>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -360,9 +343,9 @@ export default function Home() {
         >
           <div className="absolute inset-0 border border-[#6C63FF]/20 rounded-3xl" />
           <div className="relative z-10">
-            <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Ready to See What Your Build Can Do?</h2>
-            <p className="text-secondary-custom text-lg mb-8 max-w-xl mx-auto">
-              Pick your parts, check compatibility, and compare estimated gaming performance before you buy.
+            <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Ready to Build?</h2>
+            <p className="text-secondary-custom text-lg mb-8 max-w-lg mx-auto">
+              Pick your parts, check compatibility, and see what your build is expected to do in the games you care about.
             </p>
             <Link
               to="/builder"
@@ -370,7 +353,7 @@ export default function Home() {
               style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
             >
               <Cpu size={18} />
-              Build My PC
+              Open the Builder
             </Link>
           </div>
         </motion.div>
