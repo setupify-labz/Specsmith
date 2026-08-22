@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeFrameTimeStats } from './frameTimes';
+import type { SegmentationStageId } from './benchmarkProtocol';
 import { errors, validateMeasuredObservation } from './validate';
 import type { MeasuredObservation } from './types';
 
@@ -7,14 +8,7 @@ function goodFrames(): number[] {
   return Array.from({ length: 8000 }, (_, i) => 8 + (i % 40) * 0.35);
 }
 
-function makeRdr2Observation(
-  frames: number[],
-  stages: MeasuredObservation['segmentation'] extends infer S
-    ? S extends { stages: infer T }
-      ? T
-      : never
-    : never,
-): MeasuredObservation {
+function makeRdr2Observation(frames: number[], stages: SegmentationStageId[]): MeasuredObservation {
   return {
     id: 'obs-segmentation-order',
     tier: 'measured',
