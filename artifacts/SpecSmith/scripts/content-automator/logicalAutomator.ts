@@ -2,6 +2,7 @@ import { buildStrategyBatch } from "./strategist.ts";
 import { analyzePerformance } from "./performance.ts";
 import { buildContentPackages } from "./contentPackage.ts";
 import { buildScriptStoryboardPackages } from "./scriptStoryboard.ts";
+import { buildProductionPlanPackages } from "./productionPlan.ts";
 import type {
   AutomationBatch,
   ContentFormat,
@@ -216,6 +217,7 @@ export function buildAutomationBatch(
   });
   const contentPackages = buildContentPackages(selected, now);
   const scriptStoryboards = buildScriptStoryboardPackages(selected, contentPackages);
+  const productionPlans = buildProductionPlanPackages(scriptStoryboards);
 
   return {
     generatedAt: now.toISOString(),
@@ -224,6 +226,7 @@ export function buildAutomationBatch(
     dailyFive,
     contentPackages,
     scriptStoryboards,
+    productionPlans,
     performanceLearning,
   };
 }
