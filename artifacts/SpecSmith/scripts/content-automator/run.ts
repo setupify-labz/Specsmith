@@ -4,7 +4,7 @@ import gpus from "../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../src/data/cpus.json" with { type: "json" };
 import { buildReviewableAutomationBatch } from "./reviewableAutomator.ts";
 import { applyAudioSelectionsToProductionPlans, buildAudioSelections } from "./audioTrend.ts";
-import { refreshAudioTrendCache } from "./trendSource.ts";
+import { refreshAllAudioTrendSources } from "./multiTrendSource.ts";
 import type { HardwareItem, VideoPerformanceRecord } from "./types.ts";
 
 const generatedDir = resolve(process.cwd(), "content-ideas/generated");
@@ -26,7 +26,7 @@ async function loadPerformanceHistory(): Promise<VideoPerformanceRecord[]> {
 const now = new Date();
 const [performanceHistory, audioTrendRefresh] = await Promise.all([
   loadPerformanceHistory(),
-  refreshAudioTrendCache({
+  refreshAllAudioTrendSources({
     cachePath: audioTrendPath,
     now,
   }),
@@ -47,12 +47,12 @@ batch.productionPlans = applyAudioSelectionsToProductionPlans(batch.productionPl
 const output = {
   ...batch,
   audioSelections,
-  audioTrendSource: {
-    source: audioTrendRefresh.source,
-    status: audioTrendRefresh.status,
-    message: audioTrendRefresh.message,
-    fetchedCandidates: audioTrendRefresh.fetchedCandidates,
-  },
+  audioTrendSources: audioTrendRefresh.sources.map((source) => ({
+    source: source.source,
+    status: source.status,
+    message: source.message,
+    fetchedCandidates: source.fetchedCandidates,
+  })),
 };
 
 const outputPath = resolve(generatedDir, "latest-strategy.json");
@@ -62,7 +62,9 @@ await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
 console.log(`Generated ${batch.candidateCount} candidate concepts.`);
 console.log(`Quality floor: ${batch.qualityFloor}/10`);
 console.log(`Prepared ${batch.qualityReviewRequests.length} platform review contracts.`);
-console.log(`[audio trends] ${audioTrendRefresh.status}: ${audioTrendRefresh.message}`);
+for (const source of audioTrendRefresh.sources) {
+  console.log(`[audio trends:${source.source}] ${source.status}: ${source.message}`);
+}
 console.log(`Prepared ${audioSelections.length} platform audio decisions (${audioSelections.filter((entry) => entry.mode === "trending").length} trending, ${audioSelections.filter((entry) => entry.mode === "original").length} original/licensed fallbacks).`);
 console.log("Daily 5:");
 for (const plan of batch.dailyFive) {
