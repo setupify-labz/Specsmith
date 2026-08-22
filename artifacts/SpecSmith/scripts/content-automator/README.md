@@ -1,6 +1,6 @@
 # SpecSmith Content Automator — Creative + Logical V1
 
-This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, live audio-trend selection, rendering orchestration, and automated quality-review contracts. The renderer can execute end-to-end in dry-run mode now; real external media providers are still plugged in later through adapters. It does **not** post videos yet.
+This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, multi-platform audio-trend discovery, rendering orchestration, and automated quality-review contracts. The renderer can execute end-to-end in dry-run mode now; real external media providers are still plugged in later through adapters. It does **not** post videos yet.
 
 ## Product-first rule
 
@@ -21,15 +21,19 @@ Current product map:
 
 ## Pipeline
 
-`SpecSmith idea -> platform package -> script/storyboard -> production plan -> live audio decision -> renderer -> AI reviewer -> later publishing + analytics`
+`SpecSmith idea -> platform package -> script/storyboard -> production plan -> multi-platform audio decision -> renderer -> AI reviewer -> later publishing + analytics`
 
-## Live trending-audio source
+## Multi-platform audio trend sources
 
-`trendSource.ts` is connected to TikTok's official Business API Commercial Music Library discovery endpoint. It refreshes popular commercially cleared TikTok tracks and stores a normalized snapshot at:
+The automator now refreshes TikTok, YouTube, and Instagram trend inputs into one atomic cache:
 
 `content-ideas/generated/audio-trends.json`
 
-The source uses the platform's real track rank/history and preserves the platform `music_sound_id`/song clip id so the publishing layer can attach the sound natively later. TikTok CML tracks are marked `platform-cleared`, so they are selected for platform-time attachment rather than silently baked into the exported master.
+`multiTrendSource.ts` runs the sources sequentially so one platform cannot overwrite another platform's freshly written candidates. Every source keeps the previous cache on an upstream failure. A missing or untrusted source never causes the automator to invent music rights.
+
+### TikTok
+
+`trendSource.ts` connects to TikTok's Business API Commercial Music Library discovery endpoint. It preserves the platform song-clip/audio id for later native attachment and marks returned CML tracks `platform-cleared`.
 
 Required environment variables:
 
@@ -44,17 +48,64 @@ Optional configuration:
 TIKTOK_TREND_COUNTRY=US
 TIKTOK_TREND_GENRE=ALL
 TIKTOK_TREND_DATE_RANGE=7DAY
-AUDIO_TREND_REFRESH_HOURS=6
 TIKTOK_TREND_TIMEOUT_MS=12000
 ```
 
-Manual refresh:
+### YouTube Shorts
+
+`youtubeTrendSource.ts` uses the YouTube Data API `videos.list` most-popular Music chart as a **discovery signal**.
+
+Required environment variable:
+
+```bash
+YOUTUBE_DATA_API_KEY=...
+```
+
+Optional configuration:
+
+```bash
+YOUTUBE_TREND_REGION=US
+YOUTUBE_TREND_MAX_RESULTS=50
+YOUTUBE_TREND_TIMEOUT_MS=12000
+```
+
+A YouTube chart appearance does **not** prove SpecSmith has permission to reuse the underlying song. For that reason, YouTube discovery candidates are deliberately stored with `rightsStatus: "unknown"`, no publishable platform-audio id is invented, and the audio selector cannot auto-use them. They are useful for trend awareness until a rights-cleared/native-audio source is available.
+
+### Instagram Reels
+
+`instagramTrendSource.ts` does not pretend there is a public Meta trending-audio catalog when one is not configured. Instead it accepts an explicit approved/partner trend feed:
+
+```bash
+INSTAGRAM_AUDIO_TREND_FEED_URL=https://...
+```
+
+Optional configuration:
+
+```bash
+INSTAGRAM_AUDIO_TREND_FEED_TOKEN=...
+INSTAGRAM_TREND_TIMEOUT_MS=12000
+INSTAGRAM_TREND_FEED_RIGHTS_TRUSTED=false
+```
+
+By default, every Instagram feed item is downgraded to `rightsStatus: "unknown"` even if the upstream feed claims it is cleared. Only when the feed itself has been explicitly approved as a trusted rights source should `INSTAGRAM_TREND_FEED_RIGHTS_TRUSTED=true` be enabled. A trusted feed may then provide `platform-cleared` or `commercial-cleared` candidates and platform audio ids.
+
+Bearer credentials are sent in the Authorization header rather than placed in the feed URL.
+
+### Shared refresh behavior
+
+The default trend refresh window is six hours and can be changed with:
+
+```bash
+AUDIO_TREND_REFRESH_HOURS=6
+```
+
+Normal `content:strategist` runs refresh all configured sources automatically. Manual refresh uses the same multi-source path:
 
 ```bash
 npm run content:trends:refresh
 ```
 
-Normal `content:strategist` runs also refresh automatically when credentials exist and the official TikTok cache is older than the configured refresh window. If the API is unavailable, the previous cache is retained. If there is no cache, the audio selector safely falls back to original/licensed music instead of guessing.
+If a configured source fails, its previous cache is retained. If no usable cleared track exists for a platform/video, the selector falls back to original/licensed SpecSmith audio instead of guessing.
 
 No secrets are stored in the repository.
 
@@ -62,11 +113,9 @@ No secrets are stored in the repository.
 
 `audioTrend.ts` makes a platform-specific audio decision for every selected idea. It can choose between a current platform-native sound, a commercially cleared render-time track, or a safe original/licensed SpecSmith music bed and SFX fallback.
 
-The selector scores candidates using trend velocity, popularity, freshness, a conservative saturation proxy, and creative fit to the actual video concept. Trending audio is rejected when it is stale, uncleared, unknown-rights, or a weak creative match. A huge sound is not allowed to win just because it is popular.
+The selector scores eligible candidates using trend velocity, popularity, freshness, a conservative saturation proxy, and creative fit to the actual video concept. Trending audio is rejected when it is stale, uncleared, unknown-rights, or a weak creative match. A huge sound is not allowed to win just because it is popular.
 
-Platform-cleared sounds are marked `platform-publish`, which means they should be attached through the platform's own publishing/audio system instead of being baked into the video file.
-
-The trend-source layer is intentionally provider-based. TikTok is live now because it exposes a business-safe Commercial Music Library discovery source. Future approved YouTube/Instagram sources can be added without rewriting the selector.
+Platform-cleared sounds are marked `platform-publish`, which means they should be attached through the platform's own publishing/audio system instead of being baked into the video file. Commercial-cleared sounds may be used during rendering when their license permits it.
 
 ## Rendering orchestration
 
@@ -125,6 +174,7 @@ Hard blockers cannot be averaged away by a good overall score. Reviewer decision
 - Estimated FPS must remain explicitly labeled `Estimated FPS`.
 - Measured FPS requires real benchmark evidence before publication.
 - Unknown/uncleared popular audio is never auto-selected for commercial SpecSmith content.
+- Discovery popularity never upgrades an audio-rights status.
 - A failed trend refresh never erases the last known-good cache.
 
 ## Learning loop
@@ -140,8 +190,10 @@ Built now:
 - cross-platform content packages
 - script/storyboard generation
 - production capability routing
-- live TikTok Commercial Music Library trend ingestion
-- cache/refresh/failure handling for trend data
+- TikTok Commercial Music Library trend ingestion
+- YouTube Music-chart trend discovery with rights-safe gating
+- Instagram approved-feed adapter with explicit rights trust gating
+- unified multi-platform trend cache, refresh, and failure handling
 - trending-audio scoring, rights gating, and platform-specific selection
 - executable rendering orchestrator
 - retries, dependencies, fallback handling, artifact propagation
@@ -152,7 +204,6 @@ Built now:
 
 Still later:
 
-- approved live trend sources for other platforms when available
 - real provider adapters that produce media bytes for video/image/TTS/audio/composition
 - deterministic browser/UI screenshot renderer for live SpecSmith product states
 - multimodal observation extraction from finished media
