@@ -1,6 +1,7 @@
 import { buildStrategyBatch } from "./strategist.ts";
 import { analyzePerformance } from "./performance.ts";
 import { buildContentPackages } from "./contentPackage.ts";
+import { buildScriptStoryboardPackages } from "./scriptStoryboard.ts";
 import type {
   AutomationBatch,
   ContentFormat,
@@ -214,6 +215,7 @@ export function buildAutomationBatch(
     return { rank: index + 1, idea, qualityScore: metadata.qualityScore, learningAdjustment: metadata.adjustment, experiment: experimentFor(idea) };
   });
   const contentPackages = buildContentPackages(selected, now);
+  const scriptStoryboards = buildScriptStoryboardPackages(selected, contentPackages);
 
   return {
     generatedAt: now.toISOString(),
@@ -221,6 +223,7 @@ export function buildAutomationBatch(
     qualityFloor: QUALITY_FLOOR,
     dailyFive,
     contentPackages,
+    scriptStoryboards,
     performanceLearning,
   };
 }
