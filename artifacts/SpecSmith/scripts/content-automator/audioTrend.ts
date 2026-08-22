@@ -15,6 +15,12 @@ export interface TrendingAudioCandidate {
   saturationScore: number;
   tags: string[];
   source?: string;
+  platformAudioId?: string;
+  commercialMusicId?: string;
+  durationSeconds?: number;
+  previewUrl?: string;
+  region?: string;
+  rankPosition?: number;
 }
 
 export interface AudioTrendSnapshot {
@@ -27,12 +33,14 @@ export interface AudioSelection {
   platform: VideoPlatform;
   mode: "trending" | "original";
   candidateId?: string;
+  platformAudioId?: string;
   title?: string;
   artist?: string;
   score: number;
   attachMode: AudioAttachMode;
   reason: string;
   rightsStatus?: AudioRightsStatus;
+  source?: string;
 }
 
 const PLATFORMS: VideoPlatform[] = ["youtube-shorts", "tiktok", "instagram-reels"];
@@ -144,12 +152,14 @@ export function selectAudioForIdea(
     platform,
     mode: "trending",
     candidateId: best.candidate.id,
+    platformAudioId: best.candidate.platformAudioId,
     title: best.candidate.title,
     artist: best.candidate.artist,
     score: best.score,
     attachMode: best.candidate.rightsStatus === "platform-cleared" ? "platform-publish" : "render",
     reason: `Selected because it is cleared, current, rising, and meaningfully fits the video's creative direction. Fit score ${best.fit}/100.`,
     rightsStatus: best.candidate.rightsStatus,
+    source: best.candidate.source,
   };
 }
 
@@ -191,9 +201,10 @@ export function applyAudioSelectionsToProductionPlans(
         tasks: platformPlan.tasks.map((task) => {
           if (task.capability !== "music-sfx") return task;
 
+          const platformId = selection.platformAudioId ? ` Platform audio id: ${selection.platformAudioId}.` : "";
           const instruction = selection.mode === "trending"
             ? selection.attachMode === "platform-publish"
-              ? `Use trending audio '${selection.title}'${selection.artist ? ` by ${selection.artist}` : ""} as a platform-native publish-time audio selection. Do not bake the track into the rendered master unless the platform/license explicitly permits it.`
+              ? `Use trending audio '${selection.title}'${selection.artist ? ` by ${selection.artist}` : ""} as a platform-native publish-time audio selection.${platformId} Do not bake the track into the rendered master unless the platform/license explicitly permits it.`
               : `Use cleared trending audio '${selection.title}'${selection.artist ? ` by ${selection.artist}` : ""} in the render, preserving narration intelligibility and license metadata.`
             : "Use an original or licensed SpecSmith-safe music bed; do not substitute an uncleared trending sound.";
 
