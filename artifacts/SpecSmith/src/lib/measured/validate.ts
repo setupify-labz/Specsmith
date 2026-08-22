@@ -384,19 +384,37 @@ export function validateMeasuredObservation(
       ));
     }
 
+    const seenStages = new Set<string>();
+    let previousExpectedIndex = -1;
     for (const stage of seg.stages) {
       if (!ALL_SEGMENTATION_STAGES.includes(stage as SegmentationStageId)) {
         issues.push(err(id, 'segmentation.unknown-stage', `Segmentation names unknown stage "${stage}".`));
         continue;
       }
-      if (!expected.stages.includes(stage as SegmentationStageId)) {
+      if (seenStages.has(stage)) {
+        issues.push(err(id, 'segmentation.duplicate-stage', `Segmentation stage "${stage}" appears more than once. A protocol stage may be applied at most once.`));
+        continue;
+      }
+      seenStages.add(stage);
+
+      const expectedIndex = expected.stages.indexOf(stage as SegmentationStageId);
+      if (expectedIndex === -1) {
         issues.push(err(
           id,
           'segmentation.stage-not-permitted',
           `Stage "${stage}" was applied, but protocol "${expected.id}" for game "${obs.gameId}" does not permit it. ` +
             'Workload-based stages remove frames a generic capture must keep — sustained low GPU utilisation is a black screen in one game and legitimate CPU-bound gameplay in another, and only the protocol says which.',
         ));
+        continue;
       }
+      if (expectedIndex <= previousExpectedIndex) {
+        issues.push(err(
+          id,
+          'segmentation.stage-order-invalid',
+          `Stage "${stage}" is out of order for protocol "${expected.id}". Applied stages must preserve protocol order: ${expected.stages.join(' -> ')}.`,
+        ));
+      }
+      previousExpectedIndex = expectedIndex;
     }
 
     if (seg.retainedFrames > seg.totalFrames) {
