@@ -1,6 +1,6 @@
 # SpecSmith Content Automator — Creative + Logical V1
 
-This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, and automated quality-review contracts. It does **not** render or post videos yet.
+This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, rendering orchestration, and automated quality-review contracts. The renderer can execute end-to-end in dry-run mode now; real external media providers are still plugged in later through adapters. It does **not** post videos yet.
 
 ## Product-first rule
 
@@ -27,7 +27,42 @@ Current product map:
 - Parts Catalog / Guides (`/parts-guides`)
 - Price Guesser (`/price-guesser`)
 
-Examples now come from product actions such as build challenges, build rescue, blind comparisons, one-upgrade decisions, real Build Crate pulls, Gallery inspections, budget ladders, and Price Guesser rounds.
+## Pipeline
+
+`SpecSmith idea -> platform package -> script/storyboard -> production plan -> renderer -> AI reviewer -> later publishing + analytics`
+
+The renderer is capability-based instead of hardcoded to one vendor. Production tasks request capabilities such as deterministic SpecSmith UI, video generation, image generation, TTS, audio, captions, and composition. Provider adapters can then be swapped without rewriting the creative pipeline.
+
+## Rendering orchestration
+
+`rendering.ts` now provides the executable rendering layer.
+
+It includes:
+
+- an adapter registry keyed by production capability
+- strict render-order/dependency validation
+- task-by-task artifact passing into later tasks
+- retry support
+- video-generation -> image-generation fallback where the production plan allows it
+- fail-closed behavior when a required renderer is unavailable
+- final composed-artifact tracking
+- one result per platform render
+- a full dry-run registry for testing the entire pipeline without spending provider credits
+
+A failed evidence/UI render cannot be silently ignored. Dependent composition is skipped, so an incomplete video cannot be mistaken for a successful render.
+
+Run the logical renderer validation after generating a batch:
+
+```bash
+npm run content:strategist
+npm run content:render:dry-run
+```
+
+The dry run writes:
+
+`content-ideas/generated/latest-render-dry-run.json`
+
+It validates all five packages across YouTube Shorts, TikTok, and Instagram Reels: **15 platform renders per daily batch**.
 
 ## Daily five rules
 
@@ -52,80 +87,28 @@ Every idea still carries creative DNA: visual world, narrative engine, first fra
 
 ## Cross-platform content packages
 
-Every selected idea becomes one coordinated package instead of three copy-pasted social posts.
-
-The package includes:
-
-- YouTube Shorts version
-- TikTok version
-- Instagram Reels version
-- exact SpecSmith site continuation
-- platform CTA
-- campaign id and attribution metadata
-- required factual inputs
-
-The core decision stays the same, while each platform gets a different presentation objective.
+Every selected idea becomes one coordinated package instead of three copy-pasted social posts. The package includes YouTube Shorts, TikTok, Instagram Reels, the exact SpecSmith continuation, platform CTA, campaign attribution, and required factual inputs.
 
 ## Script + storyboard layer
 
-Each platform version becomes a timed storyboard with:
-
-- hook
-- viewer commitment/choice
-- evidence
-- reversal/tradeoff
-- payoff
-- exact SpecSmith CTA
-
-Facts are attached to the beats that depend on them so later stages can verify claims instead of inventing them.
+Each platform version becomes a timed storyboard with a hook, viewer commitment, evidence, reversal/tradeoff, payoff, and exact SpecSmith CTA. Facts are attached to the beats that depend on them so later stages can verify claims instead of inventing them.
 
 ## Production plan
 
-The production planner decides what capability each part needs:
-
-- deterministic SpecSmith UI rendering for real product states/evidence
-- generative video or image visuals for creative presentation
-- text-to-speech
-- music/SFX
-- captions
-- motion composition
-
-Generated visuals are not allowed to impersonate real SpecSmith UI. Product evidence should come from real or deterministic SpecSmith state.
+The production planner routes real product states/evidence to deterministic SpecSmith rendering and creative presentation to generative visual capabilities. It also plans TTS, music/SFX, captions, and motion composition. Generated visuals are not allowed to impersonate real SpecSmith UI.
 
 ## Automated quality reviewer
 
 `qualityReviewer.ts` creates one review contract for every platform render and evaluates the finished output before publication.
 
-It checks:
+It checks factual claims/evidence, fake SpecSmith UI, FPS labeling, hook clarity, captions, audio, visual coherence, pacing, SpecSmith relevance, CTA accuracy, generic AI-B-roll ratio, and duration drift.
 
-- factual claims and evidence
-- fake/generated SpecSmith UI
-- measured FPS vs estimated FPS labeling
-- first-two-second hook clarity
-- caption legibility and safe areas
-- narration/audio clarity
-- visual coherence
-- pacing
-- SpecSmith relevance
-- CTA route accuracy
-- generic AI-B-roll/slop ratio
-- duration drift
-
-Hard blockers cannot be averaged away by a good overall score. A video with false facts, fake product UI, a wrong CTA, or dangerous FPS labeling cannot publish just because its visuals scored highly.
-
-Reviewer decisions are:
-
-- `pass`
-- `regenerate-targeted`
-- `regenerate-full`
-- `hold-for-human-review`
-
-Uncertain facts are held for review instead of guessed. Repairable problems can target only the affected production tasks instead of remaking a strong video from scratch.
+Hard blockers cannot be averaged away by a good overall score. Reviewer decisions are `pass`, `regenerate-targeted`, `regenerate-full`, or `hold-for-human-review`.
 
 ## Data integrity
 
 - Uses canonical local hardware data where available.
-- Build Crate concepts require an **actual recorded pull** before publishing; no scripted fake legendary result.
+- Build Crate concepts require an **actual recorded pull** before publishing.
 - Gallery concepts require a real published Gallery build.
 - Builder/upgrade concepts require an actual supported result before making compatibility or outcome claims.
 - Fresh prices must be re-verified before publication.
@@ -135,50 +118,29 @@ Uncertain facts are held for review instead of guessed. Repairable problems can 
 
 ## Learning loop
 
-`performance.ts` evaluates:
-
-1. Hook — did people stop instead of swipe?
-2. Retention — did they stay through the payoff?
-3. Engagement — did they share, save, comment, or follow?
-4. Conversion — did they continue into SpecSmith and deeper product actions?
-
-Raw views do not decide creative quality. Small samples are treated cautiously, and one lucky upload cannot teach the selector to clone one style forever.
-
-Each selected video has a hypothesis, primary metric, controls, and an exact SpecSmith continuation route.
-
-## Run
-
-```bash
-npm run content:strategist
-```
-
-Output:
-
-`content-ideas/generated/latest-strategy.json`
-
-The generated strategy now includes the daily five, cross-platform content packages, script/storyboards, production plans, and one quality-review contract per platform version.
+`performance.ts` evaluates hook, retention, engagement, and conversion. Raw views do not decide creative quality. Small samples are treated cautiously, and one lucky upload cannot teach the selector to clone one style forever.
 
 ## Current boundary
 
 Built now:
 
-- SpecSmith product map
-- SpecSmith-first concept generation
-- creative DNA
-- five-video quality gate
-- product-fit/site-continuation gates
+- SpecSmith product map + SpecSmith-first concept generation
+- creative DNA + five-video quality gate
 - cross-platform content packages
 - script/storyboard generation
-- production capability routing and render plans
-- automated quality-review contracts
-- automated reviewer decisions and targeted regeneration instructions
+- production capability routing
+- executable rendering orchestrator
+- retries, dependencies, fallback handling, artifact propagation
+- full rendering dry run across all platform variants
+- automated AI-review contracts and repair decisions
 - performance learner
-- tests and CI workflow
+- tests, typecheck/build checks, and CI workflow
 
 Still later:
 
-- actual video/image/UI rendering adapters
-- multimodal observation extraction from finished renders
-- automatic regeneration execution
+- real provider adapters that produce media bytes for video/image/TTS/audio/composition
+- deterministic browser/UI screenshot renderer for live SpecSmith product states
+- multimodal observation extraction from finished media
+- automatic regeneration execution after reviewer feedback
 - publishing adapters/autopost
 - live analytics collectors
