@@ -87,6 +87,40 @@ export interface StrategyBatch {
   candidates: ContentIdea[];
 }
 
+export interface PlatformContentVariant {
+  platform: VideoPlatform;
+  objective: "hook" | "interaction" | "polish";
+  opening: string;
+  pacing: string;
+  ending: string;
+  captionAngle: string;
+  cta: string;
+}
+
+export interface SiteContentVariant {
+  route: string;
+  pagePurpose: string;
+  sections: string[];
+  continuationAction: string;
+}
+
+export interface ContentPackage {
+  packageId: string;
+  campaignId: string;
+  ideaId: string;
+  corePromise: string;
+  feature: SiteFeature;
+  requiredFacts: string[];
+  platforms: PlatformContentVariant[];
+  site: SiteContentVariant;
+  attribution: {
+    utmSourceByPlatform: Record<VideoPlatform, string>;
+    utmMedium: "short-form-video";
+    utmCampaign: string;
+    conversionEvents: string[];
+  };
+}
+
 export interface RetentionPoint {
   elapsedRatio: number;
   audienceRatio: number;
@@ -171,5 +205,6 @@ export interface AutomationBatch {
   candidateCount: number;
   qualityFloor: number;
   dailyFive: DailyVideoPlan[];
+  contentPackages: ContentPackage[];
   performanceLearning?: PerformanceLearning;
 }
