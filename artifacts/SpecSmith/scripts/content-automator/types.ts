@@ -148,6 +148,40 @@ export interface ScriptStoryboardPackage {
   scripts: PlatformScriptStoryboard[];
 }
 
+export type ProductionCapability =
+  | "deterministic-ui-render"
+  | "video-generation"
+  | "image-generation"
+  | "text-to-speech"
+  | "music-sfx"
+  | "motion-compositor"
+  | "caption-render";
+
+export interface ProductionTask {
+  taskId: string;
+  capability: ProductionCapability;
+  sourceBeat: number | null;
+  purpose: string;
+  inputRequirements: string[];
+  outputRequirements: string[];
+  fallbackCapability?: ProductionCapability;
+}
+
+export interface PlatformProductionPlan {
+  platform: VideoPlatform;
+  targetDurationSeconds: number;
+  tasks: ProductionTask[];
+  renderOrder: string[];
+  qualityChecks: string[];
+}
+
+export interface ProductionPlanPackage {
+  packageId: string;
+  ideaId: string;
+  campaignId: string;
+  platforms: PlatformProductionPlan[];
+}
+
 export interface RetentionPoint {
   elapsedRatio: number;
   audienceRatio: number;
@@ -234,5 +268,6 @@ export interface AutomationBatch {
   dailyFive: DailyVideoPlan[];
   contentPackages: ContentPackage[];
   scriptStoryboards: ScriptStoryboardPackage[];
+  productionPlans: ProductionPlanPackage[];
   performanceLearning?: PerformanceLearning;
 }
