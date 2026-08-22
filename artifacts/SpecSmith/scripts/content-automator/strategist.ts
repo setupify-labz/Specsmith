@@ -77,6 +77,8 @@ const NARRATIVE_ENGINES = [
   "time-loop correction: repeat the same decision with one changed variable until the mistake becomes impossible to miss",
 ] as const;
 
+const RADICAL_FORMATS = new Set<ContentIdea["format"]>(["experiment", "visual-story", "game", "simulation"]);
+
 function stableHash(input: string): number {
   let hash = 2166136261;
   for (const char of input) {
@@ -142,7 +144,7 @@ function scoreIdea(input: IdeaDraft, signals: IdeaSignals): ContentIdea {
   const releaseGap = Math.min(signals.releaseGap ?? 0, 4);
   const priceShock = Math.min((signals.price ?? 0) / 700, 5);
   const tier = signals.tier ?? 5;
-  const experimental = ["experiment", "visual-story", "game", "simulation"].includes(input.format);
+  const experimental = RADICAL_FORMATS.has(input.format);
   const creativeDNA = buildCreativeDNA(input, signals);
 
   const curiosity = clamp(5 + priceGap + releaseGap * 0.5 + (input.format === "buyer-warning" ? 1.5 : 0) + (experimental ? 1 : 0));
@@ -333,33 +335,37 @@ export function buildStrategyBatch(gpus: HardwareItem[], cpus: HardwareItem[], n
     .sort((a, b) => b.scores.total - a.scores.total || b.scores.originality - a.scores.originality || a.id.localeCompare(b.id))
     .filter((idea, index, all) => all.findIndex((other) => other.id === idea.id) === index);
 
-  // Daily batch diversity is enforced across both format and visual world. Four videos should feel like four inventions, not one template with swapped SKUs.
+  // Four videos should feel like four inventions, not one template with swapped SKUs. At least two slots are reserved for radical formats.
   const selected: ContentIdea[] = [];
   const usedFormats = new Set<string>();
   const usedWorlds = new Set<string>();
   const worldName = (idea: ContentIdea) => idea.creativeDNA.visualWorld.split(" — ")[0];
+  const add = (idea: ContentIdea) => {
+    selected.push(idea);
+    usedFormats.add(idea.format);
+    usedWorlds.add(worldName(idea));
+  };
+
+  for (const idea of ranked) {
+    if (selected.filter((picked) => RADICAL_FORMATS.has(picked.format)).length >= 2) break;
+    if (!RADICAL_FORMATS.has(idea.format)) continue;
+    const world = worldName(idea);
+    if (!usedFormats.has(idea.format) && !usedWorlds.has(world)) add(idea);
+  }
 
   for (const idea of ranked) {
     if (selected.length >= 4) break;
     const world = worldName(idea);
-    if (!usedFormats.has(idea.format) && !usedWorlds.has(world)) {
-      selected.push(idea);
-      usedFormats.add(idea.format);
-      usedWorlds.add(world);
-    }
+    if (!selected.some((picked) => picked.id === idea.id) && !usedFormats.has(idea.format) && !usedWorlds.has(world)) add(idea);
   }
   for (const idea of ranked) {
     if (selected.length >= 4) break;
     const world = worldName(idea);
-    if (!selected.some((picked) => picked.id === idea.id) && !usedWorlds.has(world)) {
-      selected.push(idea);
-      usedFormats.add(idea.format);
-      usedWorlds.add(world);
-    }
+    if (!selected.some((picked) => picked.id === idea.id) && !usedWorlds.has(world)) add(idea);
   }
   for (const idea of ranked) {
     if (selected.length >= 4) break;
-    if (!selected.some((picked) => picked.id === idea.id)) selected.push(idea);
+    if (!selected.some((picked) => picked.id === idea.id)) add(idea);
   }
 
   return {
