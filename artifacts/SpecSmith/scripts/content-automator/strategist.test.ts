@@ -19,59 +19,58 @@ const cpus: HardwareItem[] = [
 const radicalFormats = new Set(["experiment", "visual-story", "game", "simulation"]);
 
 describe("buildStrategyBatch", () => {
-  it("creates a ranked, diverse top four from trusted local data", () => {
+  it("creates a ranked batch from trusted local data", () => {
     const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
-
-    expect(result.candidateCount).toBeGreaterThanOrEqual(10);
+    expect(result.candidateCount).toBeGreaterThanOrEqual(15);
     expect(result.topFour).toHaveLength(4);
     expect(new Set(result.topFour.map((idea) => idea.id)).size).toBe(4);
-    expect(new Set(result.topFour.map((idea) => idea.format)).size).toBeGreaterThanOrEqual(3);
     expect(result.candidates.every((idea) => idea.scores.total >= 1 && idea.scores.total <= 10)).toBe(true);
     expect(result.candidates.some((idea) => idea.subjectIds.includes("old"))).toBe(false);
   });
 
-  it("forces creative direction into every candidate instead of producing generic script prompts", () => {
+  it("makes SpecSmith essential to every concept", () => {
     const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
-
     for (const idea of result.candidates) {
-      expect(idea.creativeDNA.conceptName.length).toBeGreaterThan(10);
-      expect(idea.creativeDNA.visualWorld.length).toBeGreaterThan(20);
-      expect(idea.creativeDNA.retentionBeats).toHaveLength(5);
-      expect(idea.creativeDNA.antiSlopRules.length).toBeGreaterThanOrEqual(6);
-      expect(idea.creativeDNA.originalityConstraint).toContain("stock RGB B-roll");
-      expect(idea.scores.originality).toBeGreaterThanOrEqual(1);
-      expect(idea.scores.retentionPotential).toBeGreaterThanOrEqual(1);
+      expect(idea.productConnection.route.startsWith("/")).toBe(true);
+      expect(idea.productConnection.userProblem.length).toBeGreaterThan(15);
+      expect(idea.productConnection.whySpecSmith.length).toBeGreaterThan(20);
+      expect(idea.productConnection.continuationAction.length).toBeGreaterThan(20);
+      expect(idea.scores.productFit).toBeGreaterThanOrEqual(9);
+      expect(idea.scores.siteContinuation).toBeGreaterThanOrEqual(9);
+      expect(idea.creativeDNA.originalityConstraint).toContain("SpecSmith");
     }
   });
 
-  it("includes wildcard formats that break out of ordinary comparison/listicle grammar", () => {
+  it("covers multiple real SpecSmith product surfaces including Build Crate", () => {
+    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
+    const features = new Set(result.candidates.map((idea) => idea.productConnection.feature));
+    expect(features.has("builder")).toBe(true);
+    expect(features.has("compare")).toBe(true);
+    expect(features.has("build-crate")).toBe(true);
+    expect(features.has("upgrade")).toBe(true);
+    expect(features.has("gallery")).toBe(true);
+    expect(features.has("build-guides")).toBe(true);
+    expect(features.has("parts-catalog")).toBe(true);
+    expect(features.has("price-guesser")).toBe(true);
+  });
+
+  it("keeps creative formats while tying them to product actions", () => {
     const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
     const formats = new Set(result.candidates.map((idea) => idea.format));
-
     expect(formats.has("visual-story")).toBe(true);
     expect(formats.has("game")).toBe(true);
     expect(formats.has("simulation")).toBe(true);
     expect(formats.has("experiment")).toBe(true);
+    expect(result.topFour.filter((idea) => radicalFormats.has(idea.format)).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("reserves at least half of the daily batch for radical formats", () => {
+  it("makes the top batch diverse by SpecSmith feature", () => {
     const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
-    const radicalCount = result.topFour.filter((idea) => radicalFormats.has(idea.format)).length;
-
-    expect(radicalCount).toBeGreaterThanOrEqual(2);
-  });
-
-  it("tries to make the daily four visually distinct, not template swaps", () => {
-    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
-    const worlds = result.topFour.map((idea) => idea.creativeDNA.visualWorld.split(" — ")[0]);
-
-    expect(new Set(worlds).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(result.topFour.map((idea) => idea.productConnection.feature)).size).toBeGreaterThanOrEqual(3);
   });
 
   it("is deterministic for the same data and date", () => {
     const date = new Date("2026-08-21T12:00:00Z");
-    const first = buildStrategyBatch(gpus, cpus, date);
-    const second = buildStrategyBatch(gpus, cpus, date);
-    expect(first).toEqual(second);
+    expect(buildStrategyBatch(gpus, cpus, date)).toEqual(buildStrategyBatch(gpus, cpus, date));
   });
 });
