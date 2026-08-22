@@ -54,7 +54,19 @@ jobs:
       - name: Build SpecSmith
         run: pnpm --dir artifacts/SpecSmith build
 
+      - name: Validate live YouTube trend source when configured
+        env:
+          YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
+        run: |
+          if [ -n "$YOUTUBE_DATA_API_KEY" ]; then
+            pnpm --dir artifacts/SpecSmith content:trends:refresh
+          else
+            echo "YOUTUBE_DATA_API_KEY is not available in this workflow context; skipping live YouTube smoke test."
+          fi
+
       - name: Generate real daily five
+        env:
+          YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
         run: pnpm --dir artifacts/SpecSmith content:strategist
 
       - name: Execute rendering dry run
