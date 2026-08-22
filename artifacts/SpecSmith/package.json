@@ -13,6 +13,7 @@
     "collect:measured": "tsx scripts/measured/collect.ts",
     "content:strategist": "tsx scripts/content-automator/run.ts",
     "content:automator": "tsx scripts/content-automator/run.ts",
+    "content:trends:refresh": "tsx scripts/content-automator/refreshAudioTrends.ts",
     "content:render:dry-run": "tsx scripts/content-automator/renderDryRun.ts"
   },
   "devDependencies": {
