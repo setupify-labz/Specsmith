@@ -1,6 +1,6 @@
 # SpecSmith Content Automator — Creative + Logical V1
 
-This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**. It does **not** render or post videos yet.
+This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, and automated quality-review contracts. It does **not** render or post videos yet.
 
 ## Product-first rule
 
@@ -24,7 +24,7 @@ Current product map:
 - Build Guides (`/best-pc-for`)
 - Gallery (`/gallery`)
 - Upgrade (`/upgrade-calculator`)
-- Parts/Guides (`/parts-guides`)
+- Parts Catalog / Guides (`/parts-guides`)
 - Price Guesser (`/price-guesser`)
 
 Examples now come from product actions such as build challenges, build rescue, blind comparisons, one-upgrade decisions, real Build Crate pulls, Gallery inspections, budget ladders, and Price Guesser rounds.
@@ -50,6 +50,78 @@ Bad: a visually unusual GPU metaphor that has no meaningful reason to lead into 
 
 Every idea still carries creative DNA: visual world, narrative engine, first frame, pattern interrupt, timed retention beats, payoff, audio direction, originality constraint, and anti-slop rules.
 
+## Cross-platform content packages
+
+Every selected idea becomes one coordinated package instead of three copy-pasted social posts.
+
+The package includes:
+
+- YouTube Shorts version
+- TikTok version
+- Instagram Reels version
+- exact SpecSmith site continuation
+- platform CTA
+- campaign id and attribution metadata
+- required factual inputs
+
+The core decision stays the same, while each platform gets a different presentation objective.
+
+## Script + storyboard layer
+
+Each platform version becomes a timed storyboard with:
+
+- hook
+- viewer commitment/choice
+- evidence
+- reversal/tradeoff
+- payoff
+- exact SpecSmith CTA
+
+Facts are attached to the beats that depend on them so later stages can verify claims instead of inventing them.
+
+## Production plan
+
+The production planner decides what capability each part needs:
+
+- deterministic SpecSmith UI rendering for real product states/evidence
+- generative video or image visuals for creative presentation
+- text-to-speech
+- music/SFX
+- captions
+- motion composition
+
+Generated visuals are not allowed to impersonate real SpecSmith UI. Product evidence should come from real or deterministic SpecSmith state.
+
+## Automated quality reviewer
+
+`qualityReviewer.ts` creates one review contract for every platform render and evaluates the finished output before publication.
+
+It checks:
+
+- factual claims and evidence
+- fake/generated SpecSmith UI
+- measured FPS vs estimated FPS labeling
+- first-two-second hook clarity
+- caption legibility and safe areas
+- narration/audio clarity
+- visual coherence
+- pacing
+- SpecSmith relevance
+- CTA route accuracy
+- generic AI-B-roll/slop ratio
+- duration drift
+
+Hard blockers cannot be averaged away by a good overall score. A video with false facts, fake product UI, a wrong CTA, or dangerous FPS labeling cannot publish just because its visuals scored highly.
+
+Reviewer decisions are:
+
+- `pass`
+- `regenerate-targeted`
+- `regenerate-full`
+- `hold-for-human-review`
+
+Uncertain facts are held for review instead of guessed. Repairable problems can target only the affected production tasks instead of remaking a strong video from scratch.
+
 ## Data integrity
 
 - Uses canonical local hardware data where available.
@@ -58,7 +130,8 @@ Every idea still carries creative DNA: visual world, narrative engine, first fra
 - Builder/upgrade concepts require an actual supported result before making compatibility or outcome claims.
 - Fresh prices must be re-verified before publication.
 - `benchmark_score` is not measured game FPS.
-- Estimated FPS must remain explicitly labeled estimated.
+- Estimated FPS must remain explicitly labeled `Estimated FPS`.
+- Measured FPS requires real benchmark evidence before publication.
 
 ## Learning loop
 
@@ -83,6 +156,8 @@ Output:
 
 `content-ideas/generated/latest-strategy.json`
 
+The generated strategy now includes the daily five, cross-platform content packages, script/storyboards, production plans, and one quality-review contract per platform version.
+
 ## Current boundary
 
 Built now:
@@ -92,14 +167,18 @@ Built now:
 - creative DNA
 - five-video quality gate
 - product-fit/site-continuation gates
+- cross-platform content packages
+- script/storyboard generation
+- production capability routing and render plans
+- automated quality-review contracts
+- automated reviewer decisions and targeted regeneration instructions
 - performance learner
 - tests and CI workflow
 
 Still later:
 
-- content-package generation for site + YouTube + TikTok + Instagram
-- AI script/storyboard production
-- video-model routing and rendering
-- automated fact/visual critique
+- actual video/image/UI rendering adapters
+- multimodal observation extraction from finished renders
+- automatic regeneration execution
 - publishing adapters/autopost
 - live analytics collectors
