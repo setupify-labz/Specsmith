@@ -13,6 +13,9 @@ await writeFile(outputPath, `${JSON.stringify(batch, null, 2)}\n`, "utf8");
 console.log(`Generated ${batch.candidateCount} ranked ideas.`);
 console.log("Top 4:");
 for (const [index, idea] of batch.topFour.entries()) {
+  const world = idea.creativeDNA.visualWorld.split(" — ")[0];
   console.log(`${index + 1}. [${idea.format}] ${idea.title} — ${idea.scores.total}/10`);
+  console.log(`   Creative world: ${world}`);
+  console.log(`   Hook: ${idea.hook}`);
 }
 console.log(`Saved: ${outputPath}`);
