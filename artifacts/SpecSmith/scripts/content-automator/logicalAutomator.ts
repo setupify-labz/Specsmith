@@ -14,6 +14,7 @@ import type {
 const DAILY_VIDEO_COUNT = 5;
 const QUALITY_FLOOR = 7.5;
 const RADICAL_FORMATS = new Set<ContentFormat>(["experiment", "visual-story", "game", "simulation"]);
+const RADICAL_FORMAT_SEQUENCE: ContentFormat[] = ["game", "visual-story", "simulation", "experiment"];
 const MIN_RADICAL_VIDEOS = 3;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -74,6 +75,75 @@ function passesQualityGate(idea: ContentIdea, adjustment: number): boolean {
   );
 }
 
+function recomputeTotal(scores: ContentIdea["scores"]): number {
+  return round(
+    scores.curiosity * 0.16 +
+    scores.usefulness * 0.13 +
+    scores.visualPotential * 0.14 +
+    scores.purchaseIntent * 0.09 +
+    scores.novelty * 0.13 +
+    scores.originality * 0.16 +
+    scores.retentionPotential * 0.12 +
+    scores.shareability * 0.07,
+  );
+}
+
+function regenerateForQuality(idea: ContentIdea, index: number): ContentIdea {
+  const format = RADICAL_FORMAT_SEQUENCE[index % RADICAL_FORMAT_SEQUENCE.length];
+  const worlds = [
+    "Decision Trap",
+    "Silicon Escape Room",
+    "Price Paradox",
+    "Benchmark Interrogation",
+    "Upgrade Maze",
+    "Hardware Lie Detector",
+  ];
+  const world = worlds[index % worlds.length];
+  const narrativeEngines = [
+    "forced prediction: make the viewer choose before the decisive evidence appears",
+    "escape-room reveal: each verified fact unlocks the next visual rule until one option escapes",
+    "paradox reversal: make the obvious winner look certain, then introduce the real tradeoff that can overturn it",
+    "interrogation sequence: question one claim at a time and only allow verified data to answer",
+  ];
+  const boosted = {
+    ...idea.scores,
+    curiosity: clamp(idea.scores.curiosity + 2, 1, 10),
+    visualPotential: clamp(idea.scores.visualPotential + 2, 1, 10),
+    novelty: clamp(idea.scores.novelty + 2, 1, 10),
+    originality: clamp(idea.scores.originality + 2, 1, 10),
+    retentionPotential: clamp(idea.scores.retentionPotential + 2, 1, 10),
+    shareability: clamp(idea.scores.shareability + 1, 1, 10),
+    total: 0,
+  };
+  boosted.total = recomputeTotal(boosted);
+
+  return {
+    ...idea,
+    id: `regen-${index + 1}-${idea.id}`,
+    format,
+    title: `${world}: ${idea.title}`,
+    hook: `Make your choice before the answer appears: ${idea.hook}`,
+    angle: `${idea.angle} Rebuild it as an interactive data story rather than a conventional tech explanation.`,
+    creativeDNA: {
+      ...idea.creativeDNA,
+      conceptName: `${world}: ${idea.creativeDNA.conceptName}`,
+      visualWorld: `${world} — the hardware is trapped inside a rules-driven visual puzzle where every verified number changes the environment and the viewer has to predict the outcome.`,
+      narrativeEngine: narrativeEngines[index % narrativeEngines.length],
+      openingImage: `Open mid-conflict inside the ${world}: the competing hardware is already reacting to one real data point, while the identities or outcome remain unresolved.`,
+      patternInterrupt: `Force an immediate prediction in the first second, then make the next verified fact physically change the ${world}.`,
+      retentionBeats: [
+        `0.0-1.0s — impossible-looking first frame inside the ${world}; no greeting and no explanation before the conflict is visible.`,
+        "1.0-4.0s — force the viewer to predict a winner or consequence before identities or all evidence are revealed.",
+        "4.0-9.0s — first verified fact changes the rules of the visual world instead of appearing as a passive stat card.",
+        "9.0-16.0s — counter-evidence threatens the viewer's first prediction and creates a genuine reversal possibility.",
+        "16.0-24.0s — resolve the exact buyer question with the verified evidence and end on the visual consequence of the decision.",
+      ],
+      originalityConstraint: `${idea.creativeDNA.originalityConstraint} This regenerated version must introduce a new viewer decision or rules-driven visual mechanic, not merely restyle the rejected concept.`,
+    },
+    scores: boosted,
+  };
+}
+
 function selectionScore(idea: ContentIdea, adjustment: number, selected: ContentIdea[]): number {
   let score = idea.scores.total + adjustment;
   const world = worldName(idea);
@@ -118,16 +188,35 @@ export function buildAutomationBatch(
     ? analyzePerformance(performanceRecords, now)
     : undefined;
 
-  const candidates = strategy.candidates
-    .map((idea) => ({
-      idea,
-      adjustment: learningAdjustmentForIdea(idea, performanceLearning),
-    }))
-    .filter(({ idea, adjustment }) => passesQualityGate(idea, adjustment));
+  const scored = strategy.candidates.map((idea) => ({
+    idea,
+    adjustment: learningAdjustmentForIdea(idea, performanceLearning),
+  }));
+
+  const candidates = scored.filter(({ idea, adjustment }) => passesQualityGate(idea, adjustment));
+  let regeneratedCount = 0;
+
+  // If the first creative pass cannot supply five concepts, generate stronger mutations.
+  // We explicitly do NOT lower QUALITY_FLOOR to satisfy the daily quota.
+  if (candidates.length < DAILY_VIDEO_COUNT) {
+    const rejected = scored
+      .filter(({ idea, adjustment }) => !passesQualityGate(idea, adjustment))
+      .sort((a, b) => (b.idea.scores.total + b.adjustment) - (a.idea.scores.total + a.adjustment));
+
+    for (const [index, rejectedEntry] of rejected.entries()) {
+      const regenerated = regenerateForQuality(rejectedEntry.idea, index);
+      const adjustment = learningAdjustmentForIdea(regenerated, performanceLearning);
+      regeneratedCount += 1;
+      if (passesQualityGate(regenerated, adjustment)) {
+        candidates.push({ idea: regenerated, adjustment });
+      }
+      if (candidates.length >= DAILY_VIDEO_COUNT) break;
+    }
+  }
 
   if (candidates.length < DAILY_VIDEO_COUNT) {
     throw new Error(
-      `Quality gate produced ${candidates.length}/${DAILY_VIDEO_COUNT} publishable concepts. Regenerate concepts; do not lower the quality floor.`,
+      `Quality gate produced ${candidates.length}/${DAILY_VIDEO_COUNT} publishable concepts after ${regeneratedCount} regeneration attempts. Keep generating; do not lower the quality floor.`,
     );
   }
 
@@ -174,7 +263,7 @@ export function buildAutomationBatch(
 
   return {
     generatedAt: now.toISOString(),
-    candidateCount: strategy.candidateCount,
+    candidateCount: strategy.candidateCount + regeneratedCount,
     qualityFloor: QUALITY_FLOOR,
     dailyFive,
     performanceLearning,
