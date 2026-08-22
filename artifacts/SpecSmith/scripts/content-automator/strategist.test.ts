@@ -28,6 +28,37 @@ describe("buildStrategyBatch", () => {
     expect(result.candidates.some((idea) => idea.subjectIds.includes("old"))).toBe(false);
   });
 
+  it("forces creative direction into every candidate instead of producing generic script prompts", () => {
+    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
+
+    for (const idea of result.candidates) {
+      expect(idea.creativeDNA.conceptName.length).toBeGreaterThan(10);
+      expect(idea.creativeDNA.visualWorld.length).toBeGreaterThan(20);
+      expect(idea.creativeDNA.retentionBeats).toHaveLength(5);
+      expect(idea.creativeDNA.antiSlopRules.length).toBeGreaterThanOrEqual(6);
+      expect(idea.creativeDNA.originalityConstraint).toContain("stock RGB B-roll");
+      expect(idea.scores.originality).toBeGreaterThanOrEqual(1);
+      expect(idea.scores.retentionPotential).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("includes wildcard formats that break out of ordinary comparison/listicle grammar", () => {
+    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
+    const formats = new Set(result.candidates.map((idea) => idea.format));
+
+    expect(formats.has("visual-story")).toBe(true);
+    expect(formats.has("game")).toBe(true);
+    expect(formats.has("simulation")).toBe(true);
+    expect(formats.has("experiment")).toBe(true);
+  });
+
+  it("tries to make the daily four visually distinct, not template swaps", () => {
+    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
+    const worlds = result.topFour.map((idea) => idea.creativeDNA.visualWorld.split(" — ")[0]);
+
+    expect(new Set(worlds).size).toBeGreaterThanOrEqual(3);
+  });
+
   it("is deterministic for the same data and date", () => {
     const date = new Date("2026-08-21T12:00:00Z");
     const first = buildStrategyBatch(gpus, cpus, date);
