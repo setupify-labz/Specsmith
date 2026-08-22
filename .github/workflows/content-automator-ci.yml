@@ -38,6 +38,7 @@ jobs:
           scripts/content-automator/logicalAutomator.test.ts
           scripts/content-automator/contentPackage.test.ts
           scripts/content-automator/scriptStoryboard.test.ts
+          scripts/content-automator/productionPlan.test.ts
           scripts/content-automator/performance.test.ts
 
       - name: Typecheck SpecSmith
