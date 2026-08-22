@@ -96,4 +96,6 @@ As data accumulates, tomorrow's selector receives evidence from yesterday while 
 
 This branch now has the **creative strategist + five-video quality gate + performance learner**. It still needs the later production stages: AI creative expansion, script/storyboard, asset generation, video-model routing, rendering, automated visual critique, publishing adapters, and live analytics collectors.
 
+The branch also has an isolated GitHub Actions workflow that runs the content-automator tests, SpecSmith typecheck, and a real five-video generation pass before this work is treated as ready.
+
 Originality cannot be guaranteed by a prompt or score. It has to survive real audience behavior. The architecture is therefore built to generate unusual concepts, measure them, learn cautiously, and keep experimenting rather than converging into repetitive AI slop.
