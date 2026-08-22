@@ -3,9 +3,16 @@ import { dirname, resolve } from "node:path";
 import gpus from "../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../src/data/cpus.json" with { type: "json" };
 import { buildReviewableAutomationBatch } from "./reviewableAutomator.ts";
+import {
+  applyAudioSelectionsToProductionPlans,
+  buildAudioSelections,
+  type AudioTrendSnapshot,
+} from "./audioTrend.ts";
 import type { HardwareItem, VideoPerformanceRecord } from "./types.ts";
 
-const historyPath = resolve(process.cwd(), "content-ideas/generated/performance-history.json");
+const generatedDir = resolve(process.cwd(), "content-ideas/generated");
+const historyPath = resolve(generatedDir, "performance-history.json");
+const audioTrendPath = resolve(generatedDir, "audio-trends.json");
 
 async function loadPerformanceHistory(): Promise<VideoPerformanceRecord[]> {
   try {
@@ -19,20 +26,53 @@ async function loadPerformanceHistory(): Promise<VideoPerformanceRecord[]> {
   }
 }
 
-const performanceHistory = await loadPerformanceHistory();
+async function loadAudioTrends(): Promise<AudioTrendSnapshot | undefined> {
+  try {
+    const raw = await readFile(audioTrendPath, "utf8");
+    const parsed = JSON.parse(raw) as Partial<AudioTrendSnapshot>;
+    if (typeof parsed.capturedAt !== "string" || !Array.isArray(parsed.candidates)) {
+      throw new Error("audio-trends.json must contain { capturedAt, candidates[] }");
+    }
+    return parsed as AudioTrendSnapshot;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+const now = new Date();
+const [performanceHistory, audioTrends] = await Promise.all([
+  loadPerformanceHistory(),
+  loadAudioTrends(),
+]);
+
 const batch = buildReviewableAutomationBatch(
   gpus as HardwareItem[],
   cpus as HardwareItem[],
   performanceHistory,
+  now,
 );
 
-const outputPath = resolve(process.cwd(), "content-ideas/generated/latest-strategy.json");
+const selectedIdeas = batch.dailyFive.map((entry) => entry.idea);
+const audioSelections = buildAudioSelections(selectedIdeas, audioTrends, now);
+batch.productionPlans = applyAudioSelectionsToProductionPlans(batch.productionPlans, audioSelections);
+
+const output = {
+  ...batch,
+  audioSelections,
+};
+
+const outputPath = resolve(generatedDir, "latest-strategy.json");
 await mkdir(dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(batch, null, 2)}\n`, "utf8");
+await writeFile(outputPath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
 
 console.log(`Generated ${batch.candidateCount} candidate concepts.`);
 console.log(`Quality floor: ${batch.qualityFloor}/10`);
 console.log(`Prepared ${batch.qualityReviewRequests.length} platform review contracts.`);
+console.log(`Prepared ${audioSelections.length} platform audio decisions (${audioSelections.filter((entry) => entry.mode === "trending").length} trending, ${audioSelections.filter((entry) => entry.mode === "original").length} original/licensed fallbacks).`);
+if (!audioTrends) {
+  console.log(`No audio trend feed found at ${audioTrendPath}; using safe original/licensed audio fallbacks.`);
+}
 console.log("Daily 5:");
 for (const plan of batch.dailyFive) {
   const adjustment = plan.learningAdjustment === 0
