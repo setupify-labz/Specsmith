@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import gpus from "../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../src/data/cpus.json" with { type: "json" };
-import { buildAutomationBatch } from "./logicalAutomator.ts";
+import { buildReviewableAutomationBatch } from "./reviewableAutomator.ts";
 import type { HardwareItem, VideoPerformanceRecord } from "./types.ts";
 
 const historyPath = resolve(process.cwd(), "content-ideas/generated/performance-history.json");
@@ -20,7 +20,7 @@ async function loadPerformanceHistory(): Promise<VideoPerformanceRecord[]> {
 }
 
 const performanceHistory = await loadPerformanceHistory();
-const batch = buildAutomationBatch(
+const batch = buildReviewableAutomationBatch(
   gpus as HardwareItem[],
   cpus as HardwareItem[],
   performanceHistory,
@@ -32,6 +32,7 @@ await writeFile(outputPath, `${JSON.stringify(batch, null, 2)}\n`, "utf8");
 
 console.log(`Generated ${batch.candidateCount} candidate concepts.`);
 console.log(`Quality floor: ${batch.qualityFloor}/10`);
+console.log(`Prepared ${batch.qualityReviewRequests.length} platform review contracts.`);
 console.log("Daily 5:");
 for (const plan of batch.dailyFive) {
   const adjustment = plan.learningAdjustment === 0
