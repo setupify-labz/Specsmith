@@ -121,6 +121,33 @@ export interface ContentPackage {
   };
 }
 
+export interface StoryboardBeat {
+  startSecond: number;
+  endSecond: number;
+  purpose: "hook" | "commitment" | "evidence" | "reversal" | "payoff" | "cta";
+  narration: string;
+  visualDirection: string;
+  onScreenText: string;
+  factDependencies: string[];
+}
+
+export interface PlatformScriptStoryboard {
+  platform: VideoPlatform;
+  targetDurationSeconds: number;
+  title: string;
+  narrationStyle: string;
+  beats: StoryboardBeat[];
+  finalCta: string;
+  factualGuardrails: string[];
+}
+
+export interface ScriptStoryboardPackage {
+  packageId: string;
+  ideaId: string;
+  campaignId: string;
+  scripts: PlatformScriptStoryboard[];
+}
+
 export interface RetentionPoint {
   elapsedRatio: number;
   audienceRatio: number;
@@ -206,5 +233,6 @@ export interface AutomationBatch {
   qualityFloor: number;
   dailyFive: DailyVideoPlan[];
   contentPackages: ContentPackage[];
+  scriptStoryboards: ScriptStoryboardPackage[];
   performanceLearning?: PerformanceLearning;
 }
