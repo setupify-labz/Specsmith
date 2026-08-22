@@ -45,5 +45,8 @@ jobs:
       - name: Typecheck SpecSmith
         run: pnpm --dir artifacts/SpecSmith typecheck
 
+      - name: Build SpecSmith
+        run: pnpm --dir artifacts/SpecSmith build
+
       - name: Generate real daily five
         run: pnpm --dir artifacts/SpecSmith content:strategist
