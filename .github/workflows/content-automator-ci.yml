@@ -41,6 +41,9 @@ jobs:
           scripts/content-automator/productionPlan.test.ts
           scripts/content-automator/audioTrend.test.ts
           scripts/content-automator/trendSource.test.ts
+          scripts/content-automator/youtubeTrendSource.test.ts
+          scripts/content-automator/instagramTrendSource.test.ts
+          scripts/content-automator/multiTrendSource.test.ts
           scripts/content-automator/rendering.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
