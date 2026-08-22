@@ -1,377 +1,221 @@
+import { connection } from "./productMap.ts";
 import type { ContentIdea, CreativeDNA, HardwareItem, StrategyBatch } from "./types.ts";
 
 const clamp = (value: number) => Math.max(1, Math.min(10, Math.round(value)));
-const avg = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
 const valueRatio = (item: HardwareItem) => item.benchmark_score / item.price_usd;
+const RADICAL = new Set<ContentIdea["format"]>(["experiment", "visual-story", "game", "simulation"]);
 
 type IdeaDraft = Omit<ContentIdea, "scores" | "creativeDNA">;
 
-type IdeaSignals = {
-  priceGap?: number;
-  scoreGap?: number;
-  releaseGap?: number;
-  price?: number;
-  tier?: number;
-  subjectCount?: number;
-};
+const FEATURE_WORLD = {
+  builder: "SpecSmith Build Lab",
+  compare: "SpecSmith Decision Arena",
+  "build-crate": "Build Crate Reveal Room",
+  "build-guides": "SpecSmith Mission Board",
+  gallery: "SpecSmith Repair Bench",
+  upgrade: "Upgrade Rescue Lab",
+  "parts-catalog": "SpecSmith Parts Board",
+  "price-guesser": "SpecSmith Price Stage",
+} as const;
 
-const VISUAL_WORLDS = [
-  {
-    name: "Silicon Gravity Well",
-    direction: "PC parts float in a black void while real price tags physically bend the scene; expensive parts create stronger visual gravity.",
-  },
-  {
-    name: "Neon Evidence Lab",
-    direction: "Every claim is treated like forensic evidence: macro hardware scans, floating labels, redacted identities, then a hard reveal.",
-  },
-  {
-    name: "Performance Boss Fight",
-    direction: "Hardware becomes a cinematic boss encounter where price, benchmark score, VRAM, and age are visualized as attack phases rather than a stat table.",
-  },
-  {
-    name: "PC Part Stock Exchange",
-    direction: "A surreal trading floor where performance-per-dollar moves like a live market and bad value gets visually sold off.",
-  },
-  {
-    name: "Budget Heist Board",
-    direction: "A heist-planning wall traces where each dollar goes, with the viewer watching one component steal budget from another.",
-  },
-  {
-    name: "Hardware Courtroom",
-    direction: "A component is put on trial; price is the accusation, performance data is evidence, and the verdict is withheld until the end.",
-  },
-  {
-    name: "Blind Draft Arena",
-    direction: "Names and brands stay hidden while only verified numbers are shown; the viewer must pick before the identities are revealed.",
-  },
-  {
-    name: "Upgrade Time Loop",
-    direction: "The same PC decision repeats in a visual time loop, but one variable changes each cycle until the surprising choice becomes obvious.",
-  },
-  {
-    name: "Silicon X-Ray",
-    direction: "The part is visually sliced into layers of cost, age, tier, VRAM, and performance so the decision feels like an animated autopsy.",
-  },
-  {
-    name: "Price-Tag Physics",
-    direction: "Dollar amounts become physical objects: weights, walls, projectiles, traps, and doors that the hardware has to overcome.",
-  },
-  {
-    name: "Spec Roulette",
-    direction: "Verified specs arrive one at a time like roulette outcomes; the identity stays hidden until the viewer has committed to a choice.",
-  },
-  {
-    name: "Impossible Museum",
-    direction: "Each part lives inside a bizarre museum exhibit built around one real fact, with rapid transitions between exhibits instead of generic B-roll.",
-  },
-] as const;
-
-const NARRATIVE_ENGINES = [
-  "blind-choice reveal: force the viewer to choose before the product names appear",
-  "reverse auction: start with the highest price and remove dollars until the value winner survives",
-  "three-act accusation: make a strong claim, present evidence against it, then reverse or confirm it at the payoff",
-  "escalating rule change: every few seconds add a new constraint that changes which part looks best",
-  "identity mystery: show only data and silhouettes until the final reveal",
-  "visual transformation: turn the numerical tradeoff into a physical transformation the viewer can understand without a chart",
-  "boss phases: each metric unlocks a new phase and the apparent winner can change before the final phase",
-  "time-loop correction: repeat the same decision with one changed variable until the mistake becomes impossible to miss",
-] as const;
-
-const RADICAL_FORMATS = new Set<ContentIdea["format"]>(["experiment", "visual-story", "game", "simulation"]);
-
-function stableHash(input: string): number {
-  let hash = 2166136261;
-  for (const char of input) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function pick<T>(items: readonly T[], seed: number, offset = 0): T {
-  return items[(seed + offset * 7919) % items.length];
-}
-
-function buildCreativeDNA(input: IdeaDraft, signals: IdeaSignals): CreativeDNA {
-  const seed = stableHash(input.id);
-  const world = pick(VISUAL_WORLDS, seed);
-  const narrativeEngine = pick(NARRATIVE_ENGINES, seed, 1);
-  const subjects = input.subjectIds.length > 1 ? "the competing parts" : "the featured part";
-  const priceGap = signals.priceGap ?? 0;
-  const scoreGap = signals.scoreGap ?? 0;
-
-  let surpriseMechanic = "withhold the obvious answer, let the viewer form a prediction, then reveal the verified data that changes or confirms it";
-  if (priceGap >= 300 && scoreGap <= 50) {
-    surpriseMechanic = `make the $${Math.round(priceGap)} price gap feel enormous on screen before revealing how small or large the performance gap actually is`;
-  } else if (input.subjectIds.length >= 3) {
-    surpriseMechanic = "hide all product identities, eliminate one candidate at a time, and reveal the names only after the viewer has mentally drafted a winner";
-  } else if (input.format === "buyer-warning") {
-    surpriseMechanic = "open as if the expensive option is absurd, then force the video to earn either a guilty or not-guilty verdict from the real data";
-  }
-
+function creativeDNA(idea: IdeaDraft): CreativeDNA {
+  const world = FEATURE_WORLD[idea.productConnection.feature];
+  const interactive = RADICAL.has(idea.format);
   return {
-    conceptName: `${world.name}: ${input.title}`,
-    visualWorld: `${world.name} — ${world.direction}`,
-    narrativeEngine,
-    openingImage: `Open on ${subjects} already inside the ${world.name}; no logo, no presenter intro, no setup sentence. The first frame must look like the story has already started.`,
-    patternInterrupt: `${input.hook} Visualize the claim immediately instead of explaining it over generic PC footage.`,
+    conceptName: `${world}: ${idea.title}`,
+    visualWorld: `${world} — the real SpecSmith feature is part of the visual mechanic, not a logo pasted onto unrelated PC footage.`,
+    narrativeEngine: interactive
+      ? "viewer decision -> SpecSmith evidence -> reversal -> product result"
+      : "real buyer problem -> SpecSmith analysis -> decision -> continue on site",
+    openingImage: `Open inside ${world} with the problem already happening. The first frame must show a build, comparison, crate, upgrade, or part decision from SpecSmith.` ,
+    patternInterrupt: `${idea.hook} Make the viewer choose, predict, or spot the mistake before SpecSmith reveals the answer.`,
     retentionBeats: [
-      `0.0-1.2s — visual shock: establish the ${world.name} and the core conflict before the viewer can categorize it as a normal PC short.`,
-      `1.2-4.0s — commitment: ${surpriseMechanic}.`,
-      "4.0-9.0s — first evidence drop: reveal one verified number and make it alter the visual world, not just appear as text.",
-      "9.0-16.0s — reversal: introduce the strongest counterpoint so the video cannot be predicted from the hook alone.",
-      "16.0-24.0s — payoff: reveal the decision, then end on a visual consequence rather than a generic subscribe CTA.",
+      "0.0-1.2s — show the actual PC decision immediately; no logo intro.",
+      "1.2-4.0s — force a prediction, choice, or challenge.",
+      "4.0-9.0s — reveal the first verified SpecSmith fact or product state.",
+      "9.0-16.0s — introduce the tradeoff or reversal that makes the first answer uncertain.",
+      `16.0-26.0s — resolve the problem, then naturally continue into ${idea.productConnection.route}.`,
     ],
-    payoff: `Resolve the exact buyer question in "${input.angle}" using only the verified facts listed for this idea. If the evidence is inconclusive, say so instead of manufacturing a winner.`,
-    audioDirection: "Sound design should behave like part of the story: hard silence before reveals, tactile impacts tied to price/spec changes, and no generic nonstop hype bed that flattens every beat.",
-    originalityConstraint: "Reject the concept if it could be recreated as stock RGB B-roll plus captions. At least one core visual mechanic must be inseparable from the hardware data itself.",
+    payoff: `${idea.productConnection.sitePayoff} The final answer must come from verified SpecSmith data or an actual SpecSmith feature result.`,
+    audioDirection: "Use sound to emphasize choices, reveals, crate pulls, swaps, and mistakes. Avoid a constant generic hype track.",
+    originalityConstraint: "The concept fails if SpecSmith can be removed without changing the story. Creativity must amplify a real product action or PC decision.",
     antiSlopRules: [
-      "No 'here are 3 things' listicle opening.",
-      "No logo animation or greeting in the first two seconds.",
-      "No generic RGB desk pan unless it has a narrative function.",
-      "No fake benchmarks, fake prices, fake UI, or invented product facts.",
-      "No static spec card held on screen while narration simply reads it.",
-      "No repeating the hook as the payoff.",
-      "No visual state should persist by default; earn any shot longer than roughly two seconds with tension or a reveal.",
-      "If the result feels like a recognizable template, mutate the visual world or narrative engine before production.",
+      "No generic RGB montage as the core video.",
+      "No fake benchmark, price, compatibility, build, or UI result.",
+      "No static spec-card narration for most of the runtime.",
+      "No unrelated visual metaphor whose connection to the PC decision needs explaining.",
+      "No generic follow-for-more ending when the natural continuation is a SpecSmith feature.",
+      "No concept may pass if another PC brand could replace SpecSmith with no meaningful change.",
+      "If live price data is used, verify freshness before publishing.",
+      "Estimated FPS must remain labeled estimated; benchmark_score is not measured game FPS.",
     ],
   };
 }
 
-function scoreIdea(input: IdeaDraft, signals: IdeaSignals): ContentIdea {
-  const priceGap = Math.min((signals.priceGap ?? 0) / 250, 5);
-  const scoreGap = Math.min((signals.scoreGap ?? 0) / 25, 4);
-  const releaseGap = Math.min(signals.releaseGap ?? 0, 4);
-  const priceShock = Math.min((signals.price ?? 0) / 700, 5);
-  const tier = signals.tier ?? 5;
-  const experimental = RADICAL_FORMATS.has(input.format);
-  const creativeDNA = buildCreativeDNA(input, signals);
-
-  const curiosity = clamp(5 + priceGap + releaseGap * 0.5 + (input.format === "buyer-warning" ? 1.5 : 0) + (experimental ? 1 : 0));
-  const usefulness = clamp(6 + scoreGap * 0.5 + (input.format === "comparison" || input.format === "value" ? 1.5 : 0));
-  const visualPotential = clamp(7 + (input.subjectIds.length > 1 ? 1 : 0) + (experimental ? 1.5 : 0));
-  const purchaseIntent = clamp(4 + priceShock + (input.format === "comparison" || input.format === "value" || input.format === "buyer-warning" ? 1 : 0));
-  const novelty = clamp(6 + Math.abs(6 - tier) * 0.3 + releaseGap * 0.5 + (experimental ? 2 : 0));
-  const originality = clamp(7 + (experimental ? 2 : 0) + (input.subjectIds.length >= 3 ? 0.5 : 0));
-  const retentionPotential = clamp(7 + Math.min(priceGap, 2) * 0.5 + (input.format === "game" ? 2 : 0) + (experimental ? 0.5 : 0));
-  const shareability = clamp(6 + (input.format === "game" ? 2 : 0) + (input.format === "buyer-warning" ? 1 : 0) + (input.subjectIds.length > 1 ? 0.5 : 0));
+function score(idea: IdeaDraft, signal = 0): ContentIdea {
+  const radical = RADICAL.has(idea.format);
+  const curiosity = clamp(7 + (radical ? 2 : 0) + signal);
+  const usefulness = clamp(9 + signal * 0.25);
+  const visualPotential = clamp(8 + (radical ? 1 : 0));
+  const purchaseIntent = clamp(7 + (idea.productConnection.feature === "compare" || idea.productConnection.feature === "builder" || idea.productConnection.feature === "upgrade" ? 2 : 0));
+  const novelty = clamp(7 + (radical ? 2 : 0));
+  const originality = clamp(7 + (radical ? 2 : 0));
+  const retentionPotential = clamp(8 + (radical ? 1 : 0));
+  const shareability = clamp(7 + (idea.format === "game" || idea.productConnection.feature === "build-crate" ? 2 : 0));
+  const productFit = 10;
+  const siteContinuation = 10;
   const total = Number((
-    curiosity * 0.16 +
-    usefulness * 0.13 +
-    visualPotential * 0.14 +
-    purchaseIntent * 0.09 +
-    novelty * 0.13 +
-    originality * 0.16 +
-    retentionPotential * 0.12 +
-    shareability * 0.07
+    curiosity * 0.12 + usefulness * 0.13 + visualPotential * 0.11 + purchaseIntent * 0.08 +
+    novelty * 0.09 + originality * 0.10 + retentionPotential * 0.12 + shareability * 0.07 +
+    productFit * 0.10 + siteContinuation * 0.08
   ).toFixed(2));
-
-  return {
-    ...input,
-    creativeDNA,
-    scores: {
-      curiosity,
-      usefulness,
-      visualPotential,
-      purchaseIntent,
-      novelty,
-      originality,
-      retentionPotential,
-      shareability,
-      total,
-    },
-  };
+  return { ...idea, creativeDNA: creativeDNA(idea), scores: { curiosity, usefulness, visualPotential, purchaseIntent, novelty, originality, retentionPotential, shareability, productFit, siteContinuation, total } };
 }
 
 export function buildStrategyBatch(gpus: HardwareItem[], cpus: HardwareItem[], now = new Date()): StrategyBatch {
-  const currentYear = now.getUTCFullYear();
-  const modernGpus = gpus.filter((gpu) => gpu.price_usd > 0 && gpu.benchmark_score > 0 && gpu.release_year >= currentYear - 4);
-  const modernCpus = cpus.filter((cpu) => cpu.price_usd > 0 && cpu.benchmark_score > 0 && cpu.release_year >= currentYear - 5);
+  const year = now.getUTCFullYear();
+  const validGpus = gpus.filter((x) => x.price_usd > 0 && x.benchmark_score > 0 && x.release_year >= year - 4);
+  const validCpus = cpus.filter((x) => x.price_usd > 0 && x.benchmark_score > 0 && x.release_year >= year - 5);
+  const byPerf = [...validGpus].sort((a, b) => b.benchmark_score - a.benchmark_score);
+  const byValue = [...validGpus].sort((a, b) => valueRatio(b) - valueRatio(a));
+  const cpuValue = [...validCpus].sort((a, b) => valueRatio(b) - valueRatio(a));
   const ideas: ContentIdea[] = [];
+  const push = (idea: IdeaDraft, signal = 0) => ideas.push(score(idea, signal));
 
-  const push = (idea: IdeaDraft, signals: IdeaSignals) => {
-    ideas.push(scoreIdea(idea, { ...signals, subjectCount: idea.subjectIds.length }));
-  };
-
-  const sortedGpus = [...modernGpus].sort((a, b) => b.benchmark_score - a.benchmark_score);
-  const valueGpus = [...modernGpus].sort((a, b) => valueRatio(b) - valueRatio(a));
-
-  for (let i = 0; i < Math.min(sortedGpus.length - 1, 8); i++) {
-    const a = sortedGpus[i];
-    const b = sortedGpus[i + 1];
-    const priceGap = Math.abs(a.price_usd - b.price_usd);
-    const scoreGap = Math.abs(a.benchmark_score - b.benchmark_score);
+  for (let i = 0; i < Math.min(6, byPerf.length - 1); i++) {
+    const a = byPerf[i]; const b = byPerf[i + 1];
+    const gap = Math.abs(a.price_usd - b.price_usd);
     push({
-      id: `gpu-compare-${a.id}-${b.id}`,
-      format: "comparison",
-      title: `${a.name} vs ${b.name}: is the extra money actually worth it?`,
-      hook: `You're paying $${priceGap.toFixed(0)} more for this GPU. Here's what that actually buys you.`,
-      angle: "Turn a real price/performance gap into a fast buyer decision.",
-      targetAudience: "PC builders choosing between nearby GPU tiers",
-      requiredFacts: [`${a.name} current SpecSmith price`, `${b.name} current SpecSmith price`, "benchmark score difference", "estimated FPS must be labeled estimated if used"],
+      id: `compare-${a.id}-${b.id}`,
+      format: i % 2 === 0 ? "game" : "comparison",
+      title: i % 2 === 0 ? `Pick the GPU before SpecSmith reveals the names: ${a.name} vs ${b.name}` : `${a.name} vs ${b.name}: where does the extra $${Math.round(gap)} actually go?`,
+      hook: i % 2 === 0 ? "Two GPUs. Names hidden. Pick one before SpecSmith reveals what your money actually buys." : `These GPUs are $${Math.round(gap)} apart. Is the expensive one actually the smarter choice?`,
+      angle: "Turn the Compare feature into the actual decision game.",
+      targetAudience: "PC buyers choosing between nearby GPU tiers",
+      requiredFacts: [`${a.name} verified SpecSmith price`, `${b.name} verified SpecSmith price`, "benchmark-score difference", "current comparison data"],
       subjectIds: [a.id, b.id],
-    }, { priceGap, scoreGap, releaseGap: Math.abs(a.release_year - b.release_year), price: Math.max(a.price_usd, b.price_usd), tier: avg([a.tier ?? 5, b.tier ?? 5]) });
+      productConnection: connection("compare", "Choose between two GPUs without getting lost in specs.", "SpecSmith provides the side-by-side comparison and verified decision inputs.", "Open the exact comparison and change the parts yourself.", "The final reveal lands on the actual SpecSmith comparison rather than an arbitrary creator opinion."),
+    }, gap > 250 ? 1 : 0);
   }
 
-  for (const gpu of valueGpus.slice(0, 6)) {
+  for (const gpu of byValue.slice(0, 4)) {
     push({
-      id: `gpu-value-${gpu.id}`,
-      format: "value",
-      title: `${gpu.name}: one of the strongest performance-per-dollar picks in SpecSmith`,
-      hook: `This GPU costs about $${gpu.price_usd}, but its performance score punches way above that price.`,
-      angle: "Use SpecSmith's own price and benchmark-score fields to surface unusually strong value within the current catalog.",
-      targetAudience: "Budget-conscious gamers",
-      requiredFacts: ["SpecSmith price", "benchmark score", "comparison set used for value ranking", "do not call benchmark_score measured game FPS"],
-      subjectIds: [gpu.id],
-    }, { price: gpu.price_usd, tier: gpu.tier });
-  }
-
-  const expensive = [...modernGpus].sort((a, b) => b.price_usd - a.price_usd).slice(0, 4);
-  for (const gpu of expensive) {
-    push({
-      id: `gpu-warning-${gpu.id}`,
-      format: "buyer-warning",
-      title: `Before you spend $${gpu.price_usd.toFixed(0)} on a ${gpu.name}, put it on trial`,
-      hook: `$${gpu.price_usd.toFixed(0)} for one GPU sounds insane — so make the data defend it.`,
-      angle: "Frame flagship pricing as a buyer-warning story instead of a generic spec readout.",
-      targetAudience: "High-end PC buyers",
-      requiredFacts: ["SpecSmith price", "VRAM if available", "benchmark score", "no unsupported value claims"],
-      subjectIds: [gpu.id],
-    }, { price: gpu.price_usd, tier: gpu.tier, releaseGap: currentYear - gpu.release_year });
-  }
-
-  const cpuByValue = [...modernCpus].sort((a, b) => valueRatio(b) - valueRatio(a));
-  for (const cpu of cpuByValue.slice(0, 4)) {
-    push({
-      id: `cpu-value-${cpu.id}`,
-      format: "build",
-      title: `Build around the ${cpu.name} without letting the CPU eat the whole budget`,
-      hook: `Give this ${cpu.name} a budget and watch where the money tries to disappear.`,
-      angle: "Turn a CPU into a practical allocation story and point viewers toward the Builder.",
-      targetAudience: "First-time and mid-range PC builders",
-      requiredFacts: ["SpecSmith CPU price", "benchmark score", "compatible-parts data before naming an exact build"],
-      subjectIds: [cpu.id],
-    }, { price: cpu.price_usd, tier: cpu.tier });
-  }
-
-  // Wildcards deliberately break out of standard tech-review grammar while staying tied to real local data.
-  if (sortedGpus.length >= 2) {
-    const strongest = sortedGpus[0];
-    const valuePick = valueGpus[0];
-    const priceGap = Math.abs(strongest.price_usd - valuePick.price_usd);
-    const scoreGap = Math.abs(strongest.benchmark_score - valuePick.benchmark_score);
-    push({
-      id: `wildcard-gravity-${strongest.id}-${valuePick.id}`,
-      format: "visual-story",
-      title: "What if GPU prices had gravity?",
-      hook: `$${Math.round(priceGap)} of price difference is about to bend this entire room.`,
-      angle: `Turn the real ${strongest.name} vs ${valuePick.name} price/performance tradeoff into a physical world where cost has gravity.`,
-      targetAudience: "PC viewers who normally swipe past specification comparisons",
-      requiredFacts: ["both SpecSmith prices", "both benchmark scores", "price gap", "benchmark score is not game FPS"],
-      subjectIds: [strongest.id, valuePick.id],
-    }, { priceGap, scoreGap, price: Math.max(strongest.price_usd, valuePick.price_usd), tier: strongest.tier });
-  }
-
-  if (valueGpus.length >= 3) {
-    const draft = valueGpus.slice(0, 3);
-    push({
-      id: `wildcard-blind-draft-${draft.map((gpu) => gpu.id).join("-")}`,
-      format: "game",
-      title: "Blind GPU draft: pick one before I tell you what any of them are",
-      hook: "Three GPUs. No names. No logos. You only get price and one performance number — choose now.",
-      angle: "Make the viewer commit to a choice before brand bias can influence the decision, then reveal the identities.",
-      targetAudience: "PC enthusiasts and casual buyers who enjoy interactive reveal formats",
-      requiredFacts: draft.flatMap((gpu) => [`${gpu.name} SpecSmith price`, `${gpu.name} benchmark score`]).concat("ranking methodology must be stated or inferable"),
-      subjectIds: draft.map((gpu) => gpu.id),
-    }, {
-      priceGap: Math.max(...draft.map((gpu) => gpu.price_usd)) - Math.min(...draft.map((gpu) => gpu.price_usd)),
-      scoreGap: Math.max(...draft.map((gpu) => gpu.benchmark_score)) - Math.min(...draft.map((gpu) => gpu.benchmark_score)),
-      price: Math.max(...draft.map((gpu) => gpu.price_usd)),
-      tier: avg(draft.map((gpu) => gpu.tier ?? 5)),
-    });
-  }
-
-  if (sortedGpus.length >= 2) {
-    const a = sortedGpus[0];
-    const b = sortedGpus[Math.min(2, sortedGpus.length - 1)];
-    push({
-      id: `wildcard-hp-bars-${a.id}-${b.id}`,
+      id: `builder-budget-${gpu.id}`,
       format: "simulation",
-      title: "I turned GPU prices into damage and performance into armor",
-      hook: "Every dollar hits the health bar. Every performance point blocks damage. Which GPU survives?",
-      angle: "Translate the verified price/performance relationship into a game-like simulation whose rules are visible and mathematically consistent.",
-      targetAudience: "Gaming-first PC audiences",
-      requiredFacts: ["both SpecSmith prices", "both benchmark scores", "simulation rule shown on screen", "simulation is a visualization, not a benchmark"],
-      subjectIds: [a.id, b.id],
-    }, {
-      priceGap: Math.abs(a.price_usd - b.price_usd),
-      scoreGap: Math.abs(a.benchmark_score - b.benchmark_score),
-      price: Math.max(a.price_usd, b.price_usd),
-      tier: avg([a.tier ?? 5, b.tier ?? 5]),
+      title: `I gave SpecSmith a gaming-PC budget and locked in the ${gpu.name}`,
+      hook: `Lock this ${gpu.name} into a build. Now every remaining dollar has to survive the Builder.`,
+      angle: "Use a real part as a constraint and let the Builder drive the rest of the story.",
+      targetAudience: "People planning a gaming PC around a GPU",
+      requiredFacts: ["verified GPU price", "actual compatible Builder result before publishing", "final build total", "no invented compatibility result"],
+      subjectIds: [gpu.id],
+      productConnection: connection("builder", "Build a balanced PC around one must-have component.", "The SpecSmith Builder is the engine resolving budget and compatibility tradeoffs.", "Open the finished build in Builder and swap the parts or budget.", "The payoff is a real build the viewer can continue editing."),
     });
   }
 
-  if (cpuByValue.length >= 2) {
-    const a = cpuByValue[0];
-    const b = [...modernCpus].sort((left, right) => right.price_usd - left.price_usd)[0];
+  for (const cpu of cpuValue.slice(0, 3)) {
     push({
-      id: `wildcard-cpu-heist-${a.id}-${b.id}`,
+      id: `upgrade-${cpu.id}`,
       format: "experiment",
-      title: "The CPU budget heist",
-      hook: `One of these CPUs is about to steal $${Math.abs(a.price_usd - b.price_usd).toFixed(0)} from the rest of your build.`,
-      angle: "Make CPU price difference a literal heist story, then use verified catalog data to explain the tradeoff without inventing an exact build outcome.",
-      targetAudience: "Builders deciding how aggressively to spend on CPU",
-      requiredFacts: ["both CPU prices", "both benchmark scores", "do not claim an exact GPU upgrade unless compatible catalog data supports it"],
-      subjectIds: [a.id, b.id],
-    }, {
-      priceGap: Math.abs(a.price_usd - b.price_usd),
-      scoreGap: Math.abs(a.benchmark_score - b.benchmark_score),
-      price: Math.max(a.price_usd, b.price_usd),
-      tier: avg([a.tier ?? 5, b.tier ?? 5]),
+      title: `You get one upgrade. Does SpecSmith spend it on the ${cpu.name} or somewhere else?`,
+      hook: "One upgrade. One budget. Make your pick before SpecSmith runs the decision.",
+      angle: "Turn an upgrade decision into a prediction challenge instead of a lecture.",
+      targetAudience: "Owners deciding what to upgrade first",
+      requiredFacts: ["verified CPU price", "actual upgrade-calculator result or supported comparison", "no invented FPS gain"],
+      subjectIds: [cpu.id],
+      productConnection: connection("upgrade", "Decide where limited upgrade money should go first.", "SpecSmith has an upgrade workflow instead of relying on a generic recommendation.", "Run the viewer's own current parts through the upgrade tool.", "The video answers one case while the site lets the viewer test theirs."),
     });
   }
 
-  const ranked = ideas
-    .sort((a, b) => b.scores.total - a.scores.total || b.scores.originality - a.scores.originality || a.id.localeCompare(b.id))
-    .filter((idea, index, all) => all.findIndex((other) => other.id === idea.id) === index);
-
-  // Four videos should feel like four inventions, not one template with swapped SKUs. At least two slots are reserved for radical formats.
-  const selected: ContentIdea[] = [];
-  const usedFormats = new Set<string>();
-  const usedWorlds = new Set<string>();
-  const worldName = (idea: ContentIdea) => idea.creativeDNA.visualWorld.split(" — ")[0];
-  const add = (idea: ContentIdea) => {
-    selected.push(idea);
-    usedFormats.add(idea.format);
-    usedWorlds.add(worldName(idea));
-  };
-
-  for (const idea of ranked) {
-    if (selected.filter((picked) => RADICAL_FORMATS.has(picked.format)).length >= 2) break;
-    if (!RADICAL_FORMATS.has(idea.format)) continue;
-    const world = worldName(idea);
-    if (!usedFormats.has(idea.format) && !usedWorlds.has(world)) add(idea);
+  if (byValue.length >= 3) {
+    const picks = byValue.slice(0, 3);
+    push({
+      id: `price-guesser-${picks.map((x) => x.id).join("-")}`,
+      format: "game",
+      title: "Can you beat SpecSmith's GPU Price Guesser?",
+      hook: "Three GPUs. Five seconds each. Guess the real price before SpecSmith flips the card.",
+      angle: "Make an existing SpecSmith game the content itself.",
+      targetAudience: "PC enthusiasts who enjoy price knowledge and interactive challenges",
+      requiredFacts: picks.map((x) => `${x.name} price must be verified immediately before publishing`),
+      subjectIds: picks.map((x) => x.id),
+      productConnection: connection("price-guesser", "Test whether you actually know current PC-part pricing.", "SpecSmith already has a dedicated Price Guesser interaction.", "Play more rounds on the SpecSmith Price Guesser.", "The social video is one round of the same game available on the site."),
+    }, 1);
   }
 
-  for (const idea of ranked) {
-    if (selected.length >= 4) break;
-    const world = worldName(idea);
-    if (!selected.some((picked) => picked.id === idea.id) && !usedFormats.has(idea.format) && !usedWorlds.has(world)) add(idea);
-  }
-  for (const idea of ranked) {
-    if (selected.length >= 4) break;
-    const world = worldName(idea);
-    if (!selected.some((picked) => picked.id === idea.id) && !usedWorlds.has(world)) add(idea);
-  }
-  for (const idea of ranked) {
-    if (selected.length >= 4) break;
-    if (!selected.some((picked) => picked.id === idea.id)) add(idea);
+  push({
+    id: "crate-random-build-challenge",
+    format: "visual-story",
+    title: "SpecSmith Build Crate picked the PC. Now we have to make the pull work.",
+    hook: "We don't choose the parts. Build Crate does. The question is whether this random pull is actually a PC you'd keep.",
+    angle: "Use Build Crate's real compatible randomized build as the unpredictable source of the episode.",
+    targetAudience: "PC viewers who like randomizers, rarity systems, and build challenges",
+    requiredFacts: ["record an actual Build Crate pull", "use the exact pulled parts and rarity", "use actual final build price", "do not pre-script a fake legendary pull"],
+    subjectIds: [],
+    productConnection: connection("build-crate", "Make PC building playful without generating fake parts or impossible builds.", "Build Crate pulls from SpecSmith's real parts database and finalizes a compatible build.", "Open a crate, share the pull, or send it into Builder to refine it.", "The video outcome is literally generated by a SpecSmith feature."),
+  }, 1);
+
+  push({
+    id: "crate-fix-the-pull",
+    format: "game",
+    title: "Build Crate gave us this PC. You can change ONE part.",
+    hook: "Build Crate just dealt this PC. You get one swap. What are you changing before we open it in Builder?",
+    angle: "Combine Build Crate's randomness with Builder's refinement workflow.",
+    targetAudience: "PC builders who like fixing or optimizing builds",
+    requiredFacts: ["actual Build Crate result", "actual Builder-compatible swap", "before/after totals", "no unsupported performance claim"],
+    subjectIds: [],
+    productConnection: connection("build-crate", "Turn a random valid build into a smarter personal build.", "SpecSmith uniquely connects the randomized crate result to Builder refinement.", "Open the pulled build in Builder and make your own swap.", "The CTA continues the exact decision the viewer just made."),
+  }, 1);
+
+  push({
+    id: "gallery-spot-the-build-mistake",
+    format: "game",
+    title: "There is one part in this SpecSmith Gallery build I'd question first. Can you spot it?",
+    hook: "You get five seconds to inspect this real build before we open it up and make the case.",
+    angle: "Use a real Gallery build as the object viewers inspect and discuss.",
+    targetAudience: "Builders who like rating and improving PCs",
+    requiredFacts: ["select a real published Gallery build", "verify every shown part", "frame subjective recommendations as recommendations"],
+    subjectIds: [],
+    productConnection: connection("gallery", "Learn to inspect complete builds rather than isolated parts.", "SpecSmith Gallery provides real build objects viewers can inspect and continue exploring.", "Open the Gallery build, copy it, or compare an alternative.", "The viewer can inspect the same build instead of trusting an edited screenshot."),
+  });
+
+  push({
+    id: "guide-budget-ladder",
+    format: "build",
+    title: "What does another $200 actually change in a SpecSmith gaming build?",
+    hook: "Same goal. Two budgets. Only $200 changes — so where should it actually go?",
+    angle: "Turn build guides into a budget ladder with a visible decision at each step.",
+    targetAudience: "Buyers deciding whether stretching a PC budget is worth it",
+    requiredFacts: ["generate both real guide/build configurations", "verify totals", "state estimated performance as estimated"],
+    subjectIds: [],
+    productConnection: connection("build-guides", "Understand what a larger budget meaningfully changes.", "SpecSmith can connect use-case guidance to concrete parts and build totals.", "Open the relevant build guide and adjust the budget/use case.", "The site contains the full parts and reasoning behind the short-form comparison."),
+  });
+
+  for (const gpu of byValue.slice(0, 3)) {
+    push({
+      id: `catalog-${gpu.id}`,
+      format: "value",
+      title: `Why does SpecSmith keep surfacing the ${gpu.name} around this price tier?`,
+      hook: `Forget the logo for a second. At about $${Math.round(gpu.price_usd)}, what is this GPU actually buying you?`,
+      angle: "Use the catalog/guide layer to explain one concrete buying decision.",
+      targetAudience: "GPU shoppers comparing value tiers",
+      requiredFacts: ["fresh price", "benchmark score", "comparison set", "do not call benchmark_score measured FPS"],
+      subjectIds: [gpu.id],
+      productConnection: connection("parts-catalog", "Find a sensible part within a price tier.", "SpecSmith organizes parts, prices, tiers, and guide pages around buying decisions.", "Open the related parts guide or comparison and inspect alternatives.", "The short gives the decision; the site gives the full option set."),
+    });
   }
 
-  return {
-    generatedAt: now.toISOString(),
-    candidateCount: ranked.length,
-    topFour: selected,
-    candidates: ranked,
-  };
+  const ranked = ideas.sort((a, b) => b.scores.total - a.scores.total || a.id.localeCompare(b.id));
+  const topFour: ContentIdea[] = [];
+  const usedFeatures = new Set<string>();
+  for (const idea of ranked) {
+    if (topFour.length >= 4) break;
+    if (!usedFeatures.has(idea.productConnection.feature)) {
+      topFour.push(idea); usedFeatures.add(idea.productConnection.feature);
+    }
+  }
+  for (const idea of ranked) {
+    if (topFour.length >= 4) break;
+    if (!topFour.some((x) => x.id === idea.id)) topFour.push(idea);
+  }
+
+  return { generatedAt: now.toISOString(), candidateCount: ranked.length, topFour, candidates: ranked };
 }
