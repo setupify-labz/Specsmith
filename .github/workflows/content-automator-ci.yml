@@ -39,6 +39,7 @@ jobs:
           scripts/content-automator/contentPackage.test.ts
           scripts/content-automator/scriptStoryboard.test.ts
           scripts/content-automator/productionPlan.test.ts
+          scripts/content-automator/audioTrend.test.ts
           scripts/content-automator/rendering.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
