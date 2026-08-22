@@ -11,7 +11,8 @@
     "test": "vitest run",
     "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts",
     "collect:measured": "tsx scripts/measured/collect.ts",
-    "content:strategist": "tsx scripts/content-automator/run.ts"
+    "content:strategist": "tsx scripts/content-automator/run.ts",
+    "content:automator": "tsx scripts/content-automator/run.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
