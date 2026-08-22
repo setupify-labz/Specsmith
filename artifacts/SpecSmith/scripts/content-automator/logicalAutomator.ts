@@ -1,5 +1,6 @@
 import { buildStrategyBatch } from "./strategist.ts";
 import { analyzePerformance } from "./performance.ts";
+import { buildContentPackages } from "./contentPackage.ts";
 import type {
   AutomationBatch,
   ContentFormat,
@@ -114,7 +115,7 @@ function regenerateForQuality(idea: ContentIdea, index: number): ContentIdea {
       conceptName: `${world}: ${idea.creativeDNA.conceptName}`,
       visualWorld: `${world} — a fast interactive presentation built directly around ${idea.productConnection.route} and the exact PC problem being solved.`,
       narrativeEngine: "viewer decision -> verified SpecSmith state -> tradeoff -> product payoff",
-      openingImage: `Open on the real SpecSmith decision already in progress; the viewer must understand what they are choosing before any branding explanation.`,
+      openingImage: "Open on the real SpecSmith decision already in progress; the viewer must understand what they are choosing before any branding explanation.",
       patternInterrupt: "Force an immediate choice, then let the next real SpecSmith fact or feature state change the answer.",
       retentionBeats: [
         "0.0-1.0s — show the actual product problem immediately.",
@@ -212,12 +213,14 @@ export function buildAutomationBatch(
     const metadata = chosen.get(idea.id)!;
     return { rank: index + 1, idea, qualityScore: metadata.qualityScore, learningAdjustment: metadata.adjustment, experiment: experimentFor(idea) };
   });
+  const contentPackages = buildContentPackages(selected, now);
 
   return {
     generatedAt: now.toISOString(),
     candidateCount: strategy.candidateCount + regeneratedCount,
     qualityFloor: QUALITY_FLOOR,
     dailyFive,
+    contentPackages,
     performanceLearning,
   };
 }
