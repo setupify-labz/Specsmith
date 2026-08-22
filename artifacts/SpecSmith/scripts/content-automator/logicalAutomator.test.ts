@@ -50,32 +50,31 @@ function historyRecord(index: number, format: VideoPerformanceRecord["format"]):
 }
 
 describe("logical content automator", () => {
-  it("selects exactly five high-tier ideas with at least three radical concepts", () => {
+  it("selects exactly five high-tier SpecSmith ideas with at least three radical concepts", () => {
     const batch = buildAutomationBatch(gpus, cpus, [], new Date("2026-08-21T12:00:00Z"));
-
     expect(batch.dailyFive).toHaveLength(5);
     expect(new Set(batch.dailyFive.map((plan) => plan.idea.id)).size).toBe(5);
     expect(batch.dailyFive.filter((plan) => radical.has(plan.idea.format)).length).toBeGreaterThanOrEqual(3);
     expect(batch.dailyFive.every((plan) => plan.qualityScore >= batch.qualityFloor)).toBe(true);
-    expect(batch.dailyFive.every((plan) => plan.idea.creativeDNA.antiSlopRules.length >= 6)).toBe(true);
+    expect(batch.dailyFive.every((plan) => plan.idea.scores.productFit >= 9)).toBe(true);
+    expect(batch.dailyFive.every((plan) => plan.idea.scores.siteContinuation >= 9)).toBe(true);
+    expect(batch.dailyFive.every((plan) => plan.idea.productConnection.route.startsWith("/"))).toBe(true);
+    expect(new Set(batch.dailyFive.map((plan) => plan.idea.productConnection.feature)).size).toBeGreaterThanOrEqual(3);
   });
 
-  it("attaches one explicit learning hypothesis to every video", () => {
+  it("attaches one explicit learning hypothesis and site continuation to every video", () => {
     const batch = buildAutomationBatch(gpus, cpus, [], new Date("2026-08-21T12:00:00Z"));
     for (const plan of batch.dailyFive) {
       expect(plan.experiment.hypothesis.length).toBeGreaterThan(20);
       expect(plan.experiment.holdConstant.length).toBeGreaterThanOrEqual(3);
+      expect(plan.experiment.holdConstant.some((rule) => rule.includes(plan.idea.productConnection.route))).toBe(true);
       expect(hookFamilyOfIdea(plan.idea).length).toBeGreaterThan(0);
     }
   });
 
   it("uses repeated performance evidence as a bounded signal instead of blindly copying winners", () => {
-    const history = [0, 1, 2, 3].flatMap((index) => [
-      historyRecord(index, "game"),
-      historyRecord(index, "comparison"),
-    ]);
+    const history = [0, 1, 2, 3].flatMap((index) => [historyRecord(index, "game"), historyRecord(index, "comparison")]);
     const batch = buildAutomationBatch(gpus, cpus, history, new Date("2026-08-21T12:00:00Z"));
-
     expect(batch.performanceLearning?.videoCount).toBe(8);
     expect(batch.dailyFive.some((plan) => plan.learningAdjustment !== 0)).toBe(true);
     expect(batch.dailyFive.every((plan) => Math.abs(plan.learningAdjustment) <= 0.8)).toBe(true);
