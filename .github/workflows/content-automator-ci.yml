@@ -39,6 +39,7 @@ jobs:
           scripts/content-automator/contentPackage.test.ts
           scripts/content-automator/scriptStoryboard.test.ts
           scripts/content-automator/productionPlan.test.ts
+          scripts/content-automator/rendering.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
 
@@ -50,3 +51,6 @@ jobs:
 
       - name: Generate real daily five
         run: pnpm --dir artifacts/SpecSmith content:strategist
+
+      - name: Execute rendering dry run
+        run: pnpm --dir artifacts/SpecSmith content:render:dry-run
