@@ -9,6 +9,16 @@ export type ContentFormat =
   | "game"
   | "simulation";
 
+export type SiteFeature =
+  | "builder"
+  | "compare"
+  | "build-crate"
+  | "build-guides"
+  | "gallery"
+  | "upgrade"
+  | "parts-catalog"
+  | "price-guesser";
+
 export type VideoPlatform = "youtube-shorts" | "tiktok" | "instagram-reels";
 
 export interface HardwareItem {
@@ -20,6 +30,15 @@ export interface HardwareItem {
   release_year: number;
   tier?: number;
   vram_gb?: number;
+}
+
+export interface ProductConnection {
+  feature: SiteFeature;
+  route: string;
+  userProblem: string;
+  whySpecSmith: string;
+  continuationAction: string;
+  sitePayoff: string;
 }
 
 export interface CreativeDNA {
@@ -44,6 +63,7 @@ export interface ContentIdea {
   targetAudience: string;
   requiredFacts: string[];
   subjectIds: string[];
+  productConnection: ProductConnection;
   creativeDNA: CreativeDNA;
   scores: {
     curiosity: number;
@@ -54,6 +74,8 @@ export interface ContentIdea {
     originality: number;
     retentionPotential: number;
     shareability: number;
+    productFit: number;
+    siteContinuation: number;
     total: number;
   };
 }
@@ -66,9 +88,7 @@ export interface StrategyBatch {
 }
 
 export interface RetentionPoint {
-  /** 0..1 through the video, e.g. 0.25 is 25% elapsed. */
   elapsedRatio: number;
-  /** 0..n audience ratio. Values above 1 can happen on rewatches. */
   audienceRatio: number;
 }
 
@@ -78,39 +98,27 @@ export interface VideoPerformanceRecord {
   platform: VideoPlatform;
   publishedAt: string;
   durationSeconds: number;
-
-  /** Exposure metrics. Do not use raw views alone to decide winners. */
   views: number;
   shownOrImpressions?: number;
   engagedViews?: number;
   stayedToWatchRate?: number;
-
-  /** Retention metrics. */
   averageViewDurationSeconds?: number;
   averagePercentageViewed?: number;
   retentionCurve?: RetentionPoint[];
-
-  /** Engagement metrics. */
   likes?: number;
   comments?: number;
   shares?: number;
   saves?: number;
   followsGained?: number;
-
-  /** SpecSmith conversion metrics attributed with a per-video campaign id. */
   profileVisits?: number;
   siteClicks?: number;
   builderStarts?: number;
   affiliateClicks?: number;
-
-  /** Creative labels let the learner determine WHY a video worked. */
   format: ContentFormat;
   visualWorld: string;
   narrativeEngine: string;
   hookFamily: string;
   durationBucket: "under-20" | "20-29" | "30-44" | "45-plus";
-
-  /** Production economics. */
   generationCostUsd?: number;
   generationSeconds?: number;
 }
