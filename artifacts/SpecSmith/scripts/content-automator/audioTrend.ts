@@ -15,6 +15,7 @@ export interface TrendingAudioCandidate {
   saturationScore: number;
   tags: string[];
   source?: string;
+  sourceContentId?: string;
   platformAudioId?: string;
   commercialMusicId?: string;
   durationSeconds?: number;
