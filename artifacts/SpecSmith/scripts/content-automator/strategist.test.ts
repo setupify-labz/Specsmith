@@ -16,6 +16,8 @@ const cpus: HardwareItem[] = [
   { id: "c3", name: "CPU Three", brand: "AMD", price_usd: 120, benchmark_score: 160, release_year: 2024, tier: 4 },
 ];
 
+const radicalFormats = new Set(["experiment", "visual-story", "game", "simulation"]);
+
 describe("buildStrategyBatch", () => {
   it("creates a ranked, diverse top four from trusted local data", () => {
     const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
@@ -50,6 +52,13 @@ describe("buildStrategyBatch", () => {
     expect(formats.has("game")).toBe(true);
     expect(formats.has("simulation")).toBe(true);
     expect(formats.has("experiment")).toBe(true);
+  });
+
+  it("reserves at least half of the daily batch for radical formats", () => {
+    const result = buildStrategyBatch(gpus, cpus, new Date("2026-08-21T12:00:00Z"));
+    const radicalCount = result.topFour.filter((idea) => radicalFormats.has(idea.format)).length;
+
+    expect(radicalCount).toBeGreaterThanOrEqual(2);
   });
 
   it("tries to make the daily four visually distinct, not template swaps", () => {
