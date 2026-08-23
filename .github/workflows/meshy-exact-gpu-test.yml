@@ -4,10 +4,16 @@ on:
   push:
     branches:
       - chatgpt/elevenlabs-video-v1
+  pull_request:
+    branches:
+      - chatgpt/content-automator-v1
+    types:
+      - synchronize
+      - edited
 
 jobs:
   exact-gpu-test:
-    if: ${{ contains(github.event.head_commit.message, '[live-meshy-3d]') }}
+    if: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-meshy-3d]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-meshy-3d]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
