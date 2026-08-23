@@ -102,6 +102,64 @@ jobs:
           fi
           echo "Meshy API key is valid and the Text-to-Image API is reachable."
 
+      - name: Generate one live Meshy GPU image
+        if: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-meshy-image]') }}
+        env:
+          MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+        run: |
+          set -euo pipefail
+          prompt='Photorealistic studio product render of an NVIDIA GeForce RTX 4080 SUPER Founders Edition graphics card, authentic Founders Edition industrial design and proportions, front three-quarter view, premium graphite and black metal construction, realistic fan and heatsink geometry, isolated product, no extra objects, no invented text, no spec labels, no UI, clean commercial product photography.'
+          payload=$(jq -n --arg prompt "$prompt" '{ai_model:"nano-banana",prompt:$prompt,aspect_ratio:"1:1",remove_background:true}')
+          create=$(curl -fsS 'https://api.meshy.ai/openapi/v1/text-to-image' \
+            -X POST \
+            -H "Authorization: Bearer $MESHY_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$payload")
+          task_id=$(printf '%s' "$create" | jq -r '.result // empty')
+          if [ -z "$task_id" ]; then
+            echo "Meshy did not return a task id." >&2
+            printf '%s\n' "$create" >&2
+            exit 1
+          fi
+          echo "Meshy task submitted: $task_id"
+          for i in $(seq 1 30); do
+            task=$(curl -fsS "https://api.meshy.ai/openapi/v1/text-to-image/$task_id" \
+              -H "Authorization: Bearer $MESHY_API_KEY")
+            state=$(printf '%s' "$task" | jq -r '.status // empty')
+            progress=$(printf '%s' "$task" | jq -r '.progress // 0')
+            echo "Meshy status: $state ($progress%)"
+            if [ "$state" = "SUCCEEDED" ]; then
+              image_url=$(printf '%s' "$task" | jq -r '.image_urls[0] // empty')
+              credits=$(printf '%s' "$task" | jq -r '.consumed_credits // "unknown"')
+              if [ -z "$image_url" ]; then
+                echo "Meshy task succeeded without an image URL." >&2
+                exit 1
+              fi
+              mkdir -p artifacts/SpecSmith/render-output/meshy-image-smoke
+              curl -fL "$image_url" -o artifacts/SpecSmith/render-output/meshy-image-smoke/rtx-4080-super-founders-edition.png
+              file artifacts/SpecSmith/render-output/meshy-image-smoke/rtx-4080-super-founders-edition.png
+              echo "Meshy image generation succeeded; consumed credits: $credits"
+              exit 0
+            fi
+            if [ "$state" = "FAILED" ] || [ "$state" = "CANCELED" ]; then
+              echo "Meshy generation failed." >&2
+              printf '%s\n' "$task" | jq '.' >&2
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "Timed out waiting for Meshy image generation." >&2
+          exit 1
+
+      - name: Upload live Meshy GPU image
+        if: ${{ always() && github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-meshy-image]') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-meshy-gpu-image
+          path: artifacts/SpecSmith/render-output/meshy-image-smoke/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Validate live ElevenLabs TTS
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
