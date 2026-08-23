@@ -84,7 +84,7 @@ jobs:
         run: pnpm --dir artifacts/SpecSmith build
 
       - name: Validate Meshy API key
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[live-meshy]') }}
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-meshy]')) }}
         env:
           MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
         run: |
