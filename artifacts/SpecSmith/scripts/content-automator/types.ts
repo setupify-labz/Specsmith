@@ -214,6 +214,8 @@ export interface VideoPerformanceRecord {
   narrativeEngine: string;
   hookFamily: string;
   durationBucket: "under-20" | "20-29" | "30-44" | "45-plus";
+  voiceId?: string;
+  voiceName?: string;
   generationCostUsd?: number;
   generationSeconds?: number;
 }
@@ -246,6 +248,8 @@ export interface PerformanceLearning {
   byVisualWorld: FactorLearning[];
   byNarrativeEngine: FactorLearning[];
   byHookFamily: FactorLearning[];
+  byVoice: FactorLearning[];
+  byVoiceAndFormat: FactorLearning[];
   recommendations: string[];
 }
 
