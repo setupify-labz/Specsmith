@@ -63,7 +63,15 @@ jobs:
 
       - name: Inspect narration
         run: |
-          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 specsmith-v3-narration.wav
+          python - <<'PY'
+          import os, wave
+          with wave.open('specsmith-v3-narration.wav','rb') as wf:
+              duration=wf.getnframes()/wf.getframerate()
+              print(f'duration={duration:.3f}s')
+              print(f'rate={wf.getframerate()}')
+              print(f'channels={wf.getnchannels()}')
+          print('size=', os.path.getsize('specsmith-v3-narration.wav'))
+          PY
 
       - name: Upload narration
         uses: actions/upload-artifact@v4
