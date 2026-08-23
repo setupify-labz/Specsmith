@@ -94,8 +94,9 @@ jobs:
           fi
 
       # Paid video generation is opt-in: workflow_dispatch, [live-veo] push, or temporary PR title marker.
+      # `always()` intentionally isolates this paid provider check from unrelated TTS quota failures.
       - name: Generate one live Google Veo video hook
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-veo]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-veo]')) }}
+        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-veo]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-veo]'))) }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_VEO_MODEL_ID: veo-3.1-lite-generate-preview
