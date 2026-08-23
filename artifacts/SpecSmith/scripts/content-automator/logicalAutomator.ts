@@ -3,6 +3,7 @@ import { analyzePerformance } from "./performance.ts";
 import { buildContentPackages } from "./contentPackage.ts";
 import { buildScriptStoryboardPackages } from "./scriptStoryboard.ts";
 import { buildProductionPlanPackages } from "./productionPlan.ts";
+import { buildCreativeFingerprints } from "./creativeFingerprint.ts";
 import type {
   AutomationBatch,
   ContentFormat,
@@ -105,28 +106,29 @@ function regenerateForQuality(idea: ContentIdea, index: number): ContentIdea {
     total: 0,
   };
   boosted.total = recomputeTotal(boosted);
+
   return {
     ...idea,
     id: `regen-${index + 1}-${idea.id}`,
     format,
     title: `${world}: ${idea.title}`,
-    hook: `Make your choice before SpecSmith reveals the result: ${idea.hook}`,
-    angle: `${idea.angle} Rebuild the presentation around an interactive decision without changing the underlying SpecSmith feature or user problem.`,
+    hook: `Make your choice before SpecSmithPC reveals the result: ${idea.hook}`,
+    angle: `${idea.angle} Rebuild the presentation around an interactive decision without changing the underlying SpecSmithPC feature or user problem.`,
     creativeDNA: {
       ...idea.creativeDNA,
       conceptName: `${world}: ${idea.creativeDNA.conceptName}`,
       visualWorld: `${world} — a fast interactive presentation built directly around ${idea.productConnection.route} and the exact PC problem being solved.`,
-      narrativeEngine: "viewer decision -> verified SpecSmith state -> tradeoff -> product payoff",
-      openingImage: "Open on the real SpecSmith decision already in progress; the viewer must understand what they are choosing before any branding explanation.",
-      patternInterrupt: "Force an immediate choice, then let the next real SpecSmith fact or feature state change the answer.",
+      narrativeEngine: "viewer decision -> verified SpecSmithPC state -> tradeoff -> product payoff",
+      openingImage: "Open on the real SpecSmithPC decision already in progress; the viewer must understand what they are choosing before any branding explanation.",
+      patternInterrupt: "Force an immediate choice, then let the next real SpecSmithPC fact or feature state change the answer.",
       retentionBeats: [
         "0.0-1.0s — show the actual product problem immediately.",
         "1.0-4.0s — force a prediction or decision.",
-        "4.0-9.0s — reveal one verified SpecSmith fact or feature result.",
+        "4.0-9.0s — reveal one verified SpecSmithPC fact or feature result.",
         "9.0-16.0s — surface the strongest counter-tradeoff.",
         `16.0-24.0s — resolve it and continue naturally into ${idea.productConnection.route}.`,
       ],
-      originalityConstraint: `${idea.creativeDNA.originalityConstraint} Regeneration may change presentation, but it may not detach the concept from its SpecSmith product surface.`,
+      originalityConstraint: `${idea.creativeDNA.originalityConstraint} Regeneration may change presentation, but it may not detach the concept from its SpecSmithPC product surface.`,
     },
     scores: boosted,
   };
@@ -150,12 +152,13 @@ function experimentFor(idea: ContentIdea): DailyVideoPlan["experiment"] {
       : idea.format === "visual-story" || idea.format === "simulation" ? "retention"
         : idea.format === "buyer-warning" || idea.format === "comparison" || idea.format === "value" ? "site-clicks"
           : "shares";
+
   return {
-    hypothesis: `${hookFamily} using ${idea.productConnection.feature} will outperform the current baseline on ${primaryMetric} while making SpecSmith essential to the payoff.`,
+    hypothesis: `${hookFamily} using ${idea.productConnection.feature} will outperform the current baseline on ${primaryMetric} while making SpecSmithPC essential to the payoff.`,
     primaryMetric,
     holdConstant: [
       "Use the same factual verification standard and never invent hardware claims.",
-      `Send the CTA to the exact SpecSmith continuation route: ${idea.productConnection.route}.`,
+      `Send the CTA to the exact SpecSmithPC continuation route: ${idea.productConnection.route}.`,
       "Use one trackable campaign id per video so site traffic can be attributed to this exact idea.",
     ],
   };
@@ -187,7 +190,7 @@ export function buildAutomationBatch(
   }
 
   if (candidates.length < DAILY_VIDEO_COUNT) {
-    throw new Error(`Quality gate produced ${candidates.length}/${DAILY_VIDEO_COUNT} publishable SpecSmith concepts after ${regeneratedCount} regeneration attempts. Keep generating; do not lower the quality floor.`);
+    throw new Error(`Quality gate produced ${candidates.length}/${DAILY_VIDEO_COUNT} publishable SpecSmithPC concepts after ${regeneratedCount} regeneration attempts. Keep generating; do not lower the quality floor.`);
   }
 
   const selected: ContentIdea[] = [];
@@ -213,11 +216,19 @@ export function buildAutomationBatch(
 
   const dailyFive: DailyVideoPlan[] = selected.map((idea, index) => {
     const metadata = chosen.get(idea.id)!;
-    return { rank: index + 1, idea, qualityScore: metadata.qualityScore, learningAdjustment: metadata.adjustment, experiment: experimentFor(idea) };
+    return {
+      rank: index + 1,
+      idea,
+      qualityScore: metadata.qualityScore,
+      learningAdjustment: metadata.adjustment,
+      experiment: experimentFor(idea),
+    };
   });
+
   const contentPackages = buildContentPackages(selected, now);
   const scriptStoryboards = buildScriptStoryboardPackages(selected, contentPackages);
   const productionPlans = buildProductionPlanPackages(scriptStoryboards);
+  const creativeFingerprints = buildCreativeFingerprints(dailyFive, contentPackages, scriptStoryboards);
 
   return {
     generatedAt: now.toISOString(),
@@ -227,6 +238,7 @@ export function buildAutomationBatch(
     contentPackages,
     scriptStoryboards,
     productionPlans,
+    creativeFingerprints,
     performanceLearning,
   };
 }

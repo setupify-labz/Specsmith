@@ -50,7 +50,7 @@ function voiceLabel(record: VideoPerformanceRecord): string {
 }
 
 export function scoreVideo(record: VideoPerformanceRecord): PerformanceScore {
-  const opportunityCount = Math.max(record.shownOrImpressions ?? 0, record.views, 0);
+  const opportunityCount = Math.max(record.shownOrImpressions ?? 0, record.reach ?? 0, record.views, 0);
 
   const stayedRate = asRatio(record.stayedToWatchRate) ?? (
     record.shownOrImpressions && record.engagedViews !== undefined
@@ -64,7 +64,7 @@ export function scoreVideo(record: VideoPerformanceRecord): PerformanceScore {
       ? record.averageViewDurationSeconds / record.durationSeconds
       : null
   );
-  const nearCompletion = retentionAt(record.retentionCurve, 0.95);
+  const nearCompletion = retentionAt(record.retentionCurve, 0.95) ?? asRatio(record.fullVideoWatchedRate);
   const retention = weightedAverage([
     { value: averagePercent === null ? null : clamp(averagePercent * 100, 0, 120), weight: 0.65 },
     { value: nearCompletion === null ? null : clamp(nearCompletion * 100, 0, 120), weight: 0.35 },
@@ -92,8 +92,7 @@ export function scoreVideo(record: VideoPerformanceRecord): PerformanceScore {
     { value: affiliateClickRate === null ? null : clamp((affiliateClickRate / 5) * 100), weight: 0.15 },
   ]);
 
-  // Views are deliberately excluded from the quality score. A platform choosing to distribute
-  // a video is not the same thing as viewers choosing to watch, finish, share, or visit SpecSmith.
+  // Raw view count is deliberately excluded. Distribution is an opportunity, not proof of quality.
   const overall = weightedAverage([
     { value: hook, weight: 0.30 },
     { value: retention, weight: 0.35 },
@@ -152,8 +151,7 @@ function learnFactor(
     }
     const observed = weightTotal > 0 ? weightedTotal / weightTotal : baseline;
 
-    // Bayesian-style shrinkage: three baseline-equivalent prior samples stop one lucky upload
-    // from teaching the automator a fake lesson.
+    // Three baseline-equivalent prior samples stop one lucky upload from becoming a fake rule.
     const priorWeight = 3;
     const shrunk = ((observed * group.length) + (baseline * priorWeight)) / (group.length + priorWeight);
     const lift = shrunk - baseline;
@@ -185,10 +183,17 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     ? usable.reduce((sum, score) => sum + score.overall * confidenceWeight(score), 0) / totalWeight
     : 0;
 
+  const byPlatform = learnFactor(records, scoreMap, (record) => record.platform, baselineScore);
   const byFormat = learnFactor(records, scoreMap, (record) => record.format, baselineScore);
   const byVisualWorld = learnFactor(records, scoreMap, (record) => record.visualWorld, baselineScore);
   const byNarrativeEngine = learnFactor(records, scoreMap, (record) => record.narrativeEngine, baselineScore);
   const byHookFamily = learnFactor(records, scoreMap, (record) => record.hookFamily, baselineScore);
+  const byDurationBucket = learnFactor(records, scoreMap, (record) => record.durationBucket, baselineScore);
+  const byFirstVisualType = learnFactor(records, scoreMap, (record) => record.firstVisualType ?? "", baselineScore);
+  const byEditDensity = learnFactor(records, scoreMap, (record) => record.editDensity ?? "", baselineScore);
+  const byCaptionDensity = learnFactor(records, scoreMap, (record) => record.captionDensity ?? "", baselineScore);
+  const byCtaFamily = learnFactor(records, scoreMap, (record) => record.ctaFamily ?? "", baselineScore);
+  const byHashtagStrategy = learnFactor(records, scoreMap, (record) => record.hashtagStrategy ?? "", baselineScore);
   const byVoice = learnFactor(records, scoreMap, voiceLabel, baselineScore);
   const byVoiceAndFormat = learnFactor(
     records,
@@ -201,11 +206,20 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
   );
 
   const recommendations: string[] = [];
-  const creativeLearnings = [...byFormat, ...byVisualWorld, ...byNarrativeEngine, ...byHookFamily];
+  const creativeLearnings = [
+    ...byFormat,
+    ...byVisualWorld,
+    ...byNarrativeEngine,
+    ...byHookFamily,
+    ...byDurationBucket,
+    ...byFirstVisualType,
+    ...byEditDensity,
+    ...byCaptionDensity,
+    ...byCtaFamily,
+    ...byHashtagStrategy,
+  ];
   const voiceLearnings = [...byVoice, ...byVoiceAndFormat];
-  const promoted = creativeLearnings
-    .filter((learning) => learning.status === "promote")
-    .slice(0, 5);
+  const promoted = creativeLearnings.filter((learning) => learning.status === "promote").slice(0, 5);
   const retired = creativeLearnings
     .filter((learning) => learning.status === "retire")
     .sort((a, b) => a.liftVsBaseline - b.liftVsBaseline)
@@ -225,9 +239,6 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     recommendations.push(`Keep exploring ${learning.factor}: only ${learning.sampleSize} video${learning.sampleSize === 1 ? "" : "s"}, so there is not enough evidence to exploit or retire it.`);
   }
 
-  // Voice is measured separately from idea quality so a strong voice does not cause the strategist
-  // to over-rank an unrelated topic or format. Voice routing can use this evidence later while the
-  // creative selector keeps its own factors isolated.
   const strongestVoice = byVoice.find((learning) => learning.status === "promote");
   const weakestVoice = [...byVoice]
     .filter((learning) => learning.status === "retire")
@@ -242,7 +253,7 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     recommendations.push("Voice experiment is still inconclusive; keep rotating voices across multiple topics/formats instead of declaring a winner from a small sample.");
   }
   if (records.length === 0) {
-    recommendations.push("No performance history yet. Run deliberately different creative experiments and collect normalized retention, engagement, conversion, and voice metadata before optimizing.");
+    recommendations.push("No performance history yet. Run deliberately different creative experiments and collect normalized retention, engagement, conversion, publishing, and creative-fingerprint metadata before optimizing.");
   }
 
   return {
@@ -250,10 +261,17 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     videoCount: records.length,
     baselineScore: round(baselineScore),
     videos,
+    byPlatform,
     byFormat,
     byVisualWorld,
     byNarrativeEngine,
     byHookFamily,
+    byDurationBucket,
+    byFirstVisualType,
+    byEditDensity,
+    byCaptionDensity,
+    byCtaFamily,
+    byHashtagStrategy,
     byVoice,
     byVoiceAndFormat,
     recommendations,
