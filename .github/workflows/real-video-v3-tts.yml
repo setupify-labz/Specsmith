@@ -1,0 +1,81 @@
+name: Real Video V3 Narration
+
+on:
+  push:
+    branches:
+      - chatgpt/real-video-v3
+  pull_request:
+    branches:
+      - chatgpt/meshy-ingestion-hardening-v1
+
+jobs:
+  generate-narration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate Gemini 3.1 TTS narration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${GEMINI_API_KEY:-}"
+          cat > payload.json <<'JSON'
+          {
+            "model": "gemini-3.1-flash-tts-preview",
+            "input": "Speak like a confident modern PC-tech YouTube creator. Natural young-adult delivery, quick punchy cadence, conversational American English, energetic without shouting, no radio-announcer voice. Put a little disbelief on the price difference and land the final recommendation cleanly. Transcript: Before you spend four hundred extra dollars on an RTX 4080 Super, look at this. At fourteen-forty-p High, SpecSmith estimates one-sixty-four FPS for the Super and one-sixty for the regular 4080. Four frames. About four hundred thirty-seven dollars more. Performance? Super. Value? Regular 4080. Compare the full build on SpecSmith.",
+            "response_format": {"type": "audio"},
+            "generation_config": {
+              "speech_config": [
+                {"voice": "Iapetus"}
+              ]
+            }
+          }
+          JSON
+          curl --fail-with-body -sS -X POST \
+            "https://generativelanguage.googleapis.com/v1beta/interactions" \
+            -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Api-Revision: 2026-05-20" \
+            --data-binary @payload.json > response.json
+          python - <<'PY'
+          import base64, json, wave
+          with open('response.json','r',encoding='utf-8') as f:
+              body=json.load(f)
+          audio=((body.get('output_audio') or {}).get('data'))
+          if not audio:
+              for step in reversed(body.get('steps') or []):
+                  for item in step.get('content') or []:
+                      if isinstance(item, dict) and item.get('data'):
+                          audio=item['data']
+                          break
+                  if audio:
+                      break
+          if not audio:
+              raise SystemExit('No audio data in Gemini response: '+json.dumps(body)[:2000])
+          pcm=base64.b64decode(audio)
+          with wave.open('specsmith-v3-narration.wav','wb') as wf:
+              wf.setnchannels(1)
+              wf.setsampwidth(2)
+              wf.setframerate(24000)
+              wf.writeframes(pcm)
+          print('wrote',len(pcm),'bytes PCM')
+          PY
+
+      - name: Inspect narration
+        run: |
+          python - <<'PY'
+          import os, wave
+          with wave.open('specsmith-v3-narration.wav','rb') as wf:
+              duration=wf.getnframes()/wf.getframerate()
+              print(f'duration={duration:.3f}s')
+              print(f'rate={wf.getframerate()}')
+              print(f'channels={wf.getnchannels()}')
+          print('size=', os.path.getsize('specsmith-v3-narration.wav'))
+          PY
+
+      - name: Upload narration
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-video-v3-narration
+          path: specsmith-v3-narration.wav
+          retention-days: 7
