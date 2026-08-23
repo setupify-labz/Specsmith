@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       run_live_video:
-        description: "Generate one paid ElevenLabs/Veo hook and upload the MP4"
+        description: "Generate one paid Google Veo hook and upload the MP4"
         required: true
         default: false
         type: boolean
@@ -58,6 +58,7 @@ jobs:
           scripts/content-automator/rendering.test.ts
           scripts/content-automator/elevenLabsTts.test.ts
           scripts/content-automator/elevenLabsVideo.test.ts
+          scripts/content-automator/geminiVeoVideo.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
           scripts/content-automator/uiRender/uiRender.test.ts
@@ -93,22 +94,24 @@ jobs:
           fi
 
       # Paid video generation is manual-only so ordinary CI never spends credits.
-      - name: Generate one live ElevenLabs video hook
+      - name: Generate one live Google Veo video hook
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_live_video }}
         env:
-          ELEVENLABS_VIDEO_API_KEY: ${{ secrets.ELEVENLABS_VIDEO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_VEO_MODEL_ID: veo-3.1-lite-generate-preview
+          GEMINI_VEO_RESOLUTION: 720p
         run: |
-          if [ -z "$ELEVENLABS_VIDEO_API_KEY" ]; then
-            echo "ELEVENLABS_VIDEO_API_KEY is required for the paid live video smoke test." >&2
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY is required for the paid live Google Veo smoke test." >&2
             exit 1
           fi
           pnpm --dir artifacts/SpecSmith content:video:smoke
 
-      - name: Upload live ElevenLabs video hook
+      - name: Upload live Google Veo video hook
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_live_video }}
         uses: actions/upload-artifact@v4
         with:
-          name: live-elevenlabs-video-hook
+          name: live-google-veo-hook
           path: artifacts/SpecSmith/render-output/video-generation-smoke/*.mp4
           if-no-files-found: warn
           retention-days: 14
