@@ -124,6 +124,15 @@ const dimensions = {
   "cta-accuracy": 10,
 } as const;
 
+/**
+ * The one digest that ties the whole gate together: the bytes a reviewer
+ * watched (QualityReviewResult.reviewedMediaSha256) and the bytes the rights
+ * registry cleared (PublicationAssetBundleResult.approvedMasterSha256). The
+ * gate no longer accepts either as an argument, so the fixtures set them on
+ * the two results they genuinely belong to.
+ */
+const MASTER_SHA256 = "a".repeat(64);
+
 function quality(platform: VideoPlatform, publishable = true): QualityReviewResult {
   return {
     packageId: contentPackage.packageId,
@@ -134,6 +143,7 @@ function quality(platform: VideoPlatform, publishable = true): QualityReviewResu
     dimensionScores: { ...dimensions },
     issues: [],
     regenerateTaskIds: [],
+    reviewedMediaSha256: MASTER_SHA256,
   };
 }
 
@@ -142,6 +152,7 @@ const rights: PublicationAssetBundleResult = {
   missingAssetIds: [],
   untrackedAssetIds: [],
   nonApprovedAssetIds: [],
+  approvedMasterSha256: MASTER_SHA256,
 };
 
 const config = {
@@ -151,14 +162,25 @@ const config = {
   connectedNetworks: ["instagram", "tiktok", "youtube"] as const,
 };
 
+/**
+ * Pinned clock.
+ *
+ * publishAt is now required to be strictly in the future, so a test that
+ * leaves `now` to the real wall clock would pass today and fail the day the
+ * fixture's slot goes by. Every call below supplies this instead.
+ */
+const NOW = new Date("2026-08-23T00:00:00Z");
+
+function networks() {
+  return { ...config, connectedNetworks: [...config.connectedNetworks] };
+}
+
 function gate(platform: VideoPlatform) {
   return {
     qualityReview: quality(platform),
     assetBundle: rights,
     // Metricool fetches the media itself, so this has to be a real https URL.
     finalMediaRef: "https://cdn.specsmithpc.com/masters/final-v4.mp4",
-    finalMediaSha256: "a".repeat(64),
-    approvedMediaSha256: "a".repeat(64),
   };
 }
 
@@ -169,8 +191,9 @@ describe("publishing", () => {
       contentPackage,
       fingerprint("youtube-shorts"),
       gate("youtube-shorts"),
-      { ...config, connectedNetworks: [...config.connectedNetworks] },
+      networks(),
       "2026-08-24T16:00:00",
+      NOW,
     );
 
     expect(result.networks).toEqual(["youtube"]);
@@ -188,11 +211,11 @@ describe("publishing", () => {
   it("uses profile-link CTA semantics for TikTok and Instagram", () => {
     const tiktok = buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      networks(), "2026-08-24T18:00:00", NOW,
     );
     const instagram = buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("instagram-reels"), gate("instagram-reels"),
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T10:00:00",
+      networks(), "2026-08-24T10:00:00", NOW,
     );
 
     expect(tiktok.networks).toEqual(["tiktok"]);
@@ -208,63 +231,47 @@ describe("publishing", () => {
     expect(() => buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), qualityReview: quality("tiktok", false) },
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      networks(), "2026-08-24T18:00:00", NOW,
     )).toThrow(/quality review/);
 
     expect(() => buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), assetBundle: { ...rights, publishable: false, nonApprovedAssetIds: ["asset-x"] } },
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      networks(), "2026-08-24T18:00:00", NOW,
     )).toThrow(/asset-rights/);
 
     expect(() => buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-      { ...config, connectedNetworks: ["youtube"] }, "2026-08-24T18:00:00",
+      { ...config, connectedNetworks: ["youtube"] }, "2026-08-24T18:00:00", NOW,
     )).toThrow(/not connected/);
 
     expect(() => buildMetricoolPublishingRequest(
-      idea, contentPackage, fingerprint("tiktok"), { ...gate("tiktok"), finalMediaSha256: "bad" },
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      idea, contentPackage, fingerprint("tiktok"),
+      { ...gate("tiktok"), qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "bad" } },
+      networks(), "2026-08-24T18:00:00", NOW,
     )).toThrow(/SHA-256/);
 
     expect(() => buildTrackedWebsiteUrl(contentPackage, "creative-x", "tiktok", "http://not-secure.test"))
       .toThrow(/https/);
 
-    // The binding that makes QC and rights mean anything: publishing bytes
-    // other than the reviewed ones is refused even when every other gate passes.
-    expect(() => buildMetricoolPublishingRequest(
-      idea, contentPackage, fingerprint("tiktok"),
-      { ...gate("tiktok"), finalMediaSha256: "c".repeat(64) },
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
-    )).toThrow(/not the rights-approved master/);
-
     // Metricool cannot fetch a local artifact reference.
     expect(() => buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), finalMediaRef: "artifact:final-v4.mp4" },
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      networks(), "2026-08-24T18:00:00", NOW,
     )).toThrow(/https/);
-
-    // A stale plan replayed weeks later must not schedule into the past.
-    expect(() => buildMetricoolPublishingRequest(
-      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-      { ...config, connectedNetworks: [...config.connectedNetworks] },
-      "2026-08-24T18:00:00", new Date("2026-09-30T00:00:00Z"),
-    )).toThrow(/past/);
   });
 
   it("never emits an auto-publishing request unless autoPublish is explicit", () => {
     const drafted = buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
-      new Date("2026-08-23T00:00:00Z"),
+      networks(), "2026-08-24T18:00:00", NOW,
     );
     expect(drafted.draft).toBe(true);
 
     const live = buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-      { ...config, connectedNetworks: [...config.connectedNetworks], autoPublish: true }, "2026-08-24T18:00:00",
-      new Date("2026-08-23T00:00:00Z"),
+      { ...networks(), autoPublish: true }, "2026-08-24T18:00:00", NOW,
     );
     expect(live.draft).toBe(false);
   });
@@ -297,5 +304,150 @@ describe("publishing", () => {
     const fresh = startPublicationLedger(fp);
     expect(() => advancePublicationLedger(fresh, { status: "published" })).toThrow(/Invalid publication transition/);
     expect(() => advancePublicationLedger(ledger, { status: "published" })).toThrow();
+  });
+});
+
+// REGRESSION (review item 1): the two digests the gate compares must be facts
+// carried by the QC and rights results, not arguments. The previous gate took
+// `finalMediaSha256` and `approvedMediaSha256` from the caller and compared
+// them to each other — a check any caller satisfied by passing the same
+// unreviewed digest twice, which is no check at all.
+describe("the published bytes are bound to the reviewed and rights-approved master", () => {
+  function build(gateOverrides: Record<string, unknown> = {}) {
+    return buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"),
+      { ...gate("tiktok"), ...gateOverrides } as ReturnType<typeof gate>,
+      networks(), "2026-08-24T18:00:00", NOW,
+    );
+  }
+
+  it("emits the digest recorded by the quality review", () => {
+    expect(build().finalMediaSha256).toBe(MASTER_SHA256);
+  });
+
+  it("ignores a hash supplied by the caller", () => {
+    // The old field names are no longer part of PublishingGateInput. Passing
+    // them anyway must change nothing: this is what proves the value is read
+    // from the review rather than from the argument object.
+    const forged = "9".repeat(64);
+    const result = build({ finalMediaSha256: forged, approvedMediaSha256: forged });
+    expect(result.finalMediaSha256).toBe(MASTER_SHA256);
+    expect(result.finalMediaSha256).not.toBe(forged);
+  });
+
+  it("refuses a review of bytes the rights registry did not approve", () => {
+    expect(() => build({
+      qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "c".repeat(64) },
+    })).toThrow(/not the rights-approved master/);
+  });
+
+  it("refuses a bundle that resolved no approved master hash", () => {
+    // publishable:true with a null hash is exactly the shape a registry
+    // produces for a master registered without a digest.
+    expect(() => build({
+      assetBundle: { ...rights, approvedMasterSha256: null },
+    })).toThrow(/no approved master hash/);
+  });
+
+  it("normalises case on both sides rather than failing a real match", () => {
+    expect(build({
+      qualityReview: { ...quality("tiktok"), reviewedMediaSha256: MASTER_SHA256.toUpperCase() },
+      assetBundle: { ...rights, approvedMasterSha256: MASTER_SHA256.toUpperCase() },
+    }).finalMediaSha256).toBe(MASTER_SHA256);
+  });
+
+  it("rejects a malformed approved hash instead of matching it loosely", () => {
+    expect(() => build({
+      qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "not-a-digest" },
+      assetBundle: { ...rights, approvedMasterSha256: "not-a-digest" },
+    })).toThrow(/SHA-256/);
+  });
+});
+
+// REGRESSION (review item 4): publishAt must be strictly in the future in the
+// timezone the post is actually scheduled against. The previous check compared
+// the wall clock to now as though it were UTC and allowed a 24-hour grace
+// window, so a slot up to a day in the past — and every slot inside the zone's
+// offset — was accepted and handed to Metricool as a "schedule".
+describe("publishAt is strictly future in the supplied timezone", () => {
+  function at(publishAt: string, now: string, timezone = "America/New_York") {
+    return buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+      { ...networks(), timezone }, publishAt, new Date(now),
+    );
+  }
+
+  // 18:00 in New York on 2026-08-24 (EDT, UTC-4) is 22:00:00Z.
+  it("accepts a slot one second in the future", () => {
+    expect(at("2026-08-24T18:00:00", "2026-08-24T21:59:59Z").date).toBe("2026-08-24T18:00:00");
+  });
+
+  it("refuses a slot at exactly the current instant", () => {
+    expect(() => at("2026-08-24T18:00:00", "2026-08-24T22:00:00Z")).toThrow(/not in the future/);
+  });
+
+  it("refuses a slot one second in the past", () => {
+    expect(() => at("2026-08-24T18:00:00", "2026-08-24T22:00:01Z")).toThrow(/not in the future/);
+  });
+
+  it("no longer waves through a slot inside the old 24-hour grace window", () => {
+    // Two hours past. The previous implementation accepted this.
+    expect(() => at("2026-08-24T18:00:00", "2026-08-25T00:00:00Z")).toThrow(/not in the future/);
+  });
+
+  it("applies the zone's real offset rather than reading the wall clock as UTC", () => {
+    // The same wall-clock string, the same instant, two zones. Read as UTC,
+    // 18:00 would be in the past for both. It is only future in Los Angeles
+    // because that zone is seven hours behind, which is the whole point.
+    expect(() => at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "Europe/London")).toThrow(/not in the future/);
+    expect(at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "America/Los_Angeles").date).toBe("2026-08-24T18:00:00");
+  });
+
+  it("uses the offset in force on the scheduled date, not today's", () => {
+    // 2026-01-15 is EST (UTC-5), so noon local is 17:00:00Z — an hour later
+    // than the same wall clock would be under the summer offset.
+    expect(at("2026-01-15T12:00:00", "2026-01-15T16:59:59Z").date).toBe("2026-01-15T12:00:00");
+    expect(() => at("2026-01-15T12:00:00", "2026-01-15T17:00:01Z")).toThrow(/not in the future/);
+  });
+
+  it("refuses a timezone that is not a real IANA identifier", () => {
+    expect(() => at("2026-08-24T18:00:00", "2026-08-23T00:00:00Z", "EST5EDT/Nope"))
+      .toThrow(/not a recognised IANA timezone/);
+  });
+
+  it("still requires a local wall-clock string with no offset of its own", () => {
+    expect(() => at("2026-08-24T18:00:00Z", "2026-08-23T00:00:00Z")).toThrow(/YYYY-MM-DDTHH:mm:ss/);
+  });
+});
+
+// REGRESSION (review item 5): TikTok captions are one run of text.
+describe("TikTok copy contains no line breaks", () => {
+  const tiktok = buildMetricoolPublishingRequest(
+    idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+    networks(), "2026-08-24T18:00:00", NOW,
+  );
+
+  it("emits a single-line caption", () => {
+    expect(tiktok.text).not.toContain("\n");
+    expect(tiktok.text).not.toContain("\r");
+  });
+
+  it("keeps the CTA and hashtags that the line breaks used to separate", () => {
+    expect(tiktok.text).toContain("link in bio");
+    expect(tiktok.text).toContain("#SpecSmithPC");
+  });
+
+  it("collapses the run of spaces rather than leaving a double gap", () => {
+    expect(tiktok.text).not.toMatch(/ {2}/);
+  });
+
+  it("leaves the other platforms' multi-line copy alone", () => {
+    const youtube = buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("youtube-shorts"), gate("youtube-shorts"),
+      networks(), "2026-08-24T16:00:00", NOW,
+    );
+    // YouTube descriptions do preserve newlines, and the tracked URL needs its
+    // own line, so this fix is deliberately TikTok-only.
+    expect(youtube.text).toContain("\n");
   });
 });

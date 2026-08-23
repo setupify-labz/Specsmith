@@ -7,6 +7,7 @@ on:
       - chatgpt/content-compositor-v1
       - chatgpt/elevenlabs-video-v1
       - claude/content-ui-renderer-v1
+      - claude/pr56-audit-fixes-v1
   pull_request:
     branches:
       - main

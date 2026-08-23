@@ -115,6 +115,14 @@ export interface PublicationAssetBundleRequest {
   usedAssetIds: string[];
   /** Every externally sourced/generated visual that appears in the final master must be listed. */
   expectedVisualAssetIds: string[];
+  /**
+   * Registry id of the rendered master itself.
+   *
+   * The master is an asset like any other and must be registered and approved.
+   * Its recorded sha256 is the only authority on which bytes this bundle
+   * approves — a hash supplied separately by a caller proves nothing.
+   */
+  masterAssetId: string;
 }
 
 export interface PublicationAssetBundleResult {
@@ -122,6 +130,13 @@ export interface PublicationAssetBundleResult {
   missingAssetIds: string[];
   untrackedAssetIds: string[];
   nonApprovedAssetIds: string[];
+  /**
+   * SHA-256 of the approved master, read from the registry.
+   *
+   * Null when the master is absent, not approved, or registered without a
+   * hash — all of which also make the bundle unpublishable.
+   */
+  approvedMasterSha256: string | null;
 }
 
 /**
@@ -134,15 +149,26 @@ export function evaluatePublicationAssetBundle(
   request: PublicationAssetBundleRequest,
 ): PublicationAssetBundleResult {
   const expected = new Set(request.expectedVisualAssetIds);
-  const used = new Set(request.usedAssetIds);
+  // The master is always part of what this bundle covers, so it is checked
+  // alongside the component assets rather than trusted separately.
+  const used = new Set([...request.usedAssetIds, request.masterAssetId]);
   const missingAssetIds = [...used].filter((assetId) => !registry.has(assetId));
-  const untrackedAssetIds = [...used].filter((assetId) => !expected.has(assetId));
+  const untrackedAssetIds = [...used].filter((assetId) => !expected.has(assetId) && assetId !== request.masterAssetId);
   const nonApprovedAssetIds = [...used].filter((assetId) => registry.get(assetId)?.status !== "approved");
 
+  const master = registry.get(request.masterAssetId);
+  const masterDigest = master?.status === "approved" ? master.sha256?.trim().toLowerCase() : undefined;
+  const approvedMasterSha256 = masterDigest && /^[a-f0-9]{64}$/.test(masterDigest) ? masterDigest : null;
+
   return {
-    publishable: missingAssetIds.length === 0 && untrackedAssetIds.length === 0 && nonApprovedAssetIds.length === 0,
+    publishable:
+      missingAssetIds.length === 0 &&
+      untrackedAssetIds.length === 0 &&
+      nonApprovedAssetIds.length === 0 &&
+      approvedMasterSha256 !== null,
     missingAssetIds,
     untrackedAssetIds,
     nonApprovedAssetIds,
+    approvedMasterSha256,
   };
 }

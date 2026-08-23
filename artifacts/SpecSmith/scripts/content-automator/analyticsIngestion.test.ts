@@ -195,3 +195,97 @@ describe("Metricool analytics ingestion", () => {
     })).toThrow(/does not match analytics creative/);
   });
 });
+
+// REGRESSION (review item 2): the due window is chosen by the clock alone, and
+// only then checked against what has been captured. The previous version kept
+// the last UNCAPTURED due window while scanning, so a gap earlier in the
+// sequence stayed selectable forever and a capture taken today could be filed
+// against a moment days in the past.
+describe("snapshot windows are selected by elapsed time, never backfilled", () => {
+  const publishedAt = "2026-08-23T20:00:00Z";
+
+  function captured(window: "1h" | "6h" | "24h" | "72h" | "7d", capturedAt: string) {
+    return normalizeMetricoolAnalyticsRow({ TKPO07: 100 }, { ...context("tiktok", window), capturedAt });
+  }
+
+  it("selects the latest window whose moment has passed", () => {
+    expect(nextDueSnapshotWindow(publishedAt, [], new Date("2026-08-24T21:00:00Z"))).toBe("24h");
+  });
+
+  it("returns nothing once that window is captured, rather than falling back to an older gap", () => {
+    // 7d is the window the clock points at. 1h, 6h, 24h and 72h were all
+    // missed. The old implementation returned "72h" here and a capture taken a
+    // week after publication would have been recorded as a 72-hour reading.
+    const sevenDay = captured("7d", "2026-08-30T20:30:00Z");
+    expect(nextDueSnapshotWindow(publishedAt, [sevenDay], new Date("2026-08-30T21:00:00Z"))).toBeNull();
+  });
+
+  it("ignores captures of windows other than the one now due", () => {
+    // 24h is due and uncaptured; the recorded 1h reading is irrelevant to that.
+    const oneHour = captured("1h", "2026-08-23T21:01:00Z");
+    expect(nextDueSnapshotWindow(publishedAt, [oneHour], new Date("2026-08-24T21:00:00Z"))).toBe("24h");
+  });
+
+  it("does not re-offer the current window just because an earlier one is missing", () => {
+    // 6h captured, 1h never taken, clock inside the 6h..24h span.
+    const sixHour = captured("6h", "2026-08-24T02:05:00Z");
+    expect(nextDueSnapshotWindow(publishedAt, [sixHour], new Date("2026-08-24T10:00:00Z"))).toBeNull();
+  });
+
+  it("reports the skipped windows as missed rather than pending", () => {
+    const sevenDay = captured("7d", "2026-08-30T20:30:00Z");
+    expect(missedSnapshotWindows(publishedAt, [sevenDay], new Date("2026-08-30T21:00:00Z")))
+      .toEqual(["1h", "6h", "24h", "72h"]);
+  });
+
+  it("returns nothing before the first window is even due", () => {
+    expect(nextDueSnapshotWindow(publishedAt, [], new Date("2026-08-23T20:30:00Z"))).toBeNull();
+  });
+});
+
+// REGRESSION (review item 3): IGRE27, IGRE28 and TKPO13 are percentage-point
+// fields. Their unit belongs to the field, so it is applied unconditionally
+// rather than inferred from magnitude or from whether the export happened to
+// print a "%". The old heuristic read a bare 0.8 as the ratio 0.8 — a 100x
+// overstatement of a 0.8% rate.
+describe("percentage-point fields are parsed by field, not by formatting", () => {
+  it("reads a bare numeric 0.8 as 0.008 on every one of the three fields", () => {
+    const tiktok = normalizeMetricoolAnalyticsRow({ TKPO07: 100, TKPO13: 0.8 }, context("tiktok", "1h"));
+    expect(tiktok.record.fullVideoWatchedRate).toBeCloseTo(0.008, 9);
+
+    const instagram = normalizeMetricoolAnalyticsRow(
+      { IGRE23: 100, IGRE27: 0.8, IGRE28: 0.8 },
+      context("instagram-reels", "1h"),
+    );
+    expect(instagram.record.averagePercentageViewed).toBeCloseTo(0.008, 9);
+    expect(instagram.record.stayedToWatchRate).toBeCloseTo(0.008, 9);
+  });
+
+  it("gives the same answer whether the source marked the percent or not", () => {
+    const forms = [0.8, "0.8", "0.8%", " 0.8 % "];
+    for (const value of forms) {
+      const row = normalizeMetricoolAnalyticsRow({ TKPO07: 100, TKPO13: value }, context("tiktok", "1h"));
+      expect(row.record.fullVideoWatchedRate).toBeCloseTo(0.008, 9);
+    }
+  });
+
+  it("scales whole-number rates the same way", () => {
+    const row = normalizeMetricoolAnalyticsRow({ TKPO07: 100, TKPO13: 42 }, context("tiktok", "1h"));
+    expect(row.record.fullVideoWatchedRate).toBeCloseTo(0.42, 9);
+  });
+
+  it("keeps a rate of 100 as a whole ratio rather than clamping it", () => {
+    const row = normalizeMetricoolAnalyticsRow({ TKPO07: 100, TKPO13: 100 }, context("tiktok", "1h"));
+    expect(row.record.fullVideoWatchedRate).toBe(1);
+  });
+
+  it("leaves an absent rate absent instead of defaulting it to zero", () => {
+    const row = normalizeMetricoolAnalyticsRow({ TKPO07: 100 }, context("tiktok", "1h"));
+    expect(row.record.fullVideoWatchedRate).toBeUndefined();
+  });
+
+  it("drops a negative rate rather than recording an impossible one", () => {
+    const row = normalizeMetricoolAnalyticsRow({ TKPO07: 100, TKPO13: -5 }, context("tiktok", "1h"));
+    expect(row.record.fullVideoWatchedRate).toBeUndefined();
+  });
+});

@@ -21,6 +21,50 @@ const OUTPUT_SHA = "a".repeat(64);
 const OTHER_SHA = "b".repeat(64);
 const SOURCE_SHA = "c".repeat(64);
 
+const MASTER_SHA = "d".repeat(64);
+
+/**
+ * The rendered master, registered as an ordinary SpecSmith-owned asset.
+ *
+ * evaluatePublicationAssetBundle resolves the hash it approves from this
+ * record, so a bundle with no registered master has nothing to approve.
+ */
+const masterRecord = {
+  assetId: "master",
+  role: "specsmith-evidence",
+  uri: "artifact://master.mp4",
+  mimeType: "video/mp4",
+  sha256: MASTER_SHA,
+  version: 1,
+  createdAt: "2026-08-23T20:00:00Z",
+  createdBy: "specsmith",
+  rights: {
+    assetId: "master",
+    assetType: "video",
+    intendedUse: "commercial-marketing",
+    generationMode: "original",
+    sourceGrants: [{
+      sourceKind: "specsmith-owned",
+      commercialUseAllowed: true,
+      derivativeUseAllowed: true,
+      designUseAuthorized: true,
+      trademarkUseAuthorized: false,
+      attributionRequired: false,
+    }],
+    parentAssetIds: [],
+    productIdentityMode: "deterministic-plain-text-overlay",
+    restrictedFeatures: cleanRestrictedFeatureReview(),
+    reviewedBy: "automated-and-human",
+  },
+} as const;
+
+/** Registry containing the master plus the Meshy assets under test. */
+function registryWithMaster(...assets: EvaluatedProductVisualAsset[]): Map<string, EvaluatedProductVisualAsset> {
+  const registry = buildProductVisualAssetRegistry([masterRecord]);
+  for (const asset of assets) registry.set(asset.assetId, asset);
+  return registry;
+}
+
 const clearedReference: MeshySourceReference = {
   uri: "library:specsmith/reference/generic-gpu-shell.png",
   sha256: SOURCE_SHA,
@@ -354,21 +398,25 @@ describe("shared registry and final publication gate", () => {
 
   it("blocks the final master if a held Meshy asset was used", () => {
     const held = ingestMeshyAsset(baseRequest());
-    const registry = new Map([[held.assetId, held.evaluated]]);
-    const bundle = evaluatePublicationAssetBundle(registry, {
+    const bundle = evaluatePublicationAssetBundle(registryWithMaster(held.evaluated), {
+      masterAssetId: "master",
       usedAssetIds: [held.assetId],
       expectedVisualAssetIds: [held.assetId],
     });
     expect(bundle.publishable).toBe(false);
     expect(bundle.nonApprovedAssetIds).toContain(held.assetId);
+    // A clean master does not rescue a bundle whose components are held.
+    expect(bundle.approvedMasterSha256).toBe(MASTER_SHA);
   });
 
   it("passes the final bundle gate for an approved Meshy asset", () => {
     const approved = ingestMeshyAsset(fullyCleared());
-    const registry = new Map([[approved.assetId, approved.evaluated]]);
-    expect(evaluatePublicationAssetBundle(registry, {
+    const bundle = evaluatePublicationAssetBundle(registryWithMaster(approved.evaluated), {
+      masterAssetId: "master",
       usedAssetIds: [approved.assetId],
       expectedVisualAssetIds: [approved.assetId],
-    }).publishable).toBe(true);
+    });
+    expect(bundle.publishable).toBe(true);
+    expect(bundle.approvedMasterSha256).toBe(MASTER_SHA);
   });
 });

@@ -39,34 +39,30 @@ const SNAPSHOT_HOURS: Record<SnapshotWindow, number> = {
 
 const SNAPSHOT_ORDER: SnapshotWindow[] = ["1h", "6h", "24h", "72h", "7d"];
 
-/** A parsed metric plus whether the source explicitly marked it as a percent. */
-interface ParsedMetric {
-  value: number;
-  isPercent: boolean;
-}
-
-function parseMetric(value: unknown): ParsedMetric | undefined {
-  if (typeof value === "number") return Number.isFinite(value) ? { value, isPercent: false } : undefined;
+/**
+ * Reads one raw cell as a number.
+ *
+ * A trailing "%" is stripped without changing the magnitude: "0.8%" parses to
+ * 0.8. What that 0.8 MEANS is decided by the field it came from, not by how
+ * the export happened to format it — see percentagePointRatioFrom.
+ */
+function parseMetric(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim().replace(/,/g, "");
   if (!trimmed) return undefined;
-  const isPercent = trimmed.endsWith("%");
   const numeric = Number(trimmed.replace(/%$/, ""));
-  if (Number.isFinite(numeric)) return { value: numeric, isPercent };
+  if (Number.isFinite(numeric)) return numeric;
 
   const duration = trimmed.match(/^(?:(\d+):)?(\d{1,2}):(\d{2})(?:\.(\d+))?$/);
   if (!duration) return undefined;
   const hours = Number(duration[1] ?? 0);
   const minutes = Number(duration[2]);
   const seconds = Number(`${duration[3]}.${duration[4] ?? 0}`);
-  return { value: hours * 3600 + minutes * 60 + seconds, isPercent: false };
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
-function parseMetricNumber(value: unknown): number | undefined {
-  return parseMetric(value)?.value;
-}
-
-function metricFrom(row: Record<string, unknown>, keys: string[]): ParsedMetric | undefined {
+function numberFrom(row: Record<string, unknown>, keys: string[]): number | undefined {
   for (const key of keys) {
     const direct = parseMetric(row[key]);
     if (direct !== undefined) return direct;
@@ -80,24 +76,27 @@ function metricFrom(row: Record<string, unknown>, keys: string[]): ParsedMetric 
   return undefined;
 }
 
-function numberFrom(row: Record<string, unknown>, keys: string[]): number | undefined {
-  return metricFrom(row, keys)?.value;
-}
-
 /**
- * Converts a rate to a 0-1 ratio.
+ * Converts a field the provider reports in PERCENTAGE POINTS to a 0-1 ratio.
  *
- * An explicit "%" in the source is authoritative: "0.8%" is 0.008, not 0.8.
- * The previous magnitude-only heuristic (`value > 1 ? value / 100 : value`)
- * read every sub-1% rate as a whole-number percent and was therefore wrong by
- * 100x on exactly the small rates that matter most. Without a marker the
- * heuristic is still the only signal available, so it is kept for that case
- * and documented as the ambiguity it is.
+ * IGRE27, IGRE28 and TKPO13 are percentage-point fields: the provider reports
+ * 0.8 to mean 0.8%, i.e. 0.008. So the unit is a property of the FIELD and is
+ * known ahead of time — it is not something to be inferred per row.
+ *
+ * Both earlier versions inferred it. The magnitude heuristic
+ * (`value > 1 ? value / 100 : value`) read 0.8 as the ratio 0.8 — a 100x
+ * overstatement of a retention rate, and worse on exactly the small rates that
+ * matter. Honouring a trailing "%" fixed the string case but left bare numerics
+ * on the same broken heuristic, so whether a rate was correct depended on
+ * whether the export happened to be formatted. Here the divisor is
+ * unconditional: "0.8%", "0.8" and 0.8 all yield 0.008.
+ *
+ * A trailing "%" is stripped by parseMetric without rescaling, so a marked and
+ * an unmarked value of the same magnitude land on the same ratio.
  */
-function ratioFrom(metric: ParsedMetric | undefined): number | undefined {
-  if (metric === undefined || metric.value < 0 || !Number.isFinite(metric.value)) return undefined;
-  if (metric.isPercent) return metric.value / 100;
-  return metric.value > 1 ? metric.value / 100 : metric.value;
+function percentagePointRatioFrom(value: number | undefined): number | undefined {
+  if (value === undefined || value < 0 || !Number.isFinite(value)) return undefined;
+  return value / 100;
 }
 
 function durationBucket(seconds: number): VideoPerformanceRecord["durationBucket"] {
@@ -178,8 +177,8 @@ export function normalizeMetricoolAnalyticsRow(
     views = numberFrom(row, ["IGRE23", "Views"]);
     reach = numberFrom(row, ["IGRE11", "Reach"]);
     averageViewDurationSeconds = numberFrom(row, ["IGRE24", "Average watch time"]);
-    averagePercentageViewed = ratioFrom(metricFrom(row, ["IGRE27", "Retention"]));
-    stayedToWatchRate = ratioFrom(metricFrom(row, ["IGRE28", "Reel view rate"]));
+    averagePercentageViewed = percentagePointRatioFrom(numberFrom(row, ["IGRE27", "Retention"]));
+    stayedToWatchRate = percentagePointRatioFrom(numberFrom(row, ["IGRE28", "Reel view rate"]));
     likes = numberFrom(row, ["IGRE10", "Likes"]);
     comments = numberFrom(row, ["IGRE07", "Comments"]);
     shares = numberFrom(row, ["IGRE21", "Shares"]);
@@ -189,7 +188,7 @@ export function normalizeMetricoolAnalyticsRow(
     views = numberFrom(row, ["TKPO07", "Views"]);
     reach = numberFrom(row, ["TKPO11", "Reach"]);
     averageViewDurationSeconds = numberFrom(row, ["TKPO15", "Average time watched"]);
-    fullVideoWatchedRate = ratioFrom(metricFrom(row, ["TKPO13", "Full video watched rate"]));
+    fullVideoWatchedRate = percentagePointRatioFrom(numberFrom(row, ["TKPO13", "Full video watched rate"]));
     likes = numberFrom(row, ["TKPO08", "Likes"]);
     comments = numberFrom(row, ["TKPO09", "Comments"]);
     shares = numberFrom(row, ["TKPO10", "Shares"]);
@@ -271,25 +270,32 @@ export function snapshotDueAt(publishedAt: string, window: SnapshotWindow): stri
 /**
  * The window a capture taken right now would legitimately represent.
  *
- * Returns the LATEST uncaptured window that is already due, not the earliest.
- * Returning the earliest meant that a run which missed the 1h checkpoint and
- * fired a week later still labelled week-old numbers as the "1h" snapshot,
- * silently corrupting every window-based comparison the learner makes. A
- * missed window is unrecoverable: the moment has passed, so it is skipped
- * rather than backfilled with stale data.
+ * The window is chosen by the CLOCK ALONE — the latest window whose moment has
+ * passed — and only then checked against what has already been captured. If
+ * that window is already recorded there is nothing due, and the answer is
+ * null.
+ *
+ * The ordering matters, and getting it backwards is what the previous version
+ * did: it walked the windows and kept the last UNCAPTURED due one, so with 7d
+ * already recorded and 24h missed it returned "24h" and a capture taken today
+ * would be filed as a week-old reading. A missed window cannot be backfilled —
+ * the moment it describes is gone, and stamping present-day numbers onto it
+ * corrupts every window-to-window comparison the learner makes. Selecting
+ * strictly by elapsed time makes an older window unreachable by construction.
  */
 export function nextDueSnapshotWindow(
   publishedAt: string,
   existing: AnalyticsSnapshot[],
   now = new Date(),
 ): SnapshotWindow | null {
-  const captured = new Set(existing.map((snapshot) => snapshot.window));
-  let due: SnapshotWindow | null = null;
+  let latestDue: SnapshotWindow | null = null;
   for (const window of SNAPSHOT_ORDER) {
     if (now.getTime() < Date.parse(snapshotDueAt(publishedAt, window))) break;
-    if (!captured.has(window)) due = window;
+    latestDue = window;
   }
-  return due;
+  if (latestDue === null) return null;
+  const captured = new Set(existing.map((snapshot) => snapshot.window));
+  return captured.has(latestDue) ? null : latestDue;
 }
 
 /** Windows whose moment passed without a capture. They cannot be backfilled. */

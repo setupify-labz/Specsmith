@@ -24,23 +24,21 @@ export interface PublishingConfig {
 }
 
 export interface PublishingGateInput {
+  /**
+   * The QC verdict for this creative. Its `reviewedMediaSha256` is the digest
+   * of the bytes a reviewer actually watched — the gate reads it from here
+   * rather than accepting a hash argument, because a caller-supplied digest
+   * proves nothing about what was reviewed.
+   */
   qualityReview: QualityReviewResult;
+  /**
+   * The rights verdict for this creative. Its `approvedMasterSha256` is
+   * resolved from the asset registry's stored record for the master, so it is
+   * likewise a fact about the registry rather than an assertion by the caller.
+   */
   assetBundle: PublicationAssetBundleResult;
   /** Publicly reachable https URL of the exact rendered master. */
   finalMediaRef: string;
-  /**
-   * SHA-256 of the exact bytes that were QC'd and rights-cleared.
-   *
-   * Required, not optional. The asset bundle proves the COMPONENT assets are
-   * approved; without binding the master's hash, any finalMediaRef could ride
-   * through on a bundle that was approved for a different render.
-   */
-  finalMediaSha256: string;
-  /**
-   * The bundle's approved media hash, from the rights registry. The gate
-   * refuses to publish when it does not equal finalMediaSha256.
-   */
-  approvedMediaSha256: string;
 }
 
 export interface MetricoolPublishingRequest {
@@ -125,18 +123,73 @@ function normalizeBaseUrl(input: string): URL {
   return url;
 }
 
-function validateScheduleDate(value: string, now: Date): string {
+/**
+ * The UTC offset, in milliseconds, that `timeZone` was observing at `instant`.
+ *
+ * Derived by formatting the instant in the zone and measuring how far the
+ * resulting wall clock has drifted from UTC, which is the only way to get a
+ * real offset — including the DST one in force on that date — without a
+ * timezone library.
+ */
+function zoneOffsetMsAt(instant: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(instant));
+  const field = (type: Intl.DateTimeFormatPartTypes): number => {
+    const found = parts.find((part) => part.type === type);
+    if (!found) throw new Error(`Timezone ${timeZone} produced no ${type} field.`);
+    return Number(found.value);
+  };
+  // Some ICU builds render midnight as hour 24 under hour12:false.
+  const wallClock = Date.UTC(field("year"), field("month") - 1, field("day"), field("hour") % 24, field("minute"), field("second"));
+  return wallClock - instant;
+}
+
+/** The UTC instant at which `local` wall-clock time occurs in `timeZone`. */
+function instantOfLocalTime(local: string, timeZone: string): number {
+  const asIfUtc = Date.parse(`${local}Z`);
+  if (!Number.isFinite(asIfUtc)) throw new Error("Metricool schedule date is invalid.");
+  // Two passes: the first offset is sampled at roughly the right instant, the
+  // second at the corrected one, which settles the case where the guess landed
+  // on the far side of a DST transition from the real answer.
+  let instant = asIfUtc - zoneOffsetMsAt(asIfUtc, timeZone);
+  instant = asIfUtc - zoneOffsetMsAt(instant, timeZone);
+  return instant;
+}
+
+/**
+ * Accepts only a slot that is still in the future in the timezone the post
+ * will actually be scheduled against.
+ *
+ * The previous version compared the wall clock to `now` as though it were UTC
+ * and allowed a 24-hour grace window, which meant a slot up to a day in the
+ * past — and any slot inside the zone's offset — was accepted and silently
+ * handed to Metricool. Scheduling into the past is not a schedule; the offset
+ * for the supplied IANA zone is resolved here and the comparison is exact.
+ */
+function validateScheduleDate(value: string, timeZone: string, now: Date): string {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) {
     throw new Error("Metricool schedule date must be local YYYY-MM-DDTHH:mm:ss; timezone is supplied separately.");
   }
-  const parsed = Date.parse(`${value}Z`);
-  if (!Number.isFinite(parsed)) throw new Error("Metricool schedule date is invalid.");
-  // Compared as UTC because the real offset lives in the separate timezone
-  // field. That makes this a coarse guard against scheduling well into the
-  // past (a stale plan replayed), not an exact local-time comparison: a
-  // same-day slot inside the UTC offset is deliberately still allowed.
-  if (parsed < now.getTime() - 24 * 60 * 60 * 1000) {
-    throw new Error(`Metricool schedule date ${value} is more than a day in the past; refusing to schedule a stale plan.`);
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+  } catch {
+    throw new Error(`timezone ${timeZone} is not a recognised IANA timezone identifier.`);
+  }
+
+  const scheduled = instantOfLocalTime(value, timeZone);
+  if (!Number.isFinite(scheduled)) throw new Error("Metricool schedule date is invalid.");
+  if (scheduled <= now.getTime()) {
+    throw new Error(
+      `Metricool schedule date ${value} (${timeZone}) is not in the future; refusing to schedule a post into the past.`,
+    );
   }
   return value;
 }
@@ -185,9 +238,13 @@ function postText(
   }
 
   if (platform === "tiktok") {
+    // TikTok captions are a single run of text: newlines typed into a caption
+    // are not preserved in the rendered post, so shipping them just means the
+    // published caption differs from the one that was reviewed. Joined with
+    // spaces instead, which is what the platform would have collapsed them to.
     return {
       websiteCtaMode: "profile-link",
-      text: `${variant.captionAngle}\n\nRun the full comparison on SpecSmithPC — link in bio.\n\n${tags}`.trim(),
+      text: `${variant.captionAngle} Run the full comparison on SpecSmithPC — link in bio. ${tags}`.replace(/\s+/g, " ").trim(),
     };
   }
 
@@ -230,16 +287,29 @@ function assertPublishGate(
     throw new Error(`finalMediaRef must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
   }
 
-  const digest = nonEmpty("finalMediaSha256", gate.finalMediaSha256).toLowerCase();
-  const approved = nonEmpty("approvedMediaSha256", gate.approvedMediaSha256).toLowerCase();
-  for (const [name, value] of [["finalMediaSha256", digest], ["approvedMediaSha256", approved]] as const) {
+  // Both digests are DERIVED, never passed in. `reviewedMediaSha256` comes from
+  // the observation a reviewer recorded while watching the file;
+  // `approvedMasterSha256` comes from the rights registry's stored record for
+  // the master asset. A caller can therefore no longer make an unreviewed
+  // render look cleared by handing the gate two matching strings.
+  const digest = nonEmpty("qualityReview.reviewedMediaSha256", gate.qualityReview.reviewedMediaSha256).toLowerCase();
+  const approved = gate.assetBundle.approvedMasterSha256?.trim().toLowerCase() ?? "";
+  if (!approved) {
+    throw new Error(
+      "Publication blocked: the asset bundle resolved no approved master hash, so there is nothing to bind the render to.",
+    );
+  }
+  for (const [name, value] of [
+    ["qualityReview.reviewedMediaSha256", digest],
+    ["assetBundle.approvedMasterSha256", approved],
+  ] as const) {
     if (!/^[a-f0-9]{64}$/.test(value)) throw new Error(`${name} must be a 64-character SHA-256 hex digest.`);
   }
   // The binding that makes QC and rights mean something: the bytes about to be
   // published are the bytes that were reviewed.
   if (digest !== approved) {
     throw new Error(
-      `Publication blocked: final media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
+      `Publication blocked: reviewed media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
     );
   }
 }
@@ -286,7 +356,7 @@ export function buildMetricoolPublishingRequest(
     blog_id: blogId,
     networks: [network],
     text: copy.text,
-    date: validateScheduleDate(publishAt, now),
+    date: validateScheduleDate(publishAt, timezone, now),
     timezone,
     media: [gate.finalMediaRef.trim()],
     trackedWebsiteUrl,
@@ -294,7 +364,7 @@ export function buildMetricoolPublishingRequest(
     hashtagStrategy: variant.hashtagStrategy,
     hashtags: [...variant.hashtags],
     draft: config.autoPublish !== true,
-    finalMediaSha256: gate.finalMediaSha256.toLowerCase(),
+    finalMediaSha256: gate.qualityReview.reviewedMediaSha256.trim().toLowerCase(),
   };
 
   if (fingerprint.platform === "youtube-shorts") {

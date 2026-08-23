@@ -8,6 +8,7 @@ on:
       - chatgpt/meshy-ingestion-hardening-v1
       - chatgpt/hashtag-publishing-logic-v1
       - chatgpt/social-publisher-learning-v1
+      - claude/pr56-audit-fixes-v1
   pull_request:
     branches:
       - chatgpt/hashtag-publishing-logic-v1
