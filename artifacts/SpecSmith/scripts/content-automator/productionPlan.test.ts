@@ -75,14 +75,15 @@ describe("production plan", () => {
     }
   });
 
-  it("gives generative visuals a non-video fallback without allowing fake product UI", () => {
+  it("limits paid generative video to one hook per renderable platform and keeps an image fallback", () => {
     const content = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
     const scripts = buildScriptStoryboardPackage(idea, content);
     const production = buildProductionPlanPackage(scripts);
 
     const generativeTasks = production.platforms.flatMap((platform) => platform.tasks)
       .filter((task) => task.capability === "video-generation");
-    expect(generativeTasks.length).toBeGreaterThan(0);
+    expect(generativeTasks).toHaveLength(production.platforms.length);
+    expect(generativeTasks.every((task) => task.sourceBeat === 0)).toBe(true);
     expect(generativeTasks.every((task) => task.fallbackCapability === "image-generation")).toBe(true);
     expect(production.platforms.every((platform) => platform.qualityChecks.some((check) => check.includes("deterministic UI render")))).toBe(true);
   });
