@@ -92,13 +92,11 @@ jobs:
             echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
           fi
 
-      # Video generation is opt-in because each successful generation spends
-      # paid credits. Normal push/PR CI only runs mocked provider contract tests.
-      # A manual dispatch with run_live_video=true runs one generation. For a
-      # deliberate branch smoke, a commit message containing [live-video] does
-      # the same exactly once for that push.
+      # Paid generation is normally manual-only. The PR-head condition below is
+      # temporarily enabled for this branch to perform the first real live smoke;
+      # remove it immediately after that run so ordinary CI never spends credits.
       - name: Generate one live ElevenLabs video hook
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'push' && github.ref == 'refs/heads/chatgpt/elevenlabs-video-v1' && contains(github.event.head_commit.message, '[live-video]')) }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'pull_request' && github.head_ref == 'chatgpt/elevenlabs-video-v1') }}
         env:
           ELEVENLABS_VIDEO_API_KEY: ${{ secrets.ELEVENLABS_VIDEO_API_KEY }}
         run: |
@@ -109,7 +107,7 @@ jobs:
           pnpm --dir artifacts/SpecSmith content:video:smoke
 
       - name: Upload live ElevenLabs video hook
-        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'push' && github.ref == 'refs/heads/chatgpt/elevenlabs-video-v1' && contains(github.event.head_commit.message, '[live-video]'))) }}
+        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'pull_request' && github.head_ref == 'chatgpt/elevenlabs-video-v1')) }}
         uses: actions/upload-artifact@v4
         with:
           name: live-elevenlabs-video-hook
