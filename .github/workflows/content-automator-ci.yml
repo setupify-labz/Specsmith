@@ -5,6 +5,7 @@ on:
     branches:
       - chatgpt/content-automator-v1
       - chatgpt/content-compositor-v1
+      - chatgpt/elevenlabs-video-v1
       - claude/content-ui-renderer-v1
   pull_request:
     branches:
@@ -50,6 +51,7 @@ jobs:
           scripts/content-automator/multiTrendSource.test.ts
           scripts/content-automator/rendering.test.ts
           scripts/content-automator/elevenLabsTts.test.ts
+          scripts/content-automator/elevenLabsVideo.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
           scripts/content-automator/uiRender/uiRender.test.ts
@@ -83,6 +85,11 @@ jobs:
           else
             echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
           fi
+
+      # Video generation is intentionally NOT called in normal CI because each
+      # successful generation spends paid credits. The adapter/API lifecycle is
+      # covered with mocked contract tests above; use content:video:smoke only
+      # when a deliberate paid live test is wanted.
 
       - name: Validate live configured audio trend sources
         env:
