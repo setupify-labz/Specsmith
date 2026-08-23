@@ -42,6 +42,13 @@ function retentionAt(curve: RetentionPoint[] | undefined, elapsedRatio: number):
   return nearest.audienceRatio;
 }
 
+function voiceLabel(record: VideoPerformanceRecord): string {
+  const name = record.voiceName?.trim();
+  const id = record.voiceId?.trim();
+  if (name && id) return `${name} [${id}]`;
+  return name || id || "";
+}
+
 export function scoreVideo(record: VideoPerformanceRecord): PerformanceScore {
   const opportunityCount = Math.max(record.shownOrImpressions ?? 0, record.views, 0);
 
@@ -182,16 +189,28 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
   const byVisualWorld = learnFactor(records, scoreMap, (record) => record.visualWorld, baselineScore);
   const byNarrativeEngine = learnFactor(records, scoreMap, (record) => record.narrativeEngine, baselineScore);
   const byHookFamily = learnFactor(records, scoreMap, (record) => record.hookFamily, baselineScore);
+  const byVoice = learnFactor(records, scoreMap, voiceLabel, baselineScore);
+  const byVoiceAndFormat = learnFactor(
+    records,
+    scoreMap,
+    (record) => {
+      const voice = voiceLabel(record);
+      return voice ? `${voice} × ${record.format}` : "";
+    },
+    baselineScore,
+  );
 
   const recommendations: string[] = [];
-  const promoted = [...byFormat, ...byVisualWorld, ...byNarrativeEngine, ...byHookFamily]
+  const creativeLearnings = [...byFormat, ...byVisualWorld, ...byNarrativeEngine, ...byHookFamily];
+  const voiceLearnings = [...byVoice, ...byVoiceAndFormat];
+  const promoted = creativeLearnings
     .filter((learning) => learning.status === "promote")
     .slice(0, 5);
-  const retired = [...byFormat, ...byVisualWorld, ...byNarrativeEngine, ...byHookFamily]
+  const retired = creativeLearnings
     .filter((learning) => learning.status === "retire")
     .sort((a, b) => a.liftVsBaseline - b.liftVsBaseline)
     .slice(0, 3);
-  const explore = [...byFormat, ...byVisualWorld, ...byNarrativeEngine, ...byHookFamily]
+  const explore = creativeLearnings
     .filter((learning) => learning.status === "explore")
     .sort((a, b) => a.sampleSize - b.sampleSize)
     .slice(0, 3);
@@ -205,8 +224,25 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
   for (const learning of explore) {
     recommendations.push(`Keep exploring ${learning.factor}: only ${learning.sampleSize} video${learning.sampleSize === 1 ? "" : "s"}, so there is not enough evidence to exploit or retire it.`);
   }
+
+  // Voice is measured separately from idea quality so a strong voice does not cause the strategist
+  // to over-rank an unrelated topic or format. Voice routing can use this evidence later while the
+  // creative selector keeps its own factors isolated.
+  const strongestVoice = byVoice.find((learning) => learning.status === "promote");
+  const weakestVoice = [...byVoice]
+    .filter((learning) => learning.status === "retire")
+    .sort((a, b) => a.liftVsBaseline - b.liftVsBaseline)[0];
+  if (strongestVoice) {
+    recommendations.push(`Voice signal: favor more tests of ${strongestVoice.factor} after ${strongestVoice.sampleSize} samples (${strongestVoice.liftVsBaseline >= 0 ? "+" : ""}${strongestVoice.liftVsBaseline} lift), while preserving exploration.`);
+  }
+  if (weakestVoice) {
+    recommendations.push(`Voice signal: reduce ${weakestVoice.factor} after ${weakestVoice.sampleSize} samples (${weakestVoice.liftVsBaseline} lift), but keep a small holdout before retiring it.`);
+  }
+  if (voiceLearnings.length > 0 && !strongestVoice && !weakestVoice) {
+    recommendations.push("Voice experiment is still inconclusive; keep rotating voices across multiple topics/formats instead of declaring a winner from a small sample.");
+  }
   if (records.length === 0) {
-    recommendations.push("No performance history yet. Run deliberately different creative experiments and collect normalized retention, engagement, and conversion data before optimizing.");
+    recommendations.push("No performance history yet. Run deliberately different creative experiments and collect normalized retention, engagement, conversion, and voice metadata before optimizing.");
   }
 
   return {
@@ -218,6 +254,8 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     byVisualWorld,
     byNarrativeEngine,
     byHookFamily,
+    byVoice,
+    byVoiceAndFormat,
     recommendations,
   };
 }
