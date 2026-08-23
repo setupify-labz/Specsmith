@@ -19,13 +19,28 @@ export interface PublishingConfig {
   siteBaseUrl: string;
   connectedNetworks: MetricoolNetwork[];
   youtubeMadeForKids?: boolean;
+  /** Opt out of draft only deliberately; omitted means draft. */
+  autoPublish?: boolean;
 }
 
 export interface PublishingGateInput {
   qualityReview: QualityReviewResult;
   assetBundle: PublicationAssetBundleResult;
+  /** Publicly reachable https URL of the exact rendered master. */
   finalMediaRef: string;
-  finalMediaSha256?: string;
+  /**
+   * SHA-256 of the exact bytes that were QC'd and rights-cleared.
+   *
+   * Required, not optional. The asset bundle proves the COMPONENT assets are
+   * approved; without binding the master's hash, any finalMediaRef could ride
+   * through on a bundle that was approved for a different render.
+   */
+  finalMediaSha256: string;
+  /**
+   * The bundle's approved media hash, from the rights registry. The gate
+   * refuses to publish when it does not equal finalMediaSha256.
+   */
+  approvedMediaSha256: string;
 }
 
 export interface MetricoolPublishingRequest {
@@ -45,6 +60,12 @@ export interface MetricoolPublishingRequest {
   youtube_title?: string;
   tiktok_title?: string;
   youtube_made_for_kids?: boolean;
+  /**
+   * Metricool's optional draft flag. Defaults to TRUE here so the builder can
+   * never emit a request that auto-publishes: promoting to a live post has to
+   * be a deliberate, separate decision.
+   */
+  draft: boolean;
   trackedWebsiteUrl: string;
   websiteCtaMode: "direct-link" | "profile-link";
   hashtagStrategy: CreativeFingerprint["hashtagStrategy"];
@@ -104,12 +125,19 @@ function normalizeBaseUrl(input: string): URL {
   return url;
 }
 
-function validateScheduleDate(value: string): string {
+function validateScheduleDate(value: string, now: Date): string {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) {
     throw new Error("Metricool schedule date must be local YYYY-MM-DDTHH:mm:ss; timezone is supplied separately.");
   }
   const parsed = Date.parse(`${value}Z`);
   if (!Number.isFinite(parsed)) throw new Error("Metricool schedule date is invalid.");
+  // Compared as UTC because the real offset lives in the separate timezone
+  // field. That makes this a coarse guard against scheduling well into the
+  // past (a stale plan replayed), not an exact local-time comparison: a
+  // same-day slot inside the UTC offset is deliberately still allowed.
+  if (parsed < now.getTime() - 24 * 60 * 60 * 1000) {
+    throw new Error(`Metricool schedule date ${value} is more than a day in the past; refusing to schedule a stale plan.`);
+  }
   return value;
 }
 
@@ -191,9 +219,28 @@ function assertPublishGate(
     ];
     throw new Error(`Publication blocked by asset-rights bundle${failures.length ? ` (${failures.join(", ")})` : ""}.`);
   }
-  nonEmpty("finalMediaRef", gate.finalMediaRef);
-  if (gate.finalMediaSha256 !== undefined && !/^[a-f0-9]{64}$/i.test(gate.finalMediaSha256)) {
-    throw new Error("finalMediaSha256 must be a 64-character SHA-256 hex digest.");
+  const mediaRef = nonEmpty("finalMediaRef", gate.finalMediaRef);
+  let mediaUrl: URL;
+  try {
+    mediaUrl = new URL(mediaRef);
+  } catch {
+    throw new Error("finalMediaRef must be an absolute https URL that Metricool can fetch.");
+  }
+  if (mediaUrl.protocol !== "https:") {
+    throw new Error(`finalMediaRef must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
+  }
+
+  const digest = nonEmpty("finalMediaSha256", gate.finalMediaSha256).toLowerCase();
+  const approved = nonEmpty("approvedMediaSha256", gate.approvedMediaSha256).toLowerCase();
+  for (const [name, value] of [["finalMediaSha256", digest], ["approvedMediaSha256", approved]] as const) {
+    if (!/^[a-f0-9]{64}$/.test(value)) throw new Error(`${name} must be a 64-character SHA-256 hex digest.`);
+  }
+  // The binding that makes QC and rights mean something: the bytes about to be
+  // published are the bytes that were reviewed.
+  if (digest !== approved) {
+    throw new Error(
+      `Publication blocked: final media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
+    );
   }
 }
 
@@ -204,6 +251,7 @@ export function buildMetricoolPublishingRequest(
   gate: PublishingGateInput,
   config: PublishingConfig,
   publishAt: string,
+  now: Date = new Date(),
 ): MetricoolPublishingRequest {
   if (idea.id !== contentPackage.ideaId || idea.id !== fingerprint.ideaId) {
     throw new Error(`Publishing inputs do not refer to the same idea: ${idea.id}.`);
@@ -238,14 +286,15 @@ export function buildMetricoolPublishingRequest(
     blog_id: blogId,
     networks: [network],
     text: copy.text,
-    date: validateScheduleDate(publishAt),
+    date: validateScheduleDate(publishAt, now),
     timezone,
     media: [gate.finalMediaRef.trim()],
     trackedWebsiteUrl,
     websiteCtaMode: copy.websiteCtaMode,
     hashtagStrategy: variant.hashtagStrategy,
     hashtags: [...variant.hashtags],
-    finalMediaSha256: gate.finalMediaSha256?.toLowerCase(),
+    draft: config.autoPublish !== true,
+    finalMediaSha256: gate.finalMediaSha256.toLowerCase(),
   };
 
   if (fingerprint.platform === "youtube-shorts") {
@@ -272,6 +321,38 @@ export function startPublicationLedger(
   };
 }
 
+/**
+ * Cross-ledger duplicate guard.
+ *
+ * advancePublicationLedger's transition table already makes a second publish
+ * impossible WITHIN one ledger — `published` is reachable only from
+ * `scheduled`, and no state that already holds a published event allows it
+ * again. (The previous in-function `some(published)` check was therefore
+ * unreachable and has been removed rather than left as false assurance.)
+ *
+ * What that table cannot see is a SECOND LEDGER for the same creative, which
+ * is exactly what a re-run produces: startPublicationLedger mints a fresh
+ * in-memory object every time. Callers must load every known ledger for the
+ * creative and pass them here before scheduling.
+ *
+ * NOTE: this repository still has no ledger persistence, so today the caller
+ * has nothing durable to pass. Until ledgers are stored, duplicate protection
+ * across runs is the caller's responsibility and is NOT provided by this
+ * module.
+ */
+export function assertNotAlreadyPublished(
+  knownLedgers: readonly PublicationLedger[],
+  creativeId: string,
+): void {
+  const published = knownLedgers.filter(
+    (ledger) => ledger.creativeId === creativeId && ledger.events.some((entry) => entry.status === "published"),
+  );
+  if (published.length > 0) {
+    const when = published[0].events.find((entry) => entry.status === "published")?.at ?? "unknown time";
+    throw new Error(`Creative ${creativeId} was already published at ${when}; refusing to publish it again.`);
+  }
+}
+
 export function advancePublicationLedger(
   ledger: PublicationLedger,
   event: Omit<PublicationEvent, "at"> & { at?: string },
@@ -281,10 +362,6 @@ export function advancePublicationLedger(
   const allowed = ALLOWED_TRANSITIONS[last.status];
   if (!allowed.includes(event.status)) {
     throw new Error(`Invalid publication transition ${last.status} -> ${event.status} for ${ledger.creativeId}.`);
-  }
-
-  if (event.status === "published" && ledger.events.some((entry) => entry.status === "published")) {
-    throw new Error(`Creative ${ledger.creativeId} is already marked published.`);
   }
 
   const at = event.at ?? new Date().toISOString();

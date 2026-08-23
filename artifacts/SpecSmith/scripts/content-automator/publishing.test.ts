@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   advancePublicationLedger,
+  assertNotAlreadyPublished,
   buildMetricoolPublishingRequest,
   buildTrackedWebsiteUrl,
   startPublicationLedger,
@@ -154,8 +155,10 @@ function gate(platform: VideoPlatform) {
   return {
     qualityReview: quality(platform),
     assetBundle: rights,
-    finalMediaRef: "artifact:final-v4.mp4",
+    // Metricool fetches the media itself, so this has to be a real https URL.
+    finalMediaRef: "https://cdn.specsmithpc.com/masters/final-v4.mp4",
     finalMediaSha256: "a".repeat(64),
+    approvedMediaSha256: "a".repeat(64),
   };
 }
 
@@ -226,6 +229,57 @@ describe("publishing", () => {
 
     expect(() => buildTrackedWebsiteUrl(contentPackage, "creative-x", "tiktok", "http://not-secure.test"))
       .toThrow(/https/);
+
+    // The binding that makes QC and rights mean anything: publishing bytes
+    // other than the reviewed ones is refused even when every other gate passes.
+    expect(() => buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"),
+      { ...gate("tiktok"), finalMediaSha256: "c".repeat(64) },
+      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+    )).toThrow(/not the rights-approved master/);
+
+    // Metricool cannot fetch a local artifact reference.
+    expect(() => buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"),
+      { ...gate("tiktok"), finalMediaRef: "artifact:final-v4.mp4" },
+      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+    )).toThrow(/https/);
+
+    // A stale plan replayed weeks later must not schedule into the past.
+    expect(() => buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+      { ...config, connectedNetworks: [...config.connectedNetworks] },
+      "2026-08-24T18:00:00", new Date("2026-09-30T00:00:00Z"),
+    )).toThrow(/past/);
+  });
+
+  it("never emits an auto-publishing request unless autoPublish is explicit", () => {
+    const drafted = buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+      { ...config, connectedNetworks: [...config.connectedNetworks] }, "2026-08-24T18:00:00",
+      new Date("2026-08-23T00:00:00Z"),
+    );
+    expect(drafted.draft).toBe(true);
+
+    const live = buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+      { ...config, connectedNetworks: [...config.connectedNetworks], autoPublish: true }, "2026-08-24T18:00:00",
+      new Date("2026-08-23T00:00:00Z"),
+    );
+    expect(live.draft).toBe(false);
+  });
+
+  it("refuses a second publication of the same creative across separate ledgers", () => {
+    // A re-run mints a fresh ledger, so the per-ledger transition table cannot
+    // see the earlier publish. This is the guard that can.
+    const fp = fingerprint("tiktok");
+    let first = startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z"));
+    first = advancePublicationLedger(first, { status: "qc-passed", at: "2026-08-23T20:01:00Z" });
+    first = advancePublicationLedger(first, { status: "scheduled", at: "2026-08-23T20:02:00Z" });
+    first = advancePublicationLedger(first, { status: "published", at: "2026-08-24T22:00:00Z" });
+
+    expect(() => assertNotAlreadyPublished([first], fp.creativeId)).toThrow(/already published/);
+    expect(() => assertNotAlreadyPublished([first], "creative-other")).not.toThrow();
   });
 
   it("keeps an auditable lifecycle and blocks impossible or duplicate publication transitions", () => {

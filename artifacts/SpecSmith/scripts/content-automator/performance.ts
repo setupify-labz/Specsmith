@@ -133,7 +133,10 @@ function learnFactor(
   const groups = new Map<string, VideoPerformanceRecord[]>();
   for (const record of records) {
     const factor = factorOf(record).trim();
-    if (!factor) continue;
+    // "unknown"/"unassigned" are absence sentinels, not creative choices.
+    // Grouping them produced learnings like "unknown first-visual performs
+    // well", which is a statement about missing metadata, not about creative.
+    if (!factor || factor === "unknown" || factor === "unassigned") continue;
     const group = groups.get(factor) ?? [];
     group.push(record);
     groups.set(factor, group);

@@ -1,4 +1,4 @@
-name: Content Automator CI
+name: Content Asset Rights CI
 
 on:
   push:
