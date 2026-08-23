@@ -46,6 +46,7 @@ jobs:
           scripts/content-automator/instagramTrendSource.test.ts
           scripts/content-automator/multiTrendSource.test.ts
           scripts/content-automator/rendering.test.ts
+          scripts/content-automator/elevenLabsTts.test.ts
           scripts/content-automator/qualityReviewer.test.ts
           scripts/content-automator/performance.test.ts
 
@@ -54,6 +55,16 @@ jobs:
 
       - name: Build SpecSmith
         run: pnpm --dir artifacts/SpecSmith build
+
+      - name: Validate live ElevenLabs TTS
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          if [ -n "$ELEVENLABS_API_KEY" ]; then
+            pnpm --dir artifacts/SpecSmith content:tts:smoke
+          else
+            echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
+          fi
 
       - name: Validate live configured audio trend sources
         env:
