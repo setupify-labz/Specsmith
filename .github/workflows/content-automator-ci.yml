@@ -92,11 +92,9 @@ jobs:
             echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
           fi
 
-      # Paid generation is normally manual-only. The PR-head condition below is
-      # temporarily enabled for this branch to perform the first real live smoke;
-      # remove it immediately after that run so ordinary CI never spends credits.
+      # Paid video generation is manual-only so ordinary CI never spends credits.
       - name: Generate one live ElevenLabs video hook
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'pull_request' && github.head_ref == 'chatgpt/elevenlabs-video-v1') }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_live_video }}
         env:
           ELEVENLABS_VIDEO_API_KEY: ${{ secrets.ELEVENLABS_VIDEO_API_KEY }}
         run: |
@@ -107,7 +105,7 @@ jobs:
           pnpm --dir artifacts/SpecSmith content:video:smoke
 
       - name: Upload live ElevenLabs video hook
-        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.run_live_video) || (github.event_name == 'pull_request' && github.head_ref == 'chatgpt/elevenlabs-video-v1')) }}
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_live_video }}
         uses: actions/upload-artifact@v4
         with:
           name: live-elevenlabs-video-hook
