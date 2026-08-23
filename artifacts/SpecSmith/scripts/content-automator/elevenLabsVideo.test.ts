@@ -158,9 +158,53 @@ describe("ElevenLabs video generation", () => {
         aspectRatio: "9:16",
         resolution: "1080p",
         generatedAudio: false,
+        cacheHit: false,
       });
       const saved = await readFile(new URL(artifacts[0].uri));
       expect(saved.byteLength).toBe(mp4Bytes().byteLength);
+    } finally {
+      await rm(outputDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reuses an identical cinematic hook across platform variants instead of spending credits twice", async () => {
+    const responses = [
+      new Response(JSON.stringify({ id: "gen-shared", status: "pending" }), { status: 200 }),
+      new Response(JSON.stringify({
+        id: "gen-shared",
+        status: "completed",
+        content_url: "https://signed.example/shared.mp4",
+        content_mime_type: "video/mp4",
+      }), { status: 200 }),
+      new Response(mp4Bytes(), { status: 200 }),
+    ];
+    let fetchCalls = 0;
+    const outputDir = join(tmpdir(), `specsmith-eleven-video-cache-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const adapter = createElevenLabsVideoAdapter({
+      config: config(),
+      outputDir,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        const response = responses.shift();
+        if (!response) throw new Error("unexpected paid provider call");
+        return response;
+      },
+      sleepImpl: async () => {},
+      now: () => 1_000,
+    });
+
+    try {
+      const first = await adapter.render(context());
+      const secondContext = context();
+      secondContext.platform = "tiktok";
+      secondContext.task = { ...secondContext.task, taskId: "tiktok-beat-1-visual" };
+      const second = await adapter.render(secondContext);
+
+      expect(fetchCalls).toBe(3);
+      expect(second[0].uri).toBe(first[0].uri);
+      expect(second[0].taskId).toBe("tiktok-beat-1-visual");
+      expect(second[0].metadata?.cacheHit).toBe(true);
+      expect(first[0].metadata?.generationId).toBe(second[0].metadata?.generationId);
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }
