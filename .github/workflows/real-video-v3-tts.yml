@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chatgpt/real-video-v3
+  pull_request:
+    branches:
+      - chatgpt/meshy-ingestion-hardening-v1
 
 jobs:
   generate-narration:
