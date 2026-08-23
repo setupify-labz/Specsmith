@@ -75,15 +75,41 @@ describe("production plan", () => {
     }
   });
 
-  it("gives generative visuals a non-video fallback without allowing fake product UI", () => {
+  it("limits paid generative video to one hook per renderable platform and keeps an image fallback", () => {
     const content = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
     const scripts = buildScriptStoryboardPackage(idea, content);
     const production = buildProductionPlanPackage(scripts);
 
     const generativeTasks = production.platforms.flatMap((platform) => platform.tasks)
       .filter((task) => task.capability === "video-generation");
-    expect(generativeTasks.length).toBeGreaterThan(0);
+    expect(generativeTasks).toHaveLength(production.platforms.length);
+    expect(generativeTasks.every((task) => task.sourceBeat === 0)).toBe(true);
     expect(generativeTasks.every((task) => task.fallbackCapability === "image-generation")).toBe(true);
     expect(production.platforms.every((platform) => platform.qualityChecks.some((check) => check.includes("deterministic UI render")))).toBe(true);
+  });
+
+  it("emits explicit provider-safe 9:16 video generation state for automated cinematic beats", () => {
+    const content = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
+    const scripts = buildScriptStoryboardPackage(idea, content);
+    const production = buildProductionPlanPackage(scripts);
+    const generated = production.platforms.flatMap((platform) => platform.tasks)
+      .filter((task) => task.capability === "video-generation");
+
+    expect(generated.length).toBeGreaterThan(0);
+    for (const task of generated) {
+      const state = task.videoGenerationState as {
+        prompt?: string;
+        durationSeconds?: number;
+        aspectRatio?: string;
+        generateAudio?: boolean;
+      };
+      expect(state.aspectRatio).toBe("9:16");
+      expect([4, 6, 8]).toContain(state.durationSeconds);
+      expect(state.generateAudio).toBe(false);
+      expect(state.prompt).toContain("instantly understandable");
+      expect(state.prompt).toContain("Do not render readable text");
+      expect(state.prompt).toContain("Do not imitate the SpecSmith interface");
+      expect(state.prompt).toContain("not evidence");
+    }
   });
 });

@@ -4,6 +4,7 @@ import type {
   ProductionPlanPackage,
   ProductionTask,
   ScriptStoryboardPackage,
+  StoryboardBeat,
 } from "./types.ts";
 import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
 
@@ -14,17 +15,52 @@ interface UiRenderContext {
 }
 
 function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): ProductionTask["capability"] {
-  if (beat.purpose === "evidence" || beat.purpose === "payoff" || beat.purpose === "cta") {
-    return "deterministic-ui-render";
-  }
-  if (beat.visualDirection.toLowerCase().includes("real specsmith")) {
-    return "deterministic-ui-render";
-  }
-  return "video-generation";
+  // V1 spends paid generation on the hook only. Once the viewer is oriented,
+  // commitment/evidence/reversal/payoff/CTA use the real product surface when
+  // that surface is renderable. This is both clearer and dramatically cheaper
+  // than generating every non-evidence beat separately.
+  if (beat.visualDirection.toLowerCase().includes("real specsmith")) return "deterministic-ui-render";
+  if (beat.purpose === "hook") return "video-generation";
+  return "deterministic-ui-render";
+}
+
+function providerDurationForBeat(beat: StoryboardBeat): 4 | 6 | 8 {
+  const duration = beat.endSecond - beat.startSecond;
+  if (duration <= 4) return 4;
+  if (duration <= 6) return 6;
+  return 8;
+}
+
+export function deriveVideoGenerationState(
+  script: Pick<PlatformScriptStoryboard, "title">,
+  beat: StoryboardBeat,
+): {
+  prompt: string;
+  durationSeconds: 4 | 6 | 8;
+  aspectRatio: "9:16";
+  generateAudio: false;
+} {
+  const prompt = [
+    `Create one instantly understandable vertical short-form PC-hardware visual for this story: ${script.title}.`,
+    `Beat direction: ${beat.visualDirection}`,
+    "The viewer may know almost nothing about PC hardware, so communicate one obvious choice, conflict, action, or reveal with a single strong focal point and clear cause/effect.",
+    "Use cinematic motion, depth, lighting, and composition rather than a static product slideshow.",
+    "Do not render readable text, prices, benchmark numbers, specification values, logos, watermarks, charts, websites, or app interfaces. Accurate text and factual evidence are added later by SpecSmith.",
+    "Do not imitate the SpecSmith interface. Real SpecSmith UI is captured separately for evidence beats.",
+    "Do not invent a factual performance result. This clip is entertainment/setup only, not evidence.",
+  ].join(" ");
+
+  return {
+    prompt,
+    durationSeconds: providerDurationForBeat(beat),
+    aspectRatio: "9:16",
+    generateAudio: false,
+  };
 }
 
 function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext): ProductionTask[] {
   const tasks: ProductionTask[] = [];
+  const visualTaskIds: string[] = [];
 
   // Derived once per plan: the state depends on the idea's subjects and
   // feature, not on which beat is being rendered, so every UI beat in a plan
@@ -41,9 +77,11 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     const capability = requested === "deterministic-ui-render" && !isRenderableFeature(context.feature)
       ? "video-generation"
       : requested;
+    const taskId = `${script.platform}-beat-${index + 1}-visual`;
+    visualTaskIds.push(taskId);
 
     tasks.push({
-      taskId: `${script.platform}-beat-${index + 1}-visual`,
+      taskId,
       capability,
       sourceBeat: index,
       purpose: `Create the ${beat.purpose} visual for ${beat.startSecond}-${beat.endSecond}s.`,
@@ -57,14 +95,16 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
       // Structured state travels with the task. inputRequirements above stays
-      // prose for the generative adapters; this is what the deterministic
-      // renderer reads, so canonical ids never have to be recovered from text.
+      // prose for generative/fallback adapters; the real provider receives a
+      // provider-safe prompt and explicit allowed duration/aspect ratio.
+      ...(capability === "video-generation" ? { videoGenerationState: deriveVideoGenerationState(script, beat) } : {}),
       ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
     });
   }
 
+  const voiceTaskId = `${script.platform}-voice`;
   tasks.push({
-    taskId: `${script.platform}-voice`,
+    taskId: voiceTaskId,
     capability: "text-to-speech",
     sourceBeat: null,
     purpose: "Generate narration matched to storyboard timing and emphasis.",
@@ -75,8 +115,9 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     ],
   });
 
+  const musicTaskId = `${script.platform}-audio`;
   tasks.push({
-    taskId: `${script.platform}-audio`,
+    taskId: musicTaskId,
     capability: "music-sfx",
     sourceBeat: null,
     purpose: "Create restrained music and sound design that supports reveals and decisions.",
@@ -84,16 +125,30 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     outputRequirements: ["Narration remains intelligible.", "No copyrighted music is assumed available without license."],
   });
 
-  tasks.push({
-    taskId: `${script.platform}-captions`,
+  const captionTaskId = `${script.platform}-captions`;
+  const captionTask: ProductionTask = {
+    taskId: captionTaskId,
     capability: "caption-render",
     sourceBeat: null,
     purpose: "Render readable captions and deliberate on-screen decision text.",
     inputRequirements: script.beats.map((beat) => beat.onScreenText),
     outputRequirements: ["Captions stay inside short-form safe areas.", "Do not cover critical product UI or hardware evidence."],
-  });
+  };
+  // Timing is structured at the planning boundary. The caption renderer will
+  // not guess cue times by dividing a video evenly or parsing prose.
+  (captionTask as ProductionTask & { captionRenderState?: unknown }).captionRenderState = {
+    durationSeconds: script.targetDurationSeconds,
+    cues: script.beats
+      .filter((beat) => beat.onScreenText.trim().length > 0)
+      .map((beat) => ({
+        startSecond: beat.startSecond,
+        endSecond: beat.endSecond,
+        text: beat.onScreenText,
+      })),
+  };
+  tasks.push(captionTask);
 
-  tasks.push({
+  const composeTask: ProductionTask = {
     taskId: `${script.platform}-compose`,
     capability: "motion-compositor",
     sourceBeat: null,
@@ -104,7 +159,23 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       "Cuts follow storyboard causality rather than arbitrary template timing.",
       "The final CTA uses the exact SpecSmith destination defined by the content package.",
     ],
-  });
+  };
+  // The compositor receives an explicit beat timeline rather than relying on
+  // dependency-array order. This keeps cuts tied to the storyboard and makes a
+  // reordered/refactored production plan fail loudly instead of changing edit timing.
+  (composeTask as ProductionTask & { compositorState?: unknown }).compositorState = {
+    durationSeconds: script.targetDurationSeconds,
+    fps: 30,
+    visualTimeline: script.beats.map((beat, index) => ({
+      visualTaskId: visualTaskIds[index],
+      startSecond: beat.startSecond,
+      endSecond: beat.endSecond,
+    })),
+    voiceTaskId,
+    musicTaskId,
+    captionTaskId,
+  };
+  tasks.push(composeTask);
 
   return tasks;
 }
@@ -119,6 +190,7 @@ function buildPlatformProductionPlan(script: PlatformScriptStoryboard, context: 
     qualityChecks: [
       "Every factual visual claim is traceable to a verified storyboard dependency or deterministic SpecSmith state.",
       "No generated asset impersonates real SpecSmith UI when a deterministic UI render is required.",
+      "Generated setup visuals contain no readable generated text/specs/prices/benchmark claims; those overlays come from verified production data.",
       "No benchmark_score is presented as measured game FPS.",
       "Opening conflict is understandable in the first two seconds without requiring audio.",
       "The video contains a real reversal or decision beat before the payoff.",

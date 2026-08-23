@@ -196,6 +196,12 @@ export interface ProductionTask {
    * A deterministic-ui-render task without this field fails closed.
    */
   uiRenderState?: unknown;
+  /**
+   * Structured prompt/timing for generative video. The planner owns the story
+   * intent; provider adapters validate this value instead of reverse-parsing
+   * beat timing or model settings from prose.
+   */
+  videoGenerationState?: unknown;
 }
 
 export interface PlatformProductionPlan {
