@@ -1,5 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
+import { cleanRestrictedFeatureReview } from "./assetRights.ts";
+import {
+  buildProductVisualAssetRegistry,
+  evaluatePublicationAssetBundle,
+  selectApprovedProductVisualAsset,
+  type EvaluatedProductVisualAsset,
+} from "./productVisualAssets.ts";
 import {
   ingestMeshyAsset,
   isPublishableMeshyAsset,
@@ -9,181 +16,257 @@ import {
   type MeshyIngestRequest,
   type MeshySourceReference,
 } from "./meshyIngestion.ts";
-import {
-  buildProductVisualAssetRegistry,
-  evaluatePublicationAssetBundle,
-  selectApprovedProductVisualAsset,
-  type EvaluatedProductVisualAsset,
-} from "./productVisualAssets.ts";
-import { cleanRestrictedFeatureReview } from "./assetRights.ts";
+
+const OUTPUT_SHA = "a".repeat(64);
+const OTHER_SHA = "b".repeat(64);
+const SOURCE_SHA = "c".repeat(64);
 
 const clearedReference: MeshySourceReference = {
   uri: "library:specsmith/reference/generic-gpu-shell.png",
+  sha256: SOURCE_SHA,
   sourceKind: "specsmith-owned",
   commercialUseAllowed: true,
   derivativeUseAllowed: true,
 };
 
-/** A well-formed request. Individual tests degrade one thing at a time. */
 const baseRequest = (over: Partial<MeshyIngestRequest> = {}): MeshyIngestRequest => ({
-  providerAssetId: "task-1234",
-  taskId: "meshy-task-1234",
+  providerAssetId: "task-1234-preview",
+  providerTaskId: "task-1234",
   assetKind: "preview-image",
-  generationMode: "text-to-3d",
+  generationMode: "text-to-image",
   prompt: "a generic angular graphics card, no branding, studio lighting",
   createdAt: "2026-08-23T10:00:00.000Z",
-  fileUris: ["file:///tmp/meshy/preview-1234.png"],
+  outputFile: {
+    uri: "artifact:meshy/task-1234/preview.png",
+    mimeType: "image/png",
+    sha256: OUTPUT_SHA,
+  },
   declaredGeometryMode: "generic-representative",
   observedFeatures: cleanRestrictedFeatureReview(),
   intendedUse: "editorial-publication",
   ...over,
 });
 
-/** The only shape that can legitimately reach `approved` on ingest. */
 const fullyCleared = (over: Partial<MeshyIngestRequest> = {}): MeshyIngestRequest =>
   baseRequest({
-    humanClearance: { reviewer: "policy-team", evidenceRef: "review-ticket-88", reviewedAt: "2026-08-23T11:00:00.000Z" },
+    humanClearance: {
+      reviewer: "policy-team",
+      evidenceRef: "review-ticket-88",
+      reviewedAt: "2026-08-23T11:00:00.000Z",
+      assetSha256: OUTPUT_SHA,
+    },
     ...over,
   });
 
-describe("Meshy assets are quarantined, never auto-published", () => {
-  it("holds a safe generic asset with complete provenance rather than approving it", () => {
-    // The headline rule. Everything about this asset is clean, and it still
-    // does not auto-publish, because ingest-time review is automated and
-    // cannot certify generated imagery.
+describe("content-addressed Meshy identity and clearance", () => {
+  it("holds a clean generic asset until a human clearance exists", () => {
     const result = ingestMeshyAsset(baseRequest());
     expect(result.publicationDecision).toBe("hold");
     expect(result.registryStatus).toBe("needs-review");
-    expect(result.registryStatus).not.toBe("approved");
     expect(isPublishableMeshyAsset(result)).toBe(false);
-    expect(result.reasons.join(" ")).toMatch(/No human clearance recorded/);
+    expect(result.registryRecord.sha256).toBe(OUTPUT_SHA);
   });
 
-  it("records the asset in the registry even when it is held", () => {
-    // Quarantine means tracked-and-unusable, not discarded: a held asset must
-    // still be inspectable and re-reviewable later.
-    const result = ingestMeshyAsset(baseRequest());
-    expect(result.registryRecord.assetId).toBe(result.assetId);
-    expect(result.registryRecord.createdBy).toBe("provider");
-    expect(result.rightsManifest.assetId).toBe(result.assetId);
-  });
-
-  it("derives a stable asset id from the provider id, so re-ingest updates in place", () => {
-    expect(meshyAssetId("task-1234")).toBe("meshy-task-1234");
-    expect(ingestMeshyAsset(baseRequest()).assetId).toBe(ingestMeshyAsset(baseRequest()).assetId);
-  });
-
-  it("approves only when provenance, review and clearance are all present", () => {
+  it("approves a clean generic asset only after clearance bound to the exact bytes", () => {
     const result = ingestMeshyAsset(fullyCleared());
     expect(result.publicationDecision).toBe("allow");
     expect(result.registryStatus).toBe("approved");
     expect(isPublishableMeshyAsset(result)).toBe(true);
-    expect(result.rightsManifest.reviewedBy).toBe("automated-and-human");
+    expect(result.provenance.humanClearance?.assetSha256).toBe(OUTPUT_SHA);
+    expect(result.rightsManifest.notes?.join("\n")).toContain("review-ticket-88");
+    expect(result.rightsManifest.notes?.join("\n")).toContain(`outputSha256=${OUTPUT_SHA}`);
+  });
+
+  it("rejects a human clearance for different bytes", () => {
+    expect(() => ingestMeshyAsset(fullyCleared({
+      humanClearance: {
+        reviewer: "policy-team",
+        evidenceRef: "review-ticket-88",
+        reviewedAt: "2026-08-23T11:00:00.000Z",
+        assetSha256: OTHER_SHA,
+      },
+    }))).toThrow(/Review does not transfer across different bytes/);
+  });
+
+  it("includes the output hash in asset identity so changed bytes cannot inherit approval", () => {
+    const first = meshyAssetId("task-1234-preview", OUTPUT_SHA);
+    const changed = meshyAssetId("task-1234-preview", OTHER_SHA);
+    expect(first).not.toBe(changed);
+    expect(first).toContain(OUTPUT_SHA.slice(0, 16));
+  });
+
+  it("requires a complete human clearance record", () => {
+    expect(() => ingestMeshyAsset(baseRequest({
+      humanClearance: {
+        reviewer: "",
+        evidenceRef: "review-ticket-88",
+        reviewedAt: "2026-08-23T11:00:00.000Z",
+        assetSha256: OUTPUT_SHA,
+      },
+    }))).toThrow(/humanClearance.reviewer/);
+    expect(() => ingestMeshyAsset(baseRequest({
+      humanClearance: {
+        reviewer: "policy-team",
+        evidenceRef: "review-ticket-88",
+        reviewedAt: "not-a-date",
+        assetSha256: OUTPUT_SHA,
+      },
+    }))).toThrow(/valid timestamp/);
   });
 });
 
-describe("missing provenance blocks", () => {
-  it("blocks an image-to-3d asset with no recorded source lineage", () => {
-    // Meshy consumed an input image here. If nobody can say which, the asset
-    // cannot be assumed clean.
+describe("reference lineage is explicit and immutable", () => {
+  it("blocks image-to-3d when required source lineage is missing", () => {
     const result = ingestMeshyAsset(fullyCleared({ generationMode: "image-to-3d", sourceReferences: [] }));
     expect(result.publicationDecision).toBe("block");
     expect(result.registryStatus).toBe("blocked");
-    expect(result.reasons.join(" ")).toMatch(/no source reference lineage/i);
+    expect(result.rightsManifest.generationMode).toBe("derived-from-references");
+    expect(result.rightsManifest.sourceGrants[0].sourceKind).toBe("unknown");
   });
 
-  it("blocks texture generation with no lineage", () => {
-    const result = ingestMeshyAsset(fullyCleared({ assetKind: "texture", generationMode: "texture-generation" }));
-    expect(result.publicationDecision).toBe("block");
+  it("blocks image-to-image when required source lineage is missing", () => {
+    expect(ingestMeshyAsset(fullyCleared({ generationMode: "image-to-image", sourceReferences: [] })).publicationDecision).toBe("block");
   });
 
-  it("blocks a reference of unknown origin", () => {
-    const result = ingestMeshyAsset(fullyCleared({
+  it("blocks texture generation when required source lineage is missing", () => {
+    expect(ingestMeshyAsset(fullyCleared({ assetKind: "texture", outputFile: {
+      uri: "artifact:meshy/task-1234/texture.png",
+      mimeType: "image/png",
+      sha256: OUTPUT_SHA,
+    }, generationMode: "texture-generation", sourceReferences: [] })).publicationDecision).toBe("block");
+  });
+
+  it("refuses reference inputs mislabeled as text-only generation", () => {
+    expect(() => ingestMeshyAsset(fullyCleared({
+      generationMode: "text-to-image",
+      sourceReferences: [clearedReference],
+    }))).toThrow(/corresponding image-conditioned generation mode/);
+  });
+
+  it("rejects the old ambiguous image-generation mode at runtime", () => {
+    const request = { ...fullyCleared(), generationMode: "image-generation" } as unknown as MeshyIngestRequest;
+    expect(() => ingestMeshyAsset(request)).toThrow(/ambiguous generationMode/);
+  });
+
+  it("requires every source reference to have a URI and SHA-256", () => {
+    expect(() => ingestMeshyAsset(fullyCleared({
+      generationMode: "image-to-3d",
+      sourceReferences: [{ ...clearedReference, uri: "" }],
+    }))).toThrow(/sourceReferences\[0\]\.uri/);
+    expect(() => ingestMeshyAsset(fullyCleared({
+      generationMode: "image-to-3d",
+      sourceReferences: [{ ...clearedReference, sha256: "abc" }],
+    }))).toThrow(/SHA-256/);
+  });
+
+  it("blocks an unknown source and a reference that forbids derivatives", () => {
+    const unknown = ingestMeshyAsset(fullyCleared({
       generationMode: "image-to-3d",
       sourceReferences: [{ ...clearedReference, sourceKind: "unknown" }],
     }));
-    expect(result.publicationDecision).toBe("block");
-    expect(result.reasons.join(" ")).toMatch(/unknown-source/);
-  });
+    expect(unknown.publicationDecision).toBe("block");
 
-  it("blocks a licensed reference with no durable evidence reference", () => {
-    const result = ingestMeshyAsset(fullyCleared({
-      generationMode: "image-to-3d",
-      sourceReferences: [{ ...clearedReference, sourceKind: "licensed-third-party", evidenceRef: "  " }],
-    }));
-    expect(result.publicationDecision).toBe("block");
-    expect(result.reasons.join(" ")).toMatch(/missing-license-evidence/);
-  });
-
-  it("blocks a reference that does not permit derivative generation", () => {
-    const result = ingestMeshyAsset(fullyCleared({
+    const noDerivative = ingestMeshyAsset(fullyCleared({
       generationMode: "image-to-3d",
       sourceReferences: [{ ...clearedReference, derivativeUseAllowed: false }],
     }));
-    expect(result.publicationDecision).toBe("block");
+    expect(noDerivative.publicationDecision).toBe("block");
   });
 
-  it("accepts a text-to-3d asset with no references as generated-no-reference", () => {
-    // No inputs is legitimate here — but it still does not grant the right to
-    // depict someone's exact product.
-    const result = ingestMeshyAsset(fullyCleared());
-    expect(result.rightsManifest.generationMode).toBe("generated-no-reference");
-    expect(result.rightsManifest.sourceGrants[0].designUseAuthorized).toBe(false);
+  it("persists the exact reference hashes into provenance and durable rights evidence", () => {
+    const result = ingestMeshyAsset(fullyCleared({
+      generationMode: "image-to-3d",
+      sourceReferences: [clearedReference],
+    }));
+    expect(result.provenance.sourceReferences[0].sha256).toBe(SOURCE_SHA);
+    expect(result.rightsManifest.sourceGrants[0].evidenceRef).toContain(`sha256:${SOURCE_SHA}`);
   });
 });
 
-describe("exact product geometry is held without recorded authorization", () => {
-  it("holds an exact-design asset when no authorization exists", () => {
-    // The asset may exist in the system; it may not become production output.
+describe("exact product geometry", () => {
+  it("holds an exact model without design-use authorization", () => {
     const result = ingestMeshyAsset(fullyCleared({
+      generationMode: "text-to-3d",
+      assetKind: "model",
+      outputFile: { uri: "artifact:meshy/task-5090/model.glb", mimeType: "model/gltf-binary", sha256: OUTPUT_SHA },
       declaredGeometryMode: "licensed-exact",
       declaredProductTarget: "rtx5090",
     }));
     expect(result.publicationDecision).toBe("hold");
-    expect(result.geometryMode).toBe("licensed-exact");
-    expect(result.reasons.join(" ")).toMatch(/no design-use authorization is recorded/i);
+    expect(result.reviewFindings.distinctiveIndustrialDesign).toBe("present");
   });
 
-  it("allows an exact-design asset only with authorization naming the product", () => {
+  it("allows a text-to-3d exact model with matching design authorization and clean human review", () => {
     const result = ingestMeshyAsset(fullyCleared({
+      generationMode: "text-to-3d",
+      assetKind: "model",
+      outputFile: { uri: "artifact:meshy/task-5090/model.glb", mimeType: "model/gltf-binary", sha256: OUTPUT_SHA },
       declaredGeometryMode: "licensed-exact",
       declaredProductTarget: "rtx5090",
-      designAuthorization: { productId: "rtx5090", evidenceRef: "oem-agreement-2026-03" },
-      sourceReferences: [{ ...clearedReference, designUseAuthorized: true }],
+      designAuthorization: { productId: "rtx5090", evidenceRef: "oem-design-license-5090", authorizedAt: "2026-08-01T00:00:00Z" },
+      observedFeatures: cleanRestrictedFeatureReview({ distinctiveIndustrialDesign: "present" }),
+    }));
+    expect(result.publicationDecision).toBe("allow");
+    expect(result.rightsManifest.sourceGrants[0].designUseAuthorized).toBe(true);
+    expect(result.rightsManifest.notes?.join("\n")).toContain("oem-design-license-5090");
+    expect(result.provenance.designAuthorization?.productId).toBe("rtx5090");
+  });
+
+  it("still requires reference permissions for a reference-derived exact model", () => {
+    const result = ingestMeshyAsset(fullyCleared({
       generationMode: "image-to-3d",
+      assetKind: "model",
+      outputFile: { uri: "artifact:meshy/task-5090/model.glb", mimeType: "model/gltf-binary", sha256: OUTPUT_SHA },
+      declaredGeometryMode: "licensed-exact",
+      declaredProductTarget: "rtx5090",
+      designAuthorization: { productId: "rtx5090", evidenceRef: "oem-design-license-5090" },
+      sourceReferences: [{ ...clearedReference, designUseAuthorized: false }],
+      observedFeatures: cleanRestrictedFeatureReview({ distinctiveIndustrialDesign: "present" }),
+    }));
+    expect(result.publicationDecision).toBe("hold");
+  });
+
+  it("allows reference-derived exact geometry only when product and source permissions both support it", () => {
+    const result = ingestMeshyAsset(fullyCleared({
+      generationMode: "image-to-3d",
+      assetKind: "model",
+      outputFile: { uri: "artifact:meshy/task-5090/model.glb", mimeType: "model/gltf-binary", sha256: OUTPUT_SHA },
+      declaredGeometryMode: "licensed-exact",
+      declaredProductTarget: "rtx5090",
+      designAuthorization: { productId: "rtx5090", evidenceRef: "oem-design-license-5090" },
+      sourceReferences: [{ ...clearedReference, designUseAuthorized: true }],
       observedFeatures: cleanRestrictedFeatureReview({ distinctiveIndustrialDesign: "present" }),
     }));
     expect(result.publicationDecision).toBe("allow");
   });
 
-  it("refuses an authorization that names a different product than the asset targets", () => {
+  it("rejects design authorization for the wrong product or no target", () => {
     expect(() => ingestMeshyAsset(fullyCleared({
       declaredGeometryMode: "licensed-exact",
       declaredProductTarget: "rtx5090",
-      designAuthorization: { productId: "rtx4090", evidenceRef: "oem-agreement" },
-    }))).toThrow(MeshyIngestError);
+      designAuthorization: { productId: "rtx4090", evidenceRef: "license" },
+    }))).toThrow(/asset targets rtx5090/);
+    expect(() => ingestMeshyAsset(fullyCleared({
+      declaredGeometryMode: "licensed-exact",
+      designAuthorization: { productId: "rtx5090", evidenceRef: "license" },
+    }))).toThrow(/declaredProductTarget is missing/);
   });
 
-  it("trusts an observation of distinctive design over a 'generic' label", () => {
-    // A caller asserting "generic" while the review found distinctive design is
-    // contradicting itself; the observation is the safer of the two.
+  it("invalidates an earlier clearance when a supposedly generic asset is observed to be distinctive", () => {
     const result = ingestMeshyAsset(fullyCleared({
       declaredGeometryMode: "generic-representative",
       observedFeatures: cleanRestrictedFeatureReview({ distinctiveIndustrialDesign: "present" }),
     }));
     expect(result.publicationDecision).toBe("hold");
-    expect(result.reasons.join(" ")).toMatch(/declared generic but distinctive industrial design was observed/i);
+    expect(result.rightsManifest.reviewedBy).toBe("not-reviewed");
   });
 });
 
-describe("restricted features hold or block", () => {
-  it("treats unstated features as unknown, not absent", () => {
-    // The single most important default in the module: a caller that says
-    // nothing about logos must not get an asset marked logo-free.
+describe("restricted features and product identity", () => {
+  it("treats omitted visual review fields as unknown", () => {
     const result = ingestMeshyAsset(fullyCleared({ observedFeatures: undefined }));
     expect(result.reviewFindings.logos).toBe("unknown");
-    expect(result.reviewFindings.copiedProductPhotography).toBe("unknown");
-    expect(result.publicationDecision).not.toBe("allow");
+    expect(result.publicationDecision).toBe("hold");
   });
 
   for (const feature of [
@@ -195,53 +278,40 @@ describe("restricted features hold or block", () => {
     "retailerMarks",
     "copiedProductPhotography",
   ] as const) {
-    it(`blocks an asset showing ${feature}`, () => {
+    it(`blocks ${feature}`, () => {
       const result = ingestMeshyAsset(fullyCleared({
         observedFeatures: cleanRestrictedFeatureReview({ [feature]: "present" }),
       }));
       expect(result.publicationDecision).toBe("block");
-      expect(result.registryStatus).toBe("blocked");
     });
   }
 
-  it("never bakes branding into the manifest", () => {
-    expect(ingestMeshyAsset(baseRequest()).rightsManifest.productIdentityMode).toBe("none");
+  it("never bakes product branding and uses deterministic plain text for named products", () => {
+    const generic = ingestMeshyAsset(baseRequest());
+    expect(generic.rightsManifest.productIdentityMode).toBe("none");
+    const named = ingestMeshyAsset(baseRequest({ declaredProductTarget: "rtx5090" }));
+    expect(named.rightsManifest.productIdentityMode).toBe("deterministic-plain-text-overlay");
   });
 });
 
-describe("the provider floor can only tighten, never widen", () => {
-  it("keeps a block from the rights engine even though the floor is only a hold", () => {
-    // A logo makes the engine say block; the Meshy floor says hold. The result
-    // must be block — this layer must never be able to upgrade a decision.
-    const result = ingestMeshyAsset(baseRequest({
-      observedFeatures: cleanRestrictedFeatureReview({ logos: "present" }),
-    }));
-    expect(result.publicationDecision).toBe("block");
+describe("input hardening", () => {
+  it("rejects missing or malformed output identity", () => {
+    expect(() => ingestMeshyAsset({ ...baseRequest(), outputFile: undefined } as unknown as MeshyIngestRequest)).toThrow(/outputFile is required/);
+    expect(() => ingestMeshyAsset(baseRequest({ outputFile: { ...baseRequest().outputFile, uri: "" } }))).toThrow(/outputFile.uri/);
+    expect(() => ingestMeshyAsset(baseRequest({ outputFile: { ...baseRequest().outputFile, sha256: "bad" } }))).toThrow(/SHA-256/);
   });
 
-  it("holds even when the rights engine alone would allow", () => {
-    const cleared = fullyCleared();
-    const withoutClearance = { ...cleared, humanClearance: undefined };
-    expect(ingestMeshyAsset(cleared).publicationDecision).toBe("allow");
-    expect(ingestMeshyAsset(withoutClearance).publicationDecision).toBe("hold");
-  });
-});
-
-describe("malformed input is refused outright", () => {
-  it("refuses an asset with no files", () => {
-    expect(() => ingestMeshyAsset(baseRequest({ fileUris: [] }))).toThrow(/no file URIs/);
+  it("rejects MIME types that do not match the asset kind", () => {
+    expect(() => ingestMeshyAsset(baseRequest({ assetKind: "model", outputFile: { ...baseRequest().outputFile, mimeType: "image/png" } }))).toThrow(/does not accept mimeType/);
   });
 
-  it("refuses an empty provider id", () => {
-    expect(() => ingestMeshyAsset(baseRequest({ providerAssetId: "   " }))).toThrow(MeshyIngestError);
-  });
-
-  it("refuses a missing creation timestamp", () => {
-    expect(() => ingestMeshyAsset(baseRequest({ createdAt: "" }))).toThrow(/createdAt/);
+  it("rejects invalid timestamps and unsupported URI schemes", () => {
+    expect(() => ingestMeshyAsset(baseRequest({ createdAt: "not-a-date" }))).toThrow(/valid timestamp/);
+    expect(() => ingestMeshyAsset(baseRequest({ outputFile: { ...baseRequest().outputFile, uri: "ftp://example.com/file.png" } }))).toThrow(/unsupported URI scheme/);
   });
 });
 
-describe("production selection and the final publication gate", () => {
+describe("shared registry and final publication gate", () => {
   const registryOf = (...requests: MeshyIngestRequest[]): Map<string, EvaluatedProductVisualAsset> =>
     buildProductVisualAssetRegistry(meshyRegistryEntries(requests.map(ingestMeshyAsset)).map((entry) => ({
       assetId: entry.assetId,
@@ -249,30 +319,40 @@ describe("production selection and the final publication gate", () => {
       role: entry.role,
       uri: entry.uri,
       mimeType: entry.mimeType,
+      sha256: entry.sha256,
       version: entry.version,
       createdAt: entry.createdAt,
       createdBy: entry.createdBy,
       rights: entry.rights,
     })));
 
-  it("refuses to select a held Meshy asset for production", () => {
+  it("does not lose a hold when rebuilt through the shared registry", () => {
+    const registry = registryOf(baseRequest());
+    const [entry] = [...registry.values()];
+    expect(entry.status).toBe("needs-review");
+  });
+
+  it("does not lose a missing-lineage block when rebuilt through the shared registry", () => {
+    const registry = registryOf(fullyCleared({ generationMode: "image-to-3d", sourceReferences: [] }));
+    const [entry] = [...registry.values()];
+    expect(entry.status).toBe("blocked");
+  });
+
+  it("refuses held Meshy assets during production selection", () => {
     const held = ingestMeshyAsset(baseRequest({ declaredProductTarget: "rtx5090" }));
-    expect(held.registryStatus).toBe("needs-review");
     const registry = new Map([[held.assetId, held.evaluated]]);
     expect(() => selectApprovedProductVisualAsset(registry, { productId: "rtx5090", roles: ["product-illustration"] }))
       .toThrow(/No rights-approved visual asset/);
   });
 
-  it("selects an approved Meshy asset once it is cleared", () => {
+  it("selects an approved Meshy asset after exact-byte clearance", () => {
     const approved = ingestMeshyAsset(fullyCleared({ declaredProductTarget: "rtx5090" }));
     const registry = new Map([[approved.assetId, approved.evaluated]]);
-    const selected = selectApprovedProductVisualAsset(registry, { productId: "rtx5090", roles: ["product-illustration"] });
-    expect(selected.assetId).toBe(approved.assetId);
+    expect(selectApprovedProductVisualAsset(registry, { productId: "rtx5090", roles: ["product-illustration"] }).assetId)
+      .toBe(approved.assetId);
   });
 
-  it("fails the final publication bundle when a held Meshy asset is used", () => {
-    // The last line of defence: even if something selected a held asset, the
-    // bundle gate refuses to publish the master.
+  it("blocks the final master if a held Meshy asset was used", () => {
     const held = ingestMeshyAsset(baseRequest());
     const registry = new Map([[held.assetId, held.evaluated]]);
     const bundle = evaluatePublicationAssetBundle(registry, {
@@ -283,21 +363,12 @@ describe("production selection and the final publication gate", () => {
     expect(bundle.nonApprovedAssetIds).toContain(held.assetId);
   });
 
-  it("passes the bundle gate only for cleared assets", () => {
+  it("passes the final bundle gate for an approved Meshy asset", () => {
     const approved = ingestMeshyAsset(fullyCleared());
     const registry = new Map([[approved.assetId, approved.evaluated]]);
-    const bundle = evaluatePublicationAssetBundle(registry, {
+    expect(evaluatePublicationAssetBundle(registry, {
       usedAssetIds: [approved.assetId],
       expectedVisualAssetIds: [approved.assetId],
-    });
-    expect(bundle.publishable).toBe(true);
-  });
-
-  it("integrates with the shared registry builder without losing the floor", () => {
-    // Round-tripping through buildProductVisualAssetRegistry must not
-    // re-evaluate a held asset back into approved.
-    const registry = registryOf(baseRequest());
-    const [entry] = [...registry.values()];
-    expect(entry.status).not.toBe("approved");
+    }).publishable).toBe(true);
   });
 });
