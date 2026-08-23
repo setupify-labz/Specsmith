@@ -1,39 +1,11 @@
 // Meshy asset ingestion — a provider feeding the rights system, not a bypass.
 //
-// Meshy can generate genuinely useful hardware visuals. It can also drift into
-// near-copy geometry, invented NVIDIA-ish wordmarks, retailer stickers and
-// textures that look lifted from product photography. Nothing here tries to
-// decide which happened. Ingestion's job is to record what is known, refuse to
-// assume what is not, and hand the result to the existing policy engine in
-// assetRights.ts.
-//
-// THE TWO RULES THAT MATTER
-// -------------------------
-// 1. Unstated is UNKNOWN, never absent. A caller that does not assert "this
-//    render has no logos" gets `unknown`, which the policy engine holds on.
-//    Defaulting to "absent" would let a silent integration publish exactly the
-//    assets this pipeline exists to stop.
-//
-// 2. Restrictions are written INTO the manifest, not applied on top of it.
-//    An earlier version computed the engine's decision and then tightened it
-//    afterwards, which a test caught as a fail-open: rebuilding the registry
-//    from stored records re-ran the engine on the manifest alone and promoted
-//    held assets back to approved. So the reasons for holding now live in the
-//    manifest itself (reviewedBy, distinctiveIndustrialDesign), and any
-//    consumer re-evaluating independently reaches the same answer. The floor
-//    that remains is belt-and-braces: it can only tighten, never widen.
-//
-// WHY MESHY NEVER AUTO-APPROVES
-// -----------------------------
-// The ingest-time review is automated: it reads declarations from the caller
-// and file metadata. That is enough to catch missing provenance and declared
-// exactness, and nowhere near enough to certify that a generated image contains
-// no brand-like mark. So an ingested Meshy asset caps at `hold` until a human
-// clearance is recorded against it. Exact third-party industrial design caps at
-// `hold` even then, unless design-use authorization is on file.
+// The contract is intentionally strict: one physical output file equals one
+// registry asset, content identity includes SHA-256, reference-conditioned
+// generation must declare every consumed input, and a human clearance is bound
+// to the exact output bytes it reviewed.
 
 import {
-  cleanRestrictedFeatureReview,
   evaluateAssetRights,
   generatedNoReferenceGrant,
   type AssetIntendedUse,
@@ -66,15 +38,30 @@ export class MeshyIngestError extends Error {
 
 export type MeshyAssetKind = "image" | "preview-image" | "model" | "texture";
 
+/**
+ * Reference semantics are explicit. The old catch-all `image-generation` name
+ * was ambiguous because it could mean text-to-image or image-conditioned
+ * generation, which made it possible to omit required source lineage.
+ */
 export type MeshyGenerationMode =
   | "text-to-3d"
   | "image-to-3d"
-  | "image-generation"
+  | "text-to-image"
+  | "image-to-image"
   | "texture-generation";
 
-/** One upstream input Meshy was given. Lineage, recorded per reference. */
+export interface MeshyOutputFile {
+  /** One concrete output only. Multi-output Meshy jobs are ingested once per file. */
+  uri: string;
+  mimeType: string;
+  sha256: string;
+}
+
+/** One exact upstream input Meshy consumed. */
 export interface MeshySourceReference {
   uri: string;
+  /** Hash of the exact source bytes, not merely the URL that happened to serve them. */
+  sha256: string;
   sourceKind: AssetSourceKind;
   evidenceRef?: string;
   commercialUseAllowed: boolean;
@@ -85,39 +72,38 @@ export interface MeshySourceReference {
   attributionText?: string;
 }
 
-/** A recorded human sign-off. Without one, ingestion cannot reach `approved`. */
+/** Human review is approval of exact bytes, not of a mutable provider URL. */
 export interface MeshyHumanClearance {
   reviewer: string;
-  /** Durable reference: review ticket, doc id, signed note. */
   evidenceRef: string;
   reviewedAt: string;
+  assetSha256: string;
 }
 
-/** Recorded permission to depict a specific third-party product's exact design. */
+/** Recorded permission to depict the named product's distinctive design. */
 export interface MeshyDesignAuthorization {
   productId: string;
   evidenceRef: string;
+  authorizedAt?: string;
 }
 
 export interface MeshyIngestRequest {
+  /** Must identify this output within Meshy. Different output files need different ids. */
   providerAssetId: string;
-  taskId?: string;
+  providerTaskId?: string;
   assetKind: MeshyAssetKind;
   generationMode: MeshyGenerationMode;
   prompt?: string;
   modelSettings?: Record<string, string | number | boolean>;
   createdAt: string;
-  fileUris: string[];
-  /** Every input Meshy consumed. Required for any image/texture-derived mode. */
+  outputFile: MeshyOutputFile;
+  /** Every input Meshy consumed. Required for image-conditioned/texture modes. */
   sourceReferences?: MeshySourceReference[];
-  /** The SpecSmith product this asset claims to depict, if any. */
+  /** The SpecSmith catalog product this visual claims to depict, if any. */
   declaredProductTarget?: string;
   declaredGeometryMode: ProductGeometryMode;
   designAuthorization?: MeshyDesignAuthorization;
-  /**
-   * Restricted features the caller has actually inspected. Anything omitted
-   * stays `unknown` — see the header: unstated is never absent.
-   */
+  /** Anything omitted remains unknown, never absent. */
   observedFeatures?: Partial<RestrictedVisualFeatureReview>;
   humanClearance?: MeshyHumanClearance;
   intendedUse: AssetIntendedUse;
@@ -126,13 +112,15 @@ export interface MeshyIngestRequest {
 export interface MeshyProvenance {
   provider: typeof MESHY_PROVIDER;
   providerAssetId: string;
-  taskId?: string;
+  providerTaskId?: string;
   generationMode: MeshyGenerationMode;
   prompt?: string;
   modelSettings?: Record<string, string | number | boolean>;
   createdAt: string;
-  fileUris: string[];
-  referenceUris: string[];
+  outputFile: MeshyOutputFile;
+  sourceReferences: MeshySourceReference[];
+  humanClearance?: MeshyHumanClearance;
+  designAuthorization?: MeshyDesignAuthorization;
 }
 
 export interface MeshyIngestResult {
@@ -145,21 +133,35 @@ export interface MeshyIngestResult {
   evaluated: EvaluatedProductVisualAsset;
   reviewFindings: RestrictedVisualFeatureReview;
   provenance: MeshyProvenance;
-  /** Human-readable explanation of the decision, most severe first. */
   reasons: string[];
 }
 
-/** Modes where Meshy consumed an upstream image; lineage is mandatory. */
-const REFERENCE_CONSUMING_MODES: ReadonlySet<MeshyGenerationMode> = new Set([
+const ASSET_KINDS = new Set<MeshyAssetKind>(["image", "preview-image", "model", "texture"]);
+const GENERATION_MODES = new Set<MeshyGenerationMode>([
+  "text-to-3d",
   "image-to-3d",
+  "text-to-image",
+  "image-to-image",
   "texture-generation",
 ]);
+const INTENDED_USES = new Set<AssetIntendedUse>(["internal-experiment", "editorial-publication", "commercial-marketing"]);
+const GEOMETRY_MODES = new Set<ProductGeometryMode>(["generic-representative", "licensed-exact"]);
 
-const MIME_BY_KIND: Record<MeshyAssetKind, string> = {
-  image: "image/png",
-  "preview-image": "image/png",
-  model: "model/gltf-binary",
-  texture: "image/png",
+const REFERENCE_CONSUMING_MODES: ReadonlySet<MeshyGenerationMode> = new Set([
+  "image-to-3d",
+  "image-to-image",
+  "texture-generation",
+]);
+const REFERENCE_FREE_MODES: ReadonlySet<MeshyGenerationMode> = new Set(["text-to-3d", "text-to-image"]);
+
+const VALID_URI = /^(?:file:|https?:|s3:|gs:|artifact:|library:|sandbox:)/;
+const SHA256 = /^[a-fA-F0-9]{64}$/;
+
+const DEFAULT_MIME_BY_KIND: Record<MeshyAssetKind, string[]> = {
+  image: ["image/png", "image/jpeg", "image/webp"],
+  "preview-image": ["image/png", "image/jpeg", "image/webp"],
+  model: ["model/gltf-binary", "model/gltf+json", "application/octet-stream"],
+  texture: ["image/png", "image/jpeg", "image/webp"],
 };
 
 const ASSET_TYPE_BY_KIND: Record<MeshyAssetKind, AssetRightsManifest["assetType"]> = {
@@ -172,27 +174,53 @@ const ASSET_TYPE_BY_KIND: Record<MeshyAssetKind, AssetRightsManifest["assetType"
 function roleFor(request: MeshyIngestRequest): ProductVisualAssetRole {
   if (request.assetKind === "texture") return "texture";
   if (request.assetKind === "model") return "3d-production-asset";
-  // An image that claims a specific product is an illustration of that product;
-  // one that does not is only ever a generic hook visual.
   return request.declaredProductTarget ? "product-illustration" : "generic-hook";
 }
 
-/** Stable, derived from the provider's own id so re-ingesting is idempotent. */
-export function meshyAssetId(providerAssetId: string): string {
-  const trimmed = providerAssetId.trim();
-  if (!trimmed) throw new MeshyIngestError("missing-provider-id", "Meshy asset requires a providerAssetId.");
-  return `meshy-${trimmed.replace(/[^A-Za-z0-9._-]/g, "-")}`;
+function normalizedSha256(value: string, field: string): string {
+  const trimmed = value?.trim?.() ?? "";
+  if (!SHA256.test(trimmed)) {
+    throw new MeshyIngestError("invalid-sha256", `${field} must be a 64-character SHA-256 hex digest.`);
+  }
+  return trimmed.toLowerCase();
+}
+
+function requireNonEmpty(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) throw new MeshyIngestError("missing-field", `${field} is required.`);
+  return value.trim();
+}
+
+function requireValidUri(value: unknown, field: string): string {
+  const uri = requireNonEmpty(value, field);
+  if (!VALID_URI.test(uri)) throw new MeshyIngestError("invalid-uri", `${field} uses an unsupported URI scheme.`);
+  return uri;
+}
+
+function requireTimestamp(value: unknown, field: string): string {
+  const timestamp = requireNonEmpty(value, field);
+  if (!Number.isFinite(Date.parse(timestamp))) throw new MeshyIngestError("invalid-timestamp", `${field} must be a valid timestamp.`);
+  return timestamp;
+}
+
+/**
+ * Content-addressed identity: if Meshy changes the bytes behind the same provider
+ * id, it becomes a new asset and cannot inherit the old review.
+ */
+export function meshyAssetId(providerAssetId: string, sha256: string): string {
+  const provider = requireNonEmpty(providerAssetId, "providerAssetId").replace(/[^A-Za-z0-9._-]/g, "-");
+  const digest = normalizedSha256(sha256, "outputFile.sha256");
+  return `meshy-${provider}-${digest.slice(0, 16)}`;
 }
 
 function toGrant(reference: MeshySourceReference): AssetRightsGrant {
   return {
     sourceKind: reference.sourceKind,
     sourceUri: reference.uri,
-    evidenceRef: reference.evidenceRef,
+    // Keep both the legal evidence and the immutable input hash in the durable
+    // evidence string because AssetRightsGrant predates content hashes.
+    evidenceRef: [reference.evidenceRef?.trim(), `sha256:${reference.sha256.toLowerCase()}`].filter(Boolean).join(" | "),
     commercialUseAllowed: reference.commercialUseAllowed,
     derivativeUseAllowed: reference.derivativeUseAllowed,
-    // Design and trademark authorization are opt-in: a reference that does not
-    // explicitly grant them does not grant them.
     designUseAuthorized: reference.designUseAuthorized === true,
     trademarkUseAuthorized: reference.trademarkUseAuthorized === true,
     attributionRequired: reference.attributionRequired === true,
@@ -200,13 +228,6 @@ function toGrant(reference: MeshySourceReference): AssetRightsGrant {
   };
 }
 
-/**
- * Merges declared observations over an all-unknown baseline.
- *
- * Deliberately NOT cleanRestrictedFeatureReview(): that helper starts from
- * "absent", which is the right default for an asset SpecSmith drew itself and
- * exactly the wrong one for a generative provider.
- */
 function reviewFrom(observed: Partial<RestrictedVisualFeatureReview> | undefined): RestrictedVisualFeatureReview {
   const baseline: RestrictedVisualFeatureReview = {
     logos: "unknown",
@@ -221,47 +242,144 @@ function reviewFrom(observed: Partial<RestrictedVisualFeatureReview> | undefined
   if (!observed) return baseline;
   const merged = { ...baseline };
   for (const [key, value] of Object.entries(observed) as [keyof RestrictedVisualFeatureReview, FeaturePresence | undefined][]) {
-    if (value) merged[key] = value;
+    if (value === "absent" || value === "present" || value === "unknown") merged[key] = value;
+    else if (value !== undefined) throw new MeshyIngestError("invalid-feature-state", `observedFeatures.${key} is invalid.`);
   }
   return merged;
 }
 
 const SEVERITY_RANK: Record<AssetPolicyDecision, number> = { allow: 0, hold: 1, block: 2 };
-
-/** Returns whichever decision is more restrictive. Never widens. */
 function tightest(a: AssetPolicyDecision, b: AssetPolicyDecision): AssetPolicyDecision {
   return SEVERITY_RANK[a] >= SEVERITY_RANK[b] ? a : b;
 }
 
-function validate(request: MeshyIngestRequest): void {
-  if (!request.fileUris.length) {
-    throw new MeshyIngestError("missing-files", `Meshy asset ${request.providerAssetId} has no file URIs.`);
-  }
-  if (!request.createdAt.trim()) {
-    throw new MeshyIngestError("missing-created-at", `Meshy asset ${request.providerAssetId} has no createdAt.`);
-  }
-  if (request.designAuthorization && request.declaredProductTarget &&
-      request.designAuthorization.productId !== request.declaredProductTarget) {
+function validateReference(reference: MeshySourceReference, index: number): MeshySourceReference {
+  const prefix = `sourceReferences[${index}]`;
+  const uri = requireValidUri(reference?.uri, `${prefix}.uri`);
+  const sha256 = normalizedSha256(reference?.sha256, `${prefix}.sha256`);
+  if (typeof reference.sourceKind !== "string") throw new MeshyIngestError("invalid-source-kind", `${prefix}.sourceKind is required.`);
+  return { ...reference, uri, sha256 };
+}
+
+function validateHumanClearance(clearance: MeshyHumanClearance | undefined, outputSha256: string): MeshyHumanClearance | undefined {
+  if (!clearance) return undefined;
+  const reviewer = requireNonEmpty(clearance.reviewer, "humanClearance.reviewer");
+  const evidenceRef = requireNonEmpty(clearance.evidenceRef, "humanClearance.evidenceRef");
+  const reviewedAt = requireTimestamp(clearance.reviewedAt, "humanClearance.reviewedAt");
+  const assetSha256 = normalizedSha256(clearance.assetSha256, "humanClearance.assetSha256");
+  if (assetSha256 !== outputSha256) {
     throw new MeshyIngestError(
-      "authorization-product-mismatch",
-      `Design authorization names product ${request.designAuthorization.productId} but the asset targets ${request.declaredProductTarget}.`,
+      "clearance-hash-mismatch",
+      `Human clearance is for sha256:${assetSha256}, but the ingested output is sha256:${outputSha256}. Review does not transfer across different bytes.`,
     );
   }
+  return { reviewer, evidenceRef, reviewedAt, assetSha256 };
+}
+
+function validateDesignAuthorization(
+  authorization: MeshyDesignAuthorization | undefined,
+  target: string | undefined,
+): MeshyDesignAuthorization | undefined {
+  if (!authorization) return undefined;
+  const productId = requireNonEmpty(authorization.productId, "designAuthorization.productId");
+  const evidenceRef = requireNonEmpty(authorization.evidenceRef, "designAuthorization.evidenceRef");
+  const authorizedAt = authorization.authorizedAt === undefined
+    ? undefined
+    : requireTimestamp(authorization.authorizedAt, "designAuthorization.authorizedAt");
+  if (!target) {
+    throw new MeshyIngestError("authorization-missing-product-target", "Design authorization was supplied but declaredProductTarget is missing.");
+  }
+  if (productId !== target) {
+    throw new MeshyIngestError(
+      "authorization-product-mismatch",
+      `Design authorization names product ${productId}, but the asset targets ${target}.`,
+    );
+  }
+  return { productId, evidenceRef, ...(authorizedAt ? { authorizedAt } : {}) };
+}
+
+function validateRequest(request: MeshyIngestRequest): {
+  createdAt: string;
+  outputFile: MeshyOutputFile;
+  references: MeshySourceReference[];
+  humanClearance?: MeshyHumanClearance;
+  designAuthorization?: MeshyDesignAuthorization;
+} {
+  if (!request || typeof request !== "object") throw new MeshyIngestError("malformed-request", "Meshy ingest request must be an object.");
+  requireNonEmpty(request.providerAssetId, "providerAssetId");
+  const createdAt = requireTimestamp(request.createdAt, "createdAt");
+
+  if (!ASSET_KINDS.has(request.assetKind)) throw new MeshyIngestError("invalid-asset-kind", `Unsupported assetKind: ${String(request.assetKind)}.`);
+  if (!GENERATION_MODES.has(request.generationMode)) {
+    throw new MeshyIngestError(
+      "invalid-generation-mode",
+      `Unsupported or ambiguous generationMode: ${String(request.generationMode)}. Use text-to-image or image-to-image explicitly.`,
+    );
+  }
+  if (!INTENDED_USES.has(request.intendedUse)) throw new MeshyIngestError("invalid-intended-use", `Unsupported intendedUse: ${String(request.intendedUse)}.`);
+  if (!GEOMETRY_MODES.has(request.declaredGeometryMode)) throw new MeshyIngestError("invalid-geometry-mode", `Unsupported declaredGeometryMode: ${String(request.declaredGeometryMode)}.`);
+
+  if (!request.outputFile || typeof request.outputFile !== "object") throw new MeshyIngestError("missing-output-file", "outputFile is required.");
+  const outputFile: MeshyOutputFile = {
+    uri: requireValidUri(request.outputFile.uri, "outputFile.uri"),
+    mimeType: requireNonEmpty(request.outputFile.mimeType, "outputFile.mimeType").toLowerCase(),
+    sha256: normalizedSha256(request.outputFile.sha256, "outputFile.sha256"),
+  };
+  if (!DEFAULT_MIME_BY_KIND[request.assetKind].includes(outputFile.mimeType)) {
+    throw new MeshyIngestError(
+      "mime-kind-mismatch",
+      `assetKind=${request.assetKind} does not accept mimeType=${outputFile.mimeType}.`,
+    );
+  }
+
+  const references = (request.sourceReferences ?? []).map(validateReference);
+  if (REFERENCE_FREE_MODES.has(request.generationMode) && references.length > 0) {
+    throw new MeshyIngestError(
+      "reference-mode-mismatch",
+      `${request.generationMode} declares no reference input, but sourceReferences were supplied. Use the corresponding image-conditioned generation mode.`,
+    );
+  }
+
+  const target = request.declaredProductTarget?.trim() || undefined;
+  const humanClearance = validateHumanClearance(request.humanClearance, outputFile.sha256);
+  const designAuthorization = validateDesignAuthorization(request.designAuthorization, target);
+
+  return { createdAt, outputFile, references, humanClearance, designAuthorization };
+}
+
+function missingLineageGrant(mode: MeshyGenerationMode): AssetRightsGrant {
+  return {
+    sourceKind: "unknown",
+    sourceUri: `meshy:missing-lineage:${mode}`,
+    evidenceRef: undefined,
+    commercialUseAllowed: false,
+    derivativeUseAllowed: false,
+    designUseAuthorized: false,
+    trademarkUseAuthorized: false,
+    attributionRequired: false,
+  };
+}
+
+function evidenceNotes(
+  outputFile: MeshyOutputFile,
+  humanClearance: MeshyHumanClearance | undefined,
+  designAuthorization: MeshyDesignAuthorization | undefined,
+): string[] {
+  const notes = [`outputSha256=${outputFile.sha256}`];
+  if (humanClearance) notes.push(`humanClearance=${JSON.stringify(humanClearance)}`);
+  if (designAuthorization) notes.push(`designAuthorization=${JSON.stringify(designAuthorization)}`);
+  return notes;
 }
 
 /**
- * Normalizes a Meshy output into a quarantined registry record plus its rights
- * manifest, and decides whether it may be published.
- *
- * Never throws on a policy problem — a blocked asset is a normal, recorded
- * outcome. It throws only when the input is too malformed to describe at all,
- * because inventing the missing parts is what this module exists to prevent.
+ * Normalize one concrete Meshy output into the shared quarantine/rights model.
+ * Policy problems are recorded as hold/block results. Structurally unsafe input
+ * is rejected because inventing missing identity/evidence would be worse.
  */
 export function ingestMeshyAsset(request: MeshyIngestRequest): MeshyIngestResult {
-  validate(request);
-
-  const assetId = meshyAssetId(request.providerAssetId);
-  const references = request.sourceReferences ?? [];
+  const validated = validateRequest(request);
+  const target = request.declaredProductTarget?.trim() || undefined;
+  const assetId = meshyAssetId(request.providerAssetId, validated.outputFile.sha256);
   const reasons: string[] = [];
   let providerFloor: AssetPolicyDecision = "allow";
   const tighten = (decision: AssetPolicyDecision, reason: string) => {
@@ -269,153 +387,141 @@ export function ingestMeshyAsset(request: MeshyIngestRequest): MeshyIngestResult
     reasons.push(reason);
   };
 
-  // Lineage. image-to-3d and texture-generation always consumed something; if
-  // the caller cannot say what, the asset is unusable rather than assumed safe.
-  if (REFERENCE_CONSUMING_MODES.has(request.generationMode) && references.length === 0) {
+  const requiresReferences = REFERENCE_CONSUMING_MODES.has(request.generationMode);
+  const missingRequiredLineage = requiresReferences && validated.references.length === 0;
+  if (missingRequiredLineage) {
     tighten(
       "block",
-      `${request.generationMode} consumed an input image, but no source reference lineage was recorded. Refusing to treat unknown input as clean.`,
+      `${request.generationMode} consumed reference input, but no source reference lineage was recorded.`,
     );
   }
-
-  const derived = references.length > 0;
-  const grants: AssetRightsGrant[] = derived
-    ? references.map(toGrant)
-    // text-to-3d / image-generation with no inputs: generated from nothing but
-    // a prompt. Still not a licence to depict someone's exact product.
-    : [generatedNoReferenceGrant()];
 
   const reviewFindings = reviewFrom(request.observedFeatures);
+  if (request.declaredGeometryMode === "licensed-exact") reviewFindings.distinctiveIndustrialDesign = "present";
 
-  // A "licensed-exact" claim IS an assertion that distinctive industrial design
-  // is present, so record it as such. This matters beyond bookkeeping: it makes
-  // the policy engine reach the hold on its own, rather than depending on this
-  // module's floor surviving a round-trip through the registry.
-  if (request.declaredGeometryMode === "licensed-exact") {
-    reviewFindings.distinctiveIndustrialDesign = "present";
+  const genericContradiction = request.declaredGeometryMode === "generic-representative" &&
+    reviewFindings.distinctiveIndustrialDesign === "present";
+  if (genericContradiction) {
+    tighten("hold", "Asset is declared generic but distinctive industrial design was observed. The observation wins and clearance must be repeated under an exact-design classification.");
   }
 
-  // Exactness. A "licensed-exact" claim is only honoured when authorization is
-  // recorded; otherwise the asset may exist internally but never auto-publish.
-  const geometryMode: ProductGeometryMode = request.declaredGeometryMode;
-  const exactAuthorized = Boolean(request.designAuthorization?.evidenceRef.trim());
-  if (geometryMode === "licensed-exact") {
-    if (!exactAuthorized) {
-      tighten(
-        "hold",
-        "Asset claims exact third-party industrial design but no design-use authorization is recorded. Held: it may exist internally, but cannot become a production asset.",
-      );
-    } else if (!request.declaredProductTarget) {
-      tighten("hold", "Exact-design authorization was supplied without naming the product it covers.");
-    }
-  }
-  // A declared-generic asset that nonetheless shows distinctive design is a
-  // contradiction; trust the observation, not the label.
-  if (geometryMode === "generic-representative" && reviewFindings.distinctiveIndustrialDesign === "present") {
-    tighten(
-      "hold",
-      "Asset is declared generic but distinctive industrial design was observed in it. The observation wins.",
-    );
+  const exactAuthorizationValid = request.declaredGeometryMode === "licensed-exact" &&
+    Boolean(target && validated.designAuthorization && validated.designAuthorization.productId === target);
+  if (request.declaredGeometryMode === "licensed-exact" && !exactAuthorizationValid) {
+    tighten("hold", "Asset claims exact third-party industrial design but no matching design-use authorization is recorded.");
   }
 
-  // Human review. Automated ingest cannot certify that a generated image is
-  // free of brand-like marks, so approval requires a recorded sign-off.
-  const cleared = Boolean(request.humanClearance?.evidenceRef.trim());
-  if (!cleared) {
-    tighten(
-      "hold",
-      "No human clearance recorded. Meshy output is held by default because ingest-time review is automated and cannot certify generated imagery.",
-    );
+  const effectiveHumanClearance = validated.humanClearance && !genericContradiction ? validated.humanClearance : undefined;
+  if (!effectiveHumanClearance) {
+    tighten("hold", "No valid human clearance is bound to these exact output bytes. Meshy assets do not auto-approve.");
+  }
+
+  const derived = requiresReferences || validated.references.length > 0;
+  let grants: AssetRightsGrant[];
+  if (missingRequiredLineage) {
+    // Put the failure into the manifest itself so rebuilding the shared registry
+    // cannot accidentally promote a blocked provider result.
+    grants = [missingLineageGrant(request.generationMode)];
+  } else if (validated.references.length > 0) {
+    grants = validated.references.map(toGrant);
+  } else {
+    const generated = generatedNoReferenceGrant();
+    generated.sourceUri = "meshy:generated-no-reference";
+    // Fix the text-to-3D exact-model hole: a separate product design
+    // authorization can authorize generated geometry even when there is no
+    // reference grant. It does not grant trademark use.
+    generated.designUseAuthorized = exactAuthorizationValid;
+    if (validated.designAuthorization) generated.evidenceRef = validated.designAuthorization.evidenceRef;
+    grants = [generated];
   }
 
   const manifest: AssetRightsManifest = {
     assetId,
     assetType: ASSET_TYPE_BY_KIND[request.assetKind],
     intendedUse: request.intendedUse,
-    productId: request.declaredProductTarget,
+    productId: target,
     generationMode: derived ? "derived-from-references" : "generated-no-reference",
     sourceGrants: grants,
     parentAssetIds: [],
-    // Meshy is never allowed to bake branding; product identity is added
-    // downstream as deterministic plain text.
-    productIdentityMode: "none",
+    productIdentityMode: target ? "deterministic-plain-text-overlay" : "none",
     restrictedFeatures: reviewFindings,
-    // Without a recorded human sign-off this is genuinely "not-reviewed" as far
-    // as publication is concerned: the provider declared some fields, which is
-    // not a restricted-feature review of generated imagery. Saying so in the
-    // manifest is what makes the hold DURABLE — evaluateAssetRights() then
-    // reaches it independently, so rebuilding the registry from stored records
-    // cannot quietly promote a held asset back to approved.
-    reviewedBy: cleared ? "automated-and-human" : "not-reviewed",
+    reviewedBy: effectiveHumanClearance ? "automated-and-human" : "not-reviewed",
     notes: [
       `provider=${MESHY_PROVIDER}`,
       `providerAssetId=${request.providerAssetId}`,
+      ...(request.providerTaskId ? [`providerTaskId=${request.providerTaskId}`] : []),
       `generationMode=${request.generationMode}`,
-      `geometryMode=${geometryMode}`,
+      `geometryMode=${request.declaredGeometryMode}`,
+      ...evidenceNotes(validated.outputFile, validated.humanClearance, validated.designAuthorization),
     ],
   };
 
   const record: ProductVisualAssetRecord = {
     assetId,
-    productId: request.declaredProductTarget,
+    productId: target,
     role: roleFor(request),
-    uri: request.fileUris[0],
-    mimeType: MIME_BY_KIND[request.assetKind],
+    uri: validated.outputFile.uri,
+    mimeType: validated.outputFile.mimeType,
+    sha256: validated.outputFile.sha256,
     version: 1,
-    createdAt: request.createdAt,
+    createdAt: validated.createdAt,
     createdBy: "provider",
     rights: manifest,
   };
 
-  const evaluated = evaluateProductVisualAsset(record);
   const basePolicy = evaluateAssetRights(manifest);
   for (const entry of basePolicy.issues) reasons.push(`${entry.severity}: ${entry.code} — ${entry.message}`);
-
-  // The floor only ever tightens the engine's decision.
   const publicationDecision = tightest(basePolicy.decision, providerFloor);
-  const registryStatus: ProductVisualAssetStatus =
-    publicationDecision === "allow" ? "approved" : publicationDecision === "hold" ? "needs-review" : "blocked";
+  const registryStatus: ProductVisualAssetStatus = publicationDecision === "allow"
+    ? "approved"
+    : publicationDecision === "hold"
+      ? "needs-review"
+      : "blocked";
 
-  reasons.sort((a, b) => {
-    const rank = (s: string) => (s.startsWith("block") || s.includes("Refusing") ? 0 : 1);
-    return rank(a) - rank(b);
-  });
+  const evaluatedBase = evaluateProductVisualAsset(record);
+  const evaluated: EvaluatedProductVisualAsset = {
+    ...evaluatedBase,
+    status: registryStatus,
+    policyDecision: publicationDecision,
+    policyIssueCodes: [...new Set([
+      ...evaluatedBase.policyIssueCodes,
+      ...(publicationDecision !== basePolicy.decision ? [`meshy-provider-floor-${publicationDecision}`] : []),
+    ])],
+  };
+
+  const severityRank = (text: string) => text.startsWith("block") || text.includes("no source reference lineage") ? 0 : text.startsWith("hold") ? 1 : 2;
+  reasons.sort((a, b) => severityRank(a) - severityRank(b));
 
   return {
     assetId,
     registryStatus,
     publicationDecision,
-    geometryMode,
+    geometryMode: request.declaredGeometryMode,
     rightsManifest: manifest,
     registryRecord: record,
-    evaluated: { ...evaluated, status: registryStatus, policyDecision: publicationDecision },
+    evaluated,
     reviewFindings,
     provenance: {
       provider: MESHY_PROVIDER,
       providerAssetId: request.providerAssetId,
-      taskId: request.taskId,
+      providerTaskId: request.providerTaskId,
       generationMode: request.generationMode,
       prompt: request.prompt,
       modelSettings: request.modelSettings,
-      createdAt: request.createdAt,
-      fileUris: [...request.fileUris],
-      referenceUris: references.map((entry) => entry.uri),
+      createdAt: validated.createdAt,
+      outputFile: { ...validated.outputFile },
+      sourceReferences: validated.references.map((entry) => ({ ...entry })),
+      humanClearance: validated.humanClearance ? { ...validated.humanClearance } : undefined,
+      designAuthorization: validated.designAuthorization ? { ...validated.designAuthorization } : undefined,
     },
     reasons,
   };
 }
 
-/**
- * Registry entries for a batch of ingested Meshy assets.
- *
- * Returns the evaluated records with the provider floor already applied, so a
- * caller cannot accidentally register the un-floored version.
- */
 export function meshyRegistryEntries(results: readonly MeshyIngestResult[]): EvaluatedProductVisualAsset[] {
   return results.map((result) => result.evaluated);
 }
 
-/** True only for assets that cleared every gate. Used by production selection. */
 export function isPublishableMeshyAsset(result: MeshyIngestResult): boolean {
   return result.publicationDecision === "allow" && result.registryStatus === "approved";
 }
