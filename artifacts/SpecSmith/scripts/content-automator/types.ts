@@ -110,6 +110,12 @@ export interface ContentPackage {
   ideaId: string;
   corePromise: string;
   feature: SiteFeature;
+  /**
+   * Canonical SpecSmith catalog ids this package is about, carried straight
+   * from the idea. Needed so a deterministic UI render can reproduce the exact
+   * hardware state without parsing it back out of prose.
+   */
+  subjectIds: string[];
   requiredFacts: string[];
   platforms: PlatformContentVariant[];
   site: SiteContentVariant;
@@ -145,6 +151,12 @@ export interface ScriptStoryboardPackage {
   packageId: string;
   ideaId: string;
   campaignId: string;
+  /** The product surface this story lands on. */
+  feature: SiteFeature;
+  /** The exact SpecSmith route the CTA points at. */
+  route: string;
+  /** Canonical catalog ids, forwarded so the production planner can use them. */
+  subjectIds: string[];
   scripts: PlatformScriptStoryboard[];
 }
 
@@ -165,6 +177,25 @@ export interface ProductionTask {
   inputRequirements: string[];
   outputRequirements: string[];
   fallbackCapability?: ProductionCapability;
+  /**
+   * Structured state for a `deterministic-ui-render` task.
+   *
+   * inputRequirements is prose aimed at a human or a generative model, which
+   * is right for video-generation but unusable for a deterministic capture:
+   * reproducing an exact SpecSmith state needs canonical catalog ids, and
+   * recovering those by parsing a sentence would be the guessing that this
+   * capability exists to eliminate.
+   *
+   * Optional and untyped here on purpose. Optional, so every existing planner,
+   * task and test is unaffected. `unknown`, because it is validated at the
+   * boundary by parseUiRenderRequest() in uiRender/uiRenderState.ts — typing it
+   * concretely would make this module depend on the renderer, and would also
+   * imply a compile-time guarantee that does not exist for a value that may
+   * have been produced by a model or loaded from JSON.
+   *
+   * A deterministic-ui-render task without this field fails closed.
+   */
+  uiRenderState?: unknown;
 }
 
 export interface PlatformProductionPlan {

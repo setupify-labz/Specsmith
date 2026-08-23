@@ -66,6 +66,7 @@ export function buildContentPackage(idea: ContentIdea, generatedAt: Date): Conte
     ideaId: idea.id,
     corePromise: `${idea.productConnection.userProblem} ${idea.productConnection.sitePayoff}`,
     feature: idea.productConnection.feature,
+    subjectIds: [...idea.subjectIds],
     requiredFacts: [...idea.requiredFacts],
     platforms,
     site: {

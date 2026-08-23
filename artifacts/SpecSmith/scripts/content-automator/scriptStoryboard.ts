@@ -126,6 +126,9 @@ export function buildScriptStoryboardPackage(
     packageId: contentPackage.packageId,
     ideaId: idea.id,
     campaignId: contentPackage.campaignId,
+    feature: contentPackage.feature,
+    route: idea.productConnection.route,
+    subjectIds: [...idea.subjectIds],
     scripts: platforms.map((platform) => buildPlatformScript(idea, contentPackage, platform)),
   };
 }

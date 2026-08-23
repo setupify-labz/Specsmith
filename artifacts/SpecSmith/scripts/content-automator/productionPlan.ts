@@ -5,6 +5,13 @@ import type {
   ProductionTask,
   ScriptStoryboardPackage,
 } from "./types.ts";
+import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
+
+interface UiRenderContext {
+  feature: ScriptStoryboardPackage["feature"];
+  subjectIds: readonly string[];
+  ideaId: string;
+}
 
 function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): ProductionTask["capability"] {
   if (beat.purpose === "evidence" || beat.purpose === "payoff" || beat.purpose === "cta") {
@@ -16,11 +23,25 @@ function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): Prod
   return "video-generation";
 }
 
-function buildTasks(script: PlatformScriptStoryboard): ProductionTask[] {
+function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext): ProductionTask[] {
   const tasks: ProductionTask[] = [];
 
+  // Derived once per plan: the state depends on the idea's subjects and
+  // feature, not on which beat is being rendered, so every UI beat in a plan
+  // depicts the same verified state.
+  const uiRenderState = deriveUiRenderState(context);
+
   for (const [index, beat] of script.beats.entries()) {
-    const capability = visualCapability(beat);
+    // Downgrade only when the SURFACE can never be captured (gallery,
+    // price-guesser, ...). A renderable surface whose ids failed to resolve
+    // keeps the deterministic capability and fails loudly downstream — quietly
+    // turning an evidence beat into generated footage would hide the bug and
+    // fabricate product visuals.
+    const requested = visualCapability(beat);
+    const capability = requested === "deterministic-ui-render" && !isRenderableFeature(context.feature)
+      ? "video-generation"
+      : requested;
+
     tasks.push({
       taskId: `${script.platform}-beat-${index + 1}-visual`,
       capability,
@@ -35,6 +56,10 @@ function buildTasks(script: PlatformScriptStoryboard): ProductionTask[] {
           : "Generated visuals may dramatize presentation but cannot introduce factual claims absent from the storyboard.",
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
+      // Structured state travels with the task. inputRequirements above stays
+      // prose for the generative adapters; this is what the deterministic
+      // renderer reads, so canonical ids never have to be recovered from text.
+      ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
     });
   }
 
@@ -84,8 +109,8 @@ function buildTasks(script: PlatformScriptStoryboard): ProductionTask[] {
   return tasks;
 }
 
-function buildPlatformProductionPlan(script: PlatformScriptStoryboard): PlatformProductionPlan {
-  const tasks = buildTasks(script);
+function buildPlatformProductionPlan(script: PlatformScriptStoryboard, context: UiRenderContext): PlatformProductionPlan {
+  const tasks = buildTasks(script, context);
   return {
     platform: script.platform,
     targetDurationSeconds: script.targetDurationSeconds,
@@ -104,11 +129,16 @@ function buildPlatformProductionPlan(script: PlatformScriptStoryboard): Platform
 }
 
 export function buildProductionPlanPackage(scriptPackage: ScriptStoryboardPackage): ProductionPlanPackage {
+  const context: UiRenderContext = {
+    feature: scriptPackage.feature,
+    subjectIds: scriptPackage.subjectIds,
+    ideaId: scriptPackage.ideaId,
+  };
   return {
     packageId: scriptPackage.packageId,
     ideaId: scriptPackage.ideaId,
     campaignId: scriptPackage.campaignId,
-    platforms: scriptPackage.scripts.map(buildPlatformProductionPlan),
+    platforms: scriptPackage.scripts.map((script) => buildPlatformProductionPlan(script, context)),
   };
 }
 
