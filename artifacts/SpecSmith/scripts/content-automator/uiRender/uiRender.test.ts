@@ -72,8 +72,43 @@ describe("missing or invalid hardware fails closed", () => {
   });
 
   it("refuses a Builder request naming no verifiable slot", () => {
-    expect(() => parseUiRenderRequest({ state: { surface: "builder", ram: "some-ram" }, captureType: "static" }))
+    // Real RAM id, so this isolates the "needs a gpu or cpu" rule rather than
+    // tripping component validation first.
+    expect(() => parseUiRenderRequest({ state: { surface: "builder", ram: "cv16ddr4" }, captureType: "static" }))
       .toThrow(/at least a gpu or a cpu/);
+  });
+
+  it("refuses an invalid component even when the GPU and CPU are valid", () => {
+    // The exact smuggling route worth closing: a believable build whose
+    // motherboard slot would silently render empty.
+    expect(() => parseUiRenderRequest({
+      state: { surface: "builder", gpu: "rtx4070", cpu: "r5-7600x", motherboard: "not-a-board" },
+      captureType: "static",
+    })).toThrow(/not a SpecSmith motherboard id/);
+  });
+
+  it("validates every component slot against its own catalog", () => {
+    const base = { surface: "builder", gpu: "rtx4070", cpu: "r5-7600x" };
+    for (const slot of ["motherboard", "ram", "storage", "psu", "case", "cooler"]) {
+      expect(
+        () => parseUiRenderRequest({ state: { ...base, [slot]: "bogus-id" }, captureType: "static" }),
+        `${slot} must be validated`,
+      ).toThrow(new RegExp(`not a SpecSmith ${slot} id`));
+    }
+  });
+
+  it("accepts a fully-specified build of real catalog ids and verifies every part", () => {
+    const request = parseUiRenderRequest({
+      state: {
+        surface: "builder", gpu: "rtx5070ti", cpu: "r7-9800x3d", motherboard: "z890hero",
+        ram: "cv16ddr4", storage: "s870evo", psu: "crm750", case: "fdpopair", cooler: "cmh212",
+      },
+      captureType: "static",
+    });
+    const plan = planSurface(request);
+    // Eight requested parts -> eight names that must appear on screen.
+    expect(plan.subjectIds).toHaveLength(8);
+    expect(plan.expectedText).toHaveLength(8);
   });
 
   it("refuses a Build Crate request with no seed, because it would not be reproducible", () => {

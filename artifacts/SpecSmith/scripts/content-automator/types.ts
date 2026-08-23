@@ -110,6 +110,12 @@ export interface ContentPackage {
   ideaId: string;
   corePromise: string;
   feature: SiteFeature;
+  /**
+   * Canonical SpecSmith catalog ids this package is about, carried straight
+   * from the idea. Needed so a deterministic UI render can reproduce the exact
+   * hardware state without parsing it back out of prose.
+   */
+  subjectIds: string[];
   requiredFacts: string[];
   platforms: PlatformContentVariant[];
   site: SiteContentVariant;
@@ -145,6 +151,12 @@ export interface ScriptStoryboardPackage {
   packageId: string;
   ideaId: string;
   campaignId: string;
+  /** The product surface this story lands on. */
+  feature: SiteFeature;
+  /** The exact SpecSmith route the CTA points at. */
+  route: string;
+  /** Canonical catalog ids, forwarded so the production planner can use them. */
+  subjectIds: string[];
   scripts: PlatformScriptStoryboard[];
 }
 

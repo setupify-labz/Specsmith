@@ -17,6 +17,7 @@
 // where no real capture is wanted.
 
 import path from "node:path";
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "../rendering.ts";
 import {
@@ -183,33 +184,87 @@ export function createDeterministicUiRenderAdapter(options: UiRenderAdapterOptio
         // consuming frames + a manifest keeps this adapter's output inspectable.
         const frameDir = path.join(options.outputDir, baseName);
         await fs.mkdir(frameDir, { recursive: true });
-        const frames: { index: number; label: string; file: string; atMs: number }[] = [];
+        const frames: { index: number; label: string; file: string; atMs: number; provedBy?: string; bytes: number; sha256: string }[] = [];
         let elapsed = 0;
         let totalBytes = 0;
 
         for (const [index, step] of plan.sequence.entries()) {
-          if (step.action?.kind === "click") {
-            await page.click(step.action.selector, { timeout: timeoutMs });
-          } else if (step.action?.kind === "scrollTo") {
-            await page.locator(step.action.selector).scrollIntoViewIfNeeded({ timeout: timeoutMs });
+          if (step.action?.kind === "clickText") {
+            // Matched by visible text rather than a CSS class, so the sequence
+            // survives styling changes and reads like the interaction it is.
+            const target = page.getByRole("button", { name: step.action.text, exact: false }).first();
+            await target.click({ timeout: timeoutMs });
           }
-          // The one intentional time-based wait in the system: a sequence
-          // samples an animation, so the sample points ARE times.
+
+          // The state change is proven by a DOM condition before the frame is
+          // taken. Without this a "sequence" degrades into the same screenshot
+          // several times, which is what makes a manifest worthless.
+          if (step.waitForText) {
+            try {
+              await page.waitForFunction(
+                `document.body.innerText.includes(${JSON.stringify(step.waitForText)})`,
+                undefined,
+                { timeout: timeoutMs },
+              );
+            } catch {
+              throw new UiCaptureError(
+                "sequence-step-failed",
+                `Sequence step "${step.label}" at ${url} did not reach its expected state: "${step.waitForText}" never appeared.`,
+              );
+            }
+          }
+
+          // Settling after the condition holds: the state is already correct,
+          // this only lets the transition finish so the frame is not mid-fade.
           await page.waitForTimeout(step.settleMs);
           elapsed += step.settleMs;
+
+          // Re-frame on whatever this step just changed. A sequence moves the
+          // interesting region between frames — a crate reveal pushes the grid
+          // around as cards appear — so a single pre-sequence framing leaves
+          // later frames pointing at whatever ended up there instead.
+          if (step.waitForText) await focusOn(page, step.waitForText);
           const file = path.join(frameDir, `frame-${String(index).padStart(3, "0")}-${step.label}.png`);
           await screenshot(page, file);
-          totalBytes += (await fs.stat(file)).size;
-          frames.push({ index, label: step.label, file, atMs: elapsed });
+          const bytes = (await fs.stat(file)).size;
+          totalBytes += bytes;
+          const sha256 = createHash("sha256").update(await fs.readFile(file)).digest("hex");
+          // `provedBy` records the DOM condition that made this frame a
+          // distinct state, so a compositor (or a reviewer) can see that the
+          // frames are not duplicates.
+          frames.push({ index, label: step.label, file, atMs: elapsed, provedBy: step.waitForText, bytes, sha256 });
         }
 
         const after = await pageText(page);
         assertNoErrorBoundary(after, url);
+        // Text that only exists once the reveal has been driven — for Build
+        // Crate, the eight parts this seed produces.
+        if (plan.revealedText?.length) verifyState(after, plan.revealedText, url);
+
+        // A sequence must actually be a sequence. Identical frames mean the
+        // steps changed nothing and the "clip" is one still billed N times, so
+        // that is a failed render rather than a quiet non-event. Hashes make
+        // the claim checkable by anyone reading the manifest.
+        const uniqueFrames = new Set(frames.map((f) => f.sha256));
+        if (frames.length > 1 && uniqueFrames.size === 1) {
+          throw new UiCaptureError(
+            "sequence-not-distinct",
+            `All ${frames.length} frames of ${url} are byte-identical — the sequence steps produced no visible change.`,
+          );
+        }
 
         const manifestPath = path.join(frameDir, "manifest.json");
         await fs.writeFile(
           manifestPath,
-          `${JSON.stringify({ stateId, route: plan.route, subjectIds: plan.subjectIds, viewport, frames }, null, 2)}\n`,
+          `${JSON.stringify({
+            stateId,
+            route: plan.route,
+            subjectIds: plan.subjectIds,
+            viewport,
+            distinctFrames: uniqueFrames.size,
+            frameCount: frames.length,
+            frames,
+          }, null, 2)}\n`,
         );
 
         return [{

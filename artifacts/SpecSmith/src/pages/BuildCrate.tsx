@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, RotateCcw, Cpu, Share2, Sparkles, Lock, Upload, Volume2, VolumeX, Download, ImageDown, Flame, Clipboard,
@@ -8,7 +8,7 @@ import {
 import {
   CRATE_CATEGORY_ORDER, RARITY_STYLE, rollMotherboard, rollCpu, rollRam, rollGpu, rollStorage, rollCase, rollCooler, rollPsu,
   getMotherboardPool, getCpuPool, getRamPool, getGpuPool, getStoragePool, getCasePool, getCoolerPool, getPsuPool,
-  finalizeCrateBuild, type CrateBuild, type CrateRarity, type RolledPart,
+  finalizeCrateBuild, seededRng, setCrateRng, type CrateBuild, type CrateRarity, type RolledPart,
   type CrateMotherboard, type CrateCpu, type CrateRam, type CrateGpu, type CrateStorage, type CrateCase, type CrateCooler, type CratePsu,
 } from '../lib/buildCrate';
 import { getBestPull, recordPullIfBest, type BestPull } from '../lib/crateBestPull';
@@ -257,6 +257,34 @@ const crateFaqJsonLd = {
 export default function BuildCrate() {
   useSeo(getRouteMeta('/crate'));
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  /**
+   * Deterministic capture mode.
+   *
+   * `?seed=<integer>` makes every roll on this page reproducible so the same
+   * URL always yields the same crate — which is what lets the content
+   * automator capture a Build Crate without the result changing between runs.
+   * The rolls still come from the real crate logic and the real part pools;
+   * only the randomness source is swapped.
+   *
+   * A visitor with no `seed` param is completely unaffected: the RNG default
+   * stays Math.random. Seeded pulls also never touch the pity counter (see
+   * below), so this cannot be used to farm pity state.
+   */
+  const seed = useMemo(() => {
+    const raw = searchParams.get('seed');
+    if (raw === null) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+  }, [searchParams]);
+
+  // Applied during render, before any roll can happen, and torn down on
+  // unmount. The RNG override is module-scoped, so failing to restore it would
+  // leak determinism into whatever the user visits next.
+  useMemo(() => { if (seed !== null) setCrateRng(seededRng(seed)); }, [seed]);
+  useEffect(() => () => setCrateRng(null), []);
+
   const { user } = useAuth();
   const { showToast } = useToast();
   const [socket, setSocket] = useState<string | null>(null);
@@ -275,9 +303,12 @@ export default function BuildCrate() {
   useEffect(() => {
     setBestPull(getBestPull());
     setMuted(isCrateSoundMuted());
-    setPityActive(isPityActive());
-    setPullsLeft(pullsUntilPity());
-  }, []);
+    // Pity lives in localStorage, so in seeded mode it would make the result
+    // depend on how many crates this browser profile had already opened —
+    // exactly the contamination a deterministic capture must not have.
+    setPityActive(seed === null ? isPityActive() : false);
+    setPullsLeft(seed === null ? pullsUntilPity() : PITY_THRESHOLD);
+  }, [seed]);
 
   const revealedCount = CRATE_CATEGORY_ORDER.filter(c => revealed[c.key]).length;
   const nextCategory = CRATE_CATEGORY_ORDER[revealedCount];
@@ -346,7 +377,7 @@ export default function BuildCrate() {
       });
       setFinalBuild(fb);
       setBestPull(recordPullIfBest({ rarity: fb.rarity, gpuName: fb.gpu.name, cpuName: fb.cpu.name, totalCost: fb.totalCost, avgFps: fb.avgFps }));
-      recordPullResult(fb.rarity);
+      if (seed === null) recordPullResult(fb.rarity);
       recordGlobalPull(fb, user?.username ?? 'Anonymous');
     }
   };
@@ -356,8 +387,8 @@ export default function BuildCrate() {
     setRevealed({});
     setPending(null);
     setFinalBuild(null);
-    setPityActive(isPityActive());
-    setPullsLeft(pullsUntilPity());
+    setPityActive(seed === null ? isPityActive() : false);
+    setPullsLeft(seed === null ? pullsUntilPity() : PITY_THRESHOLD);
   };
 
   const buildWithThis = () => {

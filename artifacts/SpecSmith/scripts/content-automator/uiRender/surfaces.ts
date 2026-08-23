@@ -18,7 +18,10 @@
 // an open part-picker listing the whole catalog and would pass no matter what
 // was selected.
 
+import { predictCrate } from "./crateSeed.ts";
 import {
+  BUILDER_COMPONENT_SLOTS,
+  componentName,
   cpuName,
   gpuName,
   type UiRenderRequest,
@@ -28,9 +31,17 @@ import {
 export interface SequenceStep {
   /** Label recorded in the frame manifest so a compositor knows what it got. */
   label: string;
-  /** Optional DOM action performed before this frame is captured. */
-  action?: { kind: "click"; selector: string } | { kind: "scrollTo"; selector: string };
-  /** Milliseconds to let the UI settle after the action, before capturing. */
+  /**
+   * A real interaction performed before this frame is captured.
+   *
+   * A sequence of identical screenshots separated by waits is not a sequence —
+   * it is one frame billed three times. Every step here either changes
+   * application state or advances a reveal, and `waitForText` proves it landed.
+   */
+  action?: { kind: "clickText"; text: string };
+  /** DOM condition that must hold before capturing — the proof the step worked. */
+  waitForText?: string;
+  /** Milliseconds to let animation settle after the condition holds. */
   settleMs: number;
 }
 
@@ -51,9 +62,30 @@ export interface SurfacePlan {
    * expanded part picker rather than the comparison itself.
    */
   focusText?: string;
+  /**
+   * Text that only appears AFTER a sequence has driven the UI.
+   *
+   * Build Crate starts closed, so its parts cannot be in the initial DOM;
+   * these are verified once the reveal has run.
+   */
+  revealedText?: string[];
   /** Frames to capture for a sequence request. */
   sequence: SequenceStep[];
 }
+
+/** Reveal order and button labels, mirroring CRATE_CATEGORY_ORDER. */
+const CRATE_REVEAL_ORDER = [
+  { slot: "motherboard", label: "Motherboard" },
+  { slot: "cpu", label: "CPU" },
+  { slot: "ram", label: "RAM" },
+  { slot: "gpu", label: "GPU" },
+  { slot: "storage", label: "Storage" },
+  { slot: "case", label: "Case" },
+  { slot: "cooler", label: "CPU Cooler" },
+  { slot: "psu", label: "PSU" },
+] as const;
+
+const CRATE_FIRST_BUTTON_TEXT = `Open ${CRATE_REVEAL_ORDER[0].label} Crate`;
 
 function q(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
@@ -88,19 +120,31 @@ export function planSurface(request: UiRenderRequest): SurfacePlan {
         // The composite string is rendered in the results section, so framing
         // on it lands the crop on the actual comparison.
         focusText: sideA,
+        // Each frame is a DIFFERENT application state: the resolution and
+        // quality toggles are real controls that re-run the FPS estimate, so
+        // the captured numbers actually change between frames.
         sequence: [
-          { label: "side-a", settleMs: 400 },
-          { label: "side-b", settleMs: 400 },
-          { label: "result", settleMs: 600 },
+          { label: "1080p-high", action: { kind: "clickText", text: "1080p" }, waitForText: sideA, settleMs: 250 },
+          { label: "1440p-high", action: { kind: "clickText", text: "1440p" }, waitForText: sideA, settleMs: 250 },
+          { label: "4k-high", action: { kind: "clickText", text: "4K" }, waitForText: sideA, settleMs: 250 },
+          { label: "4k-ultra", action: { kind: "clickText", text: "Ultra" }, waitForText: sideA, settleMs: 250 },
         ],
       };
     }
 
     case "builder": {
+      // EVERY requested slot is verified on screen, not just gpu/cpu. The
+      // Builder renders a selected part's name in its slot card, so a
+      // requested motherboard that failed to load is caught here rather than
+      // shipping a build that merely looks complete.
       const expected: string[] = [];
       if (state.gpu) expected.push(gpuName(state.gpu));
       if (state.cpu) expected.push(cpuName(state.cpu));
-      const subjectIds = [state.gpu, state.cpu, state.motherboard, state.ram, state.storage, state.psu, state.case, state.cooler]
+      for (const slot of BUILDER_COMPONENT_SLOTS) {
+        const id = state[slot];
+        if (id) expected.push(componentName(id, slot));
+      }
+      const subjectIds = [state.gpu, state.cpu, ...BUILDER_COMPONENT_SLOTS.map((slot) => state[slot])]
         .filter((v): v is string => typeof v === "string");
       return {
         route: `/builder${q({
@@ -147,20 +191,48 @@ export function planSurface(request: UiRenderRequest): SurfacePlan {
         ],
       };
 
-    case "build-crate":
+    case "build-crate": {
+      // The eight part names this seed produces, computed from the real crate
+      // logic before the browser opens. Verifying them is what makes the
+      // capture a proof of the seeded result rather than of "some crate".
+      const predicted = predictCrate(state.seed);
       return {
         route: `/crate${q({ seed: String(state.seed) })}`,
         subjectIds: [],
-        // Verified against the seeded roll computed from the real crate logic;
-        // see deterministicUiRenderAdapter.ts, which resolves the expected part
-        // names for the seed before the capture is accepted.
-        expectedText: [],
+        // A crate starts closed, so the parts only exist after the reveal is
+        // driven. The static wait therefore checks the opening control, and the
+        // part names are verified after the sequence completes.
+        expectedText: [CRATE_FIRST_BUTTON_TEXT],
+        revealedText: predicted.partNames,
+        focusText: CRATE_FIRST_BUTTON_TEXT,
+        // Drives the REAL reveal: one click per category, each frame waiting on
+        // the part that click revealed.
         sequence: [
-          { label: "crate-closed", settleMs: 300 },
-          { label: "crate-opening", settleMs: 800 },
-          { label: "crate-result", settleMs: 1200 },
+          ...CRATE_REVEAL_ORDER.map((category) => ({
+            label: `reveal-${category.slot}`,
+            action: { kind: "clickText" as const, text: `Open ${category.label} Crate` },
+            // NOTE: the reveal animation spins a reel containing candidate
+            // names, so this text can appear while the reel is still moving.
+            // It proves the roll happened, not that it has landed — which is
+            // fine for the intermediate frames of a reveal sequence, and is
+            // why the final frame below waits on something stronger.
+            waitForText: predicted.bySlot[category.slot],
+            settleMs: 450,
+          })),
+          {
+            // "Build With This" belongs to the finished-build block, which
+            // only renders once all eight slots have landed and finalizeCrateBuild
+            // has run. Waiting on it means this frame is the settled result
+            // rather than a card caught mid-spin — the reveal reel shows
+            // candidate names while it moves, so a part name alone proves the
+            // roll happened, not that it finished.
+            label: "crate-complete",
+            waitForText: "Build With This",
+            settleMs: 700,
+          },
         ],
       };
+    }
   }
 }
 

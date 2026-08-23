@@ -28,6 +28,7 @@
 
 import gpus from "../../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../../src/data/cpus.json" with { type: "json" };
+import components from "../../../src/data/components.json" with { type: "json" };
 
 export class UiRenderStateError extends Error {
   readonly code: string;
@@ -45,6 +46,49 @@ interface CatalogEntry {
 
 const GPU_CATALOG = gpus as CatalogEntry[];
 const CPU_CATALOG = cpus as CatalogEntry[];
+
+/**
+ * The non-GPU/CPU Builder slots, each backed by its real catalog.
+ *
+ * Validated exactly like GPUs and CPUs rather than accepted as any non-empty
+ * string. A capture whose motherboard id is a typo would otherwise render a
+ * Builder with that slot silently empty, and a valid CPU/GPU pair would make
+ * the screenshot look complete — a wrong state that passes inspection, which
+ * is the failure this renderer exists to prevent.
+ */
+const COMPONENT_CATALOGS = {
+  motherboard: (components as Record<string, CatalogEntry[]>).motherboards,
+  ram: (components as Record<string, CatalogEntry[]>).ram,
+  storage: (components as Record<string, CatalogEntry[]>).storage,
+  psu: (components as Record<string, CatalogEntry[]>).psus,
+  case: (components as Record<string, CatalogEntry[]>).cases,
+  cooler: (components as Record<string, CatalogEntry[]>).coolers,
+} as const;
+
+export type BuilderComponentSlot = keyof typeof COMPONENT_CATALOGS;
+
+export const BUILDER_COMPONENT_SLOTS = Object.keys(COMPONENT_CATALOGS) as BuilderComponentSlot[];
+
+function requireComponent(id: unknown, slot: BuilderComponentSlot): string {
+  if (typeof id !== "string" || !id) {
+    throw new UiRenderStateError("missing-field", `${slot} must be a non-empty component id when provided.`);
+  }
+  const catalog = COMPONENT_CATALOGS[slot];
+  if (!catalog?.some((entry) => entry.id === id)) {
+    throw new UiRenderStateError(
+      "unknown-component",
+      `${slot}="${id}" is not a SpecSmith ${slot} id. Refusing to render: the Builder would show that slot empty while the rest of the build looked complete.`,
+    );
+  }
+  return id;
+}
+
+/** Display name for a component id, used to verify it actually loaded. */
+export function componentName(id: string, slot: BuilderComponentSlot): string {
+  const entry = COMPONENT_CATALOGS[slot]?.find((e) => e.id === id);
+  if (!entry) throw new UiRenderStateError("unknown-component", `No ${slot} named ${id}`);
+  return entry.name;
+}
 
 /** Which SpecSmith product surface to capture. Mirrors types.ts SiteFeature. */
 export type UiRenderSurface =
@@ -249,16 +293,11 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
       const builder: BuilderState = { surface: "builder" };
       if (s.gpu !== undefined) builder.gpu = requireGpu(s.gpu, "gpu");
       if (s.cpu !== undefined) builder.cpu = requireCpu(s.cpu, "cpu");
-      // Remaining slots are passed through as opaque catalog ids: they are real
-      // Builder params, but this renderer does not verify them on screen, so it
-      // does not claim to validate them either.
-      for (const key of ["motherboard", "ram", "storage", "psu", "case", "cooler"] as const) {
-        const value = s[key];
-        if (value === undefined) continue;
-        if (typeof value !== "string" || !value) {
-          throw new UiRenderStateError("malformed", `${key} must be a non-empty part id when provided.`);
-        }
-        builder[key] = value;
+      // Every remaining slot is validated against its real catalog too, so a
+      // valid GPU/CPU pair cannot smuggle an invalid motherboard past.
+      for (const key of BUILDER_COMPONENT_SLOTS) {
+        if (s[key] === undefined) continue;
+        builder[key] = requireComponent(s[key], key);
       }
       if (!builder.gpu && !builder.cpu) {
         throw new UiRenderStateError(
