@@ -4,8 +4,12 @@ on:
   push:
     branches:
       - chatgpt/content-asset-rights-v1
+      - claude/meshy-ingestion-v1
+      - chatgpt/meshy-ingestion-hardening-v1
   pull_request:
     branches:
+      - claude/meshy-ingestion-v1
+      - chatgpt/content-asset-rights-v1
       - chatgpt/elevenlabs-video-v1
       - chatgpt/content-automator-v1
       - main
@@ -32,11 +36,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test rights gate and production-plan integration
+      - name: Test rights, Meshy ingestion, and production-plan integration
         run: >-
           pnpm --dir artifacts/SpecSmith exec vitest run
           scripts/content-automator/assetRights.test.ts
           scripts/content-automator/productVisualAssets.test.ts
+          scripts/content-automator/meshyIngestion.test.ts
+          scripts/content-automator/meshyIngestCli.test.ts
           scripts/content-automator/productionPlan.test.ts
 
       - name: Typecheck SpecSmith
