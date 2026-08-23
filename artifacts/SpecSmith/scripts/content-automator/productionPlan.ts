@@ -15,13 +15,13 @@ interface UiRenderContext {
 }
 
 function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): ProductionTask["capability"] {
-  if (beat.purpose === "evidence" || beat.purpose === "payoff" || beat.purpose === "cta") {
-    return "deterministic-ui-render";
-  }
-  if (beat.visualDirection.toLowerCase().includes("real specsmith")) {
-    return "deterministic-ui-render";
-  }
-  return "video-generation";
+  // V1 spends paid generation on the hook only. Once the viewer is oriented,
+  // commitment/evidence/reversal/payoff/CTA use the real product surface when
+  // that surface is renderable. This is both clearer and dramatically cheaper
+  // than generating every non-evidence beat separately.
+  if (beat.visualDirection.toLowerCase().includes("real specsmith")) return "deterministic-ui-render";
+  if (beat.purpose === "hook") return "video-generation";
+  return "deterministic-ui-render";
 }
 
 function providerDurationForBeat(beat: StoryboardBeat): 4 | 6 | 8 {
