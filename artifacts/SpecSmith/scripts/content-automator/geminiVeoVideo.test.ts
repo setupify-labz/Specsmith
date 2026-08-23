@@ -133,8 +133,8 @@ describe("Gemini Veo adapter", () => {
 
     const post = calls.find((entry) => entry.method === "POST");
     expect(post?.url).toContain("veo-3.1-lite-generate-preview:predictLongRunning");
-    const request = JSON.parse(post?.body ?? "{}") as { parameters?: Record<string, string> };
-    expect(request.parameters).toMatchObject({ aspectRatio: "9:16", durationSeconds: "4", resolution: "720p" });
+    const request = JSON.parse(post?.body ?? "{}") as { parameters?: { aspectRatio?: string; durationSeconds?: number; resolution?: string } };
+    expect(request.parameters).toMatchObject({ aspectRatio: "9:16", durationSeconds: 4, resolution: "720p" });
   });
 
   it("reuses an identical hook inside the same render batch", async () => {
