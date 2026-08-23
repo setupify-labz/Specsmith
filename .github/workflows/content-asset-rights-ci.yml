@@ -17,7 +17,7 @@ on:
 jobs:
   test-asset-rights:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,6 +44,9 @@ jobs:
           scripts/content-automator/meshyIngestion.test.ts
           scripts/content-automator/meshyIngestCli.test.ts
           scripts/content-automator/productionPlan.test.ts
+
+      - name: Run full SpecSmith test suite
+        run: pnpm --dir artifacts/SpecSmith test
 
       - name: Typecheck SpecSmith
         run: pnpm --dir artifacts/SpecSmith typecheck
