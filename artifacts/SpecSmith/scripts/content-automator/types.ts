@@ -21,6 +21,16 @@ export type SiteFeature =
 
 export type VideoPlatform = "youtube-shorts" | "tiktok" | "instagram-reels";
 export type HashtagStrategyId = "intent-balanced-v1";
+export type DensityBand = "low" | "medium" | "high" | "unknown";
+export type SnapshotWindow = "1h" | "6h" | "24h" | "72h" | "7d";
+export type ContentFreshness = "evergreen" | "timely" | "launch-window" | "unknown";
+export type FirstVisualType =
+  | "generated-cinematic"
+  | "deterministic-ui"
+  | "exact-product-asset"
+  | "motion-graphic"
+  | "mixed"
+  | "unknown";
 
 export interface HardwareItem {
   id: string;
@@ -113,11 +123,7 @@ export interface ContentPackage {
   ideaId: string;
   corePromise: string;
   feature: SiteFeature;
-  /**
-   * Canonical SpecSmith catalog ids this package is about, carried straight
-   * from the idea. Needed so a deterministic UI render can reproduce the exact
-   * hardware state without parsing it back out of prose.
-   */
+  /** Canonical SpecSmithPC catalog ids used by deterministic rendering and analytics. */
   subjectIds: string[];
   requiredFacts: string[];
   platforms: PlatformContentVariant[];
@@ -154,11 +160,8 @@ export interface ScriptStoryboardPackage {
   packageId: string;
   ideaId: string;
   campaignId: string;
-  /** The product surface this story lands on. */
   feature: SiteFeature;
-  /** The exact SpecSmith route the CTA points at. */
   route: string;
-  /** Canonical catalog ids, forwarded so the production planner can use them. */
   subjectIds: string[];
   scripts: PlatformScriptStoryboard[];
 }
@@ -180,30 +183,9 @@ export interface ProductionTask {
   inputRequirements: string[];
   outputRequirements: string[];
   fallbackCapability?: ProductionCapability;
-  /**
-   * Structured state for a `deterministic-ui-render` task.
-   *
-   * inputRequirements is prose aimed at a human or a generative model, which
-   * is right for video-generation but unusable for a deterministic capture:
-   * reproducing an exact SpecSmith state needs canonical catalog ids, and
-   * recovering those by parsing a sentence would be the guessing that this
-   * capability exists to eliminate.
-   *
-   * Optional and untyped here on purpose. Optional, so every existing planner,
-   * task and test is unaffected. `unknown`, because it is validated at the
-   * boundary by parseUiRenderRequest() in uiRender/uiRenderState.ts — typing it
-   * concretely would make this module depend on the renderer, and would also
-   * imply a compile-time guarantee that does not exist for a value that may
-   * have been produced by a model or loaded from JSON.
-   *
-   * A deterministic-ui-render task without this field fails closed.
-   */
+  /** Structured state validated by the deterministic UI renderer boundary. */
   uiRenderState?: unknown;
-  /**
-   * Structured prompt/timing for generative video. The planner owns the story
-   * intent; provider adapters validate this value instead of reverse-parsing
-   * beat timing or model settings from prose.
-   */
+  /** Structured prompt/timing validated by the selected video provider adapter. */
   videoGenerationState?: unknown;
 }
 
@@ -222,21 +204,75 @@ export interface ProductionPlanPackage {
   platforms: PlatformProductionPlan[];
 }
 
+export interface CreativeFingerprint {
+  version: "creative-fingerprint-v1";
+  creativeId: string;
+  packageId: string;
+  campaignId: string;
+  ideaId: string;
+  platform: VideoPlatform;
+  format: ContentFormat;
+  feature: SiteFeature;
+  subjectIds: string[];
+  hookFamily: string;
+  hookText: string;
+  visualWorld: string;
+  narrativeEngine: string;
+  targetDurationSeconds: number;
+  beatCount: number;
+  plannedBeatChangesPer10Seconds: number;
+  editDensity: DensityBand;
+  captionedBeatRatio: number;
+  captionDensity: DensityBand;
+  firstVisualType: FirstVisualType;
+  voiceId?: string;
+  voiceName?: string;
+  narrationSpeed?: number;
+  musicStyle?: string;
+  sfxDensity: DensityBand;
+  ctaFamily: string;
+  ctaTimingBucket: "early" | "middle" | "late";
+  hashtagStrategy: HashtagStrategyId;
+  hashtags: string[];
+  experimentId: string;
+  experimentPrimaryMetric: "hook" | "retention" | "shares" | "site-clicks";
+  changedVariable: string;
+  parentCreativeId?: string;
+  contentFreshness: ContentFreshness;
+  generatedVisualRatio?: number;
+  uiProofRatio?: number;
+  exactProductAssetRatio?: number;
+  generationCostUsd?: number;
+  generationSeconds?: number;
+}
+
 export interface RetentionPoint {
   elapsedRatio: number;
   audienceRatio: number;
 }
 
+export interface TrafficSourceBreakdown {
+  forYou?: number;
+  following?: number;
+  hashtag?: number;
+  sound?: number;
+  profile?: number;
+  search?: number;
+}
+
 export interface VideoPerformanceRecord {
   videoId: string;
+  creativeId?: string;
   ideaId: string;
   platform: VideoPlatform;
   publishedAt: string;
   durationSeconds: number;
   views: number;
   shownOrImpressions?: number;
+  reach?: number;
   engagedViews?: number;
   stayedToWatchRate?: number;
+  fullVideoWatchedRate?: number;
   averageViewDurationSeconds?: number;
   averagePercentageViewed?: number;
   retentionCurve?: RetentionPoint[];
@@ -244,16 +280,27 @@ export interface VideoPerformanceRecord {
   comments?: number;
   shares?: number;
   saves?: number;
+  reposts?: number;
   followsGained?: number;
   profileVisits?: number;
   siteClicks?: number;
   builderStarts?: number;
   affiliateClicks?: number;
+  trafficSources?: TrafficSourceBreakdown;
+  snapshotWindow?: SnapshotWindow;
   format: ContentFormat;
   visualWorld: string;
   narrativeEngine: string;
   hookFamily: string;
   durationBucket: "under-20" | "20-29" | "30-44" | "45-plus";
+  firstVisualType?: FirstVisualType;
+  editDensity?: DensityBand;
+  captionDensity?: DensityBand;
+  ctaFamily?: string;
+  experimentId?: string;
+  changedVariable?: string;
+  parentCreativeId?: string;
+  contentFreshness?: ContentFreshness;
   voiceId?: string;
   voiceName?: string;
   generationCostUsd?: number;
@@ -286,10 +333,17 @@ export interface PerformanceLearning {
   videoCount: number;
   baselineScore: number;
   videos: PerformanceScore[];
+  byPlatform: FactorLearning[];
   byFormat: FactorLearning[];
   byVisualWorld: FactorLearning[];
   byNarrativeEngine: FactorLearning[];
   byHookFamily: FactorLearning[];
+  byDurationBucket: FactorLearning[];
+  byFirstVisualType: FactorLearning[];
+  byEditDensity: FactorLearning[];
+  byCaptionDensity: FactorLearning[];
+  byCtaFamily: FactorLearning[];
+  byHashtagStrategy: FactorLearning[];
   byVoice: FactorLearning[];
   byVoiceAndFormat: FactorLearning[];
   recommendations: string[];
@@ -315,5 +369,6 @@ export interface AutomationBatch {
   contentPackages: ContentPackage[];
   scriptStoryboards: ScriptStoryboardPackage[];
   productionPlans: ProductionPlanPackage[];
+  creativeFingerprints: CreativeFingerprint[];
   performanceLearning?: PerformanceLearning;
 }
