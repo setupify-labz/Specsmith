@@ -6,6 +6,7 @@ on:
       - chatgpt/content-asset-rights-v1
       - claude/meshy-ingestion-v1
       - chatgpt/meshy-ingestion-hardening-v1
+      - chatgpt/hashtag-publishing-logic-v1
   pull_request:
     branches:
       - claude/meshy-ingestion-v1

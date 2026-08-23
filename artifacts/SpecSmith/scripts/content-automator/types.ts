@@ -20,6 +20,7 @@ export type SiteFeature =
   | "price-guesser";
 
 export type VideoPlatform = "youtube-shorts" | "tiktok" | "instagram-reels";
+export type HashtagStrategyId = "intent-balanced-v1";
 
 export interface HardwareItem {
   id: string;
@@ -95,6 +96,8 @@ export interface PlatformContentVariant {
   ending: string;
   captionAngle: string;
   cta: string;
+  hashtagStrategy: HashtagStrategyId;
+  hashtags: string[];
 }
 
 export interface SiteContentVariant {
@@ -255,6 +258,8 @@ export interface VideoPerformanceRecord {
   voiceName?: string;
   generationCostUsd?: number;
   generationSeconds?: number;
+  hashtagStrategy?: HashtagStrategyId;
+  hashtags?: string[];
 }
 
 export interface PerformanceScore {

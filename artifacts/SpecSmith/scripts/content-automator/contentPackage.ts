@@ -1,3 +1,4 @@
+import { buildHashtags, HASHTAG_STRATEGY_ID } from "./hashtags.ts";
 import type { ContentIdea, ContentPackage, VideoPlatform } from "./types.ts";
 
 const PLATFORM_SOURCE: Record<VideoPlatform, string> = {
@@ -17,12 +18,12 @@ function slug(input: string): string {
 function ctaFor(idea: ContentIdea, platform: VideoPlatform): string {
   const destination = idea.productConnection.route;
   if (platform === "tiktok") {
-    return `Try the full decision in SpecSmith at ${destination}; commit to your answer before opening the result.`;
+    return `Try the full decision in SpecSmithPC at ${destination}; commit to your answer before opening the result.`;
   }
   if (platform === "instagram-reels") {
-    return `Open SpecSmith at ${destination} to see the full result, tradeoffs, and next action.`;
+    return `Open SpecSmithPC at ${destination} to see the full result, tradeoffs, and next action.`;
   }
-  return `Continue this exact decision in SpecSmith at ${destination}.`;
+  return `Continue this exact decision in SpecSmithPC at ${destination}.`;
 }
 
 export function buildContentPackage(idea: ContentIdea, generatedAt: Date): ContentPackage {
@@ -34,29 +35,35 @@ export function buildContentPackage(idea: ContentIdea, generatedAt: Date): Conte
     {
       platform: "youtube-shorts",
       objective: "hook",
-      opening: `${idea.hook} Start with the conflict already visible and reveal the answer through the SpecSmith feature, not a generic presenter intro.`,
-      pacing: "Fast causal progression: hook -> first evidence -> reversal -> SpecSmith result -> immediate continuation cue. Keep every beat necessary to the decision.",
+      opening: `${idea.hook} Start with the conflict already visible and reveal the answer through the SpecSmithPC feature, not a generic presenter intro.`,
+      pacing: "Fast causal progression: hook -> first evidence -> reversal -> SpecSmithPC result -> immediate continuation cue. Keep every beat necessary to the decision.",
       ending: `Land on the useful answer, then show that the viewer can continue the exact workflow inside ${idea.productConnection.route}.`,
-      captionAngle: `${idea.title} — the full decision continues in SpecSmith.`,
+      captionAngle: `${idea.title} — the full decision continues in SpecSmithPC.`,
       cta: ctaFor(idea, "youtube-shorts"),
+      hashtagStrategy: HASHTAG_STRATEGY_ID,
+      hashtags: buildHashtags(idea, "youtube-shorts"),
     },
     {
       platform: "tiktok",
       objective: "interaction",
       opening: `Force a prediction immediately: ${idea.hook}`,
-      pacing: "Hold back the decisive fact long enough for the viewer to choose; use comments/mental commitment as part of the story, then reveal through SpecSmith.",
-      ending: `Reveal whether the viewer's choice survives the SpecSmith result and invite them to run the decision themselves at ${idea.productConnection.route}.`,
+      pacing: "Hold back the decisive fact long enough for the viewer to choose; use comments/mental commitment as part of the story, then reveal through SpecSmithPC.",
+      ending: `Reveal whether the viewer's choice survives the SpecSmithPC result and invite them to run the decision themselves at ${idea.productConnection.route}.`,
       captionAngle: `Pick before the reveal: ${idea.title}`,
       cta: ctaFor(idea, "tiktok"),
+      hashtagStrategy: HASHTAG_STRATEGY_ID,
+      hashtags: buildHashtags(idea, "tiktok"),
     },
     {
       platform: "instagram-reels",
       objective: "polish",
-      opening: `Open on the strongest visual state from ${idea.creativeDNA.visualWorld}; make the SpecSmith-powered decision understandable with sound off.`,
-      pacing: "Clean visual hierarchy, fewer but stronger text moments, precise transitions tied to evidence, and a polished final result card that matches SpecSmith's product language.",
+      opening: `Open on the strongest visual state from ${idea.creativeDNA.visualWorld}; make the SpecSmithPC-powered decision understandable with sound off.`,
+      pacing: "Clean visual hierarchy, fewer but stronger text moments, precise transitions tied to evidence, and a polished final result card that matches SpecSmithPC's product language.",
       ending: `End on the final decision plus a clean visual path into ${idea.productConnection.route}.`,
-      captionAngle: `${idea.title} — built from a real SpecSmith decision workflow.`,
+      captionAngle: `${idea.title} — built from a real SpecSmithPC decision workflow.`,
       cta: ctaFor(idea, "instagram-reels"),
+      hashtagStrategy: HASHTAG_STRATEGY_ID,
+      hashtags: buildHashtags(idea, "instagram-reels"),
     },
   ];
 
@@ -75,7 +82,7 @@ export function buildContentPackage(idea: ContentIdea, generatedAt: Date): Conte
       sections: [
         "The exact question or challenge from the video",
         "The verified inputs and constraints used",
-        "SpecSmith's result and the reasoning behind it",
+        "SpecSmithPC's result and the reasoning behind it",
         "Tradeoffs or alternate choices the short could not fully show",
         `A direct next action: ${idea.productConnection.continuationAction}`,
       ],
