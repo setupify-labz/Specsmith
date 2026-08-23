@@ -4,6 +4,7 @@ import type {
   ProductionPlanPackage,
   ProductionTask,
   ScriptStoryboardPackage,
+  StoryboardBeat,
 } from "./types.ts";
 import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
 
@@ -21,6 +22,40 @@ function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): Prod
     return "deterministic-ui-render";
   }
   return "video-generation";
+}
+
+function providerDurationForBeat(beat: StoryboardBeat): 4 | 6 | 8 {
+  const duration = beat.endSecond - beat.startSecond;
+  if (duration <= 4) return 4;
+  if (duration <= 6) return 6;
+  return 8;
+}
+
+export function deriveVideoGenerationState(
+  script: Pick<PlatformScriptStoryboard, "title">,
+  beat: StoryboardBeat,
+): {
+  prompt: string;
+  durationSeconds: 4 | 6 | 8;
+  aspectRatio: "9:16";
+  generateAudio: false;
+} {
+  const prompt = [
+    `Create one instantly understandable vertical short-form PC-hardware visual for this story: ${script.title}.`,
+    `Beat direction: ${beat.visualDirection}`,
+    "The viewer may know almost nothing about PC hardware, so communicate one obvious choice, conflict, action, or reveal with a single strong focal point and clear cause/effect.",
+    "Use cinematic motion, depth, lighting, and composition rather than a static product slideshow.",
+    "Do not render readable text, prices, benchmark numbers, specification values, logos, watermarks, charts, websites, or app interfaces. Accurate text and factual evidence are added later by SpecSmith.",
+    "Do not imitate the SpecSmith interface. Real SpecSmith UI is captured separately for evidence beats.",
+    "Do not invent a factual performance result. This clip is entertainment/setup only, not evidence.",
+  ].join(" ");
+
+  return {
+    prompt,
+    durationSeconds: providerDurationForBeat(beat),
+    aspectRatio: "9:16",
+    generateAudio: false,
+  };
 }
 
 function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext): ProductionTask[] {
@@ -60,8 +95,9 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
       // Structured state travels with the task. inputRequirements above stays
-      // prose for the generative adapters; this is what the deterministic
-      // renderer reads, so canonical ids never have to be recovered from text.
+      // prose for generative/fallback adapters; the real provider receives a
+      // provider-safe prompt and explicit allowed duration/aspect ratio.
+      ...(capability === "video-generation" ? { videoGenerationState: deriveVideoGenerationState(script, beat) } : {}),
       ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
     });
   }
@@ -154,6 +190,7 @@ function buildPlatformProductionPlan(script: PlatformScriptStoryboard, context: 
     qualityChecks: [
       "Every factual visual claim is traceable to a verified storyboard dependency or deterministic SpecSmith state.",
       "No generated asset impersonates real SpecSmith UI when a deterministic UI render is required.",
+      "Generated setup visuals contain no readable generated text/specs/prices/benchmark claims; those overlays come from verified production data.",
       "No benchmark_score is presented as measured game FPS.",
       "Opening conflict is understandable in the first two seconds without requiring audio.",
       "The video contains a real reversal or decision beat before the payoff.",
