@@ -116,6 +116,18 @@ jobs:
           SPECSMITH_RENDER_BASE_URL: http://localhost:5178
         run: pnpm --dir artifacts/SpecSmith content:render:ui-smoke
 
+      # GitHub's artifact uploader rejects filenames containing characters such
+      # as ':' even when the runner itself can create them. Archive the render
+      # directory first so the upload remains portable without mutating the
+      # renderer outputs or their manifests.
+      - name: Package rendered UI artifacts
+        if: always()
+        run: |
+          if [ -d artifacts/SpecSmith/render-output/ui-smoke ]; then
+            tar -czf artifacts/SpecSmith/render-output/deterministic-ui-renders.tar.gz \
+              -C artifacts/SpecSmith/render-output ui-smoke
+          fi
+
       # Uploaded so the captures can be eyeballed: a render that passes its
       # assertions can still be framed badly, and only a human looking at the
       # PNGs catches that.
@@ -124,6 +136,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deterministic-ui-renders
-          path: artifacts/SpecSmith/render-output/ui-smoke
+          path: artifacts/SpecSmith/render-output/deterministic-ui-renders.tar.gz
           if-no-files-found: warn
           retention-days: 14
