@@ -229,7 +229,7 @@ async function submitGeneration(
       instances: [{ prompt: state.prompt }],
       parameters: {
         aspectRatio: state.aspectRatio,
-        durationSeconds: String(state.durationSeconds),
+        durationSeconds: state.durationSeconds,
         resolution,
       },
     }),
