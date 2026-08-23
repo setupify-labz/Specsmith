@@ -25,6 +25,7 @@ function visualCapability(beat: PlatformScriptStoryboard["beats"][number]): Prod
 
 function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext): ProductionTask[] {
   const tasks: ProductionTask[] = [];
+  const visualTaskIds: string[] = [];
 
   // Derived once per plan: the state depends on the idea's subjects and
   // feature, not on which beat is being rendered, so every UI beat in a plan
@@ -41,9 +42,11 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     const capability = requested === "deterministic-ui-render" && !isRenderableFeature(context.feature)
       ? "video-generation"
       : requested;
+    const taskId = `${script.platform}-beat-${index + 1}-visual`;
+    visualTaskIds.push(taskId);
 
     tasks.push({
-      taskId: `${script.platform}-beat-${index + 1}-visual`,
+      taskId,
       capability,
       sourceBeat: index,
       purpose: `Create the ${beat.purpose} visual for ${beat.startSecond}-${beat.endSecond}s.`,
@@ -63,8 +66,9 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     });
   }
 
+  const voiceTaskId = `${script.platform}-voice`;
   tasks.push({
-    taskId: `${script.platform}-voice`,
+    taskId: voiceTaskId,
     capability: "text-to-speech",
     sourceBeat: null,
     purpose: "Generate narration matched to storyboard timing and emphasis.",
@@ -75,8 +79,9 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     ],
   });
 
+  const musicTaskId = `${script.platform}-audio`;
   tasks.push({
-    taskId: `${script.platform}-audio`,
+    taskId: musicTaskId,
     capability: "music-sfx",
     sourceBeat: null,
     purpose: "Create restrained music and sound design that supports reveals and decisions.",
@@ -84,16 +89,30 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     outputRequirements: ["Narration remains intelligible.", "No copyrighted music is assumed available without license."],
   });
 
-  tasks.push({
-    taskId: `${script.platform}-captions`,
+  const captionTaskId = `${script.platform}-captions`;
+  const captionTask: ProductionTask = {
+    taskId: captionTaskId,
     capability: "caption-render",
     sourceBeat: null,
     purpose: "Render readable captions and deliberate on-screen decision text.",
     inputRequirements: script.beats.map((beat) => beat.onScreenText),
     outputRequirements: ["Captions stay inside short-form safe areas.", "Do not cover critical product UI or hardware evidence."],
-  });
+  };
+  // Timing is structured at the planning boundary. The caption renderer will
+  // not guess cue times by dividing a video evenly or parsing prose.
+  (captionTask as ProductionTask & { captionRenderState?: unknown }).captionRenderState = {
+    durationSeconds: script.targetDurationSeconds,
+    cues: script.beats
+      .filter((beat) => beat.onScreenText.trim().length > 0)
+      .map((beat) => ({
+        startSecond: beat.startSecond,
+        endSecond: beat.endSecond,
+        text: beat.onScreenText,
+      })),
+  };
+  tasks.push(captionTask);
 
-  tasks.push({
+  const composeTask: ProductionTask = {
     taskId: `${script.platform}-compose`,
     capability: "motion-compositor",
     sourceBeat: null,
@@ -104,7 +123,23 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       "Cuts follow storyboard causality rather than arbitrary template timing.",
       "The final CTA uses the exact SpecSmith destination defined by the content package.",
     ],
-  });
+  };
+  // The compositor receives an explicit beat timeline rather than relying on
+  // dependency-array order. This keeps cuts tied to the storyboard and makes a
+  // reordered/refactored production plan fail loudly instead of changing edit timing.
+  (composeTask as ProductionTask & { compositorState?: unknown }).compositorState = {
+    durationSeconds: script.targetDurationSeconds,
+    fps: 30,
+    visualTimeline: script.beats.map((beat, index) => ({
+      visualTaskId: visualTaskIds[index],
+      startSecond: beat.startSecond,
+      endSecond: beat.endSecond,
+    })),
+    voiceTaskId,
+    musicTaskId,
+    captionTaskId,
+  };
+  tasks.push(composeTask);
 
   return tasks;
 }
