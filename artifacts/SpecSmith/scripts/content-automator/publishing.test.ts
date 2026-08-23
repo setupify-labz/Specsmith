@@ -153,6 +153,7 @@ const rights: PublicationAssetBundleResult = {
   untrackedAssetIds: [],
   nonApprovedAssetIds: [],
   approvedMasterSha256: MASTER_SHA256,
+  approvedMasterUri: "https://cdn.specsmithpc.com/masters/final-v4.mp4",
 };
 
 const config = {
@@ -179,8 +180,6 @@ function gate(platform: VideoPlatform) {
   return {
     qualityReview: quality(platform),
     assetBundle: rights,
-    // Metricool fetches the media itself, so this has to be a real https URL.
-    finalMediaRef: "https://cdn.specsmithpc.com/masters/final-v4.mp4",
   };
 }
 
@@ -254,10 +253,11 @@ describe("publishing", () => {
     expect(() => buildTrackedWebsiteUrl(contentPackage, "creative-x", "tiktok", "http://not-secure.test"))
       .toThrow(/https/);
 
-    // Metricool cannot fetch a local artifact reference.
+    // Metricool cannot fetch a local artifact reference, even when that URI
+    // came from the approved registry record.
     expect(() => buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
-      { ...gate("tiktok"), finalMediaRef: "artifact:final-v4.mp4" },
+      { ...gate("tiktok"), assetBundle: { ...rights, approvedMasterUri: "artifact:final-v4.mp4" } },
       networks(), "2026-08-24T18:00:00", NOW,
     )).toThrow(/https/);
   });
@@ -335,6 +335,11 @@ describe("the published bytes are bound to the reviewed and rights-approved mast
     expect(result.finalMediaSha256).not.toBe(forged);
   });
 
+  it("uses the approved registry URI and ignores a caller-supplied media ref", () => {
+    const result = build({ finalMediaRef: "https://attacker.invalid/different.mp4" });
+    expect(result.media).toEqual([rights.approvedMasterUri]);
+  });
+
   it("refuses a review of bytes the rights registry did not approve", () => {
     expect(() => build({
       qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "c".repeat(64) },
@@ -347,6 +352,12 @@ describe("the published bytes are bound to the reviewed and rights-approved mast
     expect(() => build({
       assetBundle: { ...rights, approvedMasterSha256: null },
     })).toThrow(/no approved master hash/);
+  });
+
+  it("refuses a bundle that resolved no approved master URI", () => {
+    expect(() => build({
+      assetBundle: { ...rights, approvedMasterUri: null },
+    })).toThrow(/approvedMasterUri/);
   });
 
   it("normalises case on both sides rather than failing a real match", () => {
@@ -408,6 +419,21 @@ describe("publishAt is strictly future in the supplied timezone", () => {
     // than the same wall clock would be under the summer offset.
     expect(at("2026-01-15T12:00:00", "2026-01-15T16:59:59Z").date).toBe("2026-01-15T12:00:00");
     expect(() => at("2026-01-15T12:00:00", "2026-01-15T17:00:01Z")).toThrow(/not in the future/);
+  });
+
+  it("refuses a wall time inside the spring-forward gap", () => {
+    expect(() => at("2026-03-08T02:30:00", "2026-03-01T00:00:00Z"))
+      .toThrow(/does not exist/);
+  });
+
+  it("refuses a wall time repeated by the fall-back overlap", () => {
+    expect(() => at("2026-11-01T01:30:00", "2026-10-01T00:00:00Z"))
+      .toThrow(/ambiguous/);
+  });
+
+  it("accepts an unambiguous wall time after the spring-forward jump", () => {
+    expect(at("2026-03-08T03:30:00", "2026-03-01T00:00:00Z").date)
+      .toBe("2026-03-08T03:30:00");
   });
 
   it("refuses a timezone that is not a real IANA identifier", () => {

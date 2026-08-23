@@ -137,6 +137,8 @@ export interface PublicationAssetBundleResult {
    * hash — all of which also make the bundle unpublishable.
    */
   approvedMasterSha256: string | null;
+  /** URI of that same approved master, read from the registry. */
+  approvedMasterUri: string | null;
 }
 
 /**
@@ -159,6 +161,9 @@ export function evaluatePublicationAssetBundle(
   const master = registry.get(request.masterAssetId);
   const masterDigest = master?.status === "approved" ? master.sha256?.trim().toLowerCase() : undefined;
   const approvedMasterSha256 = masterDigest && /^[a-f0-9]{64}$/.test(masterDigest) ? masterDigest : null;
+  const approvedMasterUri = master?.status === "approved" && approvedMasterSha256 !== null
+    ? master.uri.trim()
+    : null;
 
   return {
     publishable:
@@ -170,5 +175,6 @@ export function evaluatePublicationAssetBundle(
     untrackedAssetIds,
     nonApprovedAssetIds,
     approvedMasterSha256,
+    approvedMasterUri,
   };
 }

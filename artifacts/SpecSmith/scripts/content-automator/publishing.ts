@@ -37,8 +37,6 @@ export interface PublishingGateInput {
    * likewise a fact about the registry rather than an assertion by the caller.
    */
   assetBundle: PublicationAssetBundleResult;
-  /** Publicly reachable https URL of the exact rendered master. */
-  finalMediaRef: string;
 }
 
 export interface MetricoolPublishingRequest {
@@ -68,7 +66,7 @@ export interface MetricoolPublishingRequest {
   websiteCtaMode: "direct-link" | "profile-link";
   hashtagStrategy: CreativeFingerprint["hashtagStrategy"];
   hashtags: string[];
-  finalMediaSha256?: string;
+  finalMediaSha256: string;
 }
 
 export interface PublicationEvent {
@@ -134,7 +132,7 @@ function normalizeBaseUrl(input: string): URL {
 function zoneOffsetMsAt(instant: number, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
-    hour12: false,
+    hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -147,21 +145,56 @@ function zoneOffsetMsAt(instant: number, timeZone: string): number {
     if (!found) throw new Error(`Timezone ${timeZone} produced no ${type} field.`);
     return Number(found.value);
   };
-  // Some ICU builds render midnight as hour 24 under hour12:false.
-  const wallClock = Date.UTC(field("year"), field("month") - 1, field("day"), field("hour") % 24, field("minute"), field("second"));
+  const wallClock = Date.UTC(field("year"), field("month") - 1, field("day"), field("hour"), field("minute"), field("second"));
   return wallClock - instant;
 }
 
-/** The UTC instant at which `local` wall-clock time occurs in `timeZone`. */
+function localTimeAt(instant: number, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(instant));
+  const field = (type: Intl.DateTimeFormatPartTypes): string => {
+    const found = parts.find((part) => part.type === type);
+    if (!found) throw new Error(`Timezone ${timeZone} produced no ${type} field.`);
+    return found.value;
+  };
+  return `${field("year")}-${field("month")}-${field("day")}T${field("hour")}:${field("minute")}:${field("second")}`;
+}
+
+/**
+ * The unique UTC instant at which `local` wall-clock time occurs in `timeZone`.
+ *
+ * A local time in a spring-forward gap has no matching instant. A local time
+ * in a fall-back overlap has two. Neither is safe for an unattended publisher,
+ * so this resolver round-trips every plausible offset and rejects both cases.
+ */
 function instantOfLocalTime(local: string, timeZone: string): number {
   const asIfUtc = Date.parse(`${local}Z`);
   if (!Number.isFinite(asIfUtc)) throw new Error("Metricool schedule date is invalid.");
-  // Two passes: the first offset is sampled at roughly the right instant, the
-  // second at the corrected one, which settles the case where the guess landed
-  // on the far side of a DST transition from the real answer.
-  let instant = asIfUtc - zoneOffsetMsAt(asIfUtc, timeZone);
-  instant = asIfUtc - zoneOffsetMsAt(instant, timeZone);
-  return instant;
+
+  const hour = 60 * 60 * 1_000;
+  const offsets = new Set(
+    [-48, -24, 0, 24, 48].map((deltaHours) => zoneOffsetMsAt(asIfUtc + deltaHours * hour, timeZone)),
+  );
+  const candidates = [...offsets]
+    .map((offset) => asIfUtc - offset)
+    .filter((instant, index, all) => all.indexOf(instant) === index)
+    .filter((instant) => localTimeAt(instant, timeZone) === local);
+
+  if (candidates.length === 0) {
+    throw new Error(`Metricool schedule date ${local} does not exist in ${timeZone} because of a timezone transition.`);
+  }
+  if (candidates.length > 1) {
+    throw new Error(`Metricool schedule date ${local} is ambiguous in ${timeZone} because of a timezone transition.`);
+  }
+  return candidates[0];
 }
 
 /**
@@ -258,7 +291,7 @@ function assertPublishGate(
   contentPackage: ContentPackage,
   fingerprint: CreativeFingerprint,
   gate: PublishingGateInput,
-): void {
+): { mediaUrl: string; digest: string } {
   if (gate.qualityReview.packageId !== contentPackage.packageId) {
     throw new Error(`Quality review package mismatch for ${contentPackage.packageId}.`);
   }
@@ -276,15 +309,15 @@ function assertPublishGate(
     ];
     throw new Error(`Publication blocked by asset-rights bundle${failures.length ? ` (${failures.join(", ")})` : ""}.`);
   }
-  const mediaRef = nonEmpty("finalMediaRef", gate.finalMediaRef);
+  const mediaRef = nonEmpty("assetBundle.approvedMasterUri", gate.assetBundle.approvedMasterUri ?? "");
   let mediaUrl: URL;
   try {
     mediaUrl = new URL(mediaRef);
   } catch {
-    throw new Error("finalMediaRef must be an absolute https URL that Metricool can fetch.");
+    throw new Error("assetBundle.approvedMasterUri must be an absolute https URL that Metricool can fetch.");
   }
   if (mediaUrl.protocol !== "https:") {
-    throw new Error(`finalMediaRef must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
+    throw new Error(`assetBundle.approvedMasterUri must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
   }
 
   // Both digests are DERIVED, never passed in. `reviewedMediaSha256` comes from
@@ -312,6 +345,7 @@ function assertPublishGate(
       `Publication blocked: reviewed media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
     );
   }
+  return { mediaUrl: mediaUrl.toString(), digest };
 }
 
 export function buildMetricoolPublishingRequest(
@@ -329,7 +363,7 @@ export function buildMetricoolPublishingRequest(
   if (fingerprint.packageId !== contentPackage.packageId || fingerprint.campaignId !== contentPackage.campaignId) {
     throw new Error(`Publishing fingerprint does not belong to ${contentPackage.packageId}.`);
   }
-  assertPublishGate(contentPackage, fingerprint, gate);
+  const approvedMaster = assertPublishGate(contentPackage, fingerprint, gate);
 
   const blogId = nonEmpty("blogId", config.blogId);
   const timezone = nonEmpty("timezone", config.timezone);
@@ -358,13 +392,13 @@ export function buildMetricoolPublishingRequest(
     text: copy.text,
     date: validateScheduleDate(publishAt, timezone, now),
     timezone,
-    media: [gate.finalMediaRef.trim()],
+    media: [approvedMaster.mediaUrl],
     trackedWebsiteUrl,
     websiteCtaMode: copy.websiteCtaMode,
     hashtagStrategy: variant.hashtagStrategy,
     hashtags: [...variant.hashtags],
     draft: config.autoPublish !== true,
-    finalMediaSha256: gate.qualityReview.reviewedMediaSha256.trim().toLowerCase(),
+    finalMediaSha256: approvedMaster.digest,
   };
 
   if (fingerprint.platform === "youtube-shorts") {

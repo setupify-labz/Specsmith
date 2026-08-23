@@ -188,6 +188,18 @@ describe("Metricool analytics ingestion", () => {
     expect(viewsPerHourBetween(early, later)).toBeCloseTo(121.97, 2);
   });
 
+  it("does not report a provider counter correction as negative audience velocity", () => {
+    const earlier = normalizeMetricoolAnalyticsRow({ TKPO07: 120 }, {
+      ...context("tiktok", "1h"),
+      capturedAt: "2026-08-23T21:00:00Z",
+    });
+    const corrected = normalizeMetricoolAnalyticsRow({ TKPO07: 115 }, {
+      ...context("tiktok", "6h"),
+      capturedAt: "2026-08-24T02:00:00Z",
+    });
+    expect(viewsPerHourBetween(earlier, corrected)).toBeNull();
+  });
+
   it("rejects analytics that are accidentally attached to the wrong creative", () => {
     expect(() => normalizeMetricoolAnalyticsRow({ TKPO07: 100 }, {
       ...context("tiktok"),

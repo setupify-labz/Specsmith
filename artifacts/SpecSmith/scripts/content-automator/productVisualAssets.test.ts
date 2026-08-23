@@ -52,7 +52,7 @@ const MASTER_SHA256 = "c".repeat(64);
 function master(overrides: Partial<ProductVisualAssetRecord> = {}): ProductVisualAssetRecord {
   return record("master", {
     role: "specsmith-evidence",
-    uri: "artifact://master.mp4",
+    uri: "https://cdn.specsmithpc.com/masters/master-v1.mp4",
     mimeType: "video/mp4",
     sha256: MASTER_SHA256,
     ...overrides,
@@ -149,6 +149,7 @@ describe("the approved master hash is derived from the registry", () => {
       expectedVisualAssetIds: ["approved"],
     });
     expect(result.approvedMasterSha256).toBe(MASTER_SHA256);
+    expect(result.approvedMasterUri).toBe("https://cdn.specsmithpc.com/masters/master-v1.mp4");
     expect(result.publishable).toBe(true);
   });
 
@@ -175,6 +176,7 @@ describe("the approved master hash is derived from the registry", () => {
     // A master that is not approved has no approved hash to report, so there
     // is nothing for the publishing gate to bind to.
     expect(result.approvedMasterSha256).toBeNull();
+    expect(result.approvedMasterUri).toBeNull();
     expect(result.publishable).toBe(false);
   });
 
@@ -189,6 +191,7 @@ describe("the approved master hash is derived from the registry", () => {
     // the bundle unpublishable, because nothing pins WHICH bytes were cleared.
     expect(result.nonApprovedAssetIds).toEqual([]);
     expect(result.approvedMasterSha256).toBeNull();
+    expect(result.approvedMasterUri).toBeNull();
     expect(result.publishable).toBe(false);
   });
 
@@ -210,6 +213,7 @@ describe("the approved master hash is derived from the registry", () => {
     });
     expect(result.missingAssetIds).toContain("master");
     expect(result.approvedMasterSha256).toBeNull();
+    expect(result.approvedMasterUri).toBeNull();
     expect(result.publishable).toBe(false);
   });
 });

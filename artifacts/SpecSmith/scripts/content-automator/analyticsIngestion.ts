@@ -173,32 +173,40 @@ export function normalizeMetricoolAnalyticsRow(
   let reposts: number | undefined;
   let sourceBreakdown: TrafficSourceBreakdown | undefined;
 
-  if (context.platform === "instagram-reels") {
-    views = numberFrom(row, ["IGRE23", "Views"]);
-    reach = numberFrom(row, ["IGRE11", "Reach"]);
-    averageViewDurationSeconds = numberFrom(row, ["IGRE24", "Average watch time"]);
-    averagePercentageViewed = percentagePointRatioFrom(numberFrom(row, ["IGRE27", "Retention"]));
-    stayedToWatchRate = percentagePointRatioFrom(numberFrom(row, ["IGRE28", "Reel view rate"]));
-    likes = numberFrom(row, ["IGRE10", "Likes"]);
-    comments = numberFrom(row, ["IGRE07", "Comments"]);
-    shares = numberFrom(row, ["IGRE21", "Shares"]);
-    saves = numberFrom(row, ["IGRE12", "Saved"]);
-    reposts = numberFrom(row, ["IGRE29", "Reposts"]);
-  } else if (context.platform === "tiktok") {
-    views = numberFrom(row, ["TKPO07", "Views"]);
-    reach = numberFrom(row, ["TKPO11", "Reach"]);
-    averageViewDurationSeconds = numberFrom(row, ["TKPO15", "Average time watched"]);
-    fullVideoWatchedRate = percentagePointRatioFrom(numberFrom(row, ["TKPO13", "Full video watched rate"]));
-    likes = numberFrom(row, ["TKPO08", "Likes"]);
-    comments = numberFrom(row, ["TKPO09", "Comments"]);
-    shares = numberFrom(row, ["TKPO10", "Shares"]);
-    sourceBreakdown = trafficSources(row);
-  } else {
-    views = numberFrom(row, ["YTVP06", "Views"]);
-    averageViewDurationSeconds = numberFrom(row, ["YTVP08", "Avg View Duration"]);
-    likes = numberFrom(row, ["YTVP09", "Likes"]);
-    comments = numberFrom(row, ["YTVP11", "Comments"]);
-    shares = numberFrom(row, ["YTVP12", "Shares"]);
+  switch (context.platform) {
+    case "instagram-reels":
+      views = numberFrom(row, ["IGRE23", "Views"]);
+      reach = numberFrom(row, ["IGRE11", "Reach"]);
+      averageViewDurationSeconds = numberFrom(row, ["IGRE24", "Average watch time"]);
+      averagePercentageViewed = percentagePointRatioFrom(numberFrom(row, ["IGRE27", "Retention"]));
+      stayedToWatchRate = percentagePointRatioFrom(numberFrom(row, ["IGRE28", "Reel view rate"]));
+      likes = numberFrom(row, ["IGRE10", "Likes"]);
+      comments = numberFrom(row, ["IGRE07", "Comments"]);
+      shares = numberFrom(row, ["IGRE21", "Shares"]);
+      saves = numberFrom(row, ["IGRE12", "Saved"]);
+      reposts = numberFrom(row, ["IGRE29", "Reposts"]);
+      break;
+    case "tiktok":
+      views = numberFrom(row, ["TKPO07", "Views"]);
+      reach = numberFrom(row, ["TKPO11", "Reach"]);
+      averageViewDurationSeconds = numberFrom(row, ["TKPO15", "Average time watched"]);
+      fullVideoWatchedRate = percentagePointRatioFrom(numberFrom(row, ["TKPO13", "Full video watched rate"]));
+      likes = numberFrom(row, ["TKPO08", "Likes"]);
+      comments = numberFrom(row, ["TKPO09", "Comments"]);
+      shares = numberFrom(row, ["TKPO10", "Shares"]);
+      sourceBreakdown = trafficSources(row);
+      break;
+    case "youtube-shorts":
+      views = numberFrom(row, ["YTVP06", "Views"]);
+      averageViewDurationSeconds = numberFrom(row, ["YTVP08", "Avg View Duration"]);
+      likes = numberFrom(row, ["YTVP09", "Likes"]);
+      comments = numberFrom(row, ["YTVP11", "Comments"]);
+      shares = numberFrom(row, ["YTVP12", "Shares"]);
+      break;
+    default: {
+      const unsupported: never = context.platform;
+      throw new Error(`Unsupported analytics platform: ${String(unsupported)}`);
+    }
   }
 
   // No synthetic retention curve. TikTok's "full video watched rate" means
@@ -348,5 +356,9 @@ export function viewsPerHourBetween(earlier: AnalyticsSnapshot, later: Analytics
   const hours = (Date.parse(later.capturedAt) - Date.parse(earlier.capturedAt)) / 3_600_000;
   if (!Number.isFinite(hours) || hours <= 0) return null;
   const delta = later.record.views - earlier.record.views;
+  // Providers occasionally correct a cumulative counter downward. That is not
+  // negative audience velocity, so represent it as unavailable rather than
+  // teaching the learner that views can be unwatched.
+  if (delta < 0) return null;
   return Number((delta / hours).toFixed(2));
 }

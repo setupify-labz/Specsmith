@@ -77,6 +77,14 @@ describe("content package", () => {
     expect(first.attribution.conversionEvents).toContain("site-click");
   });
 
+  it("does not collide when the same idea is generated again later that day", () => {
+    const first = buildContentPackage(idea, new Date("2026-08-22T18:00:00.000Z"));
+    const rerun = buildContentPackage(idea, new Date("2026-08-22T18:00:01.000Z"));
+    expect(rerun.campaignId).not.toBe(first.campaignId);
+    expect(rerun.packageId).not.toBe(first.packageId);
+    expect(rerun.attribution.utmCampaign).not.toBe(first.attribution.utmCampaign);
+  });
+
   it("attaches bounded, branded hashtags and a strategy id to every platform", () => {
     const result = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
 

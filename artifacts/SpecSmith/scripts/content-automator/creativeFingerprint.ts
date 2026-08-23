@@ -165,7 +165,10 @@ export function buildCreativeFingerprint(
     ctaTimingBucket: ctaTimingBucket(script),
     hashtagStrategy: platformPackage.hashtagStrategy,
     hashtags: [...platformPackage.hashtags],
-    experimentId: `exp-${contentPackage.campaignId}-${script.platform}-${variant}`,
+    // Variants are observations in one experiment, not separate experiments.
+    // Keep the platform boundary because each network has a different
+    // distribution system and should be learned independently.
+    experimentId: `exp-${contentPackage.campaignId}-${script.platform}`,
     experimentPrimaryMetric: plan.experiment.primaryMetric,
     changedVariable: runtime.changedVariable?.trim() || "unassigned",
     parentCreativeId: runtime.parentCreativeId?.trim() || undefined,
