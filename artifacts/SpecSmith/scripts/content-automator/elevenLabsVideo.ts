@@ -49,6 +49,11 @@ interface FailedGeneration {
 
 type GenerationStatus = PendingGeneration | CompletedGeneration | FailedGeneration;
 
+interface CachedVideo {
+  uri: string;
+  metadata: Record<string, string | number | boolean>;
+}
+
 const DEFAULT_ENDPOINT = "https://api.elevenlabs.io/v1/flows/video";
 const DEFAULT_MODEL_ID: ElevenLabsVideoModelId = "veo-3.1-fast-generate-001";
 const DEFAULT_RESOLUTION: ElevenLabsVideoResolution = "1080p";
@@ -332,6 +337,10 @@ export function createElevenLabsVideoAdapter(options: {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const sleepImpl = options.sleepImpl ?? ((ms: number) => new Promise<void>((resolvePromise) => setTimeout(resolvePromise, ms)));
   const now = options.now ?? Date.now;
+  // Platform variants commonly share the same cinematic hook. Reusing an
+  // identical generation inside one render batch avoids paying three times for
+  // YouTube/TikTok/Instagram when the requested visual is exactly the same.
+  const cache = new Map<string, CachedVideo>();
 
   return {
     name: "elevenlabs-video-veo",
@@ -339,33 +348,58 @@ export function createElevenLabsVideoAdapter(options: {
     async render(context: RenderTaskContext): Promise<RenderArtifact[]> {
       if (typeof fetchImpl !== "function") throw new ElevenLabsVideoError("no-fetch", "No fetch implementation is available for ElevenLabs video generation.");
       const state = parseElevenLabsVideoGenerationState(context.task.videoGenerationState);
+      const resolution = state.resolution ?? options.config.resolution;
+      const cacheKey = JSON.stringify({
+        modelId: options.config.modelId,
+        resolution,
+        prompt: state.prompt,
+        durationSeconds: state.durationSeconds,
+        aspectRatio: state.aspectRatio,
+        generateAudio: false,
+      });
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        return [{
+          artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-elevenlabs-video`,
+          taskId: context.task.taskId,
+          kind: "video",
+          uri: cached.uri,
+          mimeType: "video/mp4",
+          metadata: { ...cached.metadata, cacheHit: true },
+        }];
+      }
+
       const submitted = await submitGeneration(options.config, state, fetchImpl);
       const completed = await waitForGeneration(options.config, submitted.id, fetchImpl, sleepImpl, now);
       const bytes = await downloadVideo(completed, fetchImpl);
 
       await mkdir(options.outputDir, { recursive: true });
-      const filename = [context.packageId, context.platform, context.task.taskId, completed.id]
+      const filename = [context.packageId, context.task.taskId, completed.id]
         .map(safeFilePart)
         .join("-");
       const outputPath = resolve(options.outputDir, `${filename}.mp4`);
       await writeFile(outputPath, bytes);
+      const uri = pathToFileURL(outputPath).toString();
+      const metadata: Record<string, string | number | boolean> = {
+        provider: "elevenlabs",
+        modelId: options.config.modelId,
+        generationId: completed.id,
+        durationSeconds: state.durationSeconds,
+        aspectRatio: state.aspectRatio,
+        resolution,
+        generatedAudio: false,
+        bytes: bytes.byteLength,
+        cacheHit: false,
+      };
+      cache.set(cacheKey, { uri, metadata });
 
       return [{
         artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-elevenlabs-video`,
         taskId: context.task.taskId,
         kind: "video",
-        uri: pathToFileURL(outputPath).toString(),
+        uri,
         mimeType: "video/mp4",
-        metadata: {
-          provider: "elevenlabs",
-          modelId: options.config.modelId,
-          generationId: completed.id,
-          durationSeconds: state.durationSeconds,
-          aspectRatio: state.aspectRatio,
-          resolution: state.resolution ?? options.config.resolution,
-          generatedAudio: false,
-          bytes: bytes.byteLength,
-        },
+        metadata,
       }];
     },
   };
