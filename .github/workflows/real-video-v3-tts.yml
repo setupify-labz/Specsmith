@@ -43,7 +43,15 @@ jobs:
               body=json.load(f)
           audio=((body.get('output_audio') or {}).get('data'))
           if not audio:
-              raise SystemExit('No output_audio.data in Gemini response: '+json.dumps(body)[:2000])
+              for step in reversed(body.get('steps') or []):
+                  for item in step.get('content') or []:
+                      if isinstance(item, dict) and item.get('data'):
+                          audio=item['data']
+                          break
+                  if audio:
+                      break
+          if not audio:
+              raise SystemExit('No audio data in Gemini response: '+json.dumps(body)[:2000])
           pcm=base64.b64decode(audio)
           with wave.open('specsmith-v3-narration.wav','wb') as wf:
               wf.setnchannels(1)
