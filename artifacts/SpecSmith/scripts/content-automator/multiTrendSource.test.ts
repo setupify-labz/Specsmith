@@ -27,6 +27,12 @@ function multiPlatformFetch(input: string | URL | Request): Promise<Response> {
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
   }
 
+  if (url.hostname === "api.bundle.social") {
+    return Promise.resolve(new Response(JSON.stringify({
+      songs: [{ id: "bundle-audio", title: "Bundle Reveal", artist: "Bundle Artist", duration: 25, genre: "pop" }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+  }
+
   if (url.hostname === "www.googleapis.com") {
     return Promise.resolve(new Response(JSON.stringify({
       items: [
@@ -101,12 +107,40 @@ describe("multi-platform audio trend refresh", () => {
     }
   });
 
+  it("uses Bundle CML when direct TikTok Business API credentials are unavailable", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "specsmith-multi-trends-"));
+    const cachePath = join(dir, "audio-trends.json");
+    try {
+      const result = await refreshAllAudioTrendSources({
+        cachePath,
+        now,
+        force: true,
+        env: { BUNDLE_SOCIAL_API_KEY: "bundle-secret" },
+        fetchImpl: multiPlatformFetch,
+      });
+      expect(result.sources.map((source) => source.source)).toEqual([
+        "tiktok-cml",
+        "bundle-social-tiktok-cml",
+        "youtube-data-api-music-chart",
+        "instagram-configured-feed",
+      ]);
+      expect(result.sources[1].status).toBe("refreshed");
+      expect(result.snapshot?.candidates[0]).toMatchObject({
+        platform: "tiktok",
+        rightsStatus: "platform-cleared",
+        platformAudioId: "bundle-audio",
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("is safe when none of the platform sources are configured", async () => {
     const dir = await mkdtemp(join(tmpdir(), "specsmith-multi-trends-"));
     const cachePath = join(dir, "audio-trends.json");
     try {
       const result = await refreshAllAudioTrendSources({ cachePath, now, env: {} });
-      expect(result.sources).toHaveLength(3);
+      expect(result.sources).toHaveLength(4);
       expect(result.sources.every((source) => source.status === "not-configured")).toBe(true);
       expect(result.snapshot).toBeUndefined();
       expect(result.refreshedCandidates).toBe(0);
