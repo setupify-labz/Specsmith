@@ -5,9 +5,9 @@ import gpus from "../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../src/data/cpus.json" with { type: "json" };
 import { buildReviewableAutomationBatch } from "./reviewableAutomator.ts";
 import {
-  createElevenLabsVideoAdapter,
-  elevenLabsVideoConfigFromEnv,
-} from "./elevenLabsVideo.ts";
+  createGeminiVeoVideoAdapter,
+  geminiVeoConfigFromEnv,
+} from "./geminiVeoVideo.ts";
 import type { HardwareItem, ProductionPlanPackage, ProductionTask } from "./types.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -28,11 +28,9 @@ function findFirstGeneratedTask(packages: ProductionPlanPackage[]): {
 }
 
 async function main(): Promise<void> {
-  const config = elevenLabsVideoConfigFromEnv();
+  const config = geminiVeoConfigFromEnv();
   if (!config) {
-    throw new Error(
-      "ELEVENLABS_VIDEO_API_KEY (preferred) or ELEVENLABS_API_KEY is required. The key must have ElevenLabs Image & Video/Flows permission and the workspace must support video generation.",
-    );
+    throw new Error("GEMINI_API_KEY is required for the live Google Veo smoke test.");
   }
 
   const batch = buildReviewableAutomationBatch(
@@ -46,10 +44,11 @@ async function main(): Promise<void> {
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
-  const adapter = createElevenLabsVideoAdapter({ config, outputDir });
+  const adapter = createGeminiVeoVideoAdapter({ config, outputDir });
 
-  console.log(`Submitting real Daily Five video task ${selected.task.taskId} via ${config.modelId}.`);
+  console.log(`Submitting real Daily Five video task ${selected.task.taskId} via Google Gemini API model ${config.modelId}.`);
   console.log(`Idea: ${selected.productionPackage.ideaId}; platform: ${platform.platform}.`);
+  console.log(`Resolution: ${config.resolution}. Provider-native audio will be stripped by the SpecSmith compositor.`);
   const artifacts = await adapter.render({
     packageId: selected.productionPackage.packageId,
     campaignId: selected.productionPackage.campaignId,
@@ -61,10 +60,10 @@ async function main(): Promise<void> {
   });
 
   if (artifacts.length !== 1 || artifacts[0].mimeType !== "video/mp4" || !artifacts[0].uri.startsWith("file:")) {
-    throw new Error("ElevenLabs video smoke did not produce exactly one real local video/mp4 artifact.");
+    throw new Error("Gemini Veo smoke did not produce exactly one real local video/mp4 artifact.");
   }
 
-  console.log("Real ElevenLabs automated video generation succeeded.");
+  console.log("Real Google Veo automated video generation succeeded.");
   console.log(`Output: ${artifacts[0].uri}`);
   console.log(`Metadata: ${JSON.stringify(artifacts[0].metadata)}`);
 }
