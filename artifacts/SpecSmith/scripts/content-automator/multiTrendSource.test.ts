@@ -28,9 +28,25 @@ function multiPlatformFetch(input: string | URL | Request): Promise<Response> {
   }
 
   if (url.hostname === "api.bundle.social") {
-    return Promise.resolve(new Response(JSON.stringify({
-      songs: [{ id: "bundle-audio", title: "Bundle Reveal", artist: "Bundle Artist", duration: 25, genre: "pop" }],
-    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    if (url.pathname === "/api/v1/team/") {
+      return Promise.resolve(new Response(JSON.stringify({ items: [{ id: "bundle-team", name: "specsmith" }], total: 1 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }));
+    }
+    if (url.pathname === "/api/v1/misc/tiktok/cml/trending-list") {
+      return Promise.resolve(new Response(JSON.stringify([
+        {
+          commercial_music_id: "bundle-commercial",
+          commercial_music_name: "Bundle Reveal",
+          artist: "Bundle Artist",
+          duration: 25,
+          genres: ["POP"],
+          rank_position: "1",
+          trending_song_clip: { song_clip_id: "bundle-audio", duration: 25 },
+        },
+      ]), { status: 200, headers: { "Content-Type": "application/json" } }));
+    }
   }
 
   if (url.hostname === "www.googleapis.com") {
@@ -129,6 +145,7 @@ describe("multi-platform audio trend refresh", () => {
         platform: "tiktok",
         rightsStatus: "platform-cleared",
         platformAudioId: "bundle-audio",
+        commercialMusicId: "bundle-commercial",
       });
     } finally {
       await rm(dir, { recursive: true, force: true });
