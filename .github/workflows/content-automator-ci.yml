@@ -83,6 +83,25 @@ jobs:
       - name: Build SpecSmith
         run: pnpm --dir artifacts/SpecSmith build
 
+      - name: Validate Meshy API key
+        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[live-meshy]') }}
+        env:
+          MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+        run: |
+          if [ -z "$MESHY_API_KEY" ]; then
+            echo "MESHY_API_KEY is not available in this workflow context." >&2
+            exit 1
+          fi
+          status=$(curl -sS -o /tmp/meshy-response.json -w '%{http_code}' \
+            'https://api.meshy.ai/openapi/v1/text-to-image?page_size=1' \
+            -H "Authorization: Bearer $MESHY_API_KEY")
+          if [ "$status" != "200" ]; then
+            echo "Meshy API validation failed with HTTP $status." >&2
+            cat /tmp/meshy-response.json >&2
+            exit 1
+          fi
+          echo "Meshy API key is valid and the Text-to-Image API is reachable."
+
       - name: Validate live ElevenLabs TTS
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
