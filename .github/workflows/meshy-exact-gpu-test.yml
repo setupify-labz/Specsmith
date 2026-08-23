@@ -1,0 +1,115 @@
+name: Meshy Exact GPU Test
+
+on:
+  push:
+    branches:
+      - chatgpt/elevenlabs-video-v1
+
+jobs:
+  exact-gpu-test:
+    if: ${{ contains(github.event.head_commit.message, '[live-meshy-3d]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate consistent multi-view references from NVIDIA press image
+        env:
+          MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MESHY_API_KEY" ]; then
+            echo "MESHY_API_KEY is not available." >&2
+            exit 1
+          fi
+
+          PRIMARY='https://iprsoftwaremedia.com/219/files/20240/659a4c083d6332fd16032944_geforce-rtx-4080-super-gpu-image/geforce-rtx-4080-super-gpu-image_b5b72f71-174d-445d-b74e-9c70e3f85a26-prv.jpg?v=b5b72f71-174d-445d-b74e-9c70e3f85a26'
+          PROMPT='Create three additional product-reference views of the exact same physical graphics card shown in the reference image. Preserve the NVIDIA GeForce RTX 4080 SUPER Founders Edition industrial geometry, proportions, dual axial fan layout, X-frame shroud, heatsink fins, PCIe edge, power connector area, and rear I/O bracket. Treat the supplied photo as the source of truth. Do not redesign or stylize the card. Use clean neutral studio lighting and a plain white background. Remove all readable words, logos, symbols, labels, stickers, and branding rather than inventing or misspelling any text. Keep all three generated views mutually consistent with one another and with the reference object.'
+
+          payload=$(jq -n --arg p "$PROMPT" --arg u "$PRIMARY" '{ai_model:"nano-banana-pro",prompt:$p,reference_image_urls:[$u],generate_multi_view:true,remove_background:false}')
+          create=$(curl -fsS 'https://api.meshy.ai/openapi/v1/image-to-image' \
+            -X POST \
+            -H "Authorization: Bearer $MESHY_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$payload")
+          image_task=$(printf '%s' "$create" | jq -r '.result // empty')
+          test -n "$image_task" || { echo "No image task id" >&2; printf '%s\n' "$create" >&2; exit 1; }
+          echo "Image multi-view task: $image_task"
+
+          image_json=''
+          for i in $(seq 1 80); do
+            image_json=$(curl -fsS "https://api.meshy.ai/openapi/v1/image-to-image/$image_task" -H "Authorization: Bearer $MESHY_API_KEY")
+            state=$(printf '%s' "$image_json" | jq -r '.status // empty')
+            progress=$(printf '%s' "$image_json" | jq -r '.progress // 0')
+            echo "Image task: $state ($progress%)"
+            if [ "$state" = "SUCCEEDED" ]; then break; fi
+            if [ "$state" = "FAILED" ] || [ "$state" = "CANCELED" ]; then printf '%s\n' "$image_json" | jq '.' >&2; exit 1; fi
+            sleep 5
+          done
+          test "$(printf '%s' "$image_json" | jq -r '.status')" = 'SUCCEEDED' || { echo 'Image task timed out' >&2; exit 1; }
+
+          mkdir -p artifacts/meshy-exact-gpu/inputs
+          printf '%s\n' "$image_json" | jq '.' > artifacts/meshy-exact-gpu/image-task.json
+          echo "Image credits: $(printf '%s' "$image_json" | jq -r '.consumed_credits // "unknown"')"
+
+          mapfile -t GENERATED < <(printf '%s' "$image_json" | jq -r '.image_urls[]')
+          if [ "${#GENERATED[@]}" -lt 3 ]; then
+            echo "Expected three multi-view images, got ${#GENERATED[@]}" >&2
+            exit 1
+          fi
+
+          curl -fL "$PRIMARY" -o artifacts/meshy-exact-gpu/inputs/00-official-primary.jpg
+          for idx in 0 1 2; do
+            n=$((idx + 1))
+            curl -fL "${GENERATED[$idx]}" -o "artifacts/meshy-exact-gpu/inputs/0${n}-generated-view.png"
+          done
+
+          images=$(jq -n --arg a "$PRIMARY" --arg b "${GENERATED[0]}" --arg c "${GENERATED[1]}" --arg d "${GENERATED[2]}" '[$a,$b,$c,$d]')
+          texture_prompt='Accurate premium matte graphite-black and dark metallic Founders Edition materials. Realistic metal, heatsink, fan, and bracket surfaces. Absolutely no readable text, letters, numbers, logos, symbols, stickers, labels, RGB, green accents, or invented markings anywhere on the model.'
+          model_payload=$(jq -n --argjson imgs "$images" --arg tp "$texture_prompt" '{image_urls:$imgs,ai_model:"meshy-7",should_texture:true,enable_pbr:true,texture_resolution:"4k",texture_prompt:$tp,should_remesh:false,target_formats:["glb"],auto_size:true,origin_at:"center",alpha_thumbnail:true,multi_view_thumbnails:true}')
+          model_create=$(curl -fsS 'https://api.meshy.ai/openapi/v1/multi-image-to-3d' \
+            -X POST \
+            -H "Authorization: Bearer $MESHY_API_KEY" \
+            -H 'Content-Type: application/json' \
+            -d "$model_payload")
+          model_task=$(printf '%s' "$model_create" | jq -r '.result // empty')
+          test -n "$model_task" || { echo "No model task id" >&2; printf '%s\n' "$model_create" >&2; exit 1; }
+          echo "3D task: $model_task"
+
+          model_json=''
+          for i in $(seq 1 120); do
+            model_json=$(curl -fsS "https://api.meshy.ai/openapi/v1/multi-image-to-3d/$model_task" -H "Authorization: Bearer $MESHY_API_KEY")
+            state=$(printf '%s' "$model_json" | jq -r '.status // empty')
+            progress=$(printf '%s' "$model_json" | jq -r '.progress // 0')
+            echo "3D task: $state ($progress%)"
+            if [ "$state" = "SUCCEEDED" ]; then break; fi
+            if [ "$state" = "FAILED" ] || [ "$state" = "CANCELED" ]; then printf '%s\n' "$model_json" | jq '.' >&2; exit 1; fi
+            sleep 10
+          done
+          test "$(printf '%s' "$model_json" | jq -r '.status')" = 'SUCCEEDED' || { echo '3D task timed out' >&2; exit 1; }
+
+          printf '%s\n' "$model_json" | jq '.' > artifacts/meshy-exact-gpu/model-task.json
+          echo "3D credits: $(printf '%s' "$model_json" | jq -r '.consumed_credits // "unknown"')"
+          glb=$(printf '%s' "$model_json" | jq -r '.model_urls.glb // empty')
+          test -n "$glb" || { echo 'Meshy succeeded without GLB URL' >&2; exit 1; }
+          curl -fL "$glb" -o artifacts/meshy-exact-gpu/rtx-4080-super-fe-multiview.glb
+
+          thumb=$(printf '%s' "$model_json" | jq -r '.thumbnail_url // empty')
+          alpha=$(printf '%s' "$model_json" | jq -r '.alpha_thumbnail_url // empty')
+          if [ -n "$thumb" ]; then curl -fL "$thumb" -o artifacts/meshy-exact-gpu/preview.png; fi
+          if [ -n "$alpha" ]; then curl -fL "$alpha" -o artifacts/meshy-exact-gpu/preview-alpha.png; fi
+          printf '%s' "$model_json" | jq -r '.thumbnail_urls[]? // empty' | nl -v 1 -w 2 -s ' ' | while read -r n url; do
+            [ -n "$url" ] && curl -fL "$url" -o "artifacts/meshy-exact-gpu/view-${n}.png"
+          done
+
+          ls -lh artifacts/meshy-exact-gpu artifacts/meshy-exact-gpu/inputs
+
+      - name: Upload exact GPU experiment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meshy-rtx4080super-exact-multiview
+          path: artifacts/meshy-exact-gpu
+          if-no-files-found: warn
+          retention-days: 14
