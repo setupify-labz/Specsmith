@@ -1,11 +1,16 @@
 import type { AudioTrendSnapshot, TrendingAudioCandidate } from "./audioTrend.ts";
 import { readAudioTrendSnapshot, writeAudioTrendSnapshot } from "./trendSource.ts";
 
+export type BundleTikTokTrendDateRange = "1DAY" | "7DAY" | "30DAY";
+
 export interface BundleTikTokTrendConfig {
   apiKey: string;
   endpoint: string;
-  genre?: string;
-  limit: number;
+  teamEndpoint: string;
+  teamId?: string;
+  teamName?: string;
+  genre: string;
+  dateRange: BundleTikTokTrendDateRange;
   timeoutMs: number;
 }
 
@@ -18,28 +23,59 @@ export interface BundleTikTokTrendRefreshResult {
 }
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+type RankValue = number | string | null | undefined;
 
-interface BundleSong {
+interface BundleTeam {
   id?: string;
-  title?: string;
+  name?: string;
+}
+
+interface BundleTeamListResponse {
+  items?: BundleTeam[];
+}
+
+interface BundleTrendHistoryPoint {
+  date?: string;
+  rank_position_daily?: RankValue;
+}
+
+interface BundleSongClip {
+  song_clip_id?: string;
+  preview_url?: string;
+  duration?: number;
+}
+
+interface BundleCmlTrack {
+  commercial_music_id?: string;
+  commercial_music_name?: string;
   artist?: string;
   duration?: number;
-  genre?: string | string[];
+  thumbnail_url?: string;
+  preview_url?: string;
+  genres?: string[];
+  rank_position?: RankValue;
+  trending_history?: BundleTrendHistoryPoint[];
+  full_duration_song_clip?: BundleSongClip;
+  trending_song_clip?: BundleSongClip;
 }
 
-interface BundleTrendingResponse {
-  songs?: BundleSong[];
-  error?: string;
-  message?: string;
-}
-
-const DEFAULT_ENDPOINT = "https://api.bundle.social/api/v1/music/tiktok/trending";
+const DEFAULT_ENDPOINT = "https://api.bundle.social/api/v1/misc/tiktok/cml/trending-list";
+const DEFAULT_TEAM_ENDPOINT = "https://api.bundle.social/api/v1/team/";
 const SOURCE_PREFIX = "bundle-social:tiktok-cml";
 const DEFAULT_REFRESH_HOURS = 6;
 const MAX_REFRESH_HOURS = 48;
 
 const clamp100 = (value: number) => Math.max(0, Math.min(100, value));
 const round = (value: number, digits = 1) => Number(value.toFixed(digits));
+
+function positiveNumber(value: RankValue): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return undefined;
+}
 
 function hoursOld(timestamp: string, now: Date): number {
   const parsed = new Date(timestamp);
@@ -53,8 +89,7 @@ function refreshHoursFromEnv(env: NodeJS.ProcessEnv): number {
   return Math.min(MAX_REFRESH_HOURS, parsed);
 }
 
-function tagsForGenre(genreValue: string | string[] | undefined): string[] {
-  const genres = Array.isArray(genreValue) ? genreValue : genreValue ? [genreValue] : [];
+function semanticTags(genres: string[], velocity: number): string[] {
   const tags = new Set<string>(["trending", "commercial-music", "platform-native"]);
   for (const genre of genres) {
     const normalized = genre.trim().toLowerCase();
@@ -66,37 +101,59 @@ function tagsForGenre(genreValue: string | string[] | undefined): string[] {
     if (/rock|metal/.test(normalized)) ["energy", "impact", "tension"].forEach((tag) => tags.add(tag));
     if (/ambient|lofi|lo-fi|chill/.test(normalized)) ["calm", "clean", "background"].forEach((tag) => tags.add(tag));
   }
+  if (velocity >= 62) tags.add("rising");
+  if (velocity >= 78) tags.add("fast-rising");
   return [...tags];
 }
 
-function normalizeSong(song: BundleSong, index: number, total: number, capturedAt: string): TrendingAudioCandidate | undefined {
-  const platformAudioId = song.id?.trim();
-  const title = song.title?.trim();
-  if (!platformAudioId || !title) return undefined;
+function rankPopularity(rank: number): number {
+  return round(clamp100(100 - Math.min(90, Math.max(0, rank - 1) * 0.9)));
+}
 
-  // Bundle's public endpoint documents ordered trending songs but does not expose a direct
-  // velocity/saturation metric. Keep those signals conservative rather than inventing precision.
-  const rankPosition = index + 1;
-  const popularityScore = total <= 1 ? 100 : round(clamp100(100 - (index / Math.max(total - 1, 1)) * 45));
-  const velocityScore = 60;
-  const saturationScore = round(clamp100(25 + popularityScore * 0.55));
+function velocityScore(track: BundleCmlTrack, currentRank: number): number {
+  const history = [...(track.trending_history ?? [])]
+    .filter((entry) => typeof entry.date === "string")
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .map((entry) => positiveNumber(entry.rank_position_daily))
+    .filter((rank): rank is number => rank !== undefined);
+
+  if (history.length < 2) return 50;
+  const first = history[0];
+  const latest = history[history.length - 1] || currentRank;
+  return round(clamp100(50 + (first - latest) * 1.8));
+}
+
+function normalizeTrack(track: BundleCmlTrack, index: number, capturedAt: string): TrendingAudioCandidate | undefined {
+  const title = track.commercial_music_name?.trim();
+  const clip = track.trending_song_clip ?? track.full_duration_song_clip;
+  const platformAudioId = clip?.song_clip_id?.trim();
+  if (!title || !platformAudioId) return undefined;
+
+  const rank = positiveNumber(track.rank_position) ?? index + 1;
+  const popularity = rankPopularity(rank);
+  const velocity = velocityScore(track, rank);
+  const genres = Array.isArray(track.genres) ? track.genres.filter((genre): genre is string => typeof genre === "string") : [];
+  const duration = clip?.duration ?? track.duration;
+  const previewUrl = clip?.preview_url ?? track.preview_url;
 
   return {
     id: `bundle-tiktok:${platformAudioId}`,
     platform: "tiktok",
     title,
-    artist: song.artist?.trim() || undefined,
+    artist: track.artist?.trim() || undefined,
     capturedAt,
     rightsStatus: "platform-cleared",
-    popularityScore,
-    velocityScore,
-    saturationScore,
-    tags: tagsForGenre(song.genre),
+    popularityScore: popularity,
+    velocityScore: velocity,
+    saturationScore: round(clamp100(25 + popularity * 0.65)),
+    tags: semanticTags(genres, velocity),
     source: SOURCE_PREFIX,
-    sourceContentId: platformAudioId,
+    sourceContentId: track.commercial_music_id?.trim() || platformAudioId,
     platformAudioId,
-    durationSeconds: typeof song.duration === "number" && Number.isFinite(song.duration) && song.duration > 0 ? song.duration : undefined,
-    rankPosition,
+    commercialMusicId: track.commercial_music_id?.trim() || undefined,
+    durationSeconds: typeof duration === "number" && Number.isFinite(duration) && duration > 0 ? duration : undefined,
+    previewUrl: typeof previewUrl === "string" && previewUrl.length > 0 ? previewUrl : undefined,
+    rankPosition: rank,
   };
 }
 
@@ -104,15 +161,76 @@ export function bundleTikTokTrendConfigFromEnv(env: NodeJS.ProcessEnv = process.
   const apiKey = env.BUNDLE_SOCIAL_API_KEY?.trim();
   if (!apiKey) return undefined;
 
-  const limitRaw = Number(env.BUNDLE_TIKTOK_TREND_LIMIT ?? 30);
+  const dateRangeRaw = env.BUNDLE_TIKTOK_TREND_DATE_RANGE?.trim().toUpperCase();
+  const dateRange: BundleTikTokTrendDateRange = ["1DAY", "7DAY", "30DAY"].includes(dateRangeRaw ?? "")
+    ? dateRangeRaw as BundleTikTokTrendDateRange
+    : "7DAY";
   const timeoutRaw = Number(env.BUNDLE_TIKTOK_TREND_TIMEOUT_MS ?? 12000);
+
   return {
     apiKey,
     endpoint: env.BUNDLE_TIKTOK_TREND_ENDPOINT?.trim() || DEFAULT_ENDPOINT,
-    genre: env.BUNDLE_TIKTOK_TREND_GENRE?.trim() || undefined,
-    limit: Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 30,
+    teamEndpoint: env.BUNDLE_SOCIAL_TEAM_ENDPOINT?.trim() || DEFAULT_TEAM_ENDPOINT,
+    teamId: env.BUNDLE_SOCIAL_TEAM_ID?.trim() || undefined,
+    teamName: env.BUNDLE_SOCIAL_TEAM_NAME?.trim() || undefined,
+    genre: env.BUNDLE_TIKTOK_TREND_GENRE?.trim().toUpperCase() || "POP",
+    dateRange,
     timeoutMs: Number.isFinite(timeoutRaw) && timeoutRaw >= 1000 && timeoutRaw <= 60000 ? timeoutRaw : 12000,
   };
+}
+
+async function requestJson(
+  url: URL,
+  apiKey: string,
+  timeoutMs: number,
+  fetchImpl: FetchLike,
+): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "GET",
+      headers: { "x-api-key": apiKey },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Bundle request to ${url.pathname} failed with HTTP ${response.status}${body ? `: ${body.slice(0, 240)}` : ""}`);
+  }
+  return response.json();
+}
+
+export async function resolveBundleTeamId(
+  config: BundleTikTokTrendConfig,
+  fetchImpl: FetchLike = globalThis.fetch,
+): Promise<string> {
+  if (config.teamId) return config.teamId;
+
+  const payload = await requestJson(new URL(config.teamEndpoint), config.apiKey, config.timeoutMs, fetchImpl) as BundleTeamListResponse;
+  const teams = Array.isArray(payload.items)
+    ? payload.items.filter((team): team is BundleTeam & { id: string } => typeof team.id === "string" && team.id.trim().length > 0)
+    : [];
+
+  if (teams.length === 0) throw new Error("Bundle API key is valid but no teams were returned; create or connect a team first");
+
+  if (config.teamName) {
+    const wanted = config.teamName.toLowerCase();
+    const matches = teams.filter((team) => team.name?.trim().toLowerCase() === wanted);
+    if (matches.length === 1) return matches[0].id.trim();
+    if (matches.length === 0) throw new Error(`Bundle team '${config.teamName}' was not found`);
+    throw new Error(`Bundle team name '${config.teamName}' is ambiguous; set BUNDLE_SOCIAL_TEAM_ID`);
+  }
+
+  if (teams.length === 1) return teams[0].id.trim();
+
+  const specsmithMatches = teams.filter((team) => team.name?.trim().toLowerCase() === "specsmith");
+  if (specsmithMatches.length === 1) return specsmithMatches[0].id.trim();
+  throw new Error("Bundle returned multiple teams; set BUNDLE_SOCIAL_TEAM_ID or BUNDLE_SOCIAL_TEAM_NAME so the CML request targets the right account");
 }
 
 export async function fetchBundleTikTokCommercialMusicTrends(
@@ -123,41 +241,21 @@ export async function fetchBundleTikTokCommercialMusicTrends(
   if (!config.apiKey) throw new Error("Bundle TikTok trend source requires an API key");
   if (typeof fetchImpl !== "function") throw new Error("No fetch implementation is available for Bundle TikTok trend source");
 
+  const teamId = await resolveBundleTeamId(config, fetchImpl);
   const url = new URL(config.endpoint);
-  url.searchParams.set("limit", String(config.limit));
-  if (config.genre) url.searchParams.set("genre", config.genre);
+  url.searchParams.set("teamId", teamId);
+  url.searchParams.set("genre", config.genre);
+  url.searchParams.set("dateRange", config.dateRange);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
-  let response: Response;
-  try {
-    response = await fetchImpl(url, {
-      method: "GET",
-      headers: { "x-api-key": config.apiKey },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Bundle TikTok CML request failed with HTTP ${response.status}${body ? `: ${body.slice(0, 240)}` : ""}`);
-  }
-
-  const payload = await response.json() as BundleTrendingResponse;
-  if (payload.error) throw new Error(`Bundle TikTok CML API error: ${payload.error}`);
-  const songs = payload.songs;
-  if (!Array.isArray(songs) || songs.length === 0) {
-    throw new Error(payload.message ? `Bundle TikTok CML returned no songs: ${payload.message}` : "Bundle TikTok CML returned no songs");
-  }
+  const payload = await requestJson(url, config.apiKey, config.timeoutMs, fetchImpl);
+  if (!Array.isArray(payload) || payload.length === 0) throw new Error("Bundle TikTok CML returned no tracks for this team/genre/date range");
 
   const capturedAt = now.toISOString();
-  const candidates = songs
-    .map((song, index) => normalizeSong(song, index, songs.length, capturedAt))
+  const candidates = (payload as BundleCmlTrack[])
+    .map((track, index) => normalizeTrack(track, index, capturedAt))
     .filter((candidate): candidate is TrendingAudioCandidate => candidate !== undefined);
 
-  if (candidates.length === 0) throw new Error("Bundle TikTok CML returned songs but none had usable ids/titles");
+  if (candidates.length === 0) throw new Error("Bundle TikTok CML returned tracks but none had usable title/song_clip_id values");
   return { capturedAt, candidates };
 }
 
