@@ -125,6 +125,14 @@ describe("creative fingerprint", () => {
     expect(result.changedVariable).toBe("hook");
     expect(result.ctaTimingBucket).toBe("late");
     expect(result.uiProofRatio).toBe(0.2);
+    expect(result.experimentId).toBe("exp-ss-20260823-rtx-4080-value-tiktok");
+  });
+
+  it("groups variants into one platform experiment cohort", () => {
+    const a = buildCreativeFingerprint(plan, contentPackage, script, { variantKey: "A", changedVariable: "hook" });
+    const b = buildCreativeFingerprint(plan, contentPackage, script, { variantKey: "B", changedVariable: "hook" });
+    expect(a.creativeId).not.toBe(b.creativeId);
+    expect(a.experimentId).toBe(b.experimentId);
   });
 
   it("does not pretend an uncontrolled experiment has a known changed variable", () => {

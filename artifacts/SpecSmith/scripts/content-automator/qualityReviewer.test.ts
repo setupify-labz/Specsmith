@@ -58,10 +58,17 @@ const scripts = buildScriptStoryboardPackage(idea, content);
 const production = buildProductionPlanPackage(scripts);
 const request = buildQualityReviewRequest(content, scripts, production, "youtube-shorts");
 
+/** Stand-in digest for the reviewed master; only its shape matters here. */
+const MASTER_SHA256 = "b".repeat(64);
+
 function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): RenderedVideoObservation {
   return {
     packageId: content.packageId,
     platform: "youtube-shorts",
+    // The digest of the exact file the reviewer watched. It is carried through
+    // to QualityReviewResult.reviewedMediaSha256 and is what the publishing
+    // gate binds the published bytes to.
+    masterSha256: MASTER_SHA256,
     durationSeconds: 24,
     openingDecisionClearWithoutAudio: true,
     captionsLegibilityScore: 9.5,

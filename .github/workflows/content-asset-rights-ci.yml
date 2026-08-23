@@ -1,4 +1,4 @@
-name: Content Automator CI
+name: Content Asset Rights CI
 
 on:
   push:
@@ -8,6 +8,8 @@ on:
       - chatgpt/meshy-ingestion-hardening-v1
       - chatgpt/hashtag-publishing-logic-v1
       - chatgpt/social-publisher-learning-v1
+      - claude/pr56-audit-fixes-v1
+      - chatgpt/pr56-final-hardening
   pull_request:
     branches:
       - chatgpt/hashtag-publishing-logic-v1
@@ -50,6 +52,7 @@ jobs:
           scripts/content-automator/hashtags.test.ts
           scripts/content-automator/creativeFingerprint.test.ts
           scripts/content-automator/publishing.test.ts
+          scripts/content-automator/publishingStore.test.ts
           scripts/content-automator/analyticsIngestion.test.ts
           scripts/content-automator/performance.test.ts
           scripts/content-automator/logicalAutomator.test.ts

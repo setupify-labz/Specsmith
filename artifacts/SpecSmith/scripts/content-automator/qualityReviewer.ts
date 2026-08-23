@@ -74,6 +74,11 @@ export interface ObservedUiShot {
 export interface RenderedVideoObservation {
   packageId: string;
   platform: VideoPlatform;
+  /**
+   * SHA-256 of the exact master file that was watched to produce this
+   * observation. Every judgement below is about these bytes and no others.
+   */
+  masterSha256: string;
   durationSeconds: number;
   openingDecisionClearWithoutAudio: boolean;
   captionsLegibilityScore: number;
@@ -93,12 +98,27 @@ export interface RenderedVideoObservation {
 export interface QualityReviewResult {
   packageId: string;
   platform: VideoPlatform;
+  /**
+   * The master this verdict applies to, carried through from the observation.
+   *
+   * A review is a statement about specific bytes. Surfacing the hash on the
+   * result is what lets the publishing gate prove the file it is about to
+   * schedule is the one that was actually reviewed, instead of trusting a
+   * hash the caller passes alongside.
+   */
+  reviewedMediaSha256: string;
   decision: ReviewDecision;
   publishable: boolean;
   overallScore: number;
   dimensionScores: Record<ReviewDimension, number>;
   issues: ReviewIssue[];
   regenerateTaskIds: string[];
+}
+
+function requireSha256(value: string, field: string): string {
+  const digest = value.trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(digest)) throw new Error(`${field} must be a 64-character SHA-256 hex digest.`);
+  return digest;
 }
 
 const clamp10 = (value: number) => Math.max(0, Math.min(10, value));
@@ -433,6 +453,7 @@ export function reviewRenderedVideo(
   return {
     packageId: request.packageId,
     platform: request.platform,
+    reviewedMediaSha256: requireSha256(observation.masterSha256, "observation.masterSha256"),
     decision,
     publishable: decision === "pass",
     overallScore,

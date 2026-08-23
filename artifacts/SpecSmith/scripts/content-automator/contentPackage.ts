@@ -27,9 +27,13 @@ function ctaFor(idea: ContentIdea, platform: VideoPlatform): string {
 }
 
 export function buildContentPackage(idea: ContentIdea, generatedAt: Date): ContentPackage {
-  const date = generatedAt.toISOString().slice(0, 10).replace(/-/g, "");
+  if (!Number.isFinite(generatedAt.getTime())) throw new Error("generatedAt must be a valid date.");
+  // Include the run instant, not just the day. A second generation of the same
+  // idea on one day must not silently reuse campaign, package, creative, and
+  // utm_content identities from the first run.
+  const run = generatedAt.toISOString().replace(/[-:.]/g, "");
   const base = slug(idea.id || idea.title);
-  const campaignId = `ss-${date}-${base}`;
+  const campaignId = `ss-${run}-${base}`;
 
   const platforms: ContentPackage["platforms"] = [
     {

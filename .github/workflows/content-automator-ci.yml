@@ -7,6 +7,8 @@ on:
       - chatgpt/content-compositor-v1
       - chatgpt/elevenlabs-video-v1
       - claude/content-ui-renderer-v1
+      - claude/pr56-audit-fixes-v1
+      - chatgpt/pr56-final-hardening
   pull_request:
     branches:
       - main
@@ -15,6 +17,11 @@ on:
     inputs:
       run_live_video:
         description: "Generate one paid Google Veo hook and upload the MP4"
+        required: true
+        default: false
+        type: boolean
+      run_live_elevenlabs:
+        description: "Run paid ElevenLabs TTS and MP4 smoke tests"
         required: true
         default: false
         type: boolean
@@ -161,14 +168,15 @@ jobs:
           retention-days: 14
 
       - name: Validate live ElevenLabs TTS
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_elevenlabs) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-elevenlabs]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-elevenlabs]')) }}
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
         run: |
-          if [ -n "$ELEVENLABS_API_KEY" ]; then
-            pnpm --dir artifacts/SpecSmith content:tts:smoke
-          else
-            echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
+          if [ -z "$ELEVENLABS_API_KEY" ]; then
+            echo "ELEVENLABS_API_KEY is required when the paid live smoke test is requested." >&2
+            exit 1
           fi
+          pnpm --dir artifacts/SpecSmith content:tts:smoke
 
       # Paid video generation is opt-in: workflow_dispatch, [live-veo] push, or temporary PR title marker.
       # `always()` intentionally isolates this paid provider check from unrelated TTS quota failures.
@@ -247,18 +255,19 @@ jobs:
           retention-days: 14
 
       - name: Render real MP4 compositor smoke
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live_elevenlabs) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-elevenlabs]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-elevenlabs]')) }}
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           SPECSMITH_RENDER_BASE_URL: http://localhost:5178
         run: |
-          if [ -n "$ELEVENLABS_API_KEY" ]; then
-            pnpm --dir artifacts/SpecSmith content:render:mp4-smoke
-          else
-            echo "ELEVENLABS_API_KEY is unavailable; skipping real MP4 smoke because fake narration is not an acceptable substitute."
+          if [ -z "$ELEVENLABS_API_KEY" ]; then
+            echo "ELEVENLABS_API_KEY is required when the paid live smoke test is requested." >&2
+            exit 1
           fi
+          pnpm --dir artifacts/SpecSmith content:render:mp4-smoke
 
       - name: Upload real MP4 smoke
-        if: always()
+        if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.run_live_elevenlabs) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[live-elevenlabs]')) || (github.event_name == 'pull_request' && contains(github.event.pull_request.title, '[live-elevenlabs]'))) }}
         uses: actions/upload-artifact@v4
         with:
           name: real-mp4-compositor-smoke
