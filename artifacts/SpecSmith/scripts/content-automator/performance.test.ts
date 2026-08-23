@@ -96,4 +96,54 @@ describe("performance learner", () => {
     expect((game?.liftVsBaseline ?? 0)).toBeGreaterThan(0);
     expect((comparison?.liftVsBaseline ?? 0)).toBeLessThan(0);
   });
+
+  it("learns voice performance separately and keeps format context visible", () => {
+    const georgeId = "JBFqnCBsd6RMkjVDRZzb";
+    const records = [0, 1, 2, 3].flatMap((index) => [
+      record({
+        videoId: `george-${index}`,
+        voiceId: georgeId,
+        voiceName: "George",
+        format: "game",
+      }),
+      record({
+        videoId: `alt-${index}`,
+        voiceId: "alt-voice-id",
+        voiceName: "Alt Voice",
+        format: "game",
+        stayedToWatchRate: 0.38,
+        averagePercentageViewed: 0.42,
+        retentionCurve: [{ elapsedRatio: 0.95, audienceRatio: 0.2 }],
+        likes: 150,
+        comments: 20,
+        shares: 20,
+        saves: 10,
+        followsGained: 10,
+        siteClicks: 25,
+        builderStarts: 5,
+        affiliateClicks: 1,
+      }),
+    ]);
+
+    const learning = analyzePerformance(records);
+    const george = learning.byVoice.find((item) => item.factor === `George [${georgeId}]`);
+    const alt = learning.byVoice.find((item) => item.factor === "Alt Voice [alt-voice-id]");
+    const georgeGame = learning.byVoiceAndFormat.find((item) => item.factor === `George [${georgeId}] × game`);
+
+    expect(george?.sampleSize).toBe(4);
+    expect(alt?.sampleSize).toBe(4);
+    expect((george?.liftVsBaseline ?? 0)).toBeGreaterThan(0);
+    expect((alt?.liftVsBaseline ?? 0)).toBeLessThan(0);
+    expect(georgeGame?.sampleSize).toBe(4);
+  });
+
+  it("does not declare a voice winner from one sample", () => {
+    const learning = analyzePerformance([
+      record({ voiceId: "voice-a", voiceName: "Voice A" }),
+      record({ videoId: "v2", voiceId: "voice-b", voiceName: "Voice B" }),
+    ]);
+
+    expect(learning.byVoice.every((item) => item.status === "explore")).toBe(true);
+    expect(learning.recommendations.some((entry) => entry.includes("still inconclusive"))).toBe(true);
+  });
 });
