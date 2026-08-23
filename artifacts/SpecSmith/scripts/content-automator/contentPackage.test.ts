@@ -15,7 +15,7 @@ const idea: ContentIdea = {
     feature: "build-crate",
     route: "/crate",
     userProblem: "People want a fast way to discover a viable build and decide what they would improve first.",
-    whySpecSmith: "SpecSmith can generate the real compatible build and let the viewer continue into the Builder.",
+    whySpecSmith: "SpecSmithPC can generate the real compatible build and let the viewer continue into the Builder.",
     continuationAction: "Open Build Crate, pull a build, then send it to Builder and change the weakest part.",
     sitePayoff: "The viewer can reproduce the challenge with a real build instead of only watching the answer.",
   },
@@ -47,7 +47,7 @@ const idea: ContentIdea = {
 };
 
 describe("content package", () => {
-  it("turns one SpecSmith idea into three platform variants plus one site continuation", () => {
+  it("turns one SpecSmithPC idea into three platform variants plus one site continuation", () => {
     const result = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
 
     expect(result.platforms).toHaveLength(3);
@@ -66,13 +66,25 @@ describe("content package", () => {
     expect(new Set(objectives).size).toBe(3);
   });
 
-  it("creates deterministic attribution ids and keeps the exact SpecSmith destination", () => {
+  it("creates deterministic attribution ids and keeps the exact SpecSmithPC destination", () => {
     const first = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
     const second = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
 
     expect(first.campaignId).toBe(second.campaignId);
     expect(first.attribution.utmCampaign).toBe(first.campaignId);
     expect(first.platforms.every((variant) => variant.cta.includes("/crate"))).toBe(true);
+    expect(first.platforms.every((variant) => variant.cta.includes("SpecSmithPC"))).toBe(true);
     expect(first.attribution.conversionEvents).toContain("site-click");
+  });
+
+  it("attaches bounded, branded hashtags and a strategy id to every platform", () => {
+    const result = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
+
+    for (const variant of result.platforms) {
+      expect(variant.hashtagStrategy).toBe("intent-balanced-v1");
+      expect(variant.hashtags).toContain("#SpecSmithPC");
+      expect(variant.hashtags.length).toBeGreaterThanOrEqual(3);
+      expect(variant.hashtags.length).toBeLessThanOrEqual(variant.platform === "youtube-shorts" ? 4 : 5);
+    }
   });
 });
