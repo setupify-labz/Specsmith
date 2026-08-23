@@ -6,6 +6,7 @@ import type {
   ScriptStoryboardPackage,
   StoryboardBeat,
 } from "./types.ts";
+import { buildRightsSafeVisualPrompt, buildVisualRightsPolicyState } from "./rightsSafeVisuals.ts";
 import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
 
 interface UiRenderContext {
@@ -40,7 +41,7 @@ export function deriveVideoGenerationState(
   aspectRatio: "9:16";
   generateAudio: false;
 } {
-  const prompt = [
+  const basePrompt = [
     `Create one instantly understandable vertical short-form PC-hardware visual for this story: ${script.title}.`,
     `Beat direction: ${beat.visualDirection}`,
     "The viewer may know almost nothing about PC hardware, so communicate one obvious choice, conflict, action, or reveal with a single strong focal point and clear cause/effect.",
@@ -51,7 +52,7 @@ export function deriveVideoGenerationState(
   ].join(" ");
 
   return {
-    prompt,
+    prompt: buildRightsSafeVisualPrompt(basePrompt, "generic-representative"),
     durationSeconds: providerDurationForBeat(beat),
     aspectRatio: "9:16",
     generateAudio: false,
@@ -80,7 +81,7 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
     const taskId = `${script.platform}-beat-${index + 1}-visual`;
     visualTaskIds.push(taskId);
 
-    tasks.push({
+    const task: ProductionTask = {
       taskId,
       capability,
       sourceBeat: index,
@@ -92,14 +93,25 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
         capability === "deterministic-ui-render"
           ? "Use real SpecSmith UI/data state or a deterministic render from verified inputs."
           : "Generated visuals may dramatize presentation but cannot introduce factual claims absent from the storyboard.",
+        capability === "video-generation"
+          ? "No third-party logos, stylized wordmarks, watermarks, copied product photography, labels, serials, stickers, proprietary graphics, or uncleared distinctive product geometry may be baked into the generated asset."
+          : "Deterministic SpecSmith captures remain first-party product UI rather than generated third-party imagery.",
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
-      // Structured state travels with the task. inputRequirements above stays
-      // prose for generative/fallback adapters; the real provider receives a
-      // provider-safe prompt and explicit allowed duration/aspect ratio.
       ...(capability === "video-generation" ? { videoGenerationState: deriveVideoGenerationState(script, beat) } : {}),
       ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
-    });
+    };
+
+    // Structured policy travels beside the provider state. Provider adapters can
+    // consume this later without parsing prose, and publication code can demand
+    // a matching AssetRightsManifest before a generated visual is allowed out.
+    if (capability === "video-generation" || capability === "image-generation") {
+      (task as ProductionTask & { visualRightsPolicyState?: unknown }).visualRightsPolicyState = buildVisualRightsPolicyState(
+        "generic-representative",
+      );
+    }
+
+    tasks.push(task);
   }
 
   const voiceTaskId = `${script.platform}-voice`;
@@ -158,6 +170,7 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       `Final duration stays close to ${script.targetDurationSeconds} seconds.`,
       "Cuts follow storyboard causality rather than arbitrary template timing.",
       "The final CTA uses the exact SpecSmith destination defined by the content package.",
+      "Only visual assets that pass the fail-closed rights manifest gate may enter an automatically publishable master.",
     ],
   };
   // The compositor receives an explicit beat timeline rather than relying on
@@ -191,6 +204,10 @@ function buildPlatformProductionPlan(script: PlatformScriptStoryboard, context: 
       "Every factual visual claim is traceable to a verified storyboard dependency or deterministic SpecSmith state.",
       "No generated asset impersonates real SpecSmith UI when a deterministic UI render is required.",
       "Generated setup visuals contain no readable generated text/specs/prices/benchmark claims; those overlays come from verified production data.",
+      "Generated visuals contain no third-party logos, stylized wordmarks, watermarks, copied photography, serials, labels, retailer marks, or proprietary decorative graphics.",
+      "Unknown or uncleared external references are blocked from derivative generation; publishable assets require recorded provenance and permission evidence.",
+      "Exact/distinctive third-party industrial geometry is held from automatic publication unless explicit design-use authorization is recorded.",
+      "Product identity is applied as deterministic plain text rather than baked third-party branding.",
       "No benchmark_score is presented as measured game FPS.",
       "Opening conflict is understandable in the first two seconds without requiring audio.",
       "The video contains a real reversal or decision beat before the payoff.",
