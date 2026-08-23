@@ -16,7 +16,8 @@
     "content:trends:refresh": "tsx scripts/content-automator/refreshAudioTrends.ts",
     "content:tts:smoke": "tsx scripts/content-automator/ttsSmokeTest.ts",
     "content:render:dry-run": "tsx scripts/content-automator/renderDryRun.ts",
-    "content:render:ui-smoke": "tsx scripts/content-automator/uiRender/smokeRender.ts"
+    "content:render:ui-smoke": "tsx scripts/content-automator/uiRender/smokeRender.ts",
+    "content:render:mp4-smoke": "tsx scripts/content-automator/compositorSmoke.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
