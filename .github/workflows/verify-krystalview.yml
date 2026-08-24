@@ -1,0 +1,55 @@
+name: Verify KrystalView integration
+
+on:
+  push:
+    branches:
+      - feat/krystalview-analytics
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out analytics branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/krystalview-analytics
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install with frozen lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck SpecSmith
+        run: pnpm --filter @workspace/specsmith run typecheck
+
+      - name: Test SpecSmith
+        run: pnpm --filter @workspace/specsmith run test
+
+      - name: Build and prerender SpecSmith
+        run: pnpm --filter @workspace/specsmith run build
+
+      - name: Verify analytics privacy defaults
+        run: |
+          grep -q "maskAllInputs: true" artifacts/SpecSmith/src/components/KrystalViewAnalytics.tsx
+          grep -q "consentRequired: true" artifacts/SpecSmith/src/components/KrystalViewAnalytics.tsx
+          grep -q "consent !== 'accepted'" artifacts/SpecSmith/src/components/KrystalViewAnalytics.tsx
+
+      - name: Remove one-shot workflow
+        run: |
+          rm .github/workflows/verify-krystalview.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/verify-krystalview.yml
+          git commit -m 'Remove one-shot KrystalView verification workflow'
+          git push origin HEAD:feat/krystalview-analytics
