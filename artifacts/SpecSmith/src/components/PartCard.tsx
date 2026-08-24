@@ -162,7 +162,7 @@ export default function PartCard({
             <a
               href={getAffiliateUrl(query)}
               target="_blank"
-              rel="noopener noreferrer"
+              rel="noopener noreferrer sponsored"
               className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
               style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
             >
