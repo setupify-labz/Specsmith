@@ -59,9 +59,8 @@ export interface UpgradeCandidate {
   fpsGainPct: number;
   verdict: UpgradeVerdict;
   /** Dollars spent per average FPS gained (netCost / FPS gained), rounded.
-   * Null when there's no meaningful FPS gain to divide by (zero/negative),
-   * or when netCost is 0 — in either case a $/FPS ratio would be
-   * undefined or misleading rather than a real number. */
+   * Null when netCost is 0; non-upgrades are filtered before candidates are
+   * returned, so every returned candidate has a positive modeled FPS gain. */
   costPerFps: number | null;
 }
 
@@ -70,8 +69,14 @@ export interface UpgradeCandidate {
  * ascending) rather than just the N cheapest overall — the latter tends to
  * cluster every result right at the next tier boundary, which for a budget
  * card means showing six "marginal gain" options and never surfacing the
- * bigger jump that'd actually be worth it. Net cost accounts for reselling
- * the old card at the flat estimate above. */
+ * bigger jump that'd actually be worth it.
+ *
+ * Tier is only a catalog grouping, not proof that one card is faster than
+ * another in SpecSmith's modeled game set. Candidates therefore have to beat
+ * the current card on the same 20-game 1440p High reference before they can be
+ * called an upgrade. Filtering happens before the result limit so an invalid
+ * higher-tier card cannot hide a later real upgrade. Net cost accounts for
+ * reselling the old card at the flat estimate above. */
 export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandidate[] {
   const current = getUpgradeGpu(currentId);
   if (!current) return [];
@@ -88,7 +93,6 @@ export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandi
 
   return [...cheapestPerTier.values()]
     .sort((a, b) => a.tier - b.tier)
-    .slice(0, limit)
     .map(gpu => {
       const avgFpsNew = averageFps(gpu);
       const netCost = Math.max(0, gpu.price_usd - resale);
@@ -97,7 +101,9 @@ export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandi
       const fpsGained = avgFpsNew - avgFpsCurrent;
       const costPerFps = netCost > 0 && fpsGained > 0 ? Math.round(netCost / fpsGained) : null;
       return { gpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict, costPerFps };
-    });
+    })
+    .filter(candidate => candidate.avgFpsNew > candidate.avgFpsCurrent && candidate.fpsGainPct > 0)
+    .slice(0, limit);
 }
 
 /** The candidate with the lowest $/FPS — the best-value pick, which isn't
