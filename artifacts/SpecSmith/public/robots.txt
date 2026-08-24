@@ -8,16 +8,4 @@ Disallow: /signup
 Disallow: /build$
 Disallow: /build?
 
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
 Sitemap: https://specsmithpc.com/sitemap.xml
