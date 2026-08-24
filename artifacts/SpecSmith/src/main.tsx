@@ -14,7 +14,18 @@ migrateLegacyStorage();
 
 import { createRoot, hydrateRoot } from "react-dom/client";
 import App from "./App";
+import KrystalViewAnalytics from "./components/KrystalViewAnalytics";
 import "./index.css";
+
+// The analytics component renders nothing until the client reads the saved
+// consent choice, so it does not change the prerendered HTML or hydration
+// boundary. Recording is loaded only after the visitor explicitly accepts.
+const app = (
+  <>
+    <App />
+    <KrystalViewAnalytics />
+  </>
+);
 
 // The site is prerendered (scripts/prerender.mjs writes real HTML for every
 // route), so the initial DOM already has the correct content. Using
@@ -30,9 +41,9 @@ import "./index.css";
 // straight to the client render and save the console error.
 const root = document.getElementById("root")!;
 if (root.hasChildNodes() && !window.location.search) {
-  hydrateRoot(root, <App />);
+  hydrateRoot(root, app);
 } else {
   // Also the fallback for the (non-prerendered) dev server, where #root
   // starts empty.
-  createRoot(root).render(<App />);
+  createRoot(root).render(app);
 }
