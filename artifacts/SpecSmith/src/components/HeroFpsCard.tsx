@@ -9,8 +9,12 @@ const CARD_A = { name: 'RTX 5090', price: 3979, fps: 211 };
 const CARD_B = { name: 'RTX 5070', price: 599, fps: 146 };
 
 function useCountUp(target: number, delayMs: number, durationMs = 1100) {
-  const [value, setValue] = useState(0);
+  // Render the real value during SSR so prerendered HTML never advertises
+  // "0 FPS" to crawlers. The client hydrates with the same value, then the
+  // effect resets to zero and runs the visual count-up animation.
+  const [value, setValue] = useState(target);
   useEffect(() => {
+    setValue(0);
     let raf: number;
     const start = performance.now() + delayMs;
     const tick = (now: number) => {
