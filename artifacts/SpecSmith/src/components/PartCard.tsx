@@ -107,19 +107,24 @@ export default function PartCard({
             RECOMMENDED
           </span>
         )}
+
+        {/* Performance/value accolade stays in normal flow so it can never
+            overlap the part name or tier chip at narrower card widths. */}
         {badge && (
-          <span className="absolute top-3 left-3 text-[9px] font-bold px-2 py-0.5 rounded-full z-10 tracking-wide"
-            style={{
-              background: badgeStyles[badge].background,
-              color: badgeStyles[badge].color,
-              border: badgeStyles[badge].border,
-            }}>
-            {badgeStyles[badge].label}
-          </span>
+          <div className="mb-2 flex">
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wide"
+              style={{
+                background: badgeStyles[badge].background,
+                color: badgeStyles[badge].color,
+                border: badgeStyles[badge].border,
+              }}>
+              {badgeStyles[badge].label}
+            </span>
+          </div>
         )}
 
         {/* Header */}
-        <div className={`flex items-start justify-between gap-2 mb-3 ${badge ? 'mt-4' : ''}`}>
+        <div className="flex items-start justify-between gap-2 mb-3">
           {image && (
             <div
               className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
