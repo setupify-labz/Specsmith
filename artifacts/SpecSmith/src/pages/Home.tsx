@@ -62,8 +62,8 @@ const features = [
   {
     icon: <DollarSign size={24} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.35)',
-    title: 'Price Tracker',
-    description: 'Know your total build cost instantly. Every component shows real pricing with direct links to purchase.',
+    title: 'Build Cost Estimates',
+    description: 'See your estimated total build cost instantly. Every component shows estimated US street pricing with direct links to purchase.',
   },
 ];
 
@@ -120,7 +120,7 @@ const exploreLinks = [
     icon: <ArrowUpDown size={22} className="text-[var(--ff-red)]" />,
     glow: 'rgba(255,23,68,0.3)',
     title: 'Higher or Lower',
-    description: 'Guess whether the next GPU or CPU costs more or less than the last, using real prices from our Builder. Beat your streak.',
+    description: 'Guess whether the next GPU or CPU costs more or less than the last, using SpecSmith\'s estimated street prices. Beat your streak.',
     to: '/price-guesser',
     cta: 'Play Now',
   },
@@ -340,7 +340,7 @@ export default function Home() {
           <div className="relative z-10">
             <h2 className="text-3xl sm:text-4xl font-black text-ff-primary mb-4">Ready to Build?</h2>
             <p className="text-secondary-custom text-lg mb-8 max-w-lg mx-auto">
-              Pick your parts, check compatibility, and see exactly what FPS you'll get — all for free.
+              Pick your parts, check compatibility, and see your estimated FPS — all for free.
             </p>
             <Link
               to="/builder"
