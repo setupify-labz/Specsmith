@@ -1,0 +1,47 @@
+name: Regenerate lockfile after legacy platform cleanup
+
+on:
+  push:
+    branches:
+      - cleanup/remove-replit-dependencies
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out cleanup branch
+        uses: actions/checkout@v4
+        with:
+          ref: cleanup/remove-replit-dependencies
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+
+      - name: Regenerate pnpm lockfile
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Verify legacy platform references are gone
+        run: |
+          if git grep -ni 'replit' -- ':!*.png' ':!*.jpg' ':!*.jpeg' ':!*.webp'; then
+            echo 'Legacy platform references remain after cleanup.' >&2
+            exit 1
+          fi
+
+      - name: Commit regenerated lockfile and remove this one-shot workflow
+        run: |
+          rm .github/workflows/cleanup-lockfile.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml .github/workflows/cleanup-lockfile.yml
+          git commit -m 'Regenerate lockfile after legacy platform cleanup'
+          git push origin HEAD:cleanup/remove-replit-dependencies
