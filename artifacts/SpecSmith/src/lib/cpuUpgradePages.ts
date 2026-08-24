@@ -77,7 +77,7 @@ export function getCpuUpgradeIntro(cpu: UpgradeCpu): string {
   }
   const top = candidates[0];
   const verdictPhrase = top.verdict === 'strong' ? 'a big jump' : top.verdict === 'moderate' ? 'a solid step up' : 'a modest gain';
-  return `If you're running a ${cpu.name}, it's currently worth an estimated $${resale.toLocaleString()} used. The best upgrade in our data is the ${top.cpu.name} — ${verdictPhrase} at about ${top.fpsGainPct >= 0 ? '+' : ''}${top.fpsGainPct}% average FPS (paired with a high-end GPU so the CPU is what's actually being measured) for a net cost of roughly $${top.netCost.toLocaleString()} after reselling your old chip.`;
+  return `If you're running a ${cpu.name}, it's currently worth an estimated $${resale.toLocaleString()} used. The best upgrade in our data is the ${top.cpu.name} — ${verdictPhrase} at about ${top.fpsGainPct >= 0 ? '+' : ''}${top.fpsGainPct}% average estimated FPS (paired with a high-end GPU so the model can better isolate the CPU's effect) for a net cost of roughly $${top.netCost.toLocaleString()} after reselling your old chip.`;
 }
 
 /** Other upgrade pages to cross-link — nearby tiers first. */
