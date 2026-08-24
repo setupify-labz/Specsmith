@@ -148,8 +148,8 @@ export default function PartSelector({
           >
             <div className="p-4 space-y-3" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
               {/* Search + Sort */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1 min-w-0">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ff-text-3)' }} />
                   <input
                     type="text"
@@ -164,21 +164,29 @@ export default function PartSelector({
                     }}
                   />
                 </div>
-                <select
-                  aria-label="Sort by"
-                  value={sort}
-                  onChange={e => setSort(e.target.value as SortKey)}
-                  className="px-3 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
-                  style={{
-                    backgroundColor: 'var(--ff-input-bg)',
-                    border: '1px solid var(--ff-border)',
-                    color: 'var(--ff-text)',
-                  }}
-                >
-                  <option value="performance">Performance</option>
-                  <option value="price">Price</option>
-                  <option value="value">Value</option>
-                </select>
+                <div className="relative w-full sm:w-[132px] sm:flex-shrink-0">
+                  <select
+                    aria-label="Sort parts by"
+                    value={sort}
+                    onChange={e => setSort(e.target.value as SortKey)}
+                    className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
+                    style={{
+                      backgroundColor: 'var(--ff-input-bg)',
+                      border: '1px solid var(--ff-border)',
+                      color: 'var(--ff-text)',
+                    }}
+                  >
+                    <option value="performance">Performance</option>
+                    <option value="price">Price</option>
+                    <option value="value">Value</option>
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+                    style={{ color: 'var(--ff-text-3)' }}
+                  />
+                </div>
               </div>
 
               {/* Parts grid */}
