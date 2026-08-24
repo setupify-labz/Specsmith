@@ -66,17 +66,17 @@ export default function CpuUpgradePage() {
     },
     {
       title: 'Why are CPU upgrade FPS gains smaller than GPU upgrade gains?',
-      content: `These numbers are estimated with a flagship GPU (RTX 4090) as the reference, so most games are limited by the graphics card, not the processor — that's realistic for anyone who already has a strong GPU and is only weighing a CPU swap. A weaker GPU would show a bigger CPU-driven gain in some titles.`,
+      content: `These numbers are estimated with an RTX 4090 as the reference specifically to reduce the GPU bottleneck and make CPU differences easier to see. Many tracked games are still modeled as GPU-heavy, so CPU-only gains remain narrower than GPU upgrade gains; with a weaker GPU, real-world CPU gains can be smaller because the graphics card becomes the limiting part sooner.`,
     },
     {
       title: 'Is upgrading worth it right now?',
       content: bestGain === undefined
         ? `There's no faster chip in our dataset than the ${cpu.name}, so there's nothing to gain by upgrading right now.`
-        : bestGain.fpsGainPct >= 30
-        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a strong upgrade if the net cost fits your budget. Prices last updated ${PRICES_UPDATED}.`
-        : bestGain.fpsGainPct >= 15
-        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a moderate, noticeable gain rather than a dramatic one. Prices last updated ${PRICES_UPDATED}.`
-        : `Even the biggest jump available, the ${bestGain.cpu.name}, only gains roughly +${bestGain.fpsGainPct}% FPS — a marginal difference paired with a flagship GPU. It's probably worth waiting unless you need the extra cores/threads for non-gaming work. Prices last updated ${PRICES_UPDATED}.`,
+        : bestGain.fpsGainPct >= 4
+        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a strong CPU upgrade by this calculator's scale if the net cost fits your budget. Prices last updated ${PRICES_UPDATED}.`
+        : bestGain.fpsGainPct >= 2
+        ? `The biggest jump available is the ${bestGain.cpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a moderate CPU upgrade by this calculator's scale rather than a dramatic jump. Prices last updated ${PRICES_UPDATED}.`
+        : `Even the biggest jump available, the ${bestGain.cpu.name}, only gains roughly +${bestGain.fpsGainPct}% FPS — a marginal difference paired with the RTX 4090 reference. It's probably worth waiting unless you need the extra cores/threads for non-gaming work. Prices last updated ${PRICES_UPDATED}.`,
     },
   ];
 
@@ -135,7 +135,7 @@ export default function CpuUpgradePage() {
 
         <h2 className="text-xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>Upgrade Options</h2>
         <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
-          FPS gains here are naturally smaller than a GPU upgrade's — with a flagship GPU already installed, most games are limited by the graphics card, not the processor, so even a big CPU jump moves the needle less.
+          FPS gains here are naturally smaller than a GPU upgrade's — the RTX 4090 reference reduces GPU bottlenecking so CPU differences are easier to see, but many tracked games still weight GPU performance more heavily than CPU performance.
         </p>
 
         {candidates.length === 0 ? (
