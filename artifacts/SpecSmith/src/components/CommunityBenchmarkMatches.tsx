@@ -4,6 +4,7 @@ import {
   getCommunityBenchmarksForBuild,
   type CommunityBenchmarkRecord,
 } from '../lib/communityBenchmarks';
+import PublicationBenchmarkMatches from './PublicationBenchmarkMatches';
 
 interface Props {
   gpuId: string;
@@ -111,26 +112,36 @@ function CommunityRecordCard({ record }: { record: CommunityBenchmarkRecord }) {
 
 export default function CommunityBenchmarkMatches({ gpuId, gpuName, cpuId, cpuName }: Props) {
   const records = getCommunityBenchmarksForBuild(gpuId, cpuId);
-  if (records.length === 0) return null;
 
   return (
-    <section
-      className="rounded-2xl p-6 mt-6"
-      style={{ border: '1px solid rgba(0, 212, 255, 0.35)', backgroundColor: 'var(--ff-surface)' }}
-      aria-label="Community measured benchmarks"
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <Users size={18} style={{ color: 'var(--ff-cyan)' }} />
-        <h3 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Community Measured</h3>
-        <span className="text-xs font-normal" style={{ color: 'var(--ff-text-2)' }}>— {gpuName} + {cpuName}</span>
-      </div>
-      <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
-        Real third-party gameplay sessions for this exact CPU + GPU pair. These are separate from SpecSmith-controlled and strictly normalized verified benchmarks because community systems, scenes, drivers, RAM, and settings can vary.
-      </p>
+    <>
+      <PublicationBenchmarkMatches
+        gpuId={gpuId}
+        gpuName={gpuName}
+        cpuId={cpuId}
+        cpuName={cpuName}
+      />
 
-      <div className="space-y-3">
-        {records.map((record) => <CommunityRecordCard key={record.id} record={record} />)}
-      </div>
-    </section>
+      {records.length > 0 && (
+        <section
+          className="rounded-2xl p-6 mt-6"
+          style={{ border: '1px solid rgba(0, 212, 255, 0.35)', backgroundColor: 'var(--ff-surface)' }}
+          aria-label="Community measured benchmarks"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Users size={18} style={{ color: 'var(--ff-cyan)' }} />
+            <h3 className="font-bold text-lg" style={{ color: 'var(--ff-text)' }}>Community Measured</h3>
+            <span className="text-xs font-normal" style={{ color: 'var(--ff-text-2)' }}>— {gpuName} + {cpuName}</span>
+          </div>
+          <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+            Real third-party gameplay sessions for this exact CPU + GPU pair. These are separate from SpecSmith-controlled and strictly normalized verified benchmarks because community systems, scenes, drivers, RAM, and settings can vary.
+          </p>
+
+          <div className="space-y-3">
+            {records.map((record) => <CommunityRecordCard key={record.id} record={record} />)}
+          </div>
+        </section>
+      )}
+    </>
   );
 }
