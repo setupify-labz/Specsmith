@@ -66,7 +66,7 @@ export default function CpuUpgradePage() {
     },
     {
       title: 'Why are CPU upgrade FPS gains smaller than GPU upgrade gains?',
-      content: `These numbers are measured with a flagship GPU (RTX 4090) already installed, so most games are limited by the graphics card, not the processor — that's realistic for anyone who already has a strong GPU and is only weighing a CPU swap. A weaker GPU would show a bigger CPU-driven gain in some titles.`,
+      content: `These numbers are estimated with a flagship GPU (RTX 4090) as the reference, so most games are limited by the graphics card, not the processor — that's realistic for anyone who already has a strong GPU and is only weighing a CPU swap. A weaker GPU would show a bigger CPU-driven gain in some titles.`,
     },
     {
       title: 'Is upgrading worth it right now?',
