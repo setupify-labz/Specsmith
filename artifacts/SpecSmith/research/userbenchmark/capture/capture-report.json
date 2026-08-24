@@ -1,38 +1,20 @@
 {
-  "generatedAt": "2026-08-19T21:40:38.481Z",
+  "generatedAt": "2026-08-20T22:49:37.135Z",
   "note": "Capture verification. No network request was made. Files are matched to games by the identity resolved from each page's own HTML, never by filename, so browser-default names such as \"UserBenchmark_ Can I Run ADR1FT.html\" are accepted. The manifest supplies each game's expected filename for reporting only.",
-  "worklistGeneratedAt": "2026-08-19T00:35:12.121Z",
+  "worklistGeneratedAt": "2026-08-20T22:06:50.802Z",
   "summary": {
     "planned": 50,
-    "captured": 16,
-    "missing": 34,
+    "captured": 7,
+    "missing": 43,
     "wrongGame": 0,
     "incompleteSave": 0,
     "notAPage": 0,
     "unreadable": 0,
     "totalEfpsRecords": 0,
-    "filesScanned": 19,
+    "filesScanned": 59,
     "matchedByBrowserName": 0
   },
   "results": [
-    {
-      "gameId": "3959",
-      "name": "7 Days to Die",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-7-Days-to-Die/3959/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-7-Days-to-Die-3959.html",
-      "status": "captured",
-      "bytes": 163453,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72758,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-7-Days-to-Die-3959.html",
-      "filenameMatchesExpected": true
-    },
     {
       "gameId": "3651",
       "name": "ABZU",
@@ -40,78 +22,6 @@
       "expectedFilename": "FPS-Estimates-ABZU-3651.html",
       "status": "missing",
       "detail": "no saved page in pages/ resolves to this game"
-    },
-    {
-      "gameId": "3652",
-      "name": "ADR1FT",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ADR1FT/3652/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-ADR1FT-3652.html",
-      "status": "captured",
-      "bytes": 158974,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72712,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "inferred-from-self-links",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to ADR1FT/3652 corroborated by the page's own <h1>",
-      "savedAs": "FPS-Estimates-ADR1FT-3652.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3654",
-      "name": "AdVenture Capitalist",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-AdVenture-Capitalist/3654/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-AdVenture-Capitalist-3654.html",
-      "status": "captured",
-      "bytes": 160141,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72942,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "inferred-from-self-links",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to AdVenture-Capitalist/3654 corroborated by the page's own <h1>",
-      "savedAs": "FPS-Estimates-AdVenture-Capitalist-3654.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3655",
-      "name": "Age of Empires II: HD Edition",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Age-of-Empires-II--HD-Edition/3655/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
-      "status": "captured",
-      "bytes": 162756,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72785,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3656",
-      "name": "Alien: Isolation",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Alien--Isolation/3656/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Alien-Isolation-3656.html",
-      "status": "captured",
-      "bytes": 161055,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72764,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Alien-Isolation-3656.html",
-      "filenameMatchesExpected": true
     },
     {
       "gameId": "3657",
@@ -134,25 +44,17 @@
       "name": "Apex Legends",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Apex-Legends/4036/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Apex-Legends-4036.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
-    },
-    {
-      "gameId": "3653",
-      "name": "ARK: Survival Evolved",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-ARK--Survival-Evolved/3653/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-ARK-Survival-Evolved-3653.html",
       "status": "captured",
-      "bytes": 165137,
+      "bytes": 164179,
       "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72789,
+      "inlineScriptChars": 72828,
       "efpsCount": 0,
       "efpsObjectsOnPage": 200,
       "efpsQuarantinedAsOtherGame": 200,
       "chartsWithData": 3,
       "identitySource": "canonical",
       "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-ARK-Survival-Evolved-3653.html",
+      "savedAs": "FPS-Estimates-Apex-Legends-4036.html",
       "filenameMatchesExpected": true
     },
     {
@@ -164,192 +66,12 @@
       "detail": "no saved page in pages/ resolves to this game"
     },
     {
-      "gameId": "3660",
-      "name": "Arma 3",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Arma-3/3660/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Arma-3-3660.html",
-      "status": "captured",
-      "bytes": 161761,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72756,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Arma-3-3660.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "4032",
-      "name": "Assassin's Creed Odyssey",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Odyssey/4032/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Assassins-Creed-Odyssey-4032.html",
-      "status": "captured",
-      "bytes": 166566,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72757,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Assassins-Creed-Odyssey-4032.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3960",
-      "name": "Assassin's Creed Origins",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assassins-Creed-Origins/3960/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Assassins-Creed-Origins-3960.html",
-      "status": "captured",
-      "bytes": 164905,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72749,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Assassins-Creed-Origins-3960.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3661",
-      "name": "Assetto Corsa",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Assetto-Corsa/3661/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Assetto-Corsa-3661.html",
-      "status": "captured",
-      "bytes": 161638,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72797,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Assetto-Corsa-3661.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3662",
-      "name": "Axiom Verge",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Axiom-Verge/3662/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Axiom-Verge-3662.html",
-      "status": "captured",
-      "bytes": 146612,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72814,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "inferred-from-self-links",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 35 self-links to Axiom-Verge/3662 corroborated by the page's own <h1>",
-      "savedAs": "FPS-Estimates-Axiom-Verge-3662.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3663",
-      "name": "Batman: Arkham Knight",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Batman--Arkham-Knight/3663/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Batman-Arkham-Knight-3663.html",
-      "status": "captured",
-      "bytes": 161440,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72737,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Batman-Arkham-Knight-3663.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3664",
-      "name": "Battlefield 1",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-1/3664/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Battlefield-1-3664.html",
-      "status": "captured",
-      "bytes": 164078,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72819,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Battlefield-1-3664.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3665",
-      "name": "Battlefield 4",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-4/3665/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Battlefield-4-3665.html",
-      "status": "captured",
-      "bytes": 160816,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72841,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Battlefield-4-3665.html",
-      "filenameMatchesExpected": true
-    },
-    {
-      "gameId": "3961",
-      "name": "Battlefield 5",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-5/3961/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Battlefield-5-3961.html",
-      "status": "captured",
-      "bytes": 165175,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72805,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "canonical",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
-      "savedAs": "FPS-Estimates-Battlefield-5-3961.html",
-      "filenameMatchesExpected": true
-    },
-    {
       "gameId": "4186",
       "name": "Battlefield 6",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlefield-6/4186/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Battlefield-6-4186.html",
       "status": "missing",
       "detail": "no saved page in pages/ resolves to this game"
-    },
-    {
-      "gameId": "3666",
-      "name": "Battlerite",
-      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Battlerite/3666/0.0.0.0.0",
-      "expectedFilename": "FPS-Estimates-Battlerite-3666.html",
-      "status": "captured",
-      "bytes": 160129,
-      "inlineScriptsWithBody": 17,
-      "inlineScriptChars": 72712,
-      "efpsCount": 0,
-      "efpsObjectsOnPage": 200,
-      "efpsQuarantinedAsOtherGame": 200,
-      "chartsWithData": 3,
-      "identitySource": "inferred-from-self-links",
-      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present. — identity established via inferred-from-self-links (no canonical <link> on this page) — but: no canonical link; identity inferred from 65 self-links to Battlerite/3666 corroborated by the page's own <h1>",
-      "savedAs": "FPS-Estimates-Battlerite-3666.html",
-      "filenameMatchesExpected": true
     },
     {
       "gameId": "3962",
@@ -380,8 +102,18 @@
       "name": "Black Desert",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Black-Desert/3963/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Black-Desert-3963.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 164168,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72776,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Black-Desert-3963.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "3964",
@@ -412,8 +144,18 @@
       "name": "Borderlands 2",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Borderlands-2/3669/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Borderlands-2-3669.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 163337,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72819,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Borderlands-2-3669.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "3670",
@@ -452,16 +194,36 @@
       "name": "Call of Duty: Black Ops 4",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-4/3965/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 166008,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72829,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Call-of-Duty-Black-Ops-4-3965.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "3672",
       "name": "Call of Duty: Black Ops III",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Call-of-Duty--Black-Ops-III/3672/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 164846,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72821,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Call-of-Duty-Black-Ops-III-3672.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "4114",
@@ -500,8 +262,18 @@
       "name": "Cities: Skylines",
       "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Cities--Skylines/3676/0.0.0.0.0",
       "expectedFilename": "FPS-Estimates-Cities-Skylines-3676.html",
-      "status": "missing",
-      "detail": "no saved page in pages/ resolves to this game"
+      "status": "captured",
+      "bytes": 161847,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72736,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Cities-Skylines-3676.html",
+      "filenameMatchesExpected": true
     },
     {
       "gameId": "3677",
@@ -574,13 +346,283 @@
       "expectedFilename": "FPS-Estimates-Cyberpunk-2077-4092.html",
       "status": "missing",
       "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3685",
+      "name": "Dark Souls",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls/3685/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dark-Souls-3685.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3686",
+      "name": "Dark Souls II",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls-II/3686/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dark-Souls-II-3686.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3687",
+      "name": "Dark Souls III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls-III/3687/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dark-Souls-III-3687.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "4022",
+      "name": "Dark Souls: Remastered",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dark-Souls--Remastered/4022/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dark-Souls-Remastered-4022.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3688",
+      "name": "Darkest Dungeon",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Darkest-Dungeon/3688/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Darkest-Dungeon-3688.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "4021",
+      "name": "Darksiders 3",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Darksiders-3--/4021/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Darksiders-3-4021.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3971",
+      "name": "Dauntless",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dauntless/3971/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dauntless-3971.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3689",
+      "name": "Day of the Tentacle Remastered",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Day-of-the-Tentacle-Remastered/3689/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Day-of-the-Tentacle-Remastered-3689.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3690",
+      "name": "DayZ",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DayZ/3690/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-DayZ-3690.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3691",
+      "name": "Dead by Daylight",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Dead-by-Daylight/3691/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Dead-by-Daylight-3691.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "4061",
+      "name": "Destiny 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Destiny-2/4061/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Destiny-2-4061.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3692",
+      "name": "Deus Ex: Mankind Divided",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Deus-Ex--Mankind-Divided/3692/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Deus-Ex-Mankind-Divided-3692.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3694",
+      "name": "Diablo III",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Diablo-III/3694/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Diablo-III-3694.html",
+      "status": "captured",
+      "bytes": 162502,
+      "inlineScriptsWithBody": 17,
+      "inlineScriptChars": 72809,
+      "efpsCount": 0,
+      "efpsObjectsOnPage": 200,
+      "efpsQuarantinedAsOtherGame": 200,
+      "chartsWithData": 3,
+      "identitySource": "canonical",
+      "detail": "complete save, but 0 usable EFPS records: all 200 of the 200 EFPS objects on the page belong to another game (CSGO) and were quarantined. This is the page's own content, not a capture fault — re-saving will not change it. 3/3 charts present.",
+      "savedAs": "FPS-Estimates-Diablo-III-3694.html",
+      "filenameMatchesExpected": true
+    },
+    {
+      "gameId": "3693",
+      "name": "DiRT Rally",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-DiRT-Rally/3693/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-DiRT-Rally-3693.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "3695",
+      "name": "Divinity: Original Sin",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Divinity--Original-Sin/3695/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Divinity-Original-Sin-3695.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
+    },
+    {
+      "gameId": "4020",
+      "name": "Divinity: Original Sin 2",
+      "url": "https://www.userbenchmark.com/PCGame/FPS-Estimates-Divinity--Original-Sin-2/4020/0.0.0.0.0",
+      "expectedFilename": "FPS-Estimates-Divinity-Original-Sin-2-4020.html",
+      "status": "missing",
+      "detail": "no saved page in pages/ resolves to this game"
     }
   ],
   "filesOutsideBatch": [
     {
+      "file": "FPS-Estimates-7-Days-to-Die-3959.html",
+      "gameId": "3959",
+      "slug": "7-Days-to-Die",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-ADR1FT-3652.html",
+      "gameId": "3652",
+      "slug": "ADR1FT",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-ARK-Survival-Evolved-3653.html",
+      "gameId": "3653",
+      "slug": "ARK--Survival-Evolved",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-AdVenture-Capitalist-3654.html",
+      "gameId": "3654",
+      "slug": "AdVenture-Capitalist",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Age-of-Empires-II-HD-Edition-3655.html",
+      "gameId": "3655",
+      "slug": "Age-of-Empires-II--HD-Edition",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Alien-Isolation-3656.html",
+      "gameId": "3656",
+      "slug": "Alien--Isolation",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Arma-3-3660.html",
+      "gameId": "3660",
+      "slug": "Arma-3",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Assassins-Creed-Odyssey-4032.html",
+      "gameId": "4032",
+      "slug": "Assassins-Creed-Odyssey",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Assassins-Creed-Origins-3960.html",
+      "gameId": "3960",
+      "slug": "Assassins-Creed-Origins",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Assetto-Corsa-3661.html",
+      "gameId": "3661",
+      "slug": "Assetto-Corsa",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Axiom-Verge-3662.html",
+      "gameId": "3662",
+      "slug": "Axiom-Verge",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Batman-Arkham-Knight-3663.html",
+      "gameId": "3663",
+      "slug": "Batman--Arkham-Knight",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Battlefield-1-3664.html",
+      "gameId": "3664",
+      "slug": "Battlefield-1",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Battlefield-4-3665.html",
+      "gameId": "3665",
+      "slug": "Battlefield-4",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Battlefield-5-3961.html",
+      "gameId": "3961",
+      "slug": "Battlefield-5",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Battlerite-3666.html",
+      "gameId": "3666",
+      "slug": "Battlerite",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
       "file": "FPS-Estimates-Counter-Strike--Global-Offensive-3680.html",
       "gameId": "3680",
       "slug": "Counter-Strike--Global-Offensive",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-DOOM-3683.html",
+      "gameId": "3683",
+      "slug": "DOOM",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-DOTA-2-3684.html",
+      "gameId": "3684",
+      "slug": "DOTA-2",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Escape-from-Tarkov-4019.html",
+      "gameId": "4019",
+      "slug": "Escape-from-Tarkov",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Euro-Truck-Simulator-2-3709.html",
+      "gameId": "3709",
+      "slug": "Euro-Truck-Simulator-2",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Fallout-4-3715.html",
+      "gameId": "3715",
+      "slug": "Fallout-4",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Far-Cry-5-3973.html",
+      "gameId": "3973",
+      "slug": "Far-Cry-5",
       "reason": "resolves to a game outside this batch"
     },
     {
@@ -590,9 +632,171 @@
       "reason": "resolves to a game outside this batch"
     },
     {
+      "file": "FPS-Estimates-Grand-Theft-Auto-V-3727.html",
+      "gameId": "3727",
+      "slug": "Grand-Theft-Auto-V",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Guild-Wars-2-3733.html",
+      "gameId": "3733",
+      "slug": "Guild-Wars-2",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-H1Z1-King-of-the-Kill-3735.html",
+      "gameId": "3735",
+      "slug": "H1Z1--King-of-the-Kill",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-League-of-Legends-3761.html",
+      "gameId": "3761",
+      "slug": "League-of-Legends",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Microsoft-Flight-Simulator-X-3774.html",
+      "gameId": "3774",
+      "slug": "Microsoft-Flight-Simulator-X",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Minecraft-3776.html",
+      "gameId": "3776",
+      "slug": "Minecraft",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Need-for-Speed-3782.html",
+      "gameId": "3782",
+      "slug": "Need-for-Speed",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Overwatch-3789.html",
+      "gameId": "3789",
+      "slug": "Overwatch",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Paladins-3791.html",
+      "gameId": "3791",
+      "slug": "Paladins",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Path-of-Exile-3792.html",
+      "gameId": "3792",
+      "slug": "Path-of-Exile",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
       "file": "FPS-Estimates-PlayerUnknowns-Battlegrounds-3944.html",
       "gameId": "3944",
       "slug": "PlayerUnknowns-Battlegrounds",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Rise-of-the-Tomb-Raider-3809.html",
+      "gameId": "3809",
+      "slug": "Rise-of-the-Tomb-Raider",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Rocket-League-3811.html",
+      "gameId": "3811",
+      "slug": "Rocket-League",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Rust-3813.html",
+      "gameId": "3813",
+      "slug": "Rust",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Shadow-of-the-Tomb-Raider-4004.html",
+      "gameId": "4004",
+      "slug": "Shadow-of-the-Tomb-Raider-",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-StarCraft-II-3828.html",
+      "gameId": "3828",
+      "slug": "StarCraft-II",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Team-Fortress-2-3837.html",
+      "gameId": "3837",
+      "slug": "Team-Fortress-2",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-The-Elder-Scrolls-V-Skyrim-3847.html",
+      "gameId": "3847",
+      "slug": "The-Elder-Scrolls-V--Skyrim",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-The-Witcher-3-Wild-Hunt-3855.html",
+      "gameId": "3855",
+      "slug": "The-Witcher-3--Wild-Hunt",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Tom-Clancys-Rainbow-Six-Siege-3859.html",
+      "gameId": "3859",
+      "slug": "Tom-Clancys-Rainbow-Six-Siege",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Tom-Clancys-The-Division-3860.html",
+      "gameId": "3860",
+      "slug": "Tom-Clancys-The-Division",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-War-Thunder-3876.html",
+      "gameId": "3876",
+      "slug": "War-Thunder",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-Warframe-3878.html",
+      "gameId": "3878",
+      "slug": "Warframe",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-World-of-Tanks-3881.html",
+      "gameId": "3881",
+      "slug": "World-of-Tanks",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-World-of-Warcraft-3882.html",
+      "gameId": "3882",
+      "slug": "World-of-Warcraft",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-World-of-Warcraft-Battle-for-Azeroth-3980.html",
+      "gameId": "3980",
+      "slug": "World-of-Warcraft--Battle-for-Azeroth",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-World-of-Warships-3983.html",
+      "gameId": "3983",
+      "slug": "World-of-Warships",
+      "reason": "resolves to a game outside this batch"
+    },
+    {
+      "file": "FPS-Estimates-X-Plane-11-3981.html",
+      "gameId": "3981",
+      "slug": "X-Plane-11",
       "reason": "resolves to a game outside this batch"
     }
   ],

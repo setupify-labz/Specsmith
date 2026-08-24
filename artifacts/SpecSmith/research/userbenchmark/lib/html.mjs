@@ -8,6 +8,11 @@
 export function decodeEntities(s) {
   if (s == null) return s;
   return String(s)
+    // U+00A0. UserBenchmark's title template emits it (the Shadow of the Tomb
+    // Raider page ends "...Tomb Raider&nbsp; "), so it belongs in the set of
+    // entities this decoder covers. Decoding it before the trim below also
+    // lets a trailing one be trimmed, which is what leaves the name clean.
+    .replace(/&nbsp;/g, '\u00A0')
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
