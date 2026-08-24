@@ -98,7 +98,7 @@ export default function HeroFpsCard() {
 
         <div className="flex items-center gap-1.5 mt-4 pt-4 text-xs font-semibold" style={{ borderTop: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}>
           <Trophy size={13} style={{ color: 'var(--ff-amber)' }} />
-          20 games estimated · real pricing
+          20 games estimated · estimated pricing
         </div>
       </motion.div>
 
