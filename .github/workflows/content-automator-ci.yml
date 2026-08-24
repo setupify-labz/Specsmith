@@ -1,0 +1,141 @@
+name: Content Automator CI
+
+on:
+  push:
+    branches:
+      - chatgpt/content-automator-v1
+      - claude/content-ui-renderer-v1
+  pull_request:
+    branches:
+      - main
+      - chatgpt/content-automator-v1
+  workflow_dispatch:
+
+jobs:
+  test-content-automator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.33.0 --activate
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run content automator tests
+        run: >-
+          pnpm --dir artifacts/SpecSmith exec vitest run
+          scripts/content-automator/strategist.test.ts
+          scripts/content-automator/logicalAutomator.test.ts
+          scripts/content-automator/contentPackage.test.ts
+          scripts/content-automator/scriptStoryboard.test.ts
+          scripts/content-automator/productionPlan.test.ts
+          scripts/content-automator/audioTrend.test.ts
+          scripts/content-automator/trendSource.test.ts
+          scripts/content-automator/bundleTikTokTrendSource.test.ts
+          scripts/content-automator/youtubeTrendSource.test.ts
+          scripts/content-automator/instagramTrendSource.test.ts
+          scripts/content-automator/multiTrendSource.test.ts
+          scripts/content-automator/rendering.test.ts
+          scripts/content-automator/elevenLabsTts.test.ts
+          scripts/content-automator/qualityReviewer.test.ts
+          scripts/content-automator/performance.test.ts
+          scripts/content-automator/uiRender/uiRender.test.ts
+          scripts/content-automator/uiRender/planIntegration.test.ts
+
+      # Playwright's own Chromium plus the system libraries it needs. Installed
+      # after pnpm install so the browser matches the pinned package version;
+      # `--with-deps` is what makes headless Chromium actually start on a bare
+      # ubuntu-latest runner.
+      - name: Install Playwright Chromium
+        run: pnpm --dir artifacts/SpecSmith exec playwright install --with-deps chromium
+
+      - name: Typecheck SpecSmith
+        run: pnpm --dir artifacts/SpecSmith typecheck
+
+      - name: Build SpecSmith
+        run: pnpm --dir artifacts/SpecSmith build
+
+      - name: Validate live ElevenLabs TTS
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          if [ -n "$ELEVENLABS_API_KEY" ]; then
+            pnpm --dir artifacts/SpecSmith content:tts:smoke
+          else
+            echo "ELEVENLABS_API_KEY is not available in this workflow context; skipping live TTS smoke test."
+          fi
+
+      - name: Validate live configured audio trend sources
+        env:
+          YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
+          BUNDLE_SOCIAL_API_KEY: ${{ secrets.BUNDLE_SOCIAL_API_KEY }}
+        run: |
+          if [ -n "$YOUTUBE_DATA_API_KEY" ] || [ -n "$BUNDLE_SOCIAL_API_KEY" ]; then
+            pnpm --dir artifacts/SpecSmith content:trends:refresh
+          else
+            echo "No live audio trend source secrets are available in this workflow context; skipping live smoke test."
+          fi
+
+      - name: Generate real daily five
+        env:
+          YOUTUBE_DATA_API_KEY: ${{ secrets.YOUTUBE_DATA_API_KEY }}
+          BUNDLE_SOCIAL_API_KEY: ${{ secrets.BUNDLE_SOCIAL_API_KEY }}
+        run: pnpm --dir artifacts/SpecSmith content:strategist
+
+      - name: Execute rendering dry run
+        run: pnpm --dir artifacts/SpecSmith content:render:dry-run
+
+      # The real thing: serve the production build that the Build step already
+      # produced and drive a browser against it. `serve` is used rather than
+      # vite preview because preview's SPA fallback can answer the wrong page
+      # for non-trailing-slash URLs.
+      - name: Serve production build
+        run: |
+          npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null http://localhost:5178/; then echo "server up"; exit 0; fi
+            sleep 1
+          done
+          echo "static server did not come up" >&2
+          exit 1
+
+      - name: Deterministic UI smoke render
+        env:
+          SPECSMITH_RENDER_BASE_URL: http://localhost:5178
+        run: pnpm --dir artifacts/SpecSmith content:render:ui-smoke
+
+      # GitHub's artifact uploader rejects filenames containing characters such
+      # as ':' even when the runner itself can create them. Archive the render
+      # directory first so the upload remains portable without mutating the
+      # renderer outputs or their manifests.
+      - name: Package rendered UI artifacts
+        if: always()
+        run: |
+          if [ -d artifacts/SpecSmith/render-output/ui-smoke ]; then
+            tar -czf artifacts/SpecSmith/render-output/deterministic-ui-renders.tar.gz \
+              -C artifacts/SpecSmith/render-output ui-smoke
+          fi
+
+      # Uploaded so the captures can be eyeballed: a render that passes its
+      # assertions can still be framed badly, and only a human looking at the
+      # PNGs catches that.
+      - name: Upload rendered UI artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deterministic-ui-renders
+          path: artifacts/SpecSmith/render-output/deterministic-ui-renders.tar.gz
+          if-no-files-found: warn
+          retention-days: 14

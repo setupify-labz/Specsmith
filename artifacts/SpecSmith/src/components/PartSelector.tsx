@@ -164,21 +164,37 @@ export default function PartSelector({
                     }}
                   />
                 </div>
-                <select
-                  aria-label="Sort by"
-                  value={sort}
-                  onChange={e => setSort(e.target.value as SortKey)}
-                  className="px-3 py-2 rounded-lg text-sm focus:outline-none cursor-pointer"
-                  style={{
-                    backgroundColor: 'var(--ff-input-bg)',
-                    border: '1px solid var(--ff-border)',
-                    color: 'var(--ff-text)',
-                  }}
-                >
-                  <option value="performance">Performance</option>
-                  <option value="price">Price</option>
-                  <option value="value">Value</option>
-                </select>
+                {/* The sort control renders its own chevron rather than the
+                    browser's. With the native appearance the UA draws the arrow
+                    inside the element's right padding, so "Performance" ran
+                    straight into it with no breathing room, and the arrow's
+                    weight and colour came from the OS instead of the design
+                    system — different on every platform. appearance-none plus a
+                    lucide chevron matches how the search field beside it already
+                    places its icon. pr-9 reserves the space the arrow occupies. */}
+                <div className="relative">
+                  <select
+                    aria-label="Sort by"
+                    value={sort}
+                    onChange={e => setSort(e.target.value as SortKey)}
+                    className="appearance-none w-full pl-3 pr-9 py-2 rounded-lg text-sm focus:outline-none cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: 'var(--ff-input-bg)',
+                      border: '1px solid var(--ff-border)',
+                      color: 'var(--ff-text)',
+                    }}
+                  >
+                    <option value="performance">Performance</option>
+                    <option value="price">Price</option>
+                    <option value="value">Value</option>
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+                    style={{ color: 'var(--ff-text-3)' }}
+                  />
+                </div>
               </div>
 
               {/* Parts grid */}
