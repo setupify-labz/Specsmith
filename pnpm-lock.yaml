@@ -122,6 +122,7 @@ overrides:
   rollup>@rollup/rollup-linux-ppc64-gnu: '-'
   rollup>@rollup/rollup-linux-ppc64-musl: '-'
   rollup>@rollup/rollup-linux-riscv64-gnu: '-'
+  rollup>@rollup/rollup-linux-riscv64-musl: '-'
   rollup>@rollup/rollup-linux-s390x-gnu: '-'
   rollup>@rollup/rollup-linux-x64-musl: '-'
   rollup>@rollup/rollup-openbsd-x64: '-'
@@ -1393,12 +1394,6 @@ packages:
 
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
-
-  '@rollup/rollup-linux-riscv64-musl@4.59.0':
-    resolution: {integrity: sha512-nLckB8WOqHIf1bhymk+oHxvM9D3tyPndZH8i8+35p/1YiVoVswPid2yLzgX7ZJP0KQvnkhM4H6QZ5m0LzbyIAg==}
-    cpu: [riscv64]
-    os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-x64-gnu@4.59.0':
     resolution: {integrity: sha512-3AHmtQq/ppNuUspKAlvA8HtLybkDflkMuLK4DPo77DfthRb71V84/c4MlWJXixZz4uruIH4uaa07IqoAkG64fg==}
@@ -4207,9 +4202,6 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
-  '@rollup/rollup-linux-riscv64-musl@4.59.0':
-    optional: true
-
   '@rollup/rollup-linux-x64-gnu@4.59.0':
     optional: true
 
@@ -5529,7 +5521,6 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.8
     optionalDependencies:
-      '@rollup/rollup-linux-riscv64-musl': 4.59.0
       '@rollup/rollup-linux-x64-gnu': 4.59.0
       fsevents: 2.3.3
 
