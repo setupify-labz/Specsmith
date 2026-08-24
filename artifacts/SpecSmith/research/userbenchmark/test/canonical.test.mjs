@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
+const rel = (from, to) => path.relative(from, to).split(path.sep).join('/');
 
 async function listScripts(dir, acc = []) {
   let entries;
@@ -55,7 +56,7 @@ const sources = (
   await Promise.all(
     scripts.map(async (f) => {
       const raw = await fs.readFile(f, 'utf-8');
-      return { file: path.relative(root, f), raw, text: stripComments(raw) };
+      return { file: rel(root, f), raw, text: stripComments(raw) };
     }),
   )
 )

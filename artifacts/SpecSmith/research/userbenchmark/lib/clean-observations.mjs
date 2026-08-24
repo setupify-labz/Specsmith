@@ -14,13 +14,20 @@
 // a score for a measurement. This is the single rule the whole file exists to
 // protect.
 
+/**
+ * benchPercent is a standing within one page's sample set, so it is bounded.
+ * valuePercent deliberately has NO upper bound - see inspectRow.
+ */
+export const MAX_BENCH_PERCENT = 100;
+
 /** Collision-resistant separator for composite keys - cannot occur in a name. */
 const KEY_SEP = '\u0001';
 
 export const METRIC_DEFINITIONS = Object.freeze({
   benchPercent:
     "UserBenchmark composite performance score (0-100) for this component within this game's sample set. NOT frames per second. Must never be converted to FPS.",
-  valuePercent: 'UserBenchmark composite price/performance score (0-100). NOT frames per second.',
+  valuePercent:
+    'UserBenchmark price/performance score, expressed as a percentage of a baseline. NOT frames per second, and NOT bounded at 100 - a part offering better-than-baseline value scores above it (this corpus publishes up to 131%).',
   samples: 'Number of user submissions aggregated into this row. Not a measurement of performance.',
   priceUsd: 'Retail price in USD as displayed by UserBenchmark at capture time. Volatile; not a performance metric.',
 });
@@ -61,10 +68,24 @@ export function inspectRow(row) {
     if (v === null || v === undefined) continue;
     if (typeof v !== 'number' || !Number.isFinite(v)) {
       flags.push({ flag: FLAG.MALFORMED, field: f, detail: `${f} is ${JSON.stringify(v)}, not a finite number.` });
-    } else if (v < 0 || v > 100) {
-      // These are 0-100 composite scores by definition; outside that range the
-      // value is not the metric it claims to be.
-      flags.push({ flag: FLAG.IMPOSSIBLE, field: f, detail: `${f} is ${v}; a composite score must fall within 0-100.` });
+      continue;
+    }
+    if (v < 0) {
+      flags.push({ flag: FLAG.IMPOSSIBLE, field: f, detail: `${f} is ${v}; neither score can be negative.` });
+      continue;
+    }
+    // benchPercent is a 0-100 standing WITHIN the page's sample set, so a
+    // value above 100 would not be the metric it claims to be.
+    //
+    // valuePercent is NOT bounded at 100 and must not be checked as if it
+    // were. It is price/performance against a baseline, so a part offering
+    // better-than-baseline value legitimately scores above it — the corpus
+    // publishes up to 131% (e.g. the Arma 3 page's GTX 1070-Ti row reads
+    // "39% | 102%" in the raw HTML). Treating those as impossible flagged 254
+    // faithfully-parsed rows as broken and invited someone to "repair" correct
+    // source data by clamping it.
+    if (f === 'benchPercent' && v > MAX_BENCH_PERCENT) {
+      flags.push({ flag: FLAG.IMPOSSIBLE, field: f, detail: `${f} is ${v}; a within-page standing cannot exceed ${MAX_BENCH_PERCENT}.` });
     }
   }
 
