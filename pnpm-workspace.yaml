@@ -13,26 +13,12 @@
 # chain attacks, which have been the #1 vector for npm ecosystem compromises.
 #
 # If you absolutely need to install a package before the 1-day window has
-# passed (e.g. an urgent security bugfix), you can add it to the
-# `minimumReleaseAgeExclude` allowlist below. Only consider doing this for
-# packages released by trusted organizations with an impeccable security
-# posture (e.g. Replit packsges, react from Meta, typescript from Microsoft). Even then,
-# remove the exclusion once the 1-day window has passed.
-#
-# Example:
-#   minimumReleaseAgeExclude:
-#     - react
-#     - typescript
+# passed (e.g. an urgent security bugfix), add a narrowly scoped
+# `minimumReleaseAgeExclude` allowlist entry and remove it once the window has
+# passed.
 #
 # ============================================================================
 minimumReleaseAge: 1440
-
-minimumReleaseAgeExclude:
-  # Exclude @replit scoped packages from the minimum release age check.
-  # These are published by Replit and trusted — the supply-chain attack vector
-  # this setting guards against does not apply to our own packages.
-  - '@replit/*'
-  - stripe-replit-sync
 
 packages:
   - artifacts/*
@@ -41,9 +27,6 @@ packages:
   - scripts
 
 catalog:
-  '@replit/vite-plugin-cartographer': ^0.5.1
-  '@replit/vite-plugin-dev-banner': ^0.1.1
-  '@replit/vite-plugin-runtime-error-modal': ^0.0.6
   '@tailwindcss/vite': ^4.1.14
   '@tanstack/react-query': ^5.90.21
   '@types/node': ^25.3.3
@@ -74,7 +57,8 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
-  # replit uses linux-x64 only, we can exclude all other platforms
+  # Cloudflare CI/deployment currently targets linux-x64; keep unrelated
+  # optional platform binaries out of the lockfile.
   "esbuild>@esbuild/darwin-arm64": "-"
   "esbuild>@esbuild/darwin-x64": "-"
   "esbuild>@esbuild/freebsd-arm64": "-"
@@ -95,11 +79,11 @@ overrides:
   "esbuild>@esbuild/win32-arm64": "-"
   "esbuild>@esbuild/win32-ia32": "-"
   "esbuild>@esbuild/win32-x64": "-"
-  "esbuild>@esbuild/aix-ppc64": '-'
-  "esbuild>@esbuild/android-arm": '-'
-  "esbuild>@esbuild/android-arm64": '-'
-  "esbuild>@esbuild/android-x64": '-'
-  "esbuild>@esbuild/openharmony-arm64": '-'
+  "esbuild>@esbuild/aix-ppc64": "-"
+  "esbuild>@esbuild/android-arm": "-"
+  "esbuild>@esbuild/android-arm64": "-"
+  "esbuild>@esbuild/android-x64": "-"
+  "esbuild>@esbuild/openharmony-arm64": "-"
   "lightningcss>lightningcss-android-arm64": "-"
   "lightningcss>lightningcss-darwin-arm64": "-"
   "lightningcss>lightningcss-darwin-x64": "-"
