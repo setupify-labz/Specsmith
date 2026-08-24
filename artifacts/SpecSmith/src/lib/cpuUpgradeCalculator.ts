@@ -59,15 +59,20 @@ export interface CpuUpgradeCandidate {
   fpsGainPct: number;
   verdict: UpgradeVerdict;
   /** Dollars spent per average FPS gained (netCost / FPS gained), rounded.
-   * Null when there's no meaningful FPS gain to divide by (zero/negative),
-   * or when netCost is 0 — in either case a $/FPS ratio would be
-   * undefined or misleading rather than a real number. */
+   * Null when netCost is 0; non-upgrades are filtered before candidates are
+   * returned, so every returned candidate has a positive modeled FPS gain. */
   costPerFps: number | null;
 }
 
 /** CPUs worth considering as an upgrade from the given chip. Same
  * cheapest-per-tier selection as the GPU version — avoids clustering every
- * suggestion right at the next tier boundary. */
+ * suggestion right at the next tier boundary.
+ *
+ * Tier is only a catalog grouping, not proof that one CPU is faster than
+ * another in SpecSmith's modeled game set. Candidates therefore have to beat
+ * the current CPU on the same 20-game 1440p High reference before they can be
+ * called an upgrade. Filtering happens before the result limit so an invalid
+ * higher-tier CPU cannot hide a later real upgrade. */
 export function getCpuUpgradeCandidates(currentId: string, limit = 6): CpuUpgradeCandidate[] {
   const current = getUpgradeCpu(currentId);
   if (!current) return [];
@@ -84,7 +89,6 @@ export function getCpuUpgradeCandidates(currentId: string, limit = 6): CpuUpgrad
 
   return [...cheapestPerTier.values()]
     .sort((a, b) => a.tier - b.tier)
-    .slice(0, limit)
     .map(cpu => {
       const avgFpsNew = averageCpuFps(cpu);
       const netCost = Math.max(0, cpu.price_usd - resale);
@@ -99,7 +103,9 @@ export function getCpuUpgradeCandidates(currentId: string, limit = 6): CpuUpgrad
       const fpsGained = avgFpsNew - avgFpsCurrent;
       const costPerFps = netCost > 0 && fpsGained > 0 ? Math.round(netCost / fpsGained) : null;
       return { cpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict, costPerFps };
-    });
+    })
+    .filter(candidate => candidate.avgFpsNew > candidate.avgFpsCurrent && candidate.fpsGainPct > 0)
+    .slice(0, limit);
 }
 
 /** The candidate with the lowest $/FPS — the best-value pick, which isn't
