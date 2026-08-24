@@ -66,9 +66,11 @@ describe('tier separation', () => {
     expect(fs.existsSync(path.join(srcRoot, 'data', 'benchmarkRecords.json'))).toBe(true);
   });
 
-  it('the measured store ships empty in V1 — schema and validation first', () => {
+  it('the measured store contains only measured-tier observations', () => {
     const store = JSON.parse(read(path.join(srcRoot, 'data', 'measuredObservations.json')));
-    expect(store.observations).toEqual([]);
+    for (const observation of store.observations) {
+      expect(observation.tier).toBe('measured');
+    }
   });
 
   it('no measured code imports node-only modules, which would break the browser bundle', () => {
