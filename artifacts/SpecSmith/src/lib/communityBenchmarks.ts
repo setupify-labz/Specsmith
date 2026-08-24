@@ -1,4 +1,6 @@
 import recordsJson from '../data/communityBenchmarkRecords.json';
+import gpuCatalogJson from '../data/gpus.json';
+import cpuCatalogJson from '../data/cpus.json';
 
 export type CommunityEvidenceTier = 'third_party_community_measured';
 export type CommunitySettingsCompleteness = 'partial' | 'complete';
@@ -34,7 +36,9 @@ export interface CommunityBenchmarkRecord {
   source: CommunityBenchmarkSource;
 }
 
-const records = recordsJson as CommunityBenchmarkRecord[];
+const records = recordsJson as unknown as CommunityBenchmarkRecord[];
+const gpuIds = new Set((gpuCatalogJson as Array<{ id: string }>).map((gpu) => gpu.id));
+const cpuIds = new Set((cpuCatalogJson as Array<{ id: string }>).map((cpu) => cpu.id));
 
 /**
  * Community benchmark records are deliberately isolated from BenchmarkRecord.
@@ -82,6 +86,14 @@ export function validateCommunityBenchmarkRecords(
 
     if (!record.gameId || !record.gameName || !record.gpuId || !record.cpuId) {
       issues.push({ id: record.id, message: 'Game, CPU, and GPU identifiers must be present.' });
+    }
+
+    if (!gpuIds.has(record.gpuId)) {
+      issues.push({ id: record.id, message: `GPU id ${record.gpuId} is not in the SpecSmith GPU catalog.` });
+    }
+
+    if (!cpuIds.has(record.cpuId)) {
+      issues.push({ id: record.id, message: `CPU id ${record.cpuId} is not in the SpecSmith CPU catalog.` });
     }
 
     if (!Number.isInteger(record.width) || !Number.isInteger(record.height) || record.width <= 0 || record.height <= 0) {
