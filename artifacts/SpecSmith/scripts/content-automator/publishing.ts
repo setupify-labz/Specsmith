@@ -49,6 +49,8 @@ export interface MetricoolPublishingRequest {
   blog_id: string;
   networks: MetricoolNetwork[];
   text: string;
+  /** Engagement question Metricool publishes immediately after the post. */
+  first_comment: string;
   date: string;
   timezone: string;
   media: string[];
@@ -233,6 +235,79 @@ function truncate(input: string, max: number): string {
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
+const FIRST_COMMENT_QUESTIONS: Record<ContentIdea["format"], readonly string[]> = {
+  comparison: [
+    "Which option would you actually buy?",
+    "Is the performance gain worth the price difference?",
+    "What comparison should SpecSmith run next?",
+  ],
+  build: [
+    "What would you change first in this build?",
+    "What budget should the next build target?",
+    "Which game should the next build be optimized for?",
+  ],
+  myth: [
+    "Did this result change your mind?",
+    "Which PC myth should SpecSmith test next?",
+    "Have you seen this advice cause a bad upgrade?",
+  ],
+  "buyer-warning": [
+    "Which part should SpecSmith check for hidden tradeoffs next?",
+    "Would this warning change what you buy?",
+    "What purchasing mistake should we break down next?",
+  ],
+  value: [
+    "Would you choose better value or pay extra for performance?",
+    "What part should SpecSmith value-check next?",
+    "Where would you spend the saved money in this build?",
+  ],
+  experiment: [
+    "What variable should we change in the next test?",
+    "What result did you expect before the reveal?",
+    "What hardware pairing should we experiment with next?",
+  ],
+  "visual-story": [
+    "Which component should get the next visual breakdown?",
+    "What moment made the tradeoff clearest?",
+    "What build decision should become the next visual story?",
+  ],
+  game: [
+    "Which game and hardware combination should SpecSmith test next?",
+    "What frame-rate target matters most to you?",
+    "Which settings would you actually use for this game?",
+  ],
+  simulation: [
+    "Which budget or component should we change in the next simulation?",
+    "What scenario should SpecSmith simulate next?",
+    "Which tradeoff should the next simulation focus on?",
+  ],
+};
+
+function stableChoiceIndex(value: string, choiceCount: number): number {
+  let hash = 2166136261;
+  for (const character of value) {
+    hash ^= character.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % choiceCount;
+}
+
+/**
+ * Builds a short, deterministic conversation starter instead of a generic
+ * promotional comment. The idea and platform select the variation, so drafts
+ * can be reviewed and retried without their copy changing underneath us.
+ */
+export function buildFirstComment(idea: ContentIdea, platform: VideoPlatform): string {
+  const questions = FIRST_COMMENT_QUESTIONS[idea.format];
+  const question = questions[stableChoiceIndex(`${idea.id}:${platform}`, questions.length)];
+  const platformPrompt: Record<VideoPlatform, string> = {
+    "youtube-shorts": "Tell us why—specific games or workloads help us choose the next test.",
+    tiktok: "Drop your pick below.",
+    "instagram-reels": "Tell us your take below.",
+  };
+  return truncate(`${question} ${platformPrompt[platform]}`, 300);
+}
+
 function platformVariant(contentPackage: ContentPackage, platform: VideoPlatform) {
   const variant = contentPackage.platforms.find((entry) => entry.platform === platform);
   if (!variant) throw new Error(`Missing ${platform} content variant for ${contentPackage.packageId}.`);
@@ -390,6 +465,7 @@ export function buildMetricoolPublishingRequest(
     blog_id: blogId,
     networks: [network],
     text: copy.text,
+    first_comment: buildFirstComment(idea, fingerprint.platform),
     date: validateScheduleDate(publishAt, timezone, now),
     timezone,
     media: [approvedMaster.mediaUrl],

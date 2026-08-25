@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   advancePublicationLedger,
   assertNotAlreadyPublished,
+  buildFirstComment,
   buildMetricoolPublishingRequest,
   buildTrackedWebsiteUrl,
   startPublicationLedger,
@@ -224,6 +225,28 @@ describe("publishing", () => {
     expect(instagram.networks).toEqual(["instagram"]);
     expect(instagram.content_type).toBe("REEL");
     expect(instagram.websiteCtaMode).toBe("profile-link");
+  });
+
+  it("adds deterministic, platform-specific first comments that invite useful replies", () => {
+    const requests = (["youtube-shorts", "tiktok", "instagram-reels"] as const).map((platform) =>
+      buildMetricoolPublishingRequest(
+        idea,
+        contentPackage,
+        fingerprint(platform),
+        gate(platform),
+        networks(),
+        "2026-08-24T18:00:00",
+        NOW,
+      )
+    );
+
+    for (const request of requests) {
+      expect(request.first_comment).toMatch(/\?/);
+      expect(request.first_comment.length).toBeLessThanOrEqual(300);
+      expect(request.first_comment).not.toMatch(/https?:|#/);
+      expect(request.first_comment).toBe(buildFirstComment(idea, request.platform));
+    }
+    expect(new Set(requests.map((request) => request.first_comment)).size).toBe(3);
   });
 
   it("fails closed on QC, rights, disconnected networks, media hashes, and guessed website bases", () => {
