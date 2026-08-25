@@ -9,6 +9,7 @@ on:
       - claude/content-ui-renderer-v1
       - claude/pr56-audit-fixes-v1
       - chatgpt/pr56-final-hardening
+      - chatgpt/elevenlabs-budget-guard-v1
   pull_request:
     branches:
       - main
