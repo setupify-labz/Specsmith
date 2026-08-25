@@ -619,6 +619,14 @@ export interface CaptureRequest extends ProcessSelection {
   outputDir?: string;
   /** Cancels an in-flight capture. */
   signal?: AbortSignal;
+  /**
+   * Called as soon as this run owns a temp directory and the capture lock, so
+   * the caller can register last-resort cleanup for them BEFORE the capture is
+   * under way. Without this the paths only surfaced on the SUCCESS path, and a
+   * cancelled run that never settled left both behind — exactly what Windows
+   * smoke testing found.
+   */
+  onResourcesAllocated?: (resources: { ownedTempDir?: string; lockPath: string }) => void;
 }
 
 export interface CaptureOutcome {
@@ -646,6 +654,13 @@ export interface CaptureDeps {
   deadlineMs?: number;
   /** Overrides how long a graceful stop is given before a forced kill. Tests use a small value. */
   terminationGraceMs?: number;
+  /** Overrides the phase-0 window in which a cancelled capture is left alone. Tests use a small value. */
+  selfExitGraceMs?: number;
+  /** Stops a leaked ETW session. Injected in tests; defaults to stopEtwSession. */
+  stopSession?: () => void;
+  /** @internal Set by runPresentMonCapture so spawnAndWait can report it. */
+  ownedTempDirForCleanup?: string;
+
   /** Overrides lock acquisition. Defaults to acquireCaptureLock(). */
   acquireLock?: () => CaptureLock;
   platform?: NodeJS.Platform;
@@ -717,7 +732,7 @@ export async function runPresentMonCapture(
     }
 
     const args = buildPresentMonArgs({ processId: target.processId, seconds: request.seconds, outputFile: csvPath });
-    await spawnAndWait(spawn, request, deps, args, target);
+    await spawnAndWait(spawn, request, { ...deps, ownedTempDirForCleanup: ownedTempDir }, args, target);
 
     if (!fsLike.existsSync(csvPath)) {
       throw new CaptureFailedError(
@@ -753,13 +768,87 @@ export async function runPresentMonCapture(
 
     return { csvPath, csv, target, binary: request.binary, seconds: request.seconds, columns, ownedTempDir };
   } catch (error) {
+    // Reached only after spawnAndWait settled, which it does only once the
+    // child is confirmed exited — so nothing is still writing into this
+    // directory when it is removed.
     cleanupOwned(fsLike, ownedTempDir);
+    // A cancelled or timed-out capture is the case where WE stopped
+    // PresentMon, so it may not have closed its own trace session. Any other
+    // failure either never started one or exited under its own control.
+    if (error instanceof CaptureCancelledError || error instanceof CaptureTimedOutError) {
+      (deps.stopSession ?? (() => stopEtwSession(CAPTURE_SESSION_NAME, { platform })))();
+    }
     throw error;
   }
 }
 
 /** How long a graceful stop is given to work before it is escalated to a forced kill. */
 export const DEFAULT_TERMINATION_GRACE_MS = 5_000;
+
+/**
+ * How long a CONSOLE-cancelled capture is left completely alone first.
+ *
+ * This window is the difference between a clean ETW session and a leaked one.
+ *
+ * Windows delivers Ctrl+C as CTRL_C_EVENT to every process attached to the
+ * console — which includes PresentMon, not just this collector. Given a
+ * moment, PresentMon handles it, closes its own trace session and exits. The
+ * previous version instead called child.kill() the instant it saw the abort;
+ * on Windows Node implements that as TerminateProcess regardless of the signal
+ * name, so PresentMon was destroyed mid-flight and its session survived it.
+ * The collector was the thing leaking the session it was trying to clean up.
+ *
+ * So on cancellation we do nothing at all for this long. Only if PresentMon is
+ * still there afterwards does the request-then-force escalation begin.
+ *
+ * A watchdog TIMEOUT skips this window: nothing sent that process a signal, so
+ * there is no self-exit to wait for.
+ */
+export const DEFAULT_SELF_EXIT_GRACE_MS = 3_000;
+
+/**
+ * Best-effort teardown of a trace session PresentMon left running.
+ *
+ * The backstop for the case the grace window above does not cover: if
+ * PresentMon had to be force-killed, nothing closed its session, and a live
+ * ETW session keeps consuming kernel buffers until someone runs `logman stop`
+ * by hand — which is exactly what Windows smoke testing had to do.
+ *
+ * `--stop_existing_session` would clear it on the NEXT capture, but "we leak a
+ * kernel resource until you happen to run us again" is not cleanup.
+ *
+ * Deliberately narrow: it stops the one session name this collector owns and
+ * refuses any other, so a bug here can never take down an unrelated trace.
+ * Failure is ignored — the usual outcome is "session not found", which is the
+ * good case.
+ */
+export function stopEtwSession(
+  sessionName: string = CAPTURE_SESSION_NAME,
+  deps: {
+    platform?: NodeJS.Platform;
+    run?: (command: string, args: readonly string[]) => void;
+  } = {},
+): boolean {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== 'win32') return false;
+  if (sessionName !== CAPTURE_SESSION_NAME) {
+    throw new Error(
+      `Refusing to stop ETW session "${sessionName}": this collector only owns ${CAPTURE_SESSION_NAME}.`,
+    );
+  }
+  const run =
+    deps.run ??
+    ((command, args) => {
+      execFileSync(command, [...args], { stdio: 'ignore', timeout: 30_000 });
+    });
+  try {
+    run('logman', ['stop', sessionName, '-ets']);
+    return true;
+  } catch {
+    // Almost always "session not found" — i.e. PresentMon closed it itself.
+    return false;
+  }
+}
 
 /**
  * Spawns PresentMon and settles on exit, error, cancellation or deadline.
@@ -778,6 +867,7 @@ function spawnAndWait(
 ): Promise<void> {
   const deadlineMs = deps.deadlineMs ?? captureDeadlineMs(request.seconds);
   const terminationGraceMs = deps.terminationGraceMs ?? DEFAULT_TERMINATION_GRACE_MS;
+  const selfExitGraceMs = deps.selfExitGraceMs ?? DEFAULT_SELF_EXIT_GRACE_MS;
   const acquireLock = deps.acquireLock ?? (() => acquireCaptureLock());
 
   return new Promise<void>((resolve, reject) => {
@@ -795,6 +885,11 @@ function spawnAndWait(
       reject(error instanceof Error ? error : new CaptureFailedError(String(error)));
       return;
     }
+    // Both resources now exist on disk. Tell the caller BEFORE spawning, so a
+    // Ctrl+C one millisecond later still has something to clean up: until this
+    // callback existed, the paths were only reachable through a successful
+    // outcome, and a cancelled run left the lock and temp directory behind.
+    request.onResourcesAllocated?.({ ownedTempDir: deps.ownedTempDirForCleanup, lockPath: captureLockPath() });
 
     let child: ChildProcessLike;
     try {
@@ -811,6 +906,7 @@ function spawnAndWait(
 
     let settled = false;
     let watchdogTimer: ReturnType<typeof setTimeout> | undefined;
+    let selfExitTimer: ReturnType<typeof setTimeout> | undefined;
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
     // Set once cancellation or the watchdog begins terminating PresentMon.
     // From then on the ONLY thing that decides the outcome is the process
@@ -829,6 +925,7 @@ function spawnAndWait(
       if (settled) return;
       settled = true;
       if (watchdogTimer) clearTimeout(watchdogTimer);
+      if (selfExitTimer) clearTimeout(selfExitTimer);
       if (forceKillTimer) clearTimeout(forceKillTimer);
       request.signal?.removeEventListener('abort', onAbort);
       lock.release();
@@ -836,41 +933,55 @@ function spawnAndWait(
     };
 
     /**
-     * Two-phase stop: request termination, then force it if that request is
-     * not honoured in time. Does NOT settle the promise — see `finish`.
+     * Three-phase stop. Does NOT settle the promise — see `finish`.
      *
-     * SIGTERM first because PresentMon may flush its CSV on a graceful stop;
-     * SIGKILL only once `terminationGraceMs` has passed with no exit, so a
-     * PresentMon that is merely slow to flush a large capture is not treated
-     * as hung. (On Windows, Node's child.kill() forcefully terminates the
-     * process regardless of which signal name is passed — there is no true
-     * graceful stop through this API on that platform — but the two-phase
-     * structure is kept anyway: it is what makes the request-then-escalate
-     * behaviour explicit and testable, and it is correct on any platform this
-     * code might ever run on.)
+     *   0. wait          nothing is sent for `selfExitGraceMs`. On a console
+     *                    cancellation PresentMon already got Ctrl+C itself and
+     *                    is busy closing its ETW session; killing it here is
+     *                    what leaked the session. Zero for a watchdog timeout,
+     *                    where nothing signalled the child.
+     *   1. SIGTERM       a request to stop, honoured on POSIX. On Windows Node
+     *                    implements every kill as TerminateProcess, so this is
+     *                    already forceful there — which is precisely why phase
+     *                    0 exists ahead of it.
+     *   2. SIGKILL       only after `terminationGraceMs` more, so a PresentMon
+     *                    slowly flushing a large capture is not mistaken for a
+     *                    hung one.
      *
      * A second trigger (e.g. the watchdog firing after cancellation already
      * began) is a no-op: the FIRST reason wins, and does not get overwritten
-     * or have its escalation timer reset.
+     * or have its escalation timers reset.
      */
-    const beginTermination = (makeError: () => Error) => {
+    const beginTermination = (makeError: () => Error, selfExitGraceMs: number) => {
       if (terminating) return;
       terminating = true;
       pendingRejection = makeError;
       if (watchdogTimer) clearTimeout(watchdogTimer);
-      try {
-        child.kill('SIGTERM');
-      } catch {
-        // Already gone — the exit listener settles this regardless.
-      }
-      forceKillTimer = setTimeout(() => {
+
+      const requestStop = () => {
         try {
-          child.kill('SIGKILL');
+          child.kill('SIGTERM');
         } catch {
-          // Already gone.
+          // Already gone — the exit listener settles this regardless.
         }
-      }, terminationGraceMs);
-      (forceKillTimer as unknown as { unref?: () => void }).unref?.();
+        forceKillTimer = setTimeout(() => {
+          try {
+            child.kill('SIGKILL');
+          } catch {
+            // Already gone.
+          }
+        }, terminationGraceMs);
+        (forceKillTimer as unknown as { unref?: () => void }).unref?.();
+      };
+
+      if (selfExitGraceMs <= 0) {
+        requestStop();
+        return;
+      }
+      // Phase 0. If the child exits by itself in this window, `finish` clears
+      // this timer and no signal is ever sent — the clean-shutdown path.
+      selfExitTimer = setTimeout(requestStop, selfExitGraceMs);
+      (selfExitTimer as unknown as { unref?: () => void }).unref?.();
     };
 
     function onAbort() {
@@ -879,6 +990,7 @@ function spawnAndWait(
           new CaptureCancelledError(
             `Capture of ${target.name} (pid ${target.processId}) was cancelled. Waiting for PresentMon to stop before cleaning up.`,
           ),
+        selfExitGraceMs,
       );
     }
 
@@ -891,6 +1003,9 @@ function spawnAndWait(
             `PresentMon did not exit within ${Math.round(deadlineMs / 1000)}s for a ${request.seconds}s capture and is being stopped. ` +
               'It was asked to terminate itself with --terminate_after_timed, so overrunning means it hung rather than ran long.',
           ),
+        // No self-exit grace: a timeout means nothing signalled the child, so
+        // there is no pending clean shutdown to wait for.
+        0,
       );
     }, deadlineMs);
     // A pending watchdog must not by itself keep the process alive.

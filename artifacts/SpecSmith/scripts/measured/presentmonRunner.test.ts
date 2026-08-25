@@ -9,6 +9,7 @@ import {
   CaptureFailedError,
   CaptureLockError,
   CaptureTimedOutError,
+  DEFAULT_SELF_EXIT_GRACE_MS,
   DEFAULT_TERMINATION_GRACE_MS,
   MAX_CAPTURE_SECONDS,
   MIN_CAPTURE_SECONDS,
@@ -23,6 +24,7 @@ import {
   resolvePresentMonBinary,
   runPresentMonCapture,
   selectTargetProcess,
+  stopEtwSession,
   type ChildProcessLike,
   type LockFsLike,
   type PresentMonBinary,
@@ -437,6 +439,10 @@ describe('running a capture', () => {
         // well before it, distinguishing "graceful stop worked" from
         // "had to be escalated" in test timing.
         terminationGraceMs: 30,
+        // Phase 0 — the window a cancelled capture is left completely alone so
+        // PresentMon can close its own ETW session. Small here; the real
+        // default is DEFAULT_SELF_EXIT_GRACE_MS.
+        selfExitGraceMs: 20,
         acquireLock: h.acquireLock,
       },
     );
@@ -909,5 +915,245 @@ describe('the single-capture lock', () => {
   // pid), just proof the constant this module documents is what ships.
   it('DEFAULT_TERMINATION_GRACE_MS is generous enough for a real flush', () => {
     expect(DEFAULT_TERMINATION_GRACE_MS).toBeGreaterThanOrEqual(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The ETW leak: what Windows smoke testing actually found
+// ---------------------------------------------------------------------------
+
+// Pressing Ctrl+C during a real capture left the SpecSmithMeasuredCapture ETW
+// session running, and it had to be stopped by hand with `logman stop`. The
+// cause was this module: Windows delivers Ctrl+C to every process on the
+// console, so PresentMon had ALREADY been told to stop and was closing its own
+// session — and the runner immediately called child.kill(), which Node
+// implements as TerminateProcess on Windows. PresentMon was destroyed
+// mid-shutdown and its session outlived it. The collector leaked the session it
+// was trying to clean up.
+describe('a cancelled capture lets PresentMon close its own ETW session first', () => {
+  const csvBody = `${REAL_HEADER}\nRDR2.exe,29668,0x1,Other,-1,0,0,0.034,0,15.88,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,0.36,10.6`;
+
+  function harness(opts: { neverExits?: boolean } = {}) {
+    const child = new FakeChild();
+    const files: Record<string, string> = {};
+    const fsDouble = fakeFs(files);
+    const stopped: string[] = [];
+    const spawn = (_cmd: string, args: readonly string[]) => {
+      if (!opts.neverExits) {
+        setTimeout(() => {
+          files[String(args[args.indexOf('--output_file') + 1])] = csvBody;
+          child.emit('exit', 0, null);
+        }, 1);
+      }
+      return child;
+    };
+    return { child, files, fsDouble, spawn, stopped, stopSession: () => stopped.push('stopped') };
+  }
+
+  const run = (h: ReturnType<typeof harness>, extra: Record<string, unknown> = {}, deps: Record<string, unknown> = {}) =>
+    runPresentMonCapture(
+      { processId: 29668, seconds: 30, binary, ...extra },
+      {
+        spawn: h.spawn,
+        listProcesses: () => [proc(29668, 'RDR2.exe')],
+        fsLike: h.fsDouble as never,
+        platform: 'win32',
+        deadlineMs: 5000,
+        terminationGraceMs: 30,
+        selfExitGraceMs: 60,
+        acquireLock: noopLock,
+        stopSession: h.stopSession,
+        ...deps,
+      },
+    );
+
+  // THE regression. Nothing may be sent to PresentMon in the phase-0 window.
+  it('sends NO signal at all while PresentMon is still shutting itself down', async () => {
+    const h = harness({ neverExits: true });
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+
+    // Mid-window: the abort has been seen, but the child is untouched.
+    await new Promise((r) => setTimeout(r, 25));
+    expect(h.child.killed).toEqual([]);
+
+    h.child.emit('exit', 0, null);
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+  });
+
+  // The clean path, and the whole point of the window: PresentMon exits by
+  // itself, having closed its session, and is never signalled.
+  it('never signals PresentMon at all when it exits within the window', async () => {
+    const h = harness({ neverExits: true });
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+    setTimeout(() => h.child.emit('exit', 0, null), 10);
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+    expect(h.child.killed).toEqual([]);
+  });
+
+  // A PresentMon that ignores its own Ctrl+C still gets escalated — the window
+  // is a grace period, not a licence to hang.
+  it('escalates once the window expires without an exit', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGKILL', delayMs: 5 };
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+    expect(h.child.killed).toEqual(['SIGTERM', 'SIGKILL']);
+  });
+
+  // A watchdog timeout is not a console Ctrl+C: nothing signalled the child, so
+  // there is no self-shutdown to wait for and waiting would only add delay.
+  it('does not wait for a self-exit on a watchdog timeout', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGTERM', delayMs: 5 };
+    const promise = run(h, {}, { deadlineMs: 10, selfExitGraceMs: 10_000 });
+    await expect(promise).rejects.toThrow(CaptureTimedOutError);
+    expect(h.child.killed).toEqual(['SIGTERM']);
+  });
+
+  // Backstop for the case the window did not cover.
+  it('stops a leaked session after a cancelled capture', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGKILL', delayMs: 5 };
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+    expect(h.stopped).toEqual(['stopped']);
+  });
+
+  it('stops a leaked session after a watchdog timeout', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGKILL', delayMs: 5 };
+    await expect(run(h, {}, { deadlineMs: 10 })).rejects.toThrow(CaptureTimedOutError);
+    expect(h.stopped).toEqual(['stopped']);
+  });
+
+  // A capture that succeeded closed its own session; reaching for logman there
+  // would be noise, and on a shared machine, risk.
+  it('does not touch any session after a normal capture', async () => {
+    const h = harness();
+    await run(h);
+    expect(h.stopped).toEqual([]);
+  });
+
+  it('does not touch any session when PresentMon could not even start', async () => {
+    const h = harness();
+    await expect(
+      run(h, {}, {
+        spawn: () => {
+          throw new Error('spawn ENOENT');
+        },
+      }),
+    ).rejects.toThrow(/Could not start PresentMon/);
+    expect(h.stopped).toEqual([]);
+  });
+
+  it('leaves a real grace window by default, not a token one', () => {
+    expect(DEFAULT_SELF_EXIT_GRACE_MS).toBeGreaterThanOrEqual(1000);
+  });
+});
+
+describe('stopping a leaked ETW session', () => {
+  it('runs the documented logman incantation for our session only', () => {
+    const calls: Array<{ cmd: string; args: readonly string[] }> = [];
+    expect(
+      stopEtwSession(CAPTURE_SESSION_NAME, { platform: 'win32', run: (cmd, args) => { calls.push({ cmd, args }); } }),
+    ).toBe(true);
+    expect(calls).toEqual([{ cmd: 'logman', args: ['stop', CAPTURE_SESSION_NAME, '-ets'] }]);
+  });
+
+  // A bug here could otherwise tear down an unrelated trace on the machine.
+  it('REFUSES to stop a session this collector does not own', () => {
+    expect(() => stopEtwSession('NT Kernel Logger', { platform: 'win32', run: () => {} })).toThrow(/only owns/);
+  });
+
+  it('is a no-op off Windows, where there are no ETW sessions', () => {
+    let called = false;
+    expect(stopEtwSession(CAPTURE_SESSION_NAME, { platform: 'linux', run: () => { called = true; } })).toBe(false);
+    expect(called).toBe(false);
+  });
+
+  // "Session not found" is the GOOD outcome — PresentMon closed it itself.
+  it('reports failure quietly rather than throwing when there is nothing to stop', () => {
+    expect(
+      stopEtwSession(CAPTURE_SESSION_NAME, {
+        platform: 'win32',
+        run: () => { throw new Error('Data Collector Set was not found.'); },
+      }),
+    ).toBe(false);
+  });
+});
+
+// Until this callback existed, ownedTempDir and the lock path were reachable
+// only through a SUCCESSFUL outcome — so a cancelled run left both on disk,
+// which is exactly what Windows smoke testing reported.
+describe('resources are announced before the capture, not after it succeeds', () => {
+  it('reports the temp directory and lock path before PresentMon is spawned', async () => {
+    const child = new FakeChild();
+    const files: Record<string, string> = {};
+    const fsDouble = fakeFs(files);
+    const seen: Array<{ ownedTempDir?: string; lockPath: string }> = [];
+    let spawnedAfterCallback = false;
+
+    const spawn = (_c: string, args: readonly string[]) => {
+      spawnedAfterCallback = seen.length > 0;
+      setTimeout(() => {
+        files[String(args[args.indexOf('--output_file') + 1])] =
+          `${REAL_HEADER}\nRDR2.exe,29668,0x1,Other,-1,0,0,0.034,0,15.88,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,0.36,10.6`;
+        child.emit('exit', 0, null);
+      }, 1);
+      return child;
+    };
+
+    await runPresentMonCapture(
+      { processId: 29668, seconds: 30, binary, onResourcesAllocated: (r) => seen.push(r) },
+      {
+        spawn,
+        listProcesses: () => [proc(29668, 'RDR2.exe')],
+        fsLike: fsDouble as never,
+        platform: 'win32',
+        deadlineMs: 500,
+        acquireLock: noopLock,
+        stopSession: () => {},
+      },
+    );
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0].lockPath).toContain(CAPTURE_SESSION_NAME);
+    expect(seen[0].ownedTempDir).toBeDefined();
+    expect(spawnedAfterCallback).toBe(true);
+  });
+
+  // A --capture-output-dir belongs to the operator and must never be offered
+  // up for deletion.
+  it('reports no temp directory when the operator chose the output directory', async () => {
+    const child = new FakeChild();
+    const fsDouble = fakeFs({});
+    const seen: Array<{ ownedTempDir?: string; lockPath: string }> = [];
+    await expect(
+      runPresentMonCapture(
+        { processId: 1, seconds: 30, binary, outputDir: 'D:\\captures', onResourcesAllocated: (r) => seen.push(r) },
+        {
+          spawn: () => {
+            setTimeout(() => child.emit('exit', 0, null), 1);
+            return child;
+          },
+          listProcesses: () => [proc(1, 'g.exe')],
+          fsLike: fsDouble as never,
+          platform: 'win32',
+          deadlineMs: 500,
+          acquireLock: noopLock,
+          stopSession: () => {},
+        },
+      ),
+    ).rejects.toThrow();
+    expect(seen).toHaveLength(1);
+    expect(seen[0].ownedTempDir).toBeUndefined();
   });
 });

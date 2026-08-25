@@ -439,7 +439,8 @@ if you see that message, move on to the next row.
 | 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
 | 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
 | 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
-| 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** around 5 seconds in | "was cancelled. Waiting for PresentMon to stop…", then it actually exits and the temp directory is removed |
+| 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`; `$LASTEXITCODE` is 130 |
+| 8b | The second Ctrl-C is a real escape hatch | Repeat #7, press **Ctrl-C twice** | "Second interrupt — abandoning the wait", exits promptly, lock and temp directory still removed |
 | 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |
 | 10 | Closing the game mid-capture is handled | Repeat #7, close the game before the 30 seconds are up | Either a short, valid capture, or a clear "presented no frames" message |
 | 11 | **Two captures can't collide.** Open a SECOND terminal | While #7 (a real, slow one — use 60+ seconds) is still running in terminal A, run the SAME command in terminal B | Terminal B refuses immediately: "Another SpecSmith capture is already running (pid …)" — it must NOT start, and terminal A's capture must finish normally, undisturbed |
@@ -458,7 +459,11 @@ if you see that message, move on to the next row.
 - The temp directory under `%TEMP%\specsmith-capture-*` is **gone** afterwards
   when `--keep-capture` was not passed (steps 7, 8, 11).
 - No `SpecSmithMeasuredCapture` ETW session is left behind:
-  `logman query -ets` should not list it once the collector has exited.
+  `logman query -ets` should not list it once the collector has exited. This
+  is the check that failed before: Ctrl+C used to leave the session running
+  and it had to be stopped by hand with `logman stop SpecSmithMeasuredCapture
+  -ets`. If it is somehow still listed, that command is the manual recovery —
+  and it is a bug worth reporting, not a normal step.
 - No lock file is left behind: `Test-Path "$env:TEMP\SpecSmithMeasuredCapture.lock"`
   should print `False` once every capture above has finished.
 
@@ -481,6 +486,17 @@ the store append path and the frame-time archive will have executed for real.
 - **Frame-generation and upscaler paths** have never been captured for real;
   the `msBetweenPresents` choice that keeps generated frames out of the count
   is reasoned from PresentMon's documentation, not observed.
+- **Cancellation has been fixed but not re-verified on Windows.** Ctrl+C
+  during a real capture previously returned to the prompt with no message and
+  left the ETW session, lock file and temp capture behind. The collector now
+  keeps itself alive through the signal, leaves PresentMon alone for
+  `DEFAULT_SELF_EXIT_GRACE_MS` so it can close its own trace session, escalates
+  only if it does not, cleans up only after a confirmed exit, and stops a
+  leaked session with `logman` as a backstop. That path is covered by tests
+  that drive a real process with a real signal (`cancellation.test.ts`) — but
+  the specific Windows behaviour that caused the original symptom, cmd.exe and
+  pnpm tearing down the console on Ctrl+C, cannot be reproduced off Windows.
+  Smoke-test steps 8 and 8b are the real check.
 - **Automatic capture has never run.** No PresentMon process has been spawned by
   this collector. The flag set is taken from Intel's documented console options
   and the column requirements from the pinned real fixture, but the pairing —

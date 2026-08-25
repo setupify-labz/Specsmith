@@ -60,6 +60,7 @@ import {
   resolvePresentMonBinary,
   runPresentMonCapture,
 } from './presentmonRunner';
+import { installCancellationHandler } from './cancellation';
 import { KNOWN_DETECTION_GAPS, type DetectedHardware } from './environment';
 import { loadCatalogs, resolveHardware } from './catalog';
 
@@ -89,6 +90,9 @@ export const DEFAULT_BUILD_HASH_FILES: readonly string[] = [
   // segmentation needs exist. A capture produced under a different flag set is
   // a different measurement even when the parser reads it identically.
   'presentmonRunner.ts',
+  // Cancellation decides whether a run completes or is abandoned, and what is
+  // left on disk when it is — part of how a capture came to exist.
+  'cancellation.ts',
   // Segmentation decides WHICH frames a figure is computed over, so it
   // determines what the figure means just as directly as the statistics do.
   'segmentation.ts',
@@ -495,9 +499,14 @@ async function main(argv: string[]): Promise<void> {
 
     // Ctrl-C stops the capture and cleans up rather than leaving PresentMon
     // and its ETW session running behind a dead collector.
-    const controller = new AbortController();
-    const onSigint = () => controller.abort();
-    process.once('SIGINT', onSigint);
+    //
+    // This used to be `process.once('SIGINT', () => controller.abort())`, which
+    // aborted the signal but did nothing to keep this process alive long enough
+    // to act on it. On Windows the Ctrl+C reaches cmd.exe, pnpm, tsx, the
+    // collector and PresentMon simultaneously; the shell tears down, the prompt
+    // returns, and the collector died mid-cleanup — leaving a live ETW session,
+    // the lock file and the temp capture behind. See ./cancellation.ts.
+    const cancellation = installCancellationHandler();
     try {
       console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
       const outcome = await runPresentMonCapture({
@@ -506,7 +515,10 @@ async function main(argv: string[]): Promise<void> {
         seconds: source.seconds,
         binary,
         outputDir: arg(argv, 'capture-output-dir'),
-        signal: controller.signal,
+        signal: cancellation.signal,
+        // Handed over the moment they exist, not when the capture succeeds, so
+        // a Ctrl+C during the capture still has something to clean up.
+        onResourcesAllocated: (resources) => cancellation.track(resources),
       });
       csvPath = outcome.csvPath;
       csvText = outcome.csv;
@@ -522,7 +534,10 @@ async function main(argv: string[]): Promise<void> {
       // --capture-output-dir the operator chose is left alone.
       if (outcome.ownedTempDir) release = () => releaseCapture(outcome);
     } finally {
-      process.removeListener('SIGINT', onSigint);
+      // The capture is over either way. Past this point the CSV is owned by
+      // the normal path (or by --keep-capture), so the last-resort exit
+      // cleanup must stop tracking it.
+      cancellation.dispose();
     }
   } else {
     csvPath = source.csvPath;
