@@ -4,6 +4,7 @@ import gpus from "../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../src/data/cpus.json" with { type: "json" };
 import { buildReviewableAutomationBatch } from "./reviewableAutomator.ts";
 import { applyAudioSelectionsToProductionPlans, buildAudioSelections } from "./audioTrend.ts";
+import { elevenLabsTtsConfigFromEnv } from "./elevenLabsTts.ts";
 import { refreshAllAudioTrendSources } from "./multiTrendSource.ts";
 import type { HardwareItem, VideoPerformanceRecord } from "./types.ts";
 
@@ -32,12 +33,19 @@ const [performanceHistory, audioTrendRefresh] = await Promise.all([
   }),
 ]);
 const audioTrends = audioTrendRefresh.snapshot;
+const ttsConfig = elevenLabsTtsConfigFromEnv();
 
 const batch = buildReviewableAutomationBatch(
   gpus as HardwareItem[],
   cpus as HardwareItem[],
   performanceHistory,
   now,
+  ttsConfig
+    ? {
+        voiceId: ttsConfig.voiceId,
+        voiceName: process.env.ELEVENLABS_VOICE_NAME?.trim() || undefined,
+      }
+    : {},
 );
 
 const selectedIdeas = batch.dailyFive.map((entry) => entry.idea);

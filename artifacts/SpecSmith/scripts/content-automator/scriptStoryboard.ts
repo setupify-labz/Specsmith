@@ -7,6 +7,11 @@ import type {
   StoryboardBeat,
   VideoPlatform,
 } from "./types.ts";
+import {
+  assertProductionNarrationLength,
+  MIN_PRODUCTION_NARRATION_CHARACTERS,
+  normalizeNarrationText,
+} from "./narrationPolicy.ts";
 
 const DURATION_BY_PLATFORM: Record<VideoPlatform, number> = {
   "youtube-shorts": 24,
@@ -25,15 +30,62 @@ function factSlice(facts: string[], index: number): string[] {
   return [facts[index % facts.length]];
 }
 
+function compactSentence(value: string, maxCharacters: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxCharacters) return normalized;
+
+  const slice = normalized.slice(0, Math.max(1, maxCharacters - 1));
+  const lastSpace = slice.lastIndexOf(" ");
+  const clipped = (lastSpace >= Math.floor(maxCharacters * 0.6) ? slice.slice(0, lastSpace) : slice)
+    .replace(/[\s,;:.!?-]+$/g, "");
+  return `${clipped}…`;
+}
+
+/**
+ * Narration is deliberately identical across platforms. Platform openings,
+ * captions, CTAs, and edit decisions may differ, but paying to synthesize the
+ * same creative three times provides no viewer value.
+ */
+function sharedNarrationByPurpose(idea: ContentIdea): Record<StoryboardBeat["purpose"], string> {
+  const lines: Record<StoryboardBeat["purpose"], string> = {
+    hook: compactSentence(idea.hook, 52),
+    commitment: "Lock in your answer before the reveal.",
+    evidence: "SpecSmith checks verified inputs for this decision—not guesses.",
+    reversal: `The catch: ${compactSentence(idea.angle, 64)}`,
+    payoff: "The result follows verified inputs, never invented benchmark data.",
+    cta: "Open the result in SpecSmith and inspect the full evidence.",
+  };
+
+  // Short source hooks still need enough spoken material for the intended
+  // 24-26 second delivery. Add only complete, useful sentences—never filler or
+  // fabricated product claims.
+  const padding = [
+    "Verify it.",
+    "Check every tradeoff.",
+    "Use the full comparison.",
+    "Review the evidence before buying.",
+  ];
+  for (const sentence of padding) {
+    const narration = normalizeNarrationText(Object.values(lines));
+    if (narration.length >= MIN_PRODUCTION_NARRATION_CHARACTERS) break;
+    lines.cta = `${lines.cta} ${sentence}`;
+  }
+
+  const narration = normalizeNarrationText(Object.values(lines));
+  assertProductionNarrationLength(narration);
+  return lines;
+}
+
 function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration: number): StoryboardBeat[] {
   const route = idea.productConnection.route;
-  const interactionPrefix = variant.platform === "tiktok" ? "Pick now. " : "";
+  const narration = sharedNarrationByPurpose(idea);
   return [
     {
       startSecond: 0,
       endSecond: 2,
       purpose: "hook",
-      narration: `${interactionPrefix}${idea.hook}`,
+      narration: narration.hook,
       visualDirection: `${idea.creativeDNA.openingImage} The first frame must show the actual decision, not a logo or generic PC B-roll.`,
       onScreenText: idea.title,
       factDependencies: [],
@@ -42,7 +94,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 2,
       endSecond: 6,
       purpose: "commitment",
-      narration: `Before the answer appears, decide what you would do. ${idea.productConnection.userProblem}`,
+      narration: narration.commitment,
       visualDirection: `${variant.opening} Visually lock the viewer into a choice before exposing the decisive evidence.`,
       onScreenText: "LOCK YOUR PICK",
       factDependencies: factSlice(idea.requiredFacts, 0),
@@ -51,7 +103,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 6,
       endSecond: 12,
       purpose: "evidence",
-      narration: `Now use the verified SpecSmith inputs. The decision has to follow the real data, not the obvious-looking answer.`,
+      narration: narration.evidence,
       visualDirection: `Reveal one verified input through the real ${idea.productConnection.feature} workflow. Every number shown must map to a required fact.`,
       onScreenText: "REAL SPECS • REAL PRICES • REAL RULES",
       factDependencies: factSlice(idea.requiredFacts, 1),
@@ -60,7 +112,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 12,
       endSecond: 18,
       purpose: "reversal",
-      narration: `Here is the tradeoff that can flip the answer: ${idea.angle}`,
+      narration: narration.reversal,
       visualDirection: `${idea.creativeDNA.patternInterrupt} Show the strongest counterpoint instead of racing straight to a predetermined winner.`,
       onScreenText: "BUT HERE'S THE CATCH",
       factDependencies: factSlice(idea.requiredFacts, 2),
@@ -69,7 +121,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 18,
       endSecond: Math.max(21, duration - 2),
       purpose: "payoff",
-      narration: `SpecSmith resolves the exact decision, and the result should follow only from the verified facts available for this idea.`,
+      narration: narration.payoff,
       visualDirection: `${idea.creativeDNA.payoff} End the story on the product result, not a generic engagement prompt.`,
       onScreenText: "SPECSMITH RESULT",
       factDependencies: [...idea.requiredFacts],
@@ -78,7 +130,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: Math.max(21, duration - 2),
       endSecond: duration,
       purpose: "cta",
-      narration: variant.cta,
+      narration: narration.cta,
       visualDirection: `Show the exact continuation destination ${route} and the next product action: ${idea.productConnection.continuationAction}`,
       onScreenText: `CONTINUE IN SPECSMITH → ${route}`,
       factDependencies: [],

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildAutomationBatch, hookFamilyOfIdea } from "./logicalAutomator.ts";
+import {
+  MAX_PRODUCTION_NARRATION_CHARACTERS,
+  MIN_PRODUCTION_NARRATION_CHARACTERS,
+  normalizeNarrationText,
+} from "./narrationPolicy.ts";
 import type { HardwareItem, VideoPerformanceRecord } from "./types.ts";
 
 const gpus: HardwareItem[] = [
@@ -70,6 +75,30 @@ describe("logical content automator", () => {
       expect(plan.experiment.holdConstant.some((rule) => rule.includes(plan.idea.productConnection.route))).toBe(true);
       expect(hookFamilyOfIdea(plan.idea).length).toBeGreaterThan(0);
     }
+  });
+
+  it("keeps every daily creative inside the narration budget and reuses its copy across platforms", () => {
+    const batch = buildAutomationBatch(gpus, cpus, [], new Date("2026-08-21T12:00:00Z"));
+    for (const storyboard of batch.scriptStoryboards) {
+      const narrations = storyboard.scripts.map((script) => normalizeNarrationText(script.beats.map((beat) => beat.narration)));
+      expect(new Set(narrations).size).toBe(1);
+      expect(narrations[0].length).toBeGreaterThanOrEqual(MIN_PRODUCTION_NARRATION_CHARACTERS);
+      expect(narrations[0].length).toBeLessThanOrEqual(MAX_PRODUCTION_NARRATION_CHARACTERS);
+    }
+  });
+
+  it("records the configured production voice in every creative fingerprint", () => {
+    const batch = buildAutomationBatch(
+      gpus,
+      cpus,
+      [],
+      new Date("2026-08-21T12:00:00Z"),
+      { voiceId: "voice-production", voiceName: "SpecSmith Voice" },
+    );
+
+    expect(batch.creativeFingerprints).toHaveLength(15);
+    expect(batch.creativeFingerprints.every((fingerprint) => fingerprint.voiceId === "voice-production")).toBe(true);
+    expect(batch.creativeFingerprints.every((fingerprint) => fingerprint.voiceName === "SpecSmith Voice")).toBe(true);
   });
 
   it("uses repeated performance evidence as a bounded signal instead of blindly copying winners", () => {

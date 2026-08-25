@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
+import {
+  MAX_PRODUCTION_NARRATION_CHARACTERS,
+  MIN_PRODUCTION_NARRATION_CHARACTERS,
+  normalizeNarrationText,
+} from "./narrationPolicy.ts";
 import type { ContentIdea } from "./types.ts";
 
 const idea: ContentIdea = {
@@ -78,5 +83,16 @@ describe("script storyboard", () => {
       expect(script.beats.at(-1)?.endSecond).toBe(script.targetDurationSeconds);
       expect(script.beats.every((beat) => beat.endSecond > beat.startSecond)).toBe(true);
     }
+  });
+
+  it("builds one reusable 330-360 character narration for every platform", () => {
+    const contentPackage = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
+    const result = buildScriptStoryboardPackage(idea, contentPackage);
+    const narrations = result.scripts.map((script) => normalizeNarrationText(script.beats.map((beat) => beat.narration)));
+
+    expect(new Set(narrations).size).toBe(1);
+    expect(narrations[0].length).toBeGreaterThanOrEqual(MIN_PRODUCTION_NARRATION_CHARACTERS);
+    expect(narrations[0].length).toBeLessThanOrEqual(MAX_PRODUCTION_NARRATION_CHARACTERS);
+    expect(new Set(result.scripts.map((script) => script.finalCta)).size).toBeGreaterThan(1);
   });
 });

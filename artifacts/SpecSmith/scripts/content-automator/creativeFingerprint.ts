@@ -186,6 +186,7 @@ export function buildCreativeFingerprints(
   contentPackages: ContentPackage[],
   storyboardPackages: ScriptStoryboardPackage[],
   runtimeByIdeaAndPlatform: Record<string, CreativeRuntimeMetadata> = {},
+  runtimeDefaults: CreativeRuntimeMetadata = {},
 ): CreativeFingerprint[] {
   const fingerprints: CreativeFingerprint[] = [];
 
@@ -198,7 +199,10 @@ export function buildCreativeFingerprints(
           plan,
           contentPackage,
           script,
-          runtimeByIdeaAndPlatform[runtimeKey(plan.idea.id, script.platform)] ?? {},
+          {
+            ...runtimeDefaults,
+            ...(runtimeByIdeaAndPlatform[runtimeKey(plan.idea.id, script.platform)] ?? {}),
+          },
         ),
       );
     }

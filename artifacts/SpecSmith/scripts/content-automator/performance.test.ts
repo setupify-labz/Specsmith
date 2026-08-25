@@ -146,4 +146,66 @@ describe("performance learner", () => {
     expect(learning.byVoice.every((item) => item.status === "explore")).toBe(true);
     expect(learning.recommendations.some((entry) => entry.includes("still inconclusive"))).toBe(true);
   });
+
+  it("keeps voice switching recommendation-only until 15 sufficiently confident creatives", () => {
+    const underThreshold = Array.from({ length: 14 }, (_, index) => [
+      record({ videoId: `strong-${index}`, creativeId: `strong-creative-${index}`, voiceId: "voice-a", voiceName: "Voice A" }),
+      record({
+        videoId: `weak-${index}`,
+        creativeId: `weak-creative-${index}`,
+        voiceId: "voice-b",
+        voiceName: "Voice B",
+        stayedToWatchRate: 0.3,
+        averagePercentageViewed: 0.35,
+        retentionCurve: [{ elapsedRatio: 0.95, audienceRatio: 0.15 }],
+        likes: 80,
+        comments: 5,
+        shares: 4,
+        saves: 3,
+        followsGained: 2,
+        siteClicks: 4,
+        builderStarts: 1,
+        affiliateClicks: 0,
+      }),
+    ]).flat();
+    const early = analyzePerformance(underThreshold);
+    expect(early.byVoice.every((item) => item.status === "explore")).toBe(true);
+    expect(early.recommendations.some((entry) => entry.includes("Voice recommendation only"))).toBe(false);
+
+    const eligible = analyzePerformance([
+      ...underThreshold,
+      record({ videoId: "strong-14", creativeId: "strong-creative-14", voiceId: "voice-a", voiceName: "Voice A" }),
+      record({
+        videoId: "weak-14",
+        creativeId: "weak-creative-14",
+        voiceId: "voice-b",
+        voiceName: "Voice B",
+        stayedToWatchRate: 0.3,
+        averagePercentageViewed: 0.35,
+        retentionCurve: [{ elapsedRatio: 0.95, audienceRatio: 0.15 }],
+        likes: 80,
+        comments: 5,
+        shares: 4,
+        saves: 3,
+        followsGained: 2,
+        siteClicks: 4,
+        builderStarts: 1,
+        affiliateClicks: 0,
+      }),
+    ]);
+    expect(eligible.byVoice.some((item) => item.status === "promote")).toBe(true);
+    expect(eligible.byVoice.some((item) => item.status === "retire")).toBe(true);
+    expect(eligible.recommendations.some((entry) => entry.includes("Do not switch production automatically"))).toBe(true);
+  });
+
+  it("counts one cross-posted creative once for the voice-switch gate", () => {
+    const learning = analyzePerformance([
+      record({ videoId: "yt", creativeId: "creative-1", platform: "youtube-shorts", voiceId: "voice-a" }),
+      record({ videoId: "tt", creativeId: "creative-1", platform: "tiktok", voiceId: "voice-a" }),
+      record({ videoId: "ig", creativeId: "creative-1", platform: "instagram-reels", voiceId: "voice-a" }),
+    ]);
+
+    expect(learning.byVoice.find((item) => item.factor === "voice-a")?.sampleSize).toBe(1);
+    expect(learning.byVoice.find((item) => item.factor === "voice-a")?.status).toBe("explore");
+  });
 });

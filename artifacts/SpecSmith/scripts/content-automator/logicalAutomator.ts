@@ -3,7 +3,7 @@ import { analyzePerformance } from "./performance.ts";
 import { buildContentPackages } from "./contentPackage.ts";
 import { buildScriptStoryboardPackages } from "./scriptStoryboard.ts";
 import { buildProductionPlanPackages } from "./productionPlan.ts";
-import { buildCreativeFingerprints } from "./creativeFingerprint.ts";
+import { buildCreativeFingerprints, type CreativeRuntimeMetadata } from "./creativeFingerprint.ts";
 import type {
   AutomationBatch,
   ContentFormat,
@@ -169,6 +169,7 @@ export function buildAutomationBatch(
   cpus: HardwareItem[],
   performanceRecords: VideoPerformanceRecord[] = [],
   now = new Date(),
+  creativeRuntimeDefaults: CreativeRuntimeMetadata = {},
 ): AutomationBatch {
   const strategy = buildStrategyBatch(gpus, cpus, now);
   const performanceLearning = performanceRecords.length > 0 ? analyzePerformance(performanceRecords, now) : undefined;
@@ -228,7 +229,13 @@ export function buildAutomationBatch(
   const contentPackages = buildContentPackages(selected, now);
   const scriptStoryboards = buildScriptStoryboardPackages(selected, contentPackages);
   const productionPlans = buildProductionPlanPackages(scriptStoryboards);
-  const creativeFingerprints = buildCreativeFingerprints(dailyFive, contentPackages, scriptStoryboards);
+  const creativeFingerprints = buildCreativeFingerprints(
+    dailyFive,
+    contentPackages,
+    scriptStoryboards,
+    {},
+    creativeRuntimeDefaults,
+  );
 
   return {
     generatedAt: now.toISOString(),

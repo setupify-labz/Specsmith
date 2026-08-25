@@ -157,6 +157,30 @@ Each platform version becomes a timed storyboard with a hook, viewer commitment,
 
 The production planner routes real product states/evidence to deterministic SpecSmith rendering and creative presentation to generative visual capabilities. It also plans TTS, music/SFX, captions, and motion composition. Generated visuals are not allowed to impersonate real SpecSmith UI.
 
+## ElevenLabs narration cost controls
+
+Production narration uses the ElevenLabs Text to Speech API with `eleven_flash_v2_5` by default. Each creative produces one shared 330-360 character narration; platform captions, CTA copy, and edits can still differ. The renderer caches that narration in-process so YouTube Shorts, TikTok, and Instagram Reels do not trigger three paid generations.
+
+Required environment variables:
+
+```bash
+ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_ID=...
+ELEVENLABS_VOICE_NAME=...
+```
+
+Optional configuration:
+
+```bash
+ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+ELEVENLABS_MONTHLY_CREDIT_LIMIT=28000
+ELEVENLABS_TTS_TIMEOUT_MS=30000
+```
+
+The code will not allow `ELEVENLABS_MONTHLY_CREDIT_LIMIT` above 28,000. Before any paid generation it reads the connected subscription's provider-reported usage, refuses free-tier production because it lacks commercial rights, and fails closed if the request would cross either the account allowance or SpecSmith's lower safety cap. Paid requests are serialized to prevent concurrent renders from racing past the same balance check.
+
+Voice performance remains advisory. A voice cannot produce a promote/retire recommendation until it has at least 15 distinct creative samples and nine confidence-weighted samples. Cross-posting one creative to three platforms counts as one voice experiment, and no learning result automatically changes the configured production voice.
+
 ## Automated quality reviewer
 
 `qualityReviewer.ts` creates one review contract for every platform render and evaluates the finished output before publication. It checks factual claims/evidence, fake SpecSmith UI, FPS labeling, hook clarity, captions, audio, visual coherence, pacing, SpecSmith relevance, CTA accuracy, generic AI-B-roll ratio, and duration drift.
@@ -204,7 +228,7 @@ Built now:
 
 Still later:
 
-- real provider adapters that produce media bytes for video/image/TTS/audio/composition
+- remaining real provider adapters that produce media bytes for image/audio generation (ElevenLabs TTS, video generation, deterministic UI capture, captions, and composition already have adapters)
 - deterministic browser/UI screenshot renderer for live SpecSmith product states
 - multimodal observation extraction from finished media
 - automatic regeneration execution after reviewer feedback

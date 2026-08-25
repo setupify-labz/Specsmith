@@ -36,7 +36,7 @@ try {
     platforms: [platformPlan],
   };
 
-  const registry = new RenderAdapterRegistry().register(createElevenLabsTtsAdapter({ config, outputDir }));
+  const registry = new RenderAdapterRegistry().register(createElevenLabsTtsAdapter({ config, outputDir, mode: "smoke" }));
   const result = await renderPlatformPlan(productionPackage, platformPlan, registry, { maxAttemptsPerCapability: 1 });
   if (result.status !== "succeeded") {
     throw new Error(`Live ElevenLabs render did not succeed: ${result.taskResults[0]?.error ?? "unknown error"}`);

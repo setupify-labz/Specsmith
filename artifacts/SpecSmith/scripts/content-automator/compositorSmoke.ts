@@ -122,7 +122,7 @@ async function main(): Promise<void> {
   await mkdir(outputDir, { recursive: true });
   const registry = new RenderAdapterRegistry()
     .register(createDeterministicUiRenderAdapter({ baseUrl, outputDir: join(outputDir, "ui") }))
-    .register(createElevenLabsTtsAdapter({ config: tts, outputDir: join(outputDir, "audio") }))
+    .register(createElevenLabsTtsAdapter({ config: tts, outputDir: join(outputDir, "audio"), mode: "smoke" }))
     .register(createCaptionRenderAdapter({ outputDir: join(outputDir, "captions") }))
     .register(createMotionCompositorAdapter({
       outputDir,

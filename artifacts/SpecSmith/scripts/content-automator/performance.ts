@@ -129,6 +129,11 @@ function learnFactor(
   scores: Map<string, PerformanceScore>,
   factorOf: (record: VideoPerformanceRecord) => string,
   baseline: number,
+  options: {
+    minimumSamples?: number;
+    minimumConfidenceWeight?: number;
+    sampleKeyOf?: (record: VideoPerformanceRecord) => string;
+  } = {},
 ): FactorLearning[] {
   const groups = new Map<string, VideoPerformanceRecord[]>();
   for (const record of records) {
@@ -153,12 +158,15 @@ function learnFactor(
       weightTotal += weight;
     }
     const observed = weightTotal > 0 ? weightedTotal / weightTotal : baseline;
+    const sampleSize = new Set(group.map((record) => options.sampleKeyOf?.(record) ?? record.videoId)).size;
 
     // Three baseline-equivalent prior samples stop one lucky upload from becoming a fake rule.
     const priorWeight = 3;
-    const shrunk = ((observed * group.length) + (baseline * priorWeight)) / (group.length + priorWeight);
+    const shrunk = ((observed * sampleSize) + (baseline * priorWeight)) / (sampleSize + priorWeight);
     const lift = shrunk - baseline;
-    const status: FactorLearning["status"] = group.length < 3
+    const enoughEvidence = sampleSize >= (options.minimumSamples ?? 3) &&
+      weightTotal >= (options.minimumConfidenceWeight ?? 0);
+    const status: FactorLearning["status"] = !enoughEvidence
       ? "explore"
       : lift >= 5
         ? "promote"
@@ -168,7 +176,7 @@ function learnFactor(
 
     return {
       factor,
-      sampleSize: group.length,
+      sampleSize,
       weightedScore: round(shrunk),
       liftVsBaseline: round(lift),
       status,
@@ -197,7 +205,16 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
   const byCaptionDensity = learnFactor(records, scoreMap, (record) => record.captionDensity ?? "", baselineScore);
   const byCtaFamily = learnFactor(records, scoreMap, (record) => record.ctaFamily ?? "", baselineScore);
   const byHashtagStrategy = learnFactor(records, scoreMap, (record) => record.hashtagStrategy ?? "", baselineScore);
-  const byVoice = learnFactor(records, scoreMap, voiceLabel, baselineScore);
+  const voiceLearningOptions = {
+    minimumSamples: 15,
+    // Fifteen medium-confidence posts equal 9 effective samples. This prevents
+    // a pile of near-zero-distribution uploads from authorizing a voice change.
+    minimumConfidenceWeight: 9,
+    // Cross-posting one creative to three platforms is still one creative
+    // experiment for the voice-switch gate.
+    sampleKeyOf: (record: VideoPerformanceRecord) => record.creativeId?.trim() || record.videoId,
+  };
+  const byVoice = learnFactor(records, scoreMap, voiceLabel, baselineScore, voiceLearningOptions);
   const byVoiceAndFormat = learnFactor(
     records,
     scoreMap,
@@ -206,6 +223,7 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
       return voice ? `${voice} × ${record.format}` : "";
     },
     baselineScore,
+    voiceLearningOptions,
   );
 
   const recommendations: string[] = [];
@@ -247,10 +265,10 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     .filter((learning) => learning.status === "retire")
     .sort((a, b) => a.liftVsBaseline - b.liftVsBaseline)[0];
   if (strongestVoice) {
-    recommendations.push(`Voice signal: favor more tests of ${strongestVoice.factor} after ${strongestVoice.sampleSize} samples (${strongestVoice.liftVsBaseline >= 0 ? "+" : ""}${strongestVoice.liftVsBaseline} lift), while preserving exploration.`);
+    recommendations.push(`Voice recommendation only: favor more tests of ${strongestVoice.factor} after ${strongestVoice.sampleSize} sufficiently confident creative samples (${strongestVoice.liftVsBaseline >= 0 ? "+" : ""}${strongestVoice.liftVsBaseline} lift). Do not switch production automatically.`);
   }
   if (weakestVoice) {
-    recommendations.push(`Voice signal: reduce ${weakestVoice.factor} after ${weakestVoice.sampleSize} samples (${weakestVoice.liftVsBaseline} lift), but keep a small holdout before retiring it.`);
+    recommendations.push(`Voice recommendation only: consider reducing ${weakestVoice.factor} after ${weakestVoice.sampleSize} sufficiently confident creative samples (${weakestVoice.liftVsBaseline} lift), but keep a holdout and do not switch production automatically.`);
   }
   if (voiceLearnings.length > 0 && !strongestVoice && !weakestVoice) {
     recommendations.push("Voice experiment is still inconclusive; keep rotating voices across multiple topics/formats instead of declaring a winner from a small sample.");
