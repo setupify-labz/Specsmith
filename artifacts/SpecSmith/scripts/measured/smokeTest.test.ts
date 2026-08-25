@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 
 import {
   checkDependencies,
+  checkGameId,
   checkPresentMon,
   checkResidues,
   detectGameProcess,
   formatReport,
   queryEtwSessionActive,
+  resolvePnpmCommand,
+  resolveReportPath,
   resolveTsxImportUrl,
   runCancellationSmokeTest,
   runDirect,
@@ -213,6 +216,93 @@ describe('checkDependencies', () => {
 });
 
 // ---------------------------------------------------------------------------
+// resolvePnpmCommand — PATHEXT resolution, no shell, no command string
+// ---------------------------------------------------------------------------
+
+describe('resolvePnpmCommand', () => {
+  it('returns the bare name on POSIX — the OS itself resolves PATH with no shell needed', () => {
+    expect(resolvePnpmCommand({ platform: 'linux' })).toBe('pnpm');
+    expect(resolvePnpmCommand({ platform: 'darwin' })).toBe('pnpm');
+  });
+
+  // THE regression: a real Windows run reported ENOENT for a bare 'pnpm'
+  // even though `pnpm install` worked fine from an actual shell — pnpm's
+  // Windows entry point is always an extensioned file (pnpm.cmd, pnpm.exe,
+  // ...), never a bare 'pnpm'.
+  it('finds pnpm.CMD across PATHEXT candidates, in a directory later in PATH', () => {
+    const resolved = resolvePnpmCommand({
+      platform: 'win32',
+      pathEnv: 'C:\\nothing-here;C:\\Users\\a4ron\\AppData\\Local\\pnpm',
+      pathextEnv: '.COM;.EXE;.BAT;.CMD',
+      existsSync: (p) => p === 'C:\\Users\\a4ron\\AppData\\Local\\pnpm\\pnpm.CMD',
+    });
+    expect(resolved).toBe('C:\\Users\\a4ron\\AppData\\Local\\pnpm\\pnpm.CMD');
+  });
+
+  it('finds pnpm.exe (the standalone-installer entry point) just as well', () => {
+    const resolved = resolvePnpmCommand({
+      platform: 'win32',
+      pathEnv: 'C:\\tools\\pnpm',
+      pathextEnv: '.COM;.EXE;.BAT;.CMD',
+      existsSync: (p) => p === 'C:\\tools\\pnpm\\pnpm.EXE',
+    });
+    expect(resolved).toBe('C:\\tools\\pnpm\\pnpm.EXE');
+  });
+
+  it('returns undefined, not a bare name, when nothing extensioned exists on PATH', () => {
+    const resolved = resolvePnpmCommand({
+      platform: 'win32',
+      pathEnv: 'C:\\somewhere',
+      pathextEnv: '.COM;.EXE;.BAT;.CMD',
+      existsSync: () => false,
+    });
+    expect(resolved).toBeUndefined();
+  });
+
+  it('never needs a shell or a hand-built command string — the result is a single, direct file path', () => {
+    const resolved = resolvePnpmCommand({
+      platform: 'win32',
+      pathEnv: 'C:\\Users\\a4ron\\AppData\\Local\\pnpm',
+      pathextEnv: '.CMD',
+      existsSync: () => true,
+    });
+    // A plain path execFileSync can run directly with an args array —
+    // nothing here is a shell command line to be parsed.
+    expect(resolved).not.toContain(' ');
+    expect(resolved).not.toMatch(/^cmd(\.exe)?\s/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkGameId — no default, ever
+// ---------------------------------------------------------------------------
+
+describe('checkGameId', () => {
+  // THE regression: smokeTest.ts used to fall back to a hardcoded 'rdr2'
+  // internally when --game-id was omitted. An automatic capture requires an
+  // explicit id — the same rule collect.ts's own parseRunConditions
+  // enforces — so this layer must refuse rather than invent one.
+  it('fails, naming the requirement, when no game id was given', () => {
+    const result = checkGameId(undefined);
+    expect(result.status).toBe('fail');
+    expect(result.detail).toMatch(/--game-id is required/);
+  });
+
+  it('passes and echoes back whatever id was given, without validating it against the catalog itself', () => {
+    // Catalog validation is collect.ts's own job (parseRunConditions); this
+    // check only enforces that SOMETHING was explicitly supplied.
+    const result = checkGameId('rdr2');
+    expect(result.status).toBe('pass');
+    expect(result.detail).toBe('rdr2');
+  });
+
+  it('treats a whitespace-only value the same as missing, matching collect.ts\'s own required() convention', () => {
+    expect(checkGameId('').status).toBe('fail');
+    expect(checkGameId('   ').status).toBe('fail');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // PresentMon: locate and hash — reuses resolvePresentMonBinary directly
 // ---------------------------------------------------------------------------
 
@@ -401,4 +491,31 @@ describe('runCancellationSmokeTest', () => {
     });
     expect(result.status).toBe('fail');
   }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// resolveReportPath — never the repository
+// ---------------------------------------------------------------------------
+
+describe('resolveReportPath', () => {
+  // THE regression: smokeTest.ts used to default to
+  // path.join(specsmithRoot, 'specsmith-smoke-test-report.txt') — an
+  // untracked file left inside the repository's working tree after every
+  // run.
+  it('defaults to the OS temp directory, not the repository', () => {
+    const resolved = resolveReportPath(undefined, '/tmp/fake-os-tmp');
+    expect(resolved).toBe('/tmp/fake-os-tmp/specsmith-smoke-test-report.txt');
+    expect(resolved).not.toContain(specsmithRoot);
+  });
+
+  it('uses the real os.tmpdir() when no override is given, not a hardcoded path', () => {
+    const resolved = resolveReportPath(undefined);
+    expect(resolved.startsWith(os.tmpdir())).toBe(true);
+  });
+
+  it('preserves an explicitly supplied path exactly, ignoring the default entirely', () => {
+    expect(resolveReportPath('C:\\Users\\a4ron\\Desktop\\report.txt', '/tmp/fake-os-tmp')).toBe(
+      'C:\\Users\\a4ron\\Desktop\\report.txt',
+    );
+  });
 });

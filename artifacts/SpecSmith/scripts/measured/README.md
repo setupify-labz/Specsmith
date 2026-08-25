@@ -437,13 +437,11 @@ Three further defects a real Windows run then found, all fixed:
   this repo'`), which fails without the fix.
 - **The pnpm dependency check reported ENOENT even on a machine where `pnpm
   install` worked fine from an actual shell.** `execFileSync('pnpm', [...])`
-  with no `shell: true` does not perform the PATHEXT resolution pnpm's
-  Windows entry point (`pnpm.cmd` / `pnpm.CMD` / `pnpm.ps1`) needs — a real
-  shell resolves this automatically, `execFileSync` without `shell: true`
-  does not. Fixed with `shell: true`, and the check's severity fixed
-  alongside it: pnpm was never actually required by this launcher (it calls
-  `node` directly, see above), so its absence is now informational only and
-  can never fail the run.
+  with no shell does not perform the PATHEXT resolution pnpm's Windows entry
+  point (`pnpm.cmd` / `pnpm.CMD` / `pnpm.ps1`) needs. The check's severity
+  was fixed alongside it: pnpm was never actually required by this launcher
+  (it calls `node` directly, see above), so its absence is informational
+  only and can never fail the run.
 - **The default `-GameId` was `"marvel-rivals"`, which is not a real id in
   `src/data/games.json`** — the catalog check refused it before capture ever
   started. This is a pre-existing documentation defect the same run
@@ -452,10 +450,36 @@ Three further defects a real Windows run then found, all fixed:
   is now `"rdr2"`, a real catalog id, and the one the launcher has actually
   been run against.
 
+A follow-up hardening pass then tightened all three:
+
+- **pnpm resolution no longer uses `shell: true`.** It fixed the PATHEXT
+  problem correctly, but by handing a whole command STRING to cmd.exe to
+  parse — broader than the fix needed. `resolvePnpmCommand` in
+  `smokeTest.ts` does the same PATHEXT resolution itself instead: it walks
+  `PATH`, tries each extension `PATHEXT` lists, and finds the real,
+  extensioned file (`pnpm.CMD`, `pnpm.exe`, ...) pnpm's bare name resolves
+  to. `execFileSync` then runs that file directly, with args passed as an
+  array — no shell, and no command string ever built by hand.
+- **`smokeTest.ts` no longer has its own `"rdr2"` fallback.** An automatic
+  capture always requires an explicit `--game-id` — the same rule
+  `collect.ts`'s own `parseRunConditions` already enforces — checked by
+  `checkGameId` and reported in the checklist as its own line ("Game id
+  provided") rather than failing several steps later with collect.ts's
+  generic message. `windows-smoke-test.ps1`'s own `-GameId` parameter still
+  defaults to `"rdr2"` and always passes it through explicitly; that is the
+  one place a default is allowed to live, because it is a real argument
+  being supplied, not an assumption `smokeTest.ts` makes for itself.
+- **The report is no longer written into the repository.**
+  `specsmith-smoke-test-report.txt` used to land in `specsmithRoot`, an
+  untracked file left in the working tree after every run. `resolveReportPath`
+  now defaults to the OS temp directory, and still honours an explicit
+  `--report-file` / `-ReportFile` exactly as before.
+
 Its own PowerShell syntax has now parsed and run on real Windows across
 three runs; what still has not been exercised there is everything past
 dependency resolution and cancellation — hardware detection, `logman`,
-PresentMon itself. Report anything further it gets wrong verbatim.
+PresentMon itself — nor has this latest hardening pass been run on Windows
+yet. Report anything it gets wrong verbatim.
 
 **What it does NOT cover**, which still needs the manual checklist below:
 elevation actually being required (step 6), `--keep-capture` (step 9), the

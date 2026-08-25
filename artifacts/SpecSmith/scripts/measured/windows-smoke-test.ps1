@@ -91,6 +91,11 @@
     Default "rdr2". Run `pnpm collect:measured -- --game-id bogus ...`
     from the repo for the full accepted list if unsure.
 
+.PARAMETER ReportFile
+    Where the report is written. Defaults to a file in the OS temp
+    directory (never the repository), overwritten on each run. Pass this to
+    keep it somewhere specific instead.
+
 .EXAMPLE
     .\windows-smoke-test.ps1 -PresentMon "C:\tools\PresentMon\PresentMon.exe" -ProcessName "RDR2.exe"
 

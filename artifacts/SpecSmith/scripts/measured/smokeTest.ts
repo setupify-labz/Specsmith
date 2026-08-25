@@ -232,6 +232,69 @@ export function runDirect(scriptPath: string, args: readonly string[], options: 
 // Dependency validation
 // ---------------------------------------------------------------------------
 
+/**
+ * Resolves pnpm to a real, extensioned file — `pnpm.CMD`, `pnpm.exe`,
+ * whichever actually exists — without a shell and without building any
+ * command string.
+ *
+ * WHY NOT THE BARE NAME
+ * -----------------------
+ * On Windows, pnpm's entry point is a script — `pnpm.cmd` / `pnpm.CMD` /
+ * `pnpm.ps1` from a corepack or npm-global install, `pnpm.exe` from the
+ * standalone installer — never a bare `pnpm` with no extension. Node's
+ * `execFileSync('pnpm', ...)` without a shell does not perform the PATHEXT
+ * resolution needed to find any of those; a real Windows run reported
+ * ENOENT for exactly this reason, even on a machine where `pnpm install`
+ * from an actual shell worked fine.
+ *
+ * WHY NOT `shell: true`
+ * -----------------------
+ * `shell: true` also fixes the resolution — cmd.exe does its own PATHEXT
+ * search — but does it by handing the WHOLE COMMAND as a single string to
+ * be parsed by a shell, which is broader than this needs and worth avoiding
+ * on principle even with no user-controlled input in the args here today.
+ * This function does the resolution itself instead: walk `PATH`, try each
+ * extension `PATHEXT` lists, in order, and return the first real file
+ * found — a plain, extensioned path that `execFileSync` can run directly,
+ * with args passed as an array, never concatenated into a command string.
+ *
+ * Returns `undefined` off Windows or when nothing is found on PATH — the
+ * caller decides what that means (see checkDependencies: never a hard
+ * failure, since this launcher does not depend on pnpm to run at all).
+ */
+export function resolvePnpmCommand(
+  deps: {
+    platform?: NodeJS.Platform;
+    pathEnv?: string;
+    pathextEnv?: string;
+    existsSync?: (p: string) => boolean;
+  } = {},
+): string | undefined {
+  const platform = deps.platform ?? process.platform;
+  if (platform !== 'win32') {
+    // POSIX has no PATHEXT concept — the OS's own exec search resolves a
+    // bare name against PATH without any shell being involved, which is
+    // exactly what execFileSync('pnpm', ...) already does correctly there.
+    return 'pnpm';
+  }
+  const existsSync = deps.existsSync ?? fs.existsSync;
+  const pathEnv = deps.pathEnv ?? process.env.PATH ?? process.env.Path ?? '';
+  const pathextEnv = deps.pathextEnv ?? process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD';
+  // Windows always delimits PATH/PATHEXT with `;`, regardless of the host
+  // platform running this code — using a literal here (rather than
+  // path.delimiter, which reflects the ACTUAL runtime OS) is what keeps this
+  // resolvable in a test on any platform.
+  const dirs = pathEnv.split(';').filter(Boolean);
+  const exts = pathextEnv.split(';').filter(Boolean);
+  for (const dir of dirs) {
+    for (const ext of exts) {
+      const candidate = path.win32.join(dir, `pnpm${ext}`);
+      if (existsSync(candidate)) return candidate;
+    }
+  }
+  return undefined;
+}
+
 export interface DependencyDeps {
   platform?: NodeJS.Platform;
   nodeVersion?: string;
@@ -288,11 +351,15 @@ export function checkDependencies(deps: DependencyDeps = {}): CheckResult[] {
   // launcher's own logic: Node's execFileSync does not perform PATHEXT
   // resolution the way a shell does, and pnpm's actual Windows entry point
   // is a script (pnpm.cmd / pnpm.CMD / pnpm.ps1), not a bare "pnpm"
-  // executable. Without `shell: true` (or an exact extension), Node tries
-  // to CreateProcess a file that does not exist and reports ENOENT — even on
-  // a machine where `pnpm install` from an actual shell works fine, which is
-  // exactly what a real Windows run of this launcher found. `shell: true`
-  // routes the lookup through cmd.exe, which resolves PATHEXT correctly.
+  // executable, so it went looking for a file that does not exist and
+  // reported ENOENT — even on a machine where `pnpm install` from an actual
+  // shell works fine, which is exactly what a real Windows run of this
+  // launcher found. The fix after that used `shell: true`, which resolves
+  // PATHEXT correctly but does so by handing a COMMAND STRING to cmd.exe —
+  // broader than this needs. resolvePnpmCommand below does the same PATHEXT
+  // resolution itself, without a shell and without building any command
+  // string: it finds the real, extensioned file pnpm's name resolves to and
+  // passes its args as an array — see resolvePnpmCommand's own comment.
   if (deps.runPnpmVersion) {
     try {
       results.push({ name: 'pnpm (informational)', status: 'pass', detail: deps.runPnpmVersion() });
@@ -306,6 +373,39 @@ export function checkDependencies(deps: DependencyDeps = {}): CheckResult[] {
   }
 
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Game id — no default, ever
+// ---------------------------------------------------------------------------
+
+/**
+ * An automatic capture always requires an explicit `--game-id`; this
+ * launcher never invents one.
+ *
+ * collect.ts's own `parseRunConditions` already treats `--game-id` as
+ * required, not optional — this is the same rule, checked here so the
+ * report names it explicitly rather than the run failing several steps
+ * later with collect.ts's own generic "Missing required --game-id".
+ * windows-smoke-test.ps1 supplies one explicitly (its own `-GameId`
+ * parameter, default `"rdr2"`) precisely so this layer never has to guess —
+ * a caller of smokeTest.ts directly that omits it gets this refusal instead
+ * of a silently invented catalog id.
+ */
+export function checkGameId(gameId: string | undefined): CheckResult {
+  // Matches collect.ts's own `required()` convention: whitespace-only is
+  // treated the same as missing, not as a technically-non-undefined value
+  // that happens to be useless.
+  if (gameId === undefined || gameId.trim() === '') {
+    return {
+      name: 'Game id provided',
+      status: 'fail',
+      detail:
+        '--game-id is required for an automatic capture; none was given. windows-smoke-test.ps1 passes its own ' +
+        '-GameId (default "rdr2") automatically.',
+    };
+  }
+  return { name: 'Game id provided', status: 'pass', detail: gameId };
 }
 
 // ---------------------------------------------------------------------------
@@ -540,15 +640,33 @@ function numberFlag(argv: string[], name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * Where the report is written: the OS temp directory by default, an
+ * explicit path when one is given.
+ *
+ * Not the repository: this is a smoke-test artifact regenerated on every
+ * run, not something for the repository to track, and a launcher run from
+ * a real Windows checkout would otherwise leave an untracked file sitting
+ * in the working tree after every use.
+ */
+export function resolveReportPath(explicitPath: string | undefined, tmpdir: string = os.tmpdir()): string {
+  return explicitPath ?? path.join(tmpdir, 'specsmith-smoke-test-report.txt');
+}
+
 async function main(argv: string[]): Promise<void> {
   const results: CheckResult[] = [];
 
   results.push(
     ...checkDependencies({
-      // shell: true — see checkDependencies's own comment on the pnpm check
-      // for why: without it, Node does not perform the PATHEXT resolution
-      // pnpm's Windows entry point (pnpm.cmd / pnpm.CMD / pnpm.ps1) needs.
-      runPnpmVersion: () => execFileSync('pnpm', ['--version'], { encoding: 'utf-8', shell: true }).trim(),
+      // No shell, no command string — see resolvePnpmCommand's own comment
+      // for why a plain execFileSync('pnpm', ...) is not enough on Windows.
+      runPnpmVersion: () => {
+        const pnpmCommand = resolvePnpmCommand();
+        if (pnpmCommand === undefined) {
+          throw new Error('pnpm was not found on PATH');
+        }
+        return execFileSync(pnpmCommand, ['--version'], { encoding: 'utf-8' }).trim();
+      },
     }),
   );
 
@@ -566,7 +684,10 @@ async function main(argv: string[]): Promise<void> {
   });
   results.push(processResult);
 
-  if (binary && target) {
+  const gameId = flag(argv, 'game-id');
+  results.push(checkGameId(gameId));
+
+  if (binary && target && gameId !== undefined && gameId.trim() !== '') {
     // --dry-run never persists the observation, so the settings text only
     // needs to exist and be readable, not describe anything real. Rather
     // than make "create a settings file first" a manual prerequisite for a
@@ -607,13 +728,7 @@ async function main(argv: string[]): Promise<void> {
         // though this launcher already accepted it for this run.
         ...(binary.pinned ? ['--presentmon-sha256', binary.sha256] : ['--allow-unpinned-presentmon']),
         '--game-id',
-        // 'marvel-rivals' is not a real entry in src/data/games.json (there
-        // is no catalog id by that name); a default has to be one the
-        // catalog actually accepts, or every run without an explicit
-        // --game-id fails on the catalog check before reaching capture at
-        // all — which is exactly what happened until this was caught
-        // against a real run. 'rdr2' is a real catalog id.
-        flag(argv, 'game-id') ?? 'rdr2',
+        gameId,
         '--resolution',
         '1440p',
         '--preset',
@@ -632,7 +747,7 @@ async function main(argv: string[]): Promise<void> {
     results.push({
       name: 'Internal cancellation exit code (not a Ctrl-C test)',
       status: 'skip',
-      detail: 'skipped — PresentMon or the game process was not resolved above',
+      detail: 'skipped — PresentMon, the game process, or --game-id was not resolved above',
     });
     results.push(...checkResidues({ queryEtwSession: process.platform === 'win32' ? queryEtwSessionActive : undefined }));
   }
@@ -640,7 +755,9 @@ async function main(argv: string[]): Promise<void> {
   const report = formatReport(results);
   console.log(`\n${report}`);
 
-  const reportPath = flag(argv, 'report-file') ?? path.join(specsmithRoot, 'specsmith-smoke-test-report.txt');
+  // The OS temp directory, not the repository, unless the operator asked
+  // for a specific path — see resolveReportPath's own comment for why.
+  const reportPath = resolveReportPath(flag(argv, 'report-file'));
   fs.writeFileSync(reportPath, `${report}\n`);
   console.log(`\nReport written to ${reportPath}`);
 
