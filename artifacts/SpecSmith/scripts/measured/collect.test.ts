@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
@@ -511,6 +511,10 @@ describe('collector build identity', () => {
     expect(DEFAULT_BUILD_HASH_FILES).toEqual(expect.arrayContaining([
       'collect.ts',
       'presentmon.ts',
+      // The capture flags fix what the file CONTAINS — whether dropped
+      // presents are in it, whether segmentation's columns exist — so they
+      // determine what a saved figure means as directly as the parser does.
+      'presentmonRunner.ts',
       'segmentation.ts',
       'environment.ts',
       'catalog.ts',
@@ -544,5 +548,57 @@ describe('collector build identity', () => {
     // other files are untouched; the identity must still move.
     fs.writeFileSync(path.join(dirB, 'validate.ts'), '// validate.ts, version 2');
     expect(collectorBuildHash(names, dirA)).not.toBe(collectorBuildHash(names, dirB));
+  });
+});
+
+// The capture source decides where a measurement CAME FROM, which is the one
+// thing about a record that cannot be re-derived later. A command line that
+// says two different things about it, or nothing at all, is refused rather
+// than resolved by precedence.
+describe('choosing between reading a CSV and capturing one', () => {
+  it('reads a CSV when --csv is given', () => {
+    expect(parseCaptureSelection(['--csv', 'run.csv'])).toEqual({ mode: 'csv', csvPath: 'run.csv' });
+  });
+
+  it('captures when a target and a duration are given', () => {
+    expect(parseCaptureSelection(['--capture-process-id', '4242', '--capture-seconds', '90'])).toEqual({
+      mode: 'capture', processId: 4242, processName: undefined, seconds: 90,
+    });
+  });
+
+  it('captures by process name too', () => {
+    expect(parseCaptureSelection(['--capture-process-name', 'RDR2.exe', '--capture-seconds', '60'])).toEqual({
+      mode: 'capture', processId: undefined, processName: 'RDR2.exe', seconds: 60,
+    });
+  });
+
+  it('REFUSES a command line that both reads and captures', () => {
+    expect(() => parseCaptureSelection(['--csv', 'run.csv', '--capture-seconds', '90'])).toThrow(CliInputError);
+    expect(() => parseCaptureSelection(['--csv', 'run.csv', '--capture-process-id', '1'])).toThrow(/cannot be combined/);
+  });
+
+  it('refuses a command line that does neither', () => {
+    expect(() => parseCaptureSelection(['--game-id', 'x'])).toThrow(/Nothing to measure/);
+  });
+
+  it('requires a duration when capturing', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '4242'])).toThrow(/--capture-seconds is required/);
+  });
+
+  // These reuse the collector's existing numeric flag validation rather than
+  // adding a second, differently-behaved one.
+  it('rejects a non-numeric or fractional duration', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', 'ninety'])).toThrow(/not a number/);
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '90.5'])).toThrow(/whole number/);
+  });
+
+  it('rejects a duration outside the runner\'s bounds', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '1'])).toThrow(/between/);
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '99999'])).toThrow(/between/);
+  });
+
+  it('rejects a nonsense pid', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '0', '--capture-seconds', '30'])).toThrow(/between/);
+    expect(() => parseCaptureSelection(['--capture-process-id', 'abc', '--capture-seconds', '30'])).toThrow(/not a number/);
   });
 });

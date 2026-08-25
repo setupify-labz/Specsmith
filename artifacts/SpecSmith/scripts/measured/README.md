@@ -9,10 +9,76 @@ UI, scheduling, and any multi-game benchmark library.
 - **Windows.** The collector refuses to run anywhere else rather than
   assembling a record whose hardware fields describe nothing.
 - **PresentMon** ([Intel](https://game.intel.com/us/stories/intel-presentmon/)),
-  the established Windows frame-capture tool. PresentMon 2.x must be run with
-  `--v1_metrics` so it emits the `MsBetweenPresents` column.
+  the established Windows frame-capture tool — the **console** application, not
+  the GUI. Install an official release yourself; it is not bundled (see
+  [Why PresentMon is not vendored](#why-presentmon-is-not-vendored)).
+- **Administrator.** PresentMon opens an ETW session, which needs an elevated
+  terminal. Without it PresentMon exits immediately.
 
 ## Usage
+
+### Capture automatically (one command)
+
+The collector can take the capture itself, so the PresentMon command line is
+never typed by hand — which is where the two interesting mistakes live. A
+forgotten `--v1_metrics` yields a file with no `MsBetweenPresents` at all; an
+`--exclude_dropped` yields one that parses perfectly and is quietly wrong.
+
+```
+# 1. Write down the settings you used, verbatim.
+notepad settings.txt
+
+# 2. Start the game and get to the scene you want to measure.
+
+# 3. Capture, assemble, validate, save — in one command.
+#    Run this from an ELEVATED terminal.
+pnpm collect:measured -- \
+  --capture-process-id 4242 --capture-seconds 90 \
+  --presentmon "C:\tools\PresentMon\PresentMon.exe" \
+  --presentmon-sha256 <digest of your PresentMon.exe> \
+  --game-id <catalog id> \
+  --resolution 1440p --preset high \
+  --ram-channels 2 --settings-file settings.txt \
+  --dry-run
+```
+
+Find the pid with `Get-Process YourGame | Select-Object Id, ProcessName`.
+`--capture-process-name YourGame.exe` also works, but **fails closed** when two
+processes share the name — a launcher beside the game, two clients, a game
+beside its crash handler. PresentMon's own `--process_name` would record
+whichever of them presented, producing a CSV that names the right executable
+while describing the wrong process.
+
+Capture flags:
+
+| Flag | Meaning |
+|---|---|
+| `--capture-process-id <pid>` | The exact process to record. Preferred. |
+| `--capture-process-name <name.exe>` | By name; refuses if more than one matches. |
+| `--capture-seconds <n>` | Capture length, 5–3600. |
+| `--presentmon <path>` | PresentMon.exe. Also `SPECSMITH_PRESENTMON`. |
+| `--presentmon-sha256 <digest>` | Pinned digest. Also `SPECSMITH_PRESENTMON_SHA256`. |
+| `--allow-unpinned-presentmon` | Capture without a pin, recording that it was unpinned. |
+| `--capture-output-dir <dir>` | Write the CSV here instead of a temp directory. |
+| `--keep-capture` | Keep the temp CSV after parsing, for a post-mortem. |
+
+Ctrl-C cancels a capture in progress, stops PresentMon and cleans up.
+
+To get the digest to pin, after downloading an official release:
+
+```
+Get-FileHash -Algorithm SHA256 "C:\tools\PresentMon\PresentMon.exe"
+```
+
+The first run without a pin prints the digest it computed and refuses, so the
+value can be copied from there once it has been checked against the release you
+downloaded.
+
+### Or capture by hand, as before
+
+`--csv` is unchanged and still accepted. It cannot be combined with the
+`--capture-*` flags: a command line carrying both says two different things
+about where the measurement came from.
 
 ```
 # 1. Capture a run with PresentMon while playing the game.
@@ -45,10 +111,77 @@ pnpm collect:measured -- \
 | Validation rules and severity | `src/lib/measured/validate.ts` |
 | Record shape | `src/lib/measured/types.ts` |
 | Frame-time blob storage | `scripts/measured/frameTimeStore.mjs` |
+| Reading a capture | `scripts/measured/presentmon.ts` |
+| Taking a capture | `scripts/measured/presentmonRunner.ts` |
+
+The capture runner decides how to CAPTURE and nothing about what a capture
+MEANS: it reads no frame time, computes no statistic, applies no rule. Its
+bytes go to `parsePresentMonCsv` and onward through the same path a hand-made
+CSV takes.
 
 The collector computes no statistic and enforces no rule of its own. A second
 implementation of any of those would be a second definition of what SpecSmith
 means by a measurement.
+
+## Automatic capture: decisions worth knowing
+
+**The argument vector is closed.** There is no passthrough for extra PresentMon
+flags. Several options produce a file that still parses and still validates
+while meaning something other than what the record claims, and none of them can
+be reached from a command line:
+
+| Flag | Why it is never passed |
+|---|---|
+| `--exclude_dropped` | Removes real rendered frames from a rendered-frame metric and breaks the delta chain. |
+| `--no_track_gpu` | Removes `msGPUActive`, so segmentation's GPU-utilisation stage has no evidence the GPU was rendering. |
+| `--no_track_display` | Removes `PresentMode`, segmentation's primary signal. |
+| `--multi_csv` | Splits output per process, so the path we then read is not the file we asked for. |
+
+An operator who genuinely needs a different capture runs PresentMon by hand and
+uses `--csv`.
+
+**The columns are verified against the file, not assumed from the flags.** The
+flags are our intent; the header is the outcome, and only the outcome is
+evidence. Four of the required columns — `Application`, `ProcessID`,
+`SwapChainAddress`, `Dropped` — are *optional* to the parser, which tolerates
+hand-made captures without them. But the parser's fail-closed guards are built
+on them: the multi-process refusal reads `Application`, the multi-swap-chain
+refusal reads `SwapChainAddress`. Absent, those sets stay empty and the guards
+cannot fire. A capture missing them does not fail — it silently loses its
+safety checks — so the runner requires them, where it controls the capture and
+their absence means something is genuinely wrong.
+
+**Pinning is by digest, not by version string.** PresentMon's console
+application does not document a `--version` flag, so there is no supported way
+to ask a binary what it is. Asking would be the weaker check anyway: a version
+string is a claim the file makes about itself; the SHA-256 of the bytes is not.
+Unpinned is refused by default, because a different PresentMon can emit
+different columns and the resulting record would not say so.
+
+**Hardware detection runs before the capture, not after it.** It is the step
+most likely to refuse — an iGPU beside a discrete card is the common case, not
+the exotic one — and refusing after a 90-second capture would throw away a run
+the operator has to play again.
+
+**PATH is not searched.** A capture whose tool was chosen by environment is not
+reproducible.
+
+**Only a temp directory the runner created is ever deleted.**
+`--capture-output-dir` can legitimately point at a folder holding other
+captures; cleanup that reached outside its own directory is how a diagnostic
+tool deletes an operator's data.
+
+### Why PresentMon is not vendored
+
+PresentMon is MIT licensed (Copyright (C) 2017-2024 Intel Corporation, verified
+against `LICENSE.txt` in `GameTechDev/PresentMon`), so vendoring it would be
+permitted. It is still not vendored, because licence permission is only half the
+question and provenance is the other half: a Windows binary committed to this
+repository could not be shown to be the one Intel published, and a build-host
+digest recorded by the same commit that adds the file proves nothing about its
+origin. The operator installs an official release and pins its digest — a
+pairing that is checkable by whoever runs the capture, which a vendored blob is
+not.
 
 ## Decisions worth knowing
 
@@ -189,6 +322,53 @@ Validation behaved as designed on that run: a warning for
 `settings.operator-attested` and an error for `conditions.game-version-missing`,
 since the run supplied no game version. The record was correctly not produced.
 
+## Windows smoke test for automatic capture
+
+Nothing below has been run. The capture runner's logic is covered by mocked
+tests against an injected spawn; PresentMon actually producing a file is the
+part that only Aaron's machine can exercise. Run these in order — each one
+fails differently, and the point is to see the *right* failure.
+
+Prerequisites: an official PresentMon console release installed, an
+**elevated** terminal, and a game you can leave running.
+
+```powershell
+# 0. Digest to pin.
+Get-FileHash -Algorithm SHA256 "C:\tools\PresentMon\PresentMon.exe"
+
+# Find the game's pid.
+Get-Process | Where-Object ProcessName -like '*RDR2*' | Select-Object Id, ProcessName
+```
+
+| # | Command | Expected |
+|---|---|---|
+| 1 | Omit `--presentmon-sha256` | Refuses, prints the computed digest to pin |
+| 2 | Pass a wrong `--presentmon-sha256` | Refuses: "not the one this collector was set up against" |
+| 3 | `--capture-process-id 999999` | Refuses: no running process has that pid |
+| 4 | `--capture-process-name` for something with two instances (e.g. two Explorer or two browser processes) | Refuses, lists both pids, points at `--capture-process-id` |
+| 5 | Correct pid + name that disagree | Refuses, names the process the pid really is |
+| 6 | Run **without** elevation | PresentMon exits non-zero; error surfaces its stderr plus the Administrator hint |
+| 7 | Full run: `--capture-process-id <pid> --capture-seconds 30 --dry-run` | Captures, parses, prints frame count and fps, writes nothing |
+| 8 | As 7, then Ctrl-C after ~5s | "was cancelled. Nothing was recorded", temp directory removed |
+| 9 | As 7 with `--keep-capture` | Prints "Capture retained at …"; the CSV is still there afterwards |
+| 10 | As 7, closing the game mid-capture | PresentMon exits early via `--terminate_on_proc_exit`; either a short capture or a clear "presented no frames" |
+
+What to check on the run that succeeds (#7):
+
+- The header of the retained CSV (`--keep-capture`) contains
+  `msBetweenPresents`, `PresentMode` and `msGPUActive`. If any is absent the
+  runner will already have refused — confirm the message names the column.
+- The reported frame count is consistent with the duration and the average fps,
+  the same arithmetic the existing README did for the 90-second Roblox run
+  (21,354 frames at 237.31 fps ⇒ 89.98 s).
+- The temp directory under `%TEMP%\specsmith-capture-*` is **gone** afterwards
+  when `--keep-capture` was not passed.
+- No `SpecSmithMeasuredCapture` ETW session is left behind:
+  `logman query -ets` should not list it once the collector has exited.
+
+Then, and only then, the first **non**-dry run — which is also the first time
+the store append path and the frame-time archive will have executed for real.
+
 ## What remains unverified
 
 - **No record has ever been saved.** Every run so far has been a dry run. The
@@ -205,6 +385,13 @@ since the run supplied no game version. The record was correctly not produced.
 - **Frame-generation and upscaler paths** have never been captured for real;
   the `msBetweenPresents` choice that keeps generated frames out of the count
   is reasoned from PresentMon's documentation, not observed.
+- **Automatic capture has never run.** No PresentMon process has been spawned by
+  this collector. The flag set is taken from Intel's documented console options
+  and the column requirements from the pinned real fixture, but the pairing —
+  these flags, on a real PresentMon, producing a file with those columns — is
+  reasoned, not observed. Everything around it (process selection, digest
+  pinning, timeout, cancellation, cleanup, column verification) is covered by
+  mocked tests only. See the smoke test above.
 
 A dry run proves the pipeline runs. It does not prove the pipeline records
 correctly, because the recording half never executed.

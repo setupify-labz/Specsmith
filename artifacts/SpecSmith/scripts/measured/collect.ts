@@ -52,6 +52,13 @@ import {
 } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 import { parsePresentMonCsv } from './presentmon';
+import {
+  MAX_CAPTURE_SECONDS,
+  MIN_CAPTURE_SECONDS,
+  releaseCapture,
+  resolvePresentMonBinary,
+  runPresentMonCapture,
+} from './presentmonRunner';
 import { KNOWN_DETECTION_GAPS, type DetectedHardware } from './environment';
 import { loadCatalogs, resolveHardware } from './catalog';
 
@@ -76,6 +83,11 @@ export const DEFAULT_BUILD_HASH_FILES: readonly string[] = [
   // loading, and the assembly/CLI logic itself.
   'collect.ts',
   'presentmon.ts',
+  // How the capture was TAKEN determines what it contains: the flag set fixes
+  // whether dropped presents are in the file at all, and whether the columns
+  // segmentation needs exist. A capture produced under a different flag set is
+  // a different measurement even when the parser reads it identically.
+  'presentmonRunner.ts',
   // Segmentation decides WHICH frames a figure is computed over, so it
   // determines what the figure means just as directly as the statistics do.
   'segmentation.ts',
@@ -378,9 +390,50 @@ export function parseRunConditions(argv: string[], knownGameIds?: readonly strin
   };
 }
 
+/**
+ * Decides whether this run captures its own frames or reads a file.
+ *
+ * The two are mutually exclusive rather than one defaulting to the other: a
+ * command line carrying both says two different things about where the
+ * measurement came from, and picking either would make the record's origin a
+ * guess.
+ */
+export function parseCaptureSelection(argv: string[]): { mode: 'csv'; csvPath: string } | { mode: 'capture'; processId?: number; processName?: string; seconds: number } {
+  const csvFlag = arg(argv, 'csv');
+  const secondsRaw = arg(argv, 'capture-seconds');
+  const pidRaw = arg(argv, 'capture-process-id');
+  const nameRaw = arg(argv, 'capture-process-name');
+  const wantsCapture = secondsRaw !== undefined || pidRaw !== undefined || nameRaw !== undefined;
+
+  if (csvFlag !== undefined && wantsCapture) {
+    throw new CliInputError(
+      '--csv and the --capture-* flags cannot be combined. Use --csv to read a capture you already took, or --capture-process-id ' +
+        'with --capture-seconds to take one now.',
+    );
+  }
+  if (csvFlag === undefined && !wantsCapture) {
+    throw new CliInputError(
+      'Nothing to measure. Pass --csv <presentmon.csv>, or capture now with --capture-process-id <pid> --capture-seconds <n>.',
+    );
+  }
+  if (csvFlag !== undefined) {
+    if (csvFlag.trim() === '') throw new CliInputError('Missing required --csv');
+    return { mode: 'csv', csvPath: csvFlag };
+  }
+  if (secondsRaw === undefined) {
+    throw new CliInputError('--capture-seconds is required when capturing. It is the length of the run to record.');
+  }
+  return {
+    mode: 'capture',
+    processId: pidRaw === undefined ? undefined : wholeNumberInRange(pidRaw, 'capture-process-id', 1, 0xffffffff),
+    processName: nameRaw,
+    seconds: wholeNumberInRange(secondsRaw, 'capture-seconds', MIN_CAPTURE_SECONDS, MAX_CAPTURE_SECONDS),
+  };
+}
+
 async function main(argv: string[]): Promise<void> {
-  const csvPath = required(argv, 'csv');
   const dryRun = argv.includes('--dry-run');
+  const source = parseCaptureSelection(argv);
 
   // Flags first. Nothing here needs the machine, so a mistyped value costs a
   // second rather than a PowerShell round trip and a 90-second capture built
@@ -390,11 +443,15 @@ async function main(argv: string[]): Promise<void> {
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 
-  const parsed = parsePresentMonCsv(fs.readFileSync(csvPath, 'utf-8'), arg(argv, 'process'), arg(argv, 'swap-chain'));
-  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
-  if (parsed.truncatedTrailingRows > 0) console.log('Note: the final CSV line was cut off mid-write and was not read.');
-
   const { detectWindowsEnvironment, detectExecutableVersion } = await import('./environment');
+  // Hardware detection runs BEFORE the capture, not after it.
+  //
+  // It is the step most likely to refuse \u2014 an iGPU beside a discrete card is
+  // the common case, not the exotic one \u2014 and refusing after the capture would
+  // throw away a run the operator has to play again. When reading an existing
+  // --csv there is nothing to lose either way, so the order is the same for
+  // both and there is only one path to reason about.
+  //
   // --gpu-name disambiguates a machine with more than one rendering adapter.
   // Without it the probe REFUSES rather than picking one, because a wrong pick
   // records the wrong GPU and the wrong driver version together, silently.
@@ -403,6 +460,81 @@ async function main(argv: string[]): Promise<void> {
     console.log(`Adapters present: ${hardware.adaptersSeen.join(', ')}`);
   }
   console.log(`Hardware: ${hardware.gpuRaw} / ${hardware.cpuRaw} / driver ${hardware.gpuDriverVersion}`);
+
+  let csvPath: string;
+  let csvText: string;
+  let release: (() => void) | undefined;
+  let processFilter = arg(argv, 'process');
+
+  if (source.mode === 'capture') {
+    const binary = resolvePresentMonBinary({
+      executablePath: arg(argv, 'presentmon') ?? process.env.SPECSMITH_PRESENTMON,
+      expectedSha256: arg(argv, 'presentmon-sha256') ?? process.env.SPECSMITH_PRESENTMON_SHA256,
+      allowUnpinned: argv.includes('--allow-unpinned-presentmon'),
+    });
+    console.log(`PresentMon: ${binary.path}\n  sha256 ${binary.sha256}${binary.pinned ? ' (pinned)' : ' (NOT PINNED \u2014 --allow-unpinned-presentmon)'}`);
+
+    // Ctrl-C stops the capture and cleans up rather than leaving PresentMon
+    // and its ETW session running behind a dead collector.
+    const controller = new AbortController();
+    const onSigint = () => controller.abort();
+    process.once('SIGINT', onSigint);
+    try {
+      console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
+      const outcome = await runPresentMonCapture({
+        processId: source.processId,
+        processName: source.processName,
+        seconds: source.seconds,
+        binary,
+        outputDir: arg(argv, 'capture-output-dir'),
+        signal: controller.signal,
+      });
+      csvPath = outcome.csvPath;
+      csvText = outcome.csv;
+      // The captured process is the filter, so the parser's multi-process
+      // refusal is checked against what we actually targeted rather than
+      // against nothing.
+      processFilter = processFilter ?? outcome.target.name;
+      if (outcome.columns.missingOptional.length > 0) {
+        console.warn(`  WARNING capture: no ${outcome.columns.missingOptional.join(', ')} column; segmentation will record those times as absent.`);
+      }
+      console.log(`Captured ${outcome.target.name} (pid ${outcome.target.processId}) to ${csvPath}`);
+      // Only a temp directory this runner created is ever removed; a
+      // --capture-output-dir the operator chose is left alone.
+      if (outcome.ownedTempDir) release = () => releaseCapture(outcome);
+    } finally {
+      process.removeListener('SIGINT', onSigint);
+    }
+  } else {
+    csvPath = source.csvPath;
+    csvText = fs.readFileSync(csvPath, 'utf-8');
+  }
+
+  try {
+    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion });
+  } finally {
+    // The CSV has been read into memory and parsed by now, so the temp copy
+    // has no further readers. --keep-capture keeps it for a post-mortem.
+    if (release && !argv.includes('--keep-capture')) release();
+    else if (release) console.log(`Capture retained at ${csvPath} (--keep-capture).`);
+  }
+}
+
+/** Everything downstream of "we have CSV text": unchanged by where it came from. */
+async function assembleFromCsv(ctx: {
+  csvText: string; csvPath: string; processFilter?: string; swapChainFilter?: string;
+  argv: string[]; dryRun: boolean;
+  catalogs: ReturnType<typeof loadCatalogs>;
+  runConditions: RunConditionInputs;
+  preferredGpuId?: string; preferredCpuId?: string;
+  hardware: DetectedHardware;
+  detectExecutableVersion: (exePath: string) => string | undefined;
+}): Promise<void> {
+  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion } = ctx;
+
+  const parsed = parsePresentMonCsv(csvText, ctx.processFilter, ctx.swapChainFilter);
+  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
+  if (parsed.truncatedTrailingRows > 0) console.log('Note: the final CSV line was cut off mid-write and was not read.');
 
   // Hardware attribution is DERIVED from what the machine reported, never
   // taken on trust from the command line. --gpu-id/--cpu-id are optional and
