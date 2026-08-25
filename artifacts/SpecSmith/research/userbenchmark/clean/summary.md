@@ -4,23 +4,23 @@ RESEARCH-ONLY. Raw data untouched; production benchmark system unchanged.
 
 | Metric | Count | Share of raw |
 |---|---:|---:|
-| Total raw rows | 730 | 100% |
-| Cleaned rows | 730 | 100.0% |
-| Exact matches | 0 | 0.0% |
+| Total raw rows | 2330 | 100% |
+| Cleaned rows | 2330 | 100.0% |
+| Exact matches | 2 | 0.1% |
 | Fuzzy matches (high confidence only) | 0 | 0.0% |
-| Unmatched rows | 619 | 84.8% |
-| Blocked on form factor (laptop / integrated) | 111 | 15.2% |
+| Unmatched rows | 1963 | 84.2% |
+| Blocked on form factor (laptop / integrated) | 365 | 15.7% |
 | Exact duplicates collapsed | 0 | 0.0% |
 | Suspicious duplicate groups | 0 | - |
-| Outliers reported | 20 | 2.7% |
-| Rows needing review | 730 | 100.0% |
+| Outliers reported | 28 | 1.2% |
+| Rows needing review | 2328 | 99.9% |
 
 ## By component kind
 
 | Kind | Raw | Exact | Fuzzy | Unmatched | Form-factor blocked | Review |
 |---|---:|---:|---:|---:|---:|---:|
-| gpu | 365 | 0 | 0 | 296 | 69 | 365 |
-| cpu | 365 | 0 | 0 | 323 | 42 | 365 |
+| gpu | 1165 | 0 | 0 | 956 | 209 | 1165 |
+| cpu | 1165 | 2 | 0 | 1007 | 156 | 1163 |
 
 ## What these numbers are not
 
