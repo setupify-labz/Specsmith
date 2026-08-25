@@ -449,9 +449,74 @@ export function parseCaptureSelection(argv: string[]): { mode: 'csv'; csvPath: s
   };
 }
 
+/**
+ * Validates `--internal-cancel-after-seconds`, a testing-only flag that
+ * self-cancels a capture from inside this process instead of depending on a
+ * signal delivered from outside it.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * windows-smoke-test.ps1 used to simulate Ctrl-C with a separate launcher
+ * process calling `child.kill('SIGINT')` on the collector. A real Windows
+ * run showed that does not work: Node's `child.kill()` on Windows is not a
+ * real console Ctrl-C event (`GenerateConsoleCtrlEvent`) that this process's
+ * signal handler could catch — it is closer to `TerminateProcess`, so the
+ * child exited immediately with signal=SIGINT and never ran any
+ * cancellation or cleanup logic at all, leaving the ETW session, lock file
+ * and temp directory behind. Manual, real Ctrl-C in a real console continued
+ * to work correctly throughout, because that IS a real console event.
+ * Nothing OUTSIDE a Windows process can safely simulate one for testing
+ * purposes, so this flag triggers the exact same cancellation path from
+ * INSIDE the process instead, through cancellation.ts's `simulateSignal` —
+ * the same `AbortController` a real Ctrl-C uses, not a second, parallel
+ * implementation of what cancellation means.
+ *
+ * WHY IT IS GATED TO --dry-run
+ * -----------------------------
+ * This is a testing aid, not a capture mode. An operator who wants a
+ * savable capture should never have it silently self-cancel on a timer —
+ * `throw`ing here rather than silently ignoring the flag is what makes that
+ * impossible rather than merely undocumented.
+ *
+ * Returns `undefined` when the flag was not passed at all.
+ */
+export function validateInternalCancelAfterSeconds(
+  raw: string | undefined,
+  source: ReturnType<typeof parseCaptureSelection>,
+  dryRun: boolean,
+): number | undefined {
+  if (raw === undefined) return undefined;
+  const seconds = numberInRange(raw, 'internal-cancel-after-seconds', 0.05, MAX_CAPTURE_SECONDS);
+  if (source.mode !== 'capture') {
+    throw new CliInputError(
+      '--internal-cancel-after-seconds only applies to an automatic capture (--capture-process-id or ' +
+        '--capture-process-name), not --csv.',
+    );
+  }
+  if (!dryRun) {
+    throw new CliInputError(
+      '--internal-cancel-after-seconds requires --dry-run. It exists to smoke-test the cancellation and ' +
+        'cleanup path from inside this process, not to take a real, savable capture that then silently ' +
+        'cancels itself on a timer.',
+    );
+  }
+  if (seconds >= source.seconds) {
+    throw new CliInputError(
+      `--internal-cancel-after-seconds (${seconds}) must be less than --capture-seconds ` +
+        `(${source.seconds}), or the capture would finish before it ever fires.`,
+    );
+  }
+  return seconds;
+}
+
 async function main(argv: string[]): Promise<void> {
   const dryRun = argv.includes('--dry-run');
   const source = parseCaptureSelection(argv);
+  // See validateInternalCancelAfterSeconds for why this exists and why it is
+  // gated to --dry-run: it self-cancels a capture from inside this process,
+  // for smoke-testing the cancellation and cleanup path without depending on
+  // a signal delivered from outside it.
+  const internalCancelAfterSeconds = validateInternalCancelAfterSeconds(arg(argv, 'internal-cancel-after-seconds'), source, dryRun);
 
   // Flags first. Nothing here needs the machine, so a mistyped value costs a
   // second rather than a PowerShell round trip and a 90-second capture built
@@ -507,6 +572,10 @@ async function main(argv: string[]): Promise<void> {
     // returns, and the collector died mid-cleanup — leaving a live ETW session,
     // the lock file and the temp capture behind. See ./cancellation.ts.
     const cancellation = installCancellationHandler();
+    // Only set when --internal-cancel-after-seconds asked for it; cleared in
+    // the finally block below whichever way this settles, same as any other
+    // timer here.
+    let internalCancelTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
       const outcome = await runPresentMonCapture({
@@ -518,7 +587,22 @@ async function main(argv: string[]): Promise<void> {
         signal: cancellation.signal,
         // Handed over the moment they exist, not when the capture succeeds, so
         // a Ctrl+C during the capture still has something to clean up.
-        onResourcesAllocated: (resources) => cancellation.track(resources),
+        onResourcesAllocated: (resources) => {
+          cancellation.track(resources);
+          // Started HERE, not when this flag was parsed: catalog loading,
+          // PresentMon resolution and hardware detection all happen first and
+          // take a variable amount of time, and this is the earliest point at
+          // which the capture has actually, verifiably begun.
+          if (internalCancelAfterSeconds !== undefined) {
+            console.log(
+              `[internal-cancel] capture began; simulating cancellation in ${internalCancelAfterSeconds}s ` +
+                'through the same path a real Ctrl-C would use \u2014 this is testing the cleanup path, not a ' +
+                'real Ctrl-C, and is only ever enabled with --dry-run.',
+            );
+            internalCancelTimer = setTimeout(() => cancellation.simulateSignal('SIGINT'), internalCancelAfterSeconds * 1000);
+            internalCancelTimer.unref?.();
+          }
+        },
       });
       csvPath = outcome.csvPath;
       csvText = outcome.csv;
@@ -534,6 +618,7 @@ async function main(argv: string[]): Promise<void> {
       // --capture-output-dir the operator chose is left alone.
       if (outcome.ownedTempDir) release = () => releaseCapture(outcome);
     } finally {
+      if (internalCancelTimer) clearTimeout(internalCancelTimer);
       // The capture is over either way. Past this point the CSV is owned by
       // the normal path (or by --keep-capture), so the last-resort exit
       // cleanup must stop tracking it.

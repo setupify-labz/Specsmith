@@ -2,28 +2,49 @@
 .SYNOPSIS
     The one supported command for smoke-testing the automatic PresentMon
     capture path on Windows: dependency checks, PresentMon location/hash,
-    game-process detection, a dry-run capture, a cancellation + cleanup
-    check against all four residues, and a pass/fail report.
+    game-process detection, a dry-run capture, an internal cancellation +
+    cleanup check against all four residues, and a pass/fail report.
 
 .DESCRIPTION
     Earlier smoke testing meant copying a long checklist of individual
-    PowerShell commands one at a time (see scripts/measured/README.md). Two
-    real retests each still needed a second, unplanned round of manual
-    checking - once because Ctrl+C was leaving debris behind, once because
-    the reported exit code didn't match what a manual read of the terminal
-    suggested. This script runs the same checks itself, once, and prints one
-    report at the end.
+    PowerShell commands one at a time (see scripts/measured/README.md). Real
+    retests each still needed a second, unplanned round of manual checking -
+    once because Ctrl+C was leaving debris behind, once because the reported
+    exit code didn't match what a manual read of the terminal suggested, once
+    because this script's own attempt to SIMULATE Ctrl+C by calling
+    child.kill('SIGINT') on the collector from outside it turned out not to
+    work at all on Windows (see below). This script runs the same checks
+    itself, once, and prints one report at the end.
 
-    It deliberately does NOT run this through `pnpm collect:measured`. Two
-    real Windows retests showed that pnpm's own wrapper process, when hit by
-    the same console-wide Ctrl+C as its child, does not reliably preserve
-    the collector's own exit code - see the README's "pnpm's Windows exit
-    code vs. the collector's own status" section. This script instead runs
+    It deliberately does NOT run this through `pnpm collect:measured`. Real
+    Windows retests showed that pnpm's own wrapper process, when hit by the
+    same console-wide Ctrl+C as its child, does not reliably preserve the
+    collector's own exit code - see the README's "pnpm's Windows exit code
+    vs. the collector's own status" section. This script instead runs
     `node --import` (against tsx's own loader, resolved to a verified
     absolute path - see below) directly against the collector: no pnpm, and
     not even tsx's own .CMD shim, which is itself an unnecessary intermediate
     cmd.exe process of the same general shape. PowerShell's direct child here
     is node.exe, nothing else.
+
+    CANCELLATION IS TESTED INTERNALLY, NOT BY SIMULATING CTRL+C. A real
+    Windows run found that this script's own earlier attempt to simulate
+    Ctrl+C - a separate launcher process calling child.kill('SIGINT') on the
+    collector - does not work on Windows: Node's child.kill() there is not a
+    real console Ctrl+C event the collector's signal handler could catch, so
+    the collector was simply terminated, ran none of its own cleanup, and
+    left the ETW session, lock file and temp directory behind every time.
+    Manual, real Ctrl+C in a real console continued to work correctly
+    throughout. So this script now asks the collector to cancel ITSELF, on an
+    internal timer, via its own --internal-cancel-after-seconds flag (see
+    collect.ts) - the same cancellation path a real Ctrl+C drives, just
+    triggered from inside the process instead of by an external signal this
+    launcher cannot reliably deliver. This proves the collector's own
+    cancellation and cleanup logic works; it does NOT prove that a real
+    console Ctrl+C reaches the collector, which is a genuinely different
+    question this script cannot safely test from outside the process. The
+    manual Ctrl+C checklist step in the README (step 8) remains the real
+    check for that, and is not replaced by this script.
 
     This is a DRY-RUN-ONLY tool. It never writes to the observation store.
 
@@ -47,7 +68,7 @@
     - or pass -AllowUnpinnedPresentMon to proceed anyway for this run only.
 
 .PARAMETER ProcessName
-    The exact executable name of the running game, e.g. Marvel-Win64-Shipping.exe.
+    The exact executable name of the running game, e.g. RDR2.exe.
 
 .PARAMETER ProcessId
     The exact pid of the running game, as an alternative to -ProcessName.
@@ -57,10 +78,21 @@
     exceed -CancelAfterSeconds.
 
 .PARAMETER CancelAfterSeconds
-    How far into the capture Ctrl+C is simulated. Default 5.
+    How far into the capture the collector self-cancels, via its own
+    --internal-cancel-after-seconds - this tests the internal cancellation
+    and cleanup path, not real Ctrl+C delivery. Default 5.
+
+.PARAMETER GameId
+    A real id from this repository's src/data/games.json (e.g. "rdr2",
+    "cyberpunk2077") - not a display name, and not related to -ProcessName,
+    which names the .exe rather than the SpecSmith catalog entry. Nothing
+    written to the store depends on this being correct in a dry run, but an
+    id the catalog does not recognize refuses before capture even starts.
+    Default "rdr2". Run `pnpm collect:measured -- --game-id bogus ...`
+    from the repo for the full accepted list if unsure.
 
 .EXAMPLE
-    .\windows-smoke-test.ps1 -PresentMon "C:\tools\PresentMon\PresentMon.exe" -ProcessName "Marvel-Win64-Shipping.exe"
+    .\windows-smoke-test.ps1 -PresentMon "C:\tools\PresentMon\PresentMon.exe" -ProcessName "RDR2.exe"
 
     Runs every automated check against the named game, pausing only if that
     process cannot be found yet. Can be run from any directory.
@@ -75,7 +107,7 @@ param(
     [int]$ProcessId,
     [int]$CaptureSeconds = 20,
     [int]$CancelAfterSeconds = 5,
-    [string]$GameId = "marvel-rivals",
+    [string]$GameId = "rdr2",
     [string]$SettingsFile,
     [string]$ReportFile
 )

@@ -132,19 +132,6 @@ export interface DirectRunResult {
 }
 
 export interface DirectRunOptions {
-  /**
-   * Delay before sending `signal`. Measured from the moment stdout matches
-   * `signalAfterMarker`, if given; from spawn otherwise. A fixed delay from
-   * spawn is fine for a fast fixture, but collect.ts itself does real work —
-   * loading catalogs, resolving the PresentMon binary, probing hardware —
-   * before it is even capturing, and that startup time varies. Counting from
-   * spawn risks sending the signal before installCancellationHandler() has
-   * even run, which is not a cancellation test, it is a race.
-   */
-  signalAfterMs?: number;
-  /** Wait for this to appear in stdout before starting the `signalAfterMs` countdown. */
-  signalAfterMarker?: RegExp;
-  signal?: NodeJS.Signals;
   timeoutMs?: number;
   cwd?: string;
   /** Overridden in tests to point `node` at a different binary entirely. */
@@ -180,8 +167,9 @@ export function resolveTsxImportUrl(repoRoot: string, existsSync: (p: string) =>
 }
 
 /**
- * Runs a script directly with `node --import <tsx's loader>` — not pnpm, and
- * not even tsx's own bin shim.
+ * Runs a script directly with `node --import <tsx's loader>` and waits for
+ * it to exit ON ITS OWN — not pnpm, not even tsx's own bin shim, and NOT by
+ * this function sending it any signal.
  *
  * On Windows that shim is `node_modules\.bin\tsx.CMD`, a batch file cmd.exe
  * interprets — the same shape as the pnpm.cmd wrapper this whole launcher
@@ -191,6 +179,23 @@ export function resolveTsxImportUrl(repoRoot: string, existsSync: (p: string) =>
  * underneath it (which DOES install one, via installCancellationHandler)
  * has finished. `node --import` skips that shim entirely — PowerShell's
  * direct child is node.exe itself, nothing else, on every platform.
+ *
+ * DELIBERATELY HAS NO WAY TO SEND THE CHILD A SIGNAL
+ * ----------------------------------------------------
+ * An earlier version of this function could schedule `child.kill(signal)`
+ * against the spawned process, to simulate Ctrl-C for the cancellation smoke
+ * test below. A real Windows run showed that does not work: Node's
+ * `child.kill()` on Windows is not a real console Ctrl-C event
+ * (`GenerateConsoleCtrlEvent`) the child's own signal handler could catch —
+ * it is closer to `TerminateProcess`, so the child exited immediately with
+ * signal=SIGINT having run none of its own cancellation or cleanup logic,
+ * leaving the ETW session, lock file and temp directory behind. Manual, real
+ * Ctrl-C in a real console continued to work fine throughout, because that
+ * IS a real console event — the failure was specific to one process trying
+ * to signal another externally on Windows. Nothing outside a Windows process
+ * can safely simulate that, so this function no longer offers a way to try:
+ * see runCancellationSmokeTest below, which drives cancellation from INSIDE
+ * the spawned process instead, via collect.ts's --internal-cancel-after-seconds.
  */
 export function runDirect(scriptPath: string, args: readonly string[], options: DirectRunOptions = {}): Promise<DirectRunResult> {
   const nodePath = options.nodePath ?? process.execPath;
@@ -201,37 +206,23 @@ export function runDirect(scriptPath: string, args: readonly string[], options: 
     });
     let stdout = '';
     let stderr = '';
-    let signalTimer: ReturnType<typeof setTimeout> | undefined;
-    let markerSeen = false;
     const timeout = setTimeout(() => {
       child.kill('SIGKILL');
       reject(new Error(`${scriptPath} did not exit within ${options.timeoutMs ?? 60_000}ms.\nstdout: ${stdout}\nstderr: ${stderr}`));
     }, options.timeoutMs ?? 60_000);
 
-    const armSignalTimer = () => {
-      if (options.signalAfterMs === undefined) return;
-      signalTimer = setTimeout(() => child.kill(options.signal ?? 'SIGINT'), options.signalAfterMs);
-    };
-    if (options.signalAfterMarker === undefined) armSignalTimer();
-
     child.stdout.on('data', (chunk) => {
       stdout += String(chunk);
-      if (!markerSeen && options.signalAfterMarker?.test(stdout)) {
-        markerSeen = true;
-        armSignalTimer();
-      }
     });
     child.stderr.on('data', (chunk) => {
       stderr += String(chunk);
     });
     child.on('error', (error) => {
       clearTimeout(timeout);
-      if (signalTimer) clearTimeout(signalTimer);
       reject(error);
     });
     child.on('exit', (code, signal) => {
       clearTimeout(timeout);
-      if (signalTimer) clearTimeout(signalTimer);
       resolve({ code, signal, stdout, stderr });
     });
   });
@@ -286,14 +277,30 @@ export function checkDependencies(deps: DependencyDeps = {}): CheckResult[] {
         },
   );
 
+  // Informational only, and never 'fail': this launcher invokes node
+  // directly (see runDirect above) and never shells out to pnpm itself, so
+  // pnpm being unreachable here says nothing about whether the launcher can
+  // run. It still matters enough to report, because `pnpm install` is how
+  // node_modules/tsx above got there in the first place.
+  //
+  // A prior version detected it with execFileSync('pnpm', ['--version']),
+  // with no shell — which is a real Windows bug independent of this
+  // launcher's own logic: Node's execFileSync does not perform PATHEXT
+  // resolution the way a shell does, and pnpm's actual Windows entry point
+  // is a script (pnpm.cmd / pnpm.CMD / pnpm.ps1), not a bare "pnpm"
+  // executable. Without `shell: true` (or an exact extension), Node tries
+  // to CreateProcess a file that does not exist and reports ENOENT — even on
+  // a machine where `pnpm install` from an actual shell works fine, which is
+  // exactly what a real Windows run of this launcher found. `shell: true`
+  // routes the lookup through cmd.exe, which resolves PATHEXT correctly.
   if (deps.runPnpmVersion) {
     try {
-      results.push({ name: 'pnpm', status: 'pass', detail: deps.runPnpmVersion() });
-    } catch (error) {
+      results.push({ name: 'pnpm (informational)', status: 'pass', detail: deps.runPnpmVersion() });
+    } catch {
       results.push({
-        name: 'pnpm',
-        status: 'fail',
-        detail: `not found on PATH (${error instanceof Error ? error.message : String(error)}) — needed for \`pnpm install\`, not for this launcher`,
+        name: 'pnpm (informational)',
+        status: 'skip',
+        detail: 'not found on PATH — not required by this launcher, which invokes node directly; needed separately for `pnpm install`',
       });
     }
   }
@@ -457,55 +464,58 @@ export function queryEtwSessionActive(
 
 // ---------------------------------------------------------------------------
 // The cancellation + cleanup-wait step — the actual point of this launcher
+//
+// THIS TESTS THE INTERNAL CANCELLATION/CLEANUP PATH, NOT THE WINDOWS CTRL-C
+// BOUNDARY. It proves that once cancellation.ts's AbortController fires,
+// PresentMon is stopped, cleanup runs, and the process exits with the
+// documented code — collect.ts's own --internal-cancel-after-seconds
+// triggers that same AbortController from a timer INSIDE the collector
+// (see cancellation.ts's simulateSignal and collect.ts's
+// validateInternalCancelAfterSeconds). It does NOT exercise, and cannot
+// exercise, whether a real console Ctrl-C reaches this process at all —
+// that is a genuinely different question, about OS signal delivery, that
+// this launcher cannot safely test from outside the process (see runDirect's
+// own comment for why not). The manual Ctrl-C checklist step in the README
+// (step 8) is what actually tests that boundary, and remains the real check
+// for it.
 // ---------------------------------------------------------------------------
 
 export interface CancellationSmokeTestOptions {
-  captureSeconds: number;
-  cancelAfterSeconds: number;
-  args: readonly string[]; // everything else collect.ts needs, already assembled
+  args: readonly string[]; // everything else collect.ts needs, already assembled — including --internal-cancel-after-seconds
+  timeoutMs?: number;
   runOptions?: DirectRunOptions;
 }
 
 /**
- * The line collect.ts itself prints right before a real capture starts (see
- * "Capturing …s… play the run now." in collect.ts). Cancellation is timed
- * from here, not from process spawn, because catalog loading, PresentMon
- * resolution and hardware detection all happen first and take a variable
- * amount of time — counting cancelAfterSeconds from spawn would risk sending
- * SIGINT before the capture, or even installCancellationHandler(), had
- * started at all.
- */
-export const CAPTURE_STARTED_MARKER = /^Capturing \d+s/m;
-
-/**
- * Runs collect.ts as a DIRECT child (see runDirect above), sends SIGINT
- * `cancelAfterSeconds` after capture actually starts, and — critically —
- * waits for that same child's own 'exit' event before returning. "Wait for
- * capture cleanup" means exactly this: the result is only available once the
- * process that owns the cleanup has actually finished it, not once some
- * other process (a pnpm wrapper, a shell) has merely stopped waiting on it.
+ * Runs collect.ts as a DIRECT child (see runDirect above) and waits for it
+ * to exit ON ITS OWN — collect.ts's own --internal-cancel-after-seconds is
+ * what triggers cancellation from inside it, not anything this function
+ * does to the child from outside. "Wait for capture cleanup" means exactly
+ * this: the result is only available once the process that owns the cleanup
+ * has actually finished it, not once some other process (a pnpm wrapper, a
+ * shell) has merely stopped waiting on it.
  */
 export function runCancellationSmokeTest(
   scriptPath: string,
   options: CancellationSmokeTestOptions,
 ): Promise<{ result: CheckResult; run: DirectRunResult }> {
   return runDirect(scriptPath, options.args, {
-    signalAfterMarker: CAPTURE_STARTED_MARKER,
     ...options.runOptions,
-    signalAfterMs: options.cancelAfterSeconds * 1000,
-    signal: 'SIGINT',
-    timeoutMs: (options.captureSeconds + 30) * 1000,
+    timeoutMs: options.timeoutMs ?? 60_000,
   }).then((run) => ({
     run,
     result:
       run.code === CANCELLED_EXIT_CODE
         ? {
-            name: 'Cancellation exit code (direct invocation)',
+            name: 'Internal cancellation exit code (not a Ctrl-C test)',
             status: 'pass',
-            detail: `exited ${CANCELLED_EXIT_CODE} — this is the collector's own status, invoked directly (no pnpm); it is a separate fact from what \`pnpm collect:measured\` shows in PowerShell, see the README`,
+            detail:
+              `exited ${CANCELLED_EXIT_CODE} — self-cancelled internally via --internal-cancel-after-seconds, invoked ` +
+              'directly (no pnpm), never signalled from outside the process. This is a separate fact from what ' +
+              '`pnpm collect:measured` shows in PowerShell, and does not test real Ctrl-C delivery — see the README.',
           }
         : {
-            name: 'Cancellation exit code (direct invocation)',
+            name: 'Internal cancellation exit code (not a Ctrl-C test)',
             status: 'fail',
             detail:
               `exited code=${run.code} signal=${run.signal}, expected ${CANCELLED_EXIT_CODE}. ` +
@@ -535,7 +545,10 @@ async function main(argv: string[]): Promise<void> {
 
   results.push(
     ...checkDependencies({
-      runPnpmVersion: () => execFileSync('pnpm', ['--version'], { encoding: 'utf-8' }).trim(),
+      // shell: true — see checkDependencies's own comment on the pnpm check
+      // for why: without it, Node does not perform the PATHEXT resolution
+      // pnpm's Windows entry point (pnpm.cmd / pnpm.CMD / pnpm.ps1) needs.
+      runPnpmVersion: () => execFileSync('pnpm', ['--version'], { encoding: 'utf-8', shell: true }).trim(),
     }),
   );
 
@@ -568,19 +581,24 @@ async function main(argv: string[]): Promise<void> {
     const captureSeconds = Math.max(MIN_CAPTURE_SECONDS, numberFlag(argv, 'capture-seconds', 20));
     const cancelAfterSeconds = Math.min(captureSeconds - 2, numberFlag(argv, 'cancel-after-seconds', 5));
     console.log(
-      `\nAbout to run a ${captureSeconds}s DRY-RUN capture against ${target.name} (pid ${target.processId}), cancelling it after ` +
-        `${cancelAfterSeconds}s to check cleanup. Nothing is written to the store. Make sure the game is running and not minimized.`,
+      `\nAbout to run a ${captureSeconds}s DRY-RUN capture against ${target.name} (pid ${target.processId}), self-cancelling ` +
+        `${cancelAfterSeconds}s after capture begins to check cleanup — via --internal-cancel-after-seconds, NOT a simulated ` +
+        'Ctrl-C, see the README. Nothing is written to the store. Make sure the game is running and not minimized.',
     );
-    await defaultPause('Ready to start the dry-run cancellation test.');
+    await defaultPause('Ready to start the dry-run internal-cancellation test.');
 
     const { result: cancelResult } = await runCancellationSmokeTest(collectScript, {
-      captureSeconds,
-      cancelAfterSeconds,
+      timeoutMs: (captureSeconds + 30) * 1000,
       args: [
         '--capture-process-id',
         String(target.processId),
         '--capture-seconds',
         String(captureSeconds),
+        // Self-cancels from INSIDE collect.ts once capture begins — see
+        // runCancellationSmokeTest's own header comment for why this
+        // launcher does not simulate Ctrl-C from outside the process.
+        '--internal-cancel-after-seconds',
+        String(cancelAfterSeconds),
         '--presentmon',
         binary.path,
         // Forwards the SAME pinning decision checkPresentMon already made
@@ -589,7 +607,13 @@ async function main(argv: string[]): Promise<void> {
         // though this launcher already accepted it for this run.
         ...(binary.pinned ? ['--presentmon-sha256', binary.sha256] : ['--allow-unpinned-presentmon']),
         '--game-id',
-        flag(argv, 'game-id') ?? 'marvel-rivals',
+        // 'marvel-rivals' is not a real entry in src/data/games.json (there
+        // is no catalog id by that name); a default has to be one the
+        // catalog actually accepts, or every run without an explicit
+        // --game-id fails on the catalog check before reaching capture at
+        // all — which is exactly what happened until this was caught
+        // against a real run. 'rdr2' is a real catalog id.
+        flag(argv, 'game-id') ?? 'rdr2',
         '--resolution',
         '1440p',
         '--preset',
@@ -606,7 +630,7 @@ async function main(argv: string[]): Promise<void> {
     results.push(...checkResidues({ queryEtwSession: process.platform === 'win32' ? queryEtwSessionActive : undefined }));
   } else {
     results.push({
-      name: 'Cancellation exit code (direct invocation)',
+      name: 'Internal cancellation exit code (not a Ctrl-C test)',
       status: 'skip',
       detail: 'skipped — PresentMon or the game process was not resolved above',
     });

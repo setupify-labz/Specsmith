@@ -17,6 +17,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const specsmithRoot = path.join(here, '..', '..');
 const harness = path.join(here, '__fixtures__', 'cancelHarness.ts');
 const exitCodeHarness = path.join(here, '__fixtures__', 'collectExitCodeHarness.ts');
+const internalCancelHarness = path.join(here, '__fixtures__', 'internalCancelHarness.ts');
 const tsx = path.join(specsmithRoot, 'node_modules', '.bin', 'tsx');
 
 // ---------------------------------------------------------------------------
@@ -171,6 +172,89 @@ describe('Ctrl+C at the real CLI boundary', () => {
     expect(fs.existsSync(run.lockPath)).toBe(true);
     fs.rmSync(run.tempDir, { recursive: true, force: true });
     fs.rmSync(run.lockPath, { force: true });
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// simulateSignal — cancellation triggered from INSIDE the process, no signal
+// sent by anyone, ever
+// ---------------------------------------------------------------------------
+
+interface InternalCancelRun {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  tempDir: string;
+  lockPath: string;
+}
+
+/**
+ * Spawns internalCancelHarness.ts and waits for it to exit — nothing here
+ * ever calls child.kill() with a signal. The harness cancels itself on its
+ * own internal timer via cancellation.ts's simulateSignal, exactly as
+ * collect.ts's --internal-cancel-after-seconds does. See
+ * internalCancelHarness.ts's own header for why: a real Windows run found
+ * that this test file's OWN runHarness (above) — sending a real OS signal —
+ * cannot stand in for what a smoke-test LAUNCHER does to a collector it
+ * spawns as an external process, because Node's child.kill() on Windows
+ * does not deliver a catchable signal at all, unlike the real console
+ * signals runHarness sends here.
+ */
+function runInternalCancelHarness(args: string[] = []): Promise<InternalCancelRun> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(tsx, [internalCancelHarness, ...args], {
+      cwd: specsmithRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let tempDir = '';
+    let lockPath = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`Harness never finished.\nstdout: ${stdout}\nstderr: ${stderr}`));
+    }, 20_000);
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+      const ready = stdout.match(/^READY (\S+) (\S+)$/m);
+      if (ready) [, tempDir, lockPath] = ready;
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal, stdout, stderr, tempDir, lockPath });
+    });
+  });
+}
+
+describe('simulateSignal drives the identical real path a real signal does, with no signal at all', () => {
+  it('produces the same cancellation message a real Ctrl+C produces', async () => {
+    const run = await runInternalCancelHarness(['--cancel-after', '20', '--linger', '150']);
+    expect(run.stderr).toMatch(/cancelling capture/i);
+    expect(run.stderr).toMatch(/waiting for presentmon/i);
+  }, 30_000);
+
+  it('waits for confirmed exit before cleaning up, in the same order as a real signal', async () => {
+    const run = await runInternalCancelHarness(['--cancel-after', '20', '--linger', '250']);
+    expect(run.stdout.indexOf('WAITING')).toBeLessThan(run.stdout.indexOf('CHILD_EXIT_CONFIRMED'));
+    expect(fs.existsSync(run.tempDir)).toBe(false);
+    expect(fs.existsSync(run.lockPath)).toBe(false);
+  }, 30_000);
+
+  it('exits with CANCELLED_EXIT_CODE, having never been sent any signal at all', async () => {
+    const run = await runInternalCancelHarness(['--cancel-after', '20', '--linger', '100']);
+    expect(run.code).toBe(CANCELLED_EXIT_CODE);
+    // The property this fixture exists to prove: unlike every test above,
+    // which sends a real signal and can therefore report one, this process
+    // was NEVER signalled — its exit is not attributable to any signal.
+    expect(run.signal).toBeNull();
   }, 30_000);
 });
 

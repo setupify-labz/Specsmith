@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, shouldPersistFrameTimes, validateAndSave, validateInternalCancelAfterSeconds, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
@@ -631,5 +631,44 @@ describe('choosing between reading a CSV and capturing one', () => {
   it('rejects a nonsense pid', () => {
     expect(() => parseCaptureSelection(['--capture-process-id', '0', '--capture-seconds', '30'])).toThrow(/between/);
     expect(() => parseCaptureSelection(['--capture-process-id', 'abc', '--capture-seconds', '30'])).toThrow(/not a number/);
+  });
+});
+
+// --internal-cancel-after-seconds self-cancels a capture from inside this
+// process, for smoke-testing cleanup without depending on an OS signal — see
+// validateInternalCancelAfterSeconds's own comment for why (a real Windows
+// run found child.kill('SIGINT') does not deliver a catchable signal there
+// at all). The one thing this MUST guarantee, checked directly rather than
+// only through the manual smoke test: it can never let a real, savable
+// capture self-cancel silently.
+describe('the internal cancellation timer cannot write an observation', () => {
+  const capture = (seconds: number) => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', String(seconds)]);
+
+  it('is undefined, and does not validate anything, when the flag is absent', () => {
+    expect(validateInternalCancelAfterSeconds(undefined, capture(30), false)).toBeUndefined();
+    expect(validateInternalCancelAfterSeconds(undefined, capture(30), true)).toBeUndefined();
+  });
+
+  it('REFUSES without --dry-run — the one rule this flag cannot be used to bypass', () => {
+    expect(() => validateInternalCancelAfterSeconds('5', capture(30), false)).toThrow(CliInputError);
+    expect(() => validateInternalCancelAfterSeconds('5', capture(30), false)).toThrow(/requires --dry-run/);
+  });
+
+  it('refuses on a --csv run, which has no capture to cancel', () => {
+    const csv = parseCaptureSelection(['--csv', 'run.csv']);
+    expect(() => validateInternalCancelAfterSeconds('5', csv, true)).toThrow(/only applies to an automatic capture/);
+  });
+
+  it('refuses a delay that would never fire before the capture finishes on its own', () => {
+    expect(() => validateInternalCancelAfterSeconds('30', capture(30), true)).toThrow(/must be less than --capture-seconds/);
+    expect(() => validateInternalCancelAfterSeconds('45', capture(30), true)).toThrow(/must be less than --capture-seconds/);
+  });
+
+  it('accepts a valid delay under --dry-run and returns it as a number', () => {
+    expect(validateInternalCancelAfterSeconds('5', capture(30), true)).toBe(5);
+  });
+
+  it('reuses the collector\'s existing numeric validation rather than a second one', () => {
+    expect(() => validateInternalCancelAfterSeconds('not-a-number', capture(30), true)).toThrow(/not a number/);
   });
 });

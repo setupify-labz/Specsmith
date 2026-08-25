@@ -58,6 +58,21 @@ export interface CancellationController {
   track(resources: CancellableResources): void;
   /** The run finished (or handed the resources on). Stops tracking and unhooks. */
   dispose(): void;
+  /**
+   * Drives the exact same path a real OS signal would: aborts, sets the exit
+   * code, logs the same message, waits for cleanup on a second call.
+   *
+   * Exists for collect.ts's `--internal-cancel-after-seconds` (see there):
+   * on Windows, `ChildProcess.kill()` does not deliver a catchable signal the
+   * way a real console Ctrl+C does — it is closer to TerminateProcess, and a
+   * real Windows run confirmed exactly that: the child exited immediately
+   * with signal=SIGINT and never ran any of this. Nothing OUTSIDE a process
+   * can safely simulate Ctrl+C on Windows for testing purposes, so a caller
+   * that wants to test the cancellation and cleanup path from a smoke test
+   * has to trigger it from INSIDE the process being tested — which is what
+   * this is for. It is not a substitute for a real Ctrl+C test.
+   */
+  simulateSignal(signal?: NodeJS.Signals): void;
 }
 
 export interface CancellationOptions {
@@ -203,6 +218,9 @@ export function installCancellationHandler(options: CancellationOptions = {}): C
     },
     track(next: CancellableResources) {
       resources = { ...resources, ...next };
+    },
+    simulateSignal(signal: NodeJS.Signals = 'SIGINT') {
+      onSignal(signal);
     },
     dispose() {
       if (disposed) return;

@@ -375,8 +375,8 @@ producing a file is the part that only Aaron's machine can exercise.
 
 `scripts/measured/windows-smoke-test.ps1` runs most of the checklist below
 for you — dependency checks, PresentMon location and hashing, finding the
-game's process, a dry-run capture, a cancellation with a real wait for
-cleanup, all four residue checks, and a pass/fail report — and prints one
+game's process, a dry-run capture, an INTERNAL cancellation with a real wait
+for cleanup, all four residue checks, and a pass/fail report — and prints one
 report at the end instead of a transcript to read by hand. It pauses only
 when it genuinely cannot proceed without you: if the game process cannot be
 found yet.
@@ -384,36 +384,78 @@ found yet.
 ```powershell
 .\scripts\measured\windows-smoke-test.ps1 `
   -PresentMon "C:\tools\PresentMon\PresentMon.exe" `
-  -ProcessName "Marvel-Win64-Shipping.exe"
+  -ProcessName "RDR2.exe"
 ```
 
 Run `Get-Help .\scripts\measured\windows-smoke-test.ps1 -Full` for every
 parameter. It is dry-run only — it never writes to the observation store —
-and it never runs through `pnpm collect:measured`. It calls `node --import
-tsx` directly against the collector for anything that touches cancellation,
-deliberately skipping BOTH pnpm's own wrapper process and tsx's `.CMD` shim.
-See "pnpm's Windows exit code vs. the collector's own status" below for why: two real Windows
+and it never runs through `pnpm collect:measured`. It calls `node --import`
+(tsx's own loader, resolved to a verified absolute path) directly against
+the collector for anything that touches cancellation, deliberately skipping
+BOTH pnpm's own wrapper process and tsx's `.CMD` shim. See "pnpm's Windows
+exit code vs. the collector's own status" below for why: real Windows
 retests showed pnpm's own Windows exit-code handling cannot be trusted for
 this, and a further patch to the collector's own code cannot fix that,
 because the number PowerShell reports for `pnpm collect:measured` is not
 read from the collector at all once it has gone through pnpm's wrapper.
 
-The first real Windows run of this launcher failed before the collector ever
-ran: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx'`, because it
-had been invoked from a different directory than the repository, and
-`node --import tsx` resolves that BARE specifier relative to the caller's own
-working directory, not this repository. Fixed: every path the script uses is
-resolved from `$PSScriptRoot` (this file's own folder), and tsx is resolved
-to a verified, absolute `file://` URL rather than a bare specifier — see
-`resolveTsxImportUrl` in `smokeTest.ts`, and the `.ps1` file's own comments
-for the PowerShell-side half of the same fix. It genuinely does not matter
-what directory you run it from now, and that specific property is covered by
-`smokeTest.test.ts` (`'resolves tsx correctly even when the spawned
-process's own cwd is nothing to do with this repo'`), which fails without
-the fix. Its own PowerShell syntax parsed and ran on real Windows this time;
-what still has not been exercised there is everything past dependency
-resolution — hardware detection, `logman`, PresentMon itself. Report
-anything further it gets wrong verbatim.
+**Cancellation is tested internally, not by simulating Ctrl+C.** An earlier
+version of this launcher tried to simulate Ctrl+C itself, from outside the
+collector, by calling `child.kill('SIGINT')` on it. A real Windows run showed
+that does not work at all: Node's `child.kill()` on Windows is not a real
+console Ctrl+C event the collector's own signal handler could catch — the
+child was simply terminated, ran none of its own cancellation or cleanup
+logic, and left the ETW session, lock file and temp directory behind, every
+time. Manual, real Ctrl+C in a real console continued to work correctly
+throughout — the failure was specific to one process trying to signal
+another externally on Windows, which nothing outside a Windows process can
+safely do. So the launcher now asks the collector to cancel ITSELF, on an
+internal timer, via collect.ts's own `--internal-cancel-after-seconds` (gated
+to `--dry-run`, see `validateInternalCancelAfterSeconds` in `collect.ts`) —
+the exact same `AbortController` a real Ctrl+C drives (see
+`simulateSignal` in `cancellation.ts`), just triggered from inside the
+process instead of by a signal delivered from outside it. **This proves the
+collector's own cancellation and cleanup logic works. It does NOT prove a
+real console Ctrl+C reaches the collector** — that is a genuinely different
+question about OS signal delivery this launcher cannot safely test from
+outside the process. Smoke-test step 8's manual Ctrl+C check remains the
+real test for that, and this launcher does not replace it.
+
+Three further defects a real Windows run then found, all fixed:
+
+- **`node --import tsx` failed with `Error [ERR_MODULE_NOT_FOUND]: Cannot
+  find package 'tsx'`** when the launcher was invoked from a different
+  directory than the repository — `node --import` resolves a bare specifier
+  relative to the caller's own working directory, not this repository. Every
+  path the script uses is now resolved from `$PSScriptRoot` (this file's own
+  folder), and tsx is resolved to a verified, absolute `file://` URL rather
+  than a bare specifier — see `resolveTsxImportUrl` in `smokeTest.ts`, and
+  the `.ps1` file's own comments for the PowerShell-side half of the same
+  fix. It genuinely does not matter what directory you run it from now, and
+  that specific property is covered by `smokeTest.test.ts` (`'resolves tsx
+  correctly even when the spawned process's own cwd is nothing to do with
+  this repo'`), which fails without the fix.
+- **The pnpm dependency check reported ENOENT even on a machine where `pnpm
+  install` worked fine from an actual shell.** `execFileSync('pnpm', [...])`
+  with no `shell: true` does not perform the PATHEXT resolution pnpm's
+  Windows entry point (`pnpm.cmd` / `pnpm.CMD` / `pnpm.ps1`) needs — a real
+  shell resolves this automatically, `execFileSync` without `shell: true`
+  does not. Fixed with `shell: true`, and the check's severity fixed
+  alongside it: pnpm was never actually required by this launcher (it calls
+  `node` directly, see above), so its absence is now informational only and
+  can never fail the run.
+- **The default `-GameId` was `"marvel-rivals"`, which is not a real id in
+  `src/data/games.json`** — the catalog check refused it before capture ever
+  started. This is a pre-existing documentation defect the same run
+  surfaced, not new to the launcher: the manual checklist below had the same
+  wrong value in its own example commands, now fixed there too. The default
+  is now `"rdr2"`, a real catalog id, and the one the launcher has actually
+  been run against.
+
+Its own PowerShell syntax has now parsed and run on real Windows across
+three runs; what still has not been exercised there is everything past
+dependency resolution and cancellation — hardware detection, `logman`,
+PresentMon itself. Report anything further it gets wrong verbatim.
 
 **What it does NOT cover**, which still needs the manual checklist below:
 elevation actually being required (step 6), `--keep-capture` (step 9), the
@@ -481,13 +523,13 @@ if you see that message, move on to the next row.
 
 | # | What you're checking | Command | Expected |
 |---|---|---|---|
-| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (no `--presentmon-sha256`) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
+| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (no `--presentmon-sha256`) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
 | 2 | It refuses a WRONG digest, rather than trusting it | Same as #1, add `--presentmon-sha256 0000000000000000000000000000000000000000000000000000000000000000` | Refuses: "is not the one this collector was set up against" |
 | 3 | It refuses a pid that isn't running | Same as #1 + real `--presentmon-sha256 <sha>`, but `--capture-process-id 999999` | Refuses: "No running process has pid 999999" |
 | 4 | It refuses when a process name is ambiguous | `--capture-process-name explorer.exe` instead of `--capture-process-id` (Explorer usually has more than one) | Refuses, lists more than one pid, points you at `--capture-process-id` |
 | 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
 | 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
-| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
+| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
 | 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`. **Read "pnpm's Windows exit code vs. the collector's own status" below before running this step** — `$LASTEXITCODE` here reflects pnpm's Windows exit-code handling, confirmed on two separate real retests to read 1, not the collector's own 130; that is expected with this specific command, not a failure, and the four residues are the actual check. |
 | 8b | The second Ctrl-C is a real escape hatch | Repeat #7, press **Ctrl-C twice** | "Second interrupt — abandoning the wait", exits promptly, lock and temp directory still removed |
 | 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |
@@ -609,9 +651,27 @@ the store append path and the frame-time archive will have executed for real.
   that this project does not control and is not attempting to patch around a
   third time. `windows-smoke-test.ps1` (above) sidesteps the question
   entirely for automated checking by never going through pnpm for anything
-  cancellation-sensitive — but that script itself has not been run on real
-  Windows yet; that is the next real check, not another guess at the pnpm
-  behaviour.
+  cancellation-sensitive.
+- **The launcher's own cancellation test used to simulate Ctrl+C by calling
+  `child.kill('SIGINT')` on the collector from a separate process — a real
+  Windows run showed this does not work at all on Windows.** Node's
+  `child.kill()` there is not a real console Ctrl+C event the collector's
+  signal handler could catch; the collector was simply terminated, ran none
+  of its own cancellation logic, and left the ETW session, lock file and
+  temp directory behind every time — even though manual, real Ctrl+C
+  continued to work correctly throughout the same run. This is now fixed by
+  testing cancellation from INSIDE the collector instead: collect.ts's new
+  `--internal-cancel-after-seconds` (gated to `--dry-run`) triggers the exact
+  same `AbortController` a real Ctrl+C uses, via `cancellation.ts`'s
+  `simulateSignal`, from a timer the collector starts once capture actually
+  begins. This proves the cancellation and cleanup logic itself works; it
+  does not and cannot prove real Ctrl+C delivery, which remains smoke-test
+  step 8's job alone — see "pnpm's Windows exit code vs. the collector's own
+  status" above for the full account, including two further defects
+  (`ERR_MODULE_NOT_FOUND` from a bare tsx specifier, and a false pnpm ENOENT)
+  that same run surfaced and this fix addresses alongside it. Not yet
+  confirmed: whether the internal timer approach behaves identically on real
+  Windows, since the two runs that found these bugs predate the fix.
 - **Automatic capture has never run.** No PresentMon process has been spawned by
   this collector. The flag set is taken from Intel's documented console options
   and the column requirements from the pinned real fixture, but the pairing —

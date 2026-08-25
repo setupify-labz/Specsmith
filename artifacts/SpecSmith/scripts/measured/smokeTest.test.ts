@@ -23,6 +23,7 @@ import { AmbiguousProcessError, type RunningProcess } from './presentmonRunner';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const specsmithRoot = path.join(here, '..', '..');
 const harness = path.join(here, '__fixtures__', 'cancelHarness.ts');
+const internalCancelHarness = path.join(here, '__fixtures__', 'internalCancelHarness.ts');
 
 // ---------------------------------------------------------------------------
 // The report — pure, so no real machine needed
@@ -65,23 +66,18 @@ describe('formatReport', () => {
 
 describe('the direct-spawn primitive', () => {
   // This is the property the whole launcher depends on: a script spawned
-  // directly (no pnpm) survives a real signal and reports its OWN real exit
-  // code, which is exactly what two Windows retests found `pnpm collect:measured`
-  // does not reliably do.
-  it('signals the real child after a delay and waits for its real exit code', async () => {
-    // Waits for the harness's own READY marker rather than a fixed delay
-    // from spawn: tsx's own startup time is variable, and a delay counted
-    // from spawn would risk sending SIGINT before the harness had installed
-    // its handler at all — the same reasoning that governs cancelAfterSeconds
-    // in the real launcher (see CAPTURE_STARTED_MARKER below).
-    const run = await runDirect(harness, ['--linger', '150'], {
-      signalAfterMarker: /^READY/m,
-      signalAfterMs: 20,
-      signal: 'SIGINT',
-    });
+  // directly (no pnpm) is waited on until it exits ON ITS OWN and reports
+  // its OWN real exit code — no signal is ever sent to it by this function.
+  // See internalCancelHarness.ts and 'self-cancellation without any signal'
+  // below for the property that replaced signal-based cancellation testing.
+  it('waits for a self-cancelling child and reports its real exit code, with no signal ever sent to it', async () => {
+    const run = await runDirect(internalCancelHarness, ['--cancel-after', '20', '--linger', '150'], { timeoutMs: 10_000 });
     expect(run.stdout).toContain('WAITING');
     expect(run.stdout).toContain('CHILD_EXIT_CONFIRMED');
     expect(run.code).toBe(CANCELLED_EXIT_CODE);
+    // The defining property: this process was never sent a signal by
+    // anything, including this test — it cancelled itself.
+    expect(run.signal).toBeNull();
   }, 30_000);
 
   it('reports a normal exit code when nothing was signalled', async () => {
@@ -172,6 +168,47 @@ describe('checkDependencies', () => {
   it('fails on a too-old Node version', () => {
     const results = checkDependencies({ platform: 'win32', nodeVersion: 'v16.0.0', existsSync: () => true });
     expect(results.find((r) => r.name === 'Node.js')?.status).toBe('fail');
+  });
+
+  // A real Windows run reported this check as a hard failure (ENOENT) even
+  // though `pnpm install` worked fine from an actual shell on that machine —
+  // caused by execFileSync('pnpm', ...) with no `shell: true`, which does not
+  // perform the PATHEXT resolution pnpm's Windows entry point (pnpm.cmd)
+  // needs. Two things had to change: the detection itself (fixed at the
+  // call site in main() — this suite covers checkDependencies's own
+  // handling of whatever runPnpmVersion reports), and the SEVERITY: pnpm
+  // is not required by this launcher at all, so its absence must never
+  // fail the whole run.
+  it('never fails the run over pnpm — it is informational only, not required by this direct launcher', () => {
+    const missing = checkDependencies({
+      platform: 'win32',
+      nodeVersion: 'v20.11.0',
+      existsSync: () => true,
+      runPnpmVersion: () => {
+        throw new Error('ENOENT');
+      },
+    });
+    const pnpmCheck = missing.find((r) => r.name.startsWith('pnpm'));
+    expect(pnpmCheck?.status).toBe('skip');
+    expect(pnpmCheck?.status).not.toBe('fail');
+    expect(pnpmCheck?.detail).toMatch(/not required by this launcher/);
+  });
+
+  it('reports the version when pnpm IS found', () => {
+    const results = checkDependencies({
+      platform: 'win32',
+      nodeVersion: 'v20.11.0',
+      existsSync: () => true,
+      runPnpmVersion: () => '10.33.0',
+    });
+    const pnpmCheck = results.find((r) => r.name.startsWith('pnpm'));
+    expect(pnpmCheck?.status).toBe('pass');
+    expect(pnpmCheck?.detail).toBe('10.33.0');
+  });
+
+  it('is skipped entirely (not even attempted) when no pnpm probe is provided', () => {
+    const results = checkDependencies({ platform: 'win32', nodeVersion: 'v20.11.0', existsSync: () => true });
+    expect(results.find((r) => r.name.startsWith('pnpm'))).toBeUndefined();
   });
 });
 
@@ -337,31 +374,30 @@ describe('queryEtwSessionActive', () => {
 // ---------------------------------------------------------------------------
 
 describe('runCancellationSmokeTest', () => {
-  // cancelHarness.ts stands in for collect.ts here for the same reason it
-  // does throughout cancellation.test.ts: it is a real process, sent a real
-  // signal, that the real collector's own signal handling drives — collect.ts
-  // itself cannot be run this way off Windows.
-  it('passes when the direct child reports CANCELLED_EXIT_CODE after being signalled', async () => {
-    const { result, run } = await runCancellationSmokeTest(harness, {
-      captureSeconds: 5,
-      cancelAfterSeconds: 0.02,
-      args: ['--linger', '150'],
-      // The harness prints its own READY marker, not collect.ts's "Capturing
-      // …s" line — override the default so the countdown starts at the right
-      // moment for THIS fixture.
-      runOptions: { signalAfterMarker: /^READY/m },
+  // internalCancelHarness.ts stands in for collect.ts's own
+  // --internal-cancel-after-seconds path: cancellation is triggered from
+  // INSIDE the spawned process on its own timer, never by a signal this
+  // function — or anything else — sends it. collect.ts itself cannot be
+  // driven this way off Windows (it probes real hardware first), which is
+  // why this fixture exists at all; see its own header comment.
+  it('passes when the self-cancelling child reports CANCELLED_EXIT_CODE, with no signal ever sent to it', async () => {
+    const { result, run } = await runCancellationSmokeTest(internalCancelHarness, {
+      args: ['--cancel-after', '20', '--linger', '150'],
+      timeoutMs: 10_000,
     });
     expect(run.code).toBe(CANCELLED_EXIT_CODE);
+    // THE regression this guards: a signal-based approach would report a
+    // signal name here (as cancelHarness.ts's real-signal tests do in
+    // cancellation.test.ts). This process was never signalled at all.
+    expect(run.signal).toBeNull();
     expect(result.status).toBe('pass');
-    expect(result.detail).toMatch(/no pnpm/);
+    expect(result.detail).toMatch(/self-cancelled internally/);
+    expect(result.detail).not.toMatch(/simulat(e|ed|ing) Ctrl-C/i);
   }, 30_000);
 
   it('fails when the child does not exit with the expected code', async () => {
     const { result } = await runCancellationSmokeTest(harness, {
-      captureSeconds: 5,
-      cancelAfterSeconds: 5, // longer than the run itself, so --finish-immediately wins the race
       args: ['--finish-immediately'],
-      runOptions: { signalAfterMarker: /^READY/m },
     });
     expect(result.status).toBe('fail');
   }, 30_000);
