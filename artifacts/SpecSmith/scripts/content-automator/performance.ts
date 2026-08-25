@@ -212,7 +212,7 @@ export function analyzePerformance(records: VideoPerformanceRecord[], now = new 
     minimumConfidenceWeight: 9,
     // Cross-posting one creative to three platforms is still one creative
     // experiment for the voice-switch gate.
-    sampleKeyOf: (record: VideoPerformanceRecord) => record.creativeId?.trim() || record.videoId,
+    sampleKeyOf: (record: VideoPerformanceRecord) => record.ideaId.trim() || record.creativeId?.trim() || record.videoId,
   };
   const byVoice = learnFactor(records, scoreMap, voiceLabel, baselineScore, voiceLearningOptions);
   const byVoiceAndFormat = learnFactor(

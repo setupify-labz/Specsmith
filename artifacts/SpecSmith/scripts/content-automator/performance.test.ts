@@ -102,12 +102,14 @@ describe("performance learner", () => {
     const records = [0, 1, 2, 3].flatMap((index) => [
       record({
         videoId: `george-${index}`,
+        ideaId: `george-idea-${index}`,
         voiceId: georgeId,
         voiceName: "George",
         format: "game",
       }),
       record({
         videoId: `alt-${index}`,
+        ideaId: `alt-idea-${index}`,
         voiceId: "alt-voice-id",
         voiceName: "Alt Voice",
         format: "game",
@@ -149,9 +151,10 @@ describe("performance learner", () => {
 
   it("keeps voice switching recommendation-only until 15 sufficiently confident creatives", () => {
     const underThreshold = Array.from({ length: 14 }, (_, index) => [
-      record({ videoId: `strong-${index}`, creativeId: `strong-creative-${index}`, voiceId: "voice-a", voiceName: "Voice A" }),
+      record({ videoId: `strong-${index}`, ideaId: `strong-idea-${index}`, creativeId: `strong-creative-${index}`, voiceId: "voice-a", voiceName: "Voice A" }),
       record({
         videoId: `weak-${index}`,
+        ideaId: `weak-idea-${index}`,
         creativeId: `weak-creative-${index}`,
         voiceId: "voice-b",
         voiceName: "Voice B",
@@ -174,9 +177,10 @@ describe("performance learner", () => {
 
     const eligible = analyzePerformance([
       ...underThreshold,
-      record({ videoId: "strong-14", creativeId: "strong-creative-14", voiceId: "voice-a", voiceName: "Voice A" }),
+      record({ videoId: "strong-14", ideaId: "strong-idea-14", creativeId: "strong-creative-14", voiceId: "voice-a", voiceName: "Voice A" }),
       record({
         videoId: "weak-14",
+        ideaId: "weak-idea-14",
         creativeId: "weak-creative-14",
         voiceId: "voice-b",
         voiceName: "Voice B",
