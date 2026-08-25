@@ -48,7 +48,7 @@ function getTargetBadge(fps: number, target: FpsTarget): { icon: string; color: 
   if (target === null) return null;
   if (fps >= target) return { icon: '✓', color: 'var(--ff-green)' };
   if (fps >= target * 0.85) return { icon: '~', color: 'var(--ff-amber)' };
-  return { icon: '✗', color: 'var(--ff-red)' };
+  return { icon: '✗', color: 'var(--ff-red-text)' };
 }
 
 export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onResolutionChange, onPresetChange }: Props) {
@@ -194,7 +194,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
           <div className="flex items-center gap-3 ml-auto text-xs shrink-0">
             <span style={{ color: 'var(--ff-green)' }}>✓ {meetsTarget.green}</span>
             <span style={{ color: 'var(--ff-amber)' }}>~ {meetsTarget.yellow}</span>
-            <span style={{ color: 'var(--ff-red)' }}>✗ {meetsTarget.red}</span>
+            <span style={{ color: 'var(--ff-red-text)' }}>✗ {meetsTarget.red}</span>
           </div>
         )}
       </div>
@@ -214,7 +214,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
             <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--ff-text-2)' }}>
               <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-green)' }}>●</span> ≥{fpsTarget}</span>
               <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-amber)' }}>●</span> within 15%</span>
-              <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-red)' }}>●</span> below</span>
+              <span className="flex items-center gap-1"><span style={{ color: 'var(--ff-red-text)' }}>●</span> below</span>
             </div>
           )}
         </div>

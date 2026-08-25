@@ -46,7 +46,7 @@ export function estimateFps(
   else if (estimated >= 90)  { color = 'var(--ff-cyan)'; label = 'Excellent'; }
   else if (estimated >= 60)  { color = 'var(--ff-green)'; label = 'Smooth'; }
   else if (estimated >= 30)  { color = 'var(--ff-amber)'; label = 'Playable'; }
-  else                       { color = 'var(--ff-red)'; label = 'Unplayable'; }
+  else                       { color = 'var(--ff-red-text)'; label = 'Unplayable'; }
 
   return { estimated, min, max, color, label };
 }

@@ -32,6 +32,11 @@ export default function BottleneckChecker({ gpuScore, cpuScore, onFixGpu, onFixC
   }
 
   const badgeColor = severity === 'severe' ? 'var(--ff-red)' : severity === 'moderate' ? 'var(--ff-amber)' : 'var(--ff-green)';
+  // Text-only variant: plain --ff-red on the ~9%-opacity tint below only hits
+  // ~4.39:1 against --ff-card, under WCAG AA's 4.5:1 floor for bold 12px text
+  // (found via an axe-core sweep). The tint/border keep badgeColor — only the
+  // small text needs the lift, and amber/green already clear 4.5:1 as text.
+  const badgeTextColor = severity === 'severe' ? 'var(--ff-red-text)' : badgeColor;
   const badgeLabel = severity === 'none' ? 'Balanced' : severity === 'moderate' ? 'Moderate Bottleneck' : 'Severe Bottleneck';
 
   const total = gpuScore + cpuScore;
@@ -43,10 +48,12 @@ export default function BottleneckChecker({ gpuScore, cpuScore, onFixGpu, onFixC
       className="rounded-xl p-4 mt-4"
       style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-card)' }}
     >
-      <h4 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
+      {/* h3, not h4: this sits directly under BuildSummary's "Build Summary"
+          h2 in the DOM, so h4 here skipped a level (axe-core heading-order). */}
+      <h3 className="text-sm font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--ff-text)' }}>
         <Zap size={14} style={{ color: 'var(--ff-accent)' }} />
         Bottleneck Analysis
-      </h4>
+      </h3>
 
       {/* Balance bar */}
       <div className="mb-3">
@@ -87,7 +94,7 @@ export default function BottleneckChecker({ gpuScore, cpuScore, onFixGpu, onFixC
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <span
           className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ backgroundColor: `${badgeColor}18`, color: badgeColor, border: `1px solid ${badgeColor}40` }}
+          style={{ backgroundColor: `${badgeColor}18`, color: badgeTextColor, border: `1px solid ${badgeColor}40` }}
         >
           {severity === 'none' ? <CheckCircle size={11} /> : <AlertTriangle size={11} />}
           {badgeLabel}

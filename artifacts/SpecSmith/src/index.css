@@ -123,6 +123,13 @@
   --ff-green:     #00E676;
   --ff-newegg:    #FF9E1B;
   --ff-red:       #FF1744;
+  /* Lighter than --ff-red specifically for small bold red text on dark
+     cards — the base #FF1744 only hits ~4.39:1 against --ff-card, under
+     WCAG AA's 4.5:1 floor (found via an axe-core sweep of the Builder
+     page's bottleneck badge). Keep --ff-red itself untouched since it's
+     also used for tinted badge backgrounds/borders where this doesn't
+     apply, matching the --ff-accent / --ff-accent-text split above. */
+  --ff-red-text:  #FF3D63;
   --ff-amber:     #FFB300;
   --ff-epic:      #9B6BFF;
   --ff-gold:      #FFD700;
@@ -190,6 +197,11 @@
   /* Same story as green/newegg above: #FF1744 only hits ~3.85:1 and
      #FFB300 only ~1.79:1 against light-mode white, both under 4.5:1. */
   --ff-red:       #C40028;
+  /* Light theme's --ff-red already clears 4.5:1 as text (~6.2:1 against
+     white), so no separate lift is needed here — same value, kept as its
+     own token so callers can use --ff-red-text unconditionally in both
+     themes. */
+  --ff-red-text:  #C40028;
   --ff-amber:     #8A5D00;
   /* Build Crate's rarity accent colors — #9B6BFF/#FFD700 only hit
      ~3.5:1/1.4:1 against light-mode white. */
