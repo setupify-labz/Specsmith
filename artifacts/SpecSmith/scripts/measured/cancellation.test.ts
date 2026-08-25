@@ -16,6 +16,7 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const specsmithRoot = path.join(here, '..', '..');
 const harness = path.join(here, '__fixtures__', 'cancelHarness.ts');
+const exitCodeHarness = path.join(here, '__fixtures__', 'collectExitCodeHarness.ts');
 const tsx = path.join(specsmithRoot, 'node_modules', '.bin', 'tsx');
 
 // ---------------------------------------------------------------------------
@@ -170,6 +171,200 @@ describe('Ctrl+C at the real CLI boundary', () => {
     expect(fs.existsSync(run.lockPath)).toBe(true);
     fs.rmSync(run.tempDir, { recursive: true, force: true });
     fs.rmSync(run.lockPath, { force: true });
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// The top-level catch (collect.ts) — the exit code, not just the handler
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs collectExitCodeHarness.ts, signals it once READY, and reports its
+ * real process exit code.
+ *
+ * Deliberately a second, narrower harness rather than reusing runHarness:
+ * the defect this covers lives OUTSIDE installCancellationHandler, in
+ * collect.ts's own `main().catch(...)`, which cancelHarness.ts does not have
+ * and so cannot exercise.
+ */
+function runExitCodeHarness(lingerMs = 150): Promise<{ code: number | null; signal: NodeJS.Signals | null; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(tsx, [exitCodeHarness, '--linger', String(lingerMs)], {
+      cwd: specsmithRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let sent = false;
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`Harness never finished.\nstdout: ${stdout}\nstderr: ${stderr}`));
+    }, 20_000);
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+      if (!sent && /^READY /m.test(stdout)) {
+        sent = true;
+        child.kill('SIGINT');
+      }
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal, stderr });
+    });
+  });
+}
+
+describe('the top-level catch does not clobber a deliberate cancellation exit code', () => {
+  // THE regression a real Windows retest of the cleanup fix then found:
+  // cleanup was clean, but `$LASTEXITCODE` came back 1, not the documented
+  // 130. cancellation.ts's onSignal sets exitCode 130 on the first signal;
+  // collect.ts's real capture path then awaits a rejection (the runner's
+  // CaptureCancelledError) that reaches a generic top-level
+  // `.catch((e) => { ...; process.exitCode = 1; })`, which ran AFTER
+  // cancellation.ts's assignment and overwrote it unconditionally.
+  it('reports CANCELLED_EXIT_CODE, not a generic 1, once the rejection reaches the top-level catch', async () => {
+    const run = await runExitCodeHarness(150);
+    expect(run.code).toBe(CANCELLED_EXIT_CODE);
+  }, 30_000);
+
+  it('still logs the rejection message on its way through', async () => {
+    const run = await runExitCodeHarness(120);
+    expect(run.stderr).toMatch(/cancelled\. waiting for presentmon to stop/i);
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// The real pnpm package-script boundary
+// ---------------------------------------------------------------------------
+
+/**
+ * Runs a script THROUGH pnpm — the layer `pnpm collect:measured` actually
+ * adds over a direct `tsx` invocation — and signals the whole process
+ * group, not just the one child.
+ *
+ * Windows delivers Ctrl+C to every process attached to the console at once:
+ * PowerShell, the pnpm wrapper, and the collector all get it simultaneously.
+ * `child.kill(signal)` against a single spawned pnpm process does not
+ * reproduce that — it only reaches pnpm, not whatever pnpm itself has
+ * spawned. `detached: true` plus a negative pid targets the whole group, the
+ * same as a console-wide Ctrl+C, which is the boundary the user's retest
+ * found broken and a direct-tsx test structurally cannot reach.
+ */
+function runViaPnpm(
+  pnpmArgs: readonly string[],
+  lingerMs = 250,
+): Promise<{ code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string; msFromSignalToExit: number }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('pnpm', [...pnpmArgs, '--', '--linger', String(lingerMs)], {
+      cwd: specsmithRoot,
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let sent = false;
+    let signalledAt = 0;
+    const timer = setTimeout(() => {
+      try {
+        process.kill(-child.pid!, 'SIGKILL');
+      } catch {
+        // Already gone.
+      }
+      reject(new Error(`pnpm harness never finished.\nstdout: ${stdout}\nstderr: ${stderr}`));
+    }, 20_000);
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk);
+      if (!sent && /^READY /m.test(stdout)) {
+        sent = true;
+        signalledAt = Date.now();
+        // The whole GROUP, matching console-wide Ctrl+C delivery — not just
+        // the pnpm process this test spawned directly.
+        try {
+          process.kill(-child.pid!, 'SIGINT');
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      }
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal, stdout, stderr, msFromSignalToExit: Date.now() - signalledAt });
+    });
+  });
+}
+
+describe('the real pnpm package-script boundary, not just a direct tsx subprocess', () => {
+  // `pnpm collect:measured` interposes pnpm's own script-runner process
+  // between the shell and the collector. A test that only spawns tsx
+  // directly, as cancelHarness.ts's own tests do, never exercises that
+  // wrapper — so it cannot see whether pnpm itself dies to the same
+  // console-wide signal before the collector underneath it finishes.
+  it('waits for the collector to finish before the pnpm wrapper exits, run via `pnpm run <script>`', async () => {
+    const run = await runViaPnpm(['run', 'test:cancel-harness'], 250);
+    expect(run.stdout.indexOf('WAITING')).toBeGreaterThanOrEqual(0);
+    expect(run.stdout.indexOf('CHILD_EXIT_CONFIRMED')).toBeGreaterThan(run.stdout.indexOf('WAITING'));
+    // Not merely fast — actually waited out the collector's own linger,
+    // rather than the pnpm wrapper dying to the same signal immediately.
+    expect(run.msFromSignalToExit).toBeGreaterThanOrEqual(200);
+  }, 30_000);
+
+  // `pnpm <script>` (no `run`) is the shorthand the documented command,
+  // `pnpm collect:measured`, actually uses. Covered separately from `pnpm
+  // run` because pnpm resolves the two through slightly different code
+  // paths, and the shorthand is the one operators actually type.
+  it('waits for the collector to finish before the pnpm wrapper exits, run via the `pnpm <script>` shorthand', async () => {
+    const run = await runViaPnpm(['test:cancel-harness'], 250);
+    expect(run.stdout).toContain('CHILD_EXIT_CONFIRMED');
+    expect(run.msFromSignalToExit).toBeGreaterThanOrEqual(200);
+  }, 30_000);
+
+  // The residues a leaked ETW session, lock file and temp directory would
+  // leave behind — the exact symptom the earlier Windows report described —
+  // must still be gone once pnpm's own wrapper process has exited, not just
+  // once the collector's own process has.
+  it('leaves no lock file or temp directory once the pnpm wrapper itself has exited', async () => {
+    const run = await runViaPnpm(['run', 'test:cancel-harness'], 200);
+    const ready = run.stdout.match(/^READY (\S+) (\S+)$/m);
+    expect(ready).not.toBeNull();
+    const [, tempDir, lockPath] = ready!;
+    expect(fs.existsSync(tempDir)).toBe(false);
+    expect(fs.existsSync(lockPath)).toBe(false);
+  }, 30_000);
+
+  // The exit code a real shell prompt sees, at the ACTUAL boundary rather
+  // than at the collector's own process. pnpm's own process is hit by the
+  // same console-wide signal here, so this is what the operator's shell
+  // reports, not an internal detail of the collector alone.
+  it('reports the wrapper as stopped by the same signal the operator sent', async () => {
+    const run = await runViaPnpm(['run', 'test:cancel-harness'], 150);
+    expect(run.signal).toBe('SIGINT');
+  }, 30_000);
+
+  // Documents why the README tells operators to run `pnpm collect:measured`
+  // and never `pnpm exec tsx ...`: unlike a package SCRIPT, `pnpm exec` has
+  // no lifecycle wrapper of its own to survive the signal long enough to
+  // wait on its child, and dies almost immediately — reproducing, on this
+  // platform, the exact "returned to the prompt before cleanup" failure
+  // mode the Windows report described.
+  it('`pnpm exec` does NOT wait for the collector — this is why it must not be used for cancellation-sensitive runs', async () => {
+    const run = await runViaPnpm(['exec', 'tsx', path.relative(specsmithRoot, harness)], 500);
+    // pnpm exec's own process dies to the group signal before the 500ms
+    // linger elapses; the collector underneath may still be cleaning up.
+    expect(run.msFromSignalToExit).toBeLessThan(400);
   }, 30_000);
 });
 

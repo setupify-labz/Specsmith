@@ -439,11 +439,40 @@ if you see that message, move on to the next row.
 | 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
 | 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
 | 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
-| 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`; `$LASTEXITCODE` is 130 |
+| 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`; `$LASTEXITCODE` is 130. **Read "Ctrl-C and the PowerShell prompt" below before running this step** — the prompt may reappear before the collector's own last line finishes printing, and that alone is not a failure. |
 | 8b | The second Ctrl-C is a real escape hatch | Repeat #7, press **Ctrl-C twice** | "Second interrupt — abandoning the wait", exits promptly, lock and temp directory still removed |
 | 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |
 | 10 | Closing the game mid-capture is handled | Repeat #7, close the game before the 30 seconds are up | Either a short, valid capture, or a clear "presented no frames" message |
 | 11 | **Two captures can't collide.** Open a SECOND terminal | While #7 (a real, slow one — use 60+ seconds) is still running in terminal A, run the SAME command in terminal B | Terminal B refuses immediately: "Another SpecSmith capture is already running (pid …)" — it must NOT start, and terminal A's capture must finish normally, undisturbed |
+
+### Ctrl-C and the PowerShell prompt
+
+A real Windows retest of the cleanup fix (step 8) found two things worth
+knowing before you run it:
+
+- **`pnpm collect:measured` — never `pnpm exec tsx …` — for a run you might
+  cancel.** `pnpm exec` has no lifecycle wrapper of its own to survive a
+  console-wide Ctrl-C long enough to wait for the collector underneath it; it
+  dies to the same signal almost immediately, which is indistinguishable from
+  the exact bug this section exists to rule out. `pnpm collect:measured` (or
+  `pnpm run collect:measured`) runs the script through pnpm's own script
+  lifecycle, which does wait for its child before exiting — verified against a
+  real, signalled `pnpm` process, not assumed (see
+  `'the real pnpm package-script boundary, not just a direct tsx subprocess'`
+  in `cancellation.test.ts`).
+- **The PowerShell prompt may still reappear before the collector's own final
+  line finishes printing.** Windows delivers Ctrl-C to every process attached
+  to the console at once — PowerShell, the pnpm wrapper, and the collector all
+  get it simultaneously — and PowerShell can redraw its prompt as soon as it
+  is ready for input again, which is not necessarily the same moment the
+  collector, still doing its own asynchronous cleanup, actually exits. That
+  redraw is cosmetic: the collector is still running, still attached to the
+  same console, and its "…was cancelled…" line and the second prompt that
+  follows it are the real signal that it is done — not the first prompt. Judge
+  a cancelled run by the four residues in step 8's Expected column and the
+  cancellation message actually appearing, not by when a prompt appears.
+  `$LASTEXITCODE` is read from whichever process PowerShell was actually
+  waiting on; check it only after that second, real prompt.
 
 ### What to check on the run that succeeds (#7)
 
@@ -486,17 +515,31 @@ the store append path and the frame-time archive will have executed for real.
 - **Frame-generation and upscaler paths** have never been captured for real;
   the `msBetweenPresents` choice that keeps generated frames out of the count
   is reasoned from PresentMon's documentation, not observed.
-- **Cancellation has been fixed but not re-verified on Windows.** Ctrl+C
-  during a real capture previously returned to the prompt with no message and
-  left the ETW session, lock file and temp capture behind. The collector now
-  keeps itself alive through the signal, leaves PresentMon alone for
-  `DEFAULT_SELF_EXIT_GRACE_MS` so it can close its own trace session, escalates
-  only if it does not, cleans up only after a confirmed exit, and stops a
-  leaked session with `logman` as a backstop. That path is covered by tests
-  that drive a real process with a real signal (`cancellation.test.ts`) — but
-  the specific Windows behaviour that caused the original symptom, cmd.exe and
-  pnpm tearing down the console on Ctrl+C, cannot be reproduced off Windows.
-  Smoke-test steps 8 and 8b are the real check.
+- **Cancellation cleanup has been fixed AND re-verified on real Windows
+  hardware.** Ctrl+C during a real capture used to return to the prompt with
+  no message and leave the ETW session, lock file and temp capture behind. A
+  real retest confirmed all four are now gone after one Ctrl+C: no PresentMon
+  process, no ETW session, no lock file, no `specsmith-capture-*` directory.
+  That same retest then found two further defects, both since fixed:
+  `$LASTEXITCODE` came back 1 instead of the documented 130 (collect.ts's
+  generic top-level `.catch` was overwriting the exit code
+  `cancellation.ts` had already set — fixed, and covered by a real-subprocess
+  regression test that reproduces the exact old bug when reverted); and the
+  PowerShell prompt reappeared before the collector's own final line finished
+  printing. The exit-code fix is verified end to end through a real,
+  signalled `pnpm` process, not just a direct `tsx` invocation — see
+  `'the real pnpm package-script boundary, not just a direct tsx subprocess'`
+  in `cancellation.test.ts`, which proves pnpm's own wrapper (via
+  `pnpm run`/`pnpm <script>`) correctly waits for the collector before
+  exiting, and that `pnpm exec` does not — hence the "never `pnpm exec` for a
+  cancellable run" guidance above. The prompt-timing appearance itself could
+  not be reproduced off Windows even with the equivalent POSIX layers (an
+  outer shell wrapping a signalled `pnpm` process) behaving correctly, which
+  points at a PowerShell/console redraw characteristic rather than pnpm or
+  this collector failing to wait — but that is inference, not something
+  verified on Windows itself. **Re-run smoke-test step 8 on Windows against
+  this fix** to confirm `$LASTEXITCODE` now reads 130 and to see whether the
+  documented explanation above matches what is actually seen.
 - **Automatic capture has never run.** No PresentMon process has been spawned by
   this collector. The flag set is taken from Intel's documented console options
   and the column requirements from the pinned real fixture, but the pairing —

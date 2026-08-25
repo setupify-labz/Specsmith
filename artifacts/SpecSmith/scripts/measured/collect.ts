@@ -655,6 +655,17 @@ const invokedDirectly = process.argv[1] !== undefined && path.resolve(process.ar
 if (invokedDirectly) {
   main(process.argv.slice(2)).catch((e) => {
     console.error(e instanceof Error ? e.message : e);
-    process.exitCode = 1;
+    // A cancellation (see cancellation.ts) already set a deliberate,
+    // documented exit code — CANCELLED_EXIT_CODE — before its error reaches
+    // here as this rejection. Overwriting it with a generic 1 is what made a
+    // clean, requested cancellation indistinguishable from a real crash: a
+    // Windows retest of the cleanup fix found the shell's exit code was 1,
+    // not the tested 130, because this line ran after cancellation.ts's and
+    // always won. This catch exists for everything ELSE — a real failure that
+    // never set an exit code at all — so it only supplies 1 when nothing
+    // already decided the process's exit status.
+    if (typeof process.exitCode !== 'number' || process.exitCode === 0) {
+      process.exitCode = 1;
+    }
   });
 }
