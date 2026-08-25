@@ -381,7 +381,19 @@ be copy-pasted, one at a time, in order — each one is checking one specific
 thing, and several of them are SUPPOSED to fail with a specific message. That
 is the test passing, not a problem.
 
-**Step 0 — get the tool's digest, and decide how you'll run it elevated.**
+**Step 0a — install the workspace.** From the repository root:
+
+```powershell
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+This must succeed before anything below will work. (It used to fail on
+Windows: the root `preinstall` guard shelled out to `sh`, which cmd.exe
+cannot find, so the install died before fetching a single dependency. It is
+now a Node script — `tools/preinstall.mjs` — and needs no Unix shell.)
+
+**Step 0b — get the tool's digest, and decide how you'll run it elevated.**
 
 PresentMon needs to open a low-level Windows tracing session, which requires
 either an elevated ("Run as administrator") terminal, or your account being a
