@@ -32,6 +32,20 @@
 // together show a DIRECT node/tsx child correctly reports its own exit code
 // while a signalled pnpm wrapper does not reliably forward one at all.
 //
+// WHY TSX IS RESOLVED TO AN ABSOLUTE PATH, NOT A BARE SPECIFIER
+// ----------------------------------------------------------------
+// The first real Windows run of this launcher failed before the collector
+// ever ran: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx'`.
+// windows-smoke-test.ps1 had been invoked from an unrelated worktree
+// directory, and `node --import tsx` resolves a BARE specifier the same way
+// a package import would — starting from the SPAWNED PROCESS's own working
+// directory, not from this repository and not from the script about to run.
+// So `--import tsx` only ever worked by accident, when the caller happened
+// to already be standing in this repository. See resolveTsxImportUrl below:
+// every direct invocation now passes an absolute `file://` URL to tsx's own
+// published loader entry point, computed from this module's location, which
+// does not depend on any process's cwd at all.
+//
 // WHAT THIS DOES NOT PROVE
 // -------------------------
 // The orchestration primitives here (spawning directly, waiting for a real
@@ -46,7 +60,7 @@ import { createInterface } from 'node:readline';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import {
   CAPTURE_SESSION_NAME,
@@ -138,8 +152,36 @@ export interface DirectRunOptions {
 }
 
 /**
- * Runs a script directly with `node --import tsx` — not pnpm, and not even
- * tsx's own bin shim.
+ * The tsx loader as a verified, absolute `file://` URL — not the bare "tsx"
+ * specifier.
+ *
+ * `node --import <specifier>` resolves a bare specifier the same way a
+ * package import would, starting from the SPAWNED PROCESS's own cwd — not
+ * from this repository, and not from the script it is about to run. A real
+ * Windows run of this launcher was invoked from an unrelated worktree
+ * directory and failed with `ERR_MODULE_NOT_FOUND: Cannot find package
+ * 'tsx'` before the collector ever ran, because Node went looking for
+ * `node_modules/tsx` next to wherever the caller happened to be standing.
+ * An absolute path — resolved from repoRoot, not from any cwd — sidesteps
+ * that resolution entirely. It has to be a `file://` URL rather than a bare
+ * OS path: a Windows path like `C:\...` is not a valid specifier as-is (the
+ * drive letter's colon parses as a URL scheme), which is exactly why
+ * `pathToFileURL` exists rather than string-concatenating `file://`.
+ */
+export function resolveTsxImportUrl(repoRoot: string, existsSync: (p: string) => boolean = fs.existsSync): string {
+  // "./dist/loader.mjs" is tsx's own published `--import`/`--loader` entry
+  // point (see the "." condition in tsx's package.json exports) — not an
+  // internal path this reaches into by guessing.
+  const loaderPath = path.join(repoRoot, 'node_modules', 'tsx', 'dist', 'loader.mjs');
+  if (!existsSync(loaderPath)) {
+    throw new Error(`tsx's loader was not found at ${loaderPath} — run \`pnpm install --frozen-lockfile\` from ${repoRoot} first.`);
+  }
+  return pathToFileURL(loaderPath).href;
+}
+
+/**
+ * Runs a script directly with `node --import <tsx's loader>` — not pnpm, and
+ * not even tsx's own bin shim.
  *
  * On Windows that shim is `node_modules\.bin\tsx.CMD`, a batch file cmd.exe
  * interprets — the same shape as the pnpm.cmd wrapper this whole launcher
@@ -147,13 +189,13 @@ export interface DirectRunOptions {
  * same failure mode: an intermediate process with no custom Ctrl+C handler
  * dying to the console-wide signal before the real node.exe process
  * underneath it (which DOES install one, via installCancellationHandler)
- * has finished. `node --import tsx` skips that shim entirely — PowerShell's
+ * has finished. `node --import` skips that shim entirely — PowerShell's
  * direct child is node.exe itself, nothing else, on every platform.
  */
 export function runDirect(scriptPath: string, args: readonly string[], options: DirectRunOptions = {}): Promise<DirectRunResult> {
   const nodePath = options.nodePath ?? process.execPath;
   return new Promise((resolve, reject) => {
-    const child = spawn(nodePath, ['--import', 'tsx', scriptPath, ...args], {
+    const child = spawn(nodePath, ['--import', resolveTsxImportUrl(specsmithRoot), scriptPath, ...args], {
       cwd: options.cwd ?? specsmithRoot,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,6 +11,7 @@ import {
   detectGameProcess,
   formatReport,
   queryEtwSessionActive,
+  resolveTsxImportUrl,
   runCancellationSmokeTest,
   runDirect,
   summarize,
@@ -87,6 +89,56 @@ describe('the direct-spawn primitive', () => {
     expect(run.stdout).toContain('FINISHED_NORMALLY');
     expect(run.code).toBe(0);
   }, 30_000);
+
+  // THE regression a real Windows run of the launcher then found: `node
+  // --import tsx` resolves the bare "tsx" specifier relative to the SPAWNED
+  // PROCESS's own cwd, not relative to this repository. windows-smoke-test.ps1
+  // was invoked from an unrelated worktree directory and failed with
+  // ERR_MODULE_NOT_FOUND before the collector ever ran. runDirect always sets
+  // the child's cwd to specsmithRoot, which happens to paper over this in
+  // every OTHER test in this file — this is the one test that deliberately
+  // does NOT rely on that, to prove tsx resolves even when it can't.
+  it('resolves tsx correctly even when the spawned process’s own cwd is nothing to do with this repo', async () => {
+    const run = await runDirect(harness, ['--finish-immediately'], { cwd: os.tmpdir() });
+    expect(run.stderr).not.toMatch(/ERR_MODULE_NOT_FOUND/);
+    expect(run.stdout).toContain('FINISHED_NORMALLY');
+    expect(run.code).toBe(0);
+  }, 30_000);
+
+  // The other half: launching from the repository root itself must keep
+  // working exactly as before — this is what every other test here already
+  // covers implicitly, made explicit so a future change can't fix the
+  // unrelated-directory case while quietly breaking the common one.
+  it('still resolves tsx when launched from the repository root', async () => {
+    const run = await runDirect(harness, ['--finish-immediately'], { cwd: specsmithRoot });
+    expect(run.stdout).toContain('FINISHED_NORMALLY');
+    expect(run.code).toBe(0);
+  }, 30_000);
+});
+
+describe('resolveTsxImportUrl', () => {
+  it('returns a file:// URL, not a bare specifier or an OS path', () => {
+    const url = resolveTsxImportUrl(specsmithRoot);
+    expect(url).toMatch(/^file:\/\//);
+    expect(url).toContain('/node_modules/tsx/dist/loader.mjs');
+  });
+
+  it('is unaffected by the process’s own current working directory', () => {
+    const before = resolveTsxImportUrl(specsmithRoot);
+    const originalCwd = process.cwd();
+    process.chdir(os.tmpdir());
+    try {
+      expect(resolveTsxImportUrl(specsmithRoot)).toBe(before);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  it('fails with a clear, actionable message rather than letting node produce ERR_MODULE_NOT_FOUND', () => {
+    expect(() => resolveTsxImportUrl('/definitely/not/a/real/repo', () => false)).toThrow(
+      /tsx's loader was not found.*pnpm install --frozen-lockfile/s,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

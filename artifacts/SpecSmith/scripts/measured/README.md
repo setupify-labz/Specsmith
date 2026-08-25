@@ -398,14 +398,22 @@ this, and a further patch to the collector's own code cannot fix that,
 because the number PowerShell reports for `pnpm collect:measured` is not
 read from the collector at all once it has gone through pnpm's wrapper.
 
-This launcher has NOT been run on a real Windows machine yet — its
-orchestration logic (spawning directly, waiting for a real exit, checking
-the four residues) is unit-tested against real child processes and real
-signals off Windows (see `smokeTest.test.ts`), but the Windows-only parts —
-hardware detection, `logman`, PresentMon itself, and the `.ps1` file's own
-PowerShell syntax — could not be exercised or verified from this
-environment. Aaron's first real run of it is also its first real syntax
-check; report anything it gets wrong verbatim, including a parse error.
+The first real Windows run of this launcher failed before the collector ever
+ran: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx'`, because it
+had been invoked from a different directory than the repository, and
+`node --import tsx` resolves that BARE specifier relative to the caller's own
+working directory, not this repository. Fixed: every path the script uses is
+resolved from `$PSScriptRoot` (this file's own folder), and tsx is resolved
+to a verified, absolute `file://` URL rather than a bare specifier — see
+`resolveTsxImportUrl` in `smokeTest.ts`, and the `.ps1` file's own comments
+for the PowerShell-side half of the same fix. It genuinely does not matter
+what directory you run it from now, and that specific property is covered by
+`smokeTest.test.ts` (`'resolves tsx correctly even when the spawned
+process's own cwd is nothing to do with this repo'`), which fails without
+the fix. Its own PowerShell syntax parsed and ran on real Windows this time;
+what still has not been exercised there is everything past dependency
+resolution — hardware detection, `logman`, PresentMon itself. Report
+anything further it gets wrong verbatim.
 
 **What it does NOT cover**, which still needs the manual checklist below:
 elevation actually being required (step 6), `--keep-capture` (step 9), the
