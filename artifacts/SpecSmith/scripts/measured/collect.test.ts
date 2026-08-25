@@ -8,7 +8,7 @@ import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardwa
 import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
-import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS } from '../../src/lib/measured/types';
+import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS, type CaptureToolProvenance } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 
 // Frame times here are SYNTHETIC, used to exercise assembly and the save gate.
@@ -38,7 +38,7 @@ const inputs = (over: Partial<CollectInputs> = {}): CollectInputs => ({
   ...over,
 });
 
-const build = (over: Partial<CollectInputs> = {}, f = frames()) =>
+const build = (over: Partial<CollectInputs> = {}, f = frames(), captureTool?: CaptureToolProvenance) =>
   buildObservation({
     frameTimesMs: f,
     hardware,
@@ -47,7 +47,10 @@ const build = (over: Partial<CollectInputs> = {}, f = frames()) =>
     measuredAt: '2026-08-19T12:00:00.000Z',
     runNonce: '11111111-2222-3333-4444-555555555555',
     buildHash: 'buildhash',
+    captureTool,
   });
+
+const capturedByPresentMon: CaptureToolProvenance = { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: true };
 
 describe('assembly reuses the shared logic rather than duplicating it', () => {
   it('derives every statistic from the frame times via computeFrameTimeStats', () => {
@@ -77,14 +80,42 @@ describe('fields that cannot be detected are marked, not guessed', () => {
   it('names every undetectable field with a reason', () => {
     const gaps = build().detectionGaps;
     expect(gaps.map((g) => g.field).sort()).toEqual([
+      'captureTool',
       'detected.gpuOverclockDetected',
       'ram.channels',
       'settingsHash',
     ]);
     for (const g of gaps) {
       expect(g.reason.length).toBeGreaterThan(20);
-      expect(g.resolution).toBe('operator-supplied');
     }
+  });
+
+  it('marks the fixed, platform-level gaps as operator-supplied', () => {
+    const fixed = build().detectionGaps.filter((g) => g.field !== 'captureTool');
+    for (const g of fixed) expect(g.resolution).toBe('operator-supplied');
+  });
+
+  // Unlike the fixed platform gaps above, whether captureTool is known
+  // depends on THIS run: a --capture-* run resolves it, a --csv run cannot,
+  // because nothing about a hand-taken capture says what tool produced it.
+  // Nobody can supply it after the fact, so it is 'unresolved', not
+  // 'operator-supplied'.
+  it('marks a missing capture tool as unresolved, not operator-suppliable', () => {
+    const gap = build().detectionGaps.find((g) => g.field === 'captureTool');
+    expect(gap?.resolution).toBe('unresolved');
+  });
+
+  it('records no capture-tool gap when the collector ran the capture itself', () => {
+    const gaps = build({}, frames(), capturedByPresentMon).detectionGaps;
+    expect(gaps.map((g) => g.field)).not.toContain('captureTool');
+  });
+
+  it('carries the capture tool onto the observation verbatim, when supplied', () => {
+    expect(build({}, frames(), capturedByPresentMon).captureTool).toEqual(capturedByPresentMon);
+  });
+
+  it('leaves captureTool unset — not a fabricated value — for a --csv run', () => {
+    expect(build().captureTool).toBeUndefined();
   });
 
   it('labels catalog matching as manual, since no fuzzy matcher is used', () => {

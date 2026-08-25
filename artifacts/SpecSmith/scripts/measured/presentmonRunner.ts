@@ -80,6 +80,9 @@ export class CaptureTimedOutError extends CaptureFailedError {}
 /** The operator (or a caller's AbortSignal) stopped the capture. */
 export class CaptureCancelledError extends CaptureFailedError {}
 
+/** Another SpecSmith capture already holds the single-capture lock. */
+export class CaptureLockError extends CaptureFailedError {}
+
 // ---------------------------------------------------------------------------
 // Which columns a capture must contain
 // ---------------------------------------------------------------------------
@@ -456,6 +459,146 @@ export function captureDeadlineMs(seconds: number, startupGraceMs = 30_000): num
 }
 
 // ---------------------------------------------------------------------------
+// Single-capture lock
+// ---------------------------------------------------------------------------
+
+export interface CaptureLock {
+  /** Releases the lock. Safe to call more than once. */
+  release(): void;
+}
+
+export interface LockFsLike {
+  existsSync(p: string): boolean;
+  readFileSync(p: string, enc: 'utf-8'): string;
+  writeFileSync(p: string, data: string, opts: { flag: string }): void;
+  unlinkSync(p: string): void;
+}
+
+/** Where the lock file lives. A fixed, well-known path so every invocation of this collector agrees on it. */
+export function captureLockPath(): string {
+  return path.join(os.tmpdir(), `${CAPTURE_SESSION_NAME}.lock`);
+}
+
+/**
+ * Whether a pid still refers to a live process.
+ *
+ * `process.kill(pid, 0)` sends no signal; it only asks the OS whether the pid
+ * exists, and works the same way on Windows as everywhere else Node runs.
+ * ESRCH means gone. Anything else — most plausibly EPERM, the pid exists but
+ * this process cannot signal it — is treated as ALIVE: guessing "dead" on an
+ * ambiguous answer is the unsafe direction, since it would let a live
+ * capture's lock be deleted out from under it.
+ */
+function defaultIsProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
+}
+
+/**
+ * An exclusive, cross-process lock so two SpecSmith captures can never target
+ * the same ETW session at once.
+ *
+ * WHY THIS EXISTS
+ * ----------------
+ * Every capture uses the same fixed session name (CAPTURE_SESSION_NAME) and
+ * passes --stop_existing_session, so a session left behind by a crashed run
+ * does not block the next one. Without a lock that flag is a hazard rather
+ * than a safeguard: a SECOND, concurrent capture — two terminals, a retried
+ * command that looks hung but is not — would stop the FIRST capture's session
+ * out from under it, silently truncating it, rather than failing loudly or
+ * queuing. This lock is what turns that into a clear refusal instead.
+ *
+ * A lock FILE, not an in-process flag, because the threat is two separate
+ * `pnpm collect:measured` invocations — two separate Node processes with no
+ * shared memory to flag-check.
+ *
+ * STALE LOCKS
+ * -----------
+ * The lock file records the pid that created it. A crashed collector leaves
+ * the file behind, and treating that as permanent would mean nobody could
+ * ever capture again after one crash. So a lock whose recorded pid is no
+ * longer running is treated as stale and cleared automatically; a live pid is
+ * trusted, a dead or unreadable one is not.
+ *
+ * SCOPE
+ * -----
+ * Best-effort, and scoped to this machine's temp directory: it guards against
+ * two invocations of THIS collector, which is the actual failure mode
+ * --stop_existing_session creates. It is not, and does not need to be, a
+ * defence against some unrelated tool independently opening a session
+ * literally named "SpecSmithMeasuredCapture".
+ */
+export function acquireCaptureLock(
+  opts: { lockPath?: string; isProcessAlive?: (pid: number) => boolean; fsLike?: LockFsLike } = {},
+): CaptureLock {
+  const lockPath = opts.lockPath ?? captureLockPath();
+  const fsLike = opts.fsLike ?? (fs as unknown as LockFsLike);
+  const isAlive = opts.isProcessAlive ?? defaultIsProcessAlive;
+
+  const create = () => {
+    // 'wx': fails if the path already exists. The exclusivity IS the lock —
+    // there is no window between "check" and "create" for a second process to
+    // race through, unlike an existsSync-then-writeFileSync pair would leave.
+    fsLike.writeFileSync(
+      lockPath,
+      JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }),
+      { flag: 'wx' },
+    );
+  };
+
+  try {
+    create();
+  } catch (error) {
+    if (!fsLike.existsSync(lockPath)) throw error; // a real fs failure, not a collision with an existing lock
+
+    let holderPid: number | undefined;
+    try {
+      const parsed = JSON.parse(fsLike.readFileSync(lockPath, 'utf-8')) as { pid?: unknown };
+      holderPid = typeof parsed.pid === 'number' ? parsed.pid : undefined;
+    } catch {
+      holderPid = undefined; // corrupt lock file — treated as stale below
+    }
+
+    if (holderPid !== undefined && isAlive(holderPid)) {
+      throw new CaptureLockError(
+        `Another SpecSmith capture is already running (pid ${holderPid}). Only one capture can use the ` +
+          `${CAPTURE_SESSION_NAME} ETW session at a time — starting a second would stop the first one's session, ` +
+          `silently truncating it. Wait for it to finish, or if you are certain it is gone, delete ${lockPath}.`,
+      );
+    }
+
+    // Stale: the recorded holder is gone, or the file could not be read.
+    // Clear it and try once more. A genuine race here — another process
+    // recreating the file in between — surfaces as a second CaptureLockError
+    // rather than as silent corruption.
+    try {
+      fsLike.unlinkSync(lockPath);
+    } catch {
+      // Already gone.
+    }
+    create();
+  }
+
+  let released = false;
+  return {
+    release: () => {
+      if (released) return;
+      released = true;
+      try {
+        fsLike.unlinkSync(lockPath);
+      } catch {
+        // Best effort — a failure here must not mask whatever the capture
+        // itself resolved or rejected with.
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Running the capture
 // ---------------------------------------------------------------------------
 
@@ -501,6 +644,10 @@ export interface CaptureDeps {
   };
   /** Overrides the watchdog deadline. Tests use a small value. */
   deadlineMs?: number;
+  /** Overrides how long a graceful stop is given before a forced kill. Tests use a small value. */
+  terminationGraceMs?: number;
+  /** Overrides lock acquisition. Defaults to acquireCaptureLock(). */
+  acquireLock?: () => CaptureLock;
   platform?: NodeJS.Platform;
 }
 
@@ -529,10 +676,11 @@ function cleanupOwned(
  * Captures one run and returns its CSV, or throws explaining why it did not.
  *
  * Failure modes handled explicitly, each producing its own error rather than a
- * generic one: the executable cannot be spawned, the process vanishes before
- * the capture starts, PresentMon exits non-zero, the caller cancels, the
- * watchdog fires, no output file appears, the file is empty, or the file is
- * missing a column something downstream requires.
+ * generic one: another SpecSmith capture already holds the lock, the
+ * executable cannot be spawned, the process vanishes before the capture
+ * starts, PresentMon exits non-zero, the caller cancels, the watchdog fires,
+ * no output file appears, the file is empty, or the file is missing a column
+ * something downstream requires.
  */
 export async function runPresentMonCapture(
   request: CaptureRequest,
@@ -575,8 +723,9 @@ export async function runPresentMonCapture(
       throw new CaptureFailedError(
         `PresentMon exited without writing ${csvPath}.\n` +
           `The usual cause is that ${target.name} (pid ${target.processId}) presented no frames during the capture — ` +
-          'it was minimised, on another GPU, or already closing. PresentMon also needs Administrator privileges to open an ' +
-          'ETW session; without them it exits early. Nothing was recorded.',
+          'it was minimised, on another GPU, or already closing. PresentMon also needs either Administrator privileges or ' +
+          'membership in the Windows "Performance Log Users" group to open an ETW session; without one of those it exits ' +
+          'early. Nothing was recorded.',
       );
     }
     if (fsLike.statSync(csvPath).size === 0) {
@@ -609,7 +758,17 @@ export async function runPresentMonCapture(
   }
 }
 
-/** Spawns PresentMon and settles on exit, error, cancellation or deadline. */
+/** How long a graceful stop is given to work before it is escalated to a forced kill. */
+export const DEFAULT_TERMINATION_GRACE_MS = 5_000;
+
+/**
+ * Spawns PresentMon and settles on exit, error, cancellation or deadline.
+ *
+ * Acquires the single-capture lock immediately before spawning and releases
+ * it only once the child is CONFIRMED exited — see acquireCaptureLock and the
+ * termination sequence below. That ties the lock's lifetime exactly to the
+ * ETW session's real lifetime, not to when we merely asked PresentMon to stop.
+ */
 function spawnAndWait(
   spawn: SpawnLike,
   request: CaptureRequest,
@@ -618,12 +777,30 @@ function spawnAndWait(
   target: RunningProcess,
 ): Promise<void> {
   const deadlineMs = deps.deadlineMs ?? captureDeadlineMs(request.seconds);
+  const terminationGraceMs = deps.terminationGraceMs ?? DEFAULT_TERMINATION_GRACE_MS;
+  const acquireLock = deps.acquireLock ?? (() => acquireCaptureLock());
 
   return new Promise<void>((resolve, reject) => {
+    // Checked before touching the lock or PresentMon at all: if the caller
+    // already cancelled, there is nothing to acquire the lock or spawn for.
+    if (request.signal?.aborted) {
+      reject(new CaptureCancelledError('Capture was cancelled before it started.'));
+      return;
+    }
+
+    let lock: CaptureLock;
+    try {
+      lock = acquireLock();
+    } catch (error) {
+      reject(error instanceof Error ? error : new CaptureFailedError(String(error)));
+      return;
+    }
+
     let child: ChildProcessLike;
     try {
       child = spawn(request.binary.path, args);
     } catch (error) {
+      lock.release();
       reject(
         new CaptureFailedError(
           `Could not start PresentMon at ${request.binary.path}: ${error instanceof Error ? error.message : String(error)}`,
@@ -633,64 +810,91 @@ function spawnAndWait(
     }
 
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let watchdogTimer: ReturnType<typeof setTimeout> | undefined;
+    let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
+    // Set once cancellation or the watchdog begins terminating PresentMon.
+    // From then on the ONLY thing that decides the outcome is the process
+    // actually exiting — see the 'exit' handler below.
+    let terminating = false;
+    let pendingRejection: (() => Error) | undefined;
     let stderr = '';
 
-    // Every exit path runs this exactly once, so a kill, a timer and a
-    // listener can never outlive the capture that owns them. A leaked
-    // interval here would keep the collector's process alive after it had
-    // printed its result.
+    // Every settle path runs this exactly once, and ONLY from the 'error' or
+    // 'exit' handlers — never from a cancellation or timeout trigger directly.
+    // That is what makes "clean temp files only after the process is
+    // confirmed stopped" true: the caller's cleanup runs after this promise
+    // settles, and this promise does not settle until the child has actually
+    // exited (or could never be spawned/run at all).
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
-      if (timer) clearTimeout(timer);
+      if (watchdogTimer) clearTimeout(watchdogTimer);
+      if (forceKillTimer) clearTimeout(forceKillTimer);
       request.signal?.removeEventListener('abort', onAbort);
+      lock.release();
       fn();
     };
 
-    /** SIGTERM first: PresentMon flushes its CSV on a graceful stop. */
-    const stop = () => {
+    /**
+     * Two-phase stop: request termination, then force it if that request is
+     * not honoured in time. Does NOT settle the promise — see `finish`.
+     *
+     * SIGTERM first because PresentMon may flush its CSV on a graceful stop;
+     * SIGKILL only once `terminationGraceMs` has passed with no exit, so a
+     * PresentMon that is merely slow to flush a large capture is not treated
+     * as hung. (On Windows, Node's child.kill() forcefully terminates the
+     * process regardless of which signal name is passed — there is no true
+     * graceful stop through this API on that platform — but the two-phase
+     * structure is kept anyway: it is what makes the request-then-escalate
+     * behaviour explicit and testable, and it is correct on any platform this
+     * code might ever run on.)
+     *
+     * A second trigger (e.g. the watchdog firing after cancellation already
+     * began) is a no-op: the FIRST reason wins, and does not get overwritten
+     * or have its escalation timer reset.
+     */
+    const beginTermination = (makeError: () => Error) => {
+      if (terminating) return;
+      terminating = true;
+      pendingRejection = makeError;
+      if (watchdogTimer) clearTimeout(watchdogTimer);
       try {
         child.kill('SIGTERM');
       } catch {
-        // Already gone — the exit listener will settle this.
+        // Already gone — the exit listener settles this regardless.
       }
+      forceKillTimer = setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          // Already gone.
+        }
+      }, terminationGraceMs);
+      (forceKillTimer as unknown as { unref?: () => void }).unref?.();
     };
 
     function onAbort() {
-      stop();
-      finish(() =>
-        reject(
+      beginTermination(
+        () =>
           new CaptureCancelledError(
-            `Capture of ${target.name} (pid ${target.processId}) was cancelled. Nothing was recorded.`,
+            `Capture of ${target.name} (pid ${target.processId}) was cancelled. Waiting for PresentMon to stop before cleaning up.`,
           ),
-        ),
       );
     }
 
-    if (request.signal) {
-      if (request.signal.aborted) {
-        stop();
-        finish(() => reject(new CaptureCancelledError('Capture was cancelled before it started.')));
-        return;
-      }
-      request.signal.addEventListener('abort', onAbort, { once: true });
-    }
+    if (request.signal) request.signal.addEventListener('abort', onAbort, { once: true });
 
-    timer = setTimeout(() => {
-      stop();
-      finish(() =>
-        reject(
+    watchdogTimer = setTimeout(() => {
+      beginTermination(
+        () =>
           new CaptureTimedOutError(
-            `PresentMon did not exit within ${Math.round(deadlineMs / 1000)}s for a ${request.seconds}s capture and was stopped. ` +
-              'It was asked to terminate itself with --terminate_after_timed, so overrunning means it hung rather than ran long. ' +
-              'Nothing was recorded.',
+            `PresentMon did not exit within ${Math.round(deadlineMs / 1000)}s for a ${request.seconds}s capture and is being stopped. ` +
+              'It was asked to terminate itself with --terminate_after_timed, so overrunning means it hung rather than ran long.',
           ),
-        ),
       );
     }, deadlineMs);
     // A pending watchdog must not by itself keep the process alive.
-    (timer as unknown as { unref?: () => void }).unref?.();
+    (watchdogTimer as unknown as { unref?: () => void }).unref?.();
 
     child.stderr?.on('data', (chunk) => {
       // Bounded: a failing PresentMon can be chatty, and an unbounded buffer
@@ -723,6 +927,14 @@ function spawnAndWait(
 
     child.on('exit', (code, signal) => {
       finish(() => {
+        // A cancellation or timeout in progress owns the outcome once the
+        // process has actually exited, regardless of PresentMon's own exit
+        // code — we asked it to stop, so a non-zero code from being killed is
+        // not itself a fault to report.
+        if (pendingRejection) {
+          reject(pendingRejection());
+          return;
+        }
         if (code === 0) {
           resolve();
           return;
@@ -731,8 +943,8 @@ function spawnAndWait(
         reject(
           new CaptureFailedError(
             `PresentMon ${how}.${stderr.trim() ? `\nPresentMon said: ${stderr.trim()}` : ''}\n` +
-              'PresentMon needs Administrator privileges to open an ETW session; the most common cause of an immediate ' +
-              'non-zero exit is running it without them.',
+              'PresentMon needs either Administrator privileges or membership in the Windows "Performance Log Users" group ' +
+              'to open an ETW session; the most common cause of an immediate non-zero exit is having neither.',
           ),
         );
       });

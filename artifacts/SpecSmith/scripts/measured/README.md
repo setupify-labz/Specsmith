@@ -12,8 +12,21 @@ UI, scheduling, and any multi-game benchmark library.
   the established Windows frame-capture tool — the **console** application, not
   the GUI. Install an official release yourself; it is not bundled (see
   [Why PresentMon is not vendored](#why-presentmon-is-not-vendored)).
-- **Administrator.** PresentMon opens an ETW session, which needs an elevated
-  terminal. Without it PresentMon exits immediately.
+- **Administrator, or membership in the "Performance Log Users" group.**
+  PresentMon opens an ETW (Event Tracing for Windows) session, and Windows
+  restricts who can control one. Per Microsoft's own documentation: "Only
+  users running with elevated administrative privileges, users in the
+  Performance Log Users group, and applications running as LocalSystem,
+  LocalService or NetworkService can control event tracing sessions."
+  Administrator is the obvious option; the group is the one worth knowing
+  about if you would rather not run capture sessions elevated every time —
+  an administrator adds an account to it once
+  (`Computer Management → Local Users and Groups → Groups → Performance Log
+  Users`, or `net localgroup "Performance Log Users" <username> /add` from an
+  elevated prompt), and that account can then run PresentMon captures without
+  further elevation. This is a general Windows ETW permission, not something
+  documented specifically for PresentMon — it has not yet been verified
+  against a real PresentMon capture (see the smoke test below).
 
 ## Usage
 
@@ -166,10 +179,40 @@ the operator has to play again.
 **PATH is not searched.** A capture whose tool was chosen by environment is not
 reproducible.
 
-**Only a temp directory the runner created is ever deleted.**
-`--capture-output-dir` can legitimately point at a folder holding other
-captures; cleanup that reached outside its own directory is how a diagnostic
-tool deletes an operator's data.
+**Only a temp directory the runner created is ever deleted, and only once the
+process is CONFIRMED stopped.** `--capture-output-dir` can legitimately point
+at a folder holding other captures; cleanup that reached outside its own
+directory is how a diagnostic tool deletes an operator's data. Separately, on
+cancellation or a watchdog timeout, PresentMon is asked to stop (SIGTERM) and,
+if it has not exited within a grace period, killed outright (SIGKILL) — but
+cleanup never runs off the mere fact that a stop was requested. It runs only
+once the process has actually exited, because PresentMon may still hold its
+CSV file open until then; deleting the directory around a process that is
+still writing to it is the bug this sequencing exists to prevent.
+
+**Every capture the collector takes is recorded on the observation itself.**
+`captureTool` carries the executable's name, its SHA-256, and whether that
+digest was checked against a pin before this run — not just printed to the
+console. A `--csv` run cannot supply it (the collector never touched
+PresentMon, so it has no evidence of what produced the file), and that
+absence is disclosed as a `captureTool` entry in `detectionGaps` rather than
+left unmentioned. An unpinned real capture (`--allow-unpinned-presentmon`)
+is disclosed the other way, as a `capture-tool.unpinned` validation warning,
+because in that case the collector *does* know what ran — it just was not
+checked against a pin first.
+
+**Only one SpecSmith capture can run at a time.** Every capture uses the same
+fixed ETW session name and passes `--stop_existing_session` so a session
+left behind by a crashed run does not permanently block the next one. Without
+a lock, that same flag becomes a hazard the moment two captures overlap — two
+terminals, or a retried command that looked hung but was not — because the
+second one stopping the session out from under the first would silently
+truncate it rather than fail loudly. A lock file (in the OS temp directory,
+named after the session it protects) makes a second concurrent attempt fail
+immediately instead, naming the pid that holds it. A lock left behind by a
+crashed collector is detected as stale (its recorded pid is no longer
+running) and cleared automatically, so one crash does not lock out every
+future capture.
 
 ### Why PresentMon is not vendored
 
@@ -329,42 +372,83 @@ tests against an injected spawn; PresentMon actually producing a file is the
 part that only Aaron's machine can exercise. Run these in order — each one
 fails differently, and the point is to see the *right* failure.
 
-Prerequisites: an official PresentMon console release installed, an
-**elevated** terminal, and a game you can leave running.
+### Before you start
+
+You need: an official PresentMon console release, downloaded and unzipped
+somewhere like `C:\tools\PresentMon\`; a terminal — PowerShell is fine; and a
+game you can leave running for a few minutes. Every command below is meant to
+be copy-pasted, one at a time, in order — each one is checking one specific
+thing, and several of them are SUPPOSED to fail with a specific message. That
+is the test passing, not a problem.
+
+**Step 0 — get the tool's digest, and decide how you'll run it elevated.**
+
+PresentMon needs to open a low-level Windows tracing session, which requires
+either an elevated ("Run as administrator") terminal, or your account being a
+member of the "Performance Log Users" Windows group (see Requirements above —
+an administrator can add you to it once via `Computer Management → Local
+Users and Groups → Groups`, and after that you never need to elevate for this
+again). Pick whichever you have; both are tested below (step 6).
+
+Open a terminal **as Administrator** for now (right-click Start → "Windows
+PowerShell (Admin)" or "Terminal (Admin)"), then run:
 
 ```powershell
-# 0. Digest to pin.
 Get-FileHash -Algorithm SHA256 "C:\tools\PresentMon\PresentMon.exe"
+```
 
-# Find the game's pid.
+This prints a long hex string — that's the file's SHA-256. Copy it somewhere;
+you'll paste it into `--presentmon-sha256` below. (The collector also prints
+this itself the first time you forget it — step 1 shows that.)
+
+**Find your game's process ID**, so you can tell the collector exactly which
+window to measure (replace `RDR2` with something matching your game's window
+title or exe name):
+
+```powershell
 Get-Process | Where-Object ProcessName -like '*RDR2*' | Select-Object Id, ProcessName
 ```
 
-| # | Command | Expected |
-|---|---|---|
-| 1 | Omit `--presentmon-sha256` | Refuses, prints the computed digest to pin |
-| 2 | Pass a wrong `--presentmon-sha256` | Refuses: "not the one this collector was set up against" |
-| 3 | `--capture-process-id 999999` | Refuses: no running process has that pid |
-| 4 | `--capture-process-name` for something with two instances (e.g. two Explorer or two browser processes) | Refuses, lists both pids, points at `--capture-process-id` |
-| 5 | Correct pid + name that disagree | Refuses, names the process the pid really is |
-| 6 | Run **without** elevation | PresentMon exits non-zero; error surfaces its stderr plus the Administrator hint |
-| 7 | Full run: `--capture-process-id <pid> --capture-seconds 30 --dry-run` | Captures, parses, prints frame count and fps, writes nothing |
-| 8 | As 7, then Ctrl-C after ~5s | "was cancelled. Nothing was recorded", temp directory removed |
-| 9 | As 7 with `--keep-capture` | Prints "Capture retained at …"; the CSV is still there afterwards |
-| 10 | As 7, closing the game mid-capture | PresentMon exits early via `--terminate_on_proc_exit`; either a short capture or a clear "presented no frames" |
+Note the `Id` column — that's the pid you'll pass as `--capture-process-id`
+below. From here on, `<pid>` means that number and `<sha>` means the digest
+from step 0.
 
-What to check on the run that succeeds (#7):
+### The checklist
 
-- The header of the retained CSV (`--keep-capture`) contains
+Run these in order. The "Expected" column tells you what SHOULD happen —
+if you see that message, move on to the next row.
+
+| # | What you're checking | Command | Expected |
+|---|---|---|---|
+| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (no `--presentmon-sha256`) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
+| 2 | It refuses a WRONG digest, rather than trusting it | Same as #1, add `--presentmon-sha256 0000000000000000000000000000000000000000000000000000000000000000` | Refuses: "is not the one this collector was set up against" |
+| 3 | It refuses a pid that isn't running | Same as #1 + real `--presentmon-sha256 <sha>`, but `--capture-process-id 999999` | Refuses: "No running process has pid 999999" |
+| 4 | It refuses when a process name is ambiguous | `--capture-process-name explorer.exe` instead of `--capture-process-id` (Explorer usually has more than one) | Refuses, lists more than one pid, points you at `--capture-process-id` |
+| 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
+| 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
+| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id marvel-rivals --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
+| 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** around 5 seconds in | "was cancelled. Waiting for PresentMon to stop…", then it actually exits and the temp directory is removed |
+| 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |
+| 10 | Closing the game mid-capture is handled | Repeat #7, close the game before the 30 seconds are up | Either a short, valid capture, or a clear "presented no frames" message |
+| 11 | **Two captures can't collide.** Open a SECOND terminal | While #7 (a real, slow one — use 60+ seconds) is still running in terminal A, run the SAME command in terminal B | Terminal B refuses immediately: "Another SpecSmith capture is already running (pid …)" — it must NOT start, and terminal A's capture must finish normally, undisturbed |
+
+### What to check on the run that succeeds (#7)
+
+- The console printed a `Capture tool: PresentMon.exe sha256 … (pinned)` line
+  — that's `captureTool` confirmed on the record, not just printed during
+  capture.
+- The header of the retained CSV (`--keep-capture`, step 9) contains
   `msBetweenPresents`, `PresentMode` and `msGPUActive`. If any is absent the
   runner will already have refused — confirm the message names the column.
 - The reported frame count is consistent with the duration and the average fps,
   the same arithmetic the existing README did for the 90-second Roblox run
   (21,354 frames at 237.31 fps ⇒ 89.98 s).
 - The temp directory under `%TEMP%\specsmith-capture-*` is **gone** afterwards
-  when `--keep-capture` was not passed.
+  when `--keep-capture` was not passed (steps 7, 8, 11).
 - No `SpecSmithMeasuredCapture` ETW session is left behind:
   `logman query -ets` should not list it once the collector has exited.
+- No lock file is left behind: `Test-Path "$env:TEMP\SpecSmithMeasuredCapture.lock"`
+  should print `False` once every capture above has finished.
 
 Then, and only then, the first **non**-dry run — which is also the first time
 the store append path and the frame-time archive will have executed for real.
@@ -392,6 +476,31 @@ the store append path and the frame-time archive will have executed for real.
   reasoned, not observed. Everything around it (process selection, digest
   pinning, timeout, cancellation, cleanup, column verification) is covered by
   mocked tests only. See the smoke test above.
+- **The "Performance Log Users" group has never been tried against a real
+  PresentMon capture.** It is documented by Microsoft as an ETW permission
+  (quoted in Requirements above), but that documentation is general — it is
+  not written specifically about PresentMon, and no real capture has been run
+  from an account that is a member of the group but not an Administrator.
+  Smoke-test step 6 covers Administrator; it does not yet cover the group.
+- **The confirmed-exit termination sequence (SIGTERM, then SIGKILL if
+  PresentMon does not respond, then — only then — cleanup) has only been
+  exercised against a fake child process.** Whether a real PresentMon
+  actually responds to Node's `child.kill('SIGTERM')` by flushing and exiting
+  gracefully, or requires the SIGKILL escalation every time, is unconfirmed;
+  either way the sequence should behave correctly, but which branch real
+  captures normally take is not yet known. Smoke-test step 8 exercises this
+  for real.
+- **The single-capture lock has never been tested against two real
+  `pnpm collect:measured` processes.** Its logic (create, detect a live vs.
+  stale holder, release) is unit-tested against an injected filesystem;
+  whether two real Node processes on the same machine actually collide and
+  refuse the way the tests predict is unconfirmed. Smoke-test step 11 covers
+  this.
+- **`captureTool` has never been recorded on a real observation.** Its shape
+  and the warning for an unpinned tool are tested against synthetic data;
+  whether it survives a real capture → assemble → (eventually) save round
+  trip unaltered is unconfirmed. Smoke-test step 7's `Capture tool:` line is
+  the first real check of this.
 
 A dry run proves the pipeline runs. It does not prove the pipeline records
 correctly, because the recording half never executed.

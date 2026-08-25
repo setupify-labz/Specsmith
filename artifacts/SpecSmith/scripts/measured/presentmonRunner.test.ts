@@ -7,19 +7,24 @@ import {
   CAPTURE_SESSION_NAME,
   CaptureCancelledError,
   CaptureFailedError,
+  CaptureLockError,
   CaptureTimedOutError,
+  DEFAULT_TERMINATION_GRACE_MS,
   MAX_CAPTURE_SECONDS,
   MIN_CAPTURE_SECONDS,
   PresentMonBinaryError,
   REQUIRED_CAPTURE_COLUMNS,
+  acquireCaptureLock,
   buildPresentMonArgs,
   captureDeadlineMs,
+  captureLockPath,
   checkCaptureColumns,
   listWindowsProcesses,
   resolvePresentMonBinary,
   runPresentMonCapture,
   selectTargetProcess,
   type ChildProcessLike,
+  type LockFsLike,
   type PresentMonBinary,
   type RunningProcess,
 } from './presentmonRunner';
@@ -49,13 +54,25 @@ const binary: PresentMonBinary = {
   pinned: true,
 };
 
-/** A ChildProcess stand-in whose exit the test drives. */
+/**
+ * A ChildProcess stand-in whose exit the test drives.
+ *
+ * `exitAfterSignal` models a real PresentMon's response to being killed: set
+ * it to have this fake emit 'exit' some delay after receiving a specific
+ * signal, so a test can choose whether the graceful stop "works" (respond to
+ * SIGTERM) or must be escalated (respond only to SIGKILL, or not at all).
+ */
 class FakeChild extends EventEmitter implements ChildProcessLike {
   killed: string[] = [];
   stderr = new EventEmitter();
   stdout = new EventEmitter();
+  exitAfterSignal?: { signal: string; delayMs: number; code?: number | null };
   kill(signal?: NodeJS.Signals | number): boolean {
-    this.killed.push(String(signal ?? 'SIGTERM'));
+    const sig = String(signal ?? 'SIGTERM');
+    this.killed.push(sig);
+    if (this.exitAfterSignal?.signal === sig) {
+      setTimeout(() => this.emit('exit', this.exitAfterSignal?.code ?? null, sig), this.exitAfterSignal.delayMs);
+    }
     return true;
   }
 }
@@ -78,6 +95,11 @@ function fakeFs(files: Record<string, string>) {
       removed.push(p);
     },
   };
+}
+
+/** A no-op lock for tests that are not exercising lock behaviour themselves. */
+function noopLock() {
+  return { release: () => {} };
 }
 
 // ---------------------------------------------------------------------------
@@ -379,6 +401,12 @@ describe('running a capture', () => {
     const files: Record<string, string> = {};
     const fsDouble = fakeFs(files);
     let spawnedWith: { cmd: string; args: readonly string[] } | undefined;
+    let lockReleased = false;
+    // In-memory, per-harness lock double — real acquireCaptureLock has its own
+    // dedicated tests below. Using a real file lock here would leak state
+    // between tests (and between this whole file and a real machine's temp
+    // directory), exactly the coupling a fake avoids.
+    const lock = { release: () => { lockReleased = true; } };
 
     const spawn = (cmd: string, args: readonly string[]) => {
       spawnedWith = { cmd, args };
@@ -392,7 +420,7 @@ describe('running a capture', () => {
       return child;
     };
 
-    return { child, files, fsDouble, spawn, spawned: () => spawnedWith };
+    return { child, files, fsDouble, spawn, spawned: () => spawnedWith, lockReleased: () => lockReleased, acquireLock: () => lock };
   }
 
   const run = (h: ReturnType<typeof harness>, extra: Record<string, unknown> = {}) =>
@@ -404,6 +432,12 @@ describe('running a capture', () => {
         fsLike: h.fsDouble as never,
         platform: 'win32',
         deadlineMs: 500,
+        // Short so escalation tests don't wait a real 5s; deliberately still
+        // long enough that a fake configured to respond to SIGTERM settles
+        // well before it, distinguishing "graceful stop worked" from
+        // "had to be escalated" in test timing.
+        terminationGraceMs: 30,
+        acquireLock: h.acquireLock,
       },
     );
 
@@ -414,6 +448,9 @@ describe('running a capture', () => {
     expect(outcome.target).toEqual(proc(29668, 'RDR2.exe'));
     expect(outcome.columns.ok).toBe(true);
     expect(h.spawned()?.cmd).toBe(binary.path);
+    // The single-capture lock is released once the run is done, so a second
+    // capture can start.
+    expect(h.lockReleased()).toBe(true);
   });
 
   it('refuses to run anywhere but Windows', async () => {
@@ -466,7 +503,7 @@ describe('running a capture', () => {
     await expect(
       runPresentMonCapture(
         { processId: 29668, seconds: 30, binary },
-        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs(files) as never, platform: 'win32', deadlineMs: 500 },
+        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs(files) as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow(/failed to start trace session[\s\S]*Administrator/);
   });
@@ -492,7 +529,7 @@ describe('running a capture', () => {
     await expect(
       runPresentMonCapture(
         { processId: 29668, seconds: 30, binary },
-        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs({}) as never, platform: 'win32' },
+        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs({}) as never, platform: 'win32', acquireLock: noopLock },
       ),
     ).rejects.toThrow(/Could not start PresentMon/);
   });
@@ -506,45 +543,125 @@ describe('running a capture', () => {
     await expect(
       runPresentMonCapture(
         { processId: 29668, seconds: 30, binary },
-        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs({}) as never, platform: 'win32', deadlineMs: 500 },
+        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fakeFs({}) as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow(/could not be run: EACCES/);
   });
 
   // PresentMon was asked to terminate itself, so overrunning means it hung.
-  it('kills and reports a PresentMon that never exits', async () => {
+  // The watchdog requests termination; since this fake never responds at
+  // all, that escalates to a forced kill, and only once THAT is (simulated
+  // to be) honoured does the promise settle.
+  it('escalates to a forced kill when PresentMon ignores the watchdog\'s stop request', async () => {
     const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGKILL', delayMs: 5 };
     await expect(run(h)).rejects.toThrow(CaptureTimedOutError);
-    expect(h.child.killed.length).toBeGreaterThan(0);
+    expect(h.child.killed).toEqual(['SIGTERM', 'SIGKILL']);
+    expect(h.lockReleased()).toBe(true);
   });
 
-  it('cancels on an abort signal, killing PresentMon', async () => {
+  // The graceful stop is given a real chance to work first: if PresentMon
+  // responds to SIGTERM within the grace period, SIGKILL is never sent.
+  it('does not escalate when PresentMon exits during the graceful-stop grace period', async () => {
     const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGTERM', delayMs: 5 };
+    await expect(run(h)).rejects.toThrow(CaptureTimedOutError);
+    expect(h.child.killed).toEqual(['SIGTERM']);
+  });
+
+  it('cancels on an abort signal: requests a graceful stop, and settles once PresentMon actually exits', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGTERM', delayMs: 5 };
     const controller = new AbortController();
     const promise = run(h, { signal: controller.signal });
     controller.abort();
     await expect(promise).rejects.toThrow(CaptureCancelledError);
-    // SIGTERM first: PresentMon flushes its CSV on a graceful stop.
-    expect(h.child.killed).toContain('SIGTERM');
+    expect(h.child.killed).toEqual(['SIGTERM']);
+    expect(h.lockReleased()).toBe(true);
   });
 
-  it('refuses to start when already cancelled', async () => {
+  // The bug this sequence exists to fix: cancelling used to settle the
+  // promise (and let the caller clean up) the moment SIGTERM was SENT, not
+  // when PresentMon actually exited — so a temp directory could be deleted
+  // while PresentMon still held its CSV file open. This asserts the fix
+  // directly: cleanup has not happened yet immediately after requesting
+  // cancellation, and has happened once the exit is confirmed.
+  it('does not clean up temporary files until the process is confirmed stopped', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGTERM', delayMs: 20 };
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+
+    // PresentMon has been asked to stop but has not exited yet.
+    await new Promise((r) => setTimeout(r, 1));
+    expect(h.fsDouble.removed).toEqual([]);
+    expect(h.lockReleased()).toBe(false);
+
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+
+    // Only now, after the confirmed exit, is anything cleaned up.
+    expect(h.fsDouble.removed).toHaveLength(1);
+    expect(h.lockReleased()).toBe(true);
+  });
+
+  // An abort that escalates all the way to a forced kill must still wait for
+  // that kill to be confirmed before cleaning up — not merely for the kill to
+  // have been SENT.
+  it('escalates a cancellation to a forced kill if the graceful stop is ignored', async () => {
+    const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGKILL', delayMs: 5 };
+    const controller = new AbortController();
+    const promise = run(h, { signal: controller.signal });
+    controller.abort();
+    await expect(promise).rejects.toThrow(CaptureCancelledError);
+    expect(h.child.killed).toEqual(['SIGTERM', 'SIGKILL']);
+  });
+
+  it('refuses to start when already cancelled, without touching the lock or spawning', async () => {
     const h = harness({ neverExits: true });
     const controller = new AbortController();
     controller.abort();
     await expect(run(h, { signal: controller.signal })).rejects.toThrow(/cancelled before it started/);
+    expect(h.spawned()).toBeUndefined();
+    expect(h.lockReleased()).toBe(false); // never acquired, so nothing to release
   });
 
-  it('never resolves twice when exit follows a kill', async () => {
+  it('never settles twice if a stray exit event follows the confirmed one', async () => {
     const h = harness({ neverExits: true });
+    h.child.exitAfterSignal = { signal: 'SIGTERM', delayMs: 5 };
     const controller = new AbortController();
     const promise = run(h, { signal: controller.signal });
     controller.abort();
     await expect(promise).rejects.toThrow(CaptureCancelledError);
-    // A late exit event after cancellation must not turn a rejection into a
-    // second settle; an unhandled one would surface as a stray rejection.
+    // A second exit event after the capture already settled must not attempt
+    // a second settle; an unhandled one would surface as a stray rejection.
     h.child.emit('exit', 0, null);
     await new Promise((r) => setTimeout(r, 5));
+  });
+
+  it('rejects when another capture already holds the lock, without spawning PresentMon', async () => {
+    const h = harness({ csv: csvBody });
+    let spawnCalled = false;
+    const spawn: typeof h.spawn = (cmd, args) => {
+      spawnCalled = true;
+      return h.spawn(cmd, args);
+    };
+    await expect(
+      runPresentMonCapture(
+        { processId: 29668, seconds: 30, binary },
+        {
+          spawn,
+          listProcesses: () => [proc(29668, 'RDR2.exe')],
+          fsLike: h.fsDouble as never,
+          platform: 'win32',
+          acquireLock: () => {
+            throw new CaptureLockError('Another SpecSmith capture is already running (pid 4242).');
+          },
+        },
+      ),
+    ).rejects.toThrow(CaptureLockError);
+    expect(spawnCalled).toBe(false);
   });
 });
 
@@ -574,7 +691,7 @@ describe('temporary capture files', () => {
     const s = setup({ csv: csvBody });
     const outcome = await runPresentMonCapture(
       { processId: 1, seconds: 30, binary },
-      { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500 },
+      { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
     );
     expect(outcome.ownedTempDir).toBeDefined();
     expect(s.fsDouble.made).toHaveLength(1);
@@ -587,7 +704,7 @@ describe('temporary capture files', () => {
     await expect(
       runPresentMonCapture(
         { processId: 1, seconds: 30, binary },
-        { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500 },
+        { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow();
     expect(s.fsDouble.removed).toHaveLength(1);
@@ -601,7 +718,7 @@ describe('temporary capture files', () => {
     await expect(
       runPresentMonCapture(
         { processId: 1, seconds: 30, binary, outputDir: 'D:\\captures' },
-        { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500 },
+        { spawn: s.spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: s.fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow();
     expect(s.fsDouble.removed).toEqual([]);
@@ -616,7 +733,7 @@ describe('temporary capture files', () => {
     await expect(
       runPresentMonCapture(
         { processId: 1, seconds: 30, binary, outputDir: 'D:\\captures' },
-        { spawn: () => child, listProcesses: () => [proc(1, 'g.exe')], fsLike: collidingFs as never, platform: 'win32', deadlineMs: 500 },
+        { spawn: () => child, listProcesses: () => [proc(1, 'g.exe')], fsLike: collidingFs as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow(/Refusing to overwrite/);
   });
@@ -649,7 +766,7 @@ describe('a captured file feeds the existing parser', () => {
 
     const outcome = await runPresentMonCapture(
       { processId: 29668, seconds: 30, binary },
-      { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fsDouble as never, platform: 'win32', deadlineMs: 500 },
+      { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
     );
 
     const parsed = parsePresentMonCsv(outcome.csv, outcome.target.name);
@@ -670,5 +787,127 @@ describe('a captured file feeds the existing parser', () => {
     const runner = await import('./presentmonRunner');
     const suspicious = Object.keys(runner).filter((k) => /fps|average|percentile|frameTime|stats|dropped/i.test(k));
     expect(suspicious).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The single-capture lock
+// ---------------------------------------------------------------------------
+
+describe('the single-capture lock', () => {
+  function fakeLockFs(initial: Record<string, string> = {}): LockFsLike & { files: Record<string, string>; writeCalls: number; unlinkCalls: number } {
+    const files = { ...initial };
+    let writeCalls = 0;
+    let unlinkCalls = 0;
+    return {
+      files,
+      get writeCalls() { return writeCalls; },
+      get unlinkCalls() { return unlinkCalls; },
+      existsSync: (p) => p in files,
+      readFileSync: (p) => {
+        if (!(p in files)) throw Object.assign(new Error(`ENOENT: ${p}`), { code: 'ENOENT' });
+        return files[p];
+      },
+      writeFileSync: (p, data, opts) => {
+        writeCalls += 1;
+        if (opts.flag === 'wx' && p in files) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
+        files[p] = data;
+      },
+      unlinkSync: (p) => {
+        unlinkCalls += 1;
+        if (!(p in files)) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        delete files[p];
+      },
+    };
+  }
+
+  const LOCK_PATH = 'C:\\temp\\SpecSmithMeasuredCapture.lock';
+
+  it('creates the lock file when none exists', () => {
+    const fsLike = fakeLockFs();
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike });
+    expect(fsLike.existsSync(LOCK_PATH)).toBe(true);
+    expect(JSON.parse(fsLike.files[LOCK_PATH]).pid).toBe(process.pid);
+    lock.release();
+  });
+
+  // The exact scenario the lock exists to prevent: a second capture would
+  // otherwise stop the first one's ETW session out from under it.
+  it('REFUSES when a live process already holds the lock, naming its pid', () => {
+    const fsLike = fakeLockFs({ [LOCK_PATH]: JSON.stringify({ pid: 999 }) });
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike, isProcessAlive: () => true })).toThrow(CaptureLockError);
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike, isProcessAlive: () => true })).toThrow(/pid 999/);
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike, isProcessAlive: () => true })).toThrow(/SpecSmithMeasuredCapture/);
+  });
+
+  // A crashed collector leaves its lock file behind. Treating that as
+  // permanent would mean nobody could ever capture again after one crash.
+  it('clears and recreates a lock left by a process that is no longer running', () => {
+    const fsLike = fakeLockFs({ [LOCK_PATH]: JSON.stringify({ pid: 999 }) });
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike, isProcessAlive: () => false });
+    expect(JSON.parse(fsLike.files[LOCK_PATH]).pid).toBe(process.pid);
+    lock.release();
+  });
+
+  it('treats an unreadable/corrupt lock file as stale rather than refusing forever', () => {
+    const fsLike = fakeLockFs({ [LOCK_PATH]: 'not json' });
+    // isProcessAlive must not even be consulted — there is no pid to check.
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike, isProcessAlive: () => true });
+    expect(JSON.parse(fsLike.files[LOCK_PATH]).pid).toBe(process.pid);
+    lock.release();
+  });
+
+  it('release() removes the lock file', () => {
+    const fsLike = fakeLockFs();
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike });
+    lock.release();
+    expect(fsLike.existsSync(LOCK_PATH)).toBe(false);
+  });
+
+  it('release() is idempotent', () => {
+    const fsLike = fakeLockFs();
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike });
+    lock.release();
+    const unlinkCallsAfterFirstRelease = fsLike.unlinkCalls;
+    expect(() => lock.release()).not.toThrow();
+    expect(fsLike.unlinkCalls).toBe(unlinkCallsAfterFirstRelease); // no second unlink attempt
+  });
+
+  // Exercises the REAL default liveness check (no isProcessAlive override):
+  // this test's own pid is, definitionally, alive, so a lock file recording
+  // it must be refused rather than treated as stale and cleared.
+  it('the default liveness check correctly identifies this very process as alive', () => {
+    const fsLike = fakeLockFs({ [LOCK_PATH]: JSON.stringify({ pid: process.pid }) });
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike })).toThrow(CaptureLockError);
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike })).toThrow(new RegExp(`pid ${process.pid}`));
+  });
+
+  // A pid this large is not a real process on any platform this collector
+  // targets, so the default check must find it dead and clear the lock.
+  it('the default liveness check correctly identifies an implausible pid as dead', () => {
+    const fsLike = fakeLockFs({ [LOCK_PATH]: JSON.stringify({ pid: 999_999_999 }) });
+    const lock = acquireCaptureLock({ lockPath: LOCK_PATH, fsLike });
+    expect(JSON.parse(fsLike.files[LOCK_PATH]).pid).toBe(process.pid);
+    lock.release();
+  });
+
+  it('propagates a real filesystem error that is not a lock collision', () => {
+    const fsLike: LockFsLike = {
+      existsSync: () => false,
+      readFileSync: () => { throw new Error('unreachable'); },
+      writeFileSync: () => { throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }); },
+      unlinkSync: () => {},
+    };
+    expect(() => acquireCaptureLock({ lockPath: LOCK_PATH, fsLike })).toThrow(/EACCES/);
+  });
+
+  it('captureLockPath is fixed and identifies the session it protects', () => {
+    expect(captureLockPath()).toContain(CAPTURE_SESSION_NAME);
+  });
+
+  // Not a full lifecycle test (that needs the real filesystem and a real
+  // pid), just proof the constant this module documents is what ships.
+  it('DEFAULT_TERMINATION_GRACE_MS is generous enough for a real flush', () => {
+    expect(DEFAULT_TERMINATION_GRACE_MS).toBeGreaterThanOrEqual(1000);
   });
 });

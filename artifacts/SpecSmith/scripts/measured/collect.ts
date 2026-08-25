@@ -40,6 +40,7 @@ import {
   MIN_RENDER_SCALE_PERCENT,
   RESOLUTIONS,
   UPSCALERS,
+  type CaptureToolProvenance,
   type CatalogMatchMethod,
   PINNED_ONE_PERCENT_LOW_METHOD,
   type DetectionGap,
@@ -154,8 +155,10 @@ export function buildObservation(args: {
   measuredAt: string;
   runNonce: string;
   buildHash: string;
+  /** Set only when this run captured its own frames; absent for --csv. */
+  captureTool?: CaptureToolProvenance;
 }): MeasuredObservation {
-  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash } = args;
+  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash, captureTool } = args;
 
   // Every field the machine could not tell us, named with why. Nothing here is
   // filled in with a plausible-looking default.
@@ -164,6 +167,16 @@ export function buildObservation(args: {
     reason: g.reason,
     resolution: 'operator-supplied' as const,
   }));
+  // captureTool is per-run, not a fixed platform limit, so it is not in
+  // KNOWN_DETECTION_GAPS: a --capture-* run resolves it, a --csv run cannot,
+  // because nothing about a hand-taken capture says what tool produced it.
+  if (!captureTool) {
+    detectionGaps.push({
+      field: 'captureTool',
+      reason: 'This run read an existing CSV (--csv) rather than capturing it; the collector did not run PresentMon itself and has no evidence of what tool produced the file.',
+      resolution: 'unresolved',
+    });
+  }
 
   return {
     id: `obs-${measuredAt.slice(0, 10)}-${runNonce.slice(0, 8)}`,
@@ -209,6 +222,7 @@ export function buildObservation(args: {
     measuredAt,
     collectorVersion: COLLECTOR_VERSION,
     collectorBuildHash: buildHash,
+    captureTool,
     detectionGaps,
     notes: inputs.notes,
   };
@@ -465,6 +479,7 @@ async function main(argv: string[]): Promise<void> {
   let csvText: string;
   let release: (() => void) | undefined;
   let processFilter = arg(argv, 'process');
+  let captureTool: CaptureToolProvenance | undefined;
 
   if (source.mode === 'capture') {
     const binary = resolvePresentMonBinary({
@@ -473,6 +488,10 @@ async function main(argv: string[]): Promise<void> {
       allowUnpinned: argv.includes('--allow-unpinned-presentmon'),
     });
     console.log(`PresentMon: ${binary.path}\n  sha256 ${binary.sha256}${binary.pinned ? ' (pinned)' : ' (NOT PINNED \u2014 --allow-unpinned-presentmon)'}`);
+    // Recorded on the observation itself (captureTool), not just printed \u2014
+    // the tool that produced a measurement's frame times is part of what the
+    // measurement means, same as the hardware that ran it.
+    captureTool = { name: path.basename(binary.path), sha256: binary.sha256, pinned: binary.pinned };
 
     // Ctrl-C stops the capture and cleans up rather than leaving PresentMon
     // and its ETW session running behind a dead collector.
@@ -511,7 +530,7 @@ async function main(argv: string[]): Promise<void> {
   }
 
   try {
-    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion });
+    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool });
   } finally {
     // The CSV has been read into memory and parsed by now, so the temp copy
     // has no further readers. --keep-capture keeps it for a post-mortem.
@@ -529,8 +548,10 @@ async function assembleFromCsv(ctx: {
   preferredGpuId?: string; preferredCpuId?: string;
   hardware: DetectedHardware;
   detectExecutableVersion: (exePath: string) => string | undefined;
+  /** Set only when this run captured its own frames; absent for --csv. */
+  captureTool?: CaptureToolProvenance;
 }): Promise<void> {
-  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion } = ctx;
+  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool } = ctx;
 
   const parsed = parsePresentMonCsv(csvText, ctx.processFilter, ctx.swapChainFilter);
   console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
@@ -569,6 +590,7 @@ async function assembleFromCsv(ctx: {
     measuredAt: new Date().toISOString(),
     runNonce: randomUUID(),
     buildHash: collectorBuildHash(),
+    captureTool,
   });
 
   const profiles = JSON.parse(
@@ -600,6 +622,12 @@ async function assembleFromCsv(ctx: {
   }
 
   console.log(`\navg ${observation.stats.averageFps} fps · 1% low ${observation.stats.onePercentLow} · 0.1% low ${observation.stats.zeroPointOnePercentLow}`);
+  // Confirms captureTool actually made it onto the record, not just that the
+  // capture step printed it earlier — this is the same information the store
+  // would persist.
+  if (observation.captureTool) {
+    console.log(`Capture tool: ${observation.captureTool.name} sha256 ${observation.captureTool.sha256}${observation.captureTool.pinned ? ' (pinned)' : ' (NOT PINNED)'}`);
+  }
   if (dryRun) console.log('Dry run — nothing written, including the frame-time archive.');
   else if (outcome.saved) console.log(`Saved ${observation.id}`);
   else {
