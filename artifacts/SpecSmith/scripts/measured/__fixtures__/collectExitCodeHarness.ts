@@ -49,7 +49,14 @@ fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid, startedAt: new Dat
 
 class SimulatedCaptureCancelledError extends Error {}
 
-/** Stands in for runPresentMonCapture: resolves normally, or rejects once cancelled. */
+/**
+ * Stands in for runPresentMonCapture: resolves normally, or rejects once
+ * cancelled — and, like the real runner's own catch block, removes what it
+ * owns BEFORE rejecting rather than leaving that to collect.ts's dispose().
+ * dispose() only stops the exit backstop from double-touching files a lower
+ * layer already settled; it is not itself where cleanup happens, on the real
+ * cancellation path or on this simulated one.
+ */
 function simulatedCapture(cancellation: ReturnType<typeof installCancellationHandler>): Promise<void> {
   return new Promise((resolve, reject) => {
     const keepAlive = setInterval(() => {}, 1_000);
@@ -57,6 +64,11 @@ function simulatedCapture(cancellation: ReturnType<typeof installCancellationHan
       setTimeout(() => {
         clearInterval(keepAlive);
         console.log('REJECTING');
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {
+          // Already gone.
+        }
         reject(new SimulatedCaptureCancelledError('Capture was cancelled. Waiting for PresentMon to stop before cleaning up.'));
       }, lingerMs);
     });
