@@ -486,9 +486,9 @@ Everything else about an automatic RDR2 capture applies unchanged — no
 re-confirmed unchanged after, `--preset unmapped` required. Research mode
 adds exactly two requirements on top: `--research-output-dir` must be an
 **absolute** path (a relative one is ambiguous — it resolves against
-whatever directory the collector happened to be invoked from), and it is
-refused if that directory already exists and is not empty (no bundle is ever
-silently overwritten).
+whatever directory the collector happened to be invoked from) whose PARENT
+directory already exists, and the path itself must NOT already exist — not
+even as an empty directory (publication is atomic; see below).
 
 **What lands in the directory:**
 
@@ -508,6 +508,31 @@ silently overwritten).
   computed from later, once segmentation exists to say honestly which rows
   are which scene.
 
+**Publication is atomic — nothing appears at `--research-output-dir` until
+everything about the bundle is verified.** `writeRdr2ResearchBundle` never
+writes into the final path directly:
+
+1. Creates a uniquely-named staging directory BESIDE the final path (a
+   sibling under the same parent, via `fs.mkdtempSync`) — same parent means
+   same filesystem, which is what makes the final step atomic rather than a
+   copy that could itself be interrupted partway.
+2. Copies the source CSV byte-for-byte into staging.
+3. Verifies the STAGED copy's SHA-256 and byte length against what the
+   manifest claims about it — a mismatch means the copy was corrupted or
+   the manifest is wrong, and refuses before anything is published either
+   way.
+4. Writes the manifest into staging.
+5. Re-checks the final path still does not exist (closing the window the
+   steps above took real time to open), then `fs.renameSync`s the staging
+   directory onto it — the single operation that makes the bundle appear,
+   all at once.
+
+Any failure from step 1 onward is caught, the staging directory (and ONLY
+the staging directory — the final path cannot exist yet at any point this
+runs) is removed, and the original error is re-thrown. No staging residue
+is ever left behind, whether the failure is a hash mismatch, an
+unserializable manifest, or the destination appearing mid-publish.
+
 **Isolation, refusals, and why each exists:**
 
 - Never touches `measuredObservations.json` or the frame-time archive
@@ -516,12 +541,18 @@ silently overwritten).
   `writeRdr2ResearchBundle` additionally has no reference to either
   location's path at all, so there is no code path by which it could reach
   them.
-- Refuses to overwrite an existing, non-empty output directory — checked
-  twice: once in `main()` before hardware detection or PresentMon are ever
+- Refuses to publish over an already-existing final path — checked three
+  times: once in `main()` before hardware detection or PresentMon are ever
   touched (a bad path then costs a second, not a played-again 90-second
-  capture), and again inside `writeRdr2ResearchBundle` itself immediately
-  before writing, closing the window between that early check and the
-  write, minutes later.
+  capture); once inside `writeRdr2ResearchBundle` before it stages anything
+  (no point staging a bundle that can never be published); and once more
+  immediately before the publishing rename, closing the window the staging
+  + verification + manifest-write steps took real time to open. A relative
+  or Windows-only-fails-cleanly rename is not relied on here — the check is
+  explicit and gives the same clear, documented refusal on every OS,
+  because raw OS rename-onto-an-existing-directory behavior differs
+  (Windows refuses regardless of whether it's empty; POSIX only refuses a
+  non-empty one).
 - Refuses a relative `--research-output-dir` — ambiguous against invocation
   directory, the same principle `bindRdr2SettingsProvenance` already follows
   by pinning its post-capture reread to one exact resolved path rather than
@@ -541,14 +572,18 @@ silently overwritten).
 
 **What remains manually verified, not yet exercised for real:** this mode
 has been reviewed and unit-tested (byte-preservation, isolation from
-production storage, and every refusal above, each confirmed against a
-temporarily disabled check and restored — see collect.test.ts) but has not
-yet run against a real PresentMon capture on real Windows. A real research
-run should confirm: the exported CSV is byte-identical to the one
-`--keep-capture` would retain from an equivalent non-research run: `manifest.json`'s
-capture window, pid, hardware and hashes match the console output printed
-during the same run; and the two overwrite refusals (pre-capture and at
-write time) behave as documented against a real, already-populated
+production storage, hash/length verification, staging-residue cleanup on
+every failure path, the destination race at publish time, and successful
+atomic publication — each confirmed against a temporarily disabled check
+and restored — see collect.test.ts) but has not yet run against a real
+PresentMon capture on real Windows. A real research run should confirm: the
+exported CSV is byte-identical to the one `--keep-capture` would retain from
+an equivalent non-research run; `manifest.json`'s capture window, pid,
+hardware and hashes match the console output printed during the same run;
+the staging directory this creates beside `--research-output-dir` is
+genuinely gone afterward (`Get-ChildItem` on the parent should show only the
+final bundle, no `.rdr2-research-staging-*` sibling); and all three
+already-exists refusals behave as documented against a real, already-created
 directory. None of this has been exercised outside the test suite yet.
 
 ## Windows smoke test for automatic capture

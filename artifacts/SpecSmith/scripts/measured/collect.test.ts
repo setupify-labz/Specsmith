@@ -20,7 +20,7 @@ import {
   parseRunConditions,
   RDR2_PARSED_FIELD_NAMES,
   Rdr2SettingsChangedDuringCaptureError,
-  refuseRdr2ResearchOutputDirOverwrite,
+  refuseRdr2ResearchOutputDirExists,
   resolveCaptureProcessFilter,
   shouldPersistFrameTimes,
   toSettingsFileProvenance,
@@ -649,27 +649,27 @@ describe('parsing --research-output-dir', () => {
   });
 });
 
-describe('refusing to overwrite a research output directory', () => {
+describe('refusing to publish over an existing research output directory', () => {
   it('does not throw when the directory does not exist yet', () => {
     const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-')), 'not-yet-created');
-    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).not.toThrow();
+    expect(() => refuseRdr2ResearchOutputDirExists(dir)).not.toThrow();
   });
 
-  it('does not throw when the directory exists but is empty', () => {
+  it('refuses when the directory exists, even if it is empty — atomic publication requires the final path to not exist yet', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-'));
-    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).not.toThrow();
+    expect(() => refuseRdr2ResearchOutputDirExists(dir)).toThrow(CliInputError);
+    expect(() => refuseRdr2ResearchOutputDirExists(dir)).toThrow(/already exists/);
   });
 
   it('refuses when the directory exists and already holds something', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-'));
     fs.writeFileSync(path.join(dir, 'leftover.txt'), 'from a previous bundle');
-    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).toThrow(CliInputError);
-    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).toThrow(/already exists and is not empty/);
+    expect(() => refuseRdr2ResearchOutputDirExists(dir)).toThrow(/already exists/);
   });
 });
 
-describe('writing the RDR2 research bundle', () => {
-  const goodManifest = (): Rdr2ResearchManifest => ({
+describe('publishing the RDR2 research bundle atomically', () => {
+  const goodManifestFor = (csvBytes: Buffer): Rdr2ResearchManifest => ({
     schemaVersion: 1,
     gameId: 'rdr2',
     capture: { startedAt: '2026-08-26T20:00:00.000Z', endedAt: '2026-08-26T20:01:30.000Z', processId: 27308, processName: 'RDR2.exe' },
@@ -686,7 +686,17 @@ describe('writing the RDR2 research bundle', () => {
     },
     collectorVersion: COLLECTOR_VERSION,
     collectorBuildHash: 'buildhash',
-    csv: { fileName: 'presentmon.csv', sha256: 'b'.repeat(64), byteLength: 1234, rowsUsable: 7181, rowsDroppedNotDisplayed: 0, rowsDiscardedFirstFrame: 1 },
+    // Real sha256/byteLength of csvBytes — matching exactly how
+    // assembleFromCsv builds this field from the real source file. A fake
+    // value here would make every test exercise the NEW verify-against-
+    // manifest step by accident; tests that want a mismatch build one
+    // explicitly instead (see "verifies the staged CSV" below).
+    csv: {
+      fileName: 'presentmon.csv',
+      sha256: createHash('sha256').update(csvBytes).digest('hex'),
+      byteLength: csvBytes.length,
+      rowsUsable: 7181, rowsDroppedNotDisplayed: 0, rowsDiscardedFirstFrame: 1,
+    },
   });
 
   const tempCsvWithBytes = (bytes: Buffer): string => {
@@ -695,6 +705,15 @@ describe('writing the RDR2 research bundle', () => {
     return p;
   };
 
+  /** A fresh parent directory to stage/publish under, and the not-yet-existing final target inside it. */
+  const freshOutputDir = (): { parentDir: string; outputDir: string } => {
+    const parentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-'));
+    return { parentDir, outputDir: path.join(parentDir, 'bundle') };
+  };
+
+  /** Staging directories this collector ever leaves behind on success (none) or failure (should also be none — cleaned up). */
+  const stagingResidue = (parentDir: string): string[] => fs.readdirSync(parentDir).filter((name) => name.startsWith('.rdr2-research-staging-'));
+
   it('byte-preserves the CSV exactly — CRLF line endings, a UTF-8 BOM and a non-UTF-8 byte included, to prove this is a raw copy, not a re-serialized text round trip', () => {
     const bytes = Buffer.concat([
       Buffer.from([0xef, 0xbb, 0xbf]), // UTF-8 BOM
@@ -702,52 +721,134 @@ describe('writing the RDR2 research bundle', () => {
       Buffer.from([0xff]), // a byte that is not valid UTF-8 on its own
     ]);
     const csvSourcePath = tempCsvWithBytes(bytes);
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
-    const { csvPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+    const { outputDir } = freshOutputDir();
+    const { csvPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifestFor(bytes) });
     expect(Buffer.compare(fs.readFileSync(csvPath), bytes)).toBe(0);
   });
 
   it('writes the manifest as JSON matching the input verbatim', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
-    const manifest = goodManifest();
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
+    const manifest = goodManifestFor(bytes);
     const { manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest });
     expect(JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))).toEqual(manifest);
   });
 
   it('never carries the absolute path of the source CSV or the settings file — only what the manifest was given, which is already schema-safe', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
-    const { manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
+    const { manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifestFor(bytes) });
     const manifestText = fs.readFileSync(manifestPath, 'utf-8');
     expect(manifestText).not.toContain(csvSourcePath);
     expect(manifestText).not.toContain('C:\\');
   });
 
-  it('refuses a manifest with no settingsFile — missing provenance', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
-    const manifest = { ...goodManifest(), settingsFile: undefined as unknown as Rdr2ResearchManifest['settingsFile'] };
+  it('refuses a manifest with no settingsFile — missing provenance — and touches neither outputDir nor leaves staging residue', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), settingsFile: undefined as unknown as Rdr2ResearchManifest['settingsFile'] };
     expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/no settingsFile provenance/);
+    expect(fs.existsSync(outputDir)).toBe(false);
+    expect(stagingResidue(parentDir)).toEqual([]);
   });
 
   it('refuses a manifest for a non-RDR2 game', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
-    const manifest = { ...goodManifest(), gameId: 'marvel-rivals' as unknown as 'rdr2' };
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), gameId: 'marvel-rivals' as unknown as 'rdr2' };
     expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/RDR2-only/);
   });
 
-  it('refuses to overwrite, re-checked at write time even if the directory was empty when main() first looked', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-'));
+  it('refuses to publish over an already-existing outputDir, re-checked at write time even if it was absent when main() first looked', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    fs.mkdirSync(outputDir);
     fs.writeFileSync(path.join(outputDir, 'presentmon.csv'), 'from a previous bundle');
-    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() })).toThrow(/already exists and is not empty/);
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifestFor(bytes) })).toThrow(/already exists/);
+    // The pre-existing directory's own content is untouched, and no staging leftovers appear beside it.
+    expect(fs.readFileSync(path.join(outputDir, 'presentmon.csv'), 'utf-8')).toBe('from a previous bundle');
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('verifies the staged CSV\'s sha256 against the manifest and refuses on mismatch — leaving no outputDir and no staging residue', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), csv: { ...goodManifestFor(bytes).csv, sha256: 'f'.repeat(64) } };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/hashes to .+ but the manifest claims/);
+    expect(fs.existsSync(outputDir)).toBe(false);
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('verifies the staged CSV\'s byte length against the manifest and refuses on mismatch — leaving no outputDir and no staging residue', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), csv: { ...goodManifestFor(bytes).csv, byteLength: 999999 } };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/is \d+ bytes but the manifest claims 999999/);
+    expect(fs.existsSync(outputDir)).toBe(false);
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('refuses when the manifest cannot be serialized, and leaves no outputDir and no staging residue', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    // A circular reference makes JSON.stringify throw for real — exercising
+    // the manifest-write step's own failure path, not a simulated one.
+    const manifest = goodManifestFor(bytes) as unknown as Record<string, unknown>;
+    manifest.self = manifest;
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: manifest as unknown as Rdr2ResearchManifest })).toThrow(/circular structure/);
+    expect(fs.existsSync(outputDir)).toBe(false);
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('refuses when the destination appears between the early check and the rename (a destination race), without overwriting it, and leaves no staging residue', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    expect(() =>
+      writeRdr2ResearchBundle({
+        outputDir,
+        csvSourcePath,
+        manifest: goodManifestFor(bytes),
+        // Simulates a second process (or a second collector run) creating
+        // the destination while this one was staging — fires right before
+        // the pre-rename existence re-check.
+        onBeforePublish: () => {
+          fs.mkdirSync(outputDir);
+          fs.writeFileSync(path.join(outputDir, 'presentmon.csv'), 'from the racing publisher');
+        },
+      }),
+    ).toThrow(/already exists/);
+    // The racing publisher's own content survived — this run did not overwrite it.
+    expect(fs.readFileSync(path.join(outputDir, 'presentmon.csv'), 'utf-8')).toBe('from the racing publisher');
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('publishes successfully and atomically: the final directory holds the bundle, and no staging directory is left behind beside it', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    const { csvPath, manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifestFor(bytes) });
+    expect(csvPath).toBe(path.join(outputDir, 'presentmon.csv'));
+    expect(manifestPath).toBe(path.join(outputDir, 'manifest.json'));
+    expect(fs.existsSync(csvPath)).toBe(true);
+    expect(fs.existsSync(manifestPath)).toBe(true);
+    expect(stagingResidue(parentDir)).toEqual([]);
+    // The final directory contains exactly the two published files — nothing else, and nothing still named as staging.
+    expect(fs.readdirSync(outputDir).sort()).toEqual(['manifest.json', 'presentmon.csv']);
   });
 
   it('is isolated from production storage: the measuredObservations.json store and the frame-time archive are never touched', () => {
-    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
-    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
 
     // Stand-ins for the two production storage locations this bundle must
     // never write to (src/data/measuredObservations.json and the
@@ -758,7 +859,7 @@ describe('writing the RDR2 research bundle', () => {
     const frameTimeRootStandIn = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-frametimes-'));
     fs.writeFileSync(path.join(frameTimeRootStandIn, 'abcdef.json.gz'), 'UNTOUCHED-FRAMETIMES');
 
-    writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+    writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifestFor(bytes) });
 
     expect(fs.readFileSync(storeStandIn, 'utf-8')).toBe('UNTOUCHED-STORE');
     expect(fs.readdirSync(frameTimeRootStandIn)).toEqual(['abcdef.json.gz']);

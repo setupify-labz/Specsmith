@@ -771,19 +771,29 @@ export function parseRdr2ResearchCaptureOptions(
 }
 
 /**
- * Refuses to write a research bundle into a directory that already holds
- * one. Called twice: once in main(), before hardware detection or PresentMon
- * are ever touched (a bad --research-output-dir then costs a second, not a
- * played-again 90-second capture — the same principle every other
- * pre-capture refusal in this file follows), and again inside
- * writeRdr2ResearchBundle itself, immediately before it writes anything —
- * closing the gap between that early check and the write, minutes later,
- * during which something else could have populated the directory.
+ * Refuses when the final research-bundle path already exists — at all, even
+ * empty. Publication is atomic (see writeRdr2ResearchBundle): the completed
+ * bundle is built in a staging directory and published with a single
+ * `fs.renameSync` onto `outputDir`, and an atomic rename onto an existing
+ * target is exactly what this collector cannot allow — Windows itself
+ * refuses a plain rename onto an existing directory regardless of whether
+ * it is empty, and requiring "does not exist yet" here keeps this pure
+ * check's behavior identical on whatever OS runs it.
+ *
+ * Called three times: once in main(), before hardware detection or
+ * PresentMon are ever touched (a bad --research-output-dir then costs a
+ * second, not a played-again 90-second capture — the same principle every
+ * other pre-capture refusal in this file follows); once inside
+ * writeRdr2ResearchBundle before it stages anything (no point staging a
+ * bundle that can never be published); and once more immediately before the
+ * publishing rename — closing the window between that second check and the
+ * rename, during which staging, hash verification and the manifest write
+ * all took real time.
  */
-export function refuseRdr2ResearchOutputDirOverwrite(outputDir: string): void {
-  if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length > 0) {
+export function refuseRdr2ResearchOutputDirExists(outputDir: string): void {
+  if (fs.existsSync(outputDir)) {
     throw new CliInputError(
-      `--research-output-dir "${outputDir}" already exists and is not empty. Refusing to overwrite a previous research bundle — choose a new, empty directory.`,
+      `--research-output-dir "${outputDir}" already exists. Atomic publication requires the final path to not exist yet — choose a new path.`,
     );
   }
 }
@@ -840,33 +850,92 @@ export interface Rdr2ResearchManifest {
 }
 
 /**
- * Writes the research bundle: the source CSV copied byte-for-byte (never
- * re-serialized through the parsed/decoded text — a raw copy is the only way
- * "untouched" is actually true) plus the manifest as JSON, into `outputDir`.
+ * Publishes the research bundle ATOMICALLY: nothing appears at `outputDir`
+ * until every step below has succeeded, and any failure along the way
+ * leaves outputDir untouched (never created, never partial).
  *
- * Refuses (defense in depth, independent of what main() already checked):
- * an empty/absent settingsFile or a non-RDR2 gameId on the manifest — a
- * research bundle exists to preserve VERIFIED capture evidence, and RDR2 is
- * the only game with settings-file provenance to bundle — and an
- * already-populated outputDir, re-checked here rather than trusted from
- * whatever main() found minutes earlier before capture began.
+ * THE STAGE-VERIFY-RENAME SEQUENCE
+ * ---------------------------------
+ * 1. Refuse (defense in depth, independent of what main() already checked)
+ *    an empty/absent settingsFile or a non-RDR2 gameId on the manifest — a
+ *    research bundle exists to preserve VERIFIED capture evidence, and RDR2
+ *    is the only game with settings-file provenance to bundle.
+ * 2. Refuse if outputDir already exists — see refuseRdr2ResearchOutputDirExists.
+ * 3. Create a uniquely-named staging directory BESIDE outputDir — as a
+ *    sibling under the same parent, via `fs.mkdtempSync` anchored there —
+ *    so the later rename is guaranteed to be on the same filesystem and
+ *    therefore atomic. (This requires outputDir's own parent directory to
+ *    already exist; only outputDir itself must not.)
+ * 4. Copy the source CSV byte-for-byte into staging — `fs.copyFileSync`,
+ *    never re-serialized through parsed/decoded text, the only way
+ *    "untouched" is actually true.
+ * 5. Verify the STAGED copy's SHA-256 and byte length against what the
+ *    manifest claims about it. A mismatch here means either the copy was
+ *    corrupted or the manifest is wrong about the file it describes —
+ *    either way, publishing would hand out a bundle that does not match
+ *    its own manifest, so this refuses before anything is published.
+ * 6. Write the manifest into staging.
+ * 7. Re-check outputDir still does not exist (the race this whole design
+ *    exists to close: something could have appeared during steps 3-6,
+ *    which took real time — a 90-second capture's worth, in the worst case
+ *    the operator started a second run at the same path).
+ * 8. `fs.renameSync(stagingDir, outputDir)` — the single atomic operation
+ *    that makes the bundle appear. Same filesystem (step 3) is what makes
+ *    this atomic rather than a copy-then-delete that could itself be
+ *    interrupted partway.
+ *
+ * CLEANUP ON FAILURE
+ * -------------------
+ * Any error from step 3 onward is caught, the staging directory (and ONLY
+ * the staging directory — never outputDir, which by construction cannot
+ * exist yet at any point where this runs) is removed, and the original
+ * error is re-thrown unchanged. No staging residue is ever left behind.
  */
-export function writeRdr2ResearchBundle(args: { outputDir: string; csvSourcePath: string; manifest: Rdr2ResearchManifest }): { csvPath: string; manifestPath: string } {
-  const { outputDir, csvSourcePath, manifest } = args;
+export function writeRdr2ResearchBundle(args: {
+  outputDir: string;
+  csvSourcePath: string;
+  manifest: Rdr2ResearchManifest;
+  /** Test-only seam: fires immediately before the pre-rename existence re-check (step 7), so a test can simulate the destination appearing mid-publish without a second real process. Never set by real callers. */
+  onBeforePublish?: () => void;
+}): { csvPath: string; manifestPath: string } {
+  const { outputDir, csvSourcePath, manifest, onBeforePublish } = args;
   if (manifest.gameId !== 'rdr2') {
     throw new Error(`Refusing to write a research bundle for gameId "${manifest.gameId}" — research bundles are RDR2-only today.`);
   }
   if (!manifest.settingsFile) {
     throw new Error('Refusing to write a research bundle with no settingsFile provenance — a research bundle exists to preserve VERIFIED capture evidence, not an unverified one.');
   }
-  refuseRdr2ResearchOutputDirOverwrite(outputDir);
+  refuseRdr2ResearchOutputDirExists(outputDir);
 
-  fs.mkdirSync(outputDir, { recursive: true });
-  const csvPath = path.join(outputDir, 'presentmon.csv');
-  fs.copyFileSync(csvSourcePath, csvPath);
-  const manifestPath = path.join(outputDir, 'manifest.json');
-  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  return { csvPath, manifestPath };
+  const stagingDir = fs.mkdtempSync(path.join(path.dirname(outputDir), '.rdr2-research-staging-'));
+  try {
+    const stagingCsvPath = path.join(stagingDir, 'presentmon.csv');
+    fs.copyFileSync(csvSourcePath, stagingCsvPath);
+
+    const stagedByteLength = fs.statSync(stagingCsvPath).size;
+    if (stagedByteLength !== manifest.csv.byteLength) {
+      throw new Error(
+        `Staged CSV is ${stagedByteLength} bytes but the manifest claims ${manifest.csv.byteLength} — refusing to publish a bundle that does not match its own manifest.`,
+      );
+    }
+    const stagedSha256 = createHash('sha256').update(fs.readFileSync(stagingCsvPath)).digest('hex');
+    if (stagedSha256 !== manifest.csv.sha256) {
+      throw new Error(
+        `Staged CSV hashes to ${stagedSha256} but the manifest claims ${manifest.csv.sha256} — refusing to publish a bundle that does not match its own manifest.`,
+      );
+    }
+
+    fs.writeFileSync(path.join(stagingDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+
+    onBeforePublish?.();
+    refuseRdr2ResearchOutputDirExists(outputDir);
+    fs.renameSync(stagingDir, outputDir);
+  } catch (error) {
+    fs.rmSync(stagingDir, { recursive: true, force: true });
+    throw error;
+  }
+
+  return { csvPath: path.join(outputDir, 'presentmon.csv'), manifestPath: path.join(outputDir, 'manifest.json') };
 }
 
 /**
@@ -953,7 +1022,7 @@ async function main(argv: string[]): Promise<void> {
   // check here: a bad --research-output-dir costs a second, not a
   // played-again capture.
   const researchOptions = parseRdr2ResearchCaptureOptions(argv, source, runConditions.gameId, dryRun);
-  if (researchOptions) refuseRdr2ResearchOutputDirOverwrite(researchOptions.outputDir);
+  if (researchOptions) refuseRdr2ResearchOutputDirExists(researchOptions.outputDir);
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 
