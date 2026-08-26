@@ -434,6 +434,21 @@ uncontrolled (not a fixed, repeatable benchmark route) and RDR2's settings
 coverage is partial by design (see "Games with no comparable preset tier"
 above) — this run verified the *collector*, not a measurement fit to publish.
 
+**A real, non-dry save is deliberately deferred, not merely pending.** The
+only real capture available today is this same uncontrolled, partial-coverage
+run — saving it for real would write exactly the non-publishable record the
+paragraph above describes into `measuredObservations.json`, a git-tracked
+store meant to be committed and shared, just to exercise the append path.
+That trade is not worth making. A real save is deferred until either
+controlled benchmark segmentation/repeatability exists for RDR2 (so a real
+save is also a real, publishable measurement), or the collector gains an
+isolated temporary test store so the append and frame-time-archive paths can
+be exercised for real without writing a non-publishable record into the
+committed store. Until then, `--dry-run`'s coverage of everything up to but
+not including the write — validation, provenance binding, statistics — is
+the intended verification boundary for this branch, not a gap this PR is
+waiting on.
+
 ## Windows smoke test for automatic capture
 
 Nothing below has been run automatically. The capture runner's logic is
@@ -708,9 +723,16 @@ the store append path and the frame-time archive will have executed for real.
 
 ## What remains unverified
 
-- **No record has ever been saved.** Every run so far has been a dry run. The
-  store append path, and the frame-time archive being written for real, have
-  not been exercised on a real observation.
+- **No record has ever been saved — deliberately, not just not-yet.** Every
+  run so far has been a dry run, so the store append path and the frame-time
+  archive being written for real have not been exercised on a real
+  observation. See "What the RDR2 automatic-capture real Windows run
+  verified" above for why: the only real capture available today is
+  uncontrolled and settings-partial, so a real save would write exactly the
+  non-publishable record that run's own writeup describes into the
+  git-tracked store, just to test persistence. Deferred until controlled
+  benchmark segmentation/repeatability exists, or until the collector gains
+  an isolated temporary test store.
 - **`--game-exe` version detection** has never read a real executable. The
   path is passed through an environment variable rather than interpolated into
   the PowerShell command, so the escaping defect is fixed, but the detection
