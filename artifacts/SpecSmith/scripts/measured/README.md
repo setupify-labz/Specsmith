@@ -434,20 +434,31 @@ uncontrolled (not a fixed, repeatable benchmark route) and RDR2's settings
 coverage is partial by design (see "Games with no comparable preset tier"
 above) — this run verified the *collector*, not a measurement fit to publish.
 
-**A real, non-dry save is deliberately deferred, not merely pending.** The
-only real capture available today is this same uncontrolled, partial-coverage
-run — saving it for real would write exactly the non-publishable record the
-paragraph above describes into `measuredObservations.json`, a git-tracked
-store meant to be committed and shared, just to exercise the append path.
-That trade is not worth making. A real save is deferred until either
-controlled benchmark segmentation/repeatability exists for RDR2 (so a real
-save is also a real, publishable measurement), or the collector gains an
+**A real, non-dry save is deliberately deferred, not merely pending — and,
+as of `enforceRdr2DryRunRequired`, enforced in code, not just documented
+intent.** The only real capture available today is this same uncontrolled,
+partial-coverage run — saving it for real would write exactly the
+non-publishable record the paragraph above describes into
+`measuredObservations.json`, a git-tracked store meant to be committed and
+shared, just to exercise the append path. That trade is not worth making, so
+an automatic (not `--csv`) capture of RDR2 now REQUIRES `--dry-run`
+unconditionally: `main()` calls `enforceRdr2DryRunRequired` immediately after
+parsing run conditions — before hardware detection, before
+`resolvePresentMonBinary`, before PresentMon is ever spawned — and refuses
+with a clear message if `--dry-run` is absent. `--csv` and every other game
+are unaffected; validation passing was never a stand-in for "this run is fit
+to publish," so this gate does not depend on validation at all.
+
+**This is a TEMPORARY fail-closed gate, not a permanent restriction on RDR2,**
+and it is lifted only alongside one of the two changes described above:
+controlled benchmark segmentation/repeatability existing for RDR2 (so a real
+save is also a real, publishable measurement), or the collector gaining an
 isolated temporary test store so the append and frame-time-archive paths can
 be exercised for real without writing a non-publishable record into the
 committed store. Until then, `--dry-run`'s coverage of everything up to but
 not including the write — validation, provenance binding, statistics — is
-the intended verification boundary for this branch, not a gap this PR is
-waiting on.
+the intended verification boundary for RDR2, not a gap waiting to be closed
+by simply removing `--dry-run` from a command line.
 
 ## Windows smoke test for automatic capture
 
@@ -720,6 +731,11 @@ one of them is under this project's control.**
 
 Then, and only then, the first **non**-dry run — which is also the first time
 the store append path and the frame-time archive will have executed for real.
+**Not for RDR2, though**: an automatic capture of RDR2 specifically now
+refuses without `--dry-run`, unconditionally, until an approved controlled
+RDR2 segmentation/repeatability protocol exists — see `enforceRdr2DryRunRequired`
+and the "TEMPORARY fail-closed gate" paragraph above. A non-dry first save
+needs a different game.
 
 ## What remains unverified
 
@@ -732,7 +748,12 @@ the store append path and the frame-time archive will have executed for real.
   non-publishable record that run's own writeup describes into the
   git-tracked store, just to test persistence. Deferred until controlled
   benchmark segmentation/repeatability exists, or until the collector gains
-  an isolated temporary test store.
+  an isolated temporary test store. **For an automatic capture of RDR2
+  specifically, this is now enforced by `enforceRdr2DryRunRequired`, not
+  merely a fact about what has happened so far** — the collector refuses a
+  non-dry automatic RDR2 capture outright, before PresentMon is ever
+  resolved. Other games and `--csv` are unaffected by that gate; a real save
+  for them remains merely unattempted, not refused.
 - **`--game-exe` version detection** has never read a real executable. The
   path is passed through an environment variable rather than interpolated into
   the PowerShell command, so the escaping defect is fixed, but the detection

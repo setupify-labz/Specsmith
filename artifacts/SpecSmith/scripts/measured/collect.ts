@@ -7,12 +7,17 @@
 //
 //   npx tsx scripts/measured/collect.ts --capture-process-name RDR2.exe \
 //     --capture-seconds 90 --game-id rdr2 --resolution 1440p --preset unmapped \
-//     --preset-label "per-category settings; see settingsFile" --ram-channels 2
+//     --preset-label "per-category settings; see settingsFile" --ram-channels 2 \
+//     --dry-run
 //     (no --settings-file: an automatic capture of RDR2 reads and hashes its
 //      own system.xml instead — see bindRdr2SettingsProvenance — and refuses
 //      the run if that file cannot be confirmed unchanged across the capture.
 //      --settings-file is still required for --csv and for every other game,
-//      captured automatically or not.)
+//      captured automatically or not. --dry-run is REQUIRED here — see
+//      enforceRdr2DryRunRequired — because RDR2 has no controlled,
+//      repeatable benchmark protocol yet, so a real save today would write
+//      non-publishable data into the observation store. Temporary fail-closed
+//      gate; --csv and every other game are unaffected.)
 //
 // The GPU and CPU are RESOLVED from what Windows reports, not supplied.
 // --gpu-id/--cpu-id are optional and may only disambiguate between catalog
@@ -649,6 +654,50 @@ export function bindRdr2SettingsProvenance(
 }
 
 /**
+ * TEMPORARY FAIL-CLOSED GATE — do not remove or loosen without reading this
+ * whole comment first.
+ *
+ * An automatic capture (not --csv) of RDR2 requires --dry-run today,
+ * unconditionally. RDR2 has no approved controlled benchmark
+ * segmentation/repeatability protocol yet — see scripts/measured/README.md,
+ * "Why this PR does not include a real, non-dry save" / "What remains
+ * unverified" — so gameplay captured against it is uncontrolled and its
+ * settings coverage is partial by design (see "Games with no comparable
+ * preset tier"). The only real RDR2 capture this collector can take today is
+ * therefore not publishable benchmark data, and a real, non-dry save would
+ * write exactly that non-publishable record into measuredObservations.json —
+ * a git-tracked store meant to be committed and shared — purely because
+ * validation happened to pass. Validation passing was never a stand-in for
+ * "this run is fit to publish"; it only proves the record is internally
+ * consistent with its own frames, not that the run behind it is a real
+ * benchmark.
+ *
+ * This is called from main() immediately after runConditions is parsed —
+ * before hardware detection, before resolvePresentMonBinary, and before
+ * PresentMon is ever spawned — so a disallowed real save is refused at the
+ * cost of a second, not a played-again 90-second capture. --csv and every
+ * other game are untouched: this only ever fires for
+ * `source.mode === 'capture' && gameId === 'rdr2' && !dryRun`.
+ *
+ * REMOVE OR REPLACE THIS GATE ONLY when an approved controlled RDR2
+ * segmentation/repeatability protocol exists — i.e. only alongside the same
+ * change that would let scripts/measured/README.md say a real RDR2 capture
+ * is publishable data. Until then this function's existence, not just its
+ * current behavior, is the point: it is easy to see and easy to revert
+ * exactly when that protocol lands.
+ */
+export function enforceRdr2DryRunRequired(gameId: string, source: ReturnType<typeof parseCaptureSelection>, dryRun: boolean): void {
+  if (source.mode === 'capture' && gameId === 'rdr2' && !dryRun) {
+    throw new CliInputError(
+      'An automatic capture of RDR2 requires --dry-run. RDR2 has no controlled, repeatable benchmark protocol yet, ' +
+        'so a real save today would write non-publishable data (uncontrolled gameplay, partial settings coverage) into the observation store. ' +
+        'This is a temporary fail-closed gate (see scripts/measured/README.md) — it is lifted only once an approved controlled RDR2 ' +
+        'segmentation/repeatability protocol exists. --csv and every other game are unaffected.',
+    );
+  }
+}
+
+/**
  * Validates `--internal-cancel-after-seconds`, a testing-only flag that
  * self-cancels a capture from inside this process instead of depending on a
  * signal delivered from outside it.
@@ -722,6 +771,11 @@ async function main(argv: string[]): Promise<void> {
   // around it.
   const catalogs = loadCatalogs();
   const runConditions = parseRunConditions(argv, catalogs.gameIds, source.mode);
+  // TEMPORARY FAIL-CLOSED GATE — see enforceRdr2DryRunRequired's own comment.
+  // Checked here, before hardware detection or PresentMon are ever touched,
+  // so a disallowed real RDR2 save is refused at the cost of a second, not a
+  // played-again capture.
+  enforceRdr2DryRunRequired(runConditions.gameId, source, dryRun);
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 

@@ -11,6 +11,7 @@ import {
   collectorBuildHash,
   COLLECTOR_VERSION,
   DEFAULT_BUILD_HASH_FILES,
+  enforceRdr2DryRunRequired,
   frameGenerationFactor,
   numberInRange,
   oneOf,
@@ -562,6 +563,41 @@ describe('--settings-file is only skipped for an automatic RDR2 capture', () => 
     const argv = [...withoutSettingsFile('rdr2'), '--settings-file', os.devNull];
     const r = parseRunConditions(argv, undefined, 'csv');
     expect(r.settingsText).toBe('');
+  });
+});
+
+// TEMPORARY FAIL-CLOSED GATE: RDR2 has no approved controlled benchmark
+// segmentation/repeatability protocol yet, so the only real capture this
+// collector can take is not publishable data — an automatic (not --csv)
+// capture of RDR2 must therefore be --dry-run, unconditionally, until that
+// protocol exists. See enforceRdr2DryRunRequired's own comment in collect.ts.
+describe('a real, non-dry save of an automatic RDR2 capture is refused', () => {
+  const captureSource = parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '30']);
+  const csvSource = parseCaptureSelection(['--csv', 'run.csv']);
+
+  it('refuses an automatic RDR2 capture without --dry-run, with a clear message', () => {
+    expect(() => enforceRdr2DryRunRequired('rdr2', captureSource, false)).toThrow(CliInputError);
+    expect(() => enforceRdr2DryRunRequired('rdr2', captureSource, false)).toThrow(/requires --dry-run/);
+    expect(() => enforceRdr2DryRunRequired('rdr2', captureSource, false)).toThrow(/controlled, repeatable benchmark protocol/);
+  });
+
+  it('allows an automatic RDR2 capture that DOES pass --dry-run', () => {
+    expect(() => enforceRdr2DryRunRequired('rdr2', captureSource, true)).not.toThrow();
+  });
+
+  it('does not apply to a manual --csv run of RDR2 without --dry-run', () => {
+    expect(() => enforceRdr2DryRunRequired('rdr2', csvSource, false)).not.toThrow();
+  });
+
+  it('does not apply to an automatic capture of a non-RDR2 game without --dry-run', () => {
+    expect(() => enforceRdr2DryRunRequired('cs2', captureSource, false)).not.toThrow();
+  });
+
+  it('is wired into parseCaptureSelection\'s real capture-mode source, not a lookalike shape', () => {
+    // Guards against the gate silently no-oping if parseCaptureSelection's
+    // returned mode discriminant ever changes shape.
+    expect(captureSource.mode).toBe('capture');
+    expect(csvSource.mode).toBe('csv');
   });
 });
 
