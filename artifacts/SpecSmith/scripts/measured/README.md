@@ -636,10 +636,51 @@ cannot tell those apart; this one can.
    rendered frame — the existing scale-invariant gate, so no absolute time
    enters the rule. A run below that is noise and is merged into the region
    it interrupts, so a brief GPU hiccup cannot split one scene into two.
-4. Interpret the resulting blocks structurally: leading idle = menu/loading,
-   trailing idle running to the end = results screen, interior idle blocks =
-   inter-scene transitions. Require **exactly four** transitions and **five**
-   scenes, alternating.
+4. Locate the **results screen** by stationarity (see below), since that
+   decides what counts as the benchmark proper.
+5. Interpret what precedes it structurally: leading idle = menu/loading,
+   interior idle blocks = inter-scene transitions. Require **exactly four**
+   transitions and **five** scenes, alternating. A transition sitting between
+   scene 5 and the results screen belongs to the final boundary and is not
+   counted as a fifth.
+
+### The final boundary: a real run falsified the first design
+
+The analyzer originally required the capture to end **GPU-idle**, assuming a
+results screen renders nothing. A real 420-second RDR2 run disproved that:
+its four inter-scene transitions were detected correctly, but the run ended
+GPU-busy and the analyzer wrongly reported the benchmark had never finished —
+while a screenshot from that same run showed the completed results screen.
+**GPU load is not the signal at this boundary**, in either direction.
+
+What separates them is **stationarity**. Scene-5 gameplay is dynamic: the
+camera moves and the frame-time level drifts continuously. The results screen
+is a fixed image, so its level stops drifting. Stability is measured as the
+*relative* spread of per-window medians (a MAD over a median — dimensionless,
+so identical on a machine twice as fast), for both frame time and GPU ratio,
+taking the worse of the two.
+
+The bar comes from the run itself: scenes 1–4 are already confidently
+identified, so they show what dynamic gameplay looks like *on this machine,
+in this run*, and the trailing regime must be at least `2x` more stationary
+than the calmest span gameplay reaches. **Both sides are measured over spans
+of equal length** — a drifting signal always looks calmer over less of it, and
+an earlier draft that compared a short suffix against a whole scene happily
+declared the tail of an ordinary scene to be a results screen. The candidate
+is judged by its *worst* span, so a tail that settles late but drifts early
+cannot pass on its final seconds alone.
+
+Because that boundary genuinely is not one frame, two are reported:
+
+- `scene5LikelyEndOffsetSec` — where drift stopped (early edge)
+- `resultsScreenStableStartOffsetSec` — where stationarity is confident (late,
+  conservative edge; `resultsStartOffsetSec` aliases this)
+- `finalBoundaryUncertaintySec` — the interval between them, reported rather
+  than resolved by picking
+
+If no trailing regime clears the bar, the result stays **unresolved** — which
+is what a capture truncated mid-scene-5 produces, since dynamic gameplay
+running to the last frame never settles.
 
 **No observed timestamp is encoded anywhere in the algorithm.** Real runs put
 gameplay start near 38s and 75s with transitions roughly 30s apart; those

@@ -35,13 +35,30 @@ interface BlockSpec {
   fps: number;
   /** msGPUActive / frameTimeMs for every frame in this block. */
   gpuRatio: number;
+  /**
+   * Peak-to-peak drift of the frame-time LEVEL across the block, as a
+   * fraction. This is what makes gameplay gameplay: a benchmark scene pans
+   * across changing terrain, so its frame-time level wanders continuously.
+   * A transition (pinned internal cap) and a results screen (one fixed
+   * image) barely drift at all, and that difference — not GPU load, and not
+   * frame rate — is what separates scene 5 from the results screen.
+   */
+  drift?: number;
+  /**
+   * Monotonic fractional increase of the frame-time level across the block —
+   * a scene that steadily gets heavier. Distinct from `drift` because a ramp
+   * makes a whole block look far more variable than any short span of it,
+   * which is exactly the case that separates a span-matched stability
+   * reference from a whole-scene one.
+   */
+  ramp?: number;
 }
 
 /**
  * Builds frames for a sequence of blocks.
  *
- * Jitter is deterministic (a fixed sawtooth, never Math.random) so a failing
- * test fails identically every time.
+ * Everything is deterministic (a fixed sawtooth and a fixed sinusoid, never
+ * Math.random) so a failing test fails identically every time.
  */
 function buildFrames(specs: readonly BlockSpec[]): PresentMonFrame[] {
   const frames: PresentMonFrame[] = [];
@@ -50,11 +67,16 @@ function buildFrames(specs: readonly BlockSpec[]): PresentMonFrame[] {
   for (const spec of specs) {
     const nominalMs = 1000 / spec.fps;
     const count = Math.round(spec.seconds * spec.fps);
+    const drift = spec.drift ?? 0;
     for (let i = 0; i < count; i += 1) {
-      // +/-2% sawtooth: enough variation that medians and min/max are not all
-      // the identical number, small enough not to move any block across the
-      // derived utilisation cut.
-      const frameTimeMs = nominalMs * (1 + ((i % 5) - 2) * 0.01);
+      // Slow level drift (three cycles across the block, so successive
+      // windows genuinely differ) plus a small fast sawtooth so medians and
+      // min/max are not all the identical number.
+      const ramp = spec.ramp ?? 0;
+      const level = 1
+        + (drift / 2) * Math.sin((2 * Math.PI * 3 * i) / Math.max(1, count))
+        + ramp * (i / Math.max(1, count - 1));
+      const frameTimeMs = nominalMs * level * (1 + ((i % 5) - 2) * 0.01);
       t += frameTimeMs / 1000;
       frames.push({
         frameTimeMs,
@@ -69,10 +91,19 @@ function buildFrames(specs: readonly BlockSpec[]): PresentMonFrame[] {
   return frames;
 }
 
+/** Dynamic gameplay: GPU-busy AND drifting. */
+const SCENE = (seconds = 20): BlockSpec => ({ seconds, fps: 80, gpuRatio: 0.98, drift: 0.25 });
+/** GPU-idle black screen at the engine's internal cap. */
 const MENU: BlockSpec = { seconds: 10, fps: 250, gpuRatio: 0.15 };
-const SCENE = (seconds = 20): BlockSpec => ({ seconds, fps: 80, gpuRatio: 0.98 });
 const TRANSITION: BlockSpec = { seconds: 3, fps: 250, gpuRatio: 0.15 };
+/** A GPU-IDLE results screen. */
 const RESULTS: BlockSpec = { seconds: 10, fps: 250, gpuRatio: 0.15 };
+/**
+ * A GPU-BUSY results screen — the shape a real 420-second RDR2 run turned out
+ * to have. Stationary, but the GPU is still working, so GPU load cannot be
+ * what identifies it.
+ */
+const RESULTS_BUSY: BlockSpec = { seconds: 12, fps: 51, gpuRatio: 0.9, drift: 0.01 };
 
 /** The canonical complete run: menu, five scenes separated by four transitions, results screen. */
 const fiveSceneRun = (): PresentMonFrame[] =>
@@ -191,8 +222,10 @@ describe('incomplete and malformed run shapes fail closed', () => {
     expect(result.status).toBe('unresolved');
     if (result.status !== 'unresolved') throw new Error('unreachable');
     expect(result.failure).toBe('structure');
-    expect(result.reasons.join(' ')).toMatch(/ends while the GPU is still rendering/);
-    expect(result.reasons.join(' ')).toMatch(/fifth scene is incomplete/);
+    // The recording stops while scene 5 is still drifting like gameplay, so
+    // no stationary trailing regime exists to call a results screen.
+    expect(result.reasons.join(' ')).toMatch(/never settles into a stationary regime/);
+    expect(result.reasons.join(' ')).toMatch(/no convincing results-screen boundary/);
   });
 
   it('refuses a run with too few transitions', () => {
@@ -235,12 +268,12 @@ describe('incomplete and malformed run shapes fail closed', () => {
     expect(result).not.toHaveProperty('scenes');
   });
 
-  it('refuses a capture with no results-screen boundary at all — gameplay runs to the very last frame', () => {
+  it('refuses a capture with no results-screen boundary at all — dynamic gameplay runs to the very last frame', () => {
     const frames = buildFrames([MENU, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(30)]);
     const result = analyzeFrames(frames, source());
     expect(result.status).toBe('unresolved');
     if (result.status !== 'unresolved') throw new Error('unreachable');
-    expect(result.reasons.join(' ')).toMatch(/A complete benchmark run ends with the results screen/);
+    expect(result.reasons.join(' ')).toMatch(/never settles into a stationary regime/);
   });
 
   it('refuses a capture whose GPU-utilisation distribution is not bimodal — no derivable cut', () => {
@@ -259,6 +292,153 @@ describe('incomplete and malformed run shapes fail closed', () => {
     expect(result.status).toBe('unresolved');
     if (result.status !== 'unresolved') throw new Error('unreachable');
     expect(result.reasons.join(' ')).toMatch(/not enough recording to reason about benchmark structure/);
+  });
+});
+
+// The boundary a real 420-second Windows run falsified. The analyzer used to
+// require the capture to END GPU-idle and declared, wrongly, that a run whose
+// results screen was GPU-busy had never finished. These tests pin the
+// corrected behaviour: the results screen is found by STATIONARITY, and GPU
+// load is not evidence either way.
+describe('the final boundary is found by stationarity, not by GPU load', () => {
+  it('resolves a completed run whose results screen stays GPU-BUSY', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(),        // scene 5, dynamic
+      RESULTS_BUSY,   // results screen: GPU-busy but stationary
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    expect(result.scenes).toHaveLength(5);
+    expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
+    // The results screen was identified even though the GPU never went idle.
+    const results = result.boundaries.find((b) => b.kind === 'results-start');
+    expect(results?.meanGpuRatio).toBeGreaterThan(0.5);
+    expect(results?.evidence.join(' ')).toMatch(/Located by stationarity, NOT by GPU load/);
+  });
+
+  it('places the final boundary near where the fixture actually changed regime', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(), RESULTS_BUSY,
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    // menu 10 + 4x(scene 20 + transition 3) + scene 20 = 122s.
+    expect(result.resultsScreenStableStartOffsetSec).toBeGreaterThan(115);
+    expect(result.resultsScreenStableStartOffsetSec).toBeLessThan(130);
+    expect(result.scene5LikelyEndOffsetSec).toBeLessThanOrEqual(result.resultsScreenStableStartOffsetSec);
+  });
+
+  it('reports an uncertainty interval rather than inventing one exact frame', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(), RESULTS_BUSY,
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    expect(result.finalBoundaryUncertaintySec).toBeGreaterThanOrEqual(0);
+    expect(result.finalBoundaryUncertaintySec).toBeCloseTo(
+      result.resultsScreenStableStartOffsetSec - result.scene5LikelyEndOffsetSec,
+      6,
+    );
+    // scene5LikelyEnd is the early edge; resultsScreenStableStart the late,
+    // conservative one, and the alias points at the conservative edge.
+    expect(result.resultsStartOffsetSec).toBe(result.resultsScreenStableStartOffsetSec);
+  });
+
+  it('resolves a completed run that has a transition between scene 5 and a GPU-busy results screen', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(), TRANSITION, RESULTS_BUSY,
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    // The transition into the results screen is NOT counted as a fifth
+    // inter-scene transition; it belongs to the final boundary.
+    expect(result.scenes).toHaveLength(5);
+    expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
+  });
+
+  it('still resolves a completed run whose results screen is GPU-IDLE — load is not the signal in either direction', () => {
+    const frames = buildFrames([MENU, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), RESULTS]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    expect(result.scenes).toHaveLength(5);
+    const results = result.boundaries.find((b) => b.kind === 'results-start');
+    expect(results?.meanGpuRatio).toBeLessThan(0.5);
+  });
+
+  it('does NOT treat a stable patch in the MIDDLE of scene 5 as the results screen', () => {
+    // Gameplay briefly goes stationary, then resumes drifting to the end of
+    // the recording. Only a stationary regime that runs to the END qualifies,
+    // so this must stay unresolved rather than cutting at the calm patch.
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(8),
+      { seconds: 8, fps: 80, gpuRatio: 0.98, drift: 0.01 }, // temporarily stable
+      SCENE(12), // dynamic again, to the last frame
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    expect(result.reasons.join(' ')).toMatch(/never settles into a stationary regime/);
+  });
+
+  it('refuses an ambiguous trailing regime that is calmer than gameplay but not convincingly stationary', () => {
+    // Drift sits between the loose bar (as calm as the calmest scene) and the
+    // strict bar (twice as calm). Not convincing, so unresolved.
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(),
+      { seconds: 14, fps: 60, gpuRatio: 0.95, drift: 0.18 },
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    expect(result.reasons.join(' ')).toMatch(/never settles into a stationary regime/);
+  });
+
+  it('compares candidate and gameplay over EQUAL spans: a steadily-heavier scene does not lower the bar', () => {
+    // Gameplay here RAMPS rather than oscillating, so each scene looks far
+    // more variable taken whole than any short span of it does. Judging the
+    // trailing regime against the whole-scene figure would set a bar roughly
+    // 3x too lenient and accept a tail that is not actually stationary.
+    // Measuring both sides over spans of equal length is what keeps this
+    // unresolved.
+    const RAMPING_SCENE: BlockSpec = { seconds: 20, fps: 80, gpuRatio: 0.98, ramp: 0.30 };
+    const frames = buildFrames([
+      MENU,
+      RAMPING_SCENE, TRANSITION, RAMPING_SCENE, TRANSITION,
+      RAMPING_SCENE, TRANSITION, RAMPING_SCENE, TRANSITION,
+      RAMPING_SCENE,
+      // Calmer than a whole ramping scene, but not calmer than the calmest
+      // short span of one — so it is not convincingly a results screen.
+      { seconds: 14, fps: 70, gpuRatio: 0.95, drift: 0.06 },
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    expect(result.reasons.join(' ')).toMatch(/never settles into a stationary regime/);
+  });
+
+  it('carries no dependence on the observed run: same structure at a different frame rate, duration and results-screen speed', () => {
+    // Nothing resembling the real run's ~51 fps results screen, ~317s scene-5
+    // end, ~326s stability point, or 420s duration — and it still resolves.
+    const frames = buildFrames([
+      { seconds: 6, fps: 400, gpuRatio: 0.15 },
+      { seconds: 9, fps: 200, gpuRatio: 0.97, drift: 0.3 }, { seconds: 2, fps: 400, gpuRatio: 0.15 },
+      { seconds: 9, fps: 200, gpuRatio: 0.97, drift: 0.3 }, { seconds: 2, fps: 400, gpuRatio: 0.15 },
+      { seconds: 9, fps: 200, gpuRatio: 0.97, drift: 0.3 }, { seconds: 2, fps: 400, gpuRatio: 0.15 },
+      { seconds: 9, fps: 200, gpuRatio: 0.97, drift: 0.3 }, { seconds: 2, fps: 400, gpuRatio: 0.15 },
+      { seconds: 9, fps: 200, gpuRatio: 0.97, drift: 0.3 },
+      { seconds: 8, fps: 144, gpuRatio: 0.85, drift: 0.01 },
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    expect(result.scenes).toHaveLength(5);
+    expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
+    expect(result.diagnostics.captureDurationSec).toBeLessThan(100);
   });
 });
 

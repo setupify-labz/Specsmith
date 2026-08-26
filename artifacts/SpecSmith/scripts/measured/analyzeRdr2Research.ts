@@ -105,7 +105,13 @@ function summarize(result: Rdr2AnalysisResult): string {
   for (const b of result.boundaries.filter((x) => x.kind === 'transition')) {
     lines.push(`  transition ${b.ordinal}      ${b.startOffsetSec.toFixed(1)}-${b.endOffsetSec.toFixed(1)}s (${b.durationSec.toFixed(2)}s, GPU ${(b.meanGpuRatio * 100).toFixed(1)}%, confidence ${b.confidence})`);
   }
-  lines.push(`  results screen    ${result.resultsStartOffsetSec.toFixed(1)}s`);
+  lines.push(`  scene 5 likely end ${result.scene5LikelyEndOffsetSec.toFixed(2)}s`);
+  lines.push(`  results stable at  ${result.resultsScreenStableStartOffsetSec.toFixed(2)}s`);
+  lines.push(
+    result.finalBoundaryUncertaintySec > 0
+      ? `  final boundary    uncertain across ${result.finalBoundaryUncertaintySec.toFixed(2)}s (${result.scene5LikelyEndOffsetSec.toFixed(2)}-${result.resultsScreenStableStartOffsetSec.toFixed(2)}s) — reported as an interval, not one frame`
+      : '  final boundary    drift stops and stationarity begins at the same point (no uncertainty interval)',
+  );
   lines.push('  candidate scenes (RESEARCH values, not verified benchmark results):');
   for (const s of result.scenes) {
     lines.push(`    scene ${s.ordinal}  ${s.startOffsetSec.toFixed(1)}-${s.endOffsetSec.toFixed(1)}s  ${s.durationSec.toFixed(1)}s  ${s.frameCount} frames  ${s.research.meanFps.toFixed(1)} fps`);

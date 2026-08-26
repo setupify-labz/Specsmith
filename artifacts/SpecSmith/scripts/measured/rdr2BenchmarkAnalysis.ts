@@ -85,6 +85,248 @@ export const MIN_ANALYSIS_DURATION_SEC = 30;
 
 const sha256 = (buf: Buffer): string => createHash('sha256').update(buf).digest('hex');
 
+// ---------------------------------------------------------------------------
+// Stationarity: telling scene-5 gameplay from the results screen
+// ---------------------------------------------------------------------------
+//
+// A REAL WINDOWS RUN FALSIFIED THE FIRST DESIGN
+// ----------------------------------------------
+// This module originally required the capture to end with a GPU-IDLE block,
+// on the assumption that a results screen renders nothing. A real 420-second
+// RDR2 run disproved that: its results screen is GPU-BUSY and sits at a
+// stable frame rate, and the analyzer wrongly reported that the benchmark had
+// never finished — while a screenshot from that same run showed the completed
+// results screen. GPU load is therefore NOT the signal at this boundary.
+//
+// WHAT ACTUALLY SEPARATES THEM IS STATIONARITY, NOT LOAD
+// ------------------------------------------------------
+// Scene-5 gameplay is DYNAMIC: the camera moves, the scene's content changes,
+// and the frame-time LEVEL drifts continuously as load varies. The results
+// screen is a fixed image: whatever it costs to draw, it costs the same from
+// one moment to the next, so the frame-time level stops drifting. That
+// difference is measurable without reference to any particular frame rate.
+//
+// THE MEASURE IS SCALE-FREE, AND THE BAR COMES FROM THE RUN ITSELF
+// ----------------------------------------------------------------
+// Stability is the RELATIVE spread of per-window medians (a MAD divided by a
+// median — dimensionless, so it is identical on a machine twice as fast), and
+// the bar it must clear is derived from the capture's OWN gameplay: scenes 1
+// to 4 are already confidently identified by the transition detection, so
+// they supply an empirical picture of what dynamic gameplay looks like on
+// this machine, in this run. The results screen must be markedly more
+// stationary than even the CALMEST of those scenes.
+//
+// Nothing here encodes a frame rate, a timestamp, a duration, or any figure
+// from RDR2's own results screen. Those displayed statistics are independent
+// evidence a human may compare against afterwards; they are not an
+// optimisation target and are never read by this code.
+
+/**
+ * Frames per stability window.
+ *
+ * A sample size, not a threshold on the data: enough frames for a median and
+ * a MAD to mean something, few enough that many windows fit inside one scene.
+ * Expressed in frames rather than seconds so it does not import a time base.
+ */
+export const STABILITY_WINDOW_FRAMES = 64;
+
+/** A regime needs at least this many windows before its spread is worth believing. */
+export const MIN_STABILITY_WINDOWS = 4;
+
+/**
+ * Longest span, in windows, used when comparing a candidate regime against
+ * gameplay.
+ *
+ * Both sides must be measured over the SAME span for the comparison to be
+ * fair, and that span cannot exceed the shorter of the two. Capping it here
+ * keeps a legitimately short results screen measurable: without the cap the
+ * span would stretch to a whole gameplay scene, and any results screen
+ * briefer than one scene could never be evaluated at all.
+ */
+export const MAX_COMPARISON_WINDOWS = 8;
+
+/**
+ * How much more stationary than the calmest gameplay scene a trailing regime
+ * must be before it is called the results screen.
+ *
+ * A RATIO against a bar measured from this same run, so it carries no frame
+ * rate and no absolute time. 2x is comfortably inside the gap the real data
+ * shows between drifting gameplay and a fixed screen; the tests confirm the
+ * boundary does not move across a range around it, so it is not a knife edge.
+ */
+export const STRICT_STABILITY_FACTOR = 2;
+
+const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** Median absolute deviation — a spread measure a few outliers cannot inflate. */
+function medianAbsoluteDeviation(xs: readonly number[], centre: number): number {
+  return median([...xs.map((x) => Math.abs(x - centre))].sort((a, b) => a - b));
+}
+
+/**
+ * Relative spread: MAD / median. Dimensionless, so the same drifting
+ * gameplay scores identically whether it ran at 60 fps or 240.
+ */
+function relativeSpread(xs: readonly number[]): number {
+  if (xs.length === 0) return Number.POSITIVE_INFINITY;
+  const centre = median([...xs].sort((a, b) => a - b));
+  if (!(centre > 0)) return Number.POSITIVE_INFINITY;
+  return medianAbsoluteDeviation(xs, centre) / centre;
+}
+
+interface StabilityWindow {
+  startIndex: number;
+  endIndex: number;
+  startOffsetSec: number;
+  endOffsetSec: number;
+  medianFrameTimeMs: number;
+  meanGpuRatio: number;
+}
+
+/** Chops a frame range into fixed-size windows and summarises each one. */
+function stabilityWindows(
+  frames: readonly PresentMonFrame[],
+  ratios: readonly number[],
+  t0: number,
+  startIndex: number,
+  endIndex: number,
+): StabilityWindow[] {
+  const out: StabilityWindow[] = [];
+  for (let s = startIndex; s + STABILITY_WINDOW_FRAMES - 1 <= endIndex; s += STABILITY_WINDOW_FRAMES) {
+    const e = s + STABILITY_WINDOW_FRAMES - 1;
+    const times: number[] = [];
+    let ratioSum = 0;
+    for (let i = s; i <= e; i += 1) {
+      times.push(frames[i].frameTimeMs);
+      ratioSum += ratios[i];
+    }
+    out.push({
+      startIndex: s,
+      endIndex: e,
+      startOffsetSec: frames[s].timeInSeconds - t0,
+      endOffsetSec: frames[e].timeInSeconds - t0,
+      medianFrameTimeMs: median(times.sort((a, b) => a - b)),
+      meanGpuRatio: ratioSum / (e - s + 1),
+    });
+  }
+  return out;
+}
+
+/**
+ * How non-stationary a stretch of windows is: the worse of its frame-time
+ * level drift and its GPU-load drift.
+ *
+ * Taking the worse of the two means a regime is only called stable when BOTH
+ * are stable — a screen whose frame times hold steady while its GPU load
+ * wanders is not the fixed image this is looking for.
+ */
+function regimeInstability(windows: readonly StabilityWindow[]): number {
+  if (windows.length < MIN_STABILITY_WINDOWS) return Number.POSITIVE_INFINITY;
+  return Math.max(
+    relativeSpread(windows.map((w) => w.medianFrameTimeMs)),
+    relativeSpread(windows.map((w) => w.meanGpuRatio)),
+  );
+}
+
+export interface StableSuffix {
+  /** First frame of the regime that is confidently stationary. */
+  stableStartIndex: number;
+  /** First frame from which the signal has already stopped looking like gameplay; <= stableStartIndex. */
+  likelyEndIndex: number;
+  instability: number;
+  strictBar: number;
+  looseBar: number;
+  windowCount: number;
+}
+
+/**
+ * Finds the longest trailing stretch of `[startIndex, endIndex]` that is
+ * stationary enough to be a results screen, or null when none is.
+ *
+ * SPANS ARE COMPARED AT EQUAL LENGTH
+ * ----------------------------------
+ * A slowly drifting signal always looks calmer when you look at less of it,
+ * so measuring a short candidate suffix against a whole 30-second gameplay
+ * scene is not a fair test — an early draft did exactly that and happily
+ * declared the tail end of an ordinary drifting scene to be a results screen.
+ * Both sides are therefore measured over spans of the SAME number of windows:
+ * the reference is the calmest span gameplay ever manages at that length, and
+ * the candidate is judged by its WORST span at that length, so a suffix that
+ * settles late but drifts early cannot pass on its tail alone.
+ *
+ * Returns TWO points, because the honest answer to "where did gameplay end"
+ * is an interval rather than a frame: `stableStartIndex` is where the regime
+ * is confidently stationary (strict bar), and `likelyEndIndex` is the earlier
+ * point from which it had already stopped drifting like gameplay (loose bar).
+ * The gap between them is genuine uncertainty and is reported as such.
+ */
+export function findStableSuffix(
+  frames: readonly PresentMonFrame[],
+  ratios: readonly number[],
+  t0: number,
+  startIndex: number,
+  endIndex: number,
+  gameplayWindowsPerScene: readonly (readonly StabilityWindow[])[],
+  minSustainedSec: number,
+): StableSuffix | null {
+  const windows = stabilityWindows(frames, ratios, t0, startIndex, endIndex);
+  if (windows.length < MIN_STABILITY_WINDOWS) return null;
+
+  // The comparison length: bounded above so a short results screen stays
+  // measurable, never longer than the shortest gameplay scene can supply, and
+  // never below the minimum needed for a spread to mean anything.
+  const shortestScene = Math.min(...gameplayWindowsPerScene.map((w) => w.length));
+  const spanW = Math.max(MIN_STABILITY_WINDOWS, Math.min(shortestScene, MAX_COMPARISON_WINDOWS));
+  if (windows.length < spanW) return null;
+
+  /** The calmest that identified gameplay ever gets over a span of this length. */
+  let referenceInstability = Number.POSITIVE_INFINITY;
+  for (const scene of gameplayWindowsPerScene) {
+    for (let i = 0; i + spanW <= scene.length; i += 1) {
+      referenceInstability = Math.min(referenceInstability, regimeInstability(scene.slice(i, i + spanW)));
+    }
+  }
+  if (!Number.isFinite(referenceInstability)) return null;
+
+  const strictBar = referenceInstability / STRICT_STABILITY_FACTOR;
+  const looseBar = referenceInstability;
+
+  // Worst span at the comparison length, from each candidate start onwards.
+  const lastSpanStart = windows.length - spanW;
+  const spanInstability: number[] = [];
+  for (let i = 0; i <= lastSpanStart; i += 1) spanInstability[i] = regimeInstability(windows.slice(i, i + spanW));
+  const worstFrom: number[] = new Array(lastSpanStart + 1);
+  worstFrom[lastSpanStart] = spanInstability[lastSpanStart];
+  for (let i = lastSpanStart - 1; i >= 0; i -= 1) worstFrom[i] = Math.max(spanInstability[i], worstFrom[i + 1]);
+
+  const suffixDurationSec = (w: number): number =>
+    frames[windows[windows.length - 1].endIndex].timeInSeconds - frames[windows[w].startIndex].timeInSeconds;
+
+  // Smallest w means the LONGEST suffix, so the first w that clears the strict
+  // bar with enough duration is the most that can honestly be claimed.
+  let strictW = -1;
+  for (let w = 0; w <= lastSpanStart; w += 1) {
+    if (worstFrom[w] <= strictBar && suffixDurationSec(w) >= minSustainedSec) {
+      strictW = w;
+      break;
+    }
+  }
+  if (strictW < 0) return null;
+
+  // Walk further back under the looser bar to find where drift first stopped.
+  let looseW = strictW;
+  while (looseW > 0 && worstFrom[looseW - 1] <= looseBar) looseW -= 1;
+
+  return {
+    stableStartIndex: windows[strictW].startIndex,
+    likelyEndIndex: windows[looseW].startIndex,
+    instability: worstFrom[strictW],
+    strictBar,
+    looseBar,
+    windowCount: windows.length - strictW,
+  };
+}
+
 /** A maximal run of frames sharing an idle/busy classification. */
 interface Block {
   idle: boolean;
@@ -174,6 +416,24 @@ export interface Rdr2AnalysisCandidate {
   publishable: false;
   source: Rdr2AnalysisSource;
   gameplayStartOffsetSec: number;
+  /**
+   * Where the fifth scene most likely stopped: the point from which the
+   * signal had already stopped drifting like gameplay. The EARLY edge of the
+   * final boundary's uncertainty.
+   */
+  scene5LikelyEndOffsetSec: number;
+  /**
+   * Where the results screen is confidently stationary. The LATE edge of the
+   * same uncertainty, and the conservative choice of the two.
+   */
+  resultsScreenStableStartOffsetSec: number;
+  /**
+   * The width of that interval. Zero when drift stops and stationarity begins
+   * at the same point; positive when the data genuinely cannot place the
+   * boundary on one frame, which is reported rather than resolved by picking.
+   */
+  finalBoundaryUncertaintySec: number;
+  /** Alias of resultsScreenStableStartOffsetSec — the conservative edge, kept for readers of the earlier shape. */
   resultsStartOffsetSec: number;
   boundaries: Rdr2AnalysisBoundary[];
   scenes: Rdr2CandidateScene[];
@@ -398,6 +658,28 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
 
   const blocks = buildBlocks(despeckled);
   const sustained = blocks.filter((b) => b.sustained);
+
+  /** A sub-range of an existing block, recomputed so its statistics describe only the part kept. */
+  const clipBlock = (b: Block, from: number, to: number): Block => {
+    const slice = frames.slice(from, to + 1);
+    const sliceRatios = ratios.slice(from, to + 1);
+    let ms = 0;
+    for (const f of slice) ms += f.frameTimeMs;
+    const durationSec = ms / 1000;
+    return {
+      idle: b.idle,
+      startIndex: from,
+      endIndex: to,
+      frameCount: slice.length,
+      startOffsetSec: frames[from].timeInSeconds - t0,
+      endOffsetSec: frames[to].timeInSeconds - t0,
+      durationSec,
+      meanGpuRatio: sliceRatios.reduce((a, c) => a + c, 0) / sliceRatios.length,
+      medianFrameTimeMs: median([...slice.map((f) => f.frameTimeMs)].sort((a, c) => a - c)),
+      meanFps: durationSec > 0 ? slice.length / durationSec : Number.NaN,
+      sustained: durationSec >= minSustainedSec,
+    };
+  };
   const diagnostics: Rdr2AnalysisDiagnostics = {
     totalFrames: frames.length,
     captureDurationSec,
@@ -418,23 +700,67 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
   const fail = (reasons: string[]) => unresolved('structure', reasons, { source, diagnostics });
 
   // --- structural interpretation -------------------------------------------
-  // The benchmark's shape: [menu/loading idle] scene1 T1 scene2 T2 scene3 T3
-  // scene4 T4 scene5 [results idle]. Leading and trailing idle blocks are the
-  // bookends; the idle blocks BETWEEN gameplay are the inter-scene
-  // transitions. Requiring exactly four of those is not a threshold to tune —
-  // it is what "five scenes" means.
+  // The benchmark's shape: [menu/loading] scene1 T1 scene2 T2 scene3 T3
+  // scene4 T4 scene5 [maybe a transition] results-screen.
+  //
+  // The results screen is located FIRST, because where it starts decides what
+  // counts as the benchmark proper. It cannot be found by GPU load — a real
+  // run showed RDR2's results screen is GPU-busy — so it is found by
+  // STATIONARITY: see findStableSuffix and the section header above it.
+  // Only then are the transitions counted, over the region that precedes it,
+  // and exactly four of those is not a threshold to tune — it is what "five
+  // scenes" means.
   const firstBusy = sustained.findIndex((b) => !b.idle);
   if (firstBusy < 0) return fail(['No sustained GPU-busy block found; nothing in this capture looks like benchmark gameplay.']);
 
-  const lastBlock = sustained[sustained.length - 1];
-  if (!lastBlock.idle) {
+  const finalBlock = sustained[sustained.length - 1];
+
+  // What dynamic gameplay looks like IN THIS RUN. Every sustained GPU-busy
+  // block except the last one is gameplay by construction — the last is the
+  // one whose nature is still in question — so they supply the bar without
+  // any circularity, and the CALMEST of them is used, so the results screen
+  // must out-stabilise even the least eventful scene.
+  const gameplayBlocksForReference = sustained.slice(firstBusy, sustained.length - 1).filter((b) => !b.idle);
+  if (gameplayBlocksForReference.length === 0) {
     return fail([
-      `The capture ends while the GPU is still rendering (last sustained block runs to ${lastBlock.endOffsetSec.toFixed(1)}s, the end of the recording). ` +
-        'A complete benchmark run ends with the results screen, which this recording never reached — so the fifth scene is incomplete and its end cannot be located.',
+      'Only one sustained GPU-busy block exists in this capture, so there is no independently-identified gameplay to measure "dynamic" against. ' +
+        'Without that reference, calling any part of it a results screen would be asserting a boundary the data does not support.',
+    ]);
+  }
+  const gameplayWindowsPerScene = gameplayBlocksForReference
+    .map((b) => stabilityWindows(frames, ratios, t0, b.startIndex, b.endIndex))
+    .filter((w) => w.length >= MIN_STABILITY_WINDOWS);
+  if (gameplayWindowsPerScene.length === 0) {
+    return fail([
+      `No identified gameplay scene holds enough frames for a stability measurement (each needs at least ${MIN_STABILITY_WINDOWS * STABILITY_WINDOW_FRAMES} frames). ` +
+        'Without a reference for what dynamic gameplay looks like in this run, the end of the fifth scene cannot be located.',
     ]);
   }
 
-  const gameplayBlocks = sustained.slice(firstBusy, sustained.length - 1);
+  const stable = findStableSuffix(frames, ratios, t0, finalBlock.startIndex, finalBlock.endIndex, gameplayWindowsPerScene, minSustainedSec);
+  if (!stable) {
+    return fail([
+      `The capture's final sustained block (${finalBlock.startOffsetSec.toFixed(1)}-${finalBlock.endOffsetSec.toFixed(1)}s, GPU ${(finalBlock.meanGpuRatio * 100).toFixed(1)}%) never settles into a stationary regime. ` +
+        'Its frame-time and GPU-load levels keep drifting the way the gameplay scenes before it do, measured over spans of equal length so the comparison is fair. ' +
+        `A results screen must be at least ${STRICT_STABILITY_FACTOR}x more stationary than the calmest span gameplay reaches in this same run, sustained for at least ${minSustainedSec.toFixed(2)}s. ` +
+        'This recording therefore has no convincing results-screen boundary: either it stopped before the benchmark finished, or the end is not distinguishable from gameplay in this data.',
+    ]);
+  }
+
+  // Everything strictly before the stationary regime is the benchmark proper.
+  // When the results screen begins PART-WAY THROUGH the final block — the real
+  // case, where scene 5 runs straight into a GPU-busy results screen with no
+  // transition between them — that block's prefix is scene 5 and is spliced in
+  // as its own gameplay block.
+  const benchmarkBlocks: Block[] = sustained.slice(firstBusy, sustained.length - 1);
+  if (!finalBlock.idle && stable.likelyEndIndex > finalBlock.startIndex) {
+    benchmarkBlocks.push(clipBlock(finalBlock, finalBlock.startIndex, stable.likelyEndIndex - 1));
+  }
+  // A transition immediately before the results screen belongs to the
+  // uncertainty between them, not to the scene count.
+  if (benchmarkBlocks.length > 0 && benchmarkBlocks[benchmarkBlocks.length - 1].idle) benchmarkBlocks.pop();
+
+  const gameplayBlocks = benchmarkBlocks;
   const scenesFound = gameplayBlocks.filter((b) => !b.idle);
   const transitionsFound = gameplayBlocks.filter((b) => b.idle);
 
@@ -465,8 +791,10 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
   }
   if (problems.length > 0) return fail(problems);
 
-  const resultsBlock = lastBlock;
+  const resultsBlock = clipBlock(finalBlock, stable.stableStartIndex, finalBlock.endIndex);
   const gameplayStart = scenesFound[0];
+  const scene5LikelyEndOffsetSec = frames[stable.likelyEndIndex].timeInSeconds - t0;
+  const resultsScreenStableStartOffsetSec = resultsBlock.startOffsetSec;
 
   const boundaryEvidence = (b: Block, extra: string[] = []): string[] => [
     `Mean GPU utilisation ${(b.meanGpuRatio * 100).toFixed(1)}% against this capture's own derived cut of ${(distribution.threshold * 100).toFixed(1)}%.`,
@@ -523,8 +851,14 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     meanGpuRatio: resultsBlock.meanGpuRatio,
     medianFrameTimeMs: resultsBlock.medianFrameTimeMs,
     meanFps: resultsBlock.meanFps,
-    confidence: confidenceFor(resultsBlock),
-    evidence: boundaryEvidence(resultsBlock, ['Final sustained GPU-idle block, running to the end of the recording: the benchmark stopped rendering and did not resume, which is what the results screen looks like.']),
+    confidence: stable.likelyEndIndex === stable.stableStartIndex ? confidenceFor(resultsBlock) : 'medium',
+    evidence: boundaryEvidence(resultsBlock, [
+      `Stationary to the end of the recording: relative spread ${stable.instability.toFixed(4)} across ${stable.windowCount} windows of ${STABILITY_WINDOW_FRAMES} frames, against a bar of ${stable.strictBar.toFixed(4)} — ${STRICT_STABILITY_FACTOR}x more stable than the calmest gameplay scene in this same run (${stable.looseBar.toFixed(4)}).`,
+      'Located by stationarity, NOT by GPU load: a real RDR2 run showed the results screen is GPU-busy, so "the GPU stopped working" would have been the wrong signal here.',
+      stable.likelyEndIndex === stable.stableStartIndex
+        ? 'Gameplay stops drifting and the screen becomes stationary at the same point, so this boundary carries no interval of uncertainty.'
+        : `Drift stops at ${scene5LikelyEndOffsetSec.toFixed(2)}s but the regime is only confidently stationary from ${resultsScreenStableStartOffsetSec.toFixed(2)}s; the ${(resultsScreenStableStartOffsetSec - scene5LikelyEndOffsetSec).toFixed(2)}s between them is genuine uncertainty, not a boundary this analysis can place on one frame.`,
+    ]),
   });
 
   const scenes: Rdr2CandidateScene[] = scenesFound.map((b, i) => {
@@ -552,7 +886,10 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     publishable: false,
     source,
     gameplayStartOffsetSec: gameplayStart.startOffsetSec,
-    resultsStartOffsetSec: resultsBlock.startOffsetSec,
+    scene5LikelyEndOffsetSec,
+    resultsScreenStableStartOffsetSec,
+    finalBoundaryUncertaintySec: resultsScreenStableStartOffsetSec - scene5LikelyEndOffsetSec,
+    resultsStartOffsetSec: resultsScreenStableStartOffsetSec,
     boundaries,
     scenes,
     diagnostics,
