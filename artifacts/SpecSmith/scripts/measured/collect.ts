@@ -376,6 +376,37 @@ const required = (argv: string[], name: string): string => {
 };
 
 /**
+ * --game-exe, --game-version and --swap-chain are only ever USED after a
+ * capture completes — inside assembleFromCsv, since none of them mean
+ * anything until there is a run to attribute them to (--game-exe in
+ * particular needs a real probe of an executable, which only matters once a
+ * capture exists). Their VALUE SHAPE, though, is validated HERE — called
+ * early in main(), before hardware detection or PresentMon are ever touched
+ * — for the same reason every other flag in this file is checked up front:
+ * a malformed flag should cost a second, not a played-again capture.
+ *
+ * A real Windows run found exactly the gap this closes: a stale PowerShell
+ * variable produced `--game-exe --resolution 1440p` on the command line —
+ * `--game-exe` with no value of its own, immediately followed by the next
+ * flag. `arg()` already refuses that shape correctly (it always has), but
+ * because --game-exe used to be read only deep inside assembleFromCsv, the
+ * refusal did not fire until AFTER a full capture had already run — the
+ * exact "played-again run" cost every other pre-capture check here exists
+ * to avoid. Moving the read earlier does not change what `arg()` rejects;
+ * it changes WHEN the rejection is seen.
+ *
+ * Pure — no filesystem access — so this is testable without touching disk,
+ * the same reason parseRunConditions is split out from the Windows probe.
+ */
+export function parseAssemblyOnlyFlags(argv: string[]): { exePath?: string; gameVersionOverride?: string; swapChainFilter?: string } {
+  return {
+    exePath: arg(argv, 'game-exe'),
+    gameVersionOverride: arg(argv, 'game-version'),
+    swapChainFilter: arg(argv, 'swap-chain'),
+  };
+}
+
+/**
  * Checks a flag against the values the schema actually accepts.
  *
  * The unions in types.ts vanish at runtime, so `required(argv, 'preset') as
@@ -859,7 +890,10 @@ export interface Rdr2ResearchManifest {
  * 1. Refuse (defense in depth, independent of what main() already checked)
  *    an empty/absent settingsFile or a non-RDR2 gameId on the manifest — a
  *    research bundle exists to preserve VERIFIED capture evidence, and RDR2
- *    is the only game with settings-file provenance to bundle.
+ *    is the only game with settings-file provenance to bundle. Also refuse
+ *    when NEITHER gameVersion NOR gameBuildId is known: a research bundle
+ *    exists so raw evidence can be traced back to a specific game build
+ *    later, and evidence nobody can attribute to a build is not that.
  * 2. Refuse if outputDir already exists — see refuseRdr2ResearchOutputDirExists.
  * 3. Create a uniquely-named staging directory BESIDE outputDir — as a
  *    sibling under the same parent, via `fs.mkdtempSync` anchored there —
@@ -904,6 +938,11 @@ export function writeRdr2ResearchBundle(args: {
   }
   if (!manifest.settingsFile) {
     throw new Error('Refusing to write a research bundle with no settingsFile provenance — a research bundle exists to preserve VERIFIED capture evidence, not an unverified one.');
+  }
+  if (!manifest.gameVersion && !manifest.gameBuildId) {
+    throw new Error(
+      'Refusing to write a research bundle with neither gameVersion nor gameBuildId — a research bundle exists to preserve evidence that can be traced back to a specific game build, and neither is known here.',
+    );
   }
   refuseRdr2ResearchOutputDirExists(outputDir);
 
@@ -1023,6 +1062,9 @@ async function main(argv: string[]): Promise<void> {
   // played-again capture.
   const researchOptions = parseRdr2ResearchCaptureOptions(argv, source, runConditions.gameId, dryRun);
   if (researchOptions) refuseRdr2ResearchOutputDirExists(researchOptions.outputDir);
+  // --game-exe / --game-version / --swap-chain: see parseAssemblyOnlyFlags's
+  // own comment for why these are only USED after capture but validated here.
+  const { exePath, gameVersionOverride, swapChainFilter } = parseAssemblyOnlyFlags(argv);
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 
@@ -1168,9 +1210,9 @@ async function main(argv: string[]): Promise<void> {
 
   try {
     await assembleFromCsv({
-      csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions,
+      csvText, csvPath, processFilter, swapChainFilter, argv, dryRun, catalogs, runConditions,
       preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile,
-      researchOutputDir: researchOptions?.outputDir, captureWindow,
+      researchOutputDir: researchOptions?.outputDir, captureWindow, exePath, gameVersionOverride,
     });
   } finally {
     // The CSV has been read into memory and parsed by now, so the temp copy
@@ -1197,8 +1239,12 @@ async function assembleFromCsv(ctx: {
   researchOutputDir?: string;
   /** Set together with researchOutputDir — the automatic capture's own observed window and target process. */
   captureWindow?: Rdr2ResearchManifest['capture'];
+  /** --game-exe's value, already shape-validated by parseAssemblyOnlyFlags before capture began. */
+  exePath?: string;
+  /** --game-version's value, already shape-validated by parseAssemblyOnlyFlags before capture began. */
+  gameVersionOverride?: string;
 }): Promise<void> {
-  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile } = ctx;
+  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile, exePath, gameVersionOverride } = ctx;
 
   const parsed = parsePresentMonCsv(csvText, ctx.processFilter, ctx.swapChainFilter);
   console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
@@ -1212,14 +1258,13 @@ async function assembleFromCsv(ctx: {
   const cpuMatch = resolveHardware(hardware.cpuRaw, 'cpu', catalogs.cpus, preferredCpuId);
   console.log(`Attributed: ${gpuMatch.id} ("${gpuMatch.name}", ${gpuMatch.matchMethod}) / ${cpuMatch.id} ("${cpuMatch.name}", ${cpuMatch.matchMethod})`);
 
-  const exePath = arg(argv, 'game-exe');
   const inputs: CollectInputs = {
     ...runConditions,
     gpuId: gpuMatch.id,
     cpuId: cpuMatch.id,
     gpuMatchMethod: gpuMatch.matchMethod,
     cpuMatchMethod: cpuMatch.matchMethod,
-    gameVersion: arg(argv, 'game-version') ?? (exePath ? detectExecutableVersion(exePath) : undefined),
+    gameVersion: gameVersionOverride ?? (exePath ? detectExecutableVersion(exePath) : undefined),
   };
 
   // Described, not yet written. Archiving the frames here would put a blob on

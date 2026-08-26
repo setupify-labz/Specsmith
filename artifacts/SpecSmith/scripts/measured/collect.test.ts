@@ -15,6 +15,7 @@ import {
   frameGenerationFactor,
   numberInRange,
   oneOf,
+  parseAssemblyOnlyFlags,
   parseCaptureSelection,
   parseRdr2ResearchCaptureOptions,
   parseRunConditions,
@@ -537,6 +538,51 @@ describe('parsing a whole command line', () => {
   });
 });
 
+// Regression: a real Windows run had a stale PowerShell variable produce
+// `--game-exe --resolution 1440p` on the command line — --game-exe with no
+// value of its own, immediately followed by the next flag. arg() already
+// refused that shape correctly, but --game-exe used to be read only deep
+// inside assembleFromCsv, so the refusal did not fire until AFTER a full
+// capture had already run. parseAssemblyOnlyFlags moves the read (and so
+// the refusal) to before capture begins — this suite proves the exact
+// reported sequence is refused, and proves it via a pure function that
+// never touches hardware detection, PresentMon or capture at all.
+describe('--game-exe / --game-version / --swap-chain are shape-validated before capture, not deep inside assembly', () => {
+  it('refuses the exact malformed sequence a real Windows run produced: --game-exe immediately followed by another flag', () => {
+    const argv = ['--game-exe', '--resolution', '1440p'];
+    expect(() => parseAssemblyOnlyFlags(argv)).toThrow(CliInputError);
+    expect(() => parseAssemblyOnlyFlags(argv)).toThrow(/--game-exe needs a value/);
+    expect(() => parseAssemblyOnlyFlags(argv)).toThrow(/"--resolution"/);
+  });
+
+  it('refuses --game-exe with no value at all (end of arguments)', () => {
+    expect(() => parseAssemblyOnlyFlags(['--game-exe'])).toThrow(/--game-exe needs a value \(got end of arguments\)/);
+  });
+
+  it('refuses --game-version and --swap-chain the same way, independently', () => {
+    expect(() => parseAssemblyOnlyFlags(['--game-version', '--dry-run'])).toThrow(/--game-version needs a value/);
+    expect(() => parseAssemblyOnlyFlags(['--swap-chain', '--keep-capture'])).toThrow(/--swap-chain needs a value/);
+  });
+
+  it('reads all three correctly when well-formed', () => {
+    const r = parseAssemblyOnlyFlags(['--game-exe', 'C:\\Games\\RDR2.exe', '--game-version', '1.0.1436.24', '--swap-chain', '0x1a2b']);
+    expect(r).toEqual({ exePath: 'C:\\Games\\RDR2.exe', gameVersionOverride: '1.0.1436.24', swapChainFilter: '0x1a2b' });
+  });
+
+  it('returns all three as undefined when none are passed — every flag here is optional', () => {
+    expect(parseAssemblyOnlyFlags(['--dry-run', '--ray-tracing'])).toEqual({ exePath: undefined, gameVersionOverride: undefined, swapChainFilter: undefined });
+  });
+
+  it('does not affect boolean switches — a well-formed --game-exe beside --dry-run reads both independently', () => {
+    const argv = ['--game-exe', 'C:\\Games\\RDR2.exe', '--dry-run'];
+    expect(() => parseAssemblyOnlyFlags(argv)).not.toThrow();
+    expect(parseAssemblyOnlyFlags(argv).exePath).toBe('C:\\Games\\RDR2.exe');
+    // --dry-run itself is read elsewhere via argv.includes, not through arg() —
+    // this only confirms parseAssemblyOnlyFlags does not consume or disturb it.
+    expect(argv.includes('--dry-run')).toBe(true);
+  });
+});
+
 // --settings-file is obsolete for exactly one case: an automatic capture
 // (not --csv) of RDR2, whose settings provenance instead comes from
 // system.xml itself (bound later, in main(), by bindRdr2SettingsProvenance).
@@ -761,6 +807,36 @@ describe('publishing the RDR2 research bundle atomically', () => {
     const { outputDir } = freshOutputDir();
     const manifest = { ...goodManifestFor(bytes), gameId: 'marvel-rivals' as unknown as 'rdr2' };
     expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/RDR2-only/);
+  });
+
+  // A research bundle exists to preserve evidence traceable to a specific
+  // game build — neither gameVersion nor gameBuildId known means nobody can
+  // later say which RDR2 build produced these frames.
+  it('refuses a manifest with neither gameVersion nor gameBuildId — no verified game identity', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { parentDir, outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), gameVersion: undefined, gameBuildId: undefined };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/neither gameVersion nor gameBuildId/);
+    expect(fs.existsSync(outputDir)).toBe(false);
+    expect(stagingResidue(parentDir)).toEqual([]);
+  });
+
+  it('accepts a manifest with gameBuildId alone, no gameVersion — either one is sufficient identity', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
+    const manifest = { ...goodManifestFor(bytes), gameVersion: undefined, gameBuildId: 'build-99887' };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).not.toThrow();
+  });
+
+  it('accepts a manifest with gameVersion alone, no gameBuildId — the ordinary case, since goodManifestFor never sets gameBuildId', () => {
+    const bytes = Buffer.from('Application\r\nRDR2.exe\r\n');
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const { outputDir } = freshOutputDir();
+    const manifest = goodManifestFor(bytes);
+    expect(manifest.gameBuildId).toBeUndefined();
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).not.toThrow();
   });
 
   it('refuses to publish over an already-existing outputDir, re-checked at write time even if it was absent when main() first looked', () => {
