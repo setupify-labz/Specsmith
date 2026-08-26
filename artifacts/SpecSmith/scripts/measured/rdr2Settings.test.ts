@@ -143,7 +143,14 @@ describe('parsing a real system.xml', () => {
     expect(parsed).toEqual({
       schemaVersion: 37,
       videoCardDescription: 'NVIDIA NVIDIA GeForce RTX 2070 SUPER',
-      display: { screenWidth: 1920, screenHeight: 1080, windowed: 2, vSync: 0 },
+      display: {
+        screenWidth: 1920,
+        screenHeight: 1080,
+        screenWidthWindowed: 1920,
+        screenHeightWindowed: 1080,
+        windowed: 2,
+        vSync: 0,
+      },
       graphics: {
         textureQuality: 'kSettingLevel_Ultra',
         shadowQuality: 'kSettingLevel_High',
@@ -176,12 +183,12 @@ describe('rejecting missing, malformed, conflicting or unknown critical settings
       'someOtherGamesSettings',
     );
     expect(() => parseRdr2SystemSettingsXml(wrongRoot)).toThrow(Rdr2SettingsFormatError);
-    expect(() => parseRdr2SystemSettingsXml(wrongRoot)).toThrow(/root element/);
+    expect(() => parseRdr2SystemSettingsXml(wrongRoot)).toThrow(/top-level element/);
   });
 
   it('rejects a completely unrelated XML document', () => {
     expect(() => parseRdr2SystemSettingsXml('<?xml version="1.0"?><html><body>not this</body></html>')).toThrow(
-      /root element/,
+      /top-level element/,
     );
   });
 
@@ -273,6 +280,139 @@ describe('rejecting missing, malformed, conflicting or unknown critical settings
     // though one name is a prefix of the other.
     const onlyWindowedVariant = REAL_SYSTEM_XML.replace('<screenWidth value="1920" />', '');
     expect(() => parseRdr2SystemSettingsXml(onlyWindowedVariant)).toThrow(/Missing required <screenWidth>/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Genuine well-formedness validation — not just "the regex didn't match"
+// ---------------------------------------------------------------------------
+//
+// These prove the tokenizer in parseXmlElements actually walks the document
+// structurally, rather than the first version's approach of searching raw
+// text for each known tag independently — which could not tell a real tag
+// from one sitting in a comment, outside the root, or inside an otherwise
+// broken document.
+
+describe('hardening against structurally malformed XML', () => {
+  it('rejects a document missing its closing root tag', () => {
+    const truncated = REAL_SYSTEM_XML.replace('</rage__fwuiSystemSettingsCollection>\n', '');
+    expect(() => parseRdr2SystemSettingsXml(truncated)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(truncated)).toThrow(/Unclosed element/);
+  });
+
+  it('rejects a document truncated mid-element, not just at the very end', () => {
+    // Cuts off partway through <advancedGraphics>, well before the root closes.
+    const cutoff = REAL_SYSTEM_XML.slice(0, REAL_SYSTEM_XML.indexOf('<advancedGraphics>') + 50);
+    expect(() => parseRdr2SystemSettingsXml(cutoff)).toThrow(Rdr2SettingsFormatError);
+  });
+
+  it('rejects a mismatched closing tag instead of pairing it with the wrong element', () => {
+    const mismatched = REAL_SYSTEM_XML.replace(
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>',
+      '<textureQuality>kSettingLevel_Ultra</shadowQuality>',
+    );
+    expect(() => parseRdr2SystemSettingsXml(mismatched)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(mismatched)).toThrow(/Mismatched closing tag/);
+  });
+
+  it('rejects a required tag placed after the root element already closed', () => {
+    const trailing = `${REAL_SYSTEM_XML}<textureQuality>kSettingLevel_Ultra</textureQuality>`;
+    expect(() => parseRdr2SystemSettingsXml(trailing)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(trailing)).toThrow(/already closed/);
+  });
+
+  it('rejects a required tag placed before the root element opens', () => {
+    const leading = `<textureQuality>kSettingLevel_Ultra</textureQuality>${REAL_SYSTEM_XML}`;
+    expect(() => parseRdr2SystemSettingsXml(leading)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(leading)).toThrow(/top-level element/);
+  });
+
+  it('rejects a comment containing what looks like a real required tag, when the real tag is absent', () => {
+    const commentedOut = REAL_SYSTEM_XML.replace(
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>',
+      '<!-- <textureQuality>kSettingLevel_Ultra</textureQuality> -->',
+    );
+    expect(() => parseRdr2SystemSettingsXml(commentedOut)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(commentedOut)).toThrow(/Missing required <textureQuality>/);
+  });
+
+  it('does not let a commented-out DIFFERENT value shadow the real one', () => {
+    const withDecoyComment = REAL_SYSTEM_XML.replace(
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>',
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>\n    <!-- <textureQuality>kSettingLevel_Low</textureQuality> -->',
+    );
+    expect(parseRdr2SystemSettingsXml(withDecoyComment).graphics.textureQuality).toBe('kSettingLevel_Ultra');
+  });
+
+  it('rejects an unquoted attribute value', () => {
+    const unquoted = REAL_SYSTEM_XML.replace('<screenWidth value="1920" />', '<screenWidth value=1920 />');
+    expect(() => parseRdr2SystemSettingsXml(unquoted)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(unquoted)).toThrow(/Malformed XML/);
+  });
+
+  it('rejects a single-quoted attribute value (this parser only recognizes double quotes, matching every real file seen)', () => {
+    const singleQuoted = REAL_SYSTEM_XML.replace('<screenWidth value="1920" />', "<screenWidth value='1920' />");
+    expect(() => parseRdr2SystemSettingsXml(singleQuoted)).toThrow(/Malformed XML/);
+  });
+
+  it('rejects an unterminated attribute value rather than reading past it', () => {
+    const unterminated = REAL_SYSTEM_XML.replace('<screenWidth value="1920" />', '<screenWidth value="1920 />\n  <video>');
+    expect(() => parseRdr2SystemSettingsXml(unterminated)).toThrow(/Malformed XML/);
+  });
+
+  it('rejects a stray, unescaped "<" that starts nothing recognizable', () => {
+    const stray = REAL_SYSTEM_XML.replace('<screenWidth value="1920" />', '< screenWidth value="1920" />');
+    expect(() => parseRdr2SystemSettingsXml(stray)).toThrow(/Malformed XML/);
+  });
+
+  it('rejects CDATA content appearing outside the root element', () => {
+    const cdataOutside = `${REAL_SYSTEM_XML}<![CDATA[not real content]]>`;
+    expect(() => parseRdr2SystemSettingsXml(cdataOutside)).toThrow(Rdr2SettingsFormatError);
+  });
+
+  it('is unaffected by an XML comment appearing in an otherwise valid position', () => {
+    const withRealComment = REAL_SYSTEM_XML.replace(
+      '<graphics>',
+      '<graphics>\n    <!-- this is a real, harmless comment -->',
+    );
+    const parsed = parseRdr2SystemSettingsXml(withRealComment);
+    expect(parsed.graphics.textureQuality).toBe('kSettingLevel_Ultra');
+  });
+});
+
+describe('the windowed-mode resolution pair is preserved raw, never used to pick an active resolution', () => {
+  it('parses screenWidthWindowed and screenHeightWindowed as their own fields', () => {
+    const parsed = parseRdr2SystemSettingsXml(REAL_SYSTEM_XML);
+    expect(parsed.display.screenWidthWindowed).toBe(1920);
+    expect(parsed.display.screenHeightWindowed).toBe(1080);
+  });
+
+  it('parses a genuinely different windowed-mode resolution independently of the fullscreen one', () => {
+    const differentWindowedRes = REAL_SYSTEM_XML.replace(
+      '<screenWidthWindowed value="1920" />\n    <screenHeightWindowed value="1080" />',
+      '<screenWidthWindowed value="1280" />\n    <screenHeightWindowed value="720" />',
+    );
+    const parsed = parseRdr2SystemSettingsXml(differentWindowedRes);
+    expect(parsed.display.screenWidth).toBe(1920);
+    expect(parsed.display.screenHeight).toBe(1080);
+    expect(parsed.display.screenWidthWindowed).toBe(1280);
+    expect(parsed.display.screenHeightWindowed).toBe(720);
+  });
+
+  it('requires screenWidthWindowed/screenHeightWindowed just like the fullscreen pair — missing is rejected, not defaulted', () => {
+    const missing = REAL_SYSTEM_XML.replace('<screenWidthWindowed value="1920" />', '');
+    expect(() => parseRdr2SystemSettingsXml(missing)).toThrow(/Missing required <screenWidthWindowed>/);
+  });
+
+  // The actual proof that no decision is made: the result type itself has no
+  // "active" or "effective" resolution field, only the two raw pairs plus the
+  // undecoded windowed code — there is nothing to assert IS the active one.
+  it('exposes no derived "active resolution" field on the parsed result', () => {
+    const parsed = parseRdr2SystemSettingsXml(REAL_SYSTEM_XML);
+    const displayKeys = Object.keys(parsed.display).sort();
+    expect(displayKeys).toEqual(
+      ['screenHeight', 'screenHeightWindowed', 'screenWidth', 'screenWidthWindowed', 'vSync', 'windowed'].sort(),
+    );
   });
 });
 

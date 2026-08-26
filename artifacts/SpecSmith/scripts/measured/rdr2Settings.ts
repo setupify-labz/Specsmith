@@ -30,14 +30,21 @@
 // what the file actually says; deciding how (or whether) that becomes part of
 // a MeasuredObservation is separate, later work.
 //
-// WHY A HAND-ROLLED EXTRACTOR, NOT AN XML LIBRARY
-// -------------------------------------------------
-// The known field set is small, flat, and each tag name appears at most once
-// in a well-formed file. A per-tag anchored regex is enough to read it
-// correctly and to detect the one structural failure that matters here (a
-// critical tag appearing more than once — see "conflicting" below), without
-// a new dependency for a document this simple. This mirrors presentmon.ts,
-// which hand-parses CSV rather than pulling in a library for the same reason.
+// WHY A HAND-ROLLED PARSER, NOT AN XML LIBRARY
+// -----------------------------------------------
+// The known field set is small and flat. A first version of this module read
+// it with a per-tag regex over the raw text, with no notion of document
+// structure at all — which meant it could not tell a real tag from one
+// sitting inside an XML comment, outside the root element, or in a document
+// that was truncated or otherwise not well-formed XML to begin with. This
+// version instead tokenizes the WHOLE document once (see parseXmlElements
+// below) — comments, CDATA, tags and text are all classified in one pass,
+// nesting is verified to balance, and there must be exactly one top-level
+// element, named correctly. It is still not a general XML parser (no
+// namespaces, no DTD, no entity decoding) — exactly as much real parsing as
+// this one, small, well-known document shape needs, without a new dependency.
+// This mirrors presentmon.ts, which hand-parses CSV rather than pulling in a
+// library for the same reason.
 //
 // FAIL-CLOSED, NOT BEST-EFFORT
 // ------------------------------
@@ -202,50 +209,193 @@ export const RDR2_WINDOWED_CODES = [0, 1, 2] as const;
 export const RDR2_VSYNC_CODES = [0, 1, 2] as const;
 
 // ---------------------------------------------------------------------------
-// Tag extraction
+// XML well-formedness validation and element extraction
 // ---------------------------------------------------------------------------
+//
+// A per-tag regex over the raw text — this module's first version — happily
+// "finds" a tag inside an XML comment, on the wrong side of the root
+// element's closing tag, or with a truncated/unclosed document, because it
+// never establishes that the document is well-formed XML at all. This
+// tokenizer does that first: it walks the ENTIRE document once, classifying
+// every construct (comment, CDATA, processing instruction, opening tag,
+// closing tag, self-closing tag, text), and only records an element's value
+// when it has actually seen a real, correctly-nested occurrence of it. A
+// comment containing what looks like a real tag never produces a token at
+// all — its content is consumed as one opaque unit — so it can never be
+// mistaken for one.
+//
+// This is not a general XML parser: no namespaces, no DTD, no entity
+// decoding beyond what JavaScript already does to the source string. It is
+// exactly as much real parsing as this one, small, flat, well-known document
+// shape needs — matching presentmon.ts's own hand-rolled CSV parsing, scoped
+// to what the file actually contains rather than to XML in general.
 
 type TagShape = 'value-attr' | 'text';
 
-function escapeForRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+type ElementOccurrence =
+  | { shape: 'value-attr'; value: string | undefined }
+  | { shape: 'text'; value: string };
+
+/** Every occurrence of every element name found inside the single validated root, keyed by tag name. */
+type ElementTable = Map<string, ElementOccurrence[]>;
+
+// One token at a time, in document order. Alternatives are mutually
+// exclusive by their leading character(s), so order does not create
+// ambiguity. The tag-opening alternative requires attributes to be a strict
+// run of `name="value"` pairs — anything else in a `<...>` construct (an
+// unquoted value, a stray character, an unterminated attribute) matches NONE
+// of these alternatives, which is what turns it into a detected parse
+// failure below rather than something silently skipped.
+const XML_TOKEN_RE =
+  /<\?[\s\S]*?\?>|<!--[\s\S]*?-->|<!\[CDATA\[([\s\S]*?)\]\]>|<!DOCTYPE[^>]*>|<\/([A-Za-z_][\w.-]*)\s*>|<([A-Za-z_][\w.-]*)((?:\s+[A-Za-z_][\w.-]*\s*=\s*"[^"]*")*)\s*(\/?)>|[^<]+/g;
+
+const ATTR_RE = /([A-Za-z_][\w.-]*)\s*=\s*"([^"]*)"/g;
 
 /**
- * Every occurrence of `tag` in `raw`, in the given shape. More than one
- * result means the tag is CONFLICTING (see requireOneTag); zero means it is
- * missing. Anchored so that, e.g., a search for "screenWidth" cannot match
- * "screenWidthWindowed" — the character immediately following the tag name
- * must be the shape's own delimiter (whitespace before `value=`, or `>`),
- * never an arbitrary letter.
+ * Validates that `raw` is well-formed XML with exactly one top-level
+ * element, that it is `<${ROOT_ELEMENT}>`, and that every open element is
+ * closed by a matching tag — then returns every element found, by name.
+ *
+ * Throws Rdr2SettingsFormatError, not a generic parse error, for every
+ * failure mode: an unclosed/truncated document, a closing tag that does not
+ * match what is actually open, content before/after the root element, or a
+ * `<...>` construct that does not fit any recognized XML shape at all
+ * (covers malformed attributes — a tag whose attribute syntax is broken
+ * simply never matches the opening-tag alternative, which is detected as a
+ * stall in the scan below).
  */
-function extractTag(raw: string, tag: string, shape: TagShape): string[] {
-  const t = escapeForRegExp(tag);
-  const re =
-    shape === 'value-attr'
-      ? new RegExp(`<${t}\\s+value="([^"]*)"\\s*/>`, 'g')
-      : new RegExp(`<${t}>([^<]*)</${t}>`, 'g');
-  return [...raw.matchAll(re)].map((m) => m[1]);
+function parseXmlElements(raw: string): ElementTable {
+  const table: ElementTable = new Map();
+  const record = (name: string, occurrence: ElementOccurrence) => {
+    const list = table.get(name);
+    if (list) list.push(occurrence);
+    else table.set(name, [occurrence]);
+  };
+
+  const stack: Array<{ name: string; text: string[] }> = [];
+  let topLevelCount = 0;
+  let rootClosed = false;
+
+  let pos = 0;
+  while (pos < raw.length) {
+    XML_TOKEN_RE.lastIndex = pos;
+    const m = XML_TOKEN_RE.exec(raw);
+    if (!m || m.index !== pos) {
+      throw new Rdr2SettingsFormatError(
+        `Malformed XML at character ${pos}: ${JSON.stringify(raw.slice(pos, Math.min(raw.length, pos + 40)))}. ` +
+          'This does not match any recognized XML construct — check for an unquoted or unterminated attribute, ' +
+          'or a stray "<".',
+      );
+    }
+    const token = m[0];
+    const closingName = m[2];
+    const openingName = m[3];
+
+    if (token[1] === '?' || token.startsWith('<!DOCTYPE')) {
+      // XML declaration / processing instruction / doctype — not part of the setting data.
+    } else if (token.startsWith('<!--')) {
+      // A comment's content is consumed here as one opaque unit and never
+      // re-scanned — this is precisely what stops a commented-out fake tag
+      // from ever being read as a real setting.
+    } else if (token.startsWith('<![CDATA[')) {
+      if (stack.length === 0) {
+        throw new Rdr2SettingsFormatError('CDATA content found outside the root element.');
+      }
+      stack[stack.length - 1].text.push(m[1] ?? '');
+    } else if (closingName !== undefined) {
+      const frame = stack.pop();
+      if (!frame || frame.name !== closingName) {
+        throw new Rdr2SettingsFormatError(
+          frame
+            ? `Mismatched closing tag: found </${closingName}> but <${frame.name}> was still open.`
+            : `Closing tag </${closingName}> has no matching open element.`,
+        );
+      }
+      record(frame.name, { shape: 'text', value: frame.text.join('') });
+      if (stack.length === 0) rootClosed = true;
+    } else if (openingName !== undefined) {
+      const selfClosing = m[5] === '/';
+
+      if (stack.length === 0) {
+        topLevelCount += 1;
+        if (rootClosed) {
+          throw new Rdr2SettingsFormatError(
+            `Unexpected element <${openingName}> found after the root element </${ROOT_ELEMENT}> had already closed.`,
+          );
+        }
+        if (topLevelCount > 1 || openingName !== ROOT_ELEMENT) {
+          throw new Rdr2SettingsFormatError(
+            `Unexpected top-level element <${openingName}> — this document's only top-level element must be <${ROOT_ELEMENT}>.`,
+          );
+        }
+      }
+
+      if (selfClosing) {
+        let value: string | undefined;
+        for (const am of (m[4] ?? '').matchAll(ATTR_RE)) {
+          if (am[1] === 'value') value = am[2];
+        }
+        record(openingName, { shape: 'value-attr', value });
+        if (stack.length === 0) rootClosed = true;
+      } else {
+        stack.push({ name: openingName, text: [] });
+      }
+    } else {
+      // Plain text between tags. Non-whitespace text outside every element
+      // (before the root opens or after it closes) means the document is not
+      // what this parser expects, so it is rejected rather than ignored.
+      if (stack.length > 0) stack[stack.length - 1].text.push(token);
+      else if (token.trim() !== '') {
+        throw new Rdr2SettingsFormatError(`Unexpected text outside the root element: ${JSON.stringify(token.trim().slice(0, 40))}.`);
+      }
+    }
+
+    pos = XML_TOKEN_RE.lastIndex;
+  }
+
+  if (stack.length > 0) {
+    throw new Rdr2SettingsFormatError(
+      `Unclosed element(s) at end of file: <${stack.map((f) => f.name).join('>, <')}>. The document is truncated or missing a closing tag.`,
+    );
+  }
+  if (!rootClosed || topLevelCount === 0) {
+    throw new Rdr2SettingsFormatError(`No <${ROOT_ELEMENT}> root element found.`);
+  }
+
+  return table;
 }
 
-function requireOneTag(raw: string, tag: string, shape: TagShape): string {
-  const values = extractTag(raw, tag, shape);
-  if (values.length === 0) {
+function requireOneTag(table: ElementTable, tag: string, shape: TagShape): string {
+  const occurrences = table.get(tag) ?? [];
+  const matching = occurrences.filter((o): o is Extract<ElementOccurrence, { shape: typeof shape }> => o.shape === shape);
+
+  if (matching.length === 0) {
+    if (occurrences.length > 0) {
+      throw new Rdr2SettingsFormatError(
+        `<${tag}> is present but not in the expected form ` +
+          `(expected ${shape === 'value-attr' ? 'a self-closing tag with a "value" attribute' : 'text content'}).`,
+      );
+    }
     throw new Rdr2SettingsFormatError(
       `Missing required <${tag}> setting. This may not be an RDR2 system.xml, or is a version/format this parser was not built against.`,
     );
   }
-  if (values.length > 1) {
+  if (matching.length > 1) {
     throw new Rdr2SettingsFormatError(
-      `<${tag}> appears ${values.length} times, with values [${values.map((v) => JSON.stringify(v)).join(', ')}]. ` +
+      `<${tag}> appears ${matching.length} times, with values [${matching.map((o) => JSON.stringify(o.value)).join(', ')}]. ` +
         'Refusing to guess which one the game actually used.',
     );
   }
-  return values[0];
+
+  const value = matching[0].value;
+  if (value === undefined) {
+    throw new Rdr2SettingsFormatError(`<${tag}> has no "value" attribute.`);
+  }
+  return value;
 }
 
-function requirePositiveInt(raw: string, tag: string): number {
-  const v = requireOneTag(raw, tag, 'value-attr');
+function requirePositiveInt(table: ElementTable, tag: string): number {
+  const v = requireOneTag(table, tag, 'value-attr');
   const n = Number(v);
   if (!Number.isInteger(n) || n <= 0) {
     throw new Rdr2SettingsFormatError(`<${tag} value="${v}" /> is not a positive whole number.`);
@@ -253,8 +403,8 @@ function requirePositiveInt(raw: string, tag: string): number {
   return n;
 }
 
-function requireIntInSet(raw: string, tag: string, allowed: readonly number[]): number {
-  const v = requireOneTag(raw, tag, 'value-attr');
+function requireIntInSet(table: ElementTable, tag: string, allowed: readonly number[]): number {
+  const v = requireOneTag(table, tag, 'value-attr');
   const n = Number(v);
   if (!Number.isInteger(n) || !allowed.includes(n)) {
     throw new Rdr2SettingsFormatError(
@@ -264,16 +414,16 @@ function requireIntInSet(raw: string, tag: string, allowed: readonly number[]): 
   return n;
 }
 
-function requireNonEmptyText(raw: string, tag: string): string {
-  const v = requireOneTag(raw, tag, 'text').trim();
+function requireNonEmptyText(table: ElementTable, tag: string): string {
+  const v = requireOneTag(table, tag, 'text').trim();
   if (v === '') {
     throw new Rdr2SettingsFormatError(`<${tag}> is present but empty.`);
   }
   return v;
 }
 
-function requireFromSet<T extends string>(raw: string, tag: string, allowed: readonly T[]): T {
-  const v = requireOneTag(raw, tag, 'text');
+function requireFromSet<T extends string>(table: ElementTable, tag: string, allowed: readonly T[]): T {
+  const v = requireOneTag(table, tag, 'text');
   if (!(allowed as readonly string[]).includes(v)) {
     throw new Rdr2SettingsFormatError(
       `<${tag}>${v}</${tag}> is not one of the values this parser recognizes (${allowed.join(', ')}). ` +
@@ -290,6 +440,17 @@ function requireFromSet<T extends string>(raw: string, tag: string, allowed: rea
 export interface Rdr2DisplaySettings {
   screenWidth: number;
   screenHeight: number;
+  /**
+   * RDR2 keeps a SEPARATE resolution pair for windowed mode, always present
+   * alongside screenWidth/screenHeight regardless of which mode is active.
+   * Preserved raw, like screenWidth/screenHeight — NOT used to decide which
+   * pair is "the" active resolution. That decision depends on what each
+   * `windowed` code actually means, which this parser does not assert (see
+   * `windowed` below); doing so without that would be exactly the kind of
+   * guess this module refuses to make.
+   */
+  screenWidthWindowed: number;
+  screenHeightWindowed: number;
   /** Raw `windowed value="N"` code — see RDR2_WINDOWED_CODES; not decoded into a label. */
   windowed: number;
   /** Raw `vSync value="N"` code — see RDR2_VSYNC_CODES; not decoded into a label. */
@@ -319,32 +480,37 @@ export interface Rdr2ParsedSettings {
  * Pure: takes text, returns data or throws. No filesystem access, so this is
  * exercised directly by tests without touching disk — same separation as
  * parsePresentMonCsv in presentmon.ts.
+ *
+ * Structure is validated FIRST, by parseXmlElements, and completely: a
+ * truncated file, a mismatched closing tag, content outside the root, or a
+ * malformed attribute all fail here before any field is read, rather than
+ * letting an ad-hoc per-field check paper over a document that was never
+ * well-formed XML to begin with.
  */
 export function parseRdr2SystemSettingsXml(raw: string): Rdr2ParsedSettings {
   if (raw.trim() === '') {
     throw new Rdr2SettingsFormatError('system.xml is empty.');
   }
-  if (!raw.includes(`<${ROOT_ELEMENT}>`) && !raw.includes(`<${ROOT_ELEMENT} `)) {
-    throw new Rdr2SettingsFormatError(
-      `This file's root element is not <${ROOT_ELEMENT}>. It may not be an RDR2 system.xml, or belongs to a different game or version this parser was not built against.`,
-    );
-  }
+
+  const table = parseXmlElements(raw);
 
   return {
-    schemaVersion: requirePositiveInt(raw, 'version'),
-    videoCardDescription: requireNonEmptyText(raw, 'videoCardDescription'),
+    schemaVersion: requirePositiveInt(table, 'version'),
+    videoCardDescription: requireNonEmptyText(table, 'videoCardDescription'),
     display: {
-      screenWidth: requirePositiveInt(raw, 'screenWidth'),
-      screenHeight: requirePositiveInt(raw, 'screenHeight'),
-      windowed: requireIntInSet(raw, 'windowed', RDR2_WINDOWED_CODES),
-      vSync: requireIntInSet(raw, 'vSync', RDR2_VSYNC_CODES),
+      screenWidth: requirePositiveInt(table, 'screenWidth'),
+      screenHeight: requirePositiveInt(table, 'screenHeight'),
+      screenWidthWindowed: requirePositiveInt(table, 'screenWidthWindowed'),
+      screenHeightWindowed: requirePositiveInt(table, 'screenHeightWindowed'),
+      windowed: requireIntInSet(table, 'windowed', RDR2_WINDOWED_CODES),
+      vSync: requireIntInSet(table, 'vSync', RDR2_VSYNC_CODES),
     },
     graphics: {
-      textureQuality: requireFromSet(raw, 'textureQuality', RDR2_QUALITY_LEVELS),
-      shadowQuality: requireFromSet(raw, 'shadowQuality', RDR2_QUALITY_LEVELS),
-      reflectionQuality: requireFromSet(raw, 'reflectionQuality', RDR2_QUALITY_LEVELS),
-      taa: requireFromSet(raw, 'taa', RDR2_QUALITY_LEVELS),
-      api: requireFromSet(raw, 'API', RDR2_GRAPHICS_APIS),
+      textureQuality: requireFromSet(table, 'textureQuality', RDR2_QUALITY_LEVELS),
+      shadowQuality: requireFromSet(table, 'shadowQuality', RDR2_QUALITY_LEVELS),
+      reflectionQuality: requireFromSet(table, 'reflectionQuality', RDR2_QUALITY_LEVELS),
+      taa: requireFromSet(table, 'taa', RDR2_QUALITY_LEVELS),
+      api: requireFromSet(table, 'API', RDR2_GRAPHICS_APIS),
     },
   };
 }
