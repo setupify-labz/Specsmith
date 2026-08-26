@@ -136,6 +136,39 @@ export function validateMeasuredObservation(
   }
   if (!obs.settingsHash) issues.push(err(id, 'conditions.settings-hash-missing', 'No settingsHash; two runs cannot be proven to share settings.'));
 
+  // --- settings-file provenance --------------------------------------------
+  // Unions vanish at runtime (the same reason preset/resolution/upscaler are
+  // re-checked below rather than trusted from a cast), so a caller of
+  // buildObservation that is not this collector's own CLI could construct a
+  // settingsSource/settingsFile pair that is internally inconsistent, or a
+  // settingsFile claiming more than "partial" coverage. These re-check the
+  // two claims this collector makes about a settings-file read: that the
+  // source label and the provenance record agree, and that "partial" is
+  // never silently widened into something that reads as complete.
+  if (obs.settingsSource === 'config-parsed' && !obs.settingsFile) {
+    issues.push(
+      err(
+        id,
+        'settings.config-parsed-missing-file',
+        'settingsSource is "config-parsed" but no settingsFile provenance is recorded — a config-parsed claim needs the file it was parsed from.',
+      ),
+    );
+  }
+  if (obs.settingsFile) {
+    if (obs.settingsFile.coverage !== 'partial') {
+      issues.push(
+        err(
+          id,
+          'settings.file-coverage-not-partial',
+          `settingsFile.coverage is "${obs.settingsFile.coverage}"; only "partial" is accepted today — no settings-file parser in this collector reads a complete configuration.`,
+        ),
+      );
+    }
+    if (obs.settingsFile.parsedFields.length === 0) {
+      issues.push(err(id, 'settings.file-no-parsed-fields', 'settingsFile is present but parsedFields is empty — there is nothing to disclose as covered.'));
+    }
+  }
+
   // --- preset -------------------------------------------------------------
   // `unmapped` says the game has no comparable preset tier. That is only
   // honest if the verbatim setting is recorded — otherwise the run carries no
@@ -346,6 +379,19 @@ export function validateMeasuredObservation(
   }
   if (obs.settingsSource === 'operator-attested') {
     issues.push(warn(id, 'settings.operator-attested', 'Graphics settings were attested by the operator rather than parsed from the game config.'));
+  }
+  // A structural check already rejects settingsFile without config-parsed
+  // (see conditions above) — this is the reader-facing half: even a genuine
+  // config-parsed read only covers the named fields, and that must stay
+  // visible on every such observation, not just documented in the schema.
+  if (obs.settingsFile) {
+    issues.push(
+      warn(
+        id,
+        'settings.file-partial-coverage',
+        `Settings were parsed from ${obs.settingsFile.path} (${obs.settingsFile.game}), covering only: ${obs.settingsFile.parsedFields.join(', ')}. This is a partial read, not a complete configuration.`,
+      ),
+    );
   }
   // captureTool absence is a DETECTION GAP (recorded in detectionGaps, not
   // here) — the collector genuinely does not know what produced a --csv file.

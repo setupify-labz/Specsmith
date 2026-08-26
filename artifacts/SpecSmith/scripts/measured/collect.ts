@@ -49,6 +49,7 @@ import {
   type MeasuredPreset,
   type PlatformContent,
   type Resolution,
+  type SettingsFileProvenance,
   type Upscaler,
 } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
@@ -63,6 +64,7 @@ import {
 import { installCancellationHandler } from './cancellation';
 import { KNOWN_DETECTION_GAPS, type DetectedHardware } from './environment';
 import { loadCatalogs, resolveHardware } from './catalog';
+import { readRdr2SystemSettings, type Rdr2SystemSettings } from './rdr2Settings';
 
 export const COLLECTOR_VERSION = '0.1.0';
 
@@ -161,16 +163,27 @@ export function buildObservation(args: {
   buildHash: string;
   /** Set only when this run captured its own frames; absent for --csv. */
   captureTool?: CaptureToolProvenance;
+  /** Set only when a game-specific settings-file parser ran (today: RDR2 only); see SettingsFileProvenance. */
+  settingsFile?: SettingsFileProvenance;
 }): MeasuredObservation {
-  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash, captureTool } = args;
+  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash, captureTool, settingsFile } = args;
 
   // Every field the machine could not tell us, named with why. Nothing here is
   // filled in with a plausible-looking default.
-  const detectionGaps: DetectionGap[] = KNOWN_DETECTION_GAPS.map((g) => ({
-    field: g.field,
-    reason: g.reason,
-    resolution: 'operator-supplied' as const,
-  }));
+  const detectionGaps: DetectionGap[] = KNOWN_DETECTION_GAPS
+    // KNOWN_DETECTION_GAPS's settingsHash entry claims "no general mechanism
+    // exists to read an arbitrary game's graphics configuration" — true for
+    // every game this collector does not have a parser for, but false the
+    // moment settingsFile is actually set. Leaving it in would sit a stale
+    // "nothing was read" claim directly beside settingsFile's own honest
+    // "this much was read" disclosure. Dropped, not reworded: the disclosure
+    // that replaces it is settingsFile.coverage/parsedFields itself.
+    .filter((g) => !(g.field === 'settingsHash' && settingsFile))
+    .map((g) => ({
+      field: g.field,
+      reason: g.reason,
+      resolution: 'operator-supplied' as const,
+    }));
   // captureTool is per-run, not a fixed platform limit, so it is not in
   // KNOWN_DETECTION_GAPS: a --capture-* run resolves it, a --csv run cannot,
   // because nothing about a hand-taken capture says what tool produced it.
@@ -212,8 +225,17 @@ export function buildObservation(args: {
     renderScalePercent: inputs.renderScalePercent,
     preset: inputs.preset,
     presetLabel: inputs.presetLabel,
-    settingsSource: 'operator-attested',
-    settingsHash: createHash('sha256').update(inputs.settingsText).digest('hex').slice(0, 32),
+    // config-parsed only when a game-specific parser actually ran and its
+    // hash is what settingsHash carries below — never inferred from, say,
+    // gameId alone, which would let a mismatched settingsFile silently claim
+    // a source it does not back up.
+    settingsSource: settingsFile ? 'config-parsed' : 'operator-attested',
+    // Reuses settingsHash for the settings-file's own digest rather than
+    // adding a second hash field: settingsHash already means "hash over the
+    // full settings config," and system.xml IS the full config file — the
+    // gap between "hashed everything" and "understood a partial subset" is
+    // exactly what settingsFile.coverage/parsedFields discloses.
+    settingsHash: settingsFile ? settingsFile.sha256 : createHash('sha256').update(inputs.settingsText).digest('hex').slice(0, 32),
     rayTracing: inputs.rayTracing,
     upscaler: inputs.upscaler,
     upscalerMode: inputs.upscalerMode,
@@ -227,6 +249,7 @@ export function buildObservation(args: {
     collectorVersion: COLLECTOR_VERSION,
     collectorBuildHash: buildHash,
     captureTool,
+    settingsFile,
     detectionGaps,
     notes: inputs.notes,
   };
@@ -472,6 +495,102 @@ export function resolveCaptureProcessFilter(explicit: string | undefined, target
   return explicit ?? String(targetProcessId);
 }
 
+// ---------------------------------------------------------------------------
+// RDR2 settings-file provenance
+// ---------------------------------------------------------------------------
+//
+// Only RDR2 has a settings-file parser today (scripts/measured/rdr2Settings.ts).
+// This binds it to an automatic capture: read+hash immediately before
+// PresentMon runs, read+hash again immediately after it exits, and refuse the
+// run outright if either read fails or the file changed in between — the
+// settings a run measured are only provable if nothing touched the file while
+// PresentMon was running. Applies ONLY when source.mode === 'capture' and the
+// game is rdr2; every other game and the manual --csv path are unaffected,
+// since neither ever calls this.
+
+/** The run's settings changed underneath it, or could not be re-confirmed unchanged, after capture. */
+export class Rdr2SettingsChangedDuringCaptureError extends Error {}
+
+/**
+ * Exactly the fields parseRdr2SystemSettingsXml validates, as the dotted
+ * paths SettingsFileProvenance.parsedFields must report. Kept as its own
+ * list, rather than derived by reflecting over an Rdr2ParsedSettings value,
+ * so it names what the PARSER PROMISES to validate, not what one particular
+ * parsed object happens to have keys for.
+ */
+export const RDR2_PARSED_FIELD_NAMES: readonly string[] = [
+  'schemaVersion',
+  'videoCardDescription',
+  'display.screenWidth',
+  'display.screenHeight',
+  'display.screenWidthWindowed',
+  'display.screenHeightWindowed',
+  'display.windowed',
+  'display.vSync',
+  'graphics.textureQuality',
+  'graphics.shadowQuality',
+  'graphics.reflectionQuality',
+  'graphics.taa',
+  'graphics.api',
+];
+
+/** Bridges rdr2Settings.ts's own result into the schema-safe, game-agnostic SettingsFileProvenance shape. */
+export function toSettingsFileProvenance(settings: Rdr2SystemSettings): SettingsFileProvenance {
+  return {
+    game: 'rdr2',
+    path: settings.location.path,
+    sha256: settings.sha256,
+    coverage: 'partial',
+    parsedFields: RDR2_PARSED_FIELD_NAMES,
+    parsedValues: {
+      schemaVersion: settings.schemaVersion,
+      videoCardDescription: settings.videoCardDescription,
+      display: settings.display,
+      graphics: settings.graphics,
+    },
+  };
+}
+
+/**
+ * Reads RDR2's system.xml once now (`before`), and returns a `verifyUnchanged`
+ * closure that re-reads the SAME resolved path — not wherever the locator
+ * would find it a second time — and throws Rdr2SettingsChangedDuringCaptureError
+ * if that second read fails for any reason, or if its digest differs from the
+ * first. Call `before`'s read before capture starts and `verifyUnchanged()`
+ * immediately after PresentMon exits; do not call this at all for any other
+ * game or for --csv.
+ *
+ * `readSettings` is injectable (a function of an optional explicit path, not
+ * of ReadDeps directly) so tests can drive both reads independently without
+ * touching a filesystem — passing undefined for the first call exercises the
+ * real locator, and a fixed path for the second pins it to the same file.
+ */
+export function bindRdr2SettingsProvenance(
+  readSettings: (explicitPath?: string) => Rdr2SystemSettings = (explicitPath) => readRdr2SystemSettings({ explicitPath }),
+): { before: Rdr2SystemSettings; verifyUnchanged: () => void } {
+  const before = readSettings(undefined);
+  return {
+    before,
+    verifyUnchanged: () => {
+      let after: Rdr2SystemSettings;
+      try {
+        after = readSettings(before.location.path);
+      } catch (error) {
+        throw new Rdr2SettingsChangedDuringCaptureError(
+          `Could not re-read RDR2's system.xml at ${before.location.path} after capture, to confirm the settings that were measured are still what the file holds: ` +
+            `${error instanceof Error ? error.message : String(error)}. Refusing to save an observation whose settings cannot be confirmed stable.`,
+        );
+      }
+      if (after.sha256 !== before.sha256) {
+        throw new Rdr2SettingsChangedDuringCaptureError(
+          `system.xml at ${before.location.path} changed during capture (sha256 ${before.sha256} before, ${after.sha256} after). ` +
+            'The settings this capture measured are not necessarily the settings the file holds now, and there is no honest way to attribute the run to either version, so it is refused.',
+        );
+      }
+    },
+  };
+}
+
 /**
  * Validates `--internal-cancel-after-seconds`, a testing-only flag that
  * self-cancels a capture from inside this process instead of depending on a
@@ -572,6 +691,7 @@ async function main(argv: string[]): Promise<void> {
   let release: (() => void) | undefined;
   let processFilter = arg(argv, 'process');
   let captureTool: CaptureToolProvenance | undefined;
+  let settingsFile: SettingsFileProvenance | undefined;
 
   if (source.mode === 'capture') {
     const binary = resolvePresentMonBinary({
@@ -600,6 +720,28 @@ async function main(argv: string[]): Promise<void> {
     // timer here.
     let internalCancelTimer: ReturnType<typeof setTimeout> | undefined;
     try {
+      // Read and hash RDR2's own settings file immediately before capture \u2014
+      // only for RDR2, only for an automatic capture. See
+      // bindRdr2SettingsProvenance's own comment for why this exists and why
+      // it is read again (and compared) immediately after PresentMon exits,
+      // below. A read failure here throws its own clear
+      // Rdr2SettingsNotFoundError/Rdr2SettingsFormatError and refuses the run
+      // before a capture is ever attempted, the same principle hardware
+      // detection above already follows.
+      const rdr2Provenance = runConditions.gameId === 'rdr2' ? bindRdr2SettingsProvenance() : undefined;
+      if (rdr2Provenance) {
+        console.log(
+          `RDR2 settings: ${rdr2Provenance.before.location.path}\n  sha256 ${rdr2Provenance.before.sha256}\n` +
+            `  schema version ${rdr2Provenance.before.schemaVersion} \u00b7 ${rdr2Provenance.before.videoCardDescription}\n` +
+            `  resolution ${rdr2Provenance.before.display.screenWidth}x${rdr2Provenance.before.display.screenHeight} ` +
+            `(windowed-mode pair ${rdr2Provenance.before.display.screenWidthWindowed}x${rdr2Provenance.before.display.screenHeightWindowed}) \u00b7 ` +
+            `windowed=${rdr2Provenance.before.display.windowed} \u00b7 vSync=${rdr2Provenance.before.display.vSync}\n` +
+            `  texture=${rdr2Provenance.before.graphics.textureQuality} shadow=${rdr2Provenance.before.graphics.shadowQuality} ` +
+            `reflection=${rdr2Provenance.before.graphics.reflectionQuality} taa=${rdr2Provenance.before.graphics.taa} api=${rdr2Provenance.before.graphics.api}\n` +
+            `  (partial read \u2014 ${RDR2_PARSED_FIELD_NAMES.length} fields; not a unified preset, not the complete configuration)`,
+        );
+      }
+
       console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
       const outcome = await runPresentMonCapture({
         processId: source.processId,
@@ -627,6 +769,13 @@ async function main(argv: string[]): Promise<void> {
           }
         },
       });
+      // Immediately after PresentMon exits, not after any further
+      // processing — re-reads the exact file bindRdr2SettingsProvenance
+      // already resolved and throws if it is unreadable now or its digest
+      // moved, refusing the run before anything is assembled around it.
+      rdr2Provenance?.verifyUnchanged();
+      if (rdr2Provenance) settingsFile = toSettingsFileProvenance(rdr2Provenance.before);
+
       csvPath = outcome.csvPath;
       csvText = outcome.csv;
       processFilter = resolveCaptureProcessFilter(processFilter, outcome.target.processId);
@@ -650,7 +799,7 @@ async function main(argv: string[]): Promise<void> {
   }
 
   try {
-    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool });
+    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile });
   } finally {
     // The CSV has been read into memory and parsed by now, so the temp copy
     // has no further readers. --keep-capture keeps it for a post-mortem.
@@ -670,8 +819,10 @@ async function assembleFromCsv(ctx: {
   detectExecutableVersion: (exePath: string) => string | undefined;
   /** Set only when this run captured its own frames; absent for --csv. */
   captureTool?: CaptureToolProvenance;
+  /** Set only for an automatic RDR2 capture whose settings were confirmed stable across it; absent otherwise. */
+  settingsFile?: SettingsFileProvenance;
 }): Promise<void> {
-  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool } = ctx;
+  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile } = ctx;
 
   const parsed = parsePresentMonCsv(csvText, ctx.processFilter, ctx.swapChainFilter);
   console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
@@ -711,6 +862,7 @@ async function assembleFromCsv(ctx: {
     runNonce: randomUUID(),
     buildHash: collectorBuildHash(),
     captureTool,
+    settingsFile,
   });
 
   const profiles = JSON.parse(
@@ -747,6 +899,16 @@ async function assembleFromCsv(ctx: {
   // would persist.
   if (observation.captureTool) {
     console.log(`Capture tool: ${observation.captureTool.name} sha256 ${observation.captureTool.sha256}${observation.captureTool.pinned ? ' (pinned)' : ' (NOT PINNED)'}`);
+  }
+  // Printed unconditionally, same as captureTool above — a dry run must
+  // still show the settings provenance it read and confirmed stable, even
+  // though it saves nothing.
+  if (observation.settingsFile) {
+    console.log(
+      `Settings file: ${observation.settingsFile.game} — ${observation.settingsFile.path}\n` +
+        `  sha256 ${observation.settingsFile.sha256}\n` +
+        `  partial coverage (${observation.settingsFile.parsedFields.length} fields): ${observation.settingsFile.parsedFields.join(', ')}`,
+    );
   }
   if (dryRun) console.log('Dry run — nothing written, including the frame-time archive.');
   else if (outcome.saved) console.log(`Saved ${observation.id}`);

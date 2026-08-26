@@ -214,6 +214,41 @@ export interface CaptureToolProvenance {
   pinned: boolean;
 }
 
+/**
+ * Provenance for a game-specific settings file the collector read and hashed
+ * directly, rather than an operator attesting to a settings dump it cannot
+ * verify. Distinct from `CaptureToolProvenance` (which tool produced the
+ * frame times) — this is which settings FILE, and how much of it, the
+ * collector actually read.
+ *
+ * Set only when a game-specific parser exists and ran (today: RDR2's
+ * system.xml, via scripts/measured/rdr2Settings.ts). Absent for every other
+ * game and for `--csv`, exactly like `captureTool` is absent there.
+ *
+ * `coverage: 'partial'` is not a placeholder — it is the honest, permanent
+ * state until a settings-file parser exists that reads every setting a game
+ * exposes, which none does today. `parsedFields` names EXACTLY which
+ * settings were read and validated, so "partial" is never a vague hedge: a
+ * reader can see precisely what is and is not covered. Neither this type nor
+ * anything that constructs it may derive a single "preset" or claim a
+ * complete configuration from a partial read — see MeasuredPreset's own
+ * `unmapped` for why inventing that cross-game equivalence is refused.
+ */
+export interface SettingsFileProvenance {
+  /** Which game's settings file this is, e.g. 'rdr2'. Free-form, mirroring gameId's own looseness — not a closed catalog. */
+  game: string;
+  /** Absolute path the file was read from, on the machine that captured this run. */
+  path: string;
+  /** SHA-256 of the file's raw bytes, read immediately before capture began and re-confirmed unchanged immediately after it ended. */
+  sha256: string;
+  /** Always 'partial' today — see this interface's own doc comment. */
+  coverage: 'partial';
+  /** Exactly the field names this parser validated, e.g. ['display.screenWidth', 'graphics.textureQuality', ...]. The complete, literal answer to "what was actually covered." */
+  parsedFields: readonly string[];
+  /** The parsed values themselves, keyed to match parsedFields. Kept as a plain JSON value rather than a game-specific type, since MeasuredObservation must stay game-agnostic — see DetectedEnvironment and PlatformContent for the same reasoning applied elsewhere in this file. */
+  parsedValues: Record<string, unknown>;
+}
+
 export interface MeasuredObservation {
   id: string;
   tier: ObservationTier;
@@ -252,6 +287,8 @@ export interface MeasuredObservation {
   settingsSource: SettingsSource;
   /** Hash over the full settings config, so two runs can be proven identical. */
   settingsHash: string;
+  /** Set only when a game-specific settings-file parser ran; see SettingsFileProvenance. */
+  settingsFile?: SettingsFileProvenance;
 
   rayTracing: boolean;
   upscaler: Upscaler;

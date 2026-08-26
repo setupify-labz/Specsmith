@@ -2,13 +2,36 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, resolveCaptureProcessFilter, shouldPersistFrameTimes, validateAndSave, validateInternalCancelAfterSeconds, wholeNumberInRange, type CollectInputs } from './collect';
+import {
+  bindRdr2SettingsProvenance,
+  buildObservation,
+  CliInputError,
+  collectorBuildHash,
+  COLLECTOR_VERSION,
+  DEFAULT_BUILD_HASH_FILES,
+  frameGenerationFactor,
+  numberInRange,
+  oneOf,
+  parseCaptureSelection,
+  parseRunConditions,
+  RDR2_PARSED_FIELD_NAMES,
+  Rdr2SettingsChangedDuringCaptureError,
+  resolveCaptureProcessFilter,
+  shouldPersistFrameTimes,
+  toSettingsFileProvenance,
+  validateAndSave,
+  validateInternalCancelAfterSeconds,
+  wholeNumberInRange,
+  type CollectInputs,
+} from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
+import { Rdr2SettingsNotFoundError, type Rdr2SystemSettings } from './rdr2Settings';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
-import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS, type CaptureToolProvenance } from '../../src/lib/measured/types';
+import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS, type CaptureToolProvenance, type SettingsFileProvenance } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 
 // Frame times here are SYNTHETIC, used to exercise assembly and the save gate.
@@ -51,6 +74,18 @@ const build = (over: Partial<CollectInputs> = {}, f = frames(), captureTool?: Ca
   });
 
 const capturedByPresentMon: CaptureToolProvenance = { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: true };
+
+/** A fake successful rdr2Settings.ts read, for tests that never touch a real filesystem. */
+const rdr2Settings = (over: Partial<Rdr2SystemSettings> = {}): Rdr2SystemSettings => ({
+  location: { path: 'C:\\Users\\Aaron\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml', source: 'documents' },
+  raw: '<rage__fwuiSystemSettingsCollection>...</rage__fwuiSystemSettingsCollection>',
+  sha256: 'a'.repeat(64),
+  schemaVersion: 37,
+  videoCardDescription: 'NVIDIA GeForce RTX 5070',
+  display: { screenWidth: 2560, screenHeight: 1440, screenWidthWindowed: 2560, screenHeightWindowed: 1440, windowed: 2, vSync: 0 },
+  graphics: { textureQuality: 'kSettingLevel_Ultra', shadowQuality: 'kSettingLevel_Ultra', reflectionQuality: 'kSettingLevel_Ultra', taa: 'kSettingLevel_High', api: 'kSettingAPI_Vulkan' },
+  ...over,
+});
 
 describe('assembly reuses the shared logic rather than duplicating it', () => {
   it('derives every statistic from the frame times via computeFrameTimeStats', () => {
@@ -662,6 +697,194 @@ describe('the automatic-capture process filter defaults to the exact pid, not th
     const result = resolveCaptureProcessFilter(undefined, 29668);
     expect(result).not.toBe('RDR2.exe');
     expect(result).toBe(String(29668));
+  });
+});
+
+// Binds an automatic RDR2 capture's settings-file provenance: read+hash
+// before capture, read+hash again after, reject on a read failure or a
+// hash mismatch either way. Only ever called for source.mode === 'capture'
+// with gameId === 'rdr2' — every other game and --csv never call this.
+describe('binding RDR2 settings provenance across a capture', () => {
+  it('reads once before capture and does not re-read until verifyUnchanged is called', () => {
+    const reads: Array<string | undefined> = [];
+    const readSettings = (explicitPath?: string) => {
+      reads.push(explicitPath);
+      return rdr2Settings();
+    };
+    bindRdr2SettingsProvenance(readSettings);
+    expect(reads).toEqual([undefined]);
+  });
+
+  it('matching hashes: verifyUnchanged does not throw, and pins the second read to the exact path the first one resolved', () => {
+    const reads: Array<string | undefined> = [];
+    const readSettings = (explicitPath?: string) => {
+      reads.push(explicitPath);
+      return rdr2Settings();
+    };
+    const { before, verifyUnchanged } = bindRdr2SettingsProvenance(readSettings);
+    expect(() => verifyUnchanged()).not.toThrow();
+    // The second call is pinned to the FIRST read's own resolved path, not
+    // re-run through the locator — proving this compares one specific file
+    // to itself, not "whatever the locator finds this time."
+    expect(reads).toEqual([undefined, before.location.path]);
+  });
+
+  it('changed settings: rejects with the specific hash values, not a generic failure', () => {
+    let call = 0;
+    const readSettings = () => rdr2Settings({ sha256: (call++ === 0 ? 'a' : 'b').repeat(64) });
+    const { verifyUnchanged } = bindRdr2SettingsProvenance(readSettings);
+    expect(() => verifyUnchanged()).toThrow(Rdr2SettingsChangedDuringCaptureError);
+    expect(() => verifyUnchanged()).toThrow(/changed during capture/);
+  });
+
+  it('a read failure on the FIRST read (before capture) propagates its own real error type, unwrapped', () => {
+    const readSettings = () => {
+      throw new Rdr2SettingsNotFoundError('no system.xml found');
+    };
+    // Not wrapped: refusing before capture even starts should surface
+    // rdr2Settings.ts's own specific, already-clear error message, the same
+    // way a hardware-detection failure does earlier in main().
+    expect(() => bindRdr2SettingsProvenance(readSettings)).toThrow(Rdr2SettingsNotFoundError);
+  });
+
+  it('a read failure on the SECOND read (after capture) is rejected, not silently ignored', () => {
+    let call = 0;
+    const readSettings = () => {
+      if (call++ === 0) return rdr2Settings();
+      throw new Rdr2SettingsNotFoundError('system.xml is gone');
+    };
+    const { verifyUnchanged } = bindRdr2SettingsProvenance(readSettings);
+    expect(() => verifyUnchanged()).toThrow(Rdr2SettingsChangedDuringCaptureError);
+    expect(() => verifyUnchanged()).toThrow(/Could not re-read/);
+  });
+});
+
+describe('bridging rdr2Settings.ts output into the schema-safe provenance shape', () => {
+  it('carries game, path, sha256 and a coverage of exactly "partial"', () => {
+    const settings = rdr2Settings();
+    const provenance = toSettingsFileProvenance(settings);
+    expect(provenance.game).toBe('rdr2');
+    expect(provenance.path).toBe(settings.location.path);
+    expect(provenance.sha256).toBe(settings.sha256);
+    expect(provenance.coverage).toBe('partial');
+  });
+
+  it('parsedFields names exactly the fields rdr2Settings.ts actually validates', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    expect(provenance.parsedFields).toEqual(RDR2_PARSED_FIELD_NAMES);
+    expect(provenance.parsedFields).toContain('display.screenWidth');
+    expect(provenance.parsedFields).toContain('graphics.textureQuality');
+    // No unified preset, ever — RDR2 has no such setting, and this list is
+    // the literal, exhaustive answer to "what did this actually read."
+    expect(provenance.parsedFields.join(',')).not.toMatch(/preset/i);
+  });
+
+  it('parsedValues carries the real parsed values, not a re-derived summary', () => {
+    const settings = rdr2Settings({ display: { screenWidth: 3840, screenHeight: 2160, screenWidthWindowed: 3840, screenHeightWindowed: 2160, windowed: 0, vSync: 1 } });
+    const provenance = toSettingsFileProvenance(settings);
+    expect(provenance.parsedValues.display).toEqual(settings.display);
+    expect(provenance.parsedValues.graphics).toEqual(settings.graphics);
+    expect(provenance.parsedValues.schemaVersion).toBe(settings.schemaVersion);
+  });
+});
+
+describe('buildObservation binds settingsFile into settingsSource/settingsHash, never a unified preset', () => {
+  it('settingsFile present: settingsSource becomes config-parsed and settingsHash is the file digest, not the operator-attested text', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const obs = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs(),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    expect(obs.settingsSource).toBe('config-parsed');
+    expect(obs.settingsHash).toBe(provenance.sha256);
+    expect(obs.settingsHash).not.toBe(createHash('sha256').update(inputs().settingsText).digest('hex').slice(0, 32));
+    expect(obs.settingsFile).toEqual(provenance);
+  });
+
+  it('settingsFile present: the stale "no mechanism exists to read settings" detection gap is dropped', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const withFile = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs(),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    expect(withFile.detectionGaps.map((g) => g.field)).not.toContain('settingsHash');
+  });
+
+  it('settingsFile absent (every other game, and --csv): behavior is exactly as before — settingsSource stays operator-attested and the gap stays disclosed', () => {
+    const obs = build();
+    expect(obs.settingsSource).toBe('operator-attested');
+    expect(obs.settingsFile).toBeUndefined();
+    expect(obs.detectionGaps.map((g) => g.field)).toContain('settingsHash');
+  });
+
+  // Never claim a unified preset: RDR2 has none, so nothing about attaching
+  // settingsFile may touch preset/presetLabel — they stay exactly what the
+  // operator's own --preset/--preset-label flags said, unrelated to this file.
+  it('never derives preset or presetLabel from settingsFile', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const obs = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs({ preset: 'unmapped', presetLabel: 'RDR2 has no single preset' }),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    expect(obs.preset).toBe('unmapped');
+    expect(obs.presetLabel).toBe('RDR2 has no single preset');
+  });
+});
+
+describe('a dry run displays settings provenance on the observation but persists nothing', () => {
+  it('buildObservation populates settingsFile with no dryRun parameter at all — the observation itself carries provenance unconditionally', () => {
+    // buildObservation takes no dryRun flag; the CLI's own dry-run gate
+    // (shouldPersistFrameTimes, exercised below) is the only thing that
+    // varies with it. This is what makes "display but do not save" true:
+    // there is no code path in which settingsFile is populated only when
+    // the run WILL be saved.
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const obs = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs(),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    expect(obs.settingsFile).toEqual(provenance);
+  });
+
+  it('a dry run still saves nothing, even for an RDR2 automatic capture with valid settingsFile provenance', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const obs = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs(),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    const issues = validateMeasuredObservation(obs, frames());
+    expect(errors(issues)).toEqual([]);
+    expect(shouldPersistFrameTimes(true, issues)).toBe(false);
   });
 });
 

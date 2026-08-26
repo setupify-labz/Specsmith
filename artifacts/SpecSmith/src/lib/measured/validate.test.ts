@@ -26,6 +26,14 @@ function makeObservation(frames: number[], over: Partial<MeasuredObservation> = 
     preset: 'high',
     settingsSource: 'config-parsed',
     settingsHash: 'abc123',
+    settingsFile: {
+      game: 'marvel-rivals',
+      path: 'C:\\Users\\Aaron\\AppData\\Local\\Marvel\\Saved\\Config\\WindowsClient\\GameUserSettings.ini',
+      sha256: 'abc123',
+      coverage: 'partial',
+      parsedFields: ['resolution', 'quality'],
+      parsedValues: { resolution: '2560x1440', quality: 'high' },
+    },
     rayTracing: false,
     upscaler: 'native',
     frameGeneration: false,
@@ -295,6 +303,72 @@ describe('disclosed conditions are warnings, not rejections', () => {
     const issues = validateMeasuredObservation(obs, frames);
     expect(errors(issues)).toEqual([]);
     expect(warnings(issues).map((i) => i.rule)).toContain('gpu.overclocked');
+  });
+});
+
+describe('settings-file provenance is checked at the store boundary, not just trusted from the CLI', () => {
+  const goodSettingsFile = {
+    game: 'rdr2',
+    path: 'C:\\Users\\Aaron\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml',
+    sha256: 'a'.repeat(64),
+    coverage: 'partial' as const,
+    parsedFields: ['display.screenWidth', 'graphics.textureQuality'],
+    parsedValues: { display: { screenWidth: 2560 }, graphics: { textureQuality: 'kSettingLevel_Ultra' } },
+  };
+
+  it('accepts a config-parsed observation that carries real settingsFile provenance', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsSource: 'config-parsed', settingsFile: goodSettingsFile });
+    expect(errors(validateMeasuredObservation(obs, frames))).toEqual([]);
+  });
+
+  // Unions vanish at runtime — the same reason preset/resolution/upscaler are
+  // re-checked below rather than trusted from a cast. A caller of
+  // buildObservation is not obligated to be this collector's own CLI.
+  it('rejects settingsSource "config-parsed" with no settingsFile at all', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsSource: 'config-parsed', settingsFile: undefined });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.config-parsed-missing-file');
+  });
+
+  it('rejects a settingsFile whose coverage claims more than "partial"', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      settingsSource: 'config-parsed',
+      // @ts-expect-error -- deliberately constructing what the type system forbids, to prove the runtime check catches it too
+      settingsFile: { ...goodSettingsFile, coverage: 'complete' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-coverage-not-partial');
+  });
+
+  it('rejects a settingsFile with no parsed fields at all — nothing to disclose as covered', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      settingsSource: 'config-parsed',
+      settingsFile: { ...goodSettingsFile, parsedFields: [] },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-no-parsed-fields');
+  });
+
+  it('warns, disclosing the exact field names, whenever settingsFile is present', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsSource: 'config-parsed', settingsFile: goodSettingsFile });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues)).toEqual([]);
+    const warning = warnings(issues).find((i) => i.rule === 'settings.file-partial-coverage');
+    expect(warning).toBeDefined();
+    expect(warning?.message).toContain('display.screenWidth');
+    expect(warning?.message).toContain('graphics.textureQuality');
+  });
+
+  it('does not warn about partial coverage when there is no settingsFile at all', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsFile: undefined });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(warnings(issues).map((i) => i.rule)).not.toContain('settings.file-partial-coverage');
   });
 });
 
