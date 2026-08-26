@@ -380,6 +380,59 @@ describe('hardening against structurally malformed XML', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Two more conflict cases: a duplicate the earlier version silently accepted
+// ---------------------------------------------------------------------------
+//
+// Both of these previously PASSED — parseRdr2SystemSettingsXml returned a
+// value instead of throwing. requireOneTag used to filter to occurrences
+// matching the REQUESTED shape before checking for duplicates, so a tag
+// present once in each shape (one real, one stray) found exactly one
+// shape-matching occurrence and used it, silently discarding the other
+// rather than refusing the ambiguity. Separately, parseXmlElements' attribute
+// loop kept whichever `value="..."` it saw LAST within one element, so two
+// `value` attributes on the same self-closing tag silently picked the second.
+
+describe('a critical tag with conflicting definitions in different shapes is refused, not silently resolved', () => {
+  it('rejects a tag that appears once as text and once as a self-closing value attribute', () => {
+    const mixedShapeDuplicate = REAL_SYSTEM_XML.replace(
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>',
+      '<textureQuality>kSettingLevel_Ultra</textureQuality>\n    <textureQuality value="1" />',
+    );
+    expect(() => parseRdr2SystemSettingsXml(mixedShapeDuplicate)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(mixedShapeDuplicate)).toThrow(/<textureQuality> appears 2 times/);
+  });
+
+  it('rejects the same conflict the other way around: a value-attr tag duplicated with a text-shaped one', () => {
+    const mixedShapeDuplicate = REAL_SYSTEM_XML.replace(
+      '<screenWidth value="1920" />',
+      '<screenWidth value="1920" />\n    <screenWidth>2560</screenWidth>',
+    );
+    expect(() => parseRdr2SystemSettingsXml(mixedShapeDuplicate)).toThrow(/<screenWidth> appears 2 times/);
+  });
+});
+
+describe('a duplicate attribute name within one element is refused, not resolved to the last one seen', () => {
+  it('rejects two "value" attributes on the same self-closing tag', () => {
+    const duplicateValueAttr = REAL_SYSTEM_XML.replace(
+      '<screenWidth value="1920" />',
+      '<screenWidth value="1920" value="2560" />',
+    );
+    expect(() => parseRdr2SystemSettingsXml(duplicateValueAttr)).toThrow(Rdr2SettingsFormatError);
+    expect(() => parseRdr2SystemSettingsXml(duplicateValueAttr)).toThrow(
+      /<screenWidth> has the attribute "value" more than once/,
+    );
+  });
+
+  it('rejects a duplicated non-"value" attribute too, not just "value" itself', () => {
+    const duplicateOtherAttr = REAL_SYSTEM_XML.replace(
+      '<screenWidth value="1920" />',
+      '<screenWidth value="1920" extra="a" extra="b" />',
+    );
+    expect(() => parseRdr2SystemSettingsXml(duplicateOtherAttr)).toThrow(/has the attribute "extra" more than once/);
+  });
+});
+
 describe('the windowed-mode resolution pair is preserved raw, never used to pick an active resolution', () => {
   it('parses screenWidthWindowed and screenHeightWindowed as their own fields', () => {
     const parsed = parseRdr2SystemSettingsXml(REAL_SYSTEM_XML);

@@ -332,8 +332,23 @@ function parseXmlElements(raw: string): ElementTable {
 
       if (selfClosing) {
         let value: string | undefined;
+        // XML itself does not allow an attribute name to repeat within one
+        // element (the "Unique Att Spec" well-formedness rule) — the regex
+        // that matched this tag only enforces each repetition LOOKS like a
+        // valid name="value" pair, not that the names are distinct, so a
+        // literal `value="1920" value="2560"` matches fine at that level and
+        // would otherwise just silently keep the last one seen.
+        const seenAttrNames = new Set<string>();
         for (const am of (m[4] ?? '').matchAll(ATTR_RE)) {
-          if (am[1] === 'value') value = am[2];
+          const attrName = am[1];
+          if (seenAttrNames.has(attrName)) {
+            throw new Rdr2SettingsFormatError(
+              `<${openingName}> has the attribute "${attrName}" more than once. An attribute name cannot repeat ` +
+                'within one element, and picking either value would be a guess.',
+            );
+          }
+          seenAttrNames.add(attrName);
+          if (attrName === 'value') value = am[2];
         }
         record(openingName, { shape: 'value-attr', value });
         if (stack.length === 0) rootClosed = true;
@@ -365,29 +380,41 @@ function parseXmlElements(raw: string): ElementTable {
   return table;
 }
 
+/**
+ * The duplicate check runs on TOTAL occurrences, before shape is even
+ * considered — not on occurrences matching the requested shape. Filtering by
+ * shape first (an earlier version of this function did) can silently pass
+ * when a tag appears once in each shape: e.g. a real
+ * `<textureQuality>kSettingLevel_Ultra</textureQuality>` alongside a stray
+ * `<textureQuality value="1" />` is two conflicting definitions of the same
+ * setting, not one — filtering to the text-shaped occurrence first would
+ * find exactly one match and use it, silently discarding the other rather
+ * than refusing the ambiguity.
+ */
 function requireOneTag(table: ElementTable, tag: string, shape: TagShape): string {
   const occurrences = table.get(tag) ?? [];
-  const matching = occurrences.filter((o): o is Extract<ElementOccurrence, { shape: typeof shape }> => o.shape === shape);
 
-  if (matching.length === 0) {
-    if (occurrences.length > 0) {
-      throw new Rdr2SettingsFormatError(
-        `<${tag}> is present but not in the expected form ` +
-          `(expected ${shape === 'value-attr' ? 'a self-closing tag with a "value" attribute' : 'text content'}).`,
-      );
-    }
+  if (occurrences.length === 0) {
     throw new Rdr2SettingsFormatError(
       `Missing required <${tag}> setting. This may not be an RDR2 system.xml, or is a version/format this parser was not built against.`,
     );
   }
-  if (matching.length > 1) {
+  if (occurrences.length > 1) {
     throw new Rdr2SettingsFormatError(
-      `<${tag}> appears ${matching.length} times, with values [${matching.map((o) => JSON.stringify(o.value)).join(', ')}]. ` +
+      `<${tag}> appears ${occurrences.length} times, with values [${occurrences.map((o) => JSON.stringify(o.value)).join(', ')}]. ` +
         'Refusing to guess which one the game actually used.',
     );
   }
 
-  const value = matching[0].value;
+  const only = occurrences[0];
+  if (only.shape !== shape) {
+    throw new Rdr2SettingsFormatError(
+      `<${tag}> is present but not in the expected form ` +
+        `(expected ${shape === 'value-attr' ? 'a self-closing tag with a "value" attribute' : 'text content'}).`,
+    );
+  }
+
+  const value = only.value;
   if (value === undefined) {
     throw new Rdr2SettingsFormatError(`<${tag}> has no "value" attribute.`);
   }
