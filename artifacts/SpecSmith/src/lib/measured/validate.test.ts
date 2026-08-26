@@ -356,6 +356,62 @@ describe('settings-file provenance is checked at the store boundary, not just tr
     expect(errors(issues).map((i) => i.rule)).toContain('settings.file-game-mismatch');
   });
 
+  it('rejects an empty settingsFile.fileName', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: '' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-empty');
+  });
+
+  it('rejects an absolute Windows path in settingsFile.fileName, not just a bare file name', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, fileName: 'C:\\Users\\Aaron\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it('rejects a POSIX-style path in settingsFile.fileName', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: 'home/aaron/Documents/system.xml' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it('rejects a drive-qualified fileName even with no path separator, e.g. "C:system.xml"', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: 'C:system.xml' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it.each(['.', '..'])('rejects a settingsFile.fileName of exactly %s — a directory-traversal segment, not a file name', (fileName) => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-traversal');
+  });
+
+  it('rejects a settingsFile.locationSource that is not documents, onedrive, or explicit', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      // @ts-expect-error -- deliberately constructing what the type system forbids, to prove the runtime check catches it too
+      settingsFile: { ...goodSettingsFile, locationSource: 'downloads' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-location-source-invalid');
+  });
+
+  it.each(['documents', 'onedrive', 'explicit'] as const)('accepts locationSource %s as valid', (locationSource) => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, locationSource } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).not.toContain('settings.file-location-source-invalid');
+  });
+
   it('rejects a settingsFile.sha256 that is not a valid 64-character hex digest', () => {
     const frames = goodFrames();
     const obs = makeObservation(frames, {

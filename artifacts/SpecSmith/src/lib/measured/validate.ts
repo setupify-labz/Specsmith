@@ -71,6 +71,14 @@ const SHA256_HEX = /^[a-f0-9]{64}$/;
 const NORMALIZED_PRESET_TIERS: readonly string[] = ['low', 'medium', 'high', 'ultra', 'extreme'];
 
 /**
+ * Mirrors SettingsLocationSource's own literal union (types.ts) as a runtime
+ * set. The union vanishes at runtime like every other one re-checked in this
+ * file, so a non-CLI caller of buildObservation could otherwise pass any
+ * string through here uncaught.
+ */
+const SETTINGS_LOCATION_SOURCES: ReadonlySet<string> = new Set(['documents', 'onedrive', 'explicit']);
+
+/**
  * Whether `dottedPath` (e.g. "display.screenWidth") resolves to a defined
  * value inside `obj` — every segment must exist and, short of the last one,
  * be itself an object to descend into. A path claiming coverage of
@@ -185,6 +193,34 @@ export function validateMeasuredObservation(
   }
   if (obs.settingsFile) {
     const sf = obs.settingsFile;
+    // fileName must be a bare basename — never a path. See
+    // SettingsFileProvenance's own doc comment: the resolved path is kept
+    // internal to the collector's post-capture reread and must never reach
+    // this schema, so a fileName carrying a separator, a drive letter, or a
+    // dot/dot-dot segment is exactly the leak (or a traversal attempt) this
+    // field exists to rule out, not a formatting nitpick.
+    if (sf.fileName.length === 0) {
+      issues.push(err(id, 'settings.file-name-empty', 'settingsFile.fileName is empty — a settings file must be identified by its own name.'));
+    } else if (/[\\/:]/.test(sf.fileName)) {
+      issues.push(
+        err(
+          id,
+          'settings.file-name-not-basename',
+          `settingsFile.fileName "${sf.fileName}" contains a path separator or drive qualifier — only a bare file name is allowed, never a path.`,
+        ),
+      );
+    } else if (sf.fileName === '.' || sf.fileName === '..') {
+      issues.push(err(id, 'settings.file-name-traversal', `settingsFile.fileName "${sf.fileName}" is a directory-traversal segment, not a file name.`));
+    }
+    if (!SETTINGS_LOCATION_SOURCES.has(sf.locationSource)) {
+      issues.push(
+        err(
+          id,
+          'settings.file-location-source-invalid',
+          `settingsFile.locationSource "${sf.locationSource}" is not one of: ${[...SETTINGS_LOCATION_SOURCES].join(', ')}.`,
+        ),
+      );
+    }
     if (sf.game !== obs.gameId) {
       issues.push(
         err(
