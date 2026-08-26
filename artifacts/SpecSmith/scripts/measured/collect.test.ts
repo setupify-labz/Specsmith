@@ -16,16 +16,20 @@ import {
   numberInRange,
   oneOf,
   parseCaptureSelection,
+  parseRdr2ResearchCaptureOptions,
   parseRunConditions,
   RDR2_PARSED_FIELD_NAMES,
   Rdr2SettingsChangedDuringCaptureError,
+  refuseRdr2ResearchOutputDirOverwrite,
   resolveCaptureProcessFilter,
   shouldPersistFrameTimes,
   toSettingsFileProvenance,
   validateAndSave,
   validateInternalCancelAfterSeconds,
   wholeNumberInRange,
+  writeRdr2ResearchBundle,
   type CollectInputs,
+  type Rdr2ResearchManifest,
 } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
@@ -598,6 +602,169 @@ describe('a real, non-dry save of an automatic RDR2 capture is refused', () => {
     // returned mode discriminant ever changes shape.
     expect(captureSource.mode).toBe('capture');
     expect(csvSource.mode).toBe('csv');
+  });
+});
+
+// --research-output-dir opts an automatic RDR2 capture into exporting a raw
+// evidence bundle (untouched CSV + manifest) for manual correlation against
+// RDR2's built-in benchmark — never a savable observation. See the "RDR2
+// research-capture mode" section in collect.ts.
+describe('parsing --research-output-dir', () => {
+  const captureSource = parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '30']);
+  const csvSource = parseCaptureSelection(['--csv', 'run.csv']);
+  const absoluteWindowsPath = 'C:\\Users\\Aaron\\research\\rdr2-session1';
+
+  it('returns undefined when the flag is absent — research mode is opt-in', () => {
+    expect(parseRdr2ResearchCaptureOptions([], captureSource, 'rdr2', true)).toBeUndefined();
+  });
+
+  it('accepts a valid combination: automatic RDR2 capture, --dry-run, an absolute output dir', () => {
+    const options = parseRdr2ResearchCaptureOptions(['--research-output-dir', absoluteWindowsPath], captureSource, 'rdr2', true);
+    expect(options).toEqual({ outputDir: absoluteWindowsPath });
+  });
+
+  it('refuses a missing value', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', ''], captureSource, 'rdr2', true)).toThrow(/Missing required --research-output-dir/);
+  });
+
+  it('refuses without --dry-run', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', absoluteWindowsPath], captureSource, 'rdr2', false)).toThrow(/requires --dry-run/);
+  });
+
+  it('refuses a manual --csv run', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', absoluteWindowsPath], csvSource, 'rdr2', true)).toThrow(/not --csv/);
+  });
+
+  it('refuses a non-RDR2 game', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', absoluteWindowsPath], captureSource, 'cs2', true)).toThrow(/only applies to RDR2/);
+  });
+
+  it('refuses a relative path — ambiguous against whatever directory the collector was invoked from', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', 'research\\rdr2-session1'], captureSource, 'rdr2', true)).toThrow(/must be an absolute path/);
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', '.\\research'], captureSource, 'rdr2', true)).toThrow(/must be an absolute path/);
+  });
+
+  it('all four combination checks apply together, not just individually — e.g. --csv AND a relative path both fail, on the mode check first', () => {
+    expect(() => parseRdr2ResearchCaptureOptions(['--research-output-dir', 'relative'], csvSource, 'rdr2', true)).toThrow(/not --csv/);
+  });
+});
+
+describe('refusing to overwrite a research output directory', () => {
+  it('does not throw when the directory does not exist yet', () => {
+    const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-')), 'not-yet-created');
+    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).not.toThrow();
+  });
+
+  it('does not throw when the directory exists but is empty', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-'));
+    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).not.toThrow();
+  });
+
+  it('refuses when the directory exists and already holds something', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-'));
+    fs.writeFileSync(path.join(dir, 'leftover.txt'), 'from a previous bundle');
+    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).toThrow(CliInputError);
+    expect(() => refuseRdr2ResearchOutputDirOverwrite(dir)).toThrow(/already exists and is not empty/);
+  });
+});
+
+describe('writing the RDR2 research bundle', () => {
+  const goodManifest = (): Rdr2ResearchManifest => ({
+    schemaVersion: 1,
+    gameId: 'rdr2',
+    capture: { startedAt: '2026-08-26T20:00:00.000Z', endedAt: '2026-08-26T20:01:30.000Z', processId: 27308, processName: 'RDR2.exe' },
+    gameVersion: '1.0.1436.24',
+    hardware: {
+      gpuId: 'gpu-1', gpuRaw: 'NVIDIA GeForce RTX 5070', gpuMatchMethod: 'exact', gpuDriverVersion: '566.36',
+      cpuId: 'cpu-1', cpuRaw: 'AMD Ryzen 7 7800X3D', cpuMatchMethod: 'exact', osBuild: 'Windows 11 26100.2314',
+      ramTotalGb: 32, ramChannels: 2, ramRatedSpeedMts: 6000,
+    },
+    captureTool: { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: true },
+    settingsFile: {
+      game: 'rdr2', fileName: 'system.xml', locationSource: 'documents', sha256: 'e277b01a3256541ade5c7fa00e7ed7b8fe942c89208bcaa2efd6612b5eeae70c',
+      coverage: 'partial', parsedFields: RDR2_PARSED_FIELD_NAMES, parsedValues: { schemaVersion: 37 },
+    },
+    collectorVersion: COLLECTOR_VERSION,
+    collectorBuildHash: 'buildhash',
+    csv: { fileName: 'presentmon.csv', sha256: 'b'.repeat(64), byteLength: 1234, rowsUsable: 7181, rowsDroppedNotDisplayed: 0, rowsDiscardedFirstFrame: 1 },
+  });
+
+  const tempCsvWithBytes = (bytes: Buffer): string => {
+    const p = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-csv-')), 'presentmon.csv');
+    fs.writeFileSync(p, bytes);
+    return p;
+  };
+
+  it('byte-preserves the CSV exactly — CRLF line endings, a UTF-8 BOM and a non-UTF-8 byte included, to prove this is a raw copy, not a re-serialized text round trip', () => {
+    const bytes = Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]), // UTF-8 BOM
+      Buffer.from('Application,TimeInSeconds,MsBetweenPresents\r\nRDR2.exe,0.000,16.667\r\n', 'utf-8'),
+      Buffer.from([0xff]), // a byte that is not valid UTF-8 on its own
+    ]);
+    const csvSourcePath = tempCsvWithBytes(bytes);
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const { csvPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+    expect(Buffer.compare(fs.readFileSync(csvPath), bytes)).toBe(0);
+  });
+
+  it('writes the manifest as JSON matching the input verbatim', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const manifest = goodManifest();
+    const { manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest });
+    expect(JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))).toEqual(manifest);
+  });
+
+  it('never carries the absolute path of the source CSV or the settings file — only what the manifest was given, which is already schema-safe', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const { manifestPath } = writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+    const manifestText = fs.readFileSync(manifestPath, 'utf-8');
+    expect(manifestText).not.toContain(csvSourcePath);
+    expect(manifestText).not.toContain('C:\\');
+  });
+
+  it('refuses a manifest with no settingsFile — missing provenance', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const manifest = { ...goodManifest(), settingsFile: undefined as unknown as Rdr2ResearchManifest['settingsFile'] };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/no settingsFile provenance/);
+  });
+
+  it('refuses a manifest for a non-RDR2 game', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+    const manifest = { ...goodManifest(), gameId: 'marvel-rivals' as unknown as 'rdr2' };
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest })).toThrow(/RDR2-only/);
+  });
+
+  it('refuses to overwrite, re-checked at write time even if the directory was empty when main() first looked', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-'));
+    fs.writeFileSync(path.join(outputDir, 'presentmon.csv'), 'from a previous bundle');
+    expect(() => writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() })).toThrow(/already exists and is not empty/);
+  });
+
+  it('is isolated from production storage: the measuredObservations.json store and the frame-time archive are never touched', () => {
+    const csvSourcePath = tempCsvWithBytes(Buffer.from('Application\r\nRDR2.exe\r\n'));
+    const outputDir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-research-out-')), 'bundle');
+
+    // Stand-ins for the two production storage locations this bundle must
+    // never write to (src/data/measuredObservations.json and the
+    // frameTimeStore.mjs root) — a real repo path is not used here so the
+    // test cannot accidentally pass by writing into the actual store.
+    const storeStandIn = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-store-')), 'measuredObservations.json');
+    fs.writeFileSync(storeStandIn, 'UNTOUCHED-STORE');
+    const frameTimeRootStandIn = fs.mkdtempSync(path.join(os.tmpdir(), 'specsmith-frametimes-'));
+    fs.writeFileSync(path.join(frameTimeRootStandIn, 'abcdef.json.gz'), 'UNTOUCHED-FRAMETIMES');
+
+    writeRdr2ResearchBundle({ outputDir, csvSourcePath, manifest: goodManifest() });
+
+    expect(fs.readFileSync(storeStandIn, 'utf-8')).toBe('UNTOUCHED-STORE');
+    expect(fs.readdirSync(frameTimeRootStandIn)).toEqual(['abcdef.json.gz']);
+    // And confirms the bundle really did land, only inside outputDir.
+    expect(fs.existsSync(path.join(outputDir, 'presentmon.csv'))).toBe(true);
+    expect(fs.existsSync(path.join(outputDir, 'manifest.json'))).toBe(true);
   });
 });
 

@@ -19,6 +19,12 @@
 //      non-publishable data into the observation store. Temporary fail-closed
 //      gate; --csv and every other game are unaffected.)
 //
+//   Add --research-output-dir <absolute path> to the RDR2 command above to
+//   export a research bundle (the untouched CSV plus a manifest) instead of
+//   just printing a summary — see the "RDR2 research-capture mode" section
+//   below and scripts/measured/README.md. Still requires --dry-run; still
+//   RDR2-only; still refuses to overwrite an existing bundle.
+//
 // The GPU and CPU are RESOLVED from what Windows reports, not supplied.
 // --gpu-id/--cpu-id are optional and may only disambiguate between catalog
 // entries the detected name genuinely could mean (Windows reports one name for
@@ -697,6 +703,172 @@ export function enforceRdr2DryRunRequired(gameId: string, source: ReturnType<typ
   }
 }
 
+// ---------------------------------------------------------------------------
+// RDR2 research-capture mode
+// ---------------------------------------------------------------------------
+//
+// --research-output-dir exports the RAW EVIDENCE of an automatic RDR2
+// capture — the untouched PresentMon CSV plus a manifest of everything known
+// about how it was produced — into an isolated directory. It exists so RDR2's
+// BUILT-IN benchmark can be studied (correlated by hand against the CSV's
+// timestamps: which rows are which scene, where the black/loading screens
+// are) without producing anything that looks like a measurement. Nothing
+// here invents benchmark segmentation; that is future work, once a protocol
+// exists to say honestly which rows belong to which scene. Never touches
+// measuredObservations.json or the frame-time archive (frameTimeStore.mjs) —
+// it is a parallel, read-only-of-the-capture side effect, not an alternate
+// save path, and enforceRdr2DryRunRequired already guarantees this mode can
+// only ever run under --dry-run.
+
+/** Returned by parseRdr2ResearchCaptureOptions when --research-output-dir was passed and is valid. */
+export interface Rdr2ResearchCaptureOptions {
+  outputDir: string;
+}
+
+/**
+ * Parses --research-output-dir and enforces the exact combination it must
+ * appear in. Pure — no filesystem access — so these rules are testable
+ * without touching disk, the same reason parseRunConditions is split out
+ * from the Windows probe. Returns undefined when the flag was not passed at
+ * all: research mode is opt-in, and every other CLI path is unaffected by
+ * its existence.
+ */
+export function parseRdr2ResearchCaptureOptions(
+  argv: string[],
+  source: ReturnType<typeof parseCaptureSelection>,
+  gameId: string,
+  dryRun: boolean,
+): Rdr2ResearchCaptureOptions | undefined {
+  const outputDir = arg(argv, 'research-output-dir');
+  if (outputDir === undefined) return undefined;
+  if (outputDir.trim() === '') throw new CliInputError('Missing required --research-output-dir');
+  if (source.mode !== 'capture') {
+    throw new CliInputError(
+      '--research-output-dir only applies to an automatic capture, not --csv — a research bundle exists to study a capture the collector took itself.',
+    );
+  }
+  if (gameId !== 'rdr2') {
+    throw new CliInputError(`--research-output-dir only applies to RDR2 (--game-id "${gameId}" given) — RDR2 is the only game with settings-file provenance to bundle.`);
+  }
+  if (!dryRun) {
+    throw new CliInputError('--research-output-dir requires --dry-run. A research bundle is for studying a capture, never a savable observation.');
+  }
+  // A relative path resolves against whatever directory the collector
+  // happened to be invoked from (pnpm vs. a direct tsx invocation, or a
+  // differently-cwd'd terminal) — exactly the ambiguity a bundle meant for
+  // later correlation cannot afford. `path.win32.isAbsolute`, not the
+  // ambient `path.isAbsolute`: the operator types this path on a real
+  // Windows machine, but this pure function is exercised by tests on
+  // whatever OS runs the suite — the same reasoning toSettingsFileProvenance
+  // already documents for path.win32.basename.
+  if (!path.win32.isAbsolute(outputDir)) {
+    throw new CliInputError(
+      `--research-output-dir "${outputDir}" must be an absolute path. A relative path resolves against whatever directory the collector happened ` +
+        'to be invoked from — exactly the ambiguity a bundle meant for later correlation cannot afford.',
+    );
+  }
+  return { outputDir };
+}
+
+/**
+ * Refuses to write a research bundle into a directory that already holds
+ * one. Called twice: once in main(), before hardware detection or PresentMon
+ * are ever touched (a bad --research-output-dir then costs a second, not a
+ * played-again 90-second capture — the same principle every other
+ * pre-capture refusal in this file follows), and again inside
+ * writeRdr2ResearchBundle itself, immediately before it writes anything —
+ * closing the gap between that early check and the write, minutes later,
+ * during which something else could have populated the directory.
+ */
+export function refuseRdr2ResearchOutputDirOverwrite(outputDir: string): void {
+  if (fs.existsSync(outputDir) && fs.readdirSync(outputDir).length > 0) {
+    throw new CliInputError(
+      `--research-output-dir "${outputDir}" already exists and is not empty. Refusing to overwrite a previous research bundle — choose a new, empty directory.`,
+    );
+  }
+}
+
+/**
+ * Raw evidence for later, manual correlation against RDR2's built-in
+ * benchmark scenes and black/loading screens — deliberately NOT a benchmark
+ * result. No FPS or frame-time statistic is computed or stored here:
+ * gameplay behind a research capture is uncontrolled by definition, so a
+ * computed average would look exactly like a real measurement without being
+ * one. The CSV itself, byte-for-byte in the bundle, is where any statistic
+ * gets computed from later — once a protocol exists to say honestly which
+ * rows are which scene.
+ */
+export interface Rdr2ResearchManifest {
+  schemaVersion: 1;
+  gameId: 'rdr2';
+  capture: {
+    startedAt: string;
+    endedAt: string;
+    processId: number;
+    processName: string;
+  };
+  /** Whichever of these the run had — at least one of gameVersion/gameBuildId is required by validation elsewhere, but a research bundle is never validated, so both may be absent. */
+  gameVersion?: string;
+  gameBuildId?: string;
+  hardware: {
+    gpuId: string;
+    gpuRaw: string;
+    gpuMatchMethod: CatalogMatchMethod;
+    gpuDriverVersion: string;
+    cpuId: string;
+    cpuRaw: string;
+    cpuMatchMethod: CatalogMatchMethod;
+    osBuild: string;
+    ramTotalGb: number;
+    ramChannels: number;
+    ramRatedSpeedMts?: number;
+  };
+  captureTool: CaptureToolProvenance;
+  /** The same schema-safe shape a real observation would carry — fileName + locationSource only, never the absolute path. See SettingsFileProvenance's own doc comment. */
+  settingsFile: SettingsFileProvenance;
+  collectorVersion: string;
+  collectorBuildHash: string;
+  csv: {
+    /** Bare file name only, matching the file actually written into the bundle — never the source capture's own path. */
+    fileName: string;
+    sha256: string;
+    byteLength: number;
+    rowsUsable: number;
+    rowsDroppedNotDisplayed: number;
+    rowsDiscardedFirstFrame: number;
+  };
+}
+
+/**
+ * Writes the research bundle: the source CSV copied byte-for-byte (never
+ * re-serialized through the parsed/decoded text — a raw copy is the only way
+ * "untouched" is actually true) plus the manifest as JSON, into `outputDir`.
+ *
+ * Refuses (defense in depth, independent of what main() already checked):
+ * an empty/absent settingsFile or a non-RDR2 gameId on the manifest — a
+ * research bundle exists to preserve VERIFIED capture evidence, and RDR2 is
+ * the only game with settings-file provenance to bundle — and an
+ * already-populated outputDir, re-checked here rather than trusted from
+ * whatever main() found minutes earlier before capture began.
+ */
+export function writeRdr2ResearchBundle(args: { outputDir: string; csvSourcePath: string; manifest: Rdr2ResearchManifest }): { csvPath: string; manifestPath: string } {
+  const { outputDir, csvSourcePath, manifest } = args;
+  if (manifest.gameId !== 'rdr2') {
+    throw new Error(`Refusing to write a research bundle for gameId "${manifest.gameId}" — research bundles are RDR2-only today.`);
+  }
+  if (!manifest.settingsFile) {
+    throw new Error('Refusing to write a research bundle with no settingsFile provenance — a research bundle exists to preserve VERIFIED capture evidence, not an unverified one.');
+  }
+  refuseRdr2ResearchOutputDirOverwrite(outputDir);
+
+  fs.mkdirSync(outputDir, { recursive: true });
+  const csvPath = path.join(outputDir, 'presentmon.csv');
+  fs.copyFileSync(csvSourcePath, csvPath);
+  const manifestPath = path.join(outputDir, 'manifest.json');
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  return { csvPath, manifestPath };
+}
+
 /**
  * Validates `--internal-cancel-after-seconds`, a testing-only flag that
  * self-cancels a capture from inside this process instead of depending on a
@@ -776,6 +948,12 @@ async function main(argv: string[]): Promise<void> {
   // so a disallowed real RDR2 save is refused at the cost of a second, not a
   // played-again capture.
   enforceRdr2DryRunRequired(runConditions.gameId, source, dryRun);
+  // Opt-in research-capture mode — see the "RDR2 research-capture mode"
+  // section above. Same pre-capture-refusal principle as every other flag
+  // check here: a bad --research-output-dir costs a second, not a
+  // played-again capture.
+  const researchOptions = parseRdr2ResearchCaptureOptions(argv, source, runConditions.gameId, dryRun);
+  if (researchOptions) refuseRdr2ResearchOutputDirOverwrite(researchOptions.outputDir);
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 
@@ -803,6 +981,8 @@ async function main(argv: string[]): Promise<void> {
   let processFilter = arg(argv, 'process');
   let captureTool: CaptureToolProvenance | undefined;
   let settingsFile: SettingsFileProvenance | undefined;
+  /** Set only when --research-output-dir is active and the capture completed; see the "RDR2 research-capture mode" section above. */
+  let captureWindow: Rdr2ResearchManifest['capture'] | undefined;
 
   if (source.mode === 'capture') {
     const binary = resolvePresentMonBinary({
@@ -854,6 +1034,10 @@ async function main(argv: string[]): Promise<void> {
       }
 
       console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
+      // Collector-observed bounds, not PresentMon's own internal clock \u2014 good
+      // enough for a human's later, manual correlation against what they saw
+      // on screen; see the research-bundle manifest below.
+      const captureStartedAt = new Date().toISOString();
       const outcome = await runPresentMonCapture({
         processId: source.processId,
         processName: source.processName,
@@ -880,12 +1064,16 @@ async function main(argv: string[]): Promise<void> {
           }
         },
       });
+      const captureEndedAt = new Date().toISOString();
       // Immediately after PresentMon exits, not after any further
       // processing — re-reads the exact file bindRdr2SettingsProvenance
       // already resolved and throws if it is unreadable now or its digest
       // moved, refusing the run before anything is assembled around it.
       rdr2Provenance?.verifyUnchanged();
       if (rdr2Provenance) settingsFile = toSettingsFileProvenance(rdr2Provenance.before);
+      if (researchOptions) {
+        captureWindow = { startedAt: captureStartedAt, endedAt: captureEndedAt, processId: outcome.target.processId, processName: outcome.target.name };
+      }
 
       csvPath = outcome.csvPath;
       csvText = outcome.csv;
@@ -910,7 +1098,11 @@ async function main(argv: string[]): Promise<void> {
   }
 
   try {
-    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile });
+    await assembleFromCsv({
+      csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions,
+      preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile,
+      researchOutputDir: researchOptions?.outputDir, captureWindow,
+    });
   } finally {
     // The CSV has been read into memory and parsed by now, so the temp copy
     // has no further readers. --keep-capture keeps it for a post-mortem.
@@ -932,6 +1124,10 @@ async function assembleFromCsv(ctx: {
   captureTool?: CaptureToolProvenance;
   /** Set only for an automatic RDR2 capture whose settings were confirmed stable across it; absent otherwise. */
   settingsFile?: SettingsFileProvenance;
+  /** Set only when --research-output-dir is active; see the "RDR2 research-capture mode" section above. */
+  researchOutputDir?: string;
+  /** Set together with researchOutputDir — the automatic capture's own observed window and target process. */
+  captureWindow?: Rdr2ResearchManifest['capture'];
 }): Promise<void> {
   const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool, settingsFile } = ctx;
 
@@ -1021,8 +1217,63 @@ async function assembleFromCsv(ctx: {
         `  partial coverage (${observation.settingsFile.parsedFields.length} fields): ${observation.settingsFile.parsedFields.join(', ')}`,
     );
   }
-  if (dryRun) console.log('Dry run — nothing written, including the frame-time archive.');
-  else if (outcome.saved) console.log(`Saved ${observation.id}`);
+  // Research bundle: raw capture evidence, never an observation. Written
+  // AFTER validation runs (so the console output stays in one consistent
+  // order — capture, attribution, stats, provenance, bundle) but is
+  // completely independent of what validation found: a research bundle is
+  // not a savable observation and never goes near shouldPersistFrameTimes,
+  // writeFrameTimes or validateAndSave above.
+  if (ctx.researchOutputDir) {
+    if (!ctx.captureWindow || !observation.captureTool || !observation.settingsFile) {
+      // Unreachable via the CLI — parseRdr2ResearchCaptureOptions only
+      // returns an outputDir for an automatic RDR2 capture, which always
+      // sets all three. Defensive, not a real path: a non-CLI caller of
+      // assembleFromCsv could otherwise reach writeRdr2ResearchBundle's own
+      // "missing provenance" refusal with a manifest that was never even
+      // fully assembled.
+      throw new Error('Internal error: research-capture mode requires captureWindow, captureTool and settingsFile, which an automatic RDR2 capture always sets.');
+    }
+    const manifest: Rdr2ResearchManifest = {
+      schemaVersion: 1,
+      gameId: 'rdr2',
+      capture: ctx.captureWindow,
+      gameVersion: observation.gameVersion,
+      gameBuildId: observation.gameBuildId,
+      hardware: {
+        gpuId: observation.gpuId,
+        gpuRaw: observation.detected.gpuRaw,
+        gpuMatchMethod: observation.detected.gpuMatchMethod,
+        gpuDriverVersion: observation.gpuDriverVersion,
+        cpuId: observation.cpuId,
+        cpuRaw: observation.detected.cpuRaw,
+        cpuMatchMethod: observation.detected.cpuMatchMethod,
+        osBuild: observation.osBuild,
+        ramTotalGb: observation.ram.totalGb,
+        ramChannels: observation.ram.channels,
+        ramRatedSpeedMts: observation.ram.ratedSpeedMts,
+      },
+      captureTool: observation.captureTool,
+      settingsFile: observation.settingsFile,
+      collectorVersion: observation.collectorVersion,
+      collectorBuildHash: observation.collectorBuildHash,
+      csv: {
+        fileName: 'presentmon.csv',
+        sha256: createHash('sha256').update(fs.readFileSync(ctx.csvPath)).digest('hex'),
+        byteLength: fs.statSync(ctx.csvPath).size,
+        rowsUsable: parsed.frameTimesMs.length,
+        rowsDroppedNotDisplayed: parsed.droppedFrames,
+        rowsDiscardedFirstFrame: parsed.discardedFirstFrames,
+      },
+    };
+    const bundle = writeRdr2ResearchBundle({ outputDir: ctx.researchOutputDir, csvSourcePath: ctx.csvPath, manifest });
+    console.log(`Research bundle: ${bundle.csvPath}\n  ${bundle.manifestPath}`);
+  }
+
+  if (dryRun && ctx.researchOutputDir) {
+    console.log('Dry run — nothing written to the observation store or the frame-time archive; the research bundle above is the only output.');
+  } else if (dryRun) {
+    console.log('Dry run — nothing written, including the frame-time archive.');
+  } else if (outcome.saved) console.log(`Saved ${observation.id}`);
   else {
     console.error('\nNot saved: validation failed. The run is discarded, not parked — no frames were archived.');
     process.exitCode = 1;

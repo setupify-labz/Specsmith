@@ -460,6 +460,97 @@ not including the write — validation, provenance binding, statistics — is
 the intended verification boundary for RDR2, not a gap waiting to be closed
 by simply removing `--dry-run` from a command line.
 
+## RDR2 research-capture mode
+
+`--research-output-dir <absolute path>` exports the RAW EVIDENCE of an
+automatic RDR2 capture — the untouched PresentMon CSV, byte-for-byte, plus a
+manifest of everything known about how it was produced — into an isolated
+directory, instead of just printing a summary. It exists so RDR2's built-in
+benchmark can be studied: correlate the CSV's own timestamps by hand against
+what you saw on screen — which rows are which scene, where the black and
+loading screens are. **It does not invent benchmark segmentation.** That is
+future work, once a protocol exists to say honestly which rows belong to
+which scene; this mode only preserves the evidence that work will need.
+
+```
+npx tsx scripts/measured/collect.ts --capture-process-name RDR2.exe \
+  --capture-seconds 300 --presentmon "C:\tools\PresentMon\PresentMon.exe" \
+  --presentmon-sha256 <digest of your PresentMon.exe> \
+  --game-id rdr2 --resolution 1440p --preset unmapped \
+  --preset-label "per-category settings; see settingsFile" --ram-channels 2 \
+  --dry-run --research-output-dir "C:\Users\Aaron\rdr2-research\session1"
+```
+
+Everything else about an automatic RDR2 capture applies unchanged — no
+`--settings-file`, `system.xml` read and hashed before capture and
+re-confirmed unchanged after, `--preset unmapped` required. Research mode
+adds exactly two requirements on top: `--research-output-dir` must be an
+**absolute** path (a relative one is ambiguous — it resolves against
+whatever directory the collector happened to be invoked from), and it is
+refused if that directory already exists and is not empty (no bundle is ever
+silently overwritten).
+
+**What lands in the directory:**
+
+- `presentmon.csv` — the exact bytes PresentMon wrote. Copied with
+  `fs.copyFileSync`, never re-serialized through the parsed/decoded text, so
+  "untouched" is actually true.
+- `manifest.json` — capture start/end time, the exact RDR2 pid and process
+  name, `gameVersion`/`gameBuildId` when available, hardware attribution
+  (resolved catalog ids alongside the raw detected strings and match
+  method), PresentMon's own SHA-256, `system.xml`'s SHA-256 and parsed-field
+  coverage (the same schema-safe `fileName` + `locationSource` shape a real
+  observation would carry — never the absolute path), and the collector
+  version/build hash. **No FPS or frame-time statistic is computed or
+  stored.** Gameplay behind a research capture is uncontrolled by
+  definition, so a computed average would look exactly like a real
+  measurement without being one — the CSV is where any statistic gets
+  computed from later, once segmentation exists to say honestly which rows
+  are which scene.
+
+**Isolation, refusals, and why each exists:**
+
+- Never touches `measuredObservations.json` or the frame-time archive
+  (`frameTimeStore.mjs`) — `enforceRdr2DryRunRequired` already guarantees
+  `--dry-run`, which alone keeps this mode away from the save path;
+  `writeRdr2ResearchBundle` additionally has no reference to either
+  location's path at all, so there is no code path by which it could reach
+  them.
+- Refuses to overwrite an existing, non-empty output directory — checked
+  twice: once in `main()` before hardware detection or PresentMon are ever
+  touched (a bad path then costs a second, not a played-again 90-second
+  capture), and again inside `writeRdr2ResearchBundle` itself immediately
+  before writing, closing the window between that early check and the
+  write, minutes later.
+- Refuses a relative `--research-output-dir` — ambiguous against invocation
+  directory, the same principle `bindRdr2SettingsProvenance` already follows
+  by pinning its post-capture reread to one exact resolved path rather than
+  "wherever the locator would find it a second time."
+- Refuses a manifest with no `settingsFile` provenance, or for any game
+  other than RDR2 — defense in depth inside `writeRdr2ResearchBundle` itself,
+  independent of what `main()` already checked, the same "unions vanish at
+  runtime, re-check at the boundary" principle `validate.ts` already applies
+  to `settingsFile`.
+- Refuses use with `--csv` or any other game — `parseRdr2ResearchCaptureOptions`
+  enforces `source.mode === 'capture' && gameId === 'rdr2'` before anything
+  else runs.
+- A settings change during capture is refused by the existing
+  `Rdr2SettingsChangedDuringCaptureError` path (`verifyUnchanged`, called
+  before `settingsFile` is even set) — research mode adds no new logic here;
+  it inherits the same guarantee every automatic RDR2 capture already has.
+
+**What remains manually verified, not yet exercised for real:** this mode
+has been reviewed and unit-tested (byte-preservation, isolation from
+production storage, and every refusal above, each confirmed against a
+temporarily disabled check and restored — see collect.test.ts) but has not
+yet run against a real PresentMon capture on real Windows. A real research
+run should confirm: the exported CSV is byte-identical to the one
+`--keep-capture` would retain from an equivalent non-research run: `manifest.json`'s
+capture window, pid, hardware and hashes match the console output printed
+during the same run; and the two overwrite refusals (pre-capture and at
+write time) behave as documented against a real, already-populated
+directory. None of this has been exercised outside the test suite yet.
+
 ## Windows smoke test for automatic capture
 
 Nothing below has been run automatically. The capture runner's logic is
@@ -754,6 +845,10 @@ needs a different game.
   non-dry automatic RDR2 capture outright, before PresentMon is ever
   resolved. Other games and `--csv` are unaffected by that gate; a real save
   for them remains merely unattempted, not refused.
+- **`--research-output-dir` has never run against a real PresentMon capture
+  on real Windows.** Unit-tested (byte-preservation, isolation from
+  production storage, every refusal), never exercised for real — see "RDR2
+  research-capture mode" above for exactly what a real run should confirm.
 - **`--game-exe` version detection** has never read a real executable. The
   path is passed through an environment variable rather than interpolated into
   the PowerShell command, so the escaping defect is fixed, but the detection
