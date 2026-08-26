@@ -586,6 +586,110 @@ final bundle, no `.rdr2-research-staging-*` sibling); and all three
 already-exists refusals behave as documented against a real, already-created
 directory. None of this has been exercised outside the test suite yet.
 
+## Offline analyzer: can RDR2's five benchmark scenes be isolated?
+
+`scripts/measured/rdr2BenchmarkAnalysis.ts` (CLI:
+`scripts/measured/analyzeRdr2Research.ts`) reads a research bundle and tries
+to locate RDR2's five built-in benchmark scenes. It is **read-only and
+research-only**: it never writes an observation, never touches
+`measuredObservations.json` or the frame-time archive, and never modifies the
+bundle it reads.
+
+The question it exists to answer honestly is *whether* the five scenes can be
+isolated **reproducibly** from PresentMon data alone — not whether a number
+can be produced that matches RDR2's own results screen. Fitting an algorithm
+to a known answer proves nothing, so RDR2's displayed min/max/average is
+never read by the analyzer at all. It is optional independent comparison data
+for a human, and RDR2 and PresentMon may not even define FPS the same way.
+
+```
+pnpm analyze:rdr2-research -- "C:\path\to\session-YYYYMMDD-HHMMSS"
+pnpm analyze:rdr2-research -- --compare "C:\path\to\run-a" "C:\path\to\run-b"
+```
+
+Add `--out <path>` to write a JSON report. The path must not already exist,
+its parent must exist, and it may not be inside the source bundle — a report
+that lands in the evidence it analysed has modified that evidence. Reports
+publish atomically (staged beside the destination, then renamed). Without
+`--out`, output is stdout only.
+
+**Exit codes**: `0` resolved (candidate found, or comparison completed), `2`
+unresolved/refused, `1` CLI misuse. `2` is distinct from `1` because "this
+recording does not resolve" is a real answer this tool is expected to give,
+not a malfunction.
+
+### How boundaries are derived
+
+The signal is reused from `segmentation.ts`, which already established it for
+the observation path: **`msGPUActive / frameTimeMs`**, a dimensionless
+utilisation ratio carrying no frame rate at all. RDR2's inter-scene
+transitions are black screens presented at the engine's internal cap while
+the GPU renders essentially nothing — high FPS, near-zero GPU work. Real
+gameplay at the same frame rate is GPU-bound. A rule stated over frame rate
+cannot tell those apart; this one can.
+
+1. Parse the CSV filtered to the **exact PID** the manifest names (never the
+   process name — two processes can share one).
+2. Derive the idle/busy cut from **this capture's own bimodal ratio
+   histogram** via `findUtilizationThreshold`. Not bimodal → unresolved.
+3. A run counts as structure only if it lasts ≥ 40× the capture's own median
+   rendered frame — the existing scale-invariant gate, so no absolute time
+   enters the rule. A run below that is noise and is merged into the region
+   it interrupts, so a brief GPU hiccup cannot split one scene into two.
+4. Interpret the resulting blocks structurally: leading idle = menu/loading,
+   trailing idle running to the end = results screen, interior idle blocks =
+   inter-scene transitions. Require **exactly four** transitions and **five**
+   scenes, alternating.
+
+**No observed timestamp is encoded anywhere in the algorithm.** Real runs put
+gameplay start near 38s and 75s with transitions roughly 30s apart; those
+numbers appear nowhere in the code and are not used to select, rank or tune
+any boundary. A test deliberately runs a fixture at a completely different
+time scale to prove it.
+
+### Fail-closed behaviour
+
+Returns `status: "unresolved"` with `reasons[]` and a `failure` of
+`"integrity"` or `"structure"`, and offers **no boundaries at all** — it never
+falls back to the closest-looking timestamps. Refused cases include: manifest
+schema/game-ID mismatch, wrong CSV filename, byte-length or SHA-256 mismatch
+against the manifest, missing `msGPUActive`/`TimeInSeconds` columns, a PID
+with no frames, a manifest with neither `gameVersion` nor `gameBuildId`, a
+non-bimodal distribution, fewer or more than four credible transitions, a
+capture ending mid-scene-5 (the 300-second incomplete-run shape), no results
+boundary, and insufficient frames or duration.
+
+### Output, and what it is not
+
+A resolved result is `status: "candidate"`, `publishable: false`, with
+per-boundary offsets, confidence and evidence strings, plus diagnostics (the
+derived cut, sustained floor, every sustained block, the ratio histogram).
+Per-scene figures live under a `research` key and are **research values, not
+verified or publishable benchmark results** — gameplay in a research capture
+is uncontrolled, so a scene average computed from it would look exactly like
+a real measurement without being one.
+
+### Comparison mode
+
+`--compare` normalises every boundary to **each run's own gameplay start**
+before comparing, because absolute offsets differ with how long the operator
+took to trigger the benchmark; what must reproduce is the shape. It reports
+boundary spacing, scene-duration repeatability and a `reproduces` verdict,
+and **refuses** rather than averaging when any input is unresolved, when runs
+disagree on scene or transition count, or when two inputs are the same
+capture.
+
+### What remains manually verified
+
+The analyzer is covered by synthetic-fixture tests (valid five-scene run, the
+300-second incomplete shape, missing/extra transitions, misleading high-FPS
+gameplay, low-GPU menu periods, hash/byte-length mismatch, wrong game/PID,
+source-bundle immutability, and comparison refusing unresolved or
+incompatible runs), with representative guards proven by disabling them and
+confirming the failures. **It has not been run against a real RDR2 research
+bundle.** Whether real captures resolve — and whether two real runs reproduce
+— is exactly the open question, and it is not answered here.
+
 ## Windows smoke test for automatic capture
 
 Nothing below has been run automatically. The capture runner's logic is

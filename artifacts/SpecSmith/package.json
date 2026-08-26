@@ -11,6 +11,7 @@
     "test": "vitest run",
     "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts",
     "collect:measured": "tsx scripts/measured/collect.ts",
+    "analyze:rdr2-research": "tsx scripts/measured/analyzeRdr2Research.ts",
     "test:cancel-harness": "tsx scripts/measured/__fixtures__/cancelHarness.ts"
   },
   "devDependencies": {
