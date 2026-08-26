@@ -234,11 +234,30 @@ export interface CaptureToolProvenance {
  * complete configuration from a partial read — see MeasuredPreset's own
  * `unmapped` for why inventing that cross-game equivalence is refused.
  */
+/**
+ * Where a settings file was found, without saying where on disk. Mirrors
+ * rdr2Settings.ts's own SettingsLocationSource — duplicated as a literal
+ * union here, not imported, because src/lib must not depend on scripts/ (the
+ * dependency runs the other way throughout this codebase).
+ */
+export type SettingsLocationSource = 'documents' | 'onedrive' | 'explicit';
+
 export interface SettingsFileProvenance {
   /** Which game's settings file this is, e.g. 'rdr2'. Free-form, mirroring gameId's own looseness — not a closed catalog. */
   game: string;
-  /** Absolute path the file was read from, on the machine that captured this run. */
-  path: string;
+  /**
+   * The file's own name only, e.g. "system.xml" — NEVER the absolute path it
+   * was read from. `measuredObservations.json` is a git-tracked store meant
+   * to be committed and shared; an absolute Windows path embeds the
+   * operator's OS username and local directory layout (`C:\Users\<name>\...`)
+   * into every observation that carries one, which nothing about a
+   * performance measurement needs. The resolved path is used internally, to
+   * re-read the exact same file after capture — see collect.ts's
+   * bindRdr2SettingsProvenance — and never leaves that function.
+   */
+  fileName: string;
+  /** Which known candidate location the file was found at, without disclosing where that resolves to on disk. */
+  locationSource: SettingsLocationSource;
   /** SHA-256 of the file's raw bytes, read immediately before capture began and re-confirmed unchanged immediately after it ended. */
   sha256: string;
   /** Always 'partial' today — see this interface's own doc comment. */

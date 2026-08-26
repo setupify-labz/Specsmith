@@ -534,11 +534,23 @@ export const RDR2_PARSED_FIELD_NAMES: readonly string[] = [
   'graphics.api',
 ];
 
-/** Bridges rdr2Settings.ts's own result into the schema-safe, game-agnostic SettingsFileProvenance shape. */
+/**
+ * Bridges rdr2Settings.ts's own result into the schema-safe, game-agnostic
+ * SettingsFileProvenance shape.
+ *
+ * Deliberately drops the absolute path down to just its file name plus
+ * which known location it came from — see SettingsFileProvenance's own doc
+ * comment for why the full path must never reach a persisted observation.
+ * `path.win32.basename`, not the platform-dependent `path.basename`: this
+ * collector only ever runs for real on Windows, but this pure function is
+ * exercised by tests on whatever OS runs the suite, and a Windows-style path
+ * fed to a POSIX basename() would not split on backslashes at all.
+ */
 export function toSettingsFileProvenance(settings: Rdr2SystemSettings): SettingsFileProvenance {
   return {
     game: 'rdr2',
-    path: settings.location.path,
+    fileName: path.win32.basename(settings.location.path),
+    locationSource: settings.location.source,
     sha256: settings.sha256,
     coverage: 'partial',
     parsedFields: RDR2_PARSED_FIELD_NAMES,
@@ -905,7 +917,7 @@ async function assembleFromCsv(ctx: {
   // though it saves nothing.
   if (observation.settingsFile) {
     console.log(
-      `Settings file: ${observation.settingsFile.game} — ${observation.settingsFile.path}\n` +
+      `Settings file: ${observation.settingsFile.game} — ${observation.settingsFile.fileName} (${observation.settingsFile.locationSource})\n` +
         `  sha256 ${observation.settingsFile.sha256}\n` +
         `  partial coverage (${observation.settingsFile.parsedFields.length} fields): ${observation.settingsFile.parsedFields.join(', ')}`,
     );

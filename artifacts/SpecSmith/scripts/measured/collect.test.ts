@@ -760,13 +760,25 @@ describe('binding RDR2 settings provenance across a capture', () => {
 });
 
 describe('bridging rdr2Settings.ts output into the schema-safe provenance shape', () => {
-  it('carries game, path, sha256 and a coverage of exactly "partial"', () => {
+  it('carries game, fileName, locationSource, sha256 and a coverage of exactly "partial"', () => {
     const settings = rdr2Settings();
     const provenance = toSettingsFileProvenance(settings);
     expect(provenance.game).toBe('rdr2');
-    expect(provenance.path).toBe(settings.location.path);
+    expect(provenance.fileName).toBe('system.xml');
+    expect(provenance.locationSource).toBe(settings.location.source);
     expect(provenance.sha256).toBe(settings.sha256);
     expect(provenance.coverage).toBe('partial');
+  });
+
+  // Never the absolute path — see SettingsFileProvenance's own doc comment
+  // for why (an absolute Windows path embeds the operator's OS username into
+  // a store meant to be committed and shared).
+  it('never carries the absolute path the file was actually read from', () => {
+    const settings = rdr2Settings();
+    const provenance = toSettingsFileProvenance(settings);
+    expect(Object.values(provenance)).not.toContain(settings.location.path);
+    expect(JSON.stringify(provenance)).not.toContain('Documents');
+    expect(JSON.stringify(provenance)).not.toContain('Aaron');
   });
 
   it('parsedFields names exactly the fields rdr2Settings.ts actually validates', () => {
@@ -875,7 +887,9 @@ describe('a dry run displays settings provenance on the observation but persists
     const obs = buildObservation({
       frameTimesMs: frames(),
       hardware,
-      inputs: inputs(),
+      // gameId/preset must agree with an RDR2-bound settingsFile — see the
+      // "RDR2 settings-bound capture" validation rules this is exercising.
+      inputs: inputs({ gameId: 'rdr2', preset: 'unmapped', presetLabel: 'per-category settings; see settingsFile' }),
       frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
       measuredAt: '2026-08-19T12:00:00.000Z',
       runNonce: '11111111-2222-3333-4444-555555555555',

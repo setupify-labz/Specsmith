@@ -65,6 +65,27 @@ const kebab = (field: string): string => field.replace(/([a-z])([A-Z])/g, '$1-$2
 
 const warn = (observationId: string, rule: string, message: string): MeasuredIssue => ({ severity: 'warning', rule, message, observationId });
 
+const SHA256_HEX = /^[a-f0-9]{64}$/;
+
+/** The normalized cross-game preset tiers — deliberately excludes 'unmapped', which is not a claimed tier. */
+const NORMALIZED_PRESET_TIERS: readonly string[] = ['low', 'medium', 'high', 'ultra', 'extreme'];
+
+/**
+ * Whether `dottedPath` (e.g. "display.screenWidth") resolves to a defined
+ * value inside `obj` — every segment must exist and, short of the last one,
+ * be itself an object to descend into. A path claiming coverage of
+ * something parsedValues does not actually contain is a false disclosure,
+ * not a technicality.
+ */
+function resolvesDottedPath(obj: Record<string, unknown>, dottedPath: string): boolean {
+  let cursor: unknown = obj;
+  for (const segment of dottedPath.split('.')) {
+    if (cursor === null || typeof cursor !== 'object' || !(segment in (cursor as Record<string, unknown>))) return false;
+    cursor = (cursor as Record<string, unknown>)[segment];
+  }
+  return cursor !== undefined;
+}
+
 /**
  * Validates one observation against the raw frame times it was computed from.
  *
@@ -140,11 +161,10 @@ export function validateMeasuredObservation(
   // Unions vanish at runtime (the same reason preset/resolution/upscaler are
   // re-checked below rather than trusted from a cast), so a caller of
   // buildObservation that is not this collector's own CLI could construct a
-  // settingsSource/settingsFile pair that is internally inconsistent, or a
-  // settingsFile claiming more than "partial" coverage. These re-check the
-  // two claims this collector makes about a settings-file read: that the
-  // source label and the provenance record agree, and that "partial" is
-  // never silently widened into something that reads as complete.
+  // settingsSource/settingsFile pair — or a settingsFile whose own fields
+  // are internally inconsistent — that the type system alone cannot stop.
+  // Every check below re-verifies one specific claim this collector makes
+  // when it attaches settingsFile to a real run.
   if (obs.settingsSource === 'config-parsed' && !obs.settingsFile) {
     issues.push(
       err(
@@ -154,18 +174,93 @@ export function validateMeasuredObservation(
       ),
     );
   }
+  if (obs.settingsFile && obs.settingsSource !== 'config-parsed') {
+    issues.push(
+      err(
+        id,
+        'settings.file-without-config-parsed-source',
+        `settingsFile is present (game "${obs.settingsFile.game}") but settingsSource is "${obs.settingsSource}", not "config-parsed" — a real settings-file read must be labeled as one.`,
+      ),
+    );
+  }
   if (obs.settingsFile) {
-    if (obs.settingsFile.coverage !== 'partial') {
+    const sf = obs.settingsFile;
+    if (sf.game !== obs.gameId) {
+      issues.push(
+        err(
+          id,
+          'settings.file-game-mismatch',
+          `settingsFile.game is "${sf.game}" but this observation's gameId is "${obs.gameId}" — a settings file from one game cannot provide provenance for a run of another.`,
+        ),
+      );
+    }
+    if (!SHA256_HEX.test(sf.sha256)) {
+      issues.push(err(id, 'settings.file-sha256-malformed', `settingsFile.sha256 "${sf.sha256}" is not a 64-character lowercase hex SHA-256 digest.`));
+    }
+    if (sf.sha256 !== obs.settingsHash) {
+      issues.push(
+        err(
+          id,
+          'settings.file-hash-mismatch',
+          `settingsFile.sha256 (${sf.sha256}) does not match this observation's own settingsHash (${obs.settingsHash}) — a config-parsed run's settingsHash IS the settings file's own digest, so the two must agree.`,
+        ),
+      );
+    }
+    if (sf.coverage !== 'partial') {
       issues.push(
         err(
           id,
           'settings.file-coverage-not-partial',
-          `settingsFile.coverage is "${obs.settingsFile.coverage}"; only "partial" is accepted today — no settings-file parser in this collector reads a complete configuration.`,
+          `settingsFile.coverage is "${sf.coverage}"; only "partial" is accepted today — no settings-file parser in this collector reads a complete configuration.`,
         ),
       );
     }
-    if (obs.settingsFile.parsedFields.length === 0) {
+    if (sf.parsedFields.length === 0) {
       issues.push(err(id, 'settings.file-no-parsed-fields', 'settingsFile is present but parsedFields is empty — there is nothing to disclose as covered.'));
+    }
+    const seenParsedFields = new Set<string>();
+    for (const field of sf.parsedFields) {
+      if (seenParsedFields.has(field)) {
+        issues.push(err(id, 'settings.file-duplicate-parsed-field', `settingsFile.parsedFields lists "${field}" more than once.`));
+      }
+      seenParsedFields.add(field);
+      if (!resolvesDottedPath(sf.parsedValues, field)) {
+        issues.push(
+          err(
+            id,
+            'settings.file-parsed-field-unresolved',
+            `settingsFile.parsedFields claims "${field}" was parsed, but parsedValues has no value at that path — a field claimed as covered must actually be present in the values it describes.`,
+          ),
+        );
+      }
+    }
+
+    // RDR2 specifically has no single "preset" this parser verifies — see
+    // scripts/measured/rdr2Settings.ts's own module header. A run bound to
+    // RDR2 settings claiming a normalized tier would be exactly the invented
+    // cross-game equivalence the schema exists to refuse, whether that claim
+    // lands in `preset` itself or is smuggled into `presetLabel` as a bare
+    // restatement of one.
+    if (sf.game === 'rdr2') {
+      if (obs.preset !== 'unmapped') {
+        issues.push(
+          err(
+            id,
+            'settings.rdr2-preset-must-be-unmapped',
+            `preset is "${obs.preset}" but this run is bound to RDR2 settings-file provenance. RDR2 has no single preset this parser verifies — preset must be "unmapped", with the real per-category settings disclosed via settingsFile instead.`,
+          ),
+        );
+      }
+      const normalizedLabel = obs.presetLabel?.trim().toLowerCase();
+      if (normalizedLabel && NORMALIZED_PRESET_TIERS.includes(normalizedLabel)) {
+        issues.push(
+          err(
+            id,
+            'settings.rdr2-preset-label-not-honest',
+            `presetLabel "${obs.presetLabel}" just restates a normalized preset tier. RDR2 has no single preset this parser verifies, so presetLabel must describe what was actually set, not repeat a tier this run never established.`,
+          ),
+        );
+      }
     }
   }
 
@@ -389,7 +484,7 @@ export function validateMeasuredObservation(
       warn(
         id,
         'settings.file-partial-coverage',
-        `Settings were parsed from ${obs.settingsFile.path} (${obs.settingsFile.game}), covering only: ${obs.settingsFile.parsedFields.join(', ')}. This is a partial read, not a complete configuration.`,
+        `Settings were parsed from ${obs.settingsFile.fileName} (${obs.settingsFile.game}, ${obs.settingsFile.locationSource}), covering only: ${obs.settingsFile.parsedFields.join(', ')}. This is a partial read, not a complete configuration.`,
       ),
     );
   }
