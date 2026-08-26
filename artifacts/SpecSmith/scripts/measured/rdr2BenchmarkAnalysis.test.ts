@@ -15,6 +15,7 @@ import {
   type Rdr2AnalysisSource,
   type Rdr2AnalysisCandidate,
 } from './rdr2BenchmarkAnalysis';
+import { parseAnalyzeArgs, AnalyzeCliError } from './analyzeRdr2Research';
 import type { PresentMonFrame } from './presentmon';
 
 // SYNTHETIC FIXTURES ONLY.
@@ -52,6 +53,14 @@ interface BlockSpec {
    * reference from a whole-scene one.
    */
   ramp?: number;
+  /**
+   * How many drift cycles fit across the block. The default of three makes a
+   * scene wander slowly, the way gameplay does. A large value makes the level
+   * oscillate FAST — an animated screen — which is stationary in distribution
+   * while being anything but still, and is exactly the case a stability
+   * measure over window medians cannot see.
+   */
+  driftCycles?: number;
 }
 
 /**
@@ -69,12 +78,12 @@ function buildFrames(specs: readonly BlockSpec[]): PresentMonFrame[] {
     const count = Math.round(spec.seconds * spec.fps);
     const drift = spec.drift ?? 0;
     for (let i = 0; i < count; i += 1) {
-      // Slow level drift (three cycles across the block, so successive
+      // Level drift (three cycles across the block by default, so successive
       // windows genuinely differ) plus a small fast sawtooth so medians and
       // min/max are not all the identical number.
       const ramp = spec.ramp ?? 0;
       const level = 1
-        + (drift / 2) * Math.sin((2 * Math.PI * 3 * i) / Math.max(1, count))
+        + (drift / 2) * Math.sin((2 * Math.PI * (spec.driftCycles ?? 3) * i) / Math.max(1, count))
         + ramp * (i / Math.max(1, count - 1));
       const frameTimeMs = nominalMs * level * (1 + ((i % 5) - 2) * 0.01);
       t += frameTimeMs / 1000;
@@ -314,7 +323,7 @@ describe('the final boundary is found by stationarity, not by GPU load', () => {
     // The results screen was identified even though the GPU never went idle.
     const results = result.boundaries.find((b) => b.kind === 'results-start');
     expect(results?.meanGpuRatio).toBeGreaterThan(0.5);
-    expect(results?.evidence.join(' ')).toMatch(/Located by stationarity, NOT by GPU load/);
+    expect(results?.evidence.join(' ')).toMatch(/NOT by GPU load/);
   });
 
   it('places the final boundary near where the fixture actually changed regime', () => {
@@ -414,8 +423,11 @@ describe('the final boundary is found by stationarity, not by GPU load', () => {
       RAMPING_SCENE, TRANSITION, RAMPING_SCENE, TRANSITION,
       RAMPING_SCENE,
       // Calmer than a whole ramping scene, but not calmer than the calmest
-      // short span of one — so it is not convincingly a results screen.
-      { seconds: 14, fps: 70, gpuRatio: 0.95, drift: 0.06 },
+      // short span of one — so it is not convincingly a results screen. Same
+      // frame rate and same GPU load as the scenes before it, so it is not
+      // distributionally distinct from them either: this tail has to be
+      // rejected on the stability evidence, which is what the test is about.
+      { seconds: 14, fps: 80, gpuRatio: 0.98, drift: 0.06 },
     ]);
     const result = analyzeFrames(frames, source());
     expect(result.status).toBe('unresolved');
@@ -439,6 +451,251 @@ describe('the final boundary is found by stationarity, not by GPU load', () => {
     expect(result.scenes).toHaveLength(5);
     expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
     expect(result.diagnostics.captureDurationSec).toBeLessThan(100);
+  });
+});
+
+describe('an ANIMATED results screen is found by distribution change, not by stillness', () => {
+  // A second real 420-second run falsified the stationarity-only design the
+  // same way the first falsified the GPU-idle design: it found all four
+  // transitions and then rejected every possible suffix, because its results
+  // screen never became twice as still as the calmest span of gameplay.
+  //
+  // These fixtures model that shape. Gameplay RAMPS as well as drifts — real
+  // scenes get heavier as they go, so two stretches of one scene genuinely
+  // differ — and the results screen OSCILLATES fast, so its level never
+  // settles even though every equal stretch of it draws the same thing.
+
+  /** Gameplay that both wanders and trends, the way a real benchmark scene does. */
+  const LIVE_SCENE = (seconds = 20): BlockSpec => ({ seconds, fps: 80, gpuRatio: 0.98, drift: 0.25, ramp: 0.2 });
+  /** A GPU-busy results screen that ANIMATES: never still, but always the same thing. */
+  const RESULTS_ANIMATED: BlockSpec = { seconds: 40, fps: 51, gpuRatio: 0.9, drift: 0.3, driftCycles: 10 };
+  /** Gameplay that only ever gets heavier, so every scene ends unlike where it began. */
+  const RAMPING: BlockSpec = { seconds: 20, fps: 80, gpuRatio: 0.98, drift: 0.25, ramp: 0.3 };
+
+  const animatedRun = (): PresentMonFrame[] =>
+    buildFrames([
+      MENU,
+      LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION,
+      LIVE_SCENE(),
+      RESULTS_ANIMATED,
+    ]);
+
+  it('resolves a run whose GPU-busy results screen never stops moving', () => {
+    const result = asCandidate(analyzeFrames(animatedRun(), source()));
+    expect(result.scenes).toHaveLength(5);
+    expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
+    const results = result.boundaries.find((b) => b.kind === 'results-start');
+    expect(results?.meanGpuRatio).toBeGreaterThan(0.5);
+    expect(results?.evidence.join(' ')).toMatch(/NOT required to be still/);
+  });
+
+  it('accepts it EVEN THOUGH the stationarity route would have refused it', () => {
+    // The point of the second route: at the very window it accepted, the tail
+    // is well ABOVE the stability bar. Were stationarity the only test, this
+    // completed benchmark would read as unresolved — which is precisely the
+    // false negative a real run produced.
+    const result = asCandidate(analyzeFrames(animatedRun(), source(), { diagnoseTail: true }));
+    const tail = result.tailDiagnostics;
+    expect(tail).toBeDefined();
+    if (!tail || !tail.accepted) throw new Error('unreachable');
+    expect(tail.accepted.method).toBe('distribution');
+    const at = tail.candidates.find((c) => c.windowIndex === tail.accepted?.windowIndex);
+    expect(at?.stationarity.passes).toBe(false);
+    expect(at?.stationarity.worstSpanInstability ?? 0).toBeGreaterThan(at?.stationarity.strictBar ?? 0);
+    expect(at?.distribution.passes).toBe(true);
+  });
+
+  it('places the boundary near where the fixture actually changed regime', () => {
+    // menu 10 + 4x(scene 20 + transition 3) + scene 20 = 122s. The change point
+    // is located to within a few comparison windows, not to a frame — and the
+    // test says so rather than pinning an exact value.
+    const result = asCandidate(analyzeFrames(animatedRun(), source()));
+    expect(result.scene5LikelyEndOffsetSec).toBeGreaterThan(118);
+    expect(result.resultsScreenStableStartOffsetSec).toBeLessThan(140);
+    expect(result.scene5LikelyEndOffsetSec).toBeLessThanOrEqual(result.resultsScreenStableStartOffsetSec);
+  });
+
+  it('still refuses a capture truncated inside a ramping fifth scene', () => {
+    // Same gameplay model, no results screen at all: the recording just stops.
+    // A second route must not become a second chance to resolve a run that did
+    // not finish.
+    const frames = buildFrames([
+      MENU,
+      LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION,
+      LIVE_SCENE(35),
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+  });
+
+  it('refuses a tail that keeps changing, however unlike gameplay it looks', () => {
+    // A long, slow, large swing: never still, and its later stretches do not
+    // match its earlier ones. A suffix has to agree with ITSELF before it can
+    // be called one screen, so neither route may accept this.
+    const frames = buildFrames([
+      MENU,
+      LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION,
+      LIVE_SCENE(),
+      { seconds: 50, fps: 51, gpuRatio: 0.9, drift: 0.5, driftCycles: 2 },
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    expect(result.reasons.join(' ')).toMatch(/disagrees with itself/);
+  });
+
+  it('refuses a tail that is unlike the moment before it but LIKE gameplay it already showed', () => {
+    // The trap the "is this a new regime?" question walks into on its own.
+    // These scenes steadily get heavier, so every scene ENDS unlike the moment
+    // before — and a tail that merely returns to the weight the scenes STARTED
+    // at looks, locally, like a change of regime. It is not: the benchmark has
+    // drawn this exact distribution before. Comparing against every stretch of
+    // gameplay rather than only the preceding one is what rejects it.
+    const frames = buildFrames([
+      MENU,
+      RAMPING, TRANSITION, RAMPING, TRANSITION, RAMPING, TRANSITION, RAMPING, TRANSITION,
+      RAMPING,
+      { seconds: 30, fps: 80, gpuRatio: 0.98, drift: 0.25, driftCycles: 12 },
+    ]);
+    const result = analyzeFrames(frames, source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    expect(result.reasons.join(' ')).toMatch(/still looks like something the benchmark already did/);
+  });
+
+  it('matches the SELF-AGREEMENT comparison by length too, so a short tail is not judged by a long scene', () => {
+    // A signal disagrees with itself more the longer you watch it, so a tail
+    // holding two comparison chunks judged against a whole three-chunk scene
+    // would be judged against an inflated bar — the same span-matching trap
+    // the stability comparison already avoids, one level up. This tail is
+    // short, animated, and slowly getting heavier: it clears the whole-scene
+    // figure but not the figure gameplay reaches over an equal number of
+    // chunks, so it must stay unresolved.
+    const frames = buildFrames([
+      MENU,
+      LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION, LIVE_SCENE(), TRANSITION,
+      LIVE_SCENE(),
+      { seconds: 22, fps: 51, gpuRatio: 0.9, drift: 0.3, driftCycles: 10, ramp: 0.25 },
+    ]);
+    expect(analyzeFrames(frames, source()).status).toBe('unresolved');
+  });
+
+  it('carries no dependence on the observed run: the same animated shape at another scale', () => {
+    // Nothing here resembles the real run's ~51 fps results screen, its ~317s
+    // scene-5 end or its 420s duration, and it still resolves the same way.
+    const fast = (seconds: number): BlockSpec => ({ seconds, fps: 210, gpuRatio: 0.97, drift: 0.25, ramp: 0.2 });
+    const gap: BlockSpec = { seconds: 2, fps: 420, gpuRatio: 0.12 };
+    const frames = buildFrames([
+      { seconds: 5, fps: 420, gpuRatio: 0.12 },
+      fast(9), gap, fast(9), gap, fast(9), gap, fast(9), gap, fast(9),
+      { seconds: 18, fps: 130, gpuRatio: 0.88, drift: 0.3, driftCycles: 10 },
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    expect(result.scenes).toHaveLength(5);
+    expect(result.boundaries.filter((b) => b.kind === 'transition')).toHaveLength(4);
+    expect(result.diagnostics.captureDurationSec).toBeLessThan(120);
+  });
+});
+
+describe('the CLI exposes the diagnostic without changing the analysis', () => {
+  it('accepts --diagnose-tail alongside a bundle directory', () => {
+    expect(parseAnalyzeArgs(['/bundle', '--diagnose-tail'])).toEqual({
+      mode: 'analyze', bundleDirs: ['/bundle'], outPath: undefined, diagnoseTail: true,
+    });
+  });
+
+  it('defaults to off, so an ordinary run prints no ledger', () => {
+    expect(parseAnalyzeArgs(['/bundle']).diagnoseTail).toBe(false);
+  });
+
+  it('still refuses a valued flag whose value is another flag', () => {
+    expect(() => parseAnalyzeArgs(['/bundle', '--out', '--diagnose-tail'])).toThrow(AnalyzeCliError);
+  });
+});
+
+describe('the tail diagnostic explains every rejection', () => {
+  const truncated = (): PresentMonFrame[] =>
+    buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(35),
+    ]);
+
+  it('is absent unless asked for, and asking for it never changes the verdict', () => {
+    const plain = analyzeFrames(truncated(), source());
+    const withDiag = analyzeFrames(truncated(), source(), { diagnoseTail: true });
+    expect(plain.tailDiagnostics).toBeUndefined();
+    expect(withDiag.tailDiagnostics).toBeDefined();
+    expect(plain.status).toBe(withDiag.status);
+    // Same answer either way: the ledger explains the decision, it never makes it.
+    const strip = (r: Rdr2AnalysisResult) => JSON.stringify({ ...r, tailDiagnostics: undefined });
+    expect(strip(plain)).toBe(strip(withDiag));
+  });
+
+  it('reports the bars, the span-matched gameplay reference and every tail window', () => {
+    const result = analyzeFrames(truncated(), source(), { diagnoseTail: true });
+    const tail = result.tailDiagnostics;
+    if (!tail) throw new Error('unreachable');
+
+    expect(tail.stabilityWindowFrames).toBeGreaterThan(0);
+    expect(tail.comparisonSpanWindows).toBeGreaterThanOrEqual(4);
+    expect(tail.bars.strictStabilityBar).toBeCloseTo((tail.bars.gameplaySpanInstabilityFloor ?? 0) / tail.bars.strictStabilityFactor, 9);
+    expect(tail.bars.looseStabilityBar).toBeCloseTo(tail.bars.gameplaySpanInstabilityFloor ?? 0, 9);
+
+    // One reference row per identified gameplay scene, each carrying the span
+    // statistics the stability bar was read from.
+    expect(tail.gameplayScenes).toHaveLength(4);
+    for (const scene of tail.gameplayScenes) {
+      expect(scene.windowCount).toBeGreaterThan(0);
+      expect(scene.minSpanInstability).not.toBeNull();
+      expect(scene.maxSpanInstability ?? 0).toBeGreaterThanOrEqual(scene.minSpanInstability ?? 0);
+    }
+    // The floor really is the smallest span figure any scene reached.
+    const floors = tail.gameplayScenes.map((s) => s.minSpanInstability ?? Number.POSITIVE_INFINITY);
+    expect(tail.bars.gameplaySpanInstabilityFloor).toBeCloseTo(Math.min(...floors), 9);
+
+    expect(tail.windows.length).toBeGreaterThan(tail.comparisonSpanWindows);
+    for (const w of tail.windows) {
+      expect(w.medianFrameTimeMs).toBeGreaterThan(0);
+      expect(w.endOffsetSec).toBeGreaterThan(w.startOffsetSec);
+    }
+    // Both stationarity channels are visible per window, so a reader can see
+    // WHICH signal refused to settle.
+    expect(tail.windows.some((w) => w.spanInstability !== null)).toBe(true);
+    expect(tail.windows.some((w) => w.meanGpuRatio > 0)).toBe(true);
+  });
+
+  it('gives every rejected suffix a reason naming the bar it failed', () => {
+    const result = analyzeFrames(truncated(), source(), { diagnoseTail: true });
+    const tail = result.tailDiagnostics;
+    if (!tail) throw new Error('unreachable');
+    expect(tail.accepted).toBeNull();
+    expect(tail.candidates.length).toBeGreaterThan(0);
+    for (const c of tail.candidates) {
+      expect(c.stationarity.passes || c.distribution.passes).toBe(false);
+      expect(c.rejectedBecause.length).toBeGreaterThan(0);
+      expect(c.rejectedBecause.join(' ')).toMatch(/stationarity:|distribution:|sustained floor/);
+    }
+  });
+
+  it('ranks change-point candidates so the closest miss is readable first', () => {
+    const result = analyzeFrames(truncated(), source(), { diagnoseTail: true });
+    const tail = result.tailDiagnostics;
+    if (!tail) throw new Error('unreachable');
+    for (let i = 1; i < tail.candidates.length; i += 1) {
+      expect(tail.candidates[i - 1].score).toBeGreaterThanOrEqual(tail.candidates[i].score);
+    }
+    // Nothing qualified, so even the best candidate falls short of the bar.
+    expect(tail.candidates[0].score).toBeLessThan(1);
+  });
+
+  it('quotes the closest miss in the refusal itself, so an unresolved run is readable without the flag', () => {
+    const result = analyzeFrames(truncated(), source());
+    expect(result.status).toBe('unresolved');
+    if (result.status !== 'unresolved') throw new Error('unreachable');
+    const text = result.reasons.join(' ');
+    expect(text).toMatch(/Closest candidate/);
+    expect(text).toMatch(/--diagnose-tail/);
   });
 });
 

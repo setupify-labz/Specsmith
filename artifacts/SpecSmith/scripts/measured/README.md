@@ -604,6 +604,7 @@ for a human, and RDR2 and PresentMon may not even define FPS the same way.
 
 ```
 pnpm analyze:rdr2-research -- "C:\path\to\session-YYYYMMDD-HHMMSS"
+pnpm analyze:rdr2-research -- "C:\path\to\session-YYYYMMDD-HHMMSS" --diagnose-tail
 pnpm analyze:rdr2-research -- --compare "C:\path\to\run-a" "C:\path\to\run-b"
 ```
 
@@ -636,8 +637,8 @@ cannot tell those apart; this one can.
    rendered frame — the existing scale-invariant gate, so no absolute time
    enters the rule. A run below that is noise and is merged into the region
    it interrupts, so a brief GPU hiccup cannot split one scene into two.
-4. Locate the **results screen** by stationarity (see below), since that
-   decides what counts as the benchmark proper.
+4. Locate the **results screen** by stationarity *or* distribution change
+   (see below), since that decides what counts as the benchmark proper.
 5. Interpret what precedes it structurally: leading idle = menu/loading,
    interior idle blocks = inter-scene transitions. Require **exactly four**
    transitions and **five** scenes, alternating. A transition sitting between
@@ -678,9 +679,83 @@ Because that boundary genuinely is not one frame, two are reported:
 - `finalBoundaryUncertaintySec` — the interval between them, reported rather
   than resolved by picking
 
-If no trailing regime clears the bar, the result stays **unresolved** — which
-is what a capture truncated mid-scene-5 produces, since dynamic gameplay
-running to the last frame never settles.
+If no trailing regime clears either bar, the result stays **unresolved** —
+which is what a capture truncated mid-scene-5 produces, since dynamic
+gameplay running to the last frame never settles and never stops changing.
+
+### A second real run falsified stationarity-alone
+
+A later 420-second run failed the same way for the opposite reason: all four
+transitions were found, and every possible suffix was still rejected, because
+the results screen never became twice as still as the calmest span of
+gameplay. Requiring stillness assumes the screen is a frozen image. It may
+not be — a slow camera push behind the numbers, a cycling shader, a spinner —
+and such a screen can never win a stillness contest no matter how obviously
+it is a different thing.
+
+Rather than loosen the stability bar, which would weaken it everywhere
+including on the truncated captures it correctly refuses, a **second,
+independent route** was added. It asks a different question: not *is it
+still?* but **is it the same thing throughout, and a different thing from
+everything the benchmark already showed?**
+
+The measure is the two-sample **Kolmogorov–Smirnov statistic** between two
+stretches — the largest gap between their empirical CDFs, computed from
+ranks, so it is invariant under any monotone rescaling and bounded in
+`[0, 1]`. It imports no unit, no frame rate and no duration. As with
+stationarity, the worse of the frame-time and GPU-ratio channels is taken, so
+two stretches count as the same regime only when both signals agree.
+
+A trailing suffix is the results screen when all of the following hold, each
+against a figure measured from **this run's own identified gameplay**, with
+**no multiplier to tune**:
+
+- **Distinctness.** Its smallest distance to *any* equal-length stretch of
+  gameplay — not merely the stretch just before it — exceeds the largest jump
+  gameplay makes between its own neighbouring stretches. Comparing only
+  against the preceding moment is not enough: gameplay that steadily gets
+  heavier ends every scene unlike the moment before, so a final scene that
+  merely eased off would read as a change of regime. A tail that resembles
+  any earlier moment of gameplay is, on this evidence, gameplay.
+- **Self-agreement.** Its worst internal disagreement is below the best any
+  equal-length stretch of gameplay achieves. Chunk counts are matched for the
+  same reason spans are: a signal disagrees with itself more the longer you
+  watch it.
+- **At least two full comparison chunks**, so "it is one regime throughout"
+  is a claim the data can actually support rather than one it merely fails to
+  contradict.
+
+Crucially this does **not** require the screen to be still, so an animated
+results screen is visible to it. Stationarity is tried first, so every
+capture the earlier design already resolved resolves identically; the second
+route only ever answers cases the first refused. A truncated fifth scene
+fails both: its tail keeps drifting *and* its later parts keep differing from
+its earlier ones.
+
+Each of these guards was proven load-bearing by disabling it and confirming
+specific tests fail: dropping the distinctness minimum breaks 2 tests,
+dropping self-agreement breaks 10, allowing a single chunk breaks 7, and
+using a whole-scene rather than chunk-matched self-agreement bar breaks 1.
+
+### `--diagnose-tail`
+
+The refusal message always quotes the closest candidate and the specific bar
+it failed. `--diagnose-tail` prints the whole ledger the search already built
+while deciding:
+
+- the derived cut, sustained floor, window size and comparison span
+- every bar, and the per-scene span-matched gameplay reference each was read
+  from (min/median/max span instability, adjacent- and any-pair chunk
+  divergence)
+- **every tail window**: offsets, median frame time, mean GPU ratio, the span
+  instability starting there and the worst instability from there to the end
+- **every possible results-screen start**, ranked by margin, each with its
+  stationarity, distinctness and self-agreement figures against their bars,
+  and the exact reasons it was rejected
+
+It is a reading aid and nothing more: it changes no bar and no verdict, and a
+regression test asserts that an analysis run with the flag returns byte-for-
+byte the same result as one run without it.
 
 **No observed timestamp is encoded anywhere in the algorithm.** Real runs put
 gameplay start near 38s and 75s with transitions roughly 30s apart; those
@@ -697,8 +772,11 @@ schema/game-ID mismatch, wrong CSV filename, byte-length or SHA-256 mismatch
 against the manifest, missing `msGPUActive`/`TimeInSeconds` columns, a PID
 with no frames, a manifest with neither `gameVersion` nor `gameBuildId`, a
 non-bimodal distribution, fewer or more than four credible transitions, a
-capture ending mid-scene-5 (the 300-second incomplete-run shape), no results
-boundary, and insufficient frames or duration.
+capture ending mid-scene-5 (the 300-second incomplete-run shape), a tail that
+changes regime but never settles into one, a tail that is unlike the moment
+before it but like gameplay the run already showed, a trailing stretch too
+short to hold two comparison chunks, no results boundary, and insufficient
+frames or duration.
 
 ### Output, and what it is not
 

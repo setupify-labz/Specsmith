@@ -1,7 +1,14 @@
 // CLI for the RDR2 research-bundle analyzer. READ-ONLY, RESEARCH-ONLY.
 //
-//   npx tsx scripts/measured/analyzeRdr2Research.ts <bundleDir> [--out <path>]
+//   npx tsx scripts/measured/analyzeRdr2Research.ts <bundleDir> [--diagnose-tail] [--out <path>]
 //   npx tsx scripts/measured/analyzeRdr2Research.ts --compare <dirA> <dirB> [...] [--out <path>]
+//
+// --diagnose-tail prints the full ledger of the final-boundary search: every
+// tail window's stationarity, the span-matched gameplay reference both bars
+// were read from, and every possible results-screen start ranked by how close
+// it came, each with the specific bar it failed. It is a READING aid — it
+// changes no bar and no verdict, and an analysis run with it returns exactly
+// what the same analysis returns without it.
 //
 // Deliberately thin: every decision lives in ./rdr2BenchmarkAnalysis.ts, which
 // is pure of process concerns and directly testable. This file only turns
@@ -26,10 +33,12 @@ import { fileURLToPath } from 'node:url';
 
 import {
   analyzeRdr2ResearchBundle,
+  STABILITY_WINDOW_FRAMES,
   compareRdr2Analyses,
   writeAnalysisReport,
   AnalysisOutputError,
   type Rdr2AnalysisResult,
+  type Rdr2TailDiagnostics,
 } from './rdr2BenchmarkAnalysis';
 
 export class AnalyzeCliError extends Error {}
@@ -38,6 +47,8 @@ export interface AnalyzeCliArgs {
   mode: 'analyze' | 'compare';
   bundleDirs: string[];
   outPath?: string;
+  /** Print the final-boundary search ledger. Explanatory only; never changes the result. */
+  diagnoseTail: boolean;
 }
 
 /**
@@ -51,11 +62,16 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
   const bundleDirs: string[] = [];
   let outPath: string | undefined;
   let compare = false;
+  let diagnoseTail = false;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--compare') {
       compare = true;
+      continue;
+    }
+    if (a === '--diagnose-tail') {
+      diagnoseTail = true;
       continue;
     }
     if (a === '--out') {
@@ -73,7 +89,7 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
   }
 
   if (bundleDirs.length === 0) {
-    throw new AnalyzeCliError('No bundle directory given. Usage: analyzeRdr2Research.ts <bundleDir> [--out <path>] | --compare <dirA> <dirB> [...]');
+    throw new AnalyzeCliError('No bundle directory given. Usage: analyzeRdr2Research.ts <bundleDir> [--diagnose-tail] [--out <path>] | --compare <dirA> <dirB> [...]');
   }
   if (compare && bundleDirs.length < 2) {
     throw new AnalyzeCliError(`--compare needs at least two bundle directories; ${bundleDirs.length} given.`);
@@ -82,7 +98,7 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
     throw new AnalyzeCliError(`${bundleDirs.length} bundle directories given without --compare. Analyse one, or pass --compare to compare several.`);
   }
 
-  return { mode: compare ? 'compare' : 'analyze', bundleDirs, outPath };
+  return { mode: compare ? 'compare' : 'analyze', bundleDirs, outPath, diagnoseTail };
 }
 
 /** Human-readable summary printed alongside the JSON, so a run is readable without piping through a parser. */
@@ -119,13 +135,98 @@ function summarize(result: Rdr2AnalysisResult): string {
   return lines.join('\n');
 }
 
+
+const n4 = (v: number | null | undefined): string => (v === null || v === undefined || !Number.isFinite(v) ? '   n/a' : v.toFixed(4));
+
+/**
+ * The final-boundary ledger, in full.
+ *
+ * Printed verbatim from the same numbers the decision was made with, so a
+ * refusal can be checked rather than taken on trust. Every possible
+ * results-screen start is listed, not just the winner, because the useful
+ * question after an unresolved run is "how close did anything come, and to
+ * which bar".
+ */
+function renderTailDiagnostics(tail: Rdr2TailDiagnostics): string {
+  const L: string[] = [];
+  L.push('');
+  L.push('=== FINAL-BOUNDARY DIAGNOSTIC (research only; changes no bar and no verdict) ===');
+  L.push(`final block        ${tail.finalBlockStartOffsetSec.toFixed(2)}-${tail.finalBlockEndOffsetSec.toFixed(2)}s, GPU ${(tail.finalBlockMeanGpuRatio * 100).toFixed(1)}%, ${tail.finalBlockIdle ? 'idle' : 'busy'}`);
+  L.push(`window size        ${tail.stabilityWindowFrames} frames`);
+  L.push(`comparison span    ${tail.comparisonSpanWindows} windows (both sides measured over this same length)`);
+  L.push(`sustained floor    ${tail.minSustainedBlockSec.toFixed(2)}s`);
+  L.push('');
+  L.push('--- bars, all derived from this run\'s own identified gameplay ---');
+  L.push(`gameplay calmest span      ${n4(tail.bars.gameplaySpanInstabilityFloor)}   (relative spread of window medians)`);
+  L.push(`  strict stability bar     ${n4(tail.bars.strictStabilityBar)}   (= calmest / ${tail.bars.strictStabilityFactor})`);
+  L.push(`  loose stability bar      ${n4(tail.bars.looseStabilityBar)}`);
+  L.push(`distribution change bar    ${n4(tail.bars.distributionChangeBar)}   (largest jump gameplay makes between neighbouring stretches)`);
+  if (tail.bars.distributionCohesionBarByChunkCount.length === 0) {
+    L.push('cohesion bars              n/a   (no gameplay scene held two comparison chunks)');
+  } else {
+    for (const b of tail.bars.distributionCohesionBarByChunkCount) {
+      L.push(`cohesion bar @ ${String(b.chunks).padStart(2)} chunks   ${n4(b.bar)}   (best self-agreement gameplay reaches over that many)`);
+    }
+  }
+  L.push('');
+  L.push('--- span-matched gameplay reference, per identified scene ---');
+  L.push('   start      end   windows chunks   minSpan   medSpan   maxSpan   adjChunk   anyPair');
+  for (const g of tail.gameplayScenes) {
+    L.push(
+      `${g.startOffsetSec.toFixed(2).padStart(8)} ${g.endOffsetSec.toFixed(2).padStart(8)} ${String(g.windowCount).padStart(9)} ${String(g.chunkCount).padStart(6)}` +
+        `   ${n4(g.minSpanInstability)}   ${n4(g.medianSpanInstability)}   ${n4(g.maxSpanInstability)}     ${n4(g.maxAdjacentChunkDivergence)}    ${n4(g.maxAnyPairChunkDivergence)}`,
+    );
+  }
+  L.push('');
+  L.push(`--- tail windows (${tail.windows.length}) ---`);
+  L.push('  idx    start      end   medianMs   gpuRatio   spanInstab   worstToEnd');
+  for (const w of tail.windows) {
+    L.push(
+      `${String(w.index).padStart(5)} ${w.startOffsetSec.toFixed(2).padStart(8)} ${w.endOffsetSec.toFixed(2).padStart(8)}` +
+        `   ${w.medianFrameTimeMs.toFixed(3).padStart(8)}   ${w.meanGpuRatio.toFixed(4).padStart(8)}   ${n4(w.spanInstability).padStart(10)}   ${n4(w.worstSpanInstabilityToEnd).padStart(10)}`,
+    );
+  }
+  L.push('');
+  L.push(`--- results-screen candidates, ranked by margin (${tail.candidates.length}) ---`);
+  L.push('The CHOSEN one is the EARLIEST qualifying start, not the highest-scoring: the earliest is the longest suffix, which is the most that can honestly be claimed as results screen.');
+  for (const c of tail.candidates) {
+    L.push(
+      `#${String(c.windowIndex).padStart(4)} at ${c.startOffsetSec.toFixed(2)}s  ${c.suffixDurationSec.toFixed(2)}s  ${c.suffixWindowCount} windows / ${c.chunkCount} chunks  score ${c.score.toFixed(3)}` +
+        `${c.windowIndex === tail.accepted?.windowIndex ? '  <== CHOSEN' : c.rejectedBecause.length === 0 ? '  (qualifies)' : ''}`,
+    );
+    L.push(
+      `        stationarity worst ${n4(c.stationarity.worstSpanInstability)} vs bar ${n4(c.stationarity.strictBar)}` +
+        `   |   distinctness ${n4(c.distribution.distinctnessFromGameplay)} vs bar ${n4(c.distribution.changeBar)}` +
+        `   |   self-agreement ${n4(c.distribution.cohesion)} vs bar ${n4(c.distribution.cohesionBar)}`,
+    );
+    for (const r of c.rejectedBecause) L.push(`        rejected: ${r}`);
+  }
+  if (tail.accepted) {
+    L.push('');
+    L.push(`ACCEPTED via ${tail.accepted.method} at window ${tail.accepted.windowIndex}: stationary/consistent from ${tail.accepted.stableStartOffsetSec.toFixed(2)}s, already unlike gameplay from ${tail.accepted.likelyEndOffsetSec.toFixed(2)}s.`);
+  } else {
+    L.push('');
+    L.push('NOTHING ACCEPTED. Every candidate above names the bar it failed.');
+  }
+  for (const note of tail.notes) L.push(`note: ${note}`);
+  L.push(`(window size ${STABILITY_WINDOW_FRAMES} frames is a sample size, not a threshold on the data.)`);
+  return L.join('\n');
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
   const args = parseAnalyzeArgs(argv);
 
   if (args.mode === 'analyze') {
     const bundleDir = args.bundleDirs[0];
-    const result = analyzeRdr2ResearchBundle(bundleDir);
+    const result = analyzeRdr2ResearchBundle(bundleDir, { diagnoseTail: args.diagnoseTail });
     console.log(summarize(result));
+    if (args.diagnoseTail) {
+      console.log(
+        result.tailDiagnostics
+          ? renderTailDiagnostics(result.tailDiagnostics)
+          : '\n--diagnose-tail was given, but the analysis stopped before the final-boundary search ran (see the reasons above).',
+      );
+    }
     console.log('\n--- JSON ---');
     console.log(JSON.stringify(result, null, 2));
     if (args.outPath) {

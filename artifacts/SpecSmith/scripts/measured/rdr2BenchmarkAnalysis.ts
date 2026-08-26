@@ -228,39 +228,311 @@ function regimeInstability(windows: readonly StabilityWindow[]): number {
   );
 }
 
-export interface StableSuffix {
-  /** First frame of the regime that is confidently stationary. */
-  stableStartIndex: number;
-  /** First frame from which the signal has already stopped looking like gameplay; <= stableStartIndex. */
-  likelyEndIndex: number;
-  instability: number;
-  strictBar: number;
-  looseBar: number;
-  windowCount: number;
+// ---------------------------------------------------------------------------
+// Distribution change: separating regimes WITHOUT requiring stillness
+// ---------------------------------------------------------------------------
+//
+// WHY A SECOND ROUTE EXISTS
+// -------------------------
+// The stationarity test above asks "has the frame-time LEVEL stopped moving?".
+// That is the right question for a results screen which is one frozen image.
+// It is the WRONG question for one that animates — a slow camera push behind
+// the numbers, a shader that cycles, a spinner — because such a screen never
+// stops moving and so can never be twice as still as the calmest span of
+// gameplay, no matter how obviously it is a different thing.
+//
+// A second real run made that concrete: the tail was correctly isolated, the
+// four transitions before it were found, and the stationarity route still
+// rejected every possible suffix. Rather than loosen the stationarity bar —
+// which would weaken it everywhere, including on the truncated captures it
+// correctly refuses — this adds an INDEPENDENT route that asks a different
+// question entirely.
+//
+// THE DIFFERENT QUESTION
+// ----------------------
+// Not "is it still?" but "is it the SAME THING throughout, and a DIFFERENT
+// thing from what came before?". A results screen — animated or not — draws
+// the same content for its whole life, so any two equal stretches of it have
+// the same frame-time DISTRIBUTION even when the level inside each stretch
+// swings. Gameplay does not: a benchmark scene pans across changing terrain,
+// so two stretches ten seconds apart are drawing different things and their
+// distributions differ.
+//
+// The measure is the two-sample Kolmogorov-Smirnov statistic: the largest gap
+// between two empirical CDFs. It is computed from RANKS, so it is invariant
+// under any monotone rescaling of the signal — a machine twice as fast
+// produces the identical number. It is bounded in [0, 1], so it imports no
+// unit, no frame rate and no duration.
+//
+// BOTH BARS COME FROM THE RUN'S OWN GAMEPLAY, WITH NO TUNING FACTOR
+// -----------------------------------------------------------------
+// Scenes 1 to 4 are already confidently identified by the transition
+// detection, so they say what ordinary gameplay does on this machine:
+//
+//   changeBar   = the LARGEST distributional jump gameplay makes between two
+//                 neighbouring equal-length stretches. A real regime change
+//                 must be bigger than anything gameplay does on its own.
+//   cohesionBar = the SMALLEST "all parts agree with all other parts" figure
+//                 gameplay manages over a run of the SAME NUMBER OF CHUNKS.
+//                 A results screen must hold together better than the most
+//                 self-consistent equal-length stretch of gameplay in the run.
+//
+// The chunk count is matched for the same reason the stability span is: a
+// signal that trends always disagrees with itself more the longer you watch
+// it, so a two-chunk suffix measured against a three-chunk scene is judged
+// against an inflated bar. Reference takes gameplay's BEST run at that
+// length, candidate is judged by its WORST — the same asymmetry the
+// stationarity route uses, and for the same reason.
+//
+// DISTINCT FROM ALL OF GAMEPLAY, NOT MERELY FROM THE MOMENT BEFORE
+// -----------------------------------------------------------------
+// Comparing the candidate only against the stretch immediately before it is
+// not enough, and a synthetic fixture caught that: gameplay which steadily
+// gets heavier ends every scene in a state unlike the moment before, so a
+// final scene that merely eased off read as a change of regime. A results
+// screen is not just unlike the second before it — it is unlike EVERY part of
+// the benchmark. So the candidate is compared against the preceding stretch
+// AND against every equal-length stretch of every identified gameplay scene,
+// and the SMALLEST of those distances must still clear changeBar. A tail that
+// resembles any earlier moment of gameplay is, on this evidence, gameplay.
+//
+// Note there is no multiplier on either: the comparisons are strict
+// inequalities against figures measured from this same recording. Unlike the
+// stationarity route, this route has no constant to tune at all.
+//
+// FAIL-CLOSED IS PRESERVED
+// ------------------------
+// A capture truncated part-way through scene 5 fails BOTH routes: its tail
+// keeps drifting (so it is not stationary) and its later parts keep differing
+// from its earlier parts (so it is not cohesive). Proving cohesion also needs
+// at least two full comparison chunks, so a trailing stretch too short to
+// have any internal evidence is rejected for want of evidence rather than
+// accepted for want of contradiction.
+
+/** Sorted samples of both signals over a stretch of windows. */
+interface RegimeSample {
+  frameTimes: number[];
+  ratios: number[];
+}
+
+function sampleWindows(
+  frames: readonly PresentMonFrame[],
+  ratios: readonly number[],
+  windows: readonly StabilityWindow[],
+): RegimeSample {
+  const frameTimes: number[] = [];
+  const gpu: number[] = [];
+  for (const w of windows) {
+    for (let i = w.startIndex; i <= w.endIndex; i += 1) {
+      frameTimes.push(frames[i].frameTimeMs);
+      gpu.push(ratios[i]);
+    }
+  }
+  return { frameTimes: frameTimes.sort((a, b) => a - b), ratios: gpu.sort((a, b) => a - b) };
 }
 
 /**
- * Finds the longest trailing stretch of `[startIndex, endIndex]` that is
- * stationary enough to be a results screen, or null when none is.
+ * Two-sample Kolmogorov-Smirnov statistic over two ascending-sorted samples:
+ * the largest vertical gap between their empirical CDFs, in [0, 1].
+ *
+ * Rank-based, therefore scale-free — the same two regimes score identically
+ * on hardware of any speed.
+ */
+export function ksStatistic(a: readonly number[], b: readonly number[]): number {
+  if (a.length === 0 || b.length === 0) return 1;
+  let i = 0;
+  let j = 0;
+  let d = 0;
+  while (i < a.length && j < b.length) {
+    const v = Math.min(a[i], b[j]);
+    while (i < a.length && a[i] <= v) i += 1;
+    while (j < b.length && b[j] <= v) j += 1;
+    d = Math.max(d, Math.abs(i / a.length - j / b.length));
+  }
+  return Math.max(d, Math.abs(i / a.length - j / b.length));
+}
+
+/**
+ * How different two regimes are: the worse of their frame-time and
+ * GPU-utilisation distributional distance.
+ *
+ * Taking the worse means two stretches count as "the same regime" only when
+ * BOTH signals agree they are, which is the conservative direction: it makes
+ * a change easy to see and cohesion hard to claim.
+ */
+function regimeDivergence(a: RegimeSample, b: RegimeSample): number {
+  return Math.max(ksStatistic(a.frameTimes, b.frameTimes), ksStatistic(a.ratios, b.ratios));
+}
+
+/** All pairwise divergences among a list of equal-length pieces. */
+function worstPairMatrix(pieces: readonly RegimeSample[]): number[][] {
+  const m = pieces.map(() => new Array<number>(pieces.length).fill(0));
+  for (let i = 0; i < pieces.length; i += 1) {
+    for (let j = i + 1; j < pieces.length; j += 1) {
+      const d = regimeDivergence(pieces[i], pieces[j]);
+      m[i][j] = d;
+      m[j][i] = d;
+    }
+  }
+  return m;
+}
+
+/** The largest disagreement inside the run of `k` pieces starting at `from`. */
+function worstPairIn(matrix: readonly (readonly number[])[], from: number, k: number): number {
+  let worst = 0;
+  for (let i = from; i < from + k; i += 1) for (let j = i + 1; j < from + k; j += 1) worst = Math.max(worst, matrix[i][j]);
+  return worst;
+}
+
+// ---------------------------------------------------------------------------
+// The tail search, and the ledger explaining every rejection
+// ---------------------------------------------------------------------------
+
+export interface TailWindowDiagnostic {
+  index: number;
+  startOffsetSec: number;
+  endOffsetSec: number;
+  medianFrameTimeMs: number;
+  meanGpuRatio: number;
+  /** Instability of the comparison-length span starting here; null when no full span fits. */
+  spanInstability: number | null;
+  /** Worst span instability from here to the end of the recording. */
+  worstSpanInstabilityToEnd: number | null;
+}
+
+export interface TailCandidateDiagnostic {
+  /** Index into the tail's window list; 0 is the start of the final block. */
+  windowIndex: number;
+  startOffsetSec: number;
+  suffixDurationSec: number;
+  suffixWindowCount: number;
+  chunkCount: number;
+  stationarity: {
+    worstSpanInstability: number | null;
+    strictBar: number | null;
+    looseBar: number | null;
+    passes: boolean;
+  };
+  distribution: {
+    distinctnessFromGameplay: number | null;
+    changeBar: number | null;
+    cohesion: number | null;
+    cohesionBar: number | null;
+    passes: boolean;
+  };
+  /** Every reason this suffix was rejected. Empty exactly when it was accepted. */
+  rejectedBecause: string[];
+  /** Ranking margin: >= 1 would mean every binding constraint was met. */
+  score: number;
+}
+
+export interface TailGameplaySceneDiagnostic {
+  startOffsetSec: number;
+  endOffsetSec: number;
+  windowCount: number;
+  chunkCount: number;
+  minSpanInstability: number | null;
+  medianSpanInstability: number | null;
+  maxSpanInstability: number | null;
+  maxAdjacentChunkDivergence: number | null;
+  maxAnyPairChunkDivergence: number | null;
+}
+
+/**
+ * Everything the tail search looked at and every reason it rejected what it
+ * rejected. RESEARCH DIAGNOSTIC ONLY: nothing here is a boundary, and its
+ * presence never changes the analysis — it is produced from the same numbers
+ * the decision used, so it explains that decision rather than re-deriving it.
+ */
+export interface Rdr2TailDiagnostics {
+  finalBlockIdle: boolean;
+  finalBlockStartOffsetSec: number;
+  finalBlockEndOffsetSec: number;
+  finalBlockMeanGpuRatio: number;
+  stabilityWindowFrames: number;
+  comparisonSpanWindows: number;
+  minSustainedBlockSec: number;
+  bars: {
+    gameplaySpanInstabilityFloor: number | null;
+    strictStabilityBar: number | null;
+    looseStabilityBar: number | null;
+    strictStabilityFactor: number;
+    distributionChangeBar: number | null;
+    /** Gameplay's best self-agreement over a run of `chunks` comparison-length pieces. */
+    distributionCohesionBarByChunkCount: Array<{ chunks: number; bar: number }>;
+  };
+  gameplayScenes: TailGameplaySceneDiagnostic[];
+  windows: TailWindowDiagnostic[];
+  /** Every possible suffix start, ranked by how close it came to qualifying. */
+  candidates: TailCandidateDiagnostic[];
+  accepted: {
+    method: 'stationarity' | 'distribution';
+    windowIndex: number;
+    stableStartOffsetSec: number;
+    likelyEndOffsetSec: number;
+  } | null;
+  notes: string[];
+}
+
+export interface ResultsScreenSuffix {
+  /** Which route identified this regime. Both are equally binding; they ask different questions. */
+  method: 'stationarity' | 'distribution';
+  /** First frame of the regime that is confidently the results screen. */
+  stableStartIndex: number;
+  /** First frame from which the signal had already stopped looking like gameplay; <= stableStartIndex. */
+  likelyEndIndex: number;
+  windowCount: number;
+  instability: number | null;
+  strictBar: number | null;
+  looseBar: number | null;
+  distinctnessFromGameplay: number | null;
+  changeBar: number | null;
+  cohesion: number | null;
+  cohesionBar: number | null;
+}
+
+export interface ResultsScreenSearch {
+  suffix: ResultsScreenSuffix | null;
+  diagnostics: Rdr2TailDiagnostics;
+}
+
+const finiteOrNull = (x: number): number | null => (Number.isFinite(x) ? x : null);
+
+/**
+ * Finds the trailing stretch of `[startIndex, endIndex]` that is the results
+ * screen, or reports that none is — and either way returns the full ledger of
+ * what was considered.
+ *
+ * TWO INDEPENDENT ROUTES, TRIED IN ORDER
+ * --------------------------------------
+ * 1. STATIONARITY — the level stopped moving. Cheap, strict, and correct for
+ *    a frozen results screen.
+ * 2. DISTRIBUTION CHANGE — the regime became internally consistent and
+ *    distinct from what preceded it, whether or not it is still. Correct for
+ *    an animated results screen, which route 1 cannot see.
+ *
+ * Route 1 is tried first so that every capture it already resolved resolves
+ * identically; route 2 only ever answers cases route 1 refused.
  *
  * SPANS ARE COMPARED AT EQUAL LENGTH
  * ----------------------------------
  * A slowly drifting signal always looks calmer when you look at less of it,
- * so measuring a short candidate suffix against a whole 30-second gameplay
- * scene is not a fair test — an early draft did exactly that and happily
- * declared the tail end of an ordinary drifting scene to be a results screen.
- * Both sides are therefore measured over spans of the SAME number of windows:
- * the reference is the calmest span gameplay ever manages at that length, and
- * the candidate is judged by its WORST span at that length, so a suffix that
+ * so measuring a short candidate suffix against a whole gameplay scene is not
+ * a fair test — an early draft did exactly that and happily declared the tail
+ * of an ordinary drifting scene to be a results screen. Both sides are
+ * measured over spans of the SAME number of windows: the stationarity
+ * reference is the calmest span gameplay ever manages at that length, and the
+ * candidate is judged by its WORST span at that length, so a suffix that
  * settles late but drifts early cannot pass on its tail alone.
  *
- * Returns TWO points, because the honest answer to "where did gameplay end"
- * is an interval rather than a frame: `stableStartIndex` is where the regime
- * is confidently stationary (strict bar), and `likelyEndIndex` is the earlier
- * point from which it had already stopped drifting like gameplay (loose bar).
- * The gap between them is genuine uncertainty and is reported as such.
+ * TWO POINTS ARE RETURNED, BECAUSE THE HONEST ANSWER IS AN INTERVAL
+ * -----------------------------------------------------------------
+ * `stableStartIndex` is where the regime is confidently the results screen;
+ * `likelyEndIndex` is the earlier point from which it had already stopped
+ * looking like gameplay. The gap between them is genuine uncertainty and is
+ * reported as such rather than resolved by picking a frame.
  */
-export function findStableSuffix(
+export function locateResultsScreen(
   frames: readonly PresentMonFrame[],
   ratios: readonly number[],
   t0: number,
@@ -268,65 +540,373 @@ export function findStableSuffix(
   endIndex: number,
   gameplayWindowsPerScene: readonly (readonly StabilityWindow[])[],
   minSustainedSec: number,
-): StableSuffix | null {
+  finalBlockInfo: { idle: boolean; startOffsetSec: number; endOffsetSec: number; meanGpuRatio: number },
+): ResultsScreenSearch {
+  const notes: string[] = [];
   const windows = stabilityWindows(frames, ratios, t0, startIndex, endIndex);
-  if (windows.length < MIN_STABILITY_WINDOWS) return null;
+  const n = windows.length;
 
-  // The comparison length: bounded above so a short results screen stays
-  // measurable, never longer than the shortest gameplay scene can supply, and
-  // never below the minimum needed for a spread to mean anything.
   const shortestScene = Math.min(...gameplayWindowsPerScene.map((w) => w.length));
   const spanW = Math.max(MIN_STABILITY_WINDOWS, Math.min(shortestScene, MAX_COMPARISON_WINDOWS));
-  if (windows.length < spanW) return null;
 
-  /** The calmest that identified gameplay ever gets over a span of this length. */
-  let referenceInstability = Number.POSITIVE_INFINITY;
-  for (const scene of gameplayWindowsPerScene) {
-    for (let i = 0; i + spanW <= scene.length; i += 1) {
-      referenceInstability = Math.min(referenceInstability, regimeInstability(scene.slice(i, i + spanW)));
-    }
+  const baseDiagnostics = (): Rdr2TailDiagnostics => ({
+    finalBlockIdle: finalBlockInfo.idle,
+    finalBlockStartOffsetSec: finalBlockInfo.startOffsetSec,
+    finalBlockEndOffsetSec: finalBlockInfo.endOffsetSec,
+    finalBlockMeanGpuRatio: finalBlockInfo.meanGpuRatio,
+    stabilityWindowFrames: STABILITY_WINDOW_FRAMES,
+    comparisonSpanWindows: spanW,
+    minSustainedBlockSec: minSustainedSec,
+    bars: {
+      gameplaySpanInstabilityFloor: null,
+      strictStabilityBar: null,
+      looseStabilityBar: null,
+      strictStabilityFactor: STRICT_STABILITY_FACTOR,
+      distributionChangeBar: null,
+      distributionCohesionBarByChunkCount: [],
+    },
+    gameplayScenes: [],
+    windows: [],
+    candidates: [],
+    accepted: null,
+    notes,
+  });
+
+  if (n < spanW) {
+    notes.push(
+      `The final block holds ${n} window${n === 1 ? '' : 's'} of ${STABILITY_WINDOW_FRAMES} frames, fewer than the ${spanW}-window comparison span. ` +
+        'There is not enough of it to compare against gameplay at equal length, so no suffix could be evaluated at all.',
+    );
+    return { suffix: null, diagnostics: baseDiagnostics() };
   }
-  if (!Number.isFinite(referenceInstability)) return null;
 
-  const strictBar = referenceInstability / STRICT_STABILITY_FACTOR;
-  const looseBar = referenceInstability;
+  // --- what identified gameplay does, at the comparison length -------------
+  /** End-anchored tiling into comparison-length chunks, so the same chunk set serves every candidate. */
+  const chunksOf = (ws: readonly StabilityWindow[]): StabilityWindow[][] => {
+    const out: StabilityWindow[][] = [];
+    for (let end = ws.length; end - spanW >= 0; end -= spanW) out.unshift(ws.slice(end - spanW, end) as StabilityWindow[]);
+    return out;
+  };
 
-  // Worst span at the comparison length, from each candidate start onwards.
-  const lastSpanStart = windows.length - spanW;
+  const gameplayScenes: TailGameplaySceneDiagnostic[] = [];
+  /** Every equal-length stretch of identified gameplay, for the distinctness test below. */
+  const gameplayChunkSamples: RegimeSample[] = [];
+  let gameplayFloor = Number.POSITIVE_INFINITY;
+  let changeBar = Number.NEGATIVE_INFINITY;
+  /** Gameplay's best self-agreement over a run of exactly k chunks, indexed by k. */
+  const cohesionBarByChunkCount: number[] = [];
+  let maxGameplayChunks = 0;
+
+  for (const scene of gameplayWindowsPerScene) {
+    const spans: number[] = [];
+    for (let i = 0; i + spanW <= scene.length; i += 1) spans.push(regimeInstability(scene.slice(i, i + spanW)));
+    for (const s of spans) gameplayFloor = Math.min(gameplayFloor, s);
+
+    const chunks = chunksOf(scene);
+    let adjacentMax: number | null = null;
+    let anyPairMax: number | null = null;
+    const samples = chunks.map((c) => sampleWindows(frames, ratios, c));
+    gameplayChunkSamples.push(...samples);
+    if (chunks.length >= 2) {
+      const pair = worstPairMatrix(samples);
+      adjacentMax = 0;
+      anyPairMax = 0;
+      for (let i = 0; i < samples.length; i += 1) {
+        for (let j = i + 1; j < samples.length; j += 1) {
+          anyPairMax = Math.max(anyPairMax, pair[i][j]);
+          if (j === i + 1) adjacentMax = Math.max(adjacentMax as number, pair[i][j]);
+        }
+      }
+      changeBar = Math.max(changeBar, adjacentMax);
+      maxGameplayChunks = Math.max(maxGameplayChunks, samples.length);
+      // Gameplay's calmest run of k consecutive chunks, for every k it can supply.
+      for (let k = 2; k <= samples.length; k += 1) {
+        let best = Number.POSITIVE_INFINITY;
+        for (let i = 0; i + k <= samples.length; i += 1) best = Math.min(best, worstPairIn(pair, i, k));
+        cohesionBarByChunkCount[k] = Math.min(cohesionBarByChunkCount[k] ?? Number.POSITIVE_INFINITY, best);
+      }
+    }
+
+    const sortedSpans = [...spans].sort((a, b) => a - b);
+    gameplayScenes.push({
+      startOffsetSec: scene[0].startOffsetSec,
+      endOffsetSec: scene[scene.length - 1].endOffsetSec,
+      windowCount: scene.length,
+      chunkCount: chunks.length,
+      minSpanInstability: sortedSpans.length > 0 ? finiteOrNull(sortedSpans[0]) : null,
+      medianSpanInstability: sortedSpans.length > 0 ? finiteOrNull(median(sortedSpans)) : null,
+      maxSpanInstability: sortedSpans.length > 0 ? finiteOrNull(sortedSpans[sortedSpans.length - 1]) : null,
+      maxAdjacentChunkDivergence: adjacentMax,
+      maxAnyPairChunkDivergence: anyPairMax,
+    });
+  }
+
+  const diagnostics = baseDiagnostics();
+  diagnostics.gameplayScenes = gameplayScenes;
+
+  const haveStabilityBar = Number.isFinite(gameplayFloor);
+  const strictBar = haveStabilityBar ? gameplayFloor / STRICT_STABILITY_FACTOR : null;
+  const looseBar = haveStabilityBar ? gameplayFloor : null;
+  const haveDistributionBars = Number.isFinite(changeBar) && maxGameplayChunks >= 2;
+  /** The cohesion bar to judge a suffix of `avail` chunks by, matched to the longest run gameplay can supply. */
+  const cohesionBarFor = (avail: number): { k: number; bar: number } | null => {
+    const k = Math.min(avail, maxGameplayChunks);
+    if (k < 2) return null;
+    const bar = cohesionBarByChunkCount[k];
+    return bar !== undefined && Number.isFinite(bar) ? { k, bar } : null;
+  };
+  diagnostics.bars = {
+    gameplaySpanInstabilityFloor: haveStabilityBar ? gameplayFloor : null,
+    strictStabilityBar: strictBar,
+    looseStabilityBar: looseBar,
+    strictStabilityFactor: STRICT_STABILITY_FACTOR,
+    distributionChangeBar: haveDistributionBars ? changeBar : null,
+    distributionCohesionBarByChunkCount: haveDistributionBars
+      ? cohesionBarByChunkCount.map((v, k) => (Number.isFinite(v) ? { chunks: k, bar: v } : null)).filter((v): v is { chunks: number; bar: number } => v !== null)
+      : [],
+  };
+
+  if (!haveStabilityBar) {
+    notes.push('No identified gameplay scene yielded a comparison-length span, so neither route has a reference to judge the tail against.');
+    return { suffix: null, diagnostics };
+  }
+  if (!haveDistributionBars) {
+    notes.push(
+      `No identified gameplay scene holds two full ${spanW}-window chunks (${spanW * STABILITY_WINDOW_FRAMES * 2} frames), so there is no measurement of how much ordinary gameplay's distribution moves. ` +
+        'The distribution-change route is unavailable for this capture and only the stationarity route was applied.',
+    );
+  }
+
+  // --- stationarity route: worst equal-length span from each start onwards --
+  const lastSpanStart = n - spanW;
   const spanInstability: number[] = [];
   for (let i = 0; i <= lastSpanStart; i += 1) spanInstability[i] = regimeInstability(windows.slice(i, i + spanW));
   const worstFrom: number[] = new Array(lastSpanStart + 1);
   worstFrom[lastSpanStart] = spanInstability[lastSpanStart];
   for (let i = lastSpanStart - 1; i >= 0; i -= 1) worstFrom[i] = Math.max(spanInstability[i], worstFrom[i + 1]);
 
-  const suffixDurationSec = (w: number): number =>
-    frames[windows[windows.length - 1].endIndex].timeInSeconds - frames[windows[w].startIndex].timeInSeconds;
+  diagnostics.windows = windows.map((w, i) => ({
+    index: i,
+    startOffsetSec: w.startOffsetSec,
+    endOffsetSec: w.endOffsetSec,
+    medianFrameTimeMs: w.medianFrameTimeMs,
+    meanGpuRatio: w.meanGpuRatio,
+    spanInstability: i <= lastSpanStart ? finiteOrNull(spanInstability[i]) : null,
+    worstSpanInstabilityToEnd: i <= lastSpanStart ? finiteOrNull(worstFrom[i]) : null,
+  }));
 
-  // Smallest w means the LONGEST suffix, so the first w that clears the strict
-  // bar with enough duration is the most that can honestly be claimed.
-  let strictW = -1;
-  for (let w = 0; w <= lastSpanStart; w += 1) {
-    if (worstFrom[w] <= strictBar && suffixDurationSec(w) >= minSustainedSec) {
-      strictW = w;
-      break;
+  // --- distribution route: end-anchored chunks, precomputed once -----------
+  const tailChunks = chunksOf(windows);
+  const K = tailChunks.length;
+  const tailSamples = tailChunks.map((c) => sampleWindows(frames, ratios, c));
+  const pairDivergence: number[][] = tailSamples.map(() => new Array(K).fill(0));
+  for (let i = 0; i < K; i += 1) {
+    for (let j = i + 1; j < K; j += 1) {
+      const d = regimeDivergence(tailSamples[i], tailSamples[j]);
+      pairDivergence[i][j] = d;
+      pairDivergence[j][i] = d;
     }
   }
-  if (strictW < 0) return null;
 
-  // Walk further back under the looser bar to find where drift first stopped.
-  let looseW = strictW;
-  while (looseW > 0 && worstFrom[looseW - 1] <= looseBar) looseW -= 1;
+  /** The last gameplay scene supplies the "before" side when a candidate starts at the very first tail window. */
+  const priorWindows = gameplayWindowsPerScene[gameplayWindowsPerScene.length - 1];
+  const timeline = [...priorWindows, ...windows];
+  const timelineOffset = priorWindows.length;
 
-  return {
-    stableStartIndex: windows[strictW].startIndex,
+  const chunkCountFrom = (w: number): number => Math.floor((n - w) / spanW);
+  const firstChunkIndexFrom = (w: number): number => K - chunkCountFrom(w);
+
+  /**
+   * How unlike ALL of this run's gameplay the stretch starting at `w` is: the
+   * SMALLEST distance between it and any equal-length gameplay stretch,
+   * including the one immediately preceding it. Taking the minimum is what
+   * makes this a claim about the whole benchmark rather than about one moment.
+   */
+  const distinctnessAt = (w: number): number | null => {
+    const beforeEnd = timelineOffset + w;
+    const beforeStart = beforeEnd - spanW;
+    if (beforeStart < 0 || w + spanW > n) return null;
+    const after = sampleWindows(frames, ratios, windows.slice(w, w + spanW));
+    let nearest = regimeDivergence(sampleWindows(frames, ratios, timeline.slice(beforeStart, beforeEnd)), after);
+    for (const g of gameplayChunkSamples) nearest = Math.min(nearest, regimeDivergence(g, after));
+    return nearest;
+  };
+
+  /**
+   * How well the suffix from `w` agrees with itself, judged over runs of the
+   * same number of chunks gameplay's bar was measured over.
+   *
+   * The candidate is scored by its WORST such run, mirroring the stationarity
+   * route: a suffix that holds together late but not early must not pass on
+   * its tail alone. The suffix's leading span is included as a piece of its
+   * own, because the end-anchored tiling would otherwise skip past it.
+   */
+  const cohesionFrom = (w: number): { value: number; bar: number; k: number } | null => {
+    const avail = chunkCountFrom(w);
+    if (avail < 2) return null;
+    const matched = cohesionBarFor(avail);
+    if (!matched) return null;
+    const i0 = firstChunkIndexFrom(w);
+    const pieces: RegimeSample[] = [];
+    if (w + spanW <= n) pieces.push(sampleWindows(frames, ratios, windows.slice(w, w + spanW)));
+    for (let i = i0; i < K; i += 1) pieces.push(tailSamples[i]);
+    if (pieces.length < matched.k) return null;
+    const pair = worstPairMatrix(pieces);
+    let worst = 0;
+    for (let i = 0; i + matched.k <= pieces.length; i += 1) worst = Math.max(worst, worstPairIn(pair, i, matched.k));
+    return { value: worst, bar: matched.bar, k: matched.k };
+  };
+
+  const suffixDurationSec = (w: number): number =>
+    frames[windows[n - 1].endIndex].timeInSeconds - frames[windows[w].startIndex].timeInSeconds;
+
+  // --- evaluate every possible suffix start, recording why each failed -----
+  const candidates: TailCandidateDiagnostic[] = [];
+  const stationarityPass: boolean[] = new Array(lastSpanStart + 1).fill(false);
+  const cohesionPass: boolean[] = new Array(lastSpanStart + 1).fill(false);
+  const cohesionValue: (number | null)[] = new Array(lastSpanStart + 1).fill(null);
+
+  for (let w = 0; w <= lastSpanStart; w += 1) {
+    const duration = suffixDurationSec(w);
+    const longEnough = duration >= minSustainedSec;
+    const chunks = chunkCountFrom(w);
+    const worst = worstFrom[w];
+    const external = haveDistributionBars ? distinctnessAt(w) : null;
+    const cohesionResult = haveDistributionBars ? cohesionFrom(w) : null;
+    const cohesion = cohesionResult ? cohesionResult.value : null;
+    const cohesionBarHere = cohesionResult ? cohesionResult.bar : null;
+    cohesionValue[w] = cohesion;
+
+    const rejected: string[] = [];
+    if (!longEnough) {
+      rejected.push(
+        `suffix lasts ${duration.toFixed(2)}s, under the ${minSustainedSec.toFixed(2)}s sustained floor this capture's own median rendered frame implies`,
+      );
+    }
+
+    const stationaryOk = longEnough && Number.isFinite(worst) && strictBar !== null && worst <= strictBar;
+    stationarityPass[w] = stationaryOk;
+    if (!stationaryOk && longEnough) {
+      rejected.push(
+        `stationarity: worst ${spanW}-window relative spread from here is ${Number.isFinite(worst) ? worst.toFixed(4) : 'undefined'}, above the bar of ${strictBar === null ? 'n/a' : strictBar.toFixed(4)} ` +
+          `(${STRICT_STABILITY_FACTOR}x calmer than gameplay's calmest span, ${looseBar === null ? 'n/a' : looseBar.toFixed(4)})`,
+      );
+    }
+
+    let distributionOk = false;
+    if (haveDistributionBars) {
+      const changeOk = external !== null && external > changeBar;
+      const cohereOk = cohesion !== null && cohesionBarHere !== null && cohesion < cohesionBarHere;
+      distributionOk = longEnough && changeOk && cohereOk;
+      if (!distributionOk && longEnough) {
+        if (chunks < 2) {
+          rejected.push(
+            `distribution: the suffix holds ${chunks} full ${spanW}-window chunk${chunks === 1 ? '' : 's'}; at least 2 are needed before "it is one regime throughout" is a claim the data can support`,
+          );
+        } else {
+          if (!changeOk) {
+            rejected.push(
+              `distribution: its nearest resemblance to an equal-length stretch of this run's gameplay is ${external === null ? 'undefined' : external.toFixed(4)}, not above the ${changeBar.toFixed(4)} that gameplay itself reaches between neighbouring stretches — so it still looks like something the benchmark already did`,
+            );
+          }
+          if (!cohereOk) {
+            rejected.push(
+              `distribution: the suffix disagrees with itself by ${cohesion === null ? 'undefined' : cohesion.toFixed(4)} over ${cohesionResult ? cohesionResult.k : '?'} chunks, not below the ${cohesionBarHere === null ? 'n/a' : cohesionBarHere.toFixed(4)} that the most self-consistent equal-length stretch of gameplay manages`,
+            );
+          }
+        }
+      }
+    }
+    cohesionPass[w] = haveDistributionBars && cohesion !== null && cohesionBarHere !== null && cohesion < cohesionBarHere;
+
+    const durationMargin = minSustainedSec > 0 ? duration / minSustainedSec : Number.POSITIVE_INFINITY;
+    const stationarityMargin = strictBar !== null && Number.isFinite(worst) && worst > 0 ? strictBar / worst : 0;
+    const distributionMargin =
+      haveDistributionBars && external !== null && cohesion !== null && cohesionBarHere !== null && changeBar > 0 && cohesion > 0
+        ? Math.min(external / changeBar, cohesionBarHere / cohesion)
+        : 0;
+    const rawScore = Math.min(durationMargin, Math.max(stationarityMargin, distributionMargin));
+
+    candidates.push({
+      windowIndex: w,
+      startOffsetSec: windows[w].startOffsetSec,
+      suffixDurationSec: duration,
+      suffixWindowCount: n - w,
+      chunkCount: chunks,
+      stationarity: {
+        worstSpanInstability: finiteOrNull(worst),
+        strictBar,
+        looseBar,
+        passes: stationaryOk,
+      },
+      distribution: {
+        distinctnessFromGameplay: external,
+        changeBar: haveDistributionBars ? changeBar : null,
+        cohesion,
+        cohesionBar: cohesionBarHere,
+        passes: distributionOk,
+      },
+      rejectedBecause: stationaryOk || distributionOk ? [] : rejected,
+      score: Number.isFinite(rawScore) ? rawScore : 0,
+    });
+  }
+
+  // Smallest w means the LONGEST suffix, so the first w that qualifies is the
+  // most that can honestly be claimed. Route 1 first, so every capture the
+  // stationarity test already resolved resolves identically.
+  let chosen = -1;
+  let method: 'stationarity' | 'distribution' = 'stationarity';
+  for (let w = 0; w <= lastSpanStart; w += 1) {
+    if (stationarityPass[w]) { chosen = w; method = 'stationarity'; break; }
+  }
+  if (chosen < 0) {
+    for (let w = 0; w <= lastSpanStart; w += 1) {
+      if (candidates[w].distribution.passes) { chosen = w; method = 'distribution'; break; }
+    }
+  }
+
+  const ranked = [...candidates].sort((a, b) => b.score - a.score);
+  diagnostics.candidates = ranked;
+
+  if (chosen < 0) {
+    notes.push(
+      `All ${candidates.length} possible suffix start${candidates.length === 1 ? '' : 's'} were rejected. ` +
+        'The highest-scoring one is listed first above, with the specific bar it failed.',
+    );
+    return { suffix: null, diagnostics };
+  }
+
+  // Walk back under the looser condition to find where the tail had already
+  // stopped looking like gameplay. That earlier point is the other edge of the
+  // boundary's genuine uncertainty.
+  let looseW = chosen;
+  if (method === 'stationarity' && looseBar !== null) {
+    while (looseW > 0 && worstFrom[looseW - 1] <= looseBar) looseW -= 1;
+  } else {
+    while (looseW > 0 && cohesionPass[looseW - 1]) looseW -= 1;
+  }
+
+  const suffix: ResultsScreenSuffix = {
+    method,
+    stableStartIndex: windows[chosen].startIndex,
     likelyEndIndex: windows[looseW].startIndex,
-    instability: worstFrom[strictW],
+    windowCount: n - chosen,
+    instability: finiteOrNull(worstFrom[chosen]),
     strictBar,
     looseBar,
-    windowCount: windows.length - strictW,
+    distinctnessFromGameplay: candidates[chosen].distribution.distinctnessFromGameplay,
+    changeBar: candidates[chosen].distribution.changeBar,
+    cohesion: candidates[chosen].distribution.cohesion,
+    cohesionBar: candidates[chosen].distribution.cohesionBar,
   };
+  diagnostics.accepted = {
+    method,
+    windowIndex: chosen,
+    stableStartOffsetSec: windows[chosen].startOffsetSec,
+    likelyEndOffsetSec: windows[looseW].startOffsetSec,
+  };
+  return { suffix, diagnostics };
 }
-
 /** A maximal run of frames sharing an idle/busy classification. */
 interface Block {
   idle: boolean;
@@ -409,6 +989,16 @@ export interface Rdr2AnalysisSource {
   collectorBuildHash: string;
 }
 
+/**
+ * Caller-selected extras. RESEARCH DIAGNOSTICS ONLY: nothing here changes a
+ * boundary, a bar, or a verdict — `diagnoseTail` attaches the ledger the tail
+ * search already built while deciding, so a refusal can be read rather than
+ * guessed at. An analysis run with and without it returns the same answer.
+ */
+export interface Rdr2AnalysisOptions {
+  diagnoseTail?: boolean;
+}
+
 export interface Rdr2AnalysisCandidate {
   schemaVersion: typeof RDR2_ANALYSIS_SCHEMA_VERSION;
   status: 'candidate';
@@ -438,6 +1028,8 @@ export interface Rdr2AnalysisCandidate {
   boundaries: Rdr2AnalysisBoundary[];
   scenes: Rdr2CandidateScene[];
   diagnostics: Rdr2AnalysisDiagnostics;
+  /** Present only when the caller asked for it. Explanatory, never load-bearing. */
+  tailDiagnostics?: Rdr2TailDiagnostics;
 }
 
 export interface Rdr2AnalysisUnresolved {
@@ -449,6 +1041,8 @@ export interface Rdr2AnalysisUnresolved {
   reasons: string[];
   /** Present when the bundle read far enough to produce them; absent on integrity failure. */
   diagnostics?: Rdr2AnalysisDiagnostics;
+  /** Present only when the caller asked for it AND the analysis reached the tail search. */
+  tailDiagnostics?: Rdr2TailDiagnostics;
   source?: Partial<Rdr2AnalysisSource>;
 }
 
@@ -473,7 +1067,7 @@ const median = (sorted: readonly number[]): number => sorted[Math.floor(sorted.l
  * error invites a caller to catch and continue with a guess. It also never
  * opens anything for writing.
  */
-export function analyzeRdr2ResearchBundle(bundleDir: string): Rdr2AnalysisResult {
+export function analyzeRdr2ResearchBundle(bundleDir: string, options: Rdr2AnalysisOptions = {}): Rdr2AnalysisResult {
   // --- integrity -----------------------------------------------------------
   const manifestPath = path.join(bundleDir, 'manifest.json');
   if (!fs.existsSync(manifestPath)) {
@@ -553,14 +1147,18 @@ export function analyzeRdr2ResearchBundle(bundleDir: string): Rdr2AnalysisResult
   }
   if (columnProblems.length > 0) return unresolved('integrity', columnProblems, { source });
 
-  return analyzeFrames(frames, source);
+  return analyzeFrames(frames, source, options);
 }
 
 /**
  * The structural analysis proper, separated from all filesystem access so it
  * can be driven directly by synthetic frames in tests.
  */
-export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2AnalysisSource): Rdr2AnalysisResult {
+export function analyzeFrames(
+  frames: readonly PresentMonFrame[],
+  source: Rdr2AnalysisSource,
+  options: Rdr2AnalysisOptions = {},
+): Rdr2AnalysisResult {
   const t0 = frames.length > 0 ? frames[0].timeInSeconds : 0;
   const captureDurationSec = frames.length > 0 ? frames[frames.length - 1].timeInSeconds - t0 : 0;
 
@@ -697,7 +1295,7 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     ratioHistogram: distribution.histogram,
   };
 
-  const fail = (reasons: string[]) => unresolved('structure', reasons, { source, diagnostics });
+  const fail = (reasons: string[], tail?: Rdr2TailDiagnostics) => unresolved('structure', reasons, { source, diagnostics, tailDiagnostics: tail });
 
   // --- structural interpretation -------------------------------------------
   // The benchmark's shape: [menu/loading] scene1 T1 scene2 T2 scene3 T3
@@ -706,10 +1304,10 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
   // The results screen is located FIRST, because where it starts decides what
   // counts as the benchmark proper. It cannot be found by GPU load — a real
   // run showed RDR2's results screen is GPU-busy — so it is found by
-  // STATIONARITY: see findStableSuffix and the section header above it.
-  // Only then are the transitions counted, over the region that precedes it,
-  // and exactly four of those is not a threshold to tune — it is what "five
-  // scenes" means.
+  // locateResultsScreen's two routes: stationarity for a frozen screen, and
+  // distribution change for an animated one. Only then are the transitions
+  // counted, over the region that precedes it, and exactly four of those is
+  // not a threshold to tune — it is what "five scenes" means.
   const firstBusy = sustained.findIndex((b) => !b.idle);
   if (firstBusy < 0) return fail(['No sustained GPU-busy block found; nothing in this capture looks like benchmark gameplay.']);
 
@@ -737,14 +1335,29 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     ]);
   }
 
-  const stable = findStableSuffix(frames, ratios, t0, finalBlock.startIndex, finalBlock.endIndex, gameplayWindowsPerScene, minSustainedSec);
+  const search = locateResultsScreen(
+    frames, ratios, t0, finalBlock.startIndex, finalBlock.endIndex, gameplayWindowsPerScene, minSustainedSec,
+    { idle: finalBlock.idle, startOffsetSec: finalBlock.startOffsetSec, endOffsetSec: finalBlock.endOffsetSec, meanGpuRatio: finalBlock.meanGpuRatio },
+  );
+  const tailDiagnostics = options.diagnoseTail ? search.diagnostics : undefined;
+  const stable = search.suffix;
   if (!stable) {
+    // The closest any suffix came, quoted verbatim from the same ledger the
+    // decision used — so the refusal names the specific bar that stopped it
+    // instead of asserting an unexplained "no".
+    const best = search.diagnostics.candidates[0];
     return fail([
-      `The capture's final sustained block (${finalBlock.startOffsetSec.toFixed(1)}-${finalBlock.endOffsetSec.toFixed(1)}s, GPU ${(finalBlock.meanGpuRatio * 100).toFixed(1)}%) never settles into a stationary regime. ` +
+      `The capture's final sustained block (${finalBlock.startOffsetSec.toFixed(1)}-${finalBlock.endOffsetSec.toFixed(1)}s, GPU ${(finalBlock.meanGpuRatio * 100).toFixed(1)}%) never settles into a stationary regime, ` +
+        'and never becomes a distributionally distinct, internally consistent one either. ' +
         'Its frame-time and GPU-load levels keep drifting the way the gameplay scenes before it do, measured over spans of equal length so the comparison is fair. ' +
-        `A results screen must be at least ${STRICT_STABILITY_FACTOR}x more stationary than the calmest span gameplay reaches in this same run, sustained for at least ${minSustainedSec.toFixed(2)}s. ` +
+        `A results screen must either be at least ${STRICT_STABILITY_FACTOR}x more stationary than the calmest span gameplay reaches in this same run, or differ from what precedes it by more than gameplay differs from itself while agreeing with itself better than any gameplay scene does — either way sustained for at least ${minSustainedSec.toFixed(2)}s. ` +
         'This recording therefore has no convincing results-screen boundary: either it stopped before the benchmark finished, or the end is not distinguishable from gameplay in this data.',
-    ]);
+      best
+        ? `Closest candidate: a suffix starting at ${best.startOffsetSec.toFixed(2)}s (${best.suffixDurationSec.toFixed(2)}s long). Rejected because ${best.rejectedBecause.join('; ')}.`
+        : 'No suffix of the final block was long enough to evaluate at all.',
+      ...search.diagnostics.notes,
+      'Re-run with --diagnose-tail for the window-by-window measurements, the span-matched gameplay reference, both bars, and every rejected change-point candidate ranked.',
+    ], tailDiagnostics);
   }
 
   // Everything strictly before the stationary regime is the benchmark proper.
@@ -853,8 +1466,10 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     meanFps: resultsBlock.meanFps,
     confidence: stable.likelyEndIndex === stable.stableStartIndex ? confidenceFor(resultsBlock) : 'medium',
     evidence: boundaryEvidence(resultsBlock, [
-      `Stationary to the end of the recording: relative spread ${stable.instability.toFixed(4)} across ${stable.windowCount} windows of ${STABILITY_WINDOW_FRAMES} frames, against a bar of ${stable.strictBar.toFixed(4)} — ${STRICT_STABILITY_FACTOR}x more stable than the calmest gameplay scene in this same run (${stable.looseBar.toFixed(4)}).`,
-      'Located by stationarity, NOT by GPU load: a real RDR2 run showed the results screen is GPU-busy, so "the GPU stopped working" would have been the wrong signal here.',
+      stable.method === 'stationarity'
+        ? `Stationary to the end of the recording: relative spread ${(stable.instability ?? Number.NaN).toFixed(4)} across ${stable.windowCount} windows of ${STABILITY_WINDOW_FRAMES} frames, against a bar of ${(stable.strictBar ?? Number.NaN).toFixed(4)} — ${STRICT_STABILITY_FACTOR}x more stable than the calmest span gameplay reaches in this same run (${(stable.looseBar ?? Number.NaN).toFixed(4)}).`
+        : `Distributionally distinct to the end of the recording: it is unlike every equal-length stretch of this run's gameplay, its nearest resemblance being ${(stable.distinctnessFromGameplay ?? Number.NaN).toFixed(4)} against the ${(stable.changeBar ?? Number.NaN).toFixed(4)} gameplay reaches between its own neighbouring stretches, while agreeing with itself to within ${(stable.cohesion ?? Number.NaN).toFixed(4)} — tighter than the ${(stable.cohesionBar ?? Number.NaN).toFixed(4)} of the most self-consistent gameplay scene in this run. It is NOT required to be still, so an animated results screen is visible to this test.`,
+      'Located by stationarity or distribution change, NOT by GPU load: a real RDR2 run showed the results screen is GPU-busy, so "the GPU stopped working" would have been the wrong signal here.',
       stable.likelyEndIndex === stable.stableStartIndex
         ? 'Gameplay stops drifting and the screen becomes stationary at the same point, so this boundary carries no interval of uncertainty.'
         : `Drift stops at ${scene5LikelyEndOffsetSec.toFixed(2)}s but the regime is only confidently stationary from ${resultsScreenStableStartOffsetSec.toFixed(2)}s; the ${(resultsScreenStableStartOffsetSec - scene5LikelyEndOffsetSec).toFixed(2)}s between them is genuine uncertainty, not a boundary this analysis can place on one frame.`,
@@ -893,6 +1508,7 @@ export function analyzeFrames(frames: readonly PresentMonFrame[], source: Rdr2An
     boundaries,
     scenes,
     diagnostics,
+    ...(tailDiagnostics ? { tailDiagnostics } : {}),
   };
 }
 
