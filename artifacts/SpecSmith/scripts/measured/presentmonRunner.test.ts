@@ -775,7 +775,10 @@ describe('a captured file feeds the existing parser', () => {
       { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
     );
 
-    const parsed = parsePresentMonCsv(outcome.csv, outcome.target.name);
+    // Filtered by the exact pid PresentMon was told to capture (--process_id)
+    // — see collect.ts, which passes String(outcome.target.processId), not
+    // outcome.target.name, for exactly this reason.
+    const parsed = parsePresentMonCsv(outcome.csv, String(outcome.target.processId));
     // The first present has no interval and is discarded; the dropped present
     // is RETAINED, both decisions owned by presentmon.ts rather than re-made
     // here.
@@ -785,6 +788,102 @@ describe('a captured file feeds the existing parser', () => {
     // Segmentation's signal survived the capture.
     expect(parsed.frames.every((f) => f.presentMode === 'Hardware: Legacy Flip')).toBe(true);
     expect(parsed.frames.every((f) => Number.isFinite(f.msGpuActive))).toBe(true);
+  });
+
+  // Regression coverage for a real gap the independent audit of this branch
+  // found: collect.ts used to filter the captured CSV by outcome.target.name
+  // rather than outcome.target.processId. PresentMon was told to capture one
+  // exact pid via --process_id, but the CSV was then re-opened with a filter
+  // that would happily accept ANY row sharing that executable's name — which
+  // is precisely the ambiguity selectTargetProcess exists to close off (see
+  // its own describe block above). This fixture models the worst case: a
+  // second process sharing both the target's executable name AND, by
+  // coincidence, its swap-chain address too, so nothing but the pid itself
+  // can tell the two apart.
+  describe('the exact pid PresentMon was told to capture is what filters the CSV, not its name', () => {
+    async function captureWithAnImpostor() {
+      const { parsePresentMonCsv } = await import('./presentmon');
+      // Interleaved on purpose: pid 29668 is the real target (--process_id),
+      // pid 40000 shares its name AND its swap chain address (0x1) — the one
+      // property that could otherwise have told the two series apart.
+      const rows = [
+        REAL_HEADER,
+        'RDR2.exe,29668,0x1,Other,-1,0,0,0.000,0,0,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,0.36,10.6',
+        'RDR2.exe,40000,0x1,Other,-1,0,0,0.010,0,99.0,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,0.36,10.6',
+        'RDR2.exe,29668,0x1,Other,-1,0,0,0.016,0,16.0,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,4.2,10.6',
+        'RDR2.exe,40000,0x1,Other,-1,0,0,0.020,0,100.0,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,4.2,10.6',
+        'RDR2.exe,29668,0x1,Other,-1,0,1,0.032,0,16.5,0,Hardware: Legacy Flip,0.07,6.16,16.66,0,-15.8,4.4,10.6',
+      ].join('\n');
+
+      const child = new FakeChild();
+      const files: Record<string, string> = {};
+      const fsDouble = fakeFs(files);
+      const spawn = (_c: string, args: readonly string[]) => {
+        setTimeout(() => {
+          files[String(args[args.indexOf('--output_file') + 1])] = rows;
+          child.emit('exit', 0, null);
+        }, 1);
+        return child;
+      };
+
+      const outcome = await runPresentMonCapture(
+        { processId: 29668, seconds: 30, binary },
+        { spawn, listProcesses: () => [proc(29668, 'RDR2.exe')], fsLike: fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
+      );
+      return { outcome, parsePresentMonCsv };
+    }
+
+    it('accepts the rows belonging to the target pid', async () => {
+      const { outcome, parsePresentMonCsv } = await captureWithAnImpostor();
+      const parsed = parsePresentMonCsv(outcome.csv, String(outcome.target.processId));
+      expect(parsed.frameTimesMs).toEqual([16.0, 16.5]);
+    });
+
+    it('excludes rows from a second process sharing the target\'s executable name but not its pid', async () => {
+      const { outcome, parsePresentMonCsv } = await captureWithAnImpostor();
+      const parsed = parsePresentMonCsv(outcome.csv, String(outcome.target.processId));
+      expect(parsed.frameTimesMs).not.toContain(99.0);
+      expect(parsed.frameTimesMs).not.toContain(100.0);
+      // The converse also holds: filtering by the IMPOSTOR's own pid isolates
+      // only its frames, proving this is a real pid-exact filter and not one
+      // that happens to always land on the first process in the file.
+      const impostorOnly = parsePresentMonCsv(outcome.csv, String(40000));
+      expect(impostorOnly.frameTimesMs).toEqual([99.0, 100.0]);
+    });
+
+    it('never silently combines the two pids\' frames into one series', async () => {
+      const { outcome, parsePresentMonCsv } = await captureWithAnImpostor();
+      const parsed = parsePresentMonCsv(outcome.csv, String(outcome.target.processId));
+      // Two rows, not four — a merge would double this count and corrupt
+      // every statistic computed from it, not just the total.
+      expect(parsed.frameTimesMs).toHaveLength(2);
+    });
+
+    // Reverting the collect.ts fix to `outcome.target.name` and re-running
+    // this same fixture through it demonstrates exactly the corruption the
+    // fix prevents: name-based filtering cannot distinguish the two pids at
+    // all, since both share the executable name "RDR2.exe".
+    it('demonstrates the bug: filtering by name instead of pid merges both processes\' frames', async () => {
+      const { outcome, parsePresentMonCsv } = await captureWithAnImpostor();
+      const mergedByName = parsePresentMonCsv(outcome.csv, outcome.target.name);
+      expect(mergedByName.frameTimesMs).toHaveLength(4);
+      expect(mergedByName.frameTimesMs).toEqual(expect.arrayContaining([16.0, 16.5, 99.0, 100.0]));
+    });
+
+    // The manual `--csv` path (an operator passing `--process <name>` for a
+    // capture they took themselves, with no pid available to filter by) is
+    // untouched by this fix: it is a different code path in collect.ts that
+    // never reads outcome.target at all, and parsePresentMonCsv's own
+    // name-matching behaviour is unchanged. A name filter deliberately still
+    // matches every process sharing that name, exactly as it always has —
+    // that is the operator's own choice, not a bug this fix is responsible
+    // for closing.
+    it('leaves the manual, name-based --csv filter behaviour unchanged', async () => {
+      const { outcome, parsePresentMonCsv } = await captureWithAnImpostor();
+      const byName = parsePresentMonCsv(outcome.csv, 'RDR2.exe');
+      expect(byName.frameTimesMs).toEqual([99.0, 16.0, 100.0, 16.5]);
+      expect(byName.processes).toEqual(['RDR2.exe']);
+    });
   });
 
   // The runner reimplements nothing: it must not export a statistic, a frame

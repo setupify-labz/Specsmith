@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, shouldPersistFrameTimes, validateAndSave, validateInternalCancelAfterSeconds, wholeNumberInRange, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, resolveCaptureProcessFilter, shouldPersistFrameTimes, validateAndSave, validateInternalCancelAfterSeconds, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
@@ -631,6 +631,37 @@ describe('choosing between reading a CSV and capturing one', () => {
   it('rejects a nonsense pid', () => {
     expect(() => parseCaptureSelection(['--capture-process-id', '0', '--capture-seconds', '30'])).toThrow(/between/);
     expect(() => parseCaptureSelection(['--capture-process-id', 'abc', '--capture-seconds', '30'])).toThrow(/not a number/);
+  });
+});
+
+// Regression coverage for a real gap an independent audit of this branch
+// found: after an automatic capture, collect.ts used to filter the CSV by
+// the target's executable NAME (outcome.target.name) rather than the exact
+// pid PresentMon was told to capture (--process_id). selectTargetProcess
+// already refuses an ambiguous name at process-selection time specifically
+// so a capture cannot be attributed to the wrong one of two processes
+// sharing a name; filtering the CSV by name afterward threw that guarantee
+// away right after establishing it. See presentmonRunner.test.ts's "the
+// exact pid PresentMon was told to capture is what filters the CSV, not its
+// name" for the parser-level proof that a pid filter and a name filter
+// behave differently against real capture output.
+describe('the automatic-capture process filter defaults to the exact pid, not the executable name', () => {
+  it('defaults to the target pid when the operator gave no --process', () => {
+    expect(resolveCaptureProcessFilter(undefined, 29668)).toBe('29668');
+  });
+
+  it('never overrides an operator-supplied --process — this only supplies a default', () => {
+    // Exercises the manual-override side of the same call site the automatic
+    // capture path uses; the --csv path never calls this function at all,
+    // since it has no captured pid to default to.
+    expect(resolveCaptureProcessFilter('RDR2.exe', 29668)).toBe('RDR2.exe');
+    expect(resolveCaptureProcessFilter('40000', 29668)).toBe('40000');
+  });
+
+  it('returns a plain pid string, not a name, so a second process sharing the target\'s name cannot match it', () => {
+    const result = resolveCaptureProcessFilter(undefined, 29668);
+    expect(result).not.toBe('RDR2.exe');
+    expect(result).toBe(String(29668));
   });
 });
 

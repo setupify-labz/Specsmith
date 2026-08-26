@@ -450,6 +450,29 @@ export function parseCaptureSelection(argv: string[]): { mode: 'csv'; csvPath: s
 }
 
 /**
+ * The process filter to hand parsePresentMonCsv after an automatic capture.
+ *
+ * Defaults to the exact pid PresentMon was told to capture (--process_id),
+ * never to its executable name. selectTargetProcess already refuses an
+ * ambiguous name at process-selection time specifically so a capture cannot
+ * be attributed to the wrong one of two processes sharing a name (see
+ * presentmonRunner.ts); filtering the CSV by name here would throw that
+ * guarantee away right after establishing it — a second process sharing the
+ * target's name, presenting during the same capture window, would silently
+ * merge into this run's frame times. The pid is unique to the process
+ * actually captured, so it is what is used by default.
+ *
+ * `explicit` — an operator-supplied --process — is never overridden: this
+ * only supplies a default when none was given. Note that supplying any
+ * filter, pid or name, means parsePresentMonCsv's own multi-process refusal
+ * (triggered only when no filter is passed) cannot fire on this path; that
+ * guard remains live for the manual --csv path, where no pid is known.
+ */
+export function resolveCaptureProcessFilter(explicit: string | undefined, targetProcessId: number): string {
+  return explicit ?? String(targetProcessId);
+}
+
+/**
  * Validates `--internal-cancel-after-seconds`, a testing-only flag that
  * self-cancels a capture from inside this process instead of depending on a
  * signal delivered from outside it.
@@ -606,10 +629,7 @@ async function main(argv: string[]): Promise<void> {
       });
       csvPath = outcome.csvPath;
       csvText = outcome.csv;
-      // The captured process is the filter, so the parser's multi-process
-      // refusal is checked against what we actually targeted rather than
-      // against nothing.
-      processFilter = processFilter ?? outcome.target.name;
+      processFilter = resolveCaptureProcessFilter(processFilter, outcome.target.processId);
       if (outcome.columns.missingOptional.length > 0) {
         console.warn(`  WARNING capture: no ${outcome.columns.missingOptional.join(', ')} column; segmentation will record those times as absent.`);
       }
