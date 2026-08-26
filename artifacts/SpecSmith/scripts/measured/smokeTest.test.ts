@@ -12,7 +12,6 @@ import {
   detectGameProcess,
   formatReport,
   queryEtwSessionActive,
-  resolvePnpmCommand,
   resolveReportPath,
   resolveTsxImportUrl,
   runCancellationSmokeTest,
@@ -150,7 +149,6 @@ describe('checkDependencies', () => {
       platform: 'win32',
       nodeVersion: 'v20.11.0',
       existsSync: () => true,
-      runPnpmVersion: () => '10.33.0',
     });
     expect(results.every((r) => r.status === 'pass')).toBe(true);
   });
@@ -171,105 +169,6 @@ describe('checkDependencies', () => {
   it('fails on a too-old Node version', () => {
     const results = checkDependencies({ platform: 'win32', nodeVersion: 'v16.0.0', existsSync: () => true });
     expect(results.find((r) => r.name === 'Node.js')?.status).toBe('fail');
-  });
-
-  // A real Windows run reported this check as a hard failure (ENOENT) even
-  // though `pnpm install` worked fine from an actual shell on that machine —
-  // caused by execFileSync('pnpm', ...) with no `shell: true`, which does not
-  // perform the PATHEXT resolution pnpm's Windows entry point (pnpm.cmd)
-  // needs. Two things had to change: the detection itself (fixed at the
-  // call site in main() — this suite covers checkDependencies's own
-  // handling of whatever runPnpmVersion reports), and the SEVERITY: pnpm
-  // is not required by this launcher at all, so its absence must never
-  // fail the whole run.
-  it('never fails the run over pnpm — it is informational only, not required by this direct launcher', () => {
-    const missing = checkDependencies({
-      platform: 'win32',
-      nodeVersion: 'v20.11.0',
-      existsSync: () => true,
-      runPnpmVersion: () => {
-        throw new Error('ENOENT');
-      },
-    });
-    const pnpmCheck = missing.find((r) => r.name.startsWith('pnpm'));
-    expect(pnpmCheck?.status).toBe('skip');
-    expect(pnpmCheck?.status).not.toBe('fail');
-    expect(pnpmCheck?.detail).toMatch(/not required by this launcher/);
-  });
-
-  it('reports the version when pnpm IS found', () => {
-    const results = checkDependencies({
-      platform: 'win32',
-      nodeVersion: 'v20.11.0',
-      existsSync: () => true,
-      runPnpmVersion: () => '10.33.0',
-    });
-    const pnpmCheck = results.find((r) => r.name.startsWith('pnpm'));
-    expect(pnpmCheck?.status).toBe('pass');
-    expect(pnpmCheck?.detail).toBe('10.33.0');
-  });
-
-  it('is skipped entirely (not even attempted) when no pnpm probe is provided', () => {
-    const results = checkDependencies({ platform: 'win32', nodeVersion: 'v20.11.0', existsSync: () => true });
-    expect(results.find((r) => r.name.startsWith('pnpm'))).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// resolvePnpmCommand — PATHEXT resolution, no shell, no command string
-// ---------------------------------------------------------------------------
-
-describe('resolvePnpmCommand', () => {
-  it('returns the bare name on POSIX — the OS itself resolves PATH with no shell needed', () => {
-    expect(resolvePnpmCommand({ platform: 'linux' })).toBe('pnpm');
-    expect(resolvePnpmCommand({ platform: 'darwin' })).toBe('pnpm');
-  });
-
-  // THE regression: a real Windows run reported ENOENT for a bare 'pnpm'
-  // even though `pnpm install` worked fine from an actual shell — pnpm's
-  // Windows entry point is always an extensioned file (pnpm.cmd, pnpm.exe,
-  // ...), never a bare 'pnpm'.
-  it('finds pnpm.CMD across PATHEXT candidates, in a directory later in PATH', () => {
-    const resolved = resolvePnpmCommand({
-      platform: 'win32',
-      pathEnv: 'C:\\nothing-here;C:\\Users\\a4ron\\AppData\\Local\\pnpm',
-      pathextEnv: '.COM;.EXE;.BAT;.CMD',
-      existsSync: (p) => p === 'C:\\Users\\a4ron\\AppData\\Local\\pnpm\\pnpm.CMD',
-    });
-    expect(resolved).toBe('C:\\Users\\a4ron\\AppData\\Local\\pnpm\\pnpm.CMD');
-  });
-
-  it('finds pnpm.exe (the standalone-installer entry point) just as well', () => {
-    const resolved = resolvePnpmCommand({
-      platform: 'win32',
-      pathEnv: 'C:\\tools\\pnpm',
-      pathextEnv: '.COM;.EXE;.BAT;.CMD',
-      existsSync: (p) => p === 'C:\\tools\\pnpm\\pnpm.EXE',
-    });
-    expect(resolved).toBe('C:\\tools\\pnpm\\pnpm.EXE');
-  });
-
-  it('returns undefined, not a bare name, when nothing extensioned exists on PATH', () => {
-    const resolved = resolvePnpmCommand({
-      platform: 'win32',
-      pathEnv: 'C:\\somewhere',
-      pathextEnv: '.COM;.EXE;.BAT;.CMD',
-      existsSync: () => false,
-    });
-    expect(resolved).toBeUndefined();
-  });
-
-  it('never needs a shell or a hand-built command string — the result is a single, direct file path', () => {
-    const resolved = resolvePnpmCommand({
-      platform: 'win32',
-      pathEnv: 'C:\\Users\\a4ron\\AppData\\Local\\pnpm',
-      pathextEnv: '.CMD',
-      existsSync: () => true,
-    });
-    // A plain path execFileSync can run directly with an args array —
-    // nothing here is a shell command line to be parsed.
-    expect(resolved).not.toContain(' ');
-    expect(resolved).not.toMatch(/^cmd(\.exe)?\s/i);
   });
 });
 

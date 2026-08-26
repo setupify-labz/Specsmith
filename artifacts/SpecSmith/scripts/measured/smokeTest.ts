@@ -232,74 +232,10 @@ export function runDirect(scriptPath: string, args: readonly string[], options: 
 // Dependency validation
 // ---------------------------------------------------------------------------
 
-/**
- * Resolves pnpm to a real, extensioned file — `pnpm.CMD`, `pnpm.exe`,
- * whichever actually exists — without a shell and without building any
- * command string.
- *
- * WHY NOT THE BARE NAME
- * -----------------------
- * On Windows, pnpm's entry point is a script — `pnpm.cmd` / `pnpm.CMD` /
- * `pnpm.ps1` from a corepack or npm-global install, `pnpm.exe` from the
- * standalone installer — never a bare `pnpm` with no extension. Node's
- * `execFileSync('pnpm', ...)` without a shell does not perform the PATHEXT
- * resolution needed to find any of those; a real Windows run reported
- * ENOENT for exactly this reason, even on a machine where `pnpm install`
- * from an actual shell worked fine.
- *
- * WHY NOT `shell: true`
- * -----------------------
- * `shell: true` also fixes the resolution — cmd.exe does its own PATHEXT
- * search — but does it by handing the WHOLE COMMAND as a single string to
- * be parsed by a shell, which is broader than this needs and worth avoiding
- * on principle even with no user-controlled input in the args here today.
- * This function does the resolution itself instead: walk `PATH`, try each
- * extension `PATHEXT` lists, in order, and return the first real file
- * found — a plain, extensioned path that `execFileSync` can run directly,
- * with args passed as an array, never concatenated into a command string.
- *
- * Returns `undefined` off Windows or when nothing is found on PATH — the
- * caller decides what that means (see checkDependencies: never a hard
- * failure, since this launcher does not depend on pnpm to run at all).
- */
-export function resolvePnpmCommand(
-  deps: {
-    platform?: NodeJS.Platform;
-    pathEnv?: string;
-    pathextEnv?: string;
-    existsSync?: (p: string) => boolean;
-  } = {},
-): string | undefined {
-  const platform = deps.platform ?? process.platform;
-  if (platform !== 'win32') {
-    // POSIX has no PATHEXT concept — the OS's own exec search resolves a
-    // bare name against PATH without any shell being involved, which is
-    // exactly what execFileSync('pnpm', ...) already does correctly there.
-    return 'pnpm';
-  }
-  const existsSync = deps.existsSync ?? fs.existsSync;
-  const pathEnv = deps.pathEnv ?? process.env.PATH ?? process.env.Path ?? '';
-  const pathextEnv = deps.pathextEnv ?? process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD';
-  // Windows always delimits PATH/PATHEXT with `;`, regardless of the host
-  // platform running this code — using a literal here (rather than
-  // path.delimiter, which reflects the ACTUAL runtime OS) is what keeps this
-  // resolvable in a test on any platform.
-  const dirs = pathEnv.split(';').filter(Boolean);
-  const exts = pathextEnv.split(';').filter(Boolean);
-  for (const dir of dirs) {
-    for (const ext of exts) {
-      const candidate = path.win32.join(dir, `pnpm${ext}`);
-      if (existsSync(candidate)) return candidate;
-    }
-  }
-  return undefined;
-}
-
 export interface DependencyDeps {
   platform?: NodeJS.Platform;
   nodeVersion?: string;
   existsSync?: (p: string) => boolean;
-  runPnpmVersion?: () => string;
 }
 
 export function checkDependencies(deps: DependencyDeps = {}): CheckResult[] {
@@ -339,38 +275,6 @@ export function checkDependencies(deps: DependencyDeps = {}): CheckResult[] {
           detail: 'not found — run `pnpm install --frozen-lockfile` from the repo root first',
         },
   );
-
-  // Informational only, and never 'fail': this launcher invokes node
-  // directly (see runDirect above) and never shells out to pnpm itself, so
-  // pnpm being unreachable here says nothing about whether the launcher can
-  // run. It still matters enough to report, because `pnpm install` is how
-  // node_modules/tsx above got there in the first place.
-  //
-  // A prior version detected it with execFileSync('pnpm', ['--version']),
-  // with no shell — which is a real Windows bug independent of this
-  // launcher's own logic: Node's execFileSync does not perform PATHEXT
-  // resolution the way a shell does, and pnpm's actual Windows entry point
-  // is a script (pnpm.cmd / pnpm.CMD / pnpm.ps1), not a bare "pnpm"
-  // executable, so it went looking for a file that does not exist and
-  // reported ENOENT — even on a machine where `pnpm install` from an actual
-  // shell works fine, which is exactly what a real Windows run of this
-  // launcher found. The fix after that used `shell: true`, which resolves
-  // PATHEXT correctly but does so by handing a COMMAND STRING to cmd.exe —
-  // broader than this needs. resolvePnpmCommand below does the same PATHEXT
-  // resolution itself, without a shell and without building any command
-  // string: it finds the real, extensioned file pnpm's name resolves to and
-  // passes its args as an array — see resolvePnpmCommand's own comment.
-  if (deps.runPnpmVersion) {
-    try {
-      results.push({ name: 'pnpm (informational)', status: 'pass', detail: deps.runPnpmVersion() });
-    } catch {
-      results.push({
-        name: 'pnpm (informational)',
-        status: 'skip',
-        detail: 'not found on PATH — not required by this launcher, which invokes node directly; needed separately for `pnpm install`',
-      });
-    }
-  }
 
   return results;
 }
@@ -656,19 +560,7 @@ export function resolveReportPath(explicitPath: string | undefined, tmpdir: stri
 async function main(argv: string[]): Promise<void> {
   const results: CheckResult[] = [];
 
-  results.push(
-    ...checkDependencies({
-      // No shell, no command string — see resolvePnpmCommand's own comment
-      // for why a plain execFileSync('pnpm', ...) is not enough on Windows.
-      runPnpmVersion: () => {
-        const pnpmCommand = resolvePnpmCommand();
-        if (pnpmCommand === undefined) {
-          throw new Error('pnpm was not found on PATH');
-        }
-        return execFileSync(pnpmCommand, ['--version'], { encoding: 'utf-8' }).trim();
-      },
-    }),
-  );
+  results.push(...checkDependencies());
 
   const { result: presentMonResult, binary } = checkPresentMon({
     executablePath: flag(argv, 'presentmon') ?? process.env.SPECSMITH_PRESENTMON,

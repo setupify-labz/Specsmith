@@ -421,7 +421,7 @@ question about OS signal delivery this launcher cannot safely test from
 outside the process. Smoke-test step 8's manual Ctrl+C check remains the
 real test for that, and this launcher does not replace it.
 
-Three further defects a real Windows run then found, all fixed:
+Two further defects a real Windows run then found, both fixed:
 
 - **`node --import tsx` failed with `Error [ERR_MODULE_NOT_FOUND]: Cannot
   find package 'tsx'`** when the launcher was invoked from a different
@@ -435,13 +435,6 @@ Three further defects a real Windows run then found, all fixed:
   that specific property is covered by `smokeTest.test.ts` (`'resolves tsx
   correctly even when the spawned process's own cwd is nothing to do with
   this repo'`), which fails without the fix.
-- **The pnpm dependency check reported ENOENT even on a machine where `pnpm
-  install` worked fine from an actual shell.** `execFileSync('pnpm', [...])`
-  with no shell does not perform the PATHEXT resolution pnpm's Windows entry
-  point (`pnpm.cmd` / `pnpm.CMD` / `pnpm.ps1`) needs. The check's severity
-  was fixed alongside it: pnpm was never actually required by this launcher
-  (it calls `node` directly, see above), so its absence is informational
-  only and can never fail the run.
 - **The default `-GameId` was `"marvel-rivals"`, which is not a real id in
   `src/data/games.json`** — the catalog check refused it before capture ever
   started. This is a pre-existing documentation defect the same run
@@ -450,16 +443,8 @@ Three further defects a real Windows run then found, all fixed:
   is now `"rdr2"`, a real catalog id, and the one the launcher has actually
   been run against.
 
-A follow-up hardening pass then tightened all three:
+A follow-up hardening pass then tightened the remaining two:
 
-- **pnpm resolution no longer uses `shell: true`.** It fixed the PATHEXT
-  problem correctly, but by handing a whole command STRING to cmd.exe to
-  parse — broader than the fix needed. `resolvePnpmCommand` in
-  `smokeTest.ts` does the same PATHEXT resolution itself instead: it walks
-  `PATH`, tries each extension `PATHEXT` lists, and finds the real,
-  extensioned file (`pnpm.CMD`, `pnpm.exe`, ...) pnpm's bare name resolves
-  to. `execFileSync` then runs that file directly, with args passed as an
-  array — no shell, and no command string ever built by hand.
 - **`smokeTest.ts` no longer has its own `"rdr2"` fallback.** An automatic
   capture always requires an explicit `--game-id` — the same rule
   `collect.ts`'s own `parseRunConditions` already enforces — checked by
@@ -475,11 +460,28 @@ A follow-up hardening pass then tightened all three:
   now defaults to the OS temp directory, and still honours an explicit
   `--report-file` / `-ReportFile` exactly as before.
 
-Its own PowerShell syntax has now parsed and run on real Windows across
-three runs; what still has not been exercised there is everything past
-dependency resolution and cancellation — hardware detection, `logman`,
-PresentMon itself — nor has this latest hardening pass been run on Windows
-yet. Report anything it gets wrong verbatim.
+That hardened commit then ran on real Windows and passed 11, failed 0,
+skipped 1 — every dependency, capture and cleanup check passed; the one
+skip was a since-removed pnpm presence check (see below). Its PowerShell
+syntax has now parsed and run on real Windows across four runs; what still
+has not been exercised there is everything past dependency resolution and
+cancellation — hardware detection, `logman`, PresentMon itself. Report
+anything it gets wrong verbatim.
+
+**The launcher used to also check whether pnpm was on `PATH`, purely
+informationally — this has been removed entirely.** It was never load-bearing:
+the launcher invokes `node` directly (see above) and was never actually
+dependent on pnpm being present. The check went through two rounds of fixes
+— first `execFileSync('pnpm', [...], {shell: true})` to fix an ENOENT on a
+machine where `pnpm install` worked fine from an actual shell (no-shell
+`execFileSync` doesn't perform the PATHEXT resolution pnpm's Windows entry
+point needs), then `resolvePnpmCommand` doing that same PATHEXT resolution
+by hand instead of trusting a shell — and even that still failed to detect
+a real, working pnpm install on the real Windows run above (correctly
+reported as skipped, never as a failure, since the check was informational
+throughout). Rather than debug a third detection strategy for a check that
+was never required, it has been removed outright, with no replacement
+detector. pnpm's installation is verified separately by Step 0a below.
 
 **What it does NOT cover**, which still needs the manual checklist below:
 elevation actually being required (step 6), `--keep-capture` (step 9), the
@@ -691,11 +693,11 @@ the store append path and the frame-time archive will have executed for real.
   begins. This proves the cancellation and cleanup logic itself works; it
   does not and cannot prove real Ctrl+C delivery, which remains smoke-test
   step 8's job alone — see "pnpm's Windows exit code vs. the collector's own
-  status" above for the full account, including two further defects
-  (`ERR_MODULE_NOT_FOUND` from a bare tsx specifier, and a false pnpm ENOENT)
-  that same run surfaced and this fix addresses alongside it. Not yet
-  confirmed: whether the internal timer approach behaves identically on real
-  Windows, since the two runs that found these bugs predate the fix.
+  status" above for the full account, including further defects
+  (`ERR_MODULE_NOT_FOUND` from a bare tsx specifier, and a wrong default
+  `-GameId`) that same run surfaced and this fix addresses alongside it. Not
+  yet confirmed: whether the internal timer approach behaves identically on
+  real Windows, since the runs that found these bugs predate the fix.
 - **Automatic capture has never run.** No PresentMon process has been spawned by
   this collector. The flag set is taken from Intel's documented console options
   and the column requirements from the pinned real fixture, but the pairing —
