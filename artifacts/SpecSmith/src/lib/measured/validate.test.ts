@@ -25,7 +25,16 @@ function makeObservation(frames: number[], over: Partial<MeasuredObservation> = 
     renderScalePercent: 100,
     preset: 'high',
     settingsSource: 'config-parsed',
-    settingsHash: 'abc123',
+    settingsHash: 'c'.repeat(64),
+    settingsFile: {
+      game: 'marvel-rivals',
+      fileName: 'GameUserSettings.ini',
+      locationSource: 'documents',
+      sha256: 'c'.repeat(64),
+      coverage: 'partial',
+      parsedFields: ['resolution', 'quality'],
+      parsedValues: { resolution: '2560x1440', quality: 'high' },
+    },
     rayTracing: false,
     upscaler: 'native',
     frameGeneration: false,
@@ -262,7 +271,11 @@ describe('disclosed conditions are warnings, not rejections', () => {
   });
 
   it.each([
-    [{ settingsSource: 'operator-attested' as const }, 'settings.operator-attested'],
+    // settingsFile: undefined too — an operator-attested run legitimately
+    // has no settings-file provenance; leaving the base fixture's default
+    // settingsFile in place here would itself now be the inconsistency the
+    // new settings.file-without-config-parsed-source rule exists to catch.
+    [{ settingsSource: 'operator-attested' as const, settingsFile: undefined }, 'settings.operator-attested'],
     [{ renderScalePercent: 70 }, 'render-scale.non-native'],
     [{ ram: { totalGb: 16, channels: 1 } }, 'ram.single-channel'],
     [{ captureTool: { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: false } }, 'capture-tool.unpinned'],
@@ -295,6 +308,261 @@ describe('disclosed conditions are warnings, not rejections', () => {
     const issues = validateMeasuredObservation(obs, frames);
     expect(errors(issues)).toEqual([]);
     expect(warnings(issues).map((i) => i.rule)).toContain('gpu.overclocked');
+  });
+});
+
+describe('settings-file provenance is checked at the store boundary, not just trusted from the CLI', () => {
+  const goodSettingsFile = {
+    game: 'marvel-rivals',
+    fileName: 'system.xml',
+    locationSource: 'documents' as const,
+    sha256: 'a'.repeat(64),
+    coverage: 'partial' as const,
+    parsedFields: ['display.screenWidth', 'graphics.textureQuality'],
+    parsedValues: { display: { screenWidth: 2560 }, graphics: { textureQuality: 'kSettingLevel_Ultra' } },
+  };
+  // gameId and settingsHash must agree with goodSettingsFile.game/sha256 for
+  // a "no errors" baseline — the new cross-checks below exist specifically to
+  // catch it when they do not.
+  const goodOverrides = { settingsSource: 'config-parsed' as const, settingsFile: goodSettingsFile, settingsHash: goodSettingsFile.sha256 };
+
+  it('accepts a config-parsed observation that carries real, self-consistent settingsFile provenance', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, goodOverrides);
+    expect(errors(validateMeasuredObservation(obs, frames))).toEqual([]);
+  });
+
+  // Unions vanish at runtime — the same reason preset/resolution/upscaler are
+  // re-checked below rather than trusted from a cast. A caller of
+  // buildObservation is not obligated to be this collector's own CLI.
+  it('rejects settingsSource "config-parsed" with no settingsFile at all', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsSource: 'config-parsed', settingsFile: undefined });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.config-parsed-missing-file');
+  });
+
+  it('rejects settingsFile present without settingsSource "config-parsed" — the reverse direction', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsSource: 'operator-attested' });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-without-config-parsed-source');
+  });
+
+  it('rejects a settingsFile whose game does not match this observation\'s gameId', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, gameId: 'cyberpunk2077' });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-game-mismatch');
+  });
+
+  it('rejects an empty settingsFile.fileName', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: '' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-empty');
+  });
+
+  it('rejects an absolute Windows path in settingsFile.fileName, not just a bare file name', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, fileName: 'C:\\Users\\Aaron\\Documents\\Rockstar Games\\Red Dead Redemption 2\\Settings\\system.xml' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it('rejects a POSIX-style path in settingsFile.fileName', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: 'home/aaron/Documents/system.xml' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it('rejects a drive-qualified fileName even with no path separator, e.g. "C:system.xml"', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName: 'C:system.xml' } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-not-basename');
+  });
+
+  it.each(['.', '..'])('rejects a settingsFile.fileName of exactly %s — a directory-traversal segment, not a file name', (fileName) => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, fileName } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-name-traversal');
+  });
+
+  it('rejects a settingsFile.locationSource that is not documents, onedrive, or explicit', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      // @ts-expect-error -- deliberately constructing what the type system forbids, to prove the runtime check catches it too
+      settingsFile: { ...goodSettingsFile, locationSource: 'downloads' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-location-source-invalid');
+  });
+
+  it.each(['documents', 'onedrive', 'explicit'] as const)('accepts locationSource %s as valid', (locationSource) => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, locationSource } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).not.toContain('settings.file-location-source-invalid');
+  });
+
+  it('rejects a settingsFile.sha256 that is not a valid 64-character hex digest', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, sha256: 'not-a-real-digest' },
+      settingsHash: 'not-a-real-digest',
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-sha256-malformed');
+  });
+
+  it('rejects a settingsFile.sha256 that does not match this observation\'s own settingsHash', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsHash: 'b'.repeat(64) });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-hash-mismatch');
+  });
+
+  it('rejects a settingsFile whose coverage claims more than "partial"', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      // @ts-expect-error -- deliberately constructing what the type system forbids, to prove the runtime check catches it too
+      settingsFile: { ...goodSettingsFile, coverage: 'complete' },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-coverage-not-partial');
+  });
+
+  it('rejects a settingsFile with no parsed fields at all — nothing to disclose as covered', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...goodOverrides, settingsFile: { ...goodSettingsFile, parsedFields: [] } });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-no-parsed-fields');
+  });
+
+  it('rejects a settingsFile that lists the same parsedField twice', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, parsedFields: ['display.screenWidth', 'display.screenWidth'] },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-duplicate-parsed-field');
+  });
+
+  it('rejects a parsedField whose top-level segment does not exist in parsedValues at all', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, parsedFields: [...goodSettingsFile.parsedFields, 'video.vSync'] },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-parsed-field-unresolved');
+  });
+
+  it('rejects a parsedField whose parent object exists but the named leaf key does not', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      settingsFile: { ...goodSettingsFile, parsedFields: [...goodSettingsFile.parsedFields, 'display.screenHeight'] },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-parsed-field-unresolved');
+  });
+
+  it('rejects a parsedField whose path tries to descend past a leaf (non-object) value', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      ...goodOverrides,
+      // display.screenWidth is the number 2560 — nothing further to descend into.
+      settingsFile: { ...goodSettingsFile, parsedFields: [...goodSettingsFile.parsedFields, 'display.screenWidth.nested'] },
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.file-parsed-field-unresolved');
+  });
+
+  it('warns, disclosing the exact field names, whenever settingsFile is present', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, goodOverrides);
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues)).toEqual([]);
+    const warning = warnings(issues).find((i) => i.rule === 'settings.file-partial-coverage');
+    expect(warning).toBeDefined();
+    expect(warning?.message).toContain('display.screenWidth');
+    expect(warning?.message).toContain('graphics.textureQuality');
+  });
+
+  it('does not warn about partial coverage when there is no settingsFile at all', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { settingsFile: undefined });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(warnings(issues).map((i) => i.rule)).not.toContain('settings.file-partial-coverage');
+  });
+});
+
+describe('an RDR2 settings-bound capture may not claim a unified preset', () => {
+  // rdr2Settings.ts has no concept of a single preset — see its own module
+  // header. A run bound to it claiming low/medium/high/ultra/extreme would
+  // be exactly the invented cross-game equivalence the schema exists to
+  // refuse, whether that lands in `preset` itself or is smuggled into
+  // `presetLabel` as a bare restatement of one.
+  const rdr2SettingsFile = {
+    game: 'rdr2',
+    fileName: 'system.xml',
+    locationSource: 'documents' as const,
+    sha256: 'd'.repeat(64),
+    coverage: 'partial' as const,
+    parsedFields: ['graphics.textureQuality'],
+    parsedValues: { graphics: { textureQuality: 'kSettingLevel_Ultra' } },
+  };
+  const rdr2Overrides = {
+    gameId: 'rdr2',
+    settingsSource: 'config-parsed' as const,
+    settingsFile: rdr2SettingsFile,
+    settingsHash: rdr2SettingsFile.sha256,
+  };
+
+  it('accepts preset "unmapped" with an honest, non-tier presetLabel', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...rdr2Overrides, preset: 'unmapped', presetLabel: 'per-category settings; see settingsFile' });
+    expect(errors(validateMeasuredObservation(obs, frames))).toEqual([]);
+  });
+
+  it.each(['low', 'medium', 'high', 'ultra', 'extreme'] as const)(
+    'rejects preset %s on an RDR2 settings-bound run',
+    (preset) => {
+      const frames = goodFrames();
+      const obs = makeObservation(frames, { ...rdr2Overrides, preset, presetLabel: undefined });
+      const issues = validateMeasuredObservation(obs, frames);
+      expect(errors(issues).map((i) => i.rule)).toContain('settings.rdr2-preset-must-be-unmapped');
+    },
+  );
+
+  it('rejects a presetLabel that just restates a normalized tier, case-insensitively', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { ...rdr2Overrides, preset: 'unmapped', presetLabel: 'Ultra' });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).toContain('settings.rdr2-preset-label-not-honest');
+  });
+
+  it('does not apply the RDR2 preset rule to a non-RDR2 settingsFile', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, {
+      settingsSource: 'config-parsed',
+      settingsFile: { game: 'marvel-rivals', fileName: 'settings.ini', locationSource: 'documents', sha256: 'e'.repeat(64), coverage: 'partial', parsedFields: ['quality'], parsedValues: { quality: 'high' } },
+      settingsHash: 'e'.repeat(64),
+      preset: 'high',
+    });
+    const issues = validateMeasuredObservation(obs, frames);
+    expect(errors(issues).map((i) => i.rule)).not.toContain('settings.rdr2-preset-must-be-unmapped');
   });
 });
 

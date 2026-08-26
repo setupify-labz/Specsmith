@@ -55,6 +55,27 @@ pnpm collect:measured -- \
   --dry-run
 ```
 
+**One exception: RDR2 does not need `--settings-file` for an automatic
+capture.** An automatic capture (`--capture-process-id`/`--capture-process-name`)
+of `--game-id rdr2` reads and hashes its own `system.xml` instead, confirming
+it did not change across the capture — see `bindRdr2SettingsProvenance` in
+`collect.ts`. Its `--preset` must be `unmapped` (RDR2 has no single preset
+this parser verifies), and `--settings-file` is ignored if passed anyway.
+`--csv` and every other game — including RDR2 captured by hand — still
+require `--settings-file` exactly as above.
+
+```
+pnpm collect:measured -- \
+  --capture-process-name RDR2.exe --capture-seconds 90 \
+  --presentmon "C:\tools\PresentMon\PresentMon.exe" \
+  --presentmon-sha256 <digest of your PresentMon.exe> \
+  --game-id rdr2 \
+  --resolution 1440p --preset unmapped \
+  --preset-label "per-category settings; see settingsFile" \
+  --ram-channels 2 \
+  --dry-run
+```
+
 Find the pid with `Get-Process YourGame | Select-Object Id, ProcessName`.
 `--capture-process-name YourGame.exe` also works, but **fails closed** when two
 processes share the name — a launcher beside the game, two clients, a game
@@ -365,6 +386,69 @@ Validation behaved as designed on that run: a warning for
 `settings.operator-attested` and an error for `conditions.game-version-missing`,
 since the run supplied no game version. The record was correctly not produced.
 
+## What the RDR2 automatic-capture real Windows run verified
+
+A second dry run has been performed on real hardware: a 90-second automatic
+capture (`--capture-process-name`, not `--csv`) of Red Dead Redemption 2, no
+`--settings-file` passed, 7,181 usable frames, `--dry-run` so nothing was
+recorded. It exercised the whole settings-file provenance path this branch
+adds, end to end, and confirmed:
+
+- **`--settings-file` was neither required nor read.** `parseRunConditions`'s
+  `isAutomaticRdr2Capture` exemption fired correctly for a real
+  `--capture-process-name` run of `--game-id rdr2`.
+- **A real `system.xml` was located and parsed before capture began**, and its
+  digest (`e277b01a3256541ade5c7fa00e7ed7b8fe942c89208bcaa2efd6612b5eeae70c`)
+  was printed — `bindRdr2SettingsProvenance`'s pre-capture read against a real
+  file, not a fixture.
+- **The post-capture reread matched, and the run proceeded past it.** Had the
+  file changed or become unreadable during capture,
+  `Rdr2SettingsChangedDuringCaptureError` would have refused the run before
+  frame-time assembly ever started — this run cleared that gate for real.
+- **The automatic-capture process filter resolved to the exact PID (27308),
+  not a name match** — `resolveCaptureProcessFilter`'s pid-over-name default
+  confirmed against a real running process.
+- **A real PresentMon CSV, captured automatically end to end, parsed and
+  produced statistics**: 7,181 frames, avg 79.83 fps, 1% low 49.2, 0.1% low
+  40.2 (7,181 ÷ 79.83 ≈ 89.96 s, consistent with the 90-second capture).
+- **The partial-coverage warning disclosed all 13 parsed fields**, matching
+  `RDR2_PARSED_FIELD_NAMES` exactly.
+- **The final provenance summary printed only `system.xml (documents)`** —
+  never the absolute path — confirming `toSettingsFileProvenance`'s
+  path-to-basename conversion and the schema's own refusal to carry a path,
+  together, on a real captured file rather than a synthetic fixture.
+- **`--dry-run` still wrote no observation and no frame-time archive**, same
+  guarantee as the first Roblox run, now confirmed on the settings-file path
+  too.
+- **Cleanup left no residue**: no PresentMon process, no
+  `SpecSmithMeasuredCapture` ETW session, no lock file, no
+  `specsmith-capture-*` temp directory.
+
+Not yet exercised by this run — see "What remains unverified" below: the
+store-append / frame-time-archive-write path (this was still `--dry-run`),
+and everything about automatic capture that is specific to a game other than
+RDR2.
+
+The frames themselves are not publishable benchmark data: gameplay was
+uncontrolled (not a fixed, repeatable benchmark route) and RDR2's settings
+coverage is partial by design (see "Games with no comparable preset tier"
+above) — this run verified the *collector*, not a measurement fit to publish.
+
+**A real, non-dry save is deliberately deferred, not merely pending.** The
+only real capture available today is this same uncontrolled, partial-coverage
+run — saving it for real would write exactly the non-publishable record the
+paragraph above describes into `measuredObservations.json`, a git-tracked
+store meant to be committed and shared, just to exercise the append path.
+That trade is not worth making. A real save is deferred until either
+controlled benchmark segmentation/repeatability exists for RDR2 (so a real
+save is also a real, publishable measurement), or the collector gains an
+isolated temporary test store so the append and frame-time-archive paths can
+be exercised for real without writing a non-publishable record into the
+committed store. Until then, `--dry-run`'s coverage of everything up to but
+not including the write — validation, provenance binding, statistics — is
+the intended verification boundary for this branch, not a gap this PR is
+waiting on.
+
 ## Windows smoke test for automatic capture
 
 Nothing below has been run automatically. The capture runner's logic is
@@ -549,13 +633,13 @@ if you see that message, move on to the next row.
 
 | # | What you're checking | Command | Expected |
 |---|---|---|---|
-| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (no `--presentmon-sha256`) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
+| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id rdr2 --resolution 1440p --preset unmapped --preset-label "per-category settings; see settingsFile" --ram-channels 2 --dry-run` (no `--presentmon-sha256`; no `--settings-file` — an automatic RDR2 capture doesn't need one, see Usage above) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
 | 2 | It refuses a WRONG digest, rather than trusting it | Same as #1, add `--presentmon-sha256 0000000000000000000000000000000000000000000000000000000000000000` | Refuses: "is not the one this collector was set up against" |
 | 3 | It refuses a pid that isn't running | Same as #1 + real `--presentmon-sha256 <sha>`, but `--capture-process-id 999999` | Refuses: "No running process has pid 999999" |
 | 4 | It refuses when a process name is ambiguous | `--capture-process-name explorer.exe` instead of `--capture-process-id` (Explorer usually has more than one) | Refuses, lists more than one pid, points you at `--capture-process-id` |
 | 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
 | 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
-| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
+| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id rdr2 --resolution 1440p --preset unmapped --preset-label "per-category settings; see settingsFile" --ram-channels 2 --dry-run` (play normally for the 30 seconds; no `--settings-file`) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line and a `Settings file:` line, writes nothing |
 | 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`. **Read "pnpm's Windows exit code vs. the collector's own status" below before running this step** — `$LASTEXITCODE` here reflects pnpm's Windows exit-code handling, confirmed on two separate real retests to read 1, not the collector's own 130; that is expected with this specific command, not a failure, and the four residues are the actual check. |
 | 8b | The second Ctrl-C is a real escape hatch | Repeat #7, press **Ctrl-C twice** | "Second interrupt — abandoning the wait", exits promptly, lock and temp directory still removed |
 | 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |
@@ -639,15 +723,24 @@ the store append path and the frame-time archive will have executed for real.
 
 ## What remains unverified
 
-- **No record has ever been saved.** Every run so far has been a dry run. The
-  store append path, and the frame-time archive being written for real, have
-  not been exercised on a real observation.
+- **No record has ever been saved — deliberately, not just not-yet.** Every
+  run so far has been a dry run, so the store append path and the frame-time
+  archive being written for real have not been exercised on a real
+  observation. See "What the RDR2 automatic-capture real Windows run
+  verified" above for why: the only real capture available today is
+  uncontrolled and settings-partial, so a real save would write exactly the
+  non-publishable record that run's own writeup describes into the
+  git-tracked store, just to test persistence. Deferred until controlled
+  benchmark segmentation/repeatability exists, or until the collector gains
+  an isolated temporary test store.
 - **`--game-exe` version detection** has never read a real executable. The
   path is passed through an environment variable rather than interpolated into
   the PowerShell command, so the escaping defect is fixed, but the detection
   itself is unconfirmed.
-- **`--platform` / `--content-id` and `--preset unmapped`** have never been
-  used in a real run. Their validation rules are covered by tests only.
+- **`--platform` / `--content-id`** have never been used in a real run. Their
+  validation rules are covered by tests only. (`--preset unmapped` HAS now
+  been used in a real run — see "What the RDR2 automatic-capture real Windows
+  run verified" above.)
 - **The genuine multi-rendering-GPU refusal** has never been triggered. Only
   the virtual-display exclusion has been seen on real hardware.
 - **Frame-generation and upscaler paths** have never been captured for real;
@@ -698,13 +791,18 @@ the store append path and the frame-time archive will have executed for real.
   `-GameId`) that same run surfaced and this fix addresses alongside it. Not
   yet confirmed: whether the internal timer approach behaves identically on
   real Windows, since the runs that found these bugs predate the fix.
-- **Automatic capture has never run.** No PresentMon process has been spawned by
-  this collector. The flag set is taken from Intel's documented console options
-  and the column requirements from the pinned real fixture, but the pairing —
-  these flags, on a real PresentMon, producing a file with those columns — is
-  reasoned, not observed. Everything around it (process selection, digest
-  pinning, timeout, cancellation, cleanup, column verification) is covered by
-  mocked tests only. See the smoke test above.
+- **Automatic capture of RDR2 has now run for real** (see "What the
+  RDR2 automatic-capture real Windows run verified" above): a real PresentMon
+  process was spawned, the documented flag set produced a file with the
+  required columns, process selection resolved the exact pid, and cleanup
+  left no residue. **Automatic capture of any OTHER game remains unexercised
+  for real** — that run's flag handling and column verification are shared
+  code, so the gap left is specifically per-game behavior (e.g. a game whose
+  own process naming or window behavior differs from RDR2's), not the capture
+  mechanism itself. The confirmed-exit termination sequence, the
+  "Performance Log Users" group path, and a real two-concurrent-captures
+  collision remain unexercised regardless of game — see the following
+  bullets.
 - **The "Performance Log Users" group has never been tried against a real
   PresentMon capture.** It is documented by Microsoft as an ETW permission
   (quoted in Requirements above), but that documentation is general — it is

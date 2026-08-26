@@ -65,6 +65,35 @@ const kebab = (field: string): string => field.replace(/([a-z])([A-Z])/g, '$1-$2
 
 const warn = (observationId: string, rule: string, message: string): MeasuredIssue => ({ severity: 'warning', rule, message, observationId });
 
+const SHA256_HEX = /^[a-f0-9]{64}$/;
+
+/** The normalized cross-game preset tiers — deliberately excludes 'unmapped', which is not a claimed tier. */
+const NORMALIZED_PRESET_TIERS: readonly string[] = ['low', 'medium', 'high', 'ultra', 'extreme'];
+
+/**
+ * Mirrors SettingsLocationSource's own literal union (types.ts) as a runtime
+ * set. The union vanishes at runtime like every other one re-checked in this
+ * file, so a non-CLI caller of buildObservation could otherwise pass any
+ * string through here uncaught.
+ */
+const SETTINGS_LOCATION_SOURCES: ReadonlySet<string> = new Set(['documents', 'onedrive', 'explicit']);
+
+/**
+ * Whether `dottedPath` (e.g. "display.screenWidth") resolves to a defined
+ * value inside `obj` — every segment must exist and, short of the last one,
+ * be itself an object to descend into. A path claiming coverage of
+ * something parsedValues does not actually contain is a false disclosure,
+ * not a technicality.
+ */
+function resolvesDottedPath(obj: Record<string, unknown>, dottedPath: string): boolean {
+  let cursor: unknown = obj;
+  for (const segment of dottedPath.split('.')) {
+    if (cursor === null || typeof cursor !== 'object' || !(segment in (cursor as Record<string, unknown>))) return false;
+    cursor = (cursor as Record<string, unknown>)[segment];
+  }
+  return cursor !== undefined;
+}
+
 /**
  * Validates one observation against the raw frame times it was computed from.
  *
@@ -135,6 +164,141 @@ export function validateMeasuredObservation(
     issues.push(err(id, 'conditions.game-version-missing', 'Neither gameVersion nor gameBuildId is recorded; the run cannot be tied to a specific build.'));
   }
   if (!obs.settingsHash) issues.push(err(id, 'conditions.settings-hash-missing', 'No settingsHash; two runs cannot be proven to share settings.'));
+
+  // --- settings-file provenance --------------------------------------------
+  // Unions vanish at runtime (the same reason preset/resolution/upscaler are
+  // re-checked below rather than trusted from a cast), so a caller of
+  // buildObservation that is not this collector's own CLI could construct a
+  // settingsSource/settingsFile pair — or a settingsFile whose own fields
+  // are internally inconsistent — that the type system alone cannot stop.
+  // Every check below re-verifies one specific claim this collector makes
+  // when it attaches settingsFile to a real run.
+  if (obs.settingsSource === 'config-parsed' && !obs.settingsFile) {
+    issues.push(
+      err(
+        id,
+        'settings.config-parsed-missing-file',
+        'settingsSource is "config-parsed" but no settingsFile provenance is recorded — a config-parsed claim needs the file it was parsed from.',
+      ),
+    );
+  }
+  if (obs.settingsFile && obs.settingsSource !== 'config-parsed') {
+    issues.push(
+      err(
+        id,
+        'settings.file-without-config-parsed-source',
+        `settingsFile is present (game "${obs.settingsFile.game}") but settingsSource is "${obs.settingsSource}", not "config-parsed" — a real settings-file read must be labeled as one.`,
+      ),
+    );
+  }
+  if (obs.settingsFile) {
+    const sf = obs.settingsFile;
+    // fileName must be a bare basename — never a path. See
+    // SettingsFileProvenance's own doc comment: the resolved path is kept
+    // internal to the collector's post-capture reread and must never reach
+    // this schema, so a fileName carrying a separator, a drive letter, or a
+    // dot/dot-dot segment is exactly the leak (or a traversal attempt) this
+    // field exists to rule out, not a formatting nitpick.
+    if (sf.fileName.length === 0) {
+      issues.push(err(id, 'settings.file-name-empty', 'settingsFile.fileName is empty — a settings file must be identified by its own name.'));
+    } else if (/[\\/:]/.test(sf.fileName)) {
+      issues.push(
+        err(
+          id,
+          'settings.file-name-not-basename',
+          `settingsFile.fileName "${sf.fileName}" contains a path separator or drive qualifier — only a bare file name is allowed, never a path.`,
+        ),
+      );
+    } else if (sf.fileName === '.' || sf.fileName === '..') {
+      issues.push(err(id, 'settings.file-name-traversal', `settingsFile.fileName "${sf.fileName}" is a directory-traversal segment, not a file name.`));
+    }
+    if (!SETTINGS_LOCATION_SOURCES.has(sf.locationSource)) {
+      issues.push(
+        err(
+          id,
+          'settings.file-location-source-invalid',
+          `settingsFile.locationSource "${sf.locationSource}" is not one of: ${[...SETTINGS_LOCATION_SOURCES].join(', ')}.`,
+        ),
+      );
+    }
+    if (sf.game !== obs.gameId) {
+      issues.push(
+        err(
+          id,
+          'settings.file-game-mismatch',
+          `settingsFile.game is "${sf.game}" but this observation's gameId is "${obs.gameId}" — a settings file from one game cannot provide provenance for a run of another.`,
+        ),
+      );
+    }
+    if (!SHA256_HEX.test(sf.sha256)) {
+      issues.push(err(id, 'settings.file-sha256-malformed', `settingsFile.sha256 "${sf.sha256}" is not a 64-character lowercase hex SHA-256 digest.`));
+    }
+    if (sf.sha256 !== obs.settingsHash) {
+      issues.push(
+        err(
+          id,
+          'settings.file-hash-mismatch',
+          `settingsFile.sha256 (${sf.sha256}) does not match this observation's own settingsHash (${obs.settingsHash}) — a config-parsed run's settingsHash IS the settings file's own digest, so the two must agree.`,
+        ),
+      );
+    }
+    if (sf.coverage !== 'partial') {
+      issues.push(
+        err(
+          id,
+          'settings.file-coverage-not-partial',
+          `settingsFile.coverage is "${sf.coverage}"; only "partial" is accepted today — no settings-file parser in this collector reads a complete configuration.`,
+        ),
+      );
+    }
+    if (sf.parsedFields.length === 0) {
+      issues.push(err(id, 'settings.file-no-parsed-fields', 'settingsFile is present but parsedFields is empty — there is nothing to disclose as covered.'));
+    }
+    const seenParsedFields = new Set<string>();
+    for (const field of sf.parsedFields) {
+      if (seenParsedFields.has(field)) {
+        issues.push(err(id, 'settings.file-duplicate-parsed-field', `settingsFile.parsedFields lists "${field}" more than once.`));
+      }
+      seenParsedFields.add(field);
+      if (!resolvesDottedPath(sf.parsedValues, field)) {
+        issues.push(
+          err(
+            id,
+            'settings.file-parsed-field-unresolved',
+            `settingsFile.parsedFields claims "${field}" was parsed, but parsedValues has no value at that path — a field claimed as covered must actually be present in the values it describes.`,
+          ),
+        );
+      }
+    }
+
+    // RDR2 specifically has no single "preset" this parser verifies — see
+    // scripts/measured/rdr2Settings.ts's own module header. A run bound to
+    // RDR2 settings claiming a normalized tier would be exactly the invented
+    // cross-game equivalence the schema exists to refuse, whether that claim
+    // lands in `preset` itself or is smuggled into `presetLabel` as a bare
+    // restatement of one.
+    if (sf.game === 'rdr2') {
+      if (obs.preset !== 'unmapped') {
+        issues.push(
+          err(
+            id,
+            'settings.rdr2-preset-must-be-unmapped',
+            `preset is "${obs.preset}" but this run is bound to RDR2 settings-file provenance. RDR2 has no single preset this parser verifies — preset must be "unmapped", with the real per-category settings disclosed via settingsFile instead.`,
+          ),
+        );
+      }
+      const normalizedLabel = obs.presetLabel?.trim().toLowerCase();
+      if (normalizedLabel && NORMALIZED_PRESET_TIERS.includes(normalizedLabel)) {
+        issues.push(
+          err(
+            id,
+            'settings.rdr2-preset-label-not-honest',
+            `presetLabel "${obs.presetLabel}" just restates a normalized preset tier. RDR2 has no single preset this parser verifies, so presetLabel must describe what was actually set, not repeat a tier this run never established.`,
+          ),
+        );
+      }
+    }
+  }
 
   // --- preset -------------------------------------------------------------
   // `unmapped` says the game has no comparable preset tier. That is only
@@ -346,6 +510,19 @@ export function validateMeasuredObservation(
   }
   if (obs.settingsSource === 'operator-attested') {
     issues.push(warn(id, 'settings.operator-attested', 'Graphics settings were attested by the operator rather than parsed from the game config.'));
+  }
+  // A structural check already rejects settingsFile without config-parsed
+  // (see conditions above) — this is the reader-facing half: even a genuine
+  // config-parsed read only covers the named fields, and that must stay
+  // visible on every such observation, not just documented in the schema.
+  if (obs.settingsFile) {
+    issues.push(
+      warn(
+        id,
+        'settings.file-partial-coverage',
+        `Settings were parsed from ${obs.settingsFile.fileName} (${obs.settingsFile.game}, ${obs.settingsFile.locationSource}), covering only: ${obs.settingsFile.parsedFields.join(', ')}. This is a partial read, not a complete configuration.`,
+      ),
+    );
   }
   // captureTool absence is a DETECTION GAP (recorded in detectionGaps, not
   // here) — the collector genuinely does not know what produced a --csv file.

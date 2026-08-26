@@ -214,6 +214,60 @@ export interface CaptureToolProvenance {
   pinned: boolean;
 }
 
+/**
+ * Provenance for a game-specific settings file the collector read and hashed
+ * directly, rather than an operator attesting to a settings dump it cannot
+ * verify. Distinct from `CaptureToolProvenance` (which tool produced the
+ * frame times) — this is which settings FILE, and how much of it, the
+ * collector actually read.
+ *
+ * Set only when a game-specific parser exists and ran (today: RDR2's
+ * system.xml, via scripts/measured/rdr2Settings.ts). Absent for every other
+ * game and for `--csv`, exactly like `captureTool` is absent there.
+ *
+ * `coverage: 'partial'` is not a placeholder — it is the honest, permanent
+ * state until a settings-file parser exists that reads every setting a game
+ * exposes, which none does today. `parsedFields` names EXACTLY which
+ * settings were read and validated, so "partial" is never a vague hedge: a
+ * reader can see precisely what is and is not covered. Neither this type nor
+ * anything that constructs it may derive a single "preset" or claim a
+ * complete configuration from a partial read — see MeasuredPreset's own
+ * `unmapped` for why inventing that cross-game equivalence is refused.
+ */
+/**
+ * Where a settings file was found, without saying where on disk. Mirrors
+ * rdr2Settings.ts's own SettingsLocationSource — duplicated as a literal
+ * union here, not imported, because src/lib must not depend on scripts/ (the
+ * dependency runs the other way throughout this codebase).
+ */
+export type SettingsLocationSource = 'documents' | 'onedrive' | 'explicit';
+
+export interface SettingsFileProvenance {
+  /** Which game's settings file this is, e.g. 'rdr2'. Free-form, mirroring gameId's own looseness — not a closed catalog. */
+  game: string;
+  /**
+   * The file's own name only, e.g. "system.xml" — NEVER the absolute path it
+   * was read from. `measuredObservations.json` is a git-tracked store meant
+   * to be committed and shared; an absolute Windows path embeds the
+   * operator's OS username and local directory layout (`C:\Users\<name>\...`)
+   * into every observation that carries one, which nothing about a
+   * performance measurement needs. The resolved path is used internally, to
+   * re-read the exact same file after capture — see collect.ts's
+   * bindRdr2SettingsProvenance — and never leaves that function.
+   */
+  fileName: string;
+  /** Which known candidate location the file was found at, without disclosing where that resolves to on disk. */
+  locationSource: SettingsLocationSource;
+  /** SHA-256 of the file's raw bytes, read immediately before capture began and re-confirmed unchanged immediately after it ended. */
+  sha256: string;
+  /** Always 'partial' today — see this interface's own doc comment. */
+  coverage: 'partial';
+  /** Exactly the field names this parser validated, e.g. ['display.screenWidth', 'graphics.textureQuality', ...]. The complete, literal answer to "what was actually covered." */
+  parsedFields: readonly string[];
+  /** The parsed values themselves, keyed to match parsedFields. Kept as a plain JSON value rather than a game-specific type, since MeasuredObservation must stay game-agnostic — see DetectedEnvironment and PlatformContent for the same reasoning applied elsewhere in this file. */
+  parsedValues: Record<string, unknown>;
+}
+
 export interface MeasuredObservation {
   id: string;
   tier: ObservationTier;
@@ -252,6 +306,8 @@ export interface MeasuredObservation {
   settingsSource: SettingsSource;
   /** Hash over the full settings config, so two runs can be proven identical. */
   settingsHash: string;
+  /** Set only when a game-specific settings-file parser ran; see SettingsFileProvenance. */
+  settingsFile?: SettingsFileProvenance;
 
   rayTracing: boolean;
   upscaler: Upscaler;
