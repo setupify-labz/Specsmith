@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts",
-    "collect:measured": "tsx scripts/measured/collect.ts"
+    "collect:measured": "tsx scripts/measured/collect.ts",
+    "test:cancel-harness": "tsx scripts/measured/__fixtures__/cancelHarness.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",

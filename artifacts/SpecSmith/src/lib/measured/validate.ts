@@ -347,6 +347,19 @@ export function validateMeasuredObservation(
   if (obs.settingsSource === 'operator-attested') {
     issues.push(warn(id, 'settings.operator-attested', 'Graphics settings were attested by the operator rather than parsed from the game config.'));
   }
+  // captureTool absence is a DETECTION GAP (recorded in detectionGaps, not
+  // here) — the collector genuinely does not know what produced a --csv file.
+  // This is the other half: the collector DOES know, and what it knows is
+  // that the digest was not checked against a pin before this capture ran.
+  if (obs.captureTool && !obs.captureTool.pinned) {
+    issues.push(
+      warn(
+        id,
+        'capture-tool.unpinned',
+        `${obs.captureTool.name} (sha256 ${obs.captureTool.sha256}) was run without checking its digest against a pinned value — the operator passed --allow-unpinned-presentmon.`,
+      ),
+    );
+  }
   if (obs.renderScalePercent !== 100) {
     issues.push(warn(id, 'render-scale.non-native', `Render scale is ${obs.renderScalePercent}%; this is not a native ${obs.resolution} result.`));
   }

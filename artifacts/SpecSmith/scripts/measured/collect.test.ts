@@ -3,12 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseRunConditions, shouldPersistFrameTimes, validateAndSave, wholeNumberInRange, type CollectInputs } from './collect';
+import { buildObservation, CliInputError, collectorBuildHash, COLLECTOR_VERSION, DEFAULT_BUILD_HASH_FILES, frameGenerationFactor, numberInRange, oneOf, parseCaptureSelection, parseRunConditions, resolveCaptureProcessFilter, shouldPersistFrameTimes, validateAndSave, validateInternalCancelAfterSeconds, wholeNumberInRange, type CollectInputs } from './collect';
 import { detectWindowsEnvironment, UnsupportedPlatformError, type DetectedHardware } from './environment';
 import { loadCatalogs } from './catalog';
 import { errors, validateMeasuredObservation, warnings, type MeasuredIssue } from '../../src/lib/measured/validate';
 import { computeFrameTimeStats } from '../../src/lib/measured/frameTimes';
-import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS } from '../../src/lib/measured/types';
+import { MEASURED_PRESETS, RESOLUTIONS, UPSCALERS, type CaptureToolProvenance } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 
 // Frame times here are SYNTHETIC, used to exercise assembly and the save gate.
@@ -38,7 +38,7 @@ const inputs = (over: Partial<CollectInputs> = {}): CollectInputs => ({
   ...over,
 });
 
-const build = (over: Partial<CollectInputs> = {}, f = frames()) =>
+const build = (over: Partial<CollectInputs> = {}, f = frames(), captureTool?: CaptureToolProvenance) =>
   buildObservation({
     frameTimesMs: f,
     hardware,
@@ -47,7 +47,10 @@ const build = (over: Partial<CollectInputs> = {}, f = frames()) =>
     measuredAt: '2026-08-19T12:00:00.000Z',
     runNonce: '11111111-2222-3333-4444-555555555555',
     buildHash: 'buildhash',
+    captureTool,
   });
+
+const capturedByPresentMon: CaptureToolProvenance = { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: true };
 
 describe('assembly reuses the shared logic rather than duplicating it', () => {
   it('derives every statistic from the frame times via computeFrameTimeStats', () => {
@@ -77,14 +80,42 @@ describe('fields that cannot be detected are marked, not guessed', () => {
   it('names every undetectable field with a reason', () => {
     const gaps = build().detectionGaps;
     expect(gaps.map((g) => g.field).sort()).toEqual([
+      'captureTool',
       'detected.gpuOverclockDetected',
       'ram.channels',
       'settingsHash',
     ]);
     for (const g of gaps) {
       expect(g.reason.length).toBeGreaterThan(20);
-      expect(g.resolution).toBe('operator-supplied');
     }
+  });
+
+  it('marks the fixed, platform-level gaps as operator-supplied', () => {
+    const fixed = build().detectionGaps.filter((g) => g.field !== 'captureTool');
+    for (const g of fixed) expect(g.resolution).toBe('operator-supplied');
+  });
+
+  // Unlike the fixed platform gaps above, whether captureTool is known
+  // depends on THIS run: a --capture-* run resolves it, a --csv run cannot,
+  // because nothing about a hand-taken capture says what tool produced it.
+  // Nobody can supply it after the fact, so it is 'unresolved', not
+  // 'operator-supplied'.
+  it('marks a missing capture tool as unresolved, not operator-suppliable', () => {
+    const gap = build().detectionGaps.find((g) => g.field === 'captureTool');
+    expect(gap?.resolution).toBe('unresolved');
+  });
+
+  it('records no capture-tool gap when the collector ran the capture itself', () => {
+    const gaps = build({}, frames(), capturedByPresentMon).detectionGaps;
+    expect(gaps.map((g) => g.field)).not.toContain('captureTool');
+  });
+
+  it('carries the capture tool onto the observation verbatim, when supplied', () => {
+    expect(build({}, frames(), capturedByPresentMon).captureTool).toEqual(capturedByPresentMon);
+  });
+
+  it('leaves captureTool unset — not a fabricated value — for a --csv run', () => {
+    expect(build().captureTool).toBeUndefined();
   });
 
   it('labels catalog matching as manual, since no fuzzy matcher is used', () => {
@@ -511,6 +542,10 @@ describe('collector build identity', () => {
     expect(DEFAULT_BUILD_HASH_FILES).toEqual(expect.arrayContaining([
       'collect.ts',
       'presentmon.ts',
+      // The capture flags fix what the file CONTAINS — whether dropped
+      // presents are in it, whether segmentation's columns exist — so they
+      // determine what a saved figure means as directly as the parser does.
+      'presentmonRunner.ts',
       'segmentation.ts',
       'environment.ts',
       'catalog.ts',
@@ -544,5 +579,127 @@ describe('collector build identity', () => {
     // other files are untouched; the identity must still move.
     fs.writeFileSync(path.join(dirB, 'validate.ts'), '// validate.ts, version 2');
     expect(collectorBuildHash(names, dirA)).not.toBe(collectorBuildHash(names, dirB));
+  });
+});
+
+// The capture source decides where a measurement CAME FROM, which is the one
+// thing about a record that cannot be re-derived later. A command line that
+// says two different things about it, or nothing at all, is refused rather
+// than resolved by precedence.
+describe('choosing between reading a CSV and capturing one', () => {
+  it('reads a CSV when --csv is given', () => {
+    expect(parseCaptureSelection(['--csv', 'run.csv'])).toEqual({ mode: 'csv', csvPath: 'run.csv' });
+  });
+
+  it('captures when a target and a duration are given', () => {
+    expect(parseCaptureSelection(['--capture-process-id', '4242', '--capture-seconds', '90'])).toEqual({
+      mode: 'capture', processId: 4242, processName: undefined, seconds: 90,
+    });
+  });
+
+  it('captures by process name too', () => {
+    expect(parseCaptureSelection(['--capture-process-name', 'RDR2.exe', '--capture-seconds', '60'])).toEqual({
+      mode: 'capture', processId: undefined, processName: 'RDR2.exe', seconds: 60,
+    });
+  });
+
+  it('REFUSES a command line that both reads and captures', () => {
+    expect(() => parseCaptureSelection(['--csv', 'run.csv', '--capture-seconds', '90'])).toThrow(CliInputError);
+    expect(() => parseCaptureSelection(['--csv', 'run.csv', '--capture-process-id', '1'])).toThrow(/cannot be combined/);
+  });
+
+  it('refuses a command line that does neither', () => {
+    expect(() => parseCaptureSelection(['--game-id', 'x'])).toThrow(/Nothing to measure/);
+  });
+
+  it('requires a duration when capturing', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '4242'])).toThrow(/--capture-seconds is required/);
+  });
+
+  // These reuse the collector's existing numeric flag validation rather than
+  // adding a second, differently-behaved one.
+  it('rejects a non-numeric or fractional duration', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', 'ninety'])).toThrow(/not a number/);
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '90.5'])).toThrow(/whole number/);
+  });
+
+  it('rejects a duration outside the runner\'s bounds', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '1'])).toThrow(/between/);
+    expect(() => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', '99999'])).toThrow(/between/);
+  });
+
+  it('rejects a nonsense pid', () => {
+    expect(() => parseCaptureSelection(['--capture-process-id', '0', '--capture-seconds', '30'])).toThrow(/between/);
+    expect(() => parseCaptureSelection(['--capture-process-id', 'abc', '--capture-seconds', '30'])).toThrow(/not a number/);
+  });
+});
+
+// Regression coverage for a real gap an independent audit of this branch
+// found: after an automatic capture, collect.ts used to filter the CSV by
+// the target's executable NAME (outcome.target.name) rather than the exact
+// pid PresentMon was told to capture (--process_id). selectTargetProcess
+// already refuses an ambiguous name at process-selection time specifically
+// so a capture cannot be attributed to the wrong one of two processes
+// sharing a name; filtering the CSV by name afterward threw that guarantee
+// away right after establishing it. See presentmonRunner.test.ts's "the
+// exact pid PresentMon was told to capture is what filters the CSV, not its
+// name" for the parser-level proof that a pid filter and a name filter
+// behave differently against real capture output.
+describe('the automatic-capture process filter defaults to the exact pid, not the executable name', () => {
+  it('defaults to the target pid when the operator gave no --process', () => {
+    expect(resolveCaptureProcessFilter(undefined, 29668)).toBe('29668');
+  });
+
+  it('never overrides an operator-supplied --process — this only supplies a default', () => {
+    // Exercises the manual-override side of the same call site the automatic
+    // capture path uses; the --csv path never calls this function at all,
+    // since it has no captured pid to default to.
+    expect(resolveCaptureProcessFilter('RDR2.exe', 29668)).toBe('RDR2.exe');
+    expect(resolveCaptureProcessFilter('40000', 29668)).toBe('40000');
+  });
+
+  it('returns a plain pid string, not a name, so a second process sharing the target\'s name cannot match it', () => {
+    const result = resolveCaptureProcessFilter(undefined, 29668);
+    expect(result).not.toBe('RDR2.exe');
+    expect(result).toBe(String(29668));
+  });
+});
+
+// --internal-cancel-after-seconds self-cancels a capture from inside this
+// process, for smoke-testing cleanup without depending on an OS signal — see
+// validateInternalCancelAfterSeconds's own comment for why (a real Windows
+// run found child.kill('SIGINT') does not deliver a catchable signal there
+// at all). The one thing this MUST guarantee, checked directly rather than
+// only through the manual smoke test: it can never let a real, savable
+// capture self-cancel silently.
+describe('the internal cancellation timer cannot write an observation', () => {
+  const capture = (seconds: number) => parseCaptureSelection(['--capture-process-id', '1', '--capture-seconds', String(seconds)]);
+
+  it('is undefined, and does not validate anything, when the flag is absent', () => {
+    expect(validateInternalCancelAfterSeconds(undefined, capture(30), false)).toBeUndefined();
+    expect(validateInternalCancelAfterSeconds(undefined, capture(30), true)).toBeUndefined();
+  });
+
+  it('REFUSES without --dry-run — the one rule this flag cannot be used to bypass', () => {
+    expect(() => validateInternalCancelAfterSeconds('5', capture(30), false)).toThrow(CliInputError);
+    expect(() => validateInternalCancelAfterSeconds('5', capture(30), false)).toThrow(/requires --dry-run/);
+  });
+
+  it('refuses on a --csv run, which has no capture to cancel', () => {
+    const csv = parseCaptureSelection(['--csv', 'run.csv']);
+    expect(() => validateInternalCancelAfterSeconds('5', csv, true)).toThrow(/only applies to an automatic capture/);
+  });
+
+  it('refuses a delay that would never fire before the capture finishes on its own', () => {
+    expect(() => validateInternalCancelAfterSeconds('30', capture(30), true)).toThrow(/must be less than --capture-seconds/);
+    expect(() => validateInternalCancelAfterSeconds('45', capture(30), true)).toThrow(/must be less than --capture-seconds/);
+  });
+
+  it('accepts a valid delay under --dry-run and returns it as a number', () => {
+    expect(validateInternalCancelAfterSeconds('5', capture(30), true)).toBe(5);
+  });
+
+  it('reuses the collector\'s existing numeric validation rather than a second one', () => {
+    expect(() => validateInternalCancelAfterSeconds('not-a-number', capture(30), true)).toThrow(/not a number/);
   });
 });

@@ -265,11 +265,27 @@ describe('disclosed conditions are warnings, not rejections', () => {
     [{ settingsSource: 'operator-attested' as const }, 'settings.operator-attested'],
     [{ renderScalePercent: 70 }, 'render-scale.non-native'],
     [{ ram: { totalGb: 16, channels: 1 } }, 'ram.single-channel'],
+    [{ captureTool: { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: false } }, 'capture-tool.unpinned'],
   ])('warns on %o without rejecting', (over, rule) => {
     const frames = goodFrames();
     const issues = validateMeasuredObservation(makeObservation(frames, over), frames);
     expect(errors(issues)).toEqual([]);
     expect(warnings(issues).map((i) => i.rule)).toContain(rule);
+  });
+
+  it('does not warn when the capture tool was pinned', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { captureTool: { name: 'PresentMon.exe', sha256: 'a'.repeat(64), pinned: true } });
+    expect(warnings(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).not.toContain('capture-tool.unpinned');
+  });
+
+  // A --csv run's captureTool is undefined, not "unpinned" — that absence is
+  // disclosed separately via detectionGaps (the collector's job, not
+  // validation's), so this warning must not fire for it.
+  it('does not warn when the capture tool is simply unknown (a --csv run)', () => {
+    const frames = goodFrames();
+    const obs = makeObservation(frames, { captureTool: undefined });
+    expect(warnings(validateMeasuredObservation(obs, frames)).map((i) => i.rule)).not.toContain('capture-tool.unpinned');
   });
 
   it('warns on a detected overclock', () => {

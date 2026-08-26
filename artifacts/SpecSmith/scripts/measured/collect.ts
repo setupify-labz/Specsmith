@@ -40,6 +40,7 @@ import {
   MIN_RENDER_SCALE_PERCENT,
   RESOLUTIONS,
   UPSCALERS,
+  type CaptureToolProvenance,
   type CatalogMatchMethod,
   PINNED_ONE_PERCENT_LOW_METHOD,
   type DetectionGap,
@@ -52,6 +53,14 @@ import {
 } from '../../src/lib/measured/types';
 import type { GameFeatureProfile } from '../../src/lib/benchmarks/types';
 import { parsePresentMonCsv } from './presentmon';
+import {
+  MAX_CAPTURE_SECONDS,
+  MIN_CAPTURE_SECONDS,
+  releaseCapture,
+  resolvePresentMonBinary,
+  runPresentMonCapture,
+} from './presentmonRunner';
+import { installCancellationHandler } from './cancellation';
 import { KNOWN_DETECTION_GAPS, type DetectedHardware } from './environment';
 import { loadCatalogs, resolveHardware } from './catalog';
 
@@ -76,6 +85,14 @@ export const DEFAULT_BUILD_HASH_FILES: readonly string[] = [
   // loading, and the assembly/CLI logic itself.
   'collect.ts',
   'presentmon.ts',
+  // How the capture was TAKEN determines what it contains: the flag set fixes
+  // whether dropped presents are in the file at all, and whether the columns
+  // segmentation needs exist. A capture produced under a different flag set is
+  // a different measurement even when the parser reads it identically.
+  'presentmonRunner.ts',
+  // Cancellation decides whether a run completes or is abandoned, and what is
+  // left on disk when it is — part of how a capture came to exist.
+  'cancellation.ts',
   // Segmentation decides WHICH frames a figure is computed over, so it
   // determines what the figure means just as directly as the statistics do.
   'segmentation.ts',
@@ -142,8 +159,10 @@ export function buildObservation(args: {
   measuredAt: string;
   runNonce: string;
   buildHash: string;
+  /** Set only when this run captured its own frames; absent for --csv. */
+  captureTool?: CaptureToolProvenance;
 }): MeasuredObservation {
-  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash } = args;
+  const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash, captureTool } = args;
 
   // Every field the machine could not tell us, named with why. Nothing here is
   // filled in with a plausible-looking default.
@@ -152,6 +171,16 @@ export function buildObservation(args: {
     reason: g.reason,
     resolution: 'operator-supplied' as const,
   }));
+  // captureTool is per-run, not a fixed platform limit, so it is not in
+  // KNOWN_DETECTION_GAPS: a --capture-* run resolves it, a --csv run cannot,
+  // because nothing about a hand-taken capture says what tool produced it.
+  if (!captureTool) {
+    detectionGaps.push({
+      field: 'captureTool',
+      reason: 'This run read an existing CSV (--csv) rather than capturing it; the collector did not run PresentMon itself and has no evidence of what tool produced the file.',
+      resolution: 'unresolved',
+    });
+  }
 
   return {
     id: `obs-${measuredAt.slice(0, 10)}-${runNonce.slice(0, 8)}`,
@@ -197,6 +226,7 @@ export function buildObservation(args: {
     measuredAt,
     collectorVersion: COLLECTOR_VERSION,
     collectorBuildHash: buildHash,
+    captureTool,
     detectionGaps,
     notes: inputs.notes,
   };
@@ -378,9 +408,138 @@ export function parseRunConditions(argv: string[], knownGameIds?: readonly strin
   };
 }
 
+/**
+ * Decides whether this run captures its own frames or reads a file.
+ *
+ * The two are mutually exclusive rather than one defaulting to the other: a
+ * command line carrying both says two different things about where the
+ * measurement came from, and picking either would make the record's origin a
+ * guess.
+ */
+export function parseCaptureSelection(argv: string[]): { mode: 'csv'; csvPath: string } | { mode: 'capture'; processId?: number; processName?: string; seconds: number } {
+  const csvFlag = arg(argv, 'csv');
+  const secondsRaw = arg(argv, 'capture-seconds');
+  const pidRaw = arg(argv, 'capture-process-id');
+  const nameRaw = arg(argv, 'capture-process-name');
+  const wantsCapture = secondsRaw !== undefined || pidRaw !== undefined || nameRaw !== undefined;
+
+  if (csvFlag !== undefined && wantsCapture) {
+    throw new CliInputError(
+      '--csv and the --capture-* flags cannot be combined. Use --csv to read a capture you already took, or --capture-process-id ' +
+        'with --capture-seconds to take one now.',
+    );
+  }
+  if (csvFlag === undefined && !wantsCapture) {
+    throw new CliInputError(
+      'Nothing to measure. Pass --csv <presentmon.csv>, or capture now with --capture-process-id <pid> --capture-seconds <n>.',
+    );
+  }
+  if (csvFlag !== undefined) {
+    if (csvFlag.trim() === '') throw new CliInputError('Missing required --csv');
+    return { mode: 'csv', csvPath: csvFlag };
+  }
+  if (secondsRaw === undefined) {
+    throw new CliInputError('--capture-seconds is required when capturing. It is the length of the run to record.');
+  }
+  return {
+    mode: 'capture',
+    processId: pidRaw === undefined ? undefined : wholeNumberInRange(pidRaw, 'capture-process-id', 1, 0xffffffff),
+    processName: nameRaw,
+    seconds: wholeNumberInRange(secondsRaw, 'capture-seconds', MIN_CAPTURE_SECONDS, MAX_CAPTURE_SECONDS),
+  };
+}
+
+/**
+ * The process filter to hand parsePresentMonCsv after an automatic capture.
+ *
+ * Defaults to the exact pid PresentMon was told to capture (--process_id),
+ * never to its executable name. selectTargetProcess already refuses an
+ * ambiguous name at process-selection time specifically so a capture cannot
+ * be attributed to the wrong one of two processes sharing a name (see
+ * presentmonRunner.ts); filtering the CSV by name here would throw that
+ * guarantee away right after establishing it — a second process sharing the
+ * target's name, presenting during the same capture window, would silently
+ * merge into this run's frame times. The pid is unique to the process
+ * actually captured, so it is what is used by default.
+ *
+ * `explicit` — an operator-supplied --process — is never overridden: this
+ * only supplies a default when none was given. Note that supplying any
+ * filter, pid or name, means parsePresentMonCsv's own multi-process refusal
+ * (triggered only when no filter is passed) cannot fire on this path; that
+ * guard remains live for the manual --csv path, where no pid is known.
+ */
+export function resolveCaptureProcessFilter(explicit: string | undefined, targetProcessId: number): string {
+  return explicit ?? String(targetProcessId);
+}
+
+/**
+ * Validates `--internal-cancel-after-seconds`, a testing-only flag that
+ * self-cancels a capture from inside this process instead of depending on a
+ * signal delivered from outside it.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * windows-smoke-test.ps1 used to simulate Ctrl-C with a separate launcher
+ * process calling `child.kill('SIGINT')` on the collector. A real Windows
+ * run showed that does not work: Node's `child.kill()` on Windows is not a
+ * real console Ctrl-C event (`GenerateConsoleCtrlEvent`) that this process's
+ * signal handler could catch — it is closer to `TerminateProcess`, so the
+ * child exited immediately with signal=SIGINT and never ran any
+ * cancellation or cleanup logic at all, leaving the ETW session, lock file
+ * and temp directory behind. Manual, real Ctrl-C in a real console continued
+ * to work correctly throughout, because that IS a real console event.
+ * Nothing OUTSIDE a Windows process can safely simulate one for testing
+ * purposes, so this flag triggers the exact same cancellation path from
+ * INSIDE the process instead, through cancellation.ts's `simulateSignal` —
+ * the same `AbortController` a real Ctrl-C uses, not a second, parallel
+ * implementation of what cancellation means.
+ *
+ * WHY IT IS GATED TO --dry-run
+ * -----------------------------
+ * This is a testing aid, not a capture mode. An operator who wants a
+ * savable capture should never have it silently self-cancel on a timer —
+ * `throw`ing here rather than silently ignoring the flag is what makes that
+ * impossible rather than merely undocumented.
+ *
+ * Returns `undefined` when the flag was not passed at all.
+ */
+export function validateInternalCancelAfterSeconds(
+  raw: string | undefined,
+  source: ReturnType<typeof parseCaptureSelection>,
+  dryRun: boolean,
+): number | undefined {
+  if (raw === undefined) return undefined;
+  const seconds = numberInRange(raw, 'internal-cancel-after-seconds', 0.05, MAX_CAPTURE_SECONDS);
+  if (source.mode !== 'capture') {
+    throw new CliInputError(
+      '--internal-cancel-after-seconds only applies to an automatic capture (--capture-process-id or ' +
+        '--capture-process-name), not --csv.',
+    );
+  }
+  if (!dryRun) {
+    throw new CliInputError(
+      '--internal-cancel-after-seconds requires --dry-run. It exists to smoke-test the cancellation and ' +
+        'cleanup path from inside this process, not to take a real, savable capture that then silently ' +
+        'cancels itself on a timer.',
+    );
+  }
+  if (seconds >= source.seconds) {
+    throw new CliInputError(
+      `--internal-cancel-after-seconds (${seconds}) must be less than --capture-seconds ` +
+        `(${source.seconds}), or the capture would finish before it ever fires.`,
+    );
+  }
+  return seconds;
+}
+
 async function main(argv: string[]): Promise<void> {
-  const csvPath = required(argv, 'csv');
   const dryRun = argv.includes('--dry-run');
+  const source = parseCaptureSelection(argv);
+  // See validateInternalCancelAfterSeconds for why this exists and why it is
+  // gated to --dry-run: it self-cancels a capture from inside this process,
+  // for smoke-testing the cancellation and cleanup path without depending on
+  // a signal delivered from outside it.
+  const internalCancelAfterSeconds = validateInternalCancelAfterSeconds(arg(argv, 'internal-cancel-after-seconds'), source, dryRun);
 
   // Flags first. Nothing here needs the machine, so a mistyped value costs a
   // second rather than a PowerShell round trip and a 90-second capture built
@@ -390,11 +549,15 @@ async function main(argv: string[]): Promise<void> {
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 
-  const parsed = parsePresentMonCsv(fs.readFileSync(csvPath, 'utf-8'), arg(argv, 'process'), arg(argv, 'swap-chain'));
-  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
-  if (parsed.truncatedTrailingRows > 0) console.log('Note: the final CSV line was cut off mid-write and was not read.');
-
   const { detectWindowsEnvironment, detectExecutableVersion } = await import('./environment');
+  // Hardware detection runs BEFORE the capture, not after it.
+  //
+  // It is the step most likely to refuse \u2014 an iGPU beside a discrete card is
+  // the common case, not the exotic one \u2014 and refusing after the capture would
+  // throw away a run the operator has to play again. When reading an existing
+  // --csv there is nothing to lose either way, so the order is the same for
+  // both and there is only one path to reason about.
+  //
   // --gpu-name disambiguates a machine with more than one rendering adapter.
   // Without it the probe REFUSES rather than picking one, because a wrong pick
   // records the wrong GPU and the wrong driver version together, silently.
@@ -403,6 +566,116 @@ async function main(argv: string[]): Promise<void> {
     console.log(`Adapters present: ${hardware.adaptersSeen.join(', ')}`);
   }
   console.log(`Hardware: ${hardware.gpuRaw} / ${hardware.cpuRaw} / driver ${hardware.gpuDriverVersion}`);
+
+  let csvPath: string;
+  let csvText: string;
+  let release: (() => void) | undefined;
+  let processFilter = arg(argv, 'process');
+  let captureTool: CaptureToolProvenance | undefined;
+
+  if (source.mode === 'capture') {
+    const binary = resolvePresentMonBinary({
+      executablePath: arg(argv, 'presentmon') ?? process.env.SPECSMITH_PRESENTMON,
+      expectedSha256: arg(argv, 'presentmon-sha256') ?? process.env.SPECSMITH_PRESENTMON_SHA256,
+      allowUnpinned: argv.includes('--allow-unpinned-presentmon'),
+    });
+    console.log(`PresentMon: ${binary.path}\n  sha256 ${binary.sha256}${binary.pinned ? ' (pinned)' : ' (NOT PINNED \u2014 --allow-unpinned-presentmon)'}`);
+    // Recorded on the observation itself (captureTool), not just printed \u2014
+    // the tool that produced a measurement's frame times is part of what the
+    // measurement means, same as the hardware that ran it.
+    captureTool = { name: path.basename(binary.path), sha256: binary.sha256, pinned: binary.pinned };
+
+    // Ctrl-C stops the capture and cleans up rather than leaving PresentMon
+    // and its ETW session running behind a dead collector.
+    //
+    // This used to be `process.once('SIGINT', () => controller.abort())`, which
+    // aborted the signal but did nothing to keep this process alive long enough
+    // to act on it. On Windows the Ctrl+C reaches cmd.exe, pnpm, tsx, the
+    // collector and PresentMon simultaneously; the shell tears down, the prompt
+    // returns, and the collector died mid-cleanup — leaving a live ETW session,
+    // the lock file and the temp capture behind. See ./cancellation.ts.
+    const cancellation = installCancellationHandler();
+    // Only set when --internal-cancel-after-seconds asked for it; cleared in
+    // the finally block below whichever way this settles, same as any other
+    // timer here.
+    let internalCancelTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      console.log(`Capturing ${source.seconds}s\u2026 play the run now. Ctrl-C cancels.`);
+      const outcome = await runPresentMonCapture({
+        processId: source.processId,
+        processName: source.processName,
+        seconds: source.seconds,
+        binary,
+        outputDir: arg(argv, 'capture-output-dir'),
+        signal: cancellation.signal,
+        // Handed over the moment they exist, not when the capture succeeds, so
+        // a Ctrl+C during the capture still has something to clean up.
+        onResourcesAllocated: (resources) => {
+          cancellation.track(resources);
+          // Started HERE, not when this flag was parsed: catalog loading,
+          // PresentMon resolution and hardware detection all happen first and
+          // take a variable amount of time, and this is the earliest point at
+          // which the capture has actually, verifiably begun.
+          if (internalCancelAfterSeconds !== undefined) {
+            console.log(
+              `[internal-cancel] capture began; simulating cancellation in ${internalCancelAfterSeconds}s ` +
+                'through the same path a real Ctrl-C would use \u2014 this is testing the cleanup path, not a ' +
+                'real Ctrl-C, and is only ever enabled with --dry-run.',
+            );
+            internalCancelTimer = setTimeout(() => cancellation.simulateSignal('SIGINT'), internalCancelAfterSeconds * 1000);
+            internalCancelTimer.unref?.();
+          }
+        },
+      });
+      csvPath = outcome.csvPath;
+      csvText = outcome.csv;
+      processFilter = resolveCaptureProcessFilter(processFilter, outcome.target.processId);
+      if (outcome.columns.missingOptional.length > 0) {
+        console.warn(`  WARNING capture: no ${outcome.columns.missingOptional.join(', ')} column; segmentation will record those times as absent.`);
+      }
+      console.log(`Captured ${outcome.target.name} (pid ${outcome.target.processId}) to ${csvPath}`);
+      // Only a temp directory this runner created is ever removed; a
+      // --capture-output-dir the operator chose is left alone.
+      if (outcome.ownedTempDir) release = () => releaseCapture(outcome);
+    } finally {
+      if (internalCancelTimer) clearTimeout(internalCancelTimer);
+      // The capture is over either way. Past this point the CSV is owned by
+      // the normal path (or by --keep-capture), so the last-resort exit
+      // cleanup must stop tracking it.
+      cancellation.dispose();
+    }
+  } else {
+    csvPath = source.csvPath;
+    csvText = fs.readFileSync(csvPath, 'utf-8');
+  }
+
+  try {
+    await assembleFromCsv({ csvText, csvPath, processFilter, swapChainFilter: arg(argv, 'swap-chain'), argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool });
+  } finally {
+    // The CSV has been read into memory and parsed by now, so the temp copy
+    // has no further readers. --keep-capture keeps it for a post-mortem.
+    if (release && !argv.includes('--keep-capture')) release();
+    else if (release) console.log(`Capture retained at ${csvPath} (--keep-capture).`);
+  }
+}
+
+/** Everything downstream of "we have CSV text": unchanged by where it came from. */
+async function assembleFromCsv(ctx: {
+  csvText: string; csvPath: string; processFilter?: string; swapChainFilter?: string;
+  argv: string[]; dryRun: boolean;
+  catalogs: ReturnType<typeof loadCatalogs>;
+  runConditions: RunConditionInputs;
+  preferredGpuId?: string; preferredCpuId?: string;
+  hardware: DetectedHardware;
+  detectExecutableVersion: (exePath: string) => string | undefined;
+  /** Set only when this run captured its own frames; absent for --csv. */
+  captureTool?: CaptureToolProvenance;
+}): Promise<void> {
+  const { csvText, argv, dryRun, catalogs, runConditions, preferredGpuId, preferredCpuId, hardware, detectExecutableVersion, captureTool } = ctx;
+
+  const parsed = parsePresentMonCsv(csvText, ctx.processFilter, ctx.swapChainFilter);
+  console.log(`Frames: ${parsed.frameTimesMs.length} usable (${parsed.droppedFrames} presented but not displayed \u2014 retained, ${parsed.discardedFirstFrames} initial present with no interval)`);
+  if (parsed.truncatedTrailingRows > 0) console.log('Note: the final CSV line was cut off mid-write and was not read.');
 
   // Hardware attribution is DERIVED from what the machine reported, never
   // taken on trust from the command line. --gpu-id/--cpu-id are optional and
@@ -437,6 +710,7 @@ async function main(argv: string[]): Promise<void> {
     measuredAt: new Date().toISOString(),
     runNonce: randomUUID(),
     buildHash: collectorBuildHash(),
+    captureTool,
   });
 
   const profiles = JSON.parse(
@@ -468,6 +742,12 @@ async function main(argv: string[]): Promise<void> {
   }
 
   console.log(`\navg ${observation.stats.averageFps} fps · 1% low ${observation.stats.onePercentLow} · 0.1% low ${observation.stats.zeroPointOnePercentLow}`);
+  // Confirms captureTool actually made it onto the record, not just that the
+  // capture step printed it earlier — this is the same information the store
+  // would persist.
+  if (observation.captureTool) {
+    console.log(`Capture tool: ${observation.captureTool.name} sha256 ${observation.captureTool.sha256}${observation.captureTool.pinned ? ' (pinned)' : ' (NOT PINNED)'}`);
+  }
   if (dryRun) console.log('Dry run — nothing written, including the frame-time archive.');
   else if (outcome.saved) console.log(`Saved ${observation.id}`);
   else {
@@ -480,6 +760,17 @@ const invokedDirectly = process.argv[1] !== undefined && path.resolve(process.ar
 if (invokedDirectly) {
   main(process.argv.slice(2)).catch((e) => {
     console.error(e instanceof Error ? e.message : e);
-    process.exitCode = 1;
+    // A cancellation (see cancellation.ts) already set a deliberate,
+    // documented exit code — CANCELLED_EXIT_CODE — before its error reaches
+    // here as this rejection. Overwriting it with a generic 1 is what made a
+    // clean, requested cancellation indistinguishable from a real crash: a
+    // Windows retest of the cleanup fix found the shell's exit code was 1,
+    // not the tested 130, because this line ran after cancellation.ts's and
+    // always won. This catch exists for everything ELSE — a real failure that
+    // never set an exit code at all — so it only supplies 1 when nothing
+    // already decided the process's exit status.
+    if (typeof process.exitCode !== 'number' || process.exitCode === 0) {
+      process.exitCode = 1;
+    }
   });
 }

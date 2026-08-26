@@ -195,6 +195,25 @@ export interface DetectionGap {
   resolution: 'operator-supplied' | 'unresolved';
 }
 
+/**
+ * Which capture tool produced this run's frame times, and how sure we are it
+ * is the tool it claims to be.
+ *
+ * Absent when the collector did not run the capture itself: a CSV read via
+ * `--csv` could have come from any PresentMon build, or a different tool
+ * entirely, and the collector has no way to know which. That absence is
+ * recorded as a detection gap (see `detectionGaps`) rather than silently
+ * omitted.
+ */
+export interface CaptureToolProvenance {
+  /** The executable's file name, e.g. "PresentMon.exe" — not a full path; a local install path is not part of what the run means. */
+  name: string;
+  /** SHA-256 of the executable's bytes at capture time. */
+  sha256: string;
+  /** Whether that digest was checked against an operator-pinned value before this capture ran. */
+  pinned: boolean;
+}
+
 export interface MeasuredObservation {
   id: string;
   tier: ObservationTier;
@@ -271,6 +290,8 @@ export interface MeasuredObservation {
   measuredAt: string;
   collectorVersion: string;
   collectorBuildHash: string;
+  /** Set only when the collector ran the capture itself; see CaptureToolProvenance. */
+  captureTool?: CaptureToolProvenance;
   /**
    * Fields the collector could not detect. Empty means everything in this
    * record was read from the machine; non-empty is a disclosure, not a defect.
