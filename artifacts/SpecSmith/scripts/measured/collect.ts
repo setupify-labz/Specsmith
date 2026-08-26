@@ -5,6 +5,15 @@
 //     --settings-file <path> [--process <name>] [--swap-chain <addr>] \
 //     [--gpu-id <id>] [--cpu-id <id>] [--dry-run]
 //
+//   npx tsx scripts/measured/collect.ts --capture-process-name RDR2.exe \
+//     --capture-seconds 90 --game-id rdr2 --resolution 1440p --preset unmapped \
+//     --preset-label "per-category settings; see settingsFile" --ram-channels 2
+//     (no --settings-file: an automatic capture of RDR2 reads and hashes its
+//      own system.xml instead — see bindRdr2SettingsProvenance — and refuses
+//      the run if that file cannot be confirmed unchanged across the capture.
+//      --settings-file is still required for --csv and for every other game,
+//      captured automatically or not.)
+//
 // The GPU and CPU are RESOLVED from what Windows reports, not supplied.
 // --gpu-id/--cpu-id are optional and may only disambiguate between catalog
 // entries the detected name genuinely could mean (Windows reports one name for
@@ -137,8 +146,15 @@ export interface CollectInputs {
   /** Operator-supplied: see KNOWN_DETECTION_GAPS. */
   ramChannels: number;
   gpuOverclocked: boolean;
-  /** Verbatim settings text the operator attests to; hashed so two runs can be compared. */
-  settingsText: string;
+  /**
+   * Verbatim settings text the operator attests to; hashed so two runs can be
+   * compared. Optional only for an automatic RDR2 capture: its settingsHash
+   * comes from settingsFile's own verified system.xml digest instead — see
+   * buildObservation's settingsHash assembly. Every other path (--csv, and
+   * every other game even when captured automatically) still requires it
+   * exactly as before.
+   */
+  settingsText?: string;
   gameVersion?: string;
   gameBuildId?: string;
   platformContent?: PlatformContent;
@@ -167,6 +183,18 @@ export function buildObservation(args: {
   settingsFile?: SettingsFileProvenance;
 }): MeasuredObservation {
   const { frameTimesMs, hardware, inputs, frameTimeRef, measuredAt, runNonce, buildHash, captureTool, settingsFile } = args;
+
+  // Fail closed: every observation must be able to say WHAT settings it
+  // measured, either through settingsFile's own verified provenance (today:
+  // an automatic RDR2 capture) or the operator's attested settingsText.
+  // Neither present means there is nothing honest to hash — hashing an empty
+  // or undefined string here would produce a settingsHash that LOOKS real but
+  // was never confirmed against anything, which is worse than refusing.
+  if (!settingsFile && !inputs.settingsText) {
+    throw new Error(
+      'buildObservation has neither settingsFile provenance nor inputs.settingsText — every observation needs one source of truth for the settings it measured.',
+    );
+  }
 
   // Every field the machine could not tell us, named with why. Nothing here is
   // filled in with a plausible-looking default.
@@ -235,7 +263,8 @@ export function buildObservation(args: {
     // full settings config," and system.xml IS the full config file — the
     // gap between "hashed everything" and "understood a partial subset" is
     // exactly what settingsFile.coverage/parsedFields discloses.
-    settingsHash: settingsFile ? settingsFile.sha256 : createHash('sha256').update(inputs.settingsText).digest('hex').slice(0, 32),
+    // The guard above already proved one of these two is present.
+    settingsHash: settingsFile ? settingsFile.sha256 : createHash('sha256').update(inputs.settingsText as string).digest('hex').slice(0, 32),
     rayTracing: inputs.rayTracing,
     upscaler: inputs.upscaler,
     upscalerMode: inputs.upscalerMode,
@@ -393,11 +422,24 @@ export function numberInRange(raw: string, flag: string, min: number, max: numbe
  */
 export type RunConditionInputs = Omit<CollectInputs, 'gpuId' | 'cpuId' | 'gpuMatchMethod' | 'cpuMatchMethod' | 'gameVersion'>;
 
-export function parseRunConditions(argv: string[], knownGameIds?: readonly string[]): RunConditionInputs {
+/**
+ * `captureMode` is `source.mode` from `parseCaptureSelection` — already known
+ * by the time `main()` calls this, since capture selection is parsed first.
+ * It exists only to recognize the one case that skips --settings-file: an
+ * automatic capture (not --csv) of RDR2, whose settingsHash instead comes
+ * from settingsFile's own verified system.xml provenance (bound later, in
+ * main(), by bindRdr2SettingsProvenance). --settings-file would be a second,
+ * unverified account of the same thing an operator could type wrong, stale,
+ * or for the wrong run — so this collector does not ask for it there. Every
+ * other combination — --csv regardless of game, or an automatic capture of
+ * any other game — still requires it exactly as before.
+ */
+export function parseRunConditions(argv: string[], knownGameIds?: readonly string[], captureMode?: 'csv' | 'capture'): RunConditionInputs {
   const gameId = required(argv, 'game-id');
   if (knownGameIds && !knownGameIds.includes(gameId)) {
     throw new CliInputError(`--game-id "${gameId}" is not in the SpecSmith game catalog (${knownGameIds.join(', ')}).`);
   }
+  const isAutomaticRdr2Capture = captureMode === 'capture' && gameId === 'rdr2';
 
   const fgFactorRaw = arg(argv, 'frame-generation-factor');
   return {
@@ -415,7 +457,10 @@ export function parseRunConditions(argv: string[], knownGameIds?: readonly strin
     renderScalePercent: numberInRange(arg(argv, 'render-scale') ?? '100', 'render-scale', MIN_RENDER_SCALE_PERCENT, MAX_RENDER_SCALE_PERCENT),
     ramChannels: wholeNumberInRange(required(argv, 'ram-channels'), 'ram-channels', 1, 8),
     gpuOverclocked: argv.includes('--gpu-overclocked'),
-    settingsText: fs.readFileSync(required(argv, 'settings-file'), 'utf-8'),
+    // See isAutomaticRdr2Capture's own comment above for why this one case
+    // reads nothing here: an automatic RDR2 capture's settings provenance
+    // comes from system.xml instead, bound later in main().
+    settingsText: isAutomaticRdr2Capture ? undefined : fs.readFileSync(required(argv, 'settings-file'), 'utf-8'),
     gameBuildId: arg(argv, 'game-build-id'),
     // Platform games only. contentId is what makes the run interpretable;
     // contentVersion is usually unobtainable and left unset rather than guessed.
@@ -676,7 +721,7 @@ async function main(argv: string[]): Promise<void> {
   // second rather than a PowerShell round trip and a 90-second capture built
   // around it.
   const catalogs = loadCatalogs();
-  const runConditions = parseRunConditions(argv, catalogs.gameIds);
+  const runConditions = parseRunConditions(argv, catalogs.gameIds, source.mode);
   const preferredGpuId = arg(argv, 'gpu-id');
   const preferredCpuId = arg(argv, 'cpu-id');
 

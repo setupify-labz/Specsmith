@@ -55,6 +55,27 @@ pnpm collect:measured -- \
   --dry-run
 ```
 
+**One exception: RDR2 does not need `--settings-file` for an automatic
+capture.** An automatic capture (`--capture-process-id`/`--capture-process-name`)
+of `--game-id rdr2` reads and hashes its own `system.xml` instead, confirming
+it did not change across the capture — see `bindRdr2SettingsProvenance` in
+`collect.ts`. Its `--preset` must be `unmapped` (RDR2 has no single preset
+this parser verifies), and `--settings-file` is ignored if passed anyway.
+`--csv` and every other game — including RDR2 captured by hand — still
+require `--settings-file` exactly as above.
+
+```
+pnpm collect:measured -- \
+  --capture-process-name RDR2.exe --capture-seconds 90 \
+  --presentmon "C:\tools\PresentMon\PresentMon.exe" \
+  --presentmon-sha256 <digest of your PresentMon.exe> \
+  --game-id rdr2 \
+  --resolution 1440p --preset unmapped \
+  --preset-label "per-category settings; see settingsFile" \
+  --ram-channels 2 \
+  --dry-run
+```
+
 Find the pid with `Get-Process YourGame | Select-Object Id, ProcessName`.
 `--capture-process-name YourGame.exe` also works, but **fails closed** when two
 processes share the name — a launcher beside the game, two clients, a game
@@ -549,13 +570,13 @@ if you see that message, move on to the next row.
 
 | # | What you're checking | Command | Expected |
 |---|---|---|---|
-| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (no `--presentmon-sha256`) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
+| 1 | The collector refuses an unpinned tool, and tells you the digest | `pnpm collect:measured -- --capture-process-id <pid> --capture-seconds 5 --presentmon "C:\tools\PresentMon\PresentMon.exe" --game-id rdr2 --resolution 1440p --preset unmapped --preset-label "per-category settings; see settingsFile" --ram-channels 2 --dry-run` (no `--presentmon-sha256`; no `--settings-file` — an automatic RDR2 capture doesn't need one, see Usage above) | Refuses, prints "No pinned digest for … Its SHA-256 is …" |
 | 2 | It refuses a WRONG digest, rather than trusting it | Same as #1, add `--presentmon-sha256 0000000000000000000000000000000000000000000000000000000000000000` | Refuses: "is not the one this collector was set up against" |
 | 3 | It refuses a pid that isn't running | Same as #1 + real `--presentmon-sha256 <sha>`, but `--capture-process-id 999999` | Refuses: "No running process has pid 999999" |
 | 4 | It refuses when a process name is ambiguous | `--capture-process-name explorer.exe` instead of `--capture-process-id` (Explorer usually has more than one) | Refuses, lists more than one pid, points you at `--capture-process-id` |
 | 5 | It refuses when pid and name disagree | `--capture-process-id <pid> --capture-process-name totally-wrong.exe` | Refuses, names what that pid actually is |
 | 6 | Elevation (or the group) is genuinely required | Run command #7 below from a terminal that is **neither elevated nor in Performance Log Users** | PresentMon exits immediately; the error mentions both Administrator and "Performance Log Users" |
-| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id rdr2 --resolution 1440p --preset high --ram-channels 2 --settings-file settings.txt --dry-run` (play normally for the 30 seconds) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line, writes nothing |
+| 7 | **The real thing.** With the game running: full capture | `--capture-process-id <pid> --capture-seconds 30 --presentmon "C:\tools\PresentMon\PresentMon.exe" --presentmon-sha256 <sha> --game-id rdr2 --resolution 1440p --preset unmapped --preset-label "per-category settings; see settingsFile" --ram-channels 2 --dry-run` (play normally for the 30 seconds; no `--settings-file`) | Captures, prints Hardware/Attributed/Frames/avg fps, prints a `Capture tool:` line and a `Settings file:` line, writes nothing |
 | 8 | Cancelling mid-capture doesn't leave a mess | Repeat #7, press **Ctrl-C** once around 5 seconds in | "SIGINT received — cancelling capture", then it *waits*, then exits. Afterwards ALL FOUR must be true: no `SpecSmithMeasuredCapture` in `logman query -ets`; no `$env:TEMP\SpecSmithMeasuredCapture.lock`; no `$env:TEMP\specsmith-capture-*`. **Read "pnpm's Windows exit code vs. the collector's own status" below before running this step** — `$LASTEXITCODE` here reflects pnpm's Windows exit-code handling, confirmed on two separate real retests to read 1, not the collector's own 130; that is expected with this specific command, not a failure, and the four residues are the actual check. |
 | 8b | The second Ctrl-C is a real escape hatch | Repeat #7, press **Ctrl-C twice** | "Second interrupt — abandoning the wait", exits promptly, lock and temp directory still removed |
 | 9 | You can keep the raw CSV for inspection | Repeat #7 with `--keep-capture` added | Prints "Capture retained at …"; that file still exists afterward |

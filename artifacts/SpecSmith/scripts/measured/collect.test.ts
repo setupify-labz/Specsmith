@@ -532,6 +532,39 @@ describe('parsing a whole command line', () => {
   });
 });
 
+// --settings-file is obsolete for exactly one case: an automatic capture
+// (not --csv) of RDR2, whose settings provenance instead comes from
+// system.xml itself (bound later, in main(), by bindRdr2SettingsProvenance).
+// Every other combination — --csv regardless of game, or an automatic
+// capture of any other game — must keep requiring it exactly as before.
+describe('--settings-file is only skipped for an automatic RDR2 capture', () => {
+  const withoutSettingsFile = (gameId: string) => ['--game-id', gameId, '--resolution', '1440p', '--preset', 'unmapped', '--preset-label', 'per-category settings; see settingsFile', '--ram-channels', '2'];
+
+  it('does not require or read --settings-file for an automatic RDR2 capture', () => {
+    const r = parseRunConditions(withoutSettingsFile('rdr2'), undefined, 'capture');
+    expect(r.gameId).toBe('rdr2');
+    expect(r.settingsText).toBeUndefined();
+  });
+
+  it('still requires --settings-file for a manual --csv run of RDR2', () => {
+    expect(() => parseRunConditions(withoutSettingsFile('rdr2'), undefined, 'csv')).toThrow(/Missing required --settings-file/);
+  });
+
+  it('still requires --settings-file for an automatic capture of a non-RDR2 game', () => {
+    expect(() => parseRunConditions(withoutSettingsFile('cs2'), undefined, 'capture')).toThrow(/Missing required --settings-file/);
+  });
+
+  it('still requires --settings-file for RDR2 when captureMode is not supplied at all, matching every pre-existing caller', () => {
+    expect(() => parseRunConditions(withoutSettingsFile('rdr2'))).toThrow(/Missing required --settings-file/);
+  });
+
+  it('reads and hashes --settings-file into settingsText exactly as before for the manual --csv path', () => {
+    const argv = [...withoutSettingsFile('rdr2'), '--settings-file', os.devNull];
+    const r = parseRunConditions(argv, undefined, 'csv');
+    expect(r.settingsText).toBe('');
+  });
+});
+
 // Regression: a real capture of Red Dead Redemption 2 needed to validate
 // against the collector, and the question was whether the SpecSmith catalog
 // carried it under a canonical id. It already did — 'rdr2' was present in
@@ -858,6 +891,72 @@ describe('buildObservation binds settingsFile into settingsSource/settingsHash, 
     });
     expect(obs.preset).toBe('unmapped');
     expect(obs.presetLabel).toBe('RDR2 has no single preset');
+  });
+
+  // The automatic-RDR2-capture case in full: settingsText is absent entirely
+  // (parseRunConditions never read --settings-file for it), so settingsHash
+  // and settingsSource have exactly one possible source — settingsFile's own
+  // verified system.xml digest — not a fallback to any operator-attested text.
+  it('with no operator settingsText at all, settingsHash/settingsSource come only from settingsFile provenance', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    const obs = buildObservation({
+      frameTimesMs: frames(),
+      hardware,
+      inputs: inputs({ gameId: 'rdr2', preset: 'unmapped', presetLabel: 'per-category settings; see settingsFile', settingsText: undefined }),
+      frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+      measuredAt: '2026-08-19T12:00:00.000Z',
+      runNonce: '11111111-2222-3333-4444-555555555555',
+      buildHash: 'buildhash',
+      settingsFile: provenance,
+    });
+    expect(obs.settingsSource).toBe('config-parsed');
+    expect(obs.settingsHash).toBe(provenance.sha256);
+    const issues = validateMeasuredObservation(obs, frames());
+    expect(errors(issues)).toEqual([]);
+  });
+});
+
+describe('buildObservation fails closed with neither settings source', () => {
+  // A caller that is not this collector's own CLI could construct inputs
+  // with neither settingsFile nor settingsText — parseRunConditions itself
+  // can never produce that combination, but buildObservation is a general
+  // assembly function, not something only the CLI calls. Hashing an empty or
+  // undefined string here would silently produce a settingsHash that looks
+  // real but was never confirmed against anything; refusing outright is what
+  // makes that impossible rather than merely unlikely.
+  it('throws when settingsFile is absent and inputs.settingsText is absent', () => {
+    const f = frames();
+    expect(() =>
+      buildObservation({
+        frameTimesMs: f,
+        hardware,
+        inputs: inputs({ settingsText: undefined }),
+        frameTimeRef: { sha256: 'abc', frameCount: f.length, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+        measuredAt: '2026-08-19T12:00:00.000Z',
+        runNonce: '11111111-2222-3333-4444-555555555555',
+        buildHash: 'buildhash',
+      }),
+    ).toThrow(/neither settingsFile provenance nor inputs\.settingsText/);
+  });
+
+  it('does not throw when settingsText is present and settingsFile is absent — the ordinary operator-attested path', () => {
+    expect(() => build({ settingsText: 'texture=high' })).not.toThrow();
+  });
+
+  it('does not throw when settingsFile is present and settingsText is absent — the automatic RDR2 capture path', () => {
+    const provenance = toSettingsFileProvenance(rdr2Settings());
+    expect(() =>
+      buildObservation({
+        frameTimesMs: frames(),
+        hardware,
+        inputs: inputs({ gameId: 'rdr2', preset: 'unmapped', settingsText: undefined }),
+        frameTimeRef: { sha256: 'abc', frameCount: 8000, encoding: 'json-array-ms', compression: 'gzip', storagePath: 'ab/abc.json.gz', compressedByteLength: 100 },
+        measuredAt: '2026-08-19T12:00:00.000Z',
+        runNonce: '11111111-2222-3333-4444-555555555555',
+        buildHash: 'buildhash',
+        settingsFile: provenance,
+      }),
+    ).not.toThrow();
   });
 });
 
