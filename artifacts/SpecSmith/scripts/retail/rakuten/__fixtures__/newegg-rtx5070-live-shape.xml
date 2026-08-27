@@ -1,0 +1,161 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented live Rakuten Product Search response shape. The four RTX 5070 listings reproduce the real field pattern supplied for this fix — a productname that repeats the model and never states a capacity, with the capacity in description/short; the ZOTAC item's productname and description/short are the supplied values verbatim. NOT a capture. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <TotalMatches>7</TotalMatches>
+  <TotalPages>1</TotalPages>
+  <PageNumber>1</PageNumber>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814500545</sku>
+    <productname>ZOTAC SOLID OC GeForce RTX 5070 Graphics Card RTX 5070 SOLID OC</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">619.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>810012077712</upccode>
+    <description>
+      <short>ZOTAC SOLID OC GeForce RTX 5070 12GB GDDR7 256-bit PCIe 5.0 Graphics Card, IceStorm 3.0 cooling.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814500545</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-500-545-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814137901</sku>
+    <productname>MSI GeForce RTX 5070 VENTUS 3X OC Graphics Card RTX 5070 VENTUS 3X</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">599.99</price>
+    <saleprice currency="USD">569.99</saleprice>
+    <upccode>824142566633</upccode>
+    <description>
+      <short>MSI VENTUS 3X OC GeForce RTX 5070 12GB GDDR7 graphics card with TORX Fan 5.0.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137901</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-901-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814932744</sku>
+    <productname>GIGABYTE GeForce RTX 5070 WINDFORCE OC SFF Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">589.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>889523043117</upccode>
+    <description>
+      <short>GIGABYTE WINDFORCE OC GeForce RTX 5070 12GB GDDR7, small-form-factor ready.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814932744</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-932-744-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814487321</sku>
+    <productname>ASUS PRIME GeForce RTX 5070 12GB GDDR7 OC Edition Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">609.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>195553777001</upccode>
+    <description>
+      <short>ASUS PRIME OC Edition, Axial-tech fans, dual ball fan bearings.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814487321</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-487-321-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814137955</sku>
+    <productname>MSI GeForce RTX 5070 Ti GAMING TRIO OC Graphics Card RTX 5070 Ti</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">849.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>824142567777</upccode>
+    <description>
+      <short>MSI GAMING TRIO OC GeForce RTX 5070 Ti 16GB GDDR7 graphics card.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137955</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-955-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814500999</sku>
+    <productname>PNY GeForce RTX 5070 12GB OC Triple Fan Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">594.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>751492786001</upccode>
+    <description>
+      <short>PNY GeForce RTX 5070 16GB GDDR7 triple-fan graphics card.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814500999</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-500-999-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814500777</sku>
+    <productname>ASRock Challenger GeForce RTX 5070 OC Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">584.99</price>
+    <saleprice>549.99</saleprice>
+    <upccode>842094000000</upccode>
+    <description>
+      <short>ASRock Challenger GeForce RTX 5070 12GB GDDR7 graphics card.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814500777</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-500-777-01.jpg</imageurl>
+  </item>
+</result>
