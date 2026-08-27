@@ -16,9 +16,13 @@ should now be treated as **unvalidated research**.
 | --- | --- | --- | --- |
 | 1 | ~300s | truncated mid-scene-5; correctly `unresolved` | 69.6925 |
 | 2 | 419.9s | complete, results screen confirmed | 68.0624 |
-| 3 | 419.93s | complete, results screen confirmed | 68.0902 |
+| 3 | 419.93s | complete, results screen confirmed; operator marker missed | 68.0902 |
 
 Runs 2 and 3 are the two complete runs and are the basis for everything below.
+
+Scene 5 is **long** — see the table under "Why: not established". Run 1 shows
+it exceeds 95s; run 2 puts it at roughly 145-154s. Run 3's is unknown,
+because its operator marker was missed.
 
 ## Established: the transitions reproduce
 
@@ -85,21 +89,42 @@ start** — the first window of the final busy block, and unambiguously not the
 results screen. The ranking is not reproducible. With n=2 and one hit and one
 miss, run 2's apparent agreement is best read as coincidence.
 
-### Why, most likely
+### Why: not established
 
-Offered as a diagnosis to be tested against future data with ground truth,
-**not** as something to go fix against these same captures.
+**The cause of run 3's ranking failure is unknown.** What is established is
+the failure itself: the top-ranked candidate equalled scene 5's start.
 
-In both complete runs the operator left the results screen up for a long
-time, so the final busy block is mostly results screen: 203s of block after a
-scene 5 of roughly 30s in run 3, 248s in run 2. Every measure the ranking
-uses is an aggregate over the candidate suffix, so a suffix that wrongly
-includes scene 5 is still ~85% results screen and barely penalised for it.
-The preference for the earliest qualifying start — chosen because the longest
-suffix is the most that can honestly be claimed — then pushes the ranking
-toward exactly the wrong end. A discriminator whose sensitivity depends on
-how long the operator happened to sit on the results screen is not a
-discriminator.
+An earlier draft of this document asserted that run 3 held roughly 30s of
+scene 5 and about 200s of results screen, and reasoned from that to a cause.
+**That was wrong and is retracted.** Nothing measured supports it, and the
+evidence points the other way — scene 5 is long, not short:
+
+| run | scene 5 begins | scene 5 duration |
+| --- | --- | --- |
+| 1 | ~205s | **> 95s** — still running when the capture stopped at 300s |
+| 2 | 171.74s | **~145-154s** — likely gameplay end ~316-317s, clearly stable results ~326s |
+| 3 | 216.76s | **unknown** — the operator marker was missed on this run |
+
+Run 3's final busy block runs 216.76s to the end of a 419.93s capture, so it
+is 203.2s long in total. How that splits between scene 5 and results screen
+was never measured. Given run 2's scene 5 ran 145-154s, run 3's results
+screen could plausibly be a minority of its own final block. Any claim that
+the block is dominated by results screen is unsupported.
+
+### A possible failure mode, not this run's diagnosis
+
+Every measure the ranking uses is an aggregate over the whole candidate
+suffix. A method built that way *can* be insensitive to a wrongly-included
+stretch of gameplay whenever the results screen is long relative to it — and
+how long the results screen lasts is decided by how long the operator leaves
+it up, not by the benchmark. A discriminator whose sensitivity depends on
+that is a fragile one.
+
+That is a **hypothesis about the method's shape**, offered for testing
+against future data that has ground truth. It is **not** the established
+cause of run 3's failure, and it was not measured on run 3 or any other run.
+Do not treat it as a diagnosis, and do not go tune against it using these
+captures.
 
 ## Conclusion
 
@@ -125,8 +150,9 @@ The smallest reliable design is to stop inferring the boundary from frame
 timings and **observe it directly**. RDR2's results screen carries a fixed
 "End of benchmark" title in a fixed layout — recognising a known string in a
 known place is a far easier and far more testable problem than inferring a
-regime change from frame-time statistics, and it does not depend on how long
-anyone sat on the screen.
+regime change from frame-time statistics. It also does not care how long the
+screen stays up, which removes a dependence that any suffix-aggregate method
+carries whether or not that dependence turns out to explain these runs.
 
 Sketch, deliberately minimal — **not implemented, and not to be implemented
 until the validation step below is agreed**:
