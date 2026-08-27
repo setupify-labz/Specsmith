@@ -14,6 +14,8 @@ const specsmithRoot = path.join(here, '..', '..', '..');
 const srcRoot = path.join(specsmithRoot, 'src');
 const read = (p: string) => fs.readFileSync(p, 'utf-8');
 
+import { unredactedIdentifiers } from './redactFixture';
+
 const codeOnly = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const importsOf = (text: string) => [...codeOnly(text).matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
 
@@ -72,22 +74,35 @@ describe('the Rakuten adapter is server-only', () => {
     expect(/searchParams\.set\([^)]*token/i.test(client), 'token must never be a query parameter').toBe(false);
   });
 
-  it('nothing in the adapter writes to disk', () => {
+  it('no library module writes to disk — only the capture CLI does', () => {
+    // capture-fixture.ts is a developer command whose entire job is to write a
+    // fixture, so it is exempt. Nothing that can be imported into a pipeline
+    // is: the adapter reads a feed and returns records, and a module that can
+    // also write is a module that can write somewhere unexpected.
     for (const { file, text } of adapterSource) {
+      if (file === 'capture-fixture.ts') continue;
       expect(codeOnly(text).includes('writeFileSync'), `${file} must not write`).toBe(false);
     }
   });
 
+  it('the capture CLI writes only into __fixtures__', () => {
+    const capture = codeOnly(read(path.join(here, 'capture-fixture.ts')));
+    const writes = [...capture.matchAll(/writeFileSync\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
+    expect(writes).toEqual(['file']);
+    expect(capture).toContain("const file = path.join(fixturesDir, out);");
+    expect(capture).toContain("const fixturesDir = path.join(here, '__fixtures__');");
+  });
+
   it('no fixture contains anything token-shaped or an unredacted publisher id', () => {
+    // The identifier check itself lives in redactFixture.ts and is exercised
+    // against a live-shaped string in liveShape.test.ts, so "redacted" means
+    // the same thing to the capture script and to this assertion.
     const dir = path.join(here, '__fixtures__');
     for (const f of fs.readdirSync(dir).filter((n) => n.endsWith('.xml'))) {
       const text = read(path.join(dir, f));
       expect(/bearer/i.test(text), `${f} must contain no bearer token`).toBe(false);
       expect(/\btoken\b/i.test(text), `${f} must contain no token`).toBe(false);
-      // Every publisher/offer identifier is replaced by an obvious placeholder.
-      for (const m of text.matchAll(/[?&](id|offerid|linkid)=([^&<"]*)/g)) {
-        expect(m[2], `${f}: ${m[1]} must be redacted`).toMatch(/^REDACTED_/);
-      }
+      expect(unredactedIdentifiers(text), `${f} has unredacted publisher identifiers`).toEqual([]);
     }
   });
 });

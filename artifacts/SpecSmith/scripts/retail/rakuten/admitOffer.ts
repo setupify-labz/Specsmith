@@ -11,23 +11,52 @@ import { childText, readPrice, type XmlElement, child } from './parseProductSear
 import {
   NEWEGG_MID,
   RAKUTEN_ADAPTER_VERSION,
-  REQUIRED_CATEGORY,
+  REQUIRED_CATEGORY_LEAF,
+  SECONDARY_CATEGORY_DELIMITER,
   type CatalogGpu,
   type OfferAdmission,
   type OfferRejectionReason,
   type RejectedOffer,
 } from './types';
 
+export interface ListingCategory {
+  primary: string | null;
+  secondary: string | null;
+  /** Final segment of the secondary path — the actual leaf the item sits in. */
+  secondaryLeaf: string | null;
+}
+
 /**
- * The category string, from `<category><primary>`.
+ * Both category fields, kept apart.
  *
- * Rakuten nests it; a flat `<category>` is accepted as a fallback because the
- * feed has been observed both ways, and both say the same thing.
+ * `<primary>` is a department ("Computers"); `<secondary>` is the delimited
+ * path whose last segment is the leaf. They are preserved separately on the
+ * record rather than collapsed into one string, because collapsing them loses
+ * the only distinction that makes either useful: the department is too coarse
+ * to gate on, and the leaf is the thing that says "this is a graphics card".
  */
-export function readCategory(item: XmlElement): string | null {
+export function readCategory(item: XmlElement): ListingCategory {
   const cat = child(item, 'category');
-  if (!cat) return null;
-  return childText(cat, 'primary') ?? (cat.text.trim() === '' ? null : cat.text.trim());
+  if (!cat) return { primary: null, secondary: null, secondaryLeaf: null };
+  const primary = childText(cat, 'primary');
+  const secondary = childText(cat, 'secondary');
+  return { primary, secondary, secondaryLeaf: secondaryCategoryLeaf(secondary) };
+}
+
+/**
+ * The last segment of a delimited secondary path.
+ *
+ * Exact segment equality, never `includes`. A substring test would admit
+ * "Video Cards & Adapters~~Accessories" — the aisle the cables and brackets
+ * are in — which is precisely the sibling leaf this gate exists to exclude.
+ */
+export function secondaryCategoryLeaf(secondary: string | null): string | null {
+  if (secondary === null) return null;
+  const segments = secondary
+    .split(SECONDARY_CATEGORY_DELIMITER)
+    .map((s) => s.trim())
+    .filter((s) => s !== '');
+  return segments.length === 0 ? null : segments[segments.length - 1];
 }
 
 function reject(reason: OfferRejectionReason, detail: string, sku: string | null, productName: string | null): RejectedOffer {
@@ -48,12 +77,7 @@ function reject(reason: OfferRejectionReason, detail: string, sku: string | null
  * Kind is checked BEFORE model on purpose: an "RTX 5090 power cable" names the
  * model perfectly, and the true statement about it is that it is a cable.
  */
-export function admitOffer(
-  item: XmlElement,
-  gpu: CatalogGpu,
-  catalog: readonly CatalogGpu[],
-  fetchedAt: string,
-): OfferAdmission {
+export function admitOffer(item: XmlElement, gpu: CatalogGpu, fetchedAt: string): OfferAdmission {
   const sku = childText(item, 'sku');
   const productName = childText(item, 'productname');
 
@@ -63,8 +87,13 @@ export function admitOffer(
   }
 
   const category = readCategory(item);
-  if (category !== REQUIRED_CATEGORY) {
-    return reject('category-mismatch', `Category ${JSON.stringify(category)} is not ${JSON.stringify(REQUIRED_CATEGORY)}.`, sku, productName);
+  if (category.secondaryLeaf !== REQUIRED_CATEGORY_LEAF) {
+    return reject(
+      'category-mismatch',
+      `Secondary category ${JSON.stringify(category.secondary)} has leaf ${JSON.stringify(category.secondaryLeaf)}, not ${JSON.stringify(REQUIRED_CATEGORY_LEAF)}.`,
+      sku,
+      productName,
+    );
   }
 
   if (!sku) return reject('incomplete-record', 'No <sku>: the listing has no identity to record.', sku, productName);
@@ -87,7 +116,7 @@ export function admitOffer(
   const kind = classifyListing(productName);
   if (kind.issue) return reject(kind.issue, kind.detail, sku, productName);
 
-  const model = verifyGpuModel(productName, gpu, catalog);
+  const model = verifyGpuModel(productName, gpu);
   if (!model.ok) return reject(model.reason, model.detail, sku, productName);
 
   const price = readPrice(item, 'price');
@@ -125,9 +154,11 @@ export function admitOffer(
   return {
     status: 'accepted',
     sku,
-    upc: childText(item, 'upc'),
+    upc: childText(item, 'upccode'),
     productName,
-    category,
+    categoryPrimary: category.primary,
+    categorySecondary: category.secondary!,
+    categorySecondaryLeaf: REQUIRED_CATEGORY_LEAF,
     retailPrice: price.amount,
     salePrice,
     currency: price.currency,
@@ -141,11 +172,6 @@ export function admitOffer(
 }
 
 /** Admits a whole response. Accepted and rejected are both returned — nothing is dropped silently. */
-export function admitOffers(
-  items: readonly XmlElement[],
-  gpu: CatalogGpu,
-  catalog: readonly CatalogGpu[],
-  fetchedAt: string,
-): OfferAdmission[] {
-  return items.map((item) => admitOffer(item, gpu, catalog, fetchedAt));
+export function admitOffers(items: readonly XmlElement[], gpu: CatalogGpu, fetchedAt: string): OfferAdmission[] {
+  return items.map((item) => admitOffer(item, gpu, fetchedAt));
 }

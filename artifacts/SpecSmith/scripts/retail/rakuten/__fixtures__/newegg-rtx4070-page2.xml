@@ -1,0 +1,95 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented live Rakuten Product Search response shape (paging header, primary/secondary categories, upccode). NOT a capture. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <TotalMatches>8</TotalMatches>
+  <TotalPages>2</TotalPages>
+  <PageNumber>2</PageNumber>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814487654</sku>
+    <productname>ASUS Dual GeForce RTX 4070 OC 12GB GDDR6X Graphics Card - Refurbished</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">489.99</price>
+    <saleprice currency="USD">459.99</saleprice>
+    <upccode>195553599009</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814487654</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-487-654-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814126692</sku>
+    <productname>ZOTAC GAMING GeForce RTX 4070 Ti Trinity OC 12GB GDDR6X Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">799.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>810012074353</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814126692</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-126-692-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16834900123</sku>
+    <productname>MSI Katana 15 Gaming Laptop - GeForce RTX 4070 Laptop GPU 8GB, Intel Core i7-13620H</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">1299.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>824142000000</upccode>
+    <description>
+      <short>Miscategorised by the merchant into the card leaf.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16834900123</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/34-900-123-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16883112233</sku>
+    <productname>Skytech Chronos Gaming Desktop - GeForce RTX 4070 12GB, Ryzen 7 7700</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">1449.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>195553112233</upccode>
+    <description>
+      <short>Miscategorised prebuilt; the title gate is what stops it.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16883112233</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/83-112-233-01.jpg</imageurl>
+  </item>
+</result>

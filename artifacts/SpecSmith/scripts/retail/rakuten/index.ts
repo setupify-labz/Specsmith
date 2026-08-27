@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildPartQuery } from '../../../src/lib/fps';
 import { admitOffers } from './admitOffer';
-import { fetchProductSearchXml, type ProductSearchDeps } from './client';
+import { fetchAllProductSearchPages, type ProductSearchDeps } from './client';
 import { findItems, parseProductSearchXml } from './parseProductSearchXml';
 import type { CatalogGpu, NeweggOffer, OfferAdmission, RejectedOffer } from './types';
 
@@ -25,8 +25,13 @@ const gpuCatalogPath = path.join(here, '..', '..', '..', 'src', 'data', 'gpus.js
  *
  * Reading the shipped `src/data/gpus.json` rather than keeping a parts list of
  * its own is the point: a card the catalog does not sell is a card this adapter
- * has no business pricing, and a catalog rename or a new size-split SKU changes
- * the matcher's behaviour on the next run with no second list to update.
+ * has no business pricing.
+ *
+ * It supplies the parts to price and their canonical ids — NOT the matching
+ * rules. `verifyGpuModel` deliberately consults only the one entry being
+ * verified, so no admission decision can turn on which OTHER SKUs happen to be
+ * tracked; see its memory-size doc comment for the RTX 5060 Ti case that
+ * settled this.
  */
 export function loadGpuCatalog(file: string = gpuCatalogPath): CatalogGpu[] {
   const raw: unknown = JSON.parse(fs.readFileSync(file, 'utf-8'));
@@ -61,8 +66,12 @@ export interface OfferSearchResult {
   offers: NeweggOffer[];
   /** Listings that did not, each with the first gate it failed. Never discarded. */
   rejected: RejectedOffer[];
-  /** Total <item> elements in the response. */
+  /** Total <item> elements across every page. */
   itemsSeen: number;
+  /** How many pages Rakuten reported, all of which were read. */
+  pagesRead: number;
+  /** Rakuten's own TotalMatches, for comparison against itemsSeen. */
+  totalMatches: number | null;
 }
 
 /** Splits a mixed admission list. */
@@ -82,19 +91,39 @@ export function partition(admissions: readonly OfferAdmission[]): { offers: Newe
  */
 export async function fetchNeweggOffersForGpu(
   gpu: CatalogGpu,
-  catalog: readonly CatalogGpu[],
   deps: ProductSearchDeps & { max?: number } = {},
 ): Promise<OfferSearchResult> {
   const keyword = keywordForGpu(gpu);
-  const { xml, fetchedAt } = await fetchProductSearchXml({ keyword, max: deps.max ?? 100 }, deps);
-  const items = findItems(parseProductSearchXml(xml));
-  const { offers, rejected } = partition(admitOffers(items, gpu, catalog, fetchedAt));
-  return { gpuId: gpu.id, keyword, fetchedAt, offers, rejected, itemsSeen: items.length };
+  const { pages, fetchedAt, totalMatches, totalPages } = await fetchAllProductSearchPages(
+    { keyword, max: deps.max ?? 100 },
+    deps,
+  );
+  const items = pages.flatMap((xml) => findItems(parseProductSearchXml(xml)));
+  const { offers, rejected } = partition(admitOffers(items, gpu, fetchedAt));
+  return {
+    gpuId: gpu.id,
+    keyword,
+    fetchedAt,
+    offers,
+    rejected,
+    itemsSeen: items.length,
+    pagesRead: totalPages,
+    totalMatches,
+  };
 }
 
-export { admitOffer, admitOffers, readCategory } from './admitOffer';
-export { buildProductSearchUrl, fetchProductSearchXml, readAccessToken, redactToken, RakutenAuthError, RakutenRequestError } from './client';
+export { admitOffer, admitOffers, readCategory, secondaryCategoryLeaf } from './admitOffer';
+export {
+  buildProductSearchUrl,
+  fetchAllProductSearchPages,
+  fetchProductSearchXml,
+  MAX_PAGES_PER_SEARCH,
+  readAccessToken,
+  redactToken,
+  RakutenAuthError,
+  RakutenRequestError,
+} from './client';
 export { classifyListing } from './listingKind';
-export { catalogMention, findGpuMentions, findMemorySizes, mentionKey, requiresExplicitMemorySize, verifyGpuModel } from './gpuModelMatch';
-export { childText, decodeXmlText, findItems, parseProductSearchXml, RakutenXmlError, readPrice } from './parseProductSearchXml';
+export { catalogMention, findGpuMentions, findMemorySizes, mentionKey, verifyGpuModel } from './gpuModelMatch';
+export { childText, decodeXmlText, findItems, parseProductSearchXml, RakutenXmlError, readPageInfo, readPrice } from './parseProductSearchXml';
 export * from './types';

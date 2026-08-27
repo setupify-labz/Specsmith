@@ -202,3 +202,40 @@ export function readPrice(el: XmlElement, name: string): { amount: number | null
   const amount = Number.parseFloat(raw);
   return { amount: Number.isFinite(amount) ? amount : null, currency };
 }
+
+/**
+ * The paging header Rakuten puts at the top of every Product Search response.
+ *
+ * `TotalPages` is the number this adapter must actually walk. Reading only
+ * page 1 and reporting its items is the silent-truncation failure this exists
+ * to prevent: it looks exactly like "Newegg has 20 listings for this card"
+ * when the truth is "Newegg has 340 and we looked at the first 20".
+ *
+ * Any field the response omits comes back null, and the caller decides whether
+ * that is fatal — a single-page response from some endpoints legitimately
+ * carries no header at all.
+ */
+export function readPageInfo(root: XmlElement): {
+  totalMatches: number | null;
+  totalPages: number | null;
+  pageNumber: number | null;
+} {
+  const find = (name: string): number | null => {
+    const stack = [root];
+    while (stack.length) {
+      const el = stack.pop()!;
+      for (const c of el.children) {
+        if (c.name.toLowerCase() === name) {
+          const n = Number.parseInt(c.text.trim(), 10);
+          return Number.isFinite(n) ? n : null;
+        }
+        // <item> subtrees cannot hold the paging header, and descending into
+        // hundreds of them to look would be both slow and a chance to pick up
+        // a same-named product field.
+        if (c.name.toLowerCase() !== 'item') stack.push(c);
+      }
+    }
+    return null;
+  };
+  return { totalMatches: find('totalmatches'), totalPages: find('totalpages'), pageNumber: find('pagenumber') };
+}

@@ -17,23 +17,24 @@ const fixture = (name: string) => fs.readFileSync(path.join(fixtures, name), 'ut
 
 describe('parseProductSearchXml', () => {
   it('reads every <item> from a captured Newegg response', () => {
-    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page.xml')));
-    expect(items).toHaveLength(8);
+    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page1.xml')));
+    expect(items).toHaveLength(4);
     expect(childText(items[0], 'sku')).toBe('N82E16814932663');
     expect(childText(items[0], 'mid')).toBe('44583');
   });
 
   it('decodes the ampersand in the category name and in tracked URLs', () => {
-    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page.xml')));
+    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page1.xml')));
     const cat = items[0].children.find((c) => c.name === 'category')!;
-    expect(childText(cat, 'primary')).toBe('Video Cards & Adapters');
+    expect(childText(cat, 'primary')).toBe('Computers');
+    expect(childText(cat, 'secondary')).toBe('Components~~Video Cards & Adapters');
     // A tracked link that still reads "&amp;offerid" is a broken link.
     expect(childText(items[0], 'linkurl')).toContain('&offerid=');
     expect(childText(items[0], 'linkurl')).not.toContain('&amp;');
   });
 
   it('reads a price with its currency attribute', () => {
-    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page.xml')));
+    const items = findItems(parseProductSearchXml(fixture('newegg-rtx4070-page1.xml')));
     expect(readPrice(items[0], 'price')).toEqual({ amount: 579.99, currency: 'USD' });
     expect(readPrice(items[0], 'saleprice')).toEqual({ amount: 0, currency: 'USD' });
   });
@@ -47,7 +48,7 @@ describe('parseProductSearchXml', () => {
 
   it('treats a self-closing element as present and empty', () => {
     const items = findItems(parseProductSearchXml(fixture('newegg-rtx4060ti-capacity.xml')));
-    expect(childText(items[2], 'upc')).toBeNull();
+    expect(childText(items[2], 'upccode')).toBeNull();
   });
 
   it('decodes CDATA literally and does not re-decode entities inside it', () => {
@@ -73,7 +74,7 @@ describe('parseProductSearchXml', () => {
   });
 
   it('refuses a truncated response rather than reporting fewer products', () => {
-    const truncated = fixture('newegg-rtx4070-page.xml').slice(0, 900);
+    const truncated = fixture('newegg-rtx4070-page1.xml').slice(0, 700);
     expect(() => parseProductSearchXml(truncated)).toThrow(RakutenXmlError);
   });
 

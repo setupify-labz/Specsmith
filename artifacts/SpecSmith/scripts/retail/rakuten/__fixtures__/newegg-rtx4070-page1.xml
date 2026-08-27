@@ -1,0 +1,95 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented live Rakuten Product Search response shape (paging header, primary/secondary categories, upccode). NOT a capture. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <TotalMatches>8</TotalMatches>
+  <TotalPages>2</TotalPages>
+  <PageNumber>1</PageNumber>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814932663</sku>
+    <productname>GIGABYTE GeForce RTX 4070 WINDFORCE OC V2 12GB GDDR6X Desktop Graphics Card, GV-N4070WF3OCV2-12GD</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">579.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>889523036891</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814932663</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-932-663-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814137837</sku>
+    <productname>MSI Ventus GeForce RTX 4070 SUPER 12GB GDDR6X OC Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">649.99</price>
+    <saleprice currency="USD">599.99</saleprice>
+    <upccode>824142519851</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137837</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-837-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16812200016</sku>
+    <productname>CORSAIR 12VHPWR PCIe 5.0 Power Cable for GeForce RTX 4070 / 4080 Graphics Cards</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters~~Accessories</secondary>
+    </category>
+    <price currency="USD">19.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>840006645320</upccode>
+    <description>
+      <short>Sits in the Accessories leaf UNDER Video Cards &amp; Adapters.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16812200016</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/12-200-016-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16883360160</sku>
+    <productname>ABS Cyclone Aqua Gaming Desktop PC - GeForce RTX 4070 12GB, Intel Core i5-14400F</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Systems~~Gaming Desktops</secondary>
+    </category>
+    <price currency="USD">1199.99</price>
+    <saleprice currency="USD">1099.99</saleprice>
+    <upccode>195553176224</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16883360160</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/83-360-160-01.jpg</imageurl>
+  </item>
+</result>

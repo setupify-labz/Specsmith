@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import {
-  catalogMention,
-  findGpuMentions,
-  findMemorySizes,
-  mentionKey,
-  requiresExplicitMemorySize,
-  verifyGpuModel,
-} from './gpuModelMatch';
+import { catalogMention, findGpuMentions, findMemorySizes, mentionKey, verifyGpuModel } from './gpuModelMatch';
 import { loadGpuCatalog } from './index';
 import type { CatalogGpu } from './types';
 
@@ -65,28 +58,44 @@ describe('every catalog GPU names exactly one model', () => {
   });
 });
 
-describe('requiresExplicitMemorySize', () => {
-  it('is true exactly for the catalog parts that ship in two sizes', () => {
-    const required = catalog.filter((g) => requiresExplicitMemorySize(g, catalog)).map((g) => g.id).sort();
-    expect(required).toEqual(
-      ['arca770-16', 'arca770-8', 'rtx3080', 'rtx308012', 'rtx4060ti', 'rtx4060ti16', 'rx9060xt16', 'rx9060xt8'].sort(),
-    );
-  });
-});
-
 describe('verifyGpuModel', () => {
-  const ok = (title: string, id: string) => verifyGpuModel(title, gpu(id), catalog);
+  const ok = (title: string, id: string) => verifyGpuModel(title, gpu(id));
 
   it('accepts the exact card', () => {
     expect(ok('GIGABYTE GeForce RTX 4070 WINDFORCE OC V2 12GB GDDR6X Desktop Graphics Card', 'rtx4070')).toEqual({ ok: true });
   });
 
-  it('accepts when the title states no memory size and the part ships in only one', () => {
-    expect(ok('ASUS Dual GeForce RTX 4070 OC Edition', 'rtx4070')).toEqual({ ok: true });
+  it('refuses a title that states no memory size, for every part', () => {
+    // Unconditional, and independent of the catalog. See the doc comment on
+    // the memory-size rule for the RTX 5060 Ti case that settled this.
+    expect(ok('ASUS Dual GeForce RTX 4070 OC Edition', 'rtx4070')).toMatchObject({
+      ok: false,
+      reason: 'memory-capacity-unstated',
+    });
+    expect(ok('GIGABYTE GeForce RTX 4090 GAMING OC', 'rtx4090')).toMatchObject({ ok: false, reason: 'memory-capacity-unstated' });
+  });
+
+  it('an unspecified RTX 5060 Ti is never accepted as the 16GB model', () => {
+    // The catalog carries only the 16GB rtx5060ti, so a rule that asked
+    // "does a sibling SKU exist?" found none and let this through — publishing
+    // an 8GB card's price as the 16GB card's. The part ships in both sizes
+    // regardless of what SpecSmith tracks.
+    expect(ok('ASUS Dual GeForce RTX 5060 Ti OC Edition Graphics Card', 'rtx5060ti')).toMatchObject({
+      ok: false,
+      reason: 'memory-capacity-unstated',
+    });
+    expect(catalog.filter((g) => g.name.startsWith('RTX 5060 Ti'))).toHaveLength(1);
+    // Stated, and correct: accepted.
+    expect(ok('ASUS PRIME GeForce RTX 5060 Ti 16GB GDDR7 OC', 'rtx5060ti')).toEqual({ ok: true });
+    // Stated, and the other size: refused as a mismatch, not silently taken.
+    expect(ok('ASUS PRIME GeForce RTX 5060 Ti 8GB GDDR7 OC', 'rtx5060ti')).toMatchObject({
+      ok: false,
+      reason: 'memory-capacity-mismatch',
+    });
   });
 
   it('rejects a Ti when the base card was asked for', () => {
-    expect(ok('ZOTAC GAMING GeForce RTX 4070 Ti Trinity OC 12GB', 'rtx4070')).toMatchObject({
+    expect(ok('ZOTAC GAMING GeForce RTX 4070 Ti Trinity OC 12GB GDDR6X', 'rtx4070')).toMatchObject({
       ok: false,
       reason: 'variant-suffix-mismatch',
     });
@@ -97,8 +106,8 @@ describe('verifyGpuModel', () => {
   });
 
   it('rejects a Super when the base card was asked for, and vice versa', () => {
-    expect(ok('MSI Ventus GeForce RTX 4070 SUPER 12G OC', 'rtx4070')).toMatchObject({ ok: false, reason: 'variant-suffix-mismatch' });
-    expect(ok('MSI Ventus GeForce RTX 4070 12G OC', 'rtx4070s')).toMatchObject({ ok: false, reason: 'variant-suffix-mismatch' });
+    expect(ok('MSI Ventus GeForce RTX 4070 SUPER 12GB OC', 'rtx4070')).toMatchObject({ ok: false, reason: 'variant-suffix-mismatch' });
+    expect(ok('MSI Ventus GeForce RTX 4070 12GB OC', 'rtx4070s')).toMatchObject({ ok: false, reason: 'variant-suffix-mismatch' });
   });
 
   it('rejects a Ti Super when the plain Ti was asked for', () => {
@@ -115,10 +124,13 @@ describe('verifyGpuModel', () => {
 
   it('rejects a different model number outright', () => {
     expect(ok('GIGABYTE GeForce RTX 4060 EAGLE OC 8GB', 'rtx4070')).toMatchObject({ ok: false, reason: 'model-mismatch' });
+    // Model is decided before capacity, so a different card is reported as a
+    // different card rather than as a capacity problem.
+    expect(ok('GIGABYTE GeForce RTX 4060 EAGLE OC', 'rtx4070')).toMatchObject({ ok: false, reason: 'model-mismatch' });
   });
 
   it('rejects a title naming two models as ambiguous', () => {
-    expect(ok('Power Cable for GeForce RTX 4070 / RTX 4080 Graphics Cards', 'rtx4070')).toMatchObject({
+    expect(ok('Power Cable for GeForce RTX 4070 12GB / RTX 4080 16GB Graphics Cards', 'rtx4070')).toMatchObject({
       ok: false,
       reason: 'model-ambiguous',
     });
@@ -126,6 +138,15 @@ describe('verifyGpuModel', () => {
 
   it('rejects a title naming no model at all', () => {
     expect(ok('CORSAIR RM850x Power Supply', 'rtx4070')).toMatchObject({ ok: false, reason: 'model-not-found' });
+  });
+
+  it('does not consult the rest of the catalog — the same title and part always answer the same', () => {
+    // The verdict is a function of (title, entry) only. Nothing about which
+    // other SKUs SpecSmith tracks can change it.
+    expect(verifyGpuModel('MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6', gpu('rtx4060ti16'))).toEqual({ ok: true });
+    expect(verifyGpuModel('MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6', { ...gpu('rtx4060ti16'), id: 'unrelated' })).toEqual({
+      ok: true,
+    });
   });
 
   it('rejects the wrong memory size', () => {
@@ -144,17 +165,13 @@ describe('verifyGpuModel', () => {
     expect(ok('GIGABYTE WINDFORCE OC GeForce RTX 4060 Ti 8GB GDDR6', 'rtx4060ti')).toEqual({ ok: true });
   });
 
-  it('refuses a size-split part whose listing states no size at all', () => {
-    // ASUS Dual RTX 4060 Ti exists in both 8GB and 16GB; the title says which
-    // one it is, or the offer is not usable.
-    expect(ok('ASUS Dual GeForce RTX 4060 Ti OC Edition Graphics Card', 'rtx4060ti')).toMatchObject({
-      ok: false,
-      reason: 'memory-capacity-mismatch',
-    });
-    expect(ok('ASUS Dual GeForce RTX 4060 Ti OC Edition Graphics Card', 'rtx4060ti16')).toMatchObject({
-      ok: false,
-      reason: 'memory-capacity-mismatch',
-    });
+  it('refuses a listing that states no size, whichever sibling was asked for', () => {
+    for (const id of ['rtx4060ti', 'rtx4060ti16']) {
+      expect(ok('ASUS Dual GeForce RTX 4060 Ti OC Edition Graphics Card', id)).toMatchObject({
+        ok: false,
+        reason: 'memory-capacity-unstated',
+      });
+    }
   });
 
   it('refuses a title stating two different memory sizes', () => {

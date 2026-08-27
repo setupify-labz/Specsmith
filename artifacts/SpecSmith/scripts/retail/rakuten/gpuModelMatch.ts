@@ -110,25 +110,40 @@ export function findMemorySizes(name: string): number[] {
 }
 
 /**
- * Whether a stated memory size is REQUIRED to identify this part.
+ * WHY A STATED MEMORY SIZE IS ALWAYS REQUIRED
+ * -------------------------------------------
+ * An earlier version asked the catalog: it required an explicit size only when
+ * SpecSmith already held two entries sharing a family, number and suffix
+ * (rtx4060ti/rtx4060ti16, arca770-8/arca770-16...). That made the safety of a
+ * price depend on the completeness of an editorial parts list, which is
+ * backwards — the catalog describes what SpecSmith has chosen to track, not
+ * what the manufacturer shipped.
  *
- * True when the catalog holds more than one entry with the same family, number
- * and suffixes — rtx4060ti/rtx4060ti16, rx9060xt8/rx9060xt16,
- * arca770-8/arca770-16, rtx3080/rtx308012. For those, a listing that never
- * states its memory size does not say which of the two it is, and picking
- * either would be a coin flip on a price difference of $70-$100.
+ * The RTX 5060 Ti is the concrete failure. It ships in 8GB and 16GB; the
+ * catalog carries only the 16GB part (`rtx5060ti`). Under the old rule no
+ * sibling existed, so no size was required, so a listing reading "ASUS Dual
+ * GeForce RTX 5060 Ti OC" was accepted as the 16GB card — and an 8GB card's
+ * price was published as the 16GB card's. Nothing downstream could detect it.
  *
- * Derived from the catalog rather than hard-coded, so adding a future
- * size-split SKU tightens this automatically instead of silently missing it.
+ * So the rule is now unconditional and reads nothing outside the listing: a
+ * title that does not state its memory size does not say which SKU it is, and
+ * is refused. That is the same answer for a part the catalog splits, a part it
+ * does not split yet, and a part it will split next year. Real Newegg
+ * graphics-card titles state the capacity essentially always, so the cost is
+ * small and, when it is paid, it is paid as a counted rejection rather than a
+ * wrong price.
  */
-export function requiresExplicitMemorySize(gpu: CatalogGpu, catalog: readonly CatalogGpu[]): boolean {
-  const key = mentionKey(catalogMention(gpu));
-  return catalog.filter((c) => mentionKey(catalogMention(c)) === key).length > 1;
-}
 
 export type ModelVerdict =
   | { ok: true }
-  | { ok: false; reason: Extract<OfferRejectionReason, 'model-not-found' | 'model-ambiguous' | 'model-mismatch' | 'variant-suffix-mismatch' | 'memory-capacity-mismatch'>; detail: string };
+  | {
+      ok: false;
+      reason: Extract<
+        OfferRejectionReason,
+        'model-not-found' | 'model-ambiguous' | 'model-mismatch' | 'variant-suffix-mismatch' | 'memory-capacity-mismatch' | 'memory-capacity-unstated'
+      >;
+      detail: string;
+    };
 
 /**
  * Verifies a product name against one catalog part.
@@ -138,9 +153,14 @@ export type ModelVerdict =
  *   1. no mention at all              -> model-not-found
  *   2. a mention of a different NUMBER-> model-mismatch (all) / model-ambiguous (mixed)
  *   3. same number, different suffix  -> variant-suffix-mismatch
- *   4. memory size absent or wrong    -> memory-capacity-mismatch
+ *   4. memory size wrong              -> memory-capacity-mismatch
+ *   5. memory size not stated         -> memory-capacity-unstated
+ *
+ * Depends on nothing but the title and the one catalog entry being verified —
+ * no catalog-wide lookup, so its answer cannot change because an unrelated
+ * SKU was added or removed.
  */
-export function verifyGpuModel(productName: string, gpu: CatalogGpu, catalog: readonly CatalogGpu[]): ModelVerdict {
+export function verifyGpuModel(productName: string, gpu: CatalogGpu): ModelVerdict {
   const target = catalogMention(gpu);
   const mentions = findGpuMentions(productName);
 
@@ -191,11 +211,11 @@ export function verifyGpuModel(productName: string, gpu: CatalogGpu, catalog: re
       detail: `Listing states ${sizes[0]}GB; ${gpu.name} is a ${gpu.vram_gb}GB part.`,
     };
   }
-  if (sizes.length === 0 && requiresExplicitMemorySize(gpu, catalog)) {
+  if (sizes.length === 0) {
     return {
       ok: false,
-      reason: 'memory-capacity-mismatch',
-      detail: `${gpu.name} ships in more than one memory size and this listing states none, so it cannot be told from its sibling SKU.`,
+      reason: 'memory-capacity-unstated',
+      detail: `Listing states no memory size, so it cannot be confirmed as the ${gpu.vram_gb}GB ${gpu.name}. Graphics cards ship in several capacities under one model name, whether or not SpecSmith's catalog tracks each of them.`,
     };
   }
 

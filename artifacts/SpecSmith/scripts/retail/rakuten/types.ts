@@ -35,16 +35,39 @@
 export const NEWEGG_MID = '44583';
 
 /**
- * The single Newegg category a discrete graphics card is listed under.
+ * The Newegg category leaf a discrete graphics card is listed under.
+ *
+ * Rakuten publishes TWO category fields and they are not interchangeable.
+ * `<primary>` is the merchant's own top-level department ("Computers"), which
+ * is far too coarse to mean anything here. `<secondary>` is the full path,
+ * delimited, whose LAST segment is the actual leaf:
+ *
+ *   <primary>Computers</primary>
+ *   <secondary>Components~~Video Cards &amp; Adapters</secondary>
+ *
+ * Both are preserved on the record; only the secondary leaf gates admission.
+ * Matching the raw secondary string against this constant would fail on every
+ * real listing, and matching a SUBSTRING would admit sibling leaves such as
+ * "Video Cards & Adapters~~Accessories". So the comparison is against the
+ * final segment, exactly.
  *
  * Required, not preferred. The category is the only field in the feed that
  * states what KIND of thing a listing is; product names do not reliably say
  * (plenty of cables are named after the card they plug into). Matching on the
  * name alone and hoping is how a $19 power adapter becomes "an RTX 4070 for
- * $19", so a listing whose category is anything else is refused before its
- * name is even read.
+ * $19", so a listing whose leaf is anything else is refused before its name is
+ * even read.
  */
-export const REQUIRED_CATEGORY = 'Video Cards & Adapters';
+export const REQUIRED_CATEGORY_LEAF = 'Video Cards & Adapters';
+
+/**
+ * Separator between levels of Rakuten's `<secondary>` category path.
+ *
+ * Named rather than inlined: it is the one piece of the feed's shape most
+ * likely to differ between merchants, and a capture that shows otherwise is a
+ * one-line change here plus a fixture, not a hunt through the parser.
+ */
+export const SECONDARY_CATEGORY_DELIMITER = '~~';
 
 /** Product Search endpoint. Version-pinned; a new version gets a new adapter. */
 export const PRODUCT_SEARCH_ENDPOINT = 'https://api.linksynergy.com/productsearch/1.0';
@@ -56,7 +79,7 @@ export const ACCESS_TOKEN_ENV_VAR = 'RAKUTEN_API_ACCESS_TOKEN';
  * Bump on ANY change to parsing or admission rules, so a stored offer built
  * by older rules is detectable rather than silently trusted.
  */
-export const RAKUTEN_ADAPTER_VERSION = 1;
+export const RAKUTEN_ADAPTER_VERSION = 2;
 
 /**
  * Why a listing was refused.
@@ -70,7 +93,7 @@ export const RAKUTEN_ADAPTER_VERSION = 1;
 export type OfferRejectionReason =
   /** Not Newegg. The feed is queried per-merchant, so this is a feed error. */
   | 'merchant-mismatch'
-  /** Category is not REQUIRED_CATEGORY. */
+  /** The secondary category's final segment is not REQUIRED_CATEGORY_LEAF. */
   | 'category-mismatch'
   /** A cable, adapter, bracket, riser or other accessory — not a card. */
   | 'not-a-graphics-card'
@@ -88,8 +111,10 @@ export type OfferRejectionReason =
   | 'model-mismatch'
   /** Same number, different variant: Ti, Super, Ti Super, XT, XTX, GRE. */
   | 'variant-suffix-mismatch'
-  /** Same model, different memory size — or a size-disambiguated part with no size stated. */
+  /** Same model, different memory size. */
   | 'memory-capacity-mismatch'
+  /** The listing states no memory size at all, so which SKU it is cannot be known. */
+  | 'memory-capacity-unstated'
   /** A required field is absent, blank, or unparseable. */
   | 'incomplete-record';
 
@@ -112,12 +137,25 @@ export interface NeweggOffer {
 
   /** Newegg's own item number, e.g. "N82E16814137837". The listing's identity. */
   sku: string;
-  /** Manufacturer UPC. Frequently absent from the feed; null when it is. */
+  /**
+   * Manufacturer UPC, from the feed's `<upccode>` element.
+   *
+   * The element is `upccode`, not `upc`. Reading `upc` finds nothing and every
+   * offer silently carries a null UPC — a field that is legitimately absent
+   * often enough that the mistake does not announce itself.
+   */
   upc: string | null;
   /** The merchant's product title, verbatim. Never cleaned up or shortened. */
   productName: string;
-  /** The merchant's category string. Always REQUIRED_CATEGORY for an accepted offer. */
-  category: string;
+  /**
+   * The merchant's top-level department, e.g. "Computers". Preserved because
+   * it is what the merchant published, but far too coarse to gate on.
+   */
+  categoryPrimary: string | null;
+  /** The full secondary path as published, e.g. "Components~~Video Cards & Adapters". */
+  categorySecondary: string;
+  /** Its final segment. Always REQUIRED_CATEGORY_LEAF for an accepted offer. */
+  categorySecondaryLeaf: string;
 
   /**
    * The merchant's list price. Rakuten calls this `<price>`; it is what the

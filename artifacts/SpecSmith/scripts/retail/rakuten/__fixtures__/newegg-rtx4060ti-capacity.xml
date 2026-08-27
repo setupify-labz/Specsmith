@@ -1,22 +1,28 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented live Rakuten Product Search response shape (paging header, primary/secondary categories, upccode). NOT a capture. -->
 <?xml version="1.0" encoding="UTF-8"?>
 <result>
+  <TotalMatches>5</TotalMatches>
+  <TotalPages>1</TotalPages>
+  <PageNumber>1</PageNumber>
   <item>
     <mid>44583</mid>
     <merchantname>Newegg</merchantname>
     <linkid>REDACTED_LINK_ID</linkid>
-    <createdon>2026-08-20/12:09:52</createdon>
+    <createdon>2026-08-27/03:12:44</createdon>
     <sku>N82E16814137785</sku>
     <productname>MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6 Graphics Card</productname>
     <category>
-      <primary>Video Cards &amp; Adapters</primary>
-      <secondary>Desktop Graphics Cards</secondary>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
     </category>
     <price currency="USD">449.99</price>
     <saleprice currency="USD">429.99</saleprice>
-    <upc>824142553725</upc>
-    <description><short>16GB variant.</short><long />
+    <upccode>824142553725</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
     </description>
-    <keywords>rtx 4060 ti,16gb</keywords>
+    <keywords>graphics card</keywords>
     <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137785</linkurl>
     <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-785-01.jpg</imageurl>
   </item>
@@ -24,18 +30,21 @@
     <mid>44583</mid>
     <merchantname>Newegg</merchantname>
     <linkid>REDACTED_LINK_ID</linkid>
-    <createdon>2026-08-20/12:09:52</createdon>
+    <createdon>2026-08-27/03:12:44</createdon>
     <sku>N82E16814932577</sku>
     <productname>GIGABYTE WINDFORCE OC GeForce RTX 4060 Ti 8GB GDDR6 Graphics Card</productname>
     <category>
-      <primary>Video Cards &amp; Adapters</primary>
-      <secondary>Desktop Graphics Cards</secondary>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
     </category>
     <price currency="USD">379.99</price>
     <saleprice currency="USD">0.00</saleprice>
-    <upc>889523039540</upc>
-    <description><short>8GB variant.</short><long /></description>
-    <keywords>rtx 4060 ti,8gb</keywords>
+    <upccode>889523039540</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
     <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814932577</linkurl>
     <imageurl>https://c1.neweggimages.com/productimage/nb640/14-932-577-01.jpg</imageurl>
   </item>
@@ -43,19 +52,66 @@
     <mid>44583</mid>
     <merchantname>Newegg</merchantname>
     <linkid>REDACTED_LINK_ID</linkid>
-    <createdon>2026-08-20/12:09:52</createdon>
+    <createdon>2026-08-27/03:12:44</createdon>
     <sku>N82E16814487999</sku>
     <productname>ASUS Dual GeForce RTX 4060 Ti OC Edition Graphics Card</productname>
     <category>
-      <primary>Video Cards &amp; Adapters</primary>
-      <secondary>Desktop Graphics Cards</secondary>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
     </category>
     <price currency="USD">399.99</price>
     <saleprice currency="USD">0.00</saleprice>
-    <upc />
-    <description><short>Memory size not stated in the title.</short><long /></description>
-    <keywords>rtx 4060 ti</keywords>
+    <upccode />
+    <description>
+      <short>Memory size not stated in the title; upccode absent.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
     <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814487999</linkurl>
     <imageurl>https://c1.neweggimages.com/productimage/nb640/14-487-999-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814137999</sku>
+    <productname>ASUS Dual GeForce RTX 5060 Ti OC Edition Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">429.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>824142559999</upccode>
+    <description>
+      <short>RTX 5060 Ti ships in 8GB and 16GB; the catalog tracks only the 16GB part.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137999</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-999-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-27/03:12:44</createdon>
+    <sku>N82E16814137888</sku>
+    <productname>ASUS PRIME GeForce RTX 5060 Ti 16GB GDDR7 OC Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">479.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>824142558888</upccode>
+    <description>
+      <short>Product description.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>graphics card</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137888</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-888-01.jpg</imageurl>
   </item>
 </result>
