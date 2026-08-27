@@ -154,8 +154,11 @@ regime change from frame-time statistics. It also does not care how long the
 screen stays up, which removes a dependence that any suffix-aggregate method
 carries whether or not that dependence turns out to explain these runs.
 
-Sketch, deliberately minimal — **not implemented, and not to be implemented
-until the validation step below is agreed**:
+**A research proof of concept of this now exists** on this branch:
+`rdr2ResultsVisual.ts` (decision logic), `detectRdr2Results.ps1` (Windows
+sampler) and `detectRdr2Results.ts` (opt-in CLI). It is **unvalidated** — it
+has never seen a real RDR2 screen — and it is wired into nothing. See the
+README's "Visual detection" section. The sketch it implements:
 
 - **Sample slowly.** A low-rate grab (order 2 Hz) of the game window during
   capture, each sample stamped with the *same monotonic counter* the operator

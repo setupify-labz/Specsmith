@@ -913,6 +913,99 @@ at one does not make it acceptable.
 The exit code is still the **analysis's**: `0` resolved, `2` unresolved. A
 marker never turns a `2` into a `0`.
 
+### Visual detection of the "End of benchmark" screen (research PoC)
+
+**UNVALIDATED RESEARCH. Opt-in only. Wired into nothing.** Three PresentMon-only
+signals were falsified at the final boundary, so this stops inferring it and
+observes it instead. It does not feed benchmark acceptance, production
+observations, uploads or `collect.ts` — a test reads those files and fails if
+any of them ever references it.
+
+```
+pnpm detect:rdr2-results -- --calibrate --pid <pid> --out C:\local\rdr2-calibration.json
+pnpm detect:rdr2-results -- --pid <pid> --calibration C:\local\rdr2-calibration.json --out C:\local\rdr2-visual-evidence.json
+```
+
+**Calibrate once, first.** There is deliberately **no built-in reference**: a
+template invented in this repo would not be RDR2's title, and shipping one
+would fabricate the evidence the tool exists to gather. Calibration also
+sidesteps localization — your signature is in your language, at your
+resolution and UI scale.
+
+**How it works.** `detectRdr2Results.ps1` resolves the HWND for the exact PID,
+captures the **window** with `PrintWindow(PW_RENDERFULLCONTENT)` — never the
+desktop, and tolerant of partial occlusion — crops a normalized band, and
+reduces it to a 320x80 greyscale grid **inside its own process**. Only that
+grid crosses into Node. Recognition binarizes with Otsu, normalizes the ink's
+bounding box to a canonical shape, and scores Matthews correlation against the
+calibrated reference.
+
+Normalizing the ink box is what gives resolution tolerance, and it was
+necessary rather than decorative: a game picks an integer font size and centres
+it, so the same words cover 75.1% of the crop at 1080p and 78.9% at 1440p in
+the fixtures. Sliding the image around cannot fix a size difference — an
+earlier draft that only searched translations left the *correct* screen scoring
+0.73 and 0.58, inside the refusal band.
+
+**Bars, centred in the measured separation** (synthetic fixtures, six
+resolutions, six lookalike phrases):
+
+| | measured |
+| --- | --- |
+| correct title, 720p-4K | 0.809 - 1.000 |
+| lookalike phrases ("END OF MISSION", "BENCHMARK SETUP", ...) | 0.066 - 0.228 |
+| busy non-title screen | 0.008 |
+
+Match at >= 0.70, no-match below 0.45, **anything between is refused**. These
+are provisional: they come from a synthetic block font, not from RDR2, and must
+be re-checked against a real calibration.
+
+**Fails closed** on: no window for the PID, more than one candidate window, a
+minimized or invisible window, a client rect too small, `PrintWindow` failure
+(exclusive fullscreen returns black), a crop outside the rect, a blank or black
+crop, a crop too dense to be a title, a grid of the wrong size, and any score
+in the refusal band. A refusal is **never** usable as the negative that bounds
+the boundary, so refusals *widen* the reported interval rather than narrowing
+it.
+
+**The boundary is an interval**, bounded by the last confident negative and the
+first confident positive — roughly 500ms at 2 Hz. A run whose first sample is
+already positive is **refused**, because that boundary has no lower bound.
+
+#### Privacy boundary
+
+- **Frames stay in the sampler's memory** and are disposed per sample. Without
+  `--debug-images` no frame and no grid is ever written to disk.
+- **The evidence file holds timestamps, scores and counts only.** A test asserts
+  its keys against an allowlist and that it contains no `grid`, `bits`,
+  `pixels`, `base64` or `data:image`.
+- **`--debug-images` is explicit**, refuses any path inside a research bundle,
+  writes files prefixed `LOCAL-ONLY-`, and drops a `PRIVACY-README.txt` beside
+  them.
+- **A research bundle contains exactly `presentmon.csv` and `manifest.json`** —
+  a test publishes a bundle with images sitting next to the source capture and
+  asserts they do not come along.
+
+Being accurate rather than reassuring: a 320x80 greyscale grid of the title
+band is a coarse thumbnail of one strip of the screen, not an unrecognizable
+hash. It is transient, never persisted, and never leaves the machine.
+
+#### Limitations
+
+- **Language.** The reference is whatever was on screen at calibration. A
+  different game language needs its own calibration. There is no OCR and no
+  built-in string.
+- **Exclusive fullscreen.** `PrintWindow` can return black there. That is
+  refused, not worked around — borderless windowed is the supported mode.
+- **Never validated.** It has never been run against a real RDR2 screen. Until
+  it is run alongside the operator marker across several runs and the agreement
+  published, it is a second opinion and nothing more.
+- **No performance claim.** Sampling and capture times are instrumented and
+  reported, but nothing is asserted about overhead until it has been measured
+  on the real machine during a real capture. Any capture that touches the GPU
+  can move the numbers being measured; run with and without it and report the
+  difference before relying on either.
+
 ### Fail-closed behaviour
 
 Returns `status: "unresolved"` with `reasons[]` and a `failure` of
