@@ -597,6 +597,38 @@ describe('an ANIMATED results screen is found by distribution change, not by sti
   });
 });
 
+describe('the final boundary is labelled UNVALIDATED wherever it is reported', () => {
+  // Three signals have been tried at this boundary and each was falsified by
+  // the next real capture; the candidate ranking was falsified too. The code
+  // stays because it is how those failures were diagnosed. These tests exist
+  // so the warning that says so cannot be quietly dropped while the numbers
+  // it qualifies stay behind.
+
+  it('warns on the results-start boundary of every resolved analysis', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(), RESULTS_BUSY,
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    const results = result.boundaries.find((b) => b.kind === 'results-start');
+    expect(results?.evidence.join(' ')).toMatch(/UNVALIDATED RESEARCH/);
+    expect(results?.evidence.join(' ')).toMatch(/never as a finding/);
+  });
+
+  it('does NOT warn on the transitions, which two complete real runs did reproduce', () => {
+    const frames = buildFrames([
+      MENU,
+      SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION, SCENE(), TRANSITION,
+      SCENE(), RESULTS_BUSY,
+    ]);
+    const result = asCandidate(analyzeFrames(frames, source()));
+    for (const b of result.boundaries.filter((x) => x.kind !== 'results-start')) {
+      expect(b.evidence.join(' ')).not.toMatch(/UNVALIDATED/);
+    }
+  });
+});
+
 describe('the CLI exposes the diagnostic without changing the analysis', () => {
   it('accepts --diagnose-tail alongside a bundle directory', () => {
     expect(parseAnalyzeArgs(['/bundle', '--diagnose-tail'])).toEqual({

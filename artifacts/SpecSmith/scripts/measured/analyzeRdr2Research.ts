@@ -183,6 +183,10 @@ function renderTailDiagnostics(tail: Rdr2TailDiagnostics): string {
   const L: string[] = [];
   L.push('');
   L.push('=== FINAL-BOUNDARY DIAGNOSTIC (research only; changes no bar and no verdict) ===');
+  L.push('UNVALIDATED RESEARCH. The ranking below has been falsified on real data: on one complete');
+  L.push('run its top candidates matched a separately-observed results neighbourhood, and on the next');
+  L.push('its top candidate was scene 5\'s own start. Read it as a diagnosis of why nothing qualified,');
+  L.push('never as a boundary. See RDR2-SEGMENTATION-FINDINGS.md.');
   L.push(`final block        ${tail.finalBlockStartOffsetSec.toFixed(2)}-${tail.finalBlockEndOffsetSec.toFixed(2)}s, GPU ${(tail.finalBlockMeanGpuRatio * 100).toFixed(1)}%, ${tail.finalBlockIdle ? 'idle' : 'busy'}`);
   L.push(`window size        ${tail.stabilityWindowFrames} frames`);
   L.push(`comparison span    ${tail.comparisonSpanWindows} windows (both sides measured over this same length)`);

@@ -588,6 +588,20 @@ directory. None of this has been exercised outside the test suite yet.
 
 ## Offline analyzer: can RDR2's five benchmark scenes be isolated?
 
+> **Status after three real runs — read this first.**
+> **Validated:** gameplay start and the four inter-scene transitions. Their
+> onsets relative to each run's own gameplay start agree to within **1.11s**
+> across two complete runs whose absolute gameplay start differed by 49
+> seconds.
+> **Not validated:** the final gameplay/results boundary — both acceptance
+> routes, the candidate ranking and the tail diagnostic. Three signals were
+> tried there and each was falsified by the next real capture; the ranking was
+> falsified too. That code remains as **unvalidated research** because it is
+> how the failures were diagnosed. A ranked candidate is a hypothesis, never a
+> finding. Full write-up and the recommended alternative:
+> [RDR2-SEGMENTATION-FINDINGS.md](./RDR2-SEGMENTATION-FINDINGS.md).
+
+
 `scripts/measured/rdr2BenchmarkAnalysis.ts` (CLI:
 `scripts/measured/analyzeRdr2Research.ts`) reads a research bundle and tries
 to locate RDR2's five built-in benchmark scenes. It is **read-only and
@@ -765,11 +779,28 @@ time scale to prove it.
 
 ### Where this stands on real data
 
-On the real 420-second run the analyzer finds all four inter-scene
-transitions and then, correctly by its own rules, **refuses** the final
-boundary. Its top-ranked candidates cluster in a neighbourhood that matches
-what a human had separately observed — which is interesting and is **not
-evidence**. The margins are not close:
+Two complete real runs both find all four inter-scene transitions and then,
+correctly by their own rules, **refuse** the final boundary.
+
+The transitions reproduce. Onsets relative to each run's own gameplay start,
+across two runs whose absolute gameplay start differed by 49 seconds:
+
+| | run 2 | run 3 | spread |
+| --- | --- | --- | --- |
+| T1 | +25.05s | +24.92s | 0.13s |
+| T2 | +54.89s | +54.71s | 0.18s |
+| T3 | +85.41s | +84.30s | 1.11s |
+| T4 | +120.28s | +120.04s | 0.24s |
+
+Transition *durations* do not reproduce as tightly — T4 varies by 3.95s — so
+scene 5's start is confident **within** a run but shifts by 4.19s relative to
+gameplay start **between** runs.
+
+The final boundary does not reproduce at all. On run 2 the top-ranked
+candidates clustered around a separately-observed results neighbourhood; on
+run 3 the top-ranked candidate was **scene 5's own start**. One hit and one
+miss out of two is not a signal, and run 2's agreement is best read as
+coincidence. The acceptance margins on run 2 were not close either:
 
 | measure | real value | required |
 | --- | --- | --- |
@@ -777,10 +808,14 @@ evidence**. The margins are not close:
 | distinctness | 0.1484 | > 0.3359 |
 | self-agreement | 0.1406 | < 0.0762 |
 
-Nothing about those numbers was changed to accommodate the observation.
-**PresentMon-only final-boundary detection is not solved**, and "the ranking
-looks right" is exactly the kind of claim that needs a measurement from
-outside the signal rather than a second opinion from inside it.
+Nothing about those numbers was changed to accommodate the observation, and
+nothing was retuned after run 3 falsified the ranking. **PresentMon alone has
+not been shown sufficient to locate this boundary.** The recommended
+alternative — recognise RDR2's "End of benchmark" screen directly rather than
+inferring it, with screenshots kept local and excluded from uploads by
+default — is written up in
+[RDR2-SEGMENTATION-FINDINGS.md](./RDR2-SEGMENTATION-FINDINGS.md) and is
+**not implemented**.
 
 ### The independent marker
 

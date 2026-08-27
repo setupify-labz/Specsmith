@@ -59,6 +59,29 @@
 // three, or six, is either not a complete benchmark run or has a transition
 // this signal cannot see, and both are reasons to stop rather than to pick
 // the four best-looking candidates.
+//
+// WHAT IS VALIDATED, AND WHAT IS NOT
+// -----------------------------------
+// VALIDATED across two complete real runs: gameplay start and the four
+// inter-scene transitions. Their onsets relative to each run's own gameplay
+// start agree to within 1.11s across runs whose absolute gameplay start
+// differed by 49 seconds. Transition DURATIONS do not reproduce as tightly
+// (T4 varies by ~4s), so scene 5's start is reliable within a run but should
+// not be quoted as a reproducible offset.
+//
+// NOT VALIDATED: everything from locateResultsScreen onwards -- both
+// acceptance routes, the candidate ranking and the tail diagnostic. Three
+// signals have been tried at that boundary (GPU load, stationarity of level,
+// distributional change) and each was falsified by the next real capture. The
+// ranking was falsified too: on one complete run its top candidates matched a
+// separately-observed results neighbourhood, and on the next its top
+// candidate was scene 5's own start.
+//
+// That code stays because it is how the failure was diagnosed, and because a
+// refusal that explains itself is worth more than one that does not. It is
+// UNVALIDATED RESEARCH and is labelled as such in its output. Do not treat a
+// ranked candidate as a finding, and do not tune these bars against the
+// captures that falsified them. See ./RDR2-SEGMENTATION-FINDINGS.md.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1475,6 +1498,7 @@ export function analyzeFrames(
         ? `Stationary to the end of the recording: relative spread ${(stable.instability ?? Number.NaN).toFixed(4)} across ${stable.windowCount} windows of ${STABILITY_WINDOW_FRAMES} frames, against a bar of ${(stable.strictBar ?? Number.NaN).toFixed(4)} — ${STRICT_STABILITY_FACTOR}x more stable than the calmest span gameplay reaches in this same run (${(stable.looseBar ?? Number.NaN).toFixed(4)}).`
         : `Distributionally distinct to the end of the recording: it is unlike every equal-length stretch of this run's gameplay, its nearest resemblance being ${(stable.distinctnessFromGameplay ?? Number.NaN).toFixed(4)} against the ${(stable.changeBar ?? Number.NaN).toFixed(4)} gameplay reaches between its own neighbouring stretches, while agreeing with itself to within ${(stable.cohesion ?? Number.NaN).toFixed(4)} — tighter than the ${(stable.cohesionBar ?? Number.NaN).toFixed(4)} of the most self-consistent gameplay scene in this run. It is NOT required to be still, so an animated results screen is visible to this test.`,
       'Located by stationarity or distribution change, NOT by GPU load: a real RDR2 run showed the results screen is GPU-busy, so "the GPU stopped working" would have been the wrong signal here.',
+      'UNVALIDATED RESEARCH: this boundary has never been confirmed against ground truth on a real capture. Both acceptance routes here were falsified by real runs, and the candidate ranking was too. Treat this offset as a hypothesis, never as a finding. See RDR2-SEGMENTATION-FINDINGS.md.',
       stable.likelyEndIndex === stable.stableStartIndex
         ? 'Gameplay stops drifting and the screen becomes stationary at the same point, so this boundary carries no interval of uncertainty.'
         : `Drift stops at ${scene5LikelyEndOffsetSec.toFixed(2)}s but the regime is only confidently stationary from ${resultsScreenStableStartOffsetSec.toFixed(2)}s; the ${(resultsScreenStableStartOffsetSec - scene5LikelyEndOffsetSec).toFixed(2)}s between them is genuine uncertainty, not a boundary this analysis can place on one frame.`,
