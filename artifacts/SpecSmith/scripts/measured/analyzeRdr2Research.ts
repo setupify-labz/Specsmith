@@ -1,6 +1,6 @@
 // CLI for the RDR2 research-bundle analyzer. READ-ONLY, RESEARCH-ONLY.
 //
-//   npx tsx scripts/measured/analyzeRdr2Research.ts <bundleDir> [--diagnose-tail] [--out <path>]
+//   npx tsx scripts/measured/analyzeRdr2Research.ts <bundleDir> [--diagnose-tail] [--marker <path>] [--out <path>]
 //   npx tsx scripts/measured/analyzeRdr2Research.ts --compare <dirA> <dirB> [...] [--out <path>]
 //
 // --diagnose-tail prints the full ledger of the final-boundary search: every
@@ -9,6 +9,14 @@
 // it came, each with the specific bar it failed. It is a READING aid — it
 // changes no bar and no verdict, and an analysis run with it returns exactly
 // what the same analysis returns without it.
+//
+// --marker <path> additionally measures the analyzer's RANKED candidates
+// against an operator-confirmed results-screen marker recorded during the
+// capture (see markRdr2Results.ts). The marker is read AFTER the analysis is
+// complete and is never passed into it, so it cannot influence a bar, a
+// ranking or a verdict — it can only report how far each already-ranked
+// candidate sits from what a human independently observed. It implies
+// --diagnose-tail, because ranked candidates are what it compares.
 //
 // Deliberately thin: every decision lives in ./rdr2BenchmarkAnalysis.ts, which
 // is pure of process concerns and directly testable. This file only turns
@@ -32,6 +40,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  compareRankedCandidatesToMarker,
+  readMarkerFile,
+  MarkerError,
+  type Rdr2MarkerComparisonResult,
+} from './rdr2ResultsMarker';
+import {
   analyzeRdr2ResearchBundle,
   STABILITY_WINDOW_FRAMES,
   compareRdr2Analyses,
@@ -49,6 +63,8 @@ export interface AnalyzeCliArgs {
   outPath?: string;
   /** Print the final-boundary search ledger. Explanatory only; never changes the result. */
   diagnoseTail: boolean;
+  /** Compare ranked candidates against an operator-confirmed marker. Read after the analysis; never an input to it. */
+  markerPath?: string;
 }
 
 /**
@@ -63,6 +79,7 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
   let outPath: string | undefined;
   let compare = false;
   let diagnoseTail = false;
+  let markerPath: string | undefined;
 
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
@@ -72,6 +89,16 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
     }
     if (a === '--diagnose-tail') {
       diagnoseTail = true;
+      continue;
+    }
+    if (a === '--marker') {
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith('--')) {
+        throw new AnalyzeCliError(`--marker needs a value (got ${v === undefined ? 'end of arguments' : JSON.stringify(v)}).`);
+      }
+      if (markerPath !== undefined) throw new AnalyzeCliError('--marker was given more than once.');
+      markerPath = v;
+      i += 1;
       continue;
     }
     if (a === '--out') {
@@ -98,7 +125,12 @@ export function parseAnalyzeArgs(argv: readonly string[]): AnalyzeCliArgs {
     throw new AnalyzeCliError(`${bundleDirs.length} bundle directories given without --compare. Analyse one, or pass --compare to compare several.`);
   }
 
-  return { mode: compare ? 'compare' : 'analyze', bundleDirs, outPath, diagnoseTail };
+  if (markerPath !== undefined && compare) {
+    throw new AnalyzeCliError('--marker applies to a single analysis, not to --compare. Analyse each run separately with its own marker.');
+  }
+  // A marker comparison needs the ranked candidates, so it implies the ledger.
+  // This changes what is PRINTED, never what is decided.
+  return { mode: compare ? 'compare' : 'analyze', bundleDirs, outPath, diagnoseTail: diagnoseTail || markerPath !== undefined, markerPath };
 }
 
 /** Human-readable summary printed alongside the JSON, so a run is readable without piping through a parser. */
@@ -213,6 +245,51 @@ function renderTailDiagnostics(tail: Rdr2TailDiagnostics): string {
   return L.join('\n');
 }
 
+
+/**
+ * The marker comparison, printed after the analysis it describes.
+ *
+ * Every line is a MEASUREMENT of the analyzer's existing ranking against
+ * evidence the analyzer never saw. Nothing here is a boundary, a result, or a
+ * reason to change one.
+ */
+function renderMarkerComparison(cmp: Rdr2MarkerComparisonResult): string {
+  const L: string[] = [];
+  L.push('');
+  L.push('=== INDEPENDENT MARKER COMPARISON (research only; acceptance bars unchanged) ===');
+  if (cmp.status === 'refused') {
+    L.push('REFUSED');
+    for (const r of cmp.reasons) L.push(`  - ${r}`);
+    return L.join('\n');
+  }
+  const [lo, hi] = cmp.markerIntervalSec;
+  L.push(`analysis verdict     ${cmp.analysisStatus.toUpperCase()} (unchanged by anything below)`);
+  L.push(`mark ${cmp.marker.ordinal}              "${cmp.marker.label}"`);
+  L.push(`  wall-clock anchor  ${cmp.marker.offsetSecByAnchor.wallClock.toFixed(3)}s into the capture`);
+  L.push(`  monotonic anchor   ${cmp.marker.offsetSecByAnchor.monotonicFromCaptureEnd.toFixed(3)}s into the capture`);
+  L.push(`  interval           ${lo.toFixed(3)}-${hi.toFixed(3)}s  (alignment uncertainty ${cmp.marker.anchorSpreadSec.toFixed(3)}s)`);
+  L.push(`  wall-clock drift   ${cmp.wallClockDriftSec.toFixed(3)}s across the marker session`);
+  L.push('');
+  L.push(`top-ranked candidate ${cmp.topRankedOffsetSec.toFixed(3)}s  (${cmp.topRankedDistanceSec === 0 ? 'inside the marker interval' : `${cmp.topRankedDistanceSec > 0 ? '+' : ''}${cmp.topRankedDistanceSec.toFixed(3)}s from it`})`);
+  L.push(`closest candidate    ${cmp.nearestOffsetSec.toFixed(3)}s at rank ${cmp.nearestRank}  (${cmp.nearestDistanceSec === 0 ? 'inside the marker interval' : `${cmp.nearestDistanceSec > 0 ? '+' : ''}${cmp.nearestDistanceSec.toFixed(3)}s from it`})`);
+  L.push(
+    cmp.acceptedOffsetSec === null
+      ? 'accepted boundary    none — the analysis did not resolve, and the marker does not make it resolve'
+      : `accepted boundary    ${cmp.acceptedOffsetSec.toFixed(3)}s  (${cmp.acceptedDistanceSec === 0 ? 'inside the marker interval' : `${(cmp.acceptedDistanceSec as number) > 0 ? '+' : ''}${(cmp.acceptedDistanceSec as number).toFixed(3)}s from it`})`,
+  );
+  L.push('');
+  L.push('--- ranked candidates against the marker (analyzer ranking order) ---');
+  L.push(' rank    offset   distance   clears bars');
+  for (const c of cmp.candidates) {
+    L.push(
+      `${String(c.rank).padStart(5)} ${c.offsetSec.toFixed(3).padStart(9)}s ${(c.distanceToMarkerSec === 0 ? '  inside' : `${c.distanceToMarkerSec > 0 ? '+' : ''}${c.distanceToMarkerSec.toFixed(3)}`).padStart(10)}   ${c.qualifies ? 'yes' : 'no'}`,
+    );
+  }
+  L.push('');
+  for (const n of cmp.notes) L.push(`note: ${n}`);
+  return L.join('\n');
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
   const args = parseAnalyzeArgs(argv);
 
@@ -229,10 +306,34 @@ export async function main(argv: readonly string[]): Promise<number> {
     }
     console.log('\n--- JSON ---');
     console.log(JSON.stringify(result, null, 2));
+    let markerComparison: Rdr2MarkerComparisonResult | undefined;
+    if (args.markerPath) {
+      // Read only AFTER the analysis above is complete, so a marker cannot
+      // reach the code that sets or applies a bar.
+      const marker = readMarkerFile(args.markerPath);
+      const startedAt = result.source?.captureStartedAt;
+      const durationSec = result.status === 'candidate' ? result.diagnostics.captureDurationSec : result.diagnostics?.captureDurationSec;
+      markerComparison =
+        startedAt === undefined || durationSec === undefined
+          ? {
+              schemaVersion: 1,
+              status: 'refused',
+              publishable: false,
+              acceptanceThresholdsUnchanged: true,
+              reasons: ['This analysis did not read far enough to know the capture window, so a marker cannot be placed on its timeline.'],
+            }
+          : compareRankedCandidatesToMarker(result, marker, {
+              startedAt,
+              endedAt: result.source?.captureEndedAt ?? startedAt,
+              durationSec,
+            });
+      console.log(renderMarkerComparison(markerComparison));
+    }
     if (args.outPath) {
-      writeAnalysisReport(args.outPath, result, bundleDir);
+      writeAnalysisReport(args.outPath, markerComparison ? { analysis: result, markerComparison } : result, bundleDir);
       console.log(`\nReport written to ${args.outPath}`);
     }
+    // The verdict is the ANALYSIS's, never the marker comparison's.
     return result.status === 'candidate' ? 0 : 2;
   }
 

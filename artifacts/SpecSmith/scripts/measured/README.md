@@ -763,6 +763,121 @@ numbers appear nowhere in the code and are not used to select, rank or tune
 any boundary. A test deliberately runs a fixture at a completely different
 time scale to prove it.
 
+### Where this stands on real data
+
+On the real 420-second run the analyzer finds all four inter-scene
+transitions and then, correctly by its own rules, **refuses** the final
+boundary. Its top-ranked candidates cluster in a neighbourhood that matches
+what a human had separately observed — which is interesting and is **not
+evidence**. The margins are not close:
+
+| measure | real value | required |
+| --- | --- | --- |
+| stationarity | 0.0261 | < 0.0033 |
+| distinctness | 0.1484 | > 0.3359 |
+| self-agreement | 0.1406 | < 0.0762 |
+
+Nothing about those numbers was changed to accommodate the observation.
+**PresentMon-only final-boundary detection is not solved**, and "the ranking
+looks right" is exactly the kind of claim that needs a measurement from
+outside the signal rather than a second opinion from inside it.
+
+### The independent marker
+
+`scripts/measured/rdr2ResultsMarker.ts` (CLI:
+`scripts/measured/markRdr2Results.ts`) records **when the operator confirms,
+with their own eyes, that RDR2's results screen appeared**, while the
+PresentMon capture keeps running. It is deliberately the smallest thing that
+can settle the question: one extra process, no change to the collector, no
+change to what the analyzer decides.
+
+It is **not a detector** and must never be used as one. It never feeds the
+analyzer, never selects or ranks a boundary, and never relaxes a bar. Two
+things enforce that rather than merely asserting it:
+
+- `rdr2BenchmarkAnalysis.ts` does not import the marker module at all — a
+  test reads the source and fails if it ever does, so there is no code path
+  by which a marker could reach a bar.
+- The comparison takes an analysis that has **already been computed**, and a
+  test asserts the analysis serialises identically with and without a marker.
+
+Its file is stamped `publishable: false`, `operatorConfirmed: true`,
+`automaticDetection: false`, and the reader refuses any file that does not
+say all three.
+
+**Two clocks, two anchorings, one interval.** A human pressing a key is slow
+and imprecise, and a wall clock can be stepped by NTP mid-capture. So every
+mark carries a monotonic reading (`process.hrtime.bigint()`, backed on
+Windows by the same QueryPerformanceCounter that PresentMon's
+`TimeInSeconds` derives from) *and* a wall-clock reading, and its position on
+the capture timeline is computed twice: forward from the capture's recorded
+start (wall clock), and backward from the capture's last frame (monotonic
+elapsed). Nothing is averaged — the disagreement between them **is** the
+alignment uncertainty, and every distance in the comparison is measured to
+the resulting interval rather than to a point.
+
+#### Windows: one command at a time
+
+Run these in order. **Terminal B is the marker; start it before the capture
+and stop it immediately after**, because the monotonic anchoring measures
+backwards from the capture's last frame.
+
+1. In Terminal B, go to the repo:
+
+   ```powershell
+   cd C:\path\to\Specsmith
+   ```
+
+2. Get this branch:
+
+   ```powershell
+   git pull
+   ```
+
+3. Start the marker. It prints instructions and then waits. Leave it waiting:
+
+   ```powershell
+   pnpm mark:rdr2-results -- --out "$HOME\Documents\Specsmith-RDR2-Research\marker-run3.json" --bundle "$HOME\Documents\Specsmith-RDR2-Research\session-run3"
+   ```
+
+4. In Terminal A, start the capture exactly as usual, then start RDR2's
+   built-in benchmark.
+
+5. Watch the game. **The instant the results screen appears**, switch to
+   Terminal B and press Enter once. That is the whole measurement.
+
+6. When the benchmark is over, stop the capture in Terminal A as usual.
+
+7. **Immediately** switch back to Terminal B and finish the marker:
+
+   ```powershell
+   q
+   ```
+
+8. Compare the ranking against what you saw:
+
+   ```powershell
+   pnpm analyze:rdr2-research -- "$HOME\Documents\Specsmith-RDR2-Research\session-run3" --marker "$HOME\Documents\Specsmith-RDR2-Research\marker-run3.json"
+   ```
+
+`--out` must not already exist and may not be inside the bundle — the bundle
+is evidence and is never modified. `--marker` implies `--diagnose-tail`,
+since ranked candidates are what it compares, and it is refused alongside
+`--compare`.
+
+#### What the comparison reports
+
+For the named mark: its offset under each anchoring, the resulting interval
+and its width, and the wall-clock drift measured across the marker session.
+Then, for **every** ranked candidate in the analyzer's own ranking order, its
+offset, its signed distance to the marker interval (negative = before it,
+`inside` = within it), and whether it cleared the analyzer's bars — which
+stays `no` for every candidate on an unresolved run, because a human pointing
+at one does not make it acceptable.
+
+The exit code is still the **analysis's**: `0` resolved, `2` unresolved. A
+marker never turns a `2` into a `0`.
+
 ### Fail-closed behaviour
 
 Returns `status: "unresolved"` with `reasons[]` and a `failure` of

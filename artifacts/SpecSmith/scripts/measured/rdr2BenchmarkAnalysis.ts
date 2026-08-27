@@ -984,6 +984,9 @@ export interface Rdr2AnalysisSource {
   csvByteLength: number;
   processId: number;
   processName: string;
+  /** The capture's own wall-clock window, copied from the manifest. Used only to align an independent operator marker; never read by the segmentation. */
+  captureStartedAt?: string;
+  captureEndedAt?: string;
   gameVersion?: string;
   gameBuildId?: string;
   collectorBuildHash: string;
@@ -1120,6 +1123,8 @@ export function analyzeRdr2ResearchBundle(bundleDir: string, options: Rdr2Analys
     csvByteLength: csvBytes.byteLength,
     processId: manifest.capture.processId,
     processName: manifest.capture.processName,
+    captureStartedAt: manifest.capture.startedAt,
+    captureEndedAt: manifest.capture.endedAt,
     gameVersion: manifest.gameVersion,
     gameBuildId: manifest.gameBuildId,
     collectorBuildHash: manifest.collectorBuildHash,
