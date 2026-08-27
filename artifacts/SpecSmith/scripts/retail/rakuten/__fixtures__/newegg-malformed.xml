@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <item>
+    <mid>44583</mid>
+    <sku>N82E16814930111</sku>
+    <productname>XFX Speedster SWFT 210 Radeon RX 7600 CORE 8GB GDDR6 Graphics Card</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+    </category>
+    <price currency="USD">1,299.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814930111</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-930-111-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <sku>N82E16814930222</sku>
+    <productname>SAPPHIRE PULSE Radeon RX 7600 8GB GDDR6 Graphics Card</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+    </category>
+    <price currency="USD">269.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-930-222-01.jpg</imageurl>
+    <linkurl>https://www.newegg.com/p/N82E16814930222</linkurl>
+  </item>
+  <item>
+    <mid>36342</mid>
+    <sku>OTHER-MERCHANT-1</sku>
+    <productname>PowerColor Fighter Radeon RX 7600 8GB GDDR6</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+    </category>
+    <price currency="USD">259.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fexample.invalid</linkurl>
+    <imageurl>https://example.invalid/image.jpg</imageurl>
+  </item>
+</result>

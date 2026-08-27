@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16814932663</sku>
+    <productname>GIGABYTE GeForce RTX 4070 WINDFORCE OC V2 12GB GDDR6X Desktop Graphics Card, GV-N4070WF3OCV2-12GD</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">579.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upc>889523036891</upc>
+    <description>
+      <short>NVIDIA Ada Lovelace, 12GB GDDR6X, PCI Express 4.0 x16.</short>
+      <long>WINDFORCE cooling system with three 80mm blade fans. Faster than a gaming laptop at the same tier.</long>
+    </description>
+    <keywords>graphics card,rtx 4070,gigabyte</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814932663</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-932-663-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16814137837</sku>
+    <productname>MSI Ventus GeForce RTX 4070 SUPER 12G OC Graphics Card</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">649.99</price>
+    <saleprice currency="USD">599.99</saleprice>
+    <upc>824142519851</upc>
+    <description>
+      <short>NVIDIA Ada Lovelace, 12GB GDDR6X.</short>
+      <long>Dual fan Ventus 2X cooler.</long>
+    </description>
+    <keywords>graphics card,rtx 4070 super,msi</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814137837</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-137-837-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16812200016</sku>
+    <productname>CORSAIR 12VHPWR PCIe 5.0 Power Cable for GeForce RTX 4070 / 4080 Graphics Cards</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Video Card Accessories</secondary>
+    </category>
+    <price currency="USD">19.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upc>840006645320</upc>
+    <description>
+      <short>600W rated 12VHPWR adapter cable.</short>
+      <long>Sleeved individually.</long>
+    </description>
+    <keywords>cable,12vhpwr</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16812200016</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/12-200-016-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16883360160</sku>
+    <productname>ABS Cyclone Aqua Gaming Desktop PC - GeForce RTX 4070 12GB, Intel Core i5-14400F</productname>
+    <category>
+      <primary>Desktop Computers</primary>
+      <secondary>Gaming Desktops</secondary>
+    </category>
+    <price currency="USD">1199.99</price>
+    <saleprice currency="USD">1099.99</saleprice>
+    <upc>195553176224</upc>
+    <description>
+      <short>Prebuilt gaming desktop.</short>
+      <long>Includes 1TB NVMe SSD.</long>
+    </description>
+    <keywords>gaming desktop,rtx 4070</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16883360160</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/83-360-160-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16814487654</sku>
+    <productname>ASUS Dual GeForce RTX 4070 OC 12GB GDDR6X Graphics Card - Refurbished</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">489.99</price>
+    <saleprice currency="USD">459.99</saleprice>
+    <upc>195553599009</upc>
+    <description>
+      <short>Manufacturer refurbished.</short>
+      <long>90-day warranty.</long>
+    </description>
+    <keywords>refurbished,rtx 4070</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814487654</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-487-654-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16814126692</sku>
+    <productname>ZOTAC GAMING GeForce RTX 4070 Ti Trinity OC 12GB GDDR6X Graphics Card</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">799.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upc>810012074353</upc>
+    <description>
+      <short>NVIDIA Ada Lovelace, 12GB GDDR6X.</short>
+      <long>IceStorm 2.0 cooling.</long>
+    </description>
+    <keywords>graphics card,rtx 4070 ti</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16814126692</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/14-126-692-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16834900123</sku>
+    <productname>MSI Katana 15 Gaming Laptop - GeForce RTX 4070 Laptop GPU 8GB, Intel Core i7-13620H</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">1299.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upc>824142000000</upc>
+    <description>
+      <short>15.6" 144Hz gaming laptop.</short>
+      <long>Miscategorised by the merchant; the category alone would let it through.</long>
+    </description>
+    <keywords>laptop,rtx 4070</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16834900123</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/34-900-123-01.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-08-20/12:04:11</createdon>
+    <sku>N82E16883112233</sku>
+    <productname>Skytech Chronos Gaming Desktop - GeForce RTX 4070 12GB, Ryzen 7 7700</productname>
+    <category>
+      <primary>Video Cards &amp; Adapters</primary>
+      <secondary>Desktop Graphics Cards</secondary>
+    </category>
+    <price currency="USD">1449.99</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upc>195553112233</upc>
+    <description>
+      <short>Prebuilt system, miscategorised by the merchant.</short>
+      <long>The category gate alone would let this through; the title gate is what stops it.</long>
+    </description>
+    <keywords>gaming desktop,rtx 4070</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FN82E16883112233</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/83-112-233-01.jpg</imageurl>
+  </item>
+</result>
