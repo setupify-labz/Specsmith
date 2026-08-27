@@ -204,31 +204,60 @@ export function readPrice(el: XmlElement, name: string): { amount: number | null
 }
 
 /**
+ * A paging header field as published, and as parsed.
+ *
+ * `raw` is kept so an error can quote what the feed actually said. "TotalPages
+ * was \"2garbage\"" is a diagnosable message; "TotalPages was missing" is a
+ * wrong one, and that difference is the whole reason the raw text survives.
+ */
+export interface PageField {
+  raw: string | null;
+  value: number | null;
+}
+
+export interface PageInfo {
+  totalMatches: PageField;
+  totalPages: PageField;
+  pageNumber: PageField;
+}
+
+/**
+ * Parses a paging value, or reports it unparseable.
+ *
+ * COMPLETE non-negative integers only. `Number.parseInt` is exactly wrong for
+ * this: it reads a leading prefix and discards the rest, so "2garbage" becomes
+ * 2, "2.9" becomes 2, and a feed emitting either would be trusted as if it had
+ * said something sensible. A paging count that cannot be read in full is a
+ * paging count this adapter does not know, and it says so.
+ */
+export function parsePagingInteger(raw: string | null): number | null {
+  if (raw === null) return null;
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const n = Number(trimmed);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+/**
  * The paging header Rakuten puts at the top of every Product Search response.
  *
- * `TotalPages` is the number this adapter must actually walk. Reading only
- * page 1 and reporting its items is the silent-truncation failure this exists
- * to prevent: it looks exactly like "Newegg has 20 listings for this card"
- * when the truth is "Newegg has 340 and we looked at the first 20".
+ * `TotalPages` is the number this adapter must actually walk. Reading page 1
+ * and reporting its items is the silent-truncation failure this exists to
+ * prevent: it looks exactly like "Newegg has 20 listings for this card" when
+ * the truth is "Newegg has 340 and we looked at the first 20".
  *
- * Any field the response omits comes back null, and the caller decides whether
- * that is fatal — a single-page response from some endpoints legitimately
- * carries no header at all.
+ * This function only READS. Which fields are required, and what they must
+ * agree on, is `assertPagingConsistent`'s job in client.ts — separated so an
+ * absent header and a contradictory one produce different, specific errors
+ * rather than one generic parse failure.
  */
-export function readPageInfo(root: XmlElement): {
-  totalMatches: number | null;
-  totalPages: number | null;
-  pageNumber: number | null;
-} {
-  const find = (name: string): number | null => {
+export function readPageInfo(root: XmlElement): PageInfo {
+  const rawOf = (name: string): string | null => {
     const stack = [root];
     while (stack.length) {
       const el = stack.pop()!;
       for (const c of el.children) {
-        if (c.name.toLowerCase() === name) {
-          const n = Number.parseInt(c.text.trim(), 10);
-          return Number.isFinite(n) ? n : null;
-        }
+        if (c.name.toLowerCase() === name) return c.text.trim();
         // <item> subtrees cannot hold the paging header, and descending into
         // hundreds of them to look would be both slow and a chance to pick up
         // a same-named product field.
@@ -237,5 +266,9 @@ export function readPageInfo(root: XmlElement): {
     }
     return null;
   };
-  return { totalMatches: find('totalmatches'), totalPages: find('totalpages'), pageNumber: find('pagenumber') };
+  const field = (name: string): PageField => {
+    const raw = rawOf(name);
+    return { raw, value: parsePagingInteger(raw) };
+  };
+  return { totalMatches: field('totalmatches'), totalPages: field('totalpages'), pageNumber: field('pagenumber') };
 }

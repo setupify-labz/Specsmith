@@ -112,8 +112,9 @@ export async function fetchNeweggOffersForGpu(
   };
 }
 
-export { admitOffer, admitOffers, readCategory, secondaryCategoryLeaf } from './admitOffer';
+export { admitOffer, admitOffers, readCategory, readShortDescription, secondaryCategoryLeaf } from './admitOffer';
 export {
+  assertPagingConsistent,
   buildProductSearchUrl,
   fetchAllProductSearchPages,
   fetchProductSearchXml,
@@ -121,9 +122,19 @@ export {
   readAccessToken,
   redactToken,
   RakutenAuthError,
+  RakutenPagingError,
   RakutenRequestError,
 } from './client';
 export { classifyListing } from './listingKind';
 export { catalogMention, findGpuMentions, findMemorySizes, mentionKey, verifyGpuModel } from './gpuModelMatch';
-export { childText, decodeXmlText, findItems, parseProductSearchXml, RakutenXmlError, readPageInfo, readPrice } from './parseProductSearchXml';
+export {
+  childText,
+  decodeXmlText,
+  findItems,
+  parsePagingInteger,
+  parseProductSearchXml,
+  RakutenXmlError,
+  readPageInfo,
+  readPrice,
+} from './parseProductSearchXml';
 export * from './types';

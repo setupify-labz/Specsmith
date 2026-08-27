@@ -186,3 +186,74 @@ describe('admitOffer', () => {
     }
   });
 });
+
+describe('the supplied live RTX 5070 page', () => {
+  const page = () => items('newegg-rtx5070-live-shape.xml');
+  const reasons = (id: string) =>
+    admitOffers(page(), gpu(id), FETCHED_AT).map((r) => (r.status === 'accepted' ? 'accepted' : r.reason));
+
+  it('no longer rejects all four exact RTX 5070 listings', () => {
+    // The regression this page exists for: every one of these is an exact
+    // rtx5070, and three of them state their capacity only in
+    // description/short. Title-only verification refused all four.
+    const { offers } = partition(admitOffers(page(), gpu('rtx5070'), FETCHED_AT));
+    expect(offers).toHaveLength(4);
+    expect(offers.map((o) => o.sku)).toEqual([
+      'N82E16814500545', // ZOTAC SOLID OC — capacity in description only
+      'N82E16814137901', // MSI VENTUS 3X   — capacity in description only
+      'N82E16814932744', // GIGABYTE WINDFORCE — capacity in description only
+      'N82E16814487321', // ASUS PRIME      — capacity in the title
+    ]);
+  });
+
+  it('accepts the supplied ZOTAC listing and stores its productname unchanged', () => {
+    const zotac = admitOffer(page()[0], gpu('rtx5070'), FETCHED_AT);
+    expect(zotac).toMatchObject({
+      status: 'accepted',
+      sku: 'N82E16814500545',
+      // Byte-identical to the feed. The description supplied the capacity; it
+      // is evidence, and none of it is merged into the stored title.
+      productName: 'ZOTAC SOLID OC GeForce RTX 5070 Graphics Card RTX 5070 SOLID OC',
+      retailPrice: 619.99,
+      salePrice: null,
+      currency: 'USD',
+      canonicalGpuId: 'rtx5070',
+    });
+    expect((zotac as { productName: string }).productName).not.toContain('12GB');
+  });
+
+  it('still refuses the Ti, the self-contradicting listing, and the currency-less sale price', () => {
+    expect(reasons('rtx5070')).toEqual([
+      'accepted',
+      'accepted',
+      'accepted',
+      'accepted',
+      'variant-suffix-mismatch', // RTX 5070 Ti
+      'memory-capacity-mismatch', // 12GB title vs 16GB short description
+      'incomplete-record', // positive saleprice with no currency attribute
+    ]);
+  });
+
+  it('the Ti is refused for rtx5070 and accepted for rtx5070ti', () => {
+    expect(reasons('rtx5070ti')[4]).toBe('accepted');
+  });
+});
+
+describe('a positive sale price must carry its own currency', () => {
+  it('refuses rather than inheriting the retail price currency', () => {
+    const noCurrency = items('newegg-rtx5070-live-shape.xml')[6];
+    const verdict = admitOffer(noCurrency, gpu('rtx5070'), FETCHED_AT);
+    expect(verdict).toMatchObject({ status: 'rejected', reason: 'incomplete-record' });
+    expect((verdict as { detail: string }).detail).toContain('no currency attribute');
+  });
+
+  it('a zero sale price with no currency is still just "not on sale"', () => {
+    // The zero rule runs first: absence needs no currency, because there is no
+    // amount to label.
+    const xml = fs
+      .readFileSync(path.join(fixtures, 'newegg-rtx5070-live-shape.xml'), 'utf-8')
+      .replace('<saleprice>549.99</saleprice>', '<saleprice>0.00</saleprice>');
+    const item = findItems(parseProductSearchXml(xml))[6];
+    expect(admitOffer(item, gpu('rtx5070'), FETCHED_AT)).toMatchObject({ status: 'accepted', salePrice: null });
+  });
+});

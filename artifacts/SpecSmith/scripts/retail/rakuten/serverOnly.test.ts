@@ -85,12 +85,14 @@ describe('the Rakuten adapter is server-only', () => {
     }
   });
 
-  it('the capture CLI writes only into __fixtures__', () => {
+  it('the capture CLI writes only to a path the resolver approved', () => {
+    // Structural only in the narrow sense that matters: the single write must
+    // take the resolver's output. WHERE that output can point is settled by
+    // running the resolver — see capturePath.test.ts — not by reading source.
     const capture = codeOnly(read(path.join(here, 'capture-fixture.ts')));
     const writes = [...capture.matchAll(/writeFileSync\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
     expect(writes).toEqual(['file']);
-    expect(capture).toContain("const file = path.join(fixturesDir, out);");
-    expect(capture).toContain("const fixturesDir = path.join(here, '__fixtures__');");
+    expect(capture).toMatch(/file = resolveFixturePath\(out\)/);
   });
 
   it('no fixture contains anything token-shaped or an unredacted publisher id', () => {

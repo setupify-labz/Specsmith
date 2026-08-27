@@ -14,7 +14,7 @@
 // a record. It exists only as an Authorization header value inside this file.
 
 import { ACCESS_TOKEN_ENV_VAR, NEWEGG_MID, PRODUCT_SEARCH_ENDPOINT, REQUIRED_CATEGORY_LEAF } from './types';
-import { parseProductSearchXml, readPageInfo } from './parseProductSearchXml';
+import { parseProductSearchXml, readPageInfo, type PageField, type PageInfo } from './parseProductSearchXml';
 
 export class RakutenAuthError extends Error {}
 export class RakutenRequestError extends Error {
@@ -159,18 +159,87 @@ export interface ProductSearchPages {
   totalPages: number;
 }
 
+/** A paging header that is absent, unreadable, or contradicts a previous page. */
+export class RakutenPagingError extends Error {}
+
+function describe(field: PageField): string {
+  return field.raw === null ? 'absent' : `${JSON.stringify(field.raw)}`;
+}
+
+/**
+ * Checks one page's header, and its agreement with page 1.
+ *
+ * FAIL-CLOSED, FIELD BY FIELD. Every rule here exists because its absence
+ * produces a plausible wrong answer rather than an error:
+ *
+ *   - TotalPages required ON EVERY PAGE, not just the first. A later page that
+ *     stops reporting it is a shape change, and continuing past one means the
+ *     walk is being driven by a number no longer being confirmed.
+ *   - PageNumber required on every page, and equal to the page requested. A
+ *     feed that answers every request with page 1 would otherwise produce N
+ *     copies of the first page, silently, looking like a full result set.
+ *   - TotalPages must be IDENTICAL to page 1's. Growth means listings appeared
+ *     that this walk will never reach; shrinkage means the plan is stale. Both
+ *     are truncation.
+ *   - TotalMatches must be identical to page 1's WHEN BOTH REPORT IT, and a
+ *     page may not drop it once page 1 has supplied it. Inventory drift is not
+ *     tolerated: TotalPages is already pinned, so a TotalMatches that moves
+ *     inside a fixed page count is not drift but a contradiction — the same
+ *     pages claiming to hold a different number of items. The one case allowed
+ *     is a feed that reports TotalMatches on NO page, which is a feed that
+ *     simply does not publish the field, and is recorded as null rather than
+ *     invented.
+ */
+export function assertPagingConsistent(info: PageInfo, requestedPage: number, firstPage: PageInfo | null): void {
+  const where = `page ${requestedPage}`;
+
+  if (info.totalPages.value === null) {
+    throw new RakutenPagingError(
+      `${where}: <TotalPages> is ${describe(info.totalPages)}. Refusing to keep walking on a page count that is missing or not a whole number — the difference between "one page of results" and "an unknown number of pages" is exactly the truncation this must not do silently.`,
+    );
+  }
+  if (info.pageNumber.value === null) {
+    throw new RakutenPagingError(
+      `${where}: <PageNumber> is ${describe(info.pageNumber)}. Without it the response cannot be confirmed to be the page that was asked for.`,
+    );
+  }
+  if (info.pageNumber.value !== requestedPage) {
+    throw new RakutenPagingError(`Requested ${where} but the response reports page ${info.pageNumber.value}.`);
+  }
+  if (info.totalMatches.raw !== null && info.totalMatches.value === null) {
+    throw new RakutenPagingError(`${where}: <TotalMatches> is ${describe(info.totalMatches)}, which is not a whole number.`);
+  }
+
+  if (firstPage === null) return;
+
+  if (info.totalPages.value !== firstPage.totalPages.value) {
+    throw new RakutenPagingError(
+      `${where}: <TotalPages> is ${info.totalPages.value} but page 1 reported ${firstPage.totalPages.value}. A page count that changes mid-walk means the result set moved underneath it; refusing rather than returning part of one search and part of another.`,
+    );
+  }
+  if (firstPage.totalMatches.value !== null && info.totalMatches.value === null) {
+    throw new RakutenPagingError(
+      `${where}: <TotalMatches> is ${describe(info.totalMatches)} but page 1 reported ${firstPage.totalMatches.value}. A field cannot stop being published part-way through one search.`,
+    );
+  }
+  if (
+    firstPage.totalMatches.value !== null &&
+    info.totalMatches.value !== null &&
+    info.totalMatches.value !== firstPage.totalMatches.value
+  ) {
+    throw new RakutenPagingError(
+      `${where}: <TotalMatches> is ${info.totalMatches.value} but page 1 reported ${firstPage.totalMatches.value}. With TotalPages pinned, the same pages cannot hold a different number of items.`,
+    );
+  }
+}
+
 /**
  * Fetches EVERY page Rakuten reports, not just the first.
  *
- * The response header carries TotalPages; reading page 1 and reporting its
- * items looks exactly like "Newegg lists 20 of these" when the truth is
- * "Newegg lists 340 and we looked at 20". Silent truncation of a price search
- * is worse than an error, because the answer it produces is plausible.
- *
- * So every failure mode here is loud:
- *   - a page that does not report its own TotalPages -> throw
- *   - a page whose PageNumber is not the one requested -> throw
- *   - more pages than MAX_PAGES_PER_SEARCH -> throw
+ * Silent truncation of a price search is worse than an error, because the
+ * answer it produces is plausible. So every page is validated by
+ * `assertPagingConsistent` before its contents count, and anything the feed
+ * will not confirm throws.
  *
  * `fetchedAt` is stamped once, from the first page, so every offer in one
  * search shares a timestamp. Stamping per page would give the same search
@@ -182,32 +251,24 @@ export async function fetchAllProductSearchPages(
 ): Promise<ProductSearchPages> {
   const first = await fetchProductSearchXml({ ...query, pageNumber: 1 }, deps);
   const head = readPageInfo(parseProductSearchXml(first.xml));
+  assertPagingConsistent(head, 1, null);
 
-  if (head.totalPages === null) {
-    throw new RakutenRequestError(
-      'Response reports no <TotalPages>. Refusing to assume one page: the difference between "one page of results" and "an unknown number of pages" is exactly the truncation this must not do silently.',
-      0,
-    );
+  const totalPages = head.totalPages.value!;
+  if (totalPages < 1) {
+    throw new RakutenPagingError(`Response reports ${totalPages} pages; a response that exists has at least one page.`);
   }
-  if (head.pageNumber !== null && head.pageNumber !== 1) {
-    throw new RakutenRequestError(`Requested page 1 but the response reports page ${head.pageNumber}.`, 0);
-  }
-  if (head.totalPages > MAX_PAGES_PER_SEARCH) {
-    throw new RakutenRequestError(
-      `Response reports ${head.totalPages} pages, above the ${MAX_PAGES_PER_SEARCH}-page guard. Refusing rather than reading a prefix and reporting it as the whole result; narrow the keyword or raise the guard deliberately.`,
-      0,
+  if (totalPages > MAX_PAGES_PER_SEARCH) {
+    throw new RakutenPagingError(
+      `Response reports ${totalPages} pages, above the ${MAX_PAGES_PER_SEARCH}-page guard. Refusing rather than reading a prefix and reporting it as the whole result; narrow the keyword or raise the guard deliberately.`,
     );
   }
 
   const pages = [first.xml];
-  for (let page = 2; page <= head.totalPages; page += 1) {
+  for (let page = 2; page <= totalPages; page += 1) {
     const next = await fetchProductSearchXml({ ...query, pageNumber: page }, deps);
-    const info = readPageInfo(parseProductSearchXml(next.xml));
-    if (info.pageNumber !== null && info.pageNumber !== page) {
-      throw new RakutenRequestError(`Requested page ${page} but the response reports page ${info.pageNumber}.`, 0);
-    }
+    assertPagingConsistent(readPageInfo(parseProductSearchXml(next.xml)), page, head);
     pages.push(next.xml);
   }
 
-  return { pages, fetchedAt: first.fetchedAt, totalMatches: head.totalMatches, totalPages: head.totalPages };
+  return { pages, fetchedAt: first.fetchedAt, totalMatches: head.totalMatches.value, totalPages };
 }

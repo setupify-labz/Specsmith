@@ -19,6 +19,18 @@ import {
   type RejectedOffer,
 } from './types';
 
+/**
+ * `<description><short>`, or null.
+ *
+ * A separate reader rather than an inline lookup because it is nested two deep
+ * and its absence is normal — a listing with no short description is a listing
+ * whose capacity must come from the title, not a broken record.
+ */
+export function readShortDescription(item: XmlElement): string | null {
+  const description = child(item, 'description');
+  return description ? childText(description, 'short') : null;
+}
+
 export interface ListingCategory {
   primary: string | null;
   secondary: string | null;
@@ -116,7 +128,12 @@ export function admitOffer(item: XmlElement, gpu: CatalogGpu, fetchedAt: string)
   const kind = classifyListing(productName);
   if (kind.issue) return reject(kind.issue, kind.detail, sku, productName);
 
-  const model = verifyGpuModel(productName, gpu);
+  // The short description is merchant-supplied evidence about the SAME item,
+  // and on real listings it is where the memory size actually appears. It is
+  // read for capacity only, and `productName` below is still the feed's value
+  // untouched — nothing from the description is merged into the stored title.
+  const shortDescription = readShortDescription(item);
+  const model = verifyGpuModel({ productName, shortDescription }, gpu);
   if (!model.ok) return reject(model.reason, model.detail, sku, productName);
 
   const price = readPrice(item, 'price');
@@ -144,7 +161,15 @@ export function admitOffer(item: XmlElement, gpu: CatalogGpu, fetchedAt: string)
       return reject('incomplete-record', `<saleprice> is negative (${sale.amount}).`, sku, productName);
     }
     if (sale.amount !== null && sale.amount > 0) {
-      if (sale.currency && sale.currency !== price.currency) {
+      // A sale price with no currency of its own used to inherit the retail
+      // price's. That is an assumption about money made on the feed's behalf:
+      // the whole reason `currency` is a per-element attribute is that the two
+      // elements can differ, and a discount silently relabelled into the wrong
+      // currency is a wrong price that looks entirely normal.
+      if (!sale.currency) {
+        return reject('incomplete-record', '<saleprice> is positive but carries no currency attribute; refusing to assume it is the retail price\'s currency.', sku, productName);
+      }
+      if (sale.currency !== price.currency) {
         return reject('incomplete-record', `<saleprice> currency ${sale.currency} disagrees with <price> currency ${price.currency}.`, sku, productName);
       }
       salePrice = sale.amount;

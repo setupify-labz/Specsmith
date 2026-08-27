@@ -9,6 +9,7 @@ import {
   fetchProductSearchXml,
   MAX_PAGES_PER_SEARCH,
   RakutenAuthError,
+  RakutenPagingError,
   RakutenRequestError,
   readAccessToken,
   redactToken,
@@ -140,7 +141,7 @@ describe('fetchAllProductSearchPages', () => {
   it('throws rather than assuming one page when TotalPages is missing', async () => {
     await expect(
       fetchAllProductSearchPages({ keyword: 'x' }, { env, fetch: okFetch('<result><item><sku>a</sku></item></result>') }),
-    ).rejects.toThrow(/TotalPages/);
+    ).rejects.toThrow(RakutenPagingError);
   });
 
   it('throws when the feed reports more pages than the guard allows, instead of reading a prefix', async () => {
@@ -190,5 +191,185 @@ describe('fetchNeweggOffersForGpu', () => {
       now: () => new Date('2026-08-27T03:12:44Z'),
     });
     expect(JSON.stringify(result)).not.toContain(TOKEN);
+  });
+});
+
+/** A one-off page document with whatever header values a test needs. */
+const pageXml = (fields: Record<string, string | null>, sku = 'X') =>
+  `<result>${Object.entries(fields)
+    .filter(([, v]) => v !== null)
+    .map(([k, v]) => `<${k}>${v}</${k}>`)
+    .join('')}<item><sku>${sku}</sku></item></result>`;
+
+/** Serves a scripted sequence of page documents, one per requested pagenumber. */
+const scriptedFetch = (byPage: Record<number, string>) =>
+  (async (url: string | URL) => {
+    const page = Number(new URL(String(url)).searchParams.get('pagenumber') ?? '1');
+    const body = byPage[page];
+    if (body === undefined) throw new Error(`test asked for unscripted page ${page}`);
+    return new Response(body, { status: 200 });
+  }) as unknown as typeof globalThis.fetch;
+
+describe('paging fields are parsed as complete integers', () => {
+  it.each([
+    ['2garbage', 'a numeric prefix followed by junk'],
+    ['-1', 'a negative count'],
+    ['2.0', 'a decimal'],
+    ['2e1', 'exponent notation'],
+    ['', 'an empty element'],
+    ['two', 'a word'],
+    ['0x2', 'hex'],
+    ['+2', 'a signed value'],
+  ])('rejects TotalPages %j (%s)', async (raw) => {
+    // parseInt would read "2garbage" and "2.0" as 2 and walk a page count the
+    // feed never stated.
+    await expect(
+      fetchAllProductSearchPages({ keyword: 'x' }, { env, fetch: okFetch(pageXml({ TotalPages: raw, PageNumber: '1' })) }),
+    ).rejects.toThrow(RakutenPagingError);
+  });
+
+  it('rejects a PageNumber that is not a complete integer', async () => {
+    await expect(
+      fetchAllProductSearchPages({ keyword: 'x' }, { env, fetch: okFetch(pageXml({ TotalPages: '1', PageNumber: '1abc' })) }),
+    ).rejects.toThrow(/PageNumber/);
+  });
+
+  it('rejects an unparseable TotalMatches even though the field is optional', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        { env, fetch: okFetch(pageXml({ TotalMatches: '7ish', TotalPages: '1', PageNumber: '1' })) },
+      ),
+    ).rejects.toThrow(/TotalMatches/);
+  });
+
+  it('accepts a feed that publishes no TotalMatches on any page', async () => {
+    const result = await fetchAllProductSearchPages(
+      { keyword: 'x' },
+      {
+        env,
+        fetch: scriptedFetch({
+          1: pageXml({ TotalPages: '2', PageNumber: '1' }),
+          2: pageXml({ TotalPages: '2', PageNumber: '2' }),
+        }),
+      },
+    );
+    expect(result.totalMatches).toBeNull();
+    expect(result.pages).toHaveLength(2);
+  });
+});
+
+describe('paging fails closed on every page, not just the first', () => {
+  it('throws when page 1 reports 2 pages but page 2 reports 3', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalMatches: '40', TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalMatches: '40', TotalPages: '3', PageNumber: '2' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/<TotalPages> is 3 but page 1 reported 2/);
+  });
+
+  it('throws when the page count SHRINKS mid-walk too', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalPages: '3', PageNumber: '1' }),
+            2: pageXml({ TotalPages: '2', PageNumber: '2' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/<TotalPages> is 2 but page 1 reported 3/);
+  });
+
+  it('throws when page 2 omits TotalPages entirely', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalPages: null, PageNumber: '2' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/page 2: <TotalPages> is absent/);
+  });
+
+  it('throws when page 2 omits PageNumber', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalPages: '2', PageNumber: null }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/page 2: <PageNumber> is absent/);
+  });
+
+  it('throws when TotalMatches changes mid-walk', async () => {
+    // TotalPages is already pinned, so this is a contradiction rather than
+    // drift: the same pages cannot hold a different number of items.
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalMatches: '40', TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalMatches: '39', TotalPages: '2', PageNumber: '2' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/<TotalMatches> is 39 but page 1 reported 40/);
+  });
+
+  it('throws when a page stops publishing TotalMatches part-way through', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalMatches: '40', TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalPages: '2', PageNumber: '2' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/cannot stop being published/);
+  });
+
+  it('throws when a later page answers as page 1, instead of duplicating it', async () => {
+    await expect(
+      fetchAllProductSearchPages(
+        { keyword: 'x' },
+        {
+          env,
+          fetch: scriptedFetch({
+            1: pageXml({ TotalPages: '2', PageNumber: '1' }),
+            2: pageXml({ TotalPages: '2', PageNumber: '1' }),
+          }),
+        },
+      ),
+    ).rejects.toThrow(/Requested page 2 but the response reports page 1/);
+  });
+
+  it('throws on a zero page count', async () => {
+    await expect(
+      fetchAllProductSearchPages({ keyword: 'x' }, { env, fetch: okFetch(pageXml({ TotalPages: '0', PageNumber: '1' })) }),
+    ).rejects.toThrow(/at least one page/);
   });
 });

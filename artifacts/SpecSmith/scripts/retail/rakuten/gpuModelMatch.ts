@@ -100,7 +100,7 @@ export function catalogMention(gpu: CatalogGpu): GpuModelMention {
   return mentions[0];
 }
 
-/** Distinct memory sizes a name states, in GB. */
+/** Distinct memory sizes a piece of text states, in GB. */
 export function findMemorySizes(name: string): number[] {
   const sizes = new Set<number>();
   for (const m of String(name ?? '').matchAll(/\b(\d{1,3})\s*GB\b/gi)) {
@@ -110,8 +110,33 @@ export function findMemorySizes(name: string): number[] {
 }
 
 /**
- * WHY A STATED MEMORY SIZE IS ALWAYS REQUIRED
- * -------------------------------------------
+ * WHERE CAPACITY EVIDENCE COMES FROM
+ * ----------------------------------
+ * The TITLE alone is not where merchants reliably put the memory size. A real
+ * Newegg listing reads:
+ *
+ *   productname:        "ZOTAC SOLID OC GeForce RTX 5070 Graphics Card RTX 5070 SOLID OC"
+ *   description/short:  "ZOTAC SOLID OC GeForce RTX 5070 12GB GDDR7 ..."
+ *
+ * The title repeats the model and never states a capacity; the short
+ * description states it plainly. Reading only the title refused that listing —
+ * and every listing shaped like it — as memory-capacity-unstated, which turned
+ * a safety rule into a rule that rejected the merchant's own answer while it
+ * sat one field away.
+ *
+ * So capacity is read from BOTH fields, and both are the merchant's own words
+ * about the item. What is NOT widened is model matching: family, number and
+ * variant suffix are still decided from the title alone, because descriptions
+ * routinely mention other cards ("faster than an RTX 4070 Ti") and admitting
+ * that text would make half the catalogue ambiguous.
+ *
+ * The two fields are evidence, not a merge. If they disagree — a 12GB title
+ * with a 16GB description — the listing is refused, not resolved in favour of
+ * one of them. A merchant contradicting itself about the capacity is a listing
+ * nobody can price.
+ *
+ * WHY A STATED MEMORY SIZE IS STILL ALWAYS REQUIRED
+ * -------------------------------------------------
  * An earlier version asked the catalog: it required an explicit size only when
  * SpecSmith already held two entries sharing a family, number and suffix
  * (rtx4060ti/rtx4060ti16, arca770-8/arca770-16...). That made the safety of a
@@ -125,9 +150,9 @@ export function findMemorySizes(name: string): number[] {
  * GeForce RTX 5060 Ti OC" was accepted as the 16GB card — and an 8GB card's
  * price was published as the 16GB card's. Nothing downstream could detect it.
  *
- * So the rule is now unconditional and reads nothing outside the listing: a
- * title that does not state its memory size does not say which SKU it is, and
- * is refused. That is the same answer for a part the catalog splits, a part it
+ * So the rule is unconditional and reads nothing outside the listing: an item
+ * that states its memory size in neither field does not say which SKU it is,
+ * and is refused. That is the same answer for a part the catalog splits, a part it
  * does not split yet, and a part it will split next year. Real Newegg
  * graphics-card titles state the capacity essentially always, so the cost is
  * small and, when it is paid, it is paid as a counted rejection rather than a
@@ -145,22 +170,32 @@ export type ModelVerdict =
       detail: string;
     };
 
+/** The merchant-supplied text a listing is verified against. */
+export interface ListingEvidence {
+  /** `<productname>`, verbatim. The only field model matching reads. */
+  productName: string;
+  /** `<description><short>`, verbatim. Counted for capacity only. */
+  shortDescription?: string | null;
+}
+
 /**
- * Verifies a product name against one catalog part.
+ * Verifies a listing against one catalog part.
  *
  * Gate order — first failure wins, and the order is chosen so the reported
  * reason is the most specific true statement about the listing:
  *   1. no mention at all              -> model-not-found
  *   2. a mention of a different NUMBER-> model-mismatch (all) / model-ambiguous (mixed)
  *   3. same number, different suffix  -> variant-suffix-mismatch
- *   4. memory size wrong              -> memory-capacity-mismatch
- *   5. memory size not stated         -> memory-capacity-unstated
+ *   4. capacities disagree, or several-> memory-capacity-mismatch
+ *   5. capacity wrong                 -> memory-capacity-mismatch
+ *   6. capacity stated in neither field-> memory-capacity-unstated
  *
- * Depends on nothing but the title and the one catalog entry being verified —
- * no catalog-wide lookup, so its answer cannot change because an unrelated
- * SKU was added or removed.
+ * Depends on nothing but the listing's own text and the one catalog entry
+ * being verified — no catalog-wide lookup, so its answer cannot change because
+ * an unrelated SKU was added or removed.
  */
-export function verifyGpuModel(productName: string, gpu: CatalogGpu): ModelVerdict {
+export function verifyGpuModel(evidence: ListingEvidence, gpu: CatalogGpu): ModelVerdict {
+  const productName = evidence.productName;
   const target = catalogMention(gpu);
   const mentions = findGpuMentions(productName);
 
@@ -196,26 +231,37 @@ export function verifyGpuModel(productName: string, gpu: CatalogGpu): ModelVerdi
     };
   }
 
-  const sizes = findMemorySizes(productName);
-  if (sizes.length > 1) {
+  const titleSizes = findMemorySizes(productName);
+  const descriptionSizes = findMemorySizes(evidence.shortDescription ?? '');
+  const stated = [...new Set([...titleSizes, ...descriptionSizes])].sort((a, b) => a - b);
+
+  if (stated.length > 1) {
+    // Covers both shapes in one rule: one field naming several sizes, and two
+    // fields naming different ones. Either way the merchant has not said what
+    // capacity this item is, and choosing between its answers would be
+    // inventing the one it did not give.
+    const conflicting =
+      titleSizes.length > 0 && descriptionSizes.length > 0 && titleSizes.join() !== descriptionSizes.join();
     return {
       ok: false,
       reason: 'memory-capacity-mismatch',
-      detail: `Names more than one memory size (${sizes.join('GB, ')}GB); the card's own capacity is not decidable from the title.`,
+      detail: conflicting
+        ? `Title states ${titleSizes.join('GB, ')}GB but the short description states ${descriptionSizes.join('GB, ')}GB. The merchant contradicts itself about the capacity; refusing rather than preferring one field.`
+        : `States more than one memory size (${stated.join('GB, ')}GB); the card's own capacity is not decidable from the listing.`,
     };
   }
-  if (sizes.length === 1 && sizes[0] !== gpu.vram_gb) {
+  if (stated.length === 1 && stated[0] !== gpu.vram_gb) {
     return {
       ok: false,
       reason: 'memory-capacity-mismatch',
-      detail: `Listing states ${sizes[0]}GB; ${gpu.name} is a ${gpu.vram_gb}GB part.`,
+      detail: `Listing states ${stated[0]}GB; ${gpu.name} is a ${gpu.vram_gb}GB part.`,
     };
   }
-  if (sizes.length === 0) {
+  if (stated.length === 0) {
     return {
       ok: false,
       reason: 'memory-capacity-unstated',
-      detail: `Listing states no memory size, so it cannot be confirmed as the ${gpu.vram_gb}GB ${gpu.name}. Graphics cards ship in several capacities under one model name, whether or not SpecSmith's catalog tracks each of them.`,
+      detail: `Neither the title nor the short description states a memory size, so this cannot be confirmed as the ${gpu.vram_gb}GB ${gpu.name}. Graphics cards ship in several capacities under one model name, whether or not SpecSmith's catalog tracks each of them.`,
     };
   }
 

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { readCategory, secondaryCategoryLeaf } from './admitOffer';
 import { buildProductSearchUrl } from './client';
-import { childText, findItems, parseProductSearchXml, readPageInfo } from './parseProductSearchXml';
+import { childText, findItems, parsePagingInteger, parseProductSearchXml, readPageInfo } from './parseProductSearchXml';
 import { PROVENANCE_MARKER, redactProductSearchXml, unredactedIdentifiers } from './redactFixture';
 import { REQUIRED_CATEGORY_LEAF, SECONDARY_CATEGORY_DELIMITER } from './types';
 
@@ -82,28 +82,59 @@ describe('response shape: the request carries the category filter', () => {
 });
 
 describe('response shape: the paging header', () => {
+  const values = (xml: string) => {
+    const info = readPageInfo(parseProductSearchXml(xml));
+    return { totalMatches: info.totalMatches.value, totalPages: info.totalPages.value, pageNumber: info.pageNumber.value };
+  };
+
   it('reads TotalMatches, TotalPages and PageNumber', () => {
-    expect(readPageInfo(parseProductSearchXml(fixture('newegg-rtx4070-page1.xml')))).toEqual({
-      totalMatches: 8,
-      totalPages: 2,
-      pageNumber: 1,
-    });
-    expect(readPageInfo(parseProductSearchXml(fixture('newegg-rtx4070-page2.xml')))).toMatchObject({ pageNumber: 2 });
+    expect(values(fixture('newegg-rtx4070-page1.xml'))).toEqual({ totalMatches: 8, totalPages: 2, pageNumber: 1 });
+    expect(values(fixture('newegg-rtx4070-page2.xml'))).toMatchObject({ pageNumber: 2 });
+  });
+
+  it('keeps the raw text so an error can quote what the feed actually said', () => {
+    const info = readPageInfo(parseProductSearchXml('<result><TotalPages>2garbage</TotalPages></result>'));
+    expect(info.totalPages).toEqual({ raw: '2garbage', value: null });
+    // "TotalPages was \"2garbage\"" is diagnosable; "TotalPages was missing"
+    // would be a wrong message about a present field.
+    expect(info.pageNumber).toEqual({ raw: null, value: null });
   });
 
   it('does not mistake a product field for the paging header', () => {
     // The scan skips <item> subtrees; a listing containing its own
     // <pagenumber> must not be able to redirect paging.
     const xml = '<result><TotalPages>3</TotalPages><item><pagenumber>99</pagenumber></item><PageNumber>1</PageNumber></result>';
-    expect(readPageInfo(parseProductSearchXml(xml))).toMatchObject({ totalPages: 3, pageNumber: 1 });
+    expect(values(xml)).toMatchObject({ totalPages: 3, pageNumber: 1 });
   });
 
   it('reports null rather than guessing when the header is absent', () => {
-    expect(readPageInfo(parseProductSearchXml('<result><item><sku>x</sku></item></result>'))).toEqual({
+    expect(values('<result><item><sku>x</sku></item></result>')).toEqual({
       totalMatches: null,
       totalPages: null,
       pageNumber: null,
     });
+  });
+});
+
+describe('paging values are complete integers or nothing', () => {
+  it('accepts whole non-negative integers, with surrounding whitespace', () => {
+    expect(parsePagingInteger('0')).toBe(0);
+    expect(parsePagingInteger('42')).toBe(42);
+    expect(parsePagingInteger('  7\n')).toBe(7);
+  });
+
+  it.each(['2garbage', '2.0', '2.9', '-1', '+2', '2e1', '0x2', 'two', '', '   ', '1 2'])('refuses %j', (raw) => {
+    // Number.parseInt reads a prefix and discards the rest, so "2garbage" and
+    // "2.9" would both become 2 — a page count the feed never stated.
+    expect(parsePagingInteger(raw)).toBeNull();
+  });
+
+  it('refuses a value too large to be an exact integer', () => {
+    expect(parsePagingInteger('9007199254740993')).toBeNull();
+  });
+
+  it('reports an absent field as null', () => {
+    expect(parsePagingInteger(null)).toBeNull();
   });
 });
 

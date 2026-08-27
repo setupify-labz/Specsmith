@@ -59,13 +59,14 @@ describe('every catalog GPU names exactly one model', () => {
 });
 
 describe('verifyGpuModel', () => {
-  const ok = (title: string, id: string) => verifyGpuModel(title, gpu(id));
+  const ok = (title: string, id: string, shortDescription?: string) =>
+    verifyGpuModel({ productName: title, shortDescription }, gpu(id));
 
   it('accepts the exact card', () => {
     expect(ok('GIGABYTE GeForce RTX 4070 WINDFORCE OC V2 12GB GDDR6X Desktop Graphics Card', 'rtx4070')).toEqual({ ok: true });
   });
 
-  it('refuses a title that states no memory size, for every part', () => {
+  it('refuses a listing that states no memory size in either field, for every part', () => {
     // Unconditional, and independent of the catalog. See the doc comment on
     // the memory-size rule for the RTX 5060 Ti case that settled this.
     expect(ok('ASUS Dual GeForce RTX 4070 OC Edition', 'rtx4070')).toMatchObject({
@@ -143,10 +144,9 @@ describe('verifyGpuModel', () => {
   it('does not consult the rest of the catalog — the same title and part always answer the same', () => {
     // The verdict is a function of (title, entry) only. Nothing about which
     // other SKUs SpecSmith tracks can change it.
-    expect(verifyGpuModel('MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6', gpu('rtx4060ti16'))).toEqual({ ok: true });
-    expect(verifyGpuModel('MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6', { ...gpu('rtx4060ti16'), id: 'unrelated' })).toEqual({
-      ok: true,
-    });
+    const evidence = { productName: 'MSI GAMING X SLIM GeForce RTX 4060 Ti 16GB GDDR6' };
+    expect(verifyGpuModel(evidence, gpu('rtx4060ti16'))).toEqual({ ok: true });
+    expect(verifyGpuModel(evidence, { ...gpu('rtx4060ti16'), id: 'unrelated' })).toEqual({ ok: true });
   });
 
   it('rejects the wrong memory size', () => {
@@ -184,5 +184,81 @@ describe('verifyGpuModel', () => {
   it('does not confuse Intel Arc A580 with an AMD RX 580 — different families never match', () => {
     expect(ok('Intel Arc A580 8GB Graphics Card', 'arca580')).toEqual({ ok: true });
     expect(ok('AMD Radeon RX 580 8GB Graphics Card', 'arca580')).toMatchObject({ ok: false, reason: 'model-mismatch' });
+  });
+});
+
+describe('capacity evidence comes from the title AND the short description', () => {
+  const verify = (productName: string, shortDescription: string | null, id: string) =>
+    verifyGpuModel({ productName, shortDescription }, gpu(id));
+
+  // The exact field values from a real Newegg listing: the title repeats the
+  // model and never says a capacity; the short description says it plainly.
+  const ZOTAC_TITLE = 'ZOTAC SOLID OC GeForce RTX 5070 Graphics Card RTX 5070 SOLID OC';
+  const ZOTAC_SHORT = 'ZOTAC SOLID OC GeForce RTX 5070 12GB GDDR7 256-bit PCIe 5.0 Graphics Card, IceStorm 3.0 cooling.';
+
+  it('accepts a listing whose capacity appears only in the short description', () => {
+    expect(verify(ZOTAC_TITLE, ZOTAC_SHORT, 'rtx5070')).toEqual({ ok: true });
+  });
+
+  it('the same title without the description is still refused as unstated', () => {
+    // Proves the acceptance above comes from the description, not from having
+    // quietly stopped requiring a capacity.
+    expect(verify(ZOTAC_TITLE, null, 'rtx5070')).toMatchObject({ ok: false, reason: 'memory-capacity-unstated' });
+  });
+
+  it('rejects a 12GB title with a 16GB short description rather than preferring one', () => {
+    const verdict = verify(
+      'PNY GeForce RTX 5070 12GB OC Triple Fan Graphics Card',
+      'PNY GeForce RTX 5070 16GB GDDR7 triple-fan graphics card.',
+      'rtx5070',
+    );
+    expect(verdict).toMatchObject({ ok: false, reason: 'memory-capacity-mismatch' });
+    expect((verdict as { detail: string }).detail).toContain('contradicts itself');
+  });
+
+  it('rejects when one field alone names several capacities', () => {
+    expect(verify('GeForce RTX 5070 Graphics Card', 'Available in 12GB and 16GB configurations.', 'rtx5070')).toMatchObject({
+      ok: false,
+      reason: 'memory-capacity-mismatch',
+    });
+  });
+
+  it('accepts when both fields agree', () => {
+    expect(verify('ASUS PRIME GeForce RTX 5070 12GB GDDR7 OC Edition', 'ASUS PRIME OC Edition 12GB GDDR7.', 'rtx5070')).toEqual({
+      ok: true,
+    });
+  });
+
+  it('rejects when both fields agree on the WRONG capacity', () => {
+    expect(verify('GeForce RTX 5070 16GB Graphics Card', 'GeForce RTX 5070 16GB GDDR7.', 'rtx5070')).toMatchObject({
+      ok: false,
+      reason: 'memory-capacity-mismatch',
+    });
+  });
+
+  it('an RTX 5070 Ti stays a variant-suffix-mismatch for rtx5070, description or not', () => {
+    // The description widening must not become a back door for the variant
+    // gate: this is a different product at a different price.
+    expect(verify('MSI GeForce RTX 5070 Ti GAMING TRIO OC Graphics Card RTX 5070 Ti', 'MSI GeForce RTX 5070 Ti 16GB GDDR7.', 'rtx5070')).toMatchObject({
+      ok: false,
+      reason: 'variant-suffix-mismatch',
+    });
+    expect(verify('MSI GeForce RTX 5070 Ti GAMING TRIO OC', null, 'rtx5070')).toMatchObject({
+      ok: false,
+      reason: 'variant-suffix-mismatch',
+    });
+  });
+
+  it('never reads the model from the description — only the capacity', () => {
+    // Descriptions routinely name other cards. Admitting that text would make
+    // half the catalogue ambiguous, so the model gates ignore it entirely.
+    expect(verify('ASUS PRIME GeForce RTX 5070 12GB OC', 'Up to 40% faster than an RTX 4070 Ti in modern titles.', 'rtx5070')).toEqual({
+      ok: true,
+    });
+    // ...and a description naming the right card cannot rescue a wrong title.
+    expect(verify('ASUS PRIME GeForce RTX 4060 8GB OC', 'This is really an RTX 5070 12GB.', 'rtx5070')).toMatchObject({
+      ok: false,
+      reason: 'model-mismatch',
+    });
   });
 });

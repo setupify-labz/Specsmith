@@ -63,7 +63,7 @@
     <saleprice currency="USD">0.00</saleprice>
     <upccode />
     <description>
-      <short>Memory size not stated in the title; upccode absent.</short>
+      <short>Memory size stated in neither field; upccode absent.</short>
       <long>Long description.</long>
     </description>
     <keywords>graphics card</keywords>
@@ -85,7 +85,7 @@
     <saleprice currency="USD">0.00</saleprice>
     <upccode>824142559999</upccode>
     <description>
-      <short>RTX 5060 Ti ships in 8GB and 16GB; the catalog tracks only the 16GB part.</short>
+      <short>This model ships in more than one memory size; neither field states which.</short>
       <long>Long description.</long>
     </description>
     <keywords>graphics card</keywords>

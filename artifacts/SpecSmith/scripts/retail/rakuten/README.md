@@ -69,15 +69,53 @@ fails **silently**:
   are pages of candidate cards rather than pages of Newegg's whole catalogue.
   The response is still checked on the way back — a request parameter is a
   request, not a guarantee.
-- **`<TotalPages>` must be walked.** Reading page 1 looks exactly like "Newegg
-  lists 20 of these" when the truth is "Newegg lists 340 and we saw 20". Every
-  paging failure throws: no `TotalPages`, a page that reports a different
-  `PageNumber` than requested, or more pages than `MAX_PAGES_PER_SEARCH`.
+- **`<TotalPages>` must be walked, and confirmed on every page.** Reading page 1
+  looks exactly like "Newegg lists 20 of these" when the truth is "Newegg lists
+  340 and we saw 20". Paging fails closed:
+  - values are parsed as **complete** non-negative integers — `parseInt` would
+    read `"2garbage"` and `"2.9"` as `2` and walk a count the feed never stated;
+  - `TotalPages` and `PageNumber` are required on **every** page, not just the
+    first;
+  - every page must report the `PageNumber` that was requested — otherwise a
+    feed answering every request with page 1 yields N copies of it, silently;
+  - `TotalPages` must be identical to page 1's; growth or shrinkage mid-walk is
+    truncation either way;
+  - `TotalMatches` must be identical to page 1's when both report it, and a page
+    may not drop it once page 1 supplied it. **Inventory drift is not tolerated**:
+    with `TotalPages` pinned, a `TotalMatches` that moves inside a fixed page
+    count is a contradiction, not drift. The one allowed case is a feed that
+    reports it on *no* page, recorded as `null` rather than invented.
 
-## Memory size is always required
+## Memory size: two fields of evidence, one required answer
 
-A listing that states no capacity is refused (`memory-capacity-unstated`),
-unconditionally, consulting nothing but the title and the one catalog entry.
+Capacity is read from **`productname` and `description/short`** — both the
+merchant's own words about the same item. The title alone was not where
+merchants reliably put it:
+
+```
+productname:       ZOTAC SOLID OC GeForce RTX 5070 Graphics Card RTX 5070 SOLID OC
+description/short: ZOTAC SOLID OC GeForce RTX 5070 12GB GDDR7 ...
+```
+
+Title-only verification refused that listing — and every listing shaped like it —
+as `memory-capacity-unstated`, rejecting the merchant's own answer while it sat
+one field away.
+
+The two fields are **evidence, not a merge**. A 12GB title with a 16GB short
+description is refused, not resolved in favour of either; a merchant
+contradicting itself about the capacity is a listing nobody can price. The
+stored `productName` is the feed's value untouched — nothing from the
+description is folded into it.
+
+What is *not* widened is **model matching**: family, number and variant suffix
+are still decided from the title alone, because descriptions routinely name
+other cards ("faster than an RTX 4070 Ti") and admitting that text would make
+half the catalogue ambiguous. An RTX 5070 Ti stays a `variant-suffix-mismatch`
+for `rtx5070`, description or not.
+
+A listing stating no capacity in *either* field is still refused
+(`memory-capacity-unstated`), unconditionally, consulting nothing but the
+listing and the one catalog entry.
 
 An earlier rule asked the catalog instead — an explicit size was required only
 when SpecSmith already held two entries sharing a family, number and suffix.
@@ -104,6 +142,12 @@ the 38 reasons.
 Kind is checked before model on purpose: an "RTX 5090 power cable" names the
 model perfectly, and the true statement about it is that it is a cable.
 
+**Sale-price currency.** A positive `<saleprice>` must carry its own `currency`
+attribute. Inheriting the retail price's is an assumption about money made on
+the feed's behalf — the currency is a per-element attribute precisely because
+the two can differ, and a discount relabelled into the wrong currency is a wrong
+price that looks entirely normal.
+
 **The zero rule.** Rakuten writes `<saleprice>0.00</saleprice>` for "no sale
 running", not "free". It is normalized to `null` at the parse boundary, so no
 consumer downstream can compute `salePrice ?? retailPrice` and get `0`.
@@ -118,3 +162,10 @@ reported page and redacts publisher identifiers in the same step, using the
 same `redactProductSearchXml` the tests check fixtures against, so "this was
 captured and cleaned" is a claim the tooling backs rather than one a committer
 makes by hand.
+
+`--out` is confined by `resolveFixturePath`, a real function with real tests
+(`capturePath.test.ts`): a plain visible `.xml` filename, no separators, no
+`.`/`..`, not absolute — and then the *resolved* path's parent must be exactly
+`__fixtures__`. `path.join(fixturesDir, out)` confines nothing; it normalizes
+`../../../src/overwrite.ts` straight out of the directory, which is why the
+old source-string assertion about that call proved nothing.
