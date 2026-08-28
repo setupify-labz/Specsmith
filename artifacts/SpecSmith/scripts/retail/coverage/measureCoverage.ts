@@ -103,6 +103,7 @@ async function measureOne(
       itemsSeen: result.itemsSeen,
       pagesRead: result.pagesRead,
       totalMatches: result.totalMatches,
+      emptyResult: result.emptyResult,
       rejectionsByReason: counts,
       failure: null,
     };
@@ -115,6 +116,7 @@ async function measureOne(
       itemsSeen: 0,
       pagesRead: 0,
       totalMatches: null,
+      emptyResult: false,
       failure: classifyFailure(cause),
     };
   }
@@ -129,16 +131,20 @@ async function measureOne(
  * people paste into issues and chat.
  */
 export function classifyFailure(cause: unknown): GpuFailure {
-  if (cause instanceof RakutenAuthError) return { category: 'auth', httpStatus: null };
-  if (cause instanceof RakutenPagingError) return { category: 'paging', httpStatus: null };
-  if (cause instanceof RakutenXmlError) return { category: 'malformed-xml', httpStatus: null };
+  if (cause instanceof RakutenAuthError) return { category: 'auth', httpStatus: null, pagingReason: null };
+  if (cause instanceof RakutenPagingError) {
+    // The code is a closed union defined in the adapter, so copying it here
+    // cannot import free text.
+    return { category: 'paging', httpStatus: null, pagingReason: cause.code };
+  }
+  if (cause instanceof RakutenXmlError) return { category: 'malformed-xml', httpStatus: null, pagingReason: null };
   if (cause instanceof RakutenRequestError) {
     // The adapter uses status 0 for "never got an HTTP response at all".
     return cause.httpStatus === 0
-      ? { category: 'transport', httpStatus: null }
-      : { category: 'http-status', httpStatus: cause.httpStatus };
+      ? { category: 'transport', httpStatus: null, pagingReason: null }
+      : { category: 'http-status', httpStatus: cause.httpStatus, pagingReason: null };
   }
-  return { category: 'unexpected', httpStatus: null };
+  return { category: 'unexpected', httpStatus: null, pagingReason: null };
 }
 
 /** Assembles the totals. Pure, so the shape can be asserted without a run. */
@@ -157,9 +163,12 @@ export function buildReport(input: {
   const failed = gpus.filter((g) => g.status === 'failed');
 
   const failuresByCategory = emptyFailureCounts();
+  const pagingFailuresByReason: Record<string, number> = {};
   for (const g of failed) {
     const category: FailureCategory = g.failure?.category ?? 'unexpected';
     failuresByCategory[ALL_FAILURE_CATEGORIES.includes(category) ? category : 'unexpected'] += 1;
+    const reason = g.failure?.pagingReason;
+    if (reason) pagingFailuresByReason[reason] = (pagingFailuresByReason[reason] ?? 0) + 1;
   }
 
   return {
@@ -185,11 +194,13 @@ export function buildReport(input: {
     rejectionsByReason: totalRejections(gpus),
     // SUCCESSFUL zero-offer GPUs only. A GPU whose request failed produced no
     // offers either, but for a different reason and with a different meaning:
-    // "Newegg has none" is a finding about the catalogue, "we could not ask"
-    // is a finding about the network. Merging them would let a bad API minute
-    // masquerade as poor coverage.
+    // "no matching feed listing" is a finding about the feed, "we could not
+    // ask" is a finding about the network. Merging them would let a bad API
+    // minute masquerade as poor coverage.
     zeroOfferGpuIds: succeeded.filter((g) => g.accepted === 0).map((g) => g.gpuId),
     failedGpuIds: failed.map((g) => g.gpuId),
     failuresByCategory,
+    pagingFailuresByReason,
+    emptyResultGpuIds: succeeded.filter((g) => g.emptyResult).map((g) => g.gpuId),
   };
 }

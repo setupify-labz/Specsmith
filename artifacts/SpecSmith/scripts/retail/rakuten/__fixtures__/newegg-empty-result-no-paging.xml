@@ -1,0 +1,4 @@
+<!-- PROVENANCE: synthetic. A CANDIDATE no-match shape that has NEVER been observed live — the 2026-08-28 probe saw all three paging fields present and zero, not omitted. Kept as an unadmitted variant so the refusal path stays tested; the walker fails closed on this with code empty-shape-not-yet-observed. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+</result>

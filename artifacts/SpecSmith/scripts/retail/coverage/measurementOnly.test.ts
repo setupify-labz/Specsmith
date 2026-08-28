@@ -80,6 +80,14 @@ describe('the coverage tool measures and nothing else', () => {
     expect([...new Set(stringFields)].sort()).toEqual(['finishedAt', 'gpuId', 'gpuName', 'startedAt']);
   });
 
+  it('the paging subreason is a closed union from the adapter, not free text', () => {
+    const report = read(path.join(here, 'coverageReport.ts'));
+    expect(report).toContain('pagingReason: PagingErrorCode | null');
+    // Typed as the adapter's union, so a new code has to be declared there —
+    // there is no way to put an arbitrary string in this field.
+    expect(report).toContain("import type { PagingErrorCode } from '../rakuten'");
+  });
+
   it('classifies failures from the error TYPE, never from its message', () => {
     const measure = codeOnly(read(path.join(here, 'measureCoverage.ts')));
     expect(measure).toContain('instanceof RakutenRequestError');

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { loadGpuCatalog } from '../rakuten';
 import { ACCESS_TOKEN_ENV_VAR, type CatalogGpu } from '../rakuten/types';
 import { ALL_REJECTION_REASONS, renderCoverageReport } from './coverageReport';
-import { classifyFailure, measureCoverage } from './measureCoverage';
+import { buildReport, classifyFailure, measureCoverage } from './measureCoverage';
+import { emptyRejectionCounts, type GpuCoverage } from './coverageReport';
 import { oneLineError, parseArgs, selectGpus } from './measure-coverage';
 import type { Clock } from './rateLimiter';
 
@@ -91,12 +92,12 @@ describe('measureCoverage over a fake fetch', () => {
     expect(report.gpus[1]).toMatchObject({
       gpuId: 'rtx4090',
       status: 'failed',
-      failure: { category: 'http-status', httpStatus: 500 },
+      failure: { category: 'http-status', httpStatus: 500, pagingReason: null },
     });
     expect(report.totals.failures).toBe(1);
     expect(report.totals.httpErrors).toBe(1);
-    // A failed GPU is NOT a zero-offer GPU: "Newegg has none" and "we could
-    // not ask" are different findings and are never merged.
+    // A failed GPU is NOT a zero-offer GPU: "no matching feed listing" and
+    // "we could not ask" are different findings and are never merged.
     expect(report.zeroOfferGpuIds).not.toContain('rtx4090');
     expect(report.failedGpuIds).toEqual(['rtx4090']);
     expect(renderCoverageReport(report)).toContain('FAILED (http-status 500)');
@@ -156,19 +157,95 @@ describe('measureCoverage over a fake fetch', () => {
   });
 
   it('classifies each adapter error into its own closed category', async () => {
-    const cases: Array<[string, string, number | null]> = [
-      ['<result><TotalPages>2garbage</TotalPages></result>', 'paging', null],
-      ['not xml at all <', 'malformed-xml', null],
+    const cases: Array<[string, string, number | null, string | null]> = [
+      // A malformed integer is NOT an omitted field: it does not get the
+      // empty-result amnesty, it gets a specific paging code.
+      ['<result><TotalPages>2garbage</TotalPages></result>', 'paging', null, 'total-pages-not-integer'],
+      ['not xml at all <', 'malformed-xml', null, null],
     ];
-    for (const [body, category, httpStatus] of cases) {
+    for (const [body, category, httpStatus, pagingReason] of cases) {
       const report = await measureCoverage({
         catalog: [gpu('rtx5070')],
         env,
         clock: fakeClock(),
         fetch: servePage(body),
       });
-      expect(report.gpus[0].failure, body).toEqual({ category, httpStatus });
+      expect(report.gpus[0].failure, body).toEqual({ category, httpStatus, pagingReason });
     }
+  });
+
+  it('counts the observed empty shape as a genuine zero, not a failure', async () => {
+    // The 39-GPU regression, end to end and for real now that the observed
+    // fingerprint is admitted: three GPUs, one with listings, two the feed has
+    // no matching listing for, none failed.
+    const three = [gpu('rtx5070'), gpu('rtx4090'), gpu('rx7600')];
+    const fetch = (async (url: string | URL) => {
+      const keyword = new URL(String(url)).searchParams.get('keyword') ?? '';
+      if (keyword.includes('RTX 5070')) return new Response(fixture('newegg-rtx5070-live-shape.xml'), { status: 200 });
+      return new Response(fixture('newegg-empty-result-all-zero.xml'), { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+
+    const report = await measureCoverage({ catalog: three, env, clock: fakeClock(), fetch });
+
+    expect(report.gpusSucceeded).toBe(3);
+    expect(report.failedGpuIds).toEqual([]);
+    expect(report.zeroOfferGpuIds).toEqual(['rtx4090', 'rx7600']);
+    expect(report.emptyResultGpuIds).toEqual(['rtx4090', 'rx7600']);
+    // One document fetched each, and the feed reported zero pages for two.
+    expect(report.gpus.map((g) => g.pagesRead)).toEqual([1, 1, 1]);
+
+    const text = renderCoverageReport(report);
+    expect(text).toContain('...no feed listing    2   (no matching Rakuten feed listing)');
+    expect(text).toContain('no feed listing');
+  });
+
+  it('reports a not-yet-observed empty shape as its own paging code', async () => {
+    // The 39-GPU wave, as it stands today: still failing closed, but now
+    // saying exactly why, so the operator knows to run the probe rather than
+    // hunting a feed bug.
+    const report = await measureCoverage({
+      catalog: [gpu('rtx4090')],
+      env,
+      clock: fakeClock(),
+      fetch: servePage(fixture('newegg-empty-result-no-paging.xml')),
+    });
+    expect(report.gpus[0].failure).toEqual({
+      category: 'paging',
+      httpStatus: null,
+      pagingReason: 'empty-shape-not-yet-observed',
+    });
+    expect(renderCoverageReport(report)).toContain('paging: empty-shape-not-yet-observed');
+  });
+
+  it('counts response documents read, not the page count the feed claimed', async () => {
+    const report = await measureCoverage({
+      catalog: [gpu('rtx4070')],
+      env,
+      clock: fakeClock(),
+      fetch: (async (url: string | URL) => {
+        const page = Number(new URL(String(url)).searchParams.get('pagenumber') ?? '1');
+        return new Response(fixture(`newegg-rtx4070-page${page}.xml`), { status: 200 });
+      }) as unknown as typeof globalThis.fetch,
+    });
+    expect(report.gpus[0].pagesRead).toBe(2);
+    expect(report.totals.pages).toBe(2);
+  });
+
+  it('reports a histogram of paging codes, so a wave of paging failures is diagnosable', async () => {
+    // "39 GPUs failed on paging" was a count without a diagnosis.
+    const two = [gpu('rtx5070'), gpu('rtx4090')];
+    const fetch = (async (url: string | URL) => {
+      const keyword = new URL(String(url)).searchParams.get('keyword') ?? '';
+      const body = keyword.includes('RTX 5070')
+        ? '<result><TotalPages>1</TotalPages><PageNumber>9</PageNumber><item><sku>N82E1</sku></item></result>'
+        : '<result><TotalPages>x</TotalPages><item><sku>N82E1</sku></item></result>';
+      return new Response(body, { status: 200 });
+    }) as unknown as typeof globalThis.fetch;
+
+    const report = await measureCoverage({ catalog: two, env, clock: fakeClock(), fetch });
+    expect(report.failuresByCategory.paging).toBe(2);
+    expect(report.pagingFailuresByReason).toEqual({ 'page-number-mismatch': 1, 'total-pages-not-integer': 1 });
+    expect(renderCoverageReport(report)).toContain('paging: page-number-mismatch');
   });
 
   it('measures a total runtime from the injected clock, including smoothing', async () => {
@@ -186,6 +263,60 @@ describe('measureCoverage over a fake fetch', () => {
   });
 });
 
+describe('the two kinds of zero stay separate in the report', () => {
+  const row = (over: Partial<GpuCoverage>): GpuCoverage => ({
+    gpuId: 'x',
+    gpuName: 'X',
+    status: 'ok',
+    accepted: 0,
+    rejected: 0,
+    itemsSeen: 0,
+    pagesRead: 1,
+    totalMatches: null,
+    emptyResult: false,
+    rejectionsByReason: emptyRejectionCounts(),
+    failure: null,
+    ...over,
+  });
+
+  // Built directly rather than swept: no empty-result variant is admitted yet,
+  // so a live sweep cannot currently produce an emptyResult row. The report's
+  // handling of one is still worth pinning, because it is what the probe's
+  // answer will switch on.
+  const report = () =>
+    buildReport({
+      gpus: [
+        row({ gpuId: 'has-offers', accepted: 3, itemsSeen: 5, rejected: 2 }),
+        row({ gpuId: 'no-feed-listing', emptyResult: true }),
+        row({ gpuId: 'all-rejected', itemsSeen: 7, rejected: 7 }),
+      ],
+      stats: { requests: 3, rateLimited: 0, httpErrors: 0, transportErrors: 0, waitedMs: 0 },
+      startedAt: '2026-08-28T09:00:00.000Z',
+      finishedAt: '2026-08-28T09:00:02.000Z',
+      durationMs: 2000,
+      requestsPerMinuteLimit: 90,
+    });
+
+  it('separates "no matching feed listing" from "every listing was rejected"', () => {
+    const r = report();
+    expect(r.zeroOfferGpuIds).toEqual(['no-feed-listing', 'all-rejected']);
+    expect(r.emptyResultGpuIds).toEqual(['no-feed-listing']);
+
+    const text = renderCoverageReport(r);
+    expect(text).toContain('...no feed listing    1   (no matching Rakuten feed listing)');
+    expect(text).toContain('...all rejected       1   (listings returned, none admitted)');
+  });
+
+  it('never claims anything about stock, and says availability is unknown', () => {
+    const text = renderCoverageReport(report());
+    expect(text).toContain('Availability is UNKNOWN');
+    expect(text).toContain('not an inventory');
+    for (const forbidden of [/in stock/i, /out of stock/i, /stocks nothing/i, /has none/i, /unavailable/i]) {
+      expect(text, String(forbidden)).not.toMatch(forbidden);
+    }
+  });
+});
+
 describe('failure detail is structured, so it cannot carry text from anywhere else', () => {
   it('is exactly a category and a status number — no message field exists', async () => {
     const fetch = (async () =>
@@ -193,8 +324,8 @@ describe('failure detail is structured, so it cannot carry text from anywhere el
     const report = await measureCoverage({ catalog: [gpu('rtx5070')], env, clock: fakeClock(), fetch });
 
     const failure = report.gpus[0].failure!;
-    expect(Object.keys(failure).sort()).toEqual(['category', 'httpStatus']);
-    expect(failure).toEqual({ category: 'http-status', httpStatus: 401 });
+    expect(Object.keys(failure).sort()).toEqual(['category', 'httpStatus', 'pagingReason']);
+    expect(failure).toEqual({ category: 'http-status', httpStatus: 401, pagingReason: null });
     // Nothing in the whole report resembles the body the server sent.
     expect(JSON.stringify(report)).not.toContain('SECRET');
     expect(JSON.stringify(report)).not.toContain('unauthorized');
@@ -204,8 +335,13 @@ describe('failure detail is structured, so it cannot carry text from anywhere el
     expect(classifyFailure(new Error('boom https://evil.invalid/?token=abc'))).toEqual({
       category: 'unexpected',
       httpStatus: null,
+      pagingReason: null,
     });
-    expect(classifyFailure('a bare string with a secret in it')).toEqual({ category: 'unexpected', httpStatus: null });
+    expect(classifyFailure('a bare string with a secret in it')).toEqual({
+      category: 'unexpected',
+      httpStatus: null,
+      pagingReason: null,
+    });
   });
 });
 

@@ -25,9 +25,12 @@
 // COVERAGE PERCENTAGES EXCLUDE FAILURES
 // -------------------------------------
 // A GPU whose request failed is reported on its own line, never as a GPU with
-// no offers. The two answer different questions — "Newegg stocks none" is
-// about the catalogue, "we could not ask" is about the network — and merging
-// them would let a bad API minute read as poor coverage.
+// no offers. The two answer different questions — "the feed lists nothing
+// matching" is about the feed, "we could not ask" is about the network — and
+// merging them would let a bad API minute read as poor coverage.
+//
+// Nothing here reports stock. The feed is a catalogue of listings, not an
+// inventory, so availability is unknown for every GPU in the report.
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

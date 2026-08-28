@@ -142,9 +142,24 @@ describe('every committed fixture declares its provenance and is redacted', () =
   it.each(fixtureNames)('%s', (name) => {
     const text = fixture(name);
     expect(text.slice(0, 400)).toContain(PROVENANCE_MARKER);
-    // A fixture must say which it is. "Captured" is a claim about where bytes
-    // came from and cannot be made by a hand-written file.
-    expect(/PROVENANCE:\s*(synthetic|captured)/i.test(text), `${name} must declare synthetic or captured`).toBe(true);
+    // A fixture must say which it is, and each word is a different claim:
+    //   synthetic — written by hand to a documented shape
+    //   captured  — these bytes came off the wire, via capture-fixture.ts
+    //   observed  — the STRUCTURE was seen live via probe-response-shape.ts
+    //               and reproduced here; the probe reports shape, not bodies,
+    //               so this is weaker than "captured" and must not claim to be
+    //               byte-identical unless it says so and proves it.
+    expect(
+      /PROVENANCE:\s*(synthetic|captured|observed)/i.test(text),
+      `${name} must declare synthetic, captured or observed`,
+    ).toBe(true);
+    // An "observed" fixture has to say WHEN and for WHICH GPU, so the claim is
+    // checkable against a probe run rather than being a bare assertion.
+    if (/PROVENANCE:\s*observed/i.test(text)) {
+      expect(text, `${name} must record the observation date`).toMatch(/\b20\d{2}-\d{2}-\d{2}\b/);
+      expect(text, `${name} must record the catalog GPU it was observed for`).toMatch(/\b(rtx|rx|arc)[a-z0-9-]+\b/i);
+      expect(text, `${name} must name the tool that observed it`).toContain('probe-response-shape.ts');
+    }
     expect(unredactedIdentifiers(text), `${name} has unredacted publisher identifiers`).toEqual([]);
     expect(/bearer|\btoken\b/i.test(text), `${name} must contain nothing token-shaped`).toBe(false);
   });

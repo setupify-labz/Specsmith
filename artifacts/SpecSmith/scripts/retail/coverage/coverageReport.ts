@@ -20,6 +20,7 @@
 // Pure: no I/O, no clock, no process. The CLI supplies timings.
 
 import type { OfferRejectionReason } from '../rakuten/types';
+import type { PagingErrorCode } from '../rakuten';
 
 /** Every reason the adapter can refuse a listing, so a zero is reported rather than omitted. */
 export const ALL_REJECTION_REASONS: readonly OfferRejectionReason[] = [
@@ -78,6 +79,15 @@ export interface GpuFailure {
   category: FailureCategory;
   /** The HTTP status when one was received; null otherwise. A number, never text. */
   httpStatus: number | null;
+  /**
+   * For category 'paging', WHICH paging rule refused — a closed code from the
+   * adapter, never text. Null for every other category.
+   *
+   * This exists because "39 GPUs failed on paging" was a count without a
+   * diagnosis: it could not distinguish a missing page count from a page
+   * mismatch, and those want opposite fixes.
+   */
+  pagingReason: PagingErrorCode | null;
 }
 
 export interface GpuCoverage {
@@ -94,6 +104,8 @@ export interface GpuCoverage {
   itemsSeen: number;
   pagesRead: number;
   totalMatches: number | null;
+  /** The feed returned no matching listing — a definite zero, not a filtered-out zero. Says nothing about stock. */
+  emptyResult: boolean;
   rejectionsByReason: RejectionCounts;
   /** Structured failure detail when status is 'failed'; null when it is 'ok'. */
   failure: GpuFailure | null;
@@ -110,10 +122,10 @@ export interface CoverageReport {
    * GPUs the API actually answered for. THE DENOMINATOR for every coverage
    * percentage.
    *
-   * A GPU whose request failed tells us nothing about whether Newegg stocks
+   * A GPU whose request failed tells us nothing about the feed's contents for
    * it, so counting it as "no offers" would report a network problem as a
-   * catalogue finding — and would make coverage look worse every time the API
-   * had a bad minute. Failures are reported on their own line instead.
+   * feed-coverage finding — and would make coverage look worse every time the
+   * API had a bad minute. Failures are reported on their own line instead.
    */
   gpusSucceeded: number;
   gpus: GpuCoverage[];
@@ -135,6 +147,15 @@ export interface CoverageReport {
   /** Ids whose measurement did not complete. Coverage is UNKNOWN for these, not zero. */
   failedGpuIds: string[];
   failuresByCategory: Record<FailureCategory, number>;
+  /** Counts per closed paging code, so a wave of paging failures is diagnosable. */
+  pagingFailuresByReason: Record<string, number>;
+  /**
+   * Ids for which the feed returned no matching listing.
+   *
+   * A fact about the FEED. It is not a stock signal: a part can be on a shelf
+   * and absent from the feed, so availability stays unknown either way.
+   */
+  emptyResultGpuIds: string[];
 }
 
 export const emptyFailureCounts = (): Record<FailureCategory, number> =>
@@ -185,12 +206,18 @@ export function renderCoverageReport(report: CoverageReport): string {
   const withOffers = report.gpusSucceeded - report.zeroOfferGpuIds.length;
 
   lines.push('Coverage  (percentages are of GPUs measured OK — failures are excluded,');
-  lines.push('           because a failed request says nothing about whether Newegg stocks the part)');
+  lines.push('           because a failed request tells us nothing about the feed\'s contents)');
   lines.push(`  GPUs attempted     ${num(report.gpusMeasured, 6)}`);
   lines.push(`  measured OK        ${num(report.gpusSucceeded, 6)}`);
   lines.push(`  failed / unknown   ${num(report.failedGpuIds.length, 6)}`);
   lines.push(`  with offers        ${num(withOffers, 6)}   ${pct(withOffers, report.gpusSucceeded)}`);
   lines.push(`  with zero offers   ${num(report.zeroOfferGpuIds.length, 6)}   ${pct(report.zeroOfferGpuIds.length, report.gpusSucceeded)}`);
+  // Of the zeroes, how many did the feed return nothing for, versus how many
+  // had listings that every gate refused. Same offer count, different causes:
+  // one is about what the feed publishes, the other about what the matcher
+  // admits. NEITHER is a statement about stock — see the availability note.
+  lines.push(`    ...no feed listing ${num(report.emptyResultGpuIds.length, 4)}   (no matching Rakuten feed listing)`);
+  lines.push(`    ...all rejected    ${num(report.zeroOfferGpuIds.length - report.emptyResultGpuIds.length, 4)}   (listings returned, none admitted)`);
   lines.push(`  listings seen      ${num(t.itemsSeen, 6)}`);
   lines.push(`  accepted           ${num(t.accepted, 6)}   ${pct(t.accepted, t.itemsSeen)} of listings`);
   lines.push(`  rejected           ${num(t.rejected, 6)}   ${pct(t.rejected, t.itemsSeen)} of listings`);
@@ -210,6 +237,9 @@ export function renderCoverageReport(report: CoverageReport): string {
       const n = report.failuresByCategory[category];
       if (n > 0) lines.push(`  ${pad(category, 26)} ${num(n, 6)}`);
     }
+    for (const [reason, n] of Object.entries(report.pagingFailuresByReason).sort((a, b) => b[1] - a[1])) {
+      lines.push(`    paging: ${pad(reason, 24)} ${num(n, 4)}`);
+    }
     lines.push('');
   }
 
@@ -218,14 +248,21 @@ export function renderCoverageReport(report: CoverageReport): string {
   for (const gpu of report.gpus) {
     const status =
       gpu.status === 'failed'
-        ? `FAILED (${gpu.failure!.category}${gpu.failure!.httpStatus === null ? '' : ` ${gpu.failure!.httpStatus}`})`
+        ? `FAILED (${gpu.failure!.category}${gpu.failure!.httpStatus === null ? '' : ` ${gpu.failure!.httpStatus}`}${gpu.failure!.pagingReason === null ? '' : `: ${gpu.failure!.pagingReason}`})`
         : gpu.accepted === 0
-          ? 'no offers'
+          ? gpu.emptyResult
+            ? 'no feed listing'
+            : 'all rejected'
           : '';
     lines.push(
       `  ${pad(gpu.gpuId, 14)}${pad(gpu.gpuName, 22)}${num(gpu.itemsSeen, 6)}${num(gpu.accepted, 6)}${num(gpu.rejected, 6)}${num(gpu.pagesRead, 7)}  ${status}`,
     );
   }
+  lines.push('');
+
+  lines.push('Availability is UNKNOWN for every GPU here. The Product Search feed is a');
+  lines.push('catalogue of listings, not an inventory: absence from it means no matching');
+  lines.push('feed listing, and says nothing about whether the retailer holds the part.');
   lines.push('');
 
   if (report.zeroOfferGpuIds.length > 0) {

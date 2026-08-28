@@ -68,10 +68,30 @@ export interface OfferSearchResult {
   rejected: RejectedOffer[];
   /** Total <item> elements across every page. */
   itemsSeen: number;
-  /** How many pages Rakuten reported, all of which were read. */
+  /**
+   * Response documents actually fetched and parsed.
+   *
+   * Counts what happened, not what the feed claimed: an empty result is one
+   * document reporting zero pages, so this is 1 while `feedTotalPages` is 0.
+   */
   pagesRead: number;
+  /** The feed's own <TotalPages>. 0 for an empty result. */
+  feedTotalPages: number;
   /** Rakuten's own TotalMatches, for comparison against itemsSeen. */
   totalMatches: number | null;
+  /**
+   * True when the feed returned no matching listing for this keyword.
+   *
+   * A definite, successful answer with zero offers — NOT a failure, and not
+   * the same as a page whose listings were all rejected. Both show zero
+   * accepted offers for different reasons.
+   *
+   * It says nothing about stock. The Product Search feed is a catalogue of
+   * listings Rakuten publishes for this merchant, not an inventory: a part can
+   * be sitting on a shelf and absent from the feed. Availability is unknown
+   * here and stays unknown.
+   */
+  emptyResult: boolean;
 }
 
 /** Splits a mixed admission list. */
@@ -94,7 +114,7 @@ export async function fetchNeweggOffersForGpu(
   deps: ProductSearchDeps & { max?: number } = {},
 ): Promise<OfferSearchResult> {
   const keyword = keywordForGpu(gpu);
-  const { pages, fetchedAt, totalMatches, totalPages } = await fetchAllProductSearchPages(
+  const { pages, fetchedAt, totalMatches, totalPages, emptyResult } = await fetchAllProductSearchPages(
     { keyword, max: deps.max ?? 100 },
     deps,
   );
@@ -107,15 +127,22 @@ export async function fetchNeweggOffersForGpu(
     offers,
     rejected,
     itemsSeen: items.length,
-    pagesRead: totalPages,
+    pagesRead: pages.length,
+    feedTotalPages: totalPages,
     totalMatches,
+    emptyResult,
   };
 }
 
 export { admitOffer, admitOffers, readCategory, readShortDescription, secondaryCategoryLeaf } from './admitOffer';
 export {
+  ALL_EMPTY_RESULT_VARIANTS,
+  EMPTY_RESULT_OBSERVATIONS,
+  ALL_PAGING_ERROR_CODES,
   assertPagingConsistent,
+  OBSERVED_EMPTY_RESULT_VARIANTS,
   buildProductSearchUrl,
+  classifyEmptyResult,
   fetchAllProductSearchPages,
   fetchProductSearchXml,
   MAX_PAGES_PER_SEARCH,
@@ -124,6 +151,9 @@ export {
   RakutenAuthError,
   RakutenPagingError,
   RakutenRequestError,
+  type EmptyResultVariant,
+  type NotEmptyReason,
+  type PagingErrorCode,
 } from './client';
 export { classifyListing } from './listingKind';
 export { catalogMention, findGpuMentions, findMemorySizes, mentionKey, verifyGpuModel } from './gpuModelMatch';
@@ -131,6 +161,7 @@ export {
   childText,
   decodeXmlText,
   findItems,
+  type XmlElement,
   parsePagingInteger,
   parseProductSearchXml,
   RakutenXmlError,

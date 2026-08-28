@@ -1,0 +1,2 @@
+<!-- PROVENANCE: observed 2026-08-28 for catalog GPU rtx4090 via probe-response-shape.ts: HTTP 200, 99-byte body, exactly one <result> holding exactly one <TotalMatches>, one <TotalPages> and one <PageNumber>, all three equal to 0, and no <item>. The element line below is itself exactly 99 bytes, which corroborates the reported length and means the live body carries no XML declaration and no whitespace between elements. Only this comment is added. -->
+<result><TotalMatches>0</TotalMatches><TotalPages>0</TotalPages><PageNumber>0</PageNumber></result>

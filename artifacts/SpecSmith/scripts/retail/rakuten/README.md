@@ -126,6 +126,36 @@ so no size was required, so "ASUS Dual GeForce RTX 5060 Ti OC" was accepted as
 the 16GB card — publishing an 8GB card's price. Nothing downstream could detect
 it.
 
+## No-match responses
+
+A keyword the feed has no listing for returns 200 OK with no `<item>` and no
+meaningful paging header. `classifyEmptyResult` recognises that shape — exactly
+one top-level `<result>`, no text inside it, zero items, only the three
+permitted paging children, all zero-or-absent and none of them malformed — and
+would let the walker report a successful zero instead of a paging failure.
+
+**Exactly one variant is admitted: `all-paging-fields-zero`** — the fingerprint
+the probe observed on 2026-08-28 for `rtx4090`: HTTP 200, a 99-byte body, one
+`<result>` holding exactly one `<TotalMatches>`, one `<TotalPages>` and one
+`<PageNumber>`, all three `0`, and no `<item>`. The reproduced element line in
+`__fixtures__/newegg-empty-result-all-zero.xml` is itself exactly 99 bytes,
+which corroborates the reported length and pins that the live body carries no
+XML declaration and no inter-element whitespace.
+
+`paging-omitted` and `partial-paging-zero` — a missing field, a `PageNumber` of
+1, any mixed arrangement — remain **defined but unadmitted**, and fail closed
+with the paging code `empty-shape-not-yet-observed`. "The feed sometimes omits
+paging fields" was a guess; "the feed answered 0/0/0" is an observation, and
+only observations are admitted. `EMPTY_RESULT_OBSERVATIONS` records the run
+behind each admitted variant, and a test asserts every admitted variant has one
+and every unadmitted variant has none — so admitting a shape and recording why
+happen in the same edit.
+
+**Absence from the feed is not a stock signal.** The Product Search feed is a
+catalogue of listings, not an inventory. A part can be on a shelf and absent
+from it, so "no matching Rakuten feed listing" is all that is ever claimed;
+availability stays unknown.
+
 ## The gates
 
 A listing is refused at the first gate it fails, and the reason is returned —
