@@ -17,10 +17,17 @@
 // WHAT IT WILL NOT PRINT
 // ----------------------
 // The access token, any tracked affiliate URL, any publisher or offer
-// identifier, any image URL. The report type carries no field able to hold
-// one (see coverageReport.ts), so this is structural rather than a promise,
-// and a test renders a report built from offers with real linksynergy URLs to
-// prove none survives.
+// identifier, any image URL, and no free text from the far end at all. The
+// report type carries no field able to hold one (see coverageReport.ts), so
+// this is structural rather than a promise, and a test renders a report built
+// from offers with real linksynergy URLs to prove none survives.
+//
+// COVERAGE PERCENTAGES EXCLUDE FAILURES
+// -------------------------------------
+// A GPU whose request failed is reported on its own line, never as a GPU with
+// no offers. The two answer different questions — "Newegg stocks none" is
+// about the catalogue, "we could not ask" is about the network — and merging
+// them would let a bad API minute read as poor coverage.
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -91,25 +98,37 @@ export function selectGpus(catalog: readonly CatalogGpu[], options: CliOptions):
   return options.limit === null ? [...catalog] : catalog.slice(0, options.limit);
 }
 
-async function main(argv: string[]): Promise<void> {
-  let options: CliOptions;
-  try {
-    options = parseArgs(argv);
-  } catch (e) {
-    console.error(e instanceof Error ? e.message : String(e));
-    process.exitCode = 1;
-    return;
-  }
+/**
+ * Reduces any thrown value to one safe line for the terminal.
+ *
+ * A stack trace is noise for an operator and, worse, quotes surrounding code
+ * and paths; an unscrubbed message can quote a URL or a response body. So the
+ * message is flattened to a single line, stripped of anything URL- or
+ * parameter-shaped, and capped.
+ *
+ * This is the CLI's own diagnostics, deliberately separate from the report:
+ * the REPORT carries no free text at all (see coverageReport.ts), because it
+ * is a document that gets pasted elsewhere. This line is for the person
+ * watching the run.
+ */
+export function oneLineError(cause: unknown, maxLength = 300): string {
+  const raw = cause instanceof Error ? cause.message : String(cause);
+  const line = raw
+    .replace(/https?:\/\/\S+/gi, '[url]')
+    .replace(/\b(?:id|offerid|linkid|token|key|secret)=\S*/gi, '[redacted-param]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const label = cause instanceof Error && cause.name !== 'Error' ? `${cause.name}: ` : '';
+  const text = `${label}${line || 'unknown error'}`;
+  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+}
+
+async function run(argv: string[]): Promise<void> {
+  const options = parseArgs(argv);
 
   // Fail before the first request if the token is missing, rather than after
   // pacing through a sweep of 401s.
-  try {
-    readAccessToken();
-  } catch (e) {
-    console.error(e instanceof Error ? e.message : String(e));
-    process.exitCode = 1;
-    return;
-  }
+  readAccessToken();
 
   const selected = selectGpus(loadGpuCatalog(), options);
   if (!options.json) {
@@ -136,5 +155,39 @@ async function main(argv: string[]): Promise<void> {
   if (report.totals.failures > 0) process.exitCode = 1;
 }
 
+/**
+ * Single exit point for every failure mode.
+ *
+ * One catch around everything, rather than a try/catch per step: a bad flag, a
+ * missing token, an unreadable catalog and an unexpected defect all reach the
+ * operator the same way — one line, exit 1, no stack. A stack trace here would
+ * be the tool reporting its own internals to someone who asked about Newegg
+ * offers.
+ */
+export async function main(argv: string[]): Promise<number> {
+  try {
+    await run(argv);
+    return process.exitCode === undefined ? 0 : Number(process.exitCode);
+  } catch (cause) {
+    console.error(oneLineError(cause));
+    return 1;
+  }
+}
+
 const invokedDirectly = process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (invokedDirectly) void main(process.argv.slice(2));
+if (invokedDirectly) {
+  void main(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
+  });
+  // Nothing below this point may throw into the void: an unhandled rejection
+  // or a stray synchronous throw would print a stack trace and bypass the
+  // single-line contract above.
+  process.on('unhandledRejection', (cause) => {
+    console.error(oneLineError(cause));
+    process.exit(1);
+  });
+  process.on('uncaughtException', (cause) => {
+    console.error(oneLineError(cause));
+    process.exit(1);
+  });
+}

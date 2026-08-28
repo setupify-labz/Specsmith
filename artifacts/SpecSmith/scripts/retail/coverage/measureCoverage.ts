@@ -4,15 +4,24 @@
 // CLI supplies argv, the environment, stdout and the real clock; everything
 // that decides what gets measured lives here.
 
-import { fetchNeweggOffersForGpu } from '../rakuten';
+import {
+  fetchNeweggOffersForGpu,
+  RakutenAuthError,
+  RakutenPagingError,
+  RakutenRequestError,
+  RakutenXmlError,
+} from '../rakuten';
 import type { CatalogGpu, OfferRejectionReason } from '../rakuten/types';
 import { createInstrumentedFetch, type FetchStats } from './instrumentedFetch';
 import {
+  ALL_FAILURE_CATEGORIES,
+  emptyFailureCounts,
   emptyRejectionCounts,
-  scrubMessage,
   totalRejections,
   type CoverageReport,
+  type FailureCategory,
   type GpuCoverage,
+  type GpuFailure,
 } from './coverageReport';
 import { RateLimiter, systemClock, type Clock } from './rateLimiter';
 
@@ -95,8 +104,7 @@ async function measureOne(
       pagesRead: result.pagesRead,
       totalMatches: result.totalMatches,
       rejectionsByReason: counts,
-      failureKind: null,
-      failureMessage: null,
+      failure: null,
     };
   } catch (cause) {
     return {
@@ -107,10 +115,30 @@ async function measureOne(
       itemsSeen: 0,
       pagesRead: 0,
       totalMatches: null,
-      failureKind: cause instanceof Error ? cause.constructor.name : typeof cause,
-      failureMessage: scrubMessage(cause instanceof Error ? cause.message : String(cause)),
+      failure: classifyFailure(cause),
     };
   }
+}
+
+/**
+ * Maps a thrown value to a closed category and, where one exists, a status number.
+ *
+ * Deliberately reads only the error's TYPE and its numeric status — never its
+ * message. The message is the one part an attacker or a misbehaving server
+ * controls, and this is the boundary where it would otherwise enter a document
+ * people paste into issues and chat.
+ */
+export function classifyFailure(cause: unknown): GpuFailure {
+  if (cause instanceof RakutenAuthError) return { category: 'auth', httpStatus: null };
+  if (cause instanceof RakutenPagingError) return { category: 'paging', httpStatus: null };
+  if (cause instanceof RakutenXmlError) return { category: 'malformed-xml', httpStatus: null };
+  if (cause instanceof RakutenRequestError) {
+    // The adapter uses status 0 for "never got an HTTP response at all".
+    return cause.httpStatus === 0
+      ? { category: 'transport', httpStatus: null }
+      : { category: 'http-status', httpStatus: cause.httpStatus };
+  }
+  return { category: 'unexpected', httpStatus: null };
 }
 
 /** Assembles the totals. Pure, so the shape can be asserted without a run. */
@@ -125,12 +153,22 @@ export function buildReport(input: {
   const { gpus, stats } = input;
   const sum = (pick: (g: GpuCoverage) => number) => gpus.reduce((n, g) => n + pick(g), 0);
 
+  const succeeded = gpus.filter((g) => g.status === 'ok');
+  const failed = gpus.filter((g) => g.status === 'failed');
+
+  const failuresByCategory = emptyFailureCounts();
+  for (const g of failed) {
+    const category: FailureCategory = g.failure?.category ?? 'unexpected';
+    failuresByCategory[ALL_FAILURE_CATEGORIES.includes(category) ? category : 'unexpected'] += 1;
+  }
+
   return {
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
     durationMs: input.durationMs,
     requestsPerMinuteLimit: input.requestsPerMinuteLimit,
     gpusMeasured: gpus.length,
+    gpusSucceeded: succeeded.length,
     gpus,
     totals: {
       accepted: sum((g) => g.accepted),
@@ -141,12 +179,17 @@ export function buildReport(input: {
       rateLimited: stats.rateLimited,
       httpErrors: stats.httpErrors,
       transportErrors: stats.transportErrors,
-      failures: gpus.filter((g) => g.status === 'failed').length,
+      failures: failed.length,
       waitedMs: stats.waitedMs,
     },
     rejectionsByReason: totalRejections(gpus),
-    // A failed GPU has zero accepted offers and belongs here — but the per-GPU
-    // table says FAILED next to it, so the two are never conflated.
-    zeroOfferGpuIds: gpus.filter((g) => g.accepted === 0).map((g) => g.gpuId),
+    // SUCCESSFUL zero-offer GPUs only. A GPU whose request failed produced no
+    // offers either, but for a different reason and with a different meaning:
+    // "Newegg has none" is a finding about the catalogue, "we could not ask"
+    // is a finding about the network. Merging them would let a bad API minute
+    // masquerade as poor coverage.
+    zeroOfferGpuIds: succeeded.filter((g) => g.accepted === 0).map((g) => g.gpuId),
+    failedGpuIds: failed.map((g) => g.gpuId),
+    failuresByCategory,
   };
 }

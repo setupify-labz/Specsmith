@@ -1,11 +1,19 @@
 // Sequential request pacing for the coverage run.
 //
-// Rakuten's published ceiling is 100 calls per minute. This is a SLIDING
-// WINDOW rather than a fixed delay because the two behave differently at
-// exactly the moment it matters: a fixed 600ms gap is fine in steady state but
-// says nothing about a burst that straddles a minute boundary, whereas a
-// window that remembers the last N timestamps cannot exceed N in any 60-second
-// span no matter how the requests are distributed.
+// Rakuten's published ceiling is 100 calls per minute. TWO constraints enforce
+// it, and both must be satisfied before a request goes out:
+//
+//   1. SMOOTHING — a minimum gap of windowMs/maxPerWindow between consecutive
+//      requests, so the run trickles across the minute instead of firing the
+//      first 90 as fast as the network allows and then sitting idle. A burst
+//      is within the letter of a per-minute limit and is still the shape most
+//      likely to trip server-side protection, to look like abuse in a rate
+//      report, and to collide with anything else using the same account.
+//   2. ROLLING WINDOW — never more than maxPerWindow timestamps inside any
+//      60-second span. With uniform smoothing this is usually not the binding
+//      constraint, which is exactly why it is kept: it is the backstop for the
+//      cases smoothing does not cover, such as a clock that jumps, or a future
+//      change that loosens the gap.
 //
 // The default is deliberately BELOW the ceiling. A limiter tuned exactly to
 // the documented limit has no margin for the server counting slightly
@@ -35,6 +43,7 @@ export const WINDOW_MS = 60_000;
 
 export class RateLimiter {
   private readonly timestamps: number[] = [];
+  private lastRequestAt: number | null = null;
   /** Total time spent waiting, so the report can say how much of the runtime was pacing. */
   private waited = 0;
 
@@ -57,6 +66,16 @@ export class RateLimiter {
     return this.waited;
   }
 
+  /**
+   * Minimum gap between consecutive requests.
+   *
+   * Rounded UP, so N requests genuinely occupy at least one window rather than
+   * landing a fraction under it and letting an extra request in at the edge.
+   */
+  get minIntervalMs(): number {
+    return Math.ceil(this.windowMs / this.maxPerWindow);
+  }
+
   /** Blocks until another request may be made, then records it. Returns ms waited. */
   async acquire(): Promise<number> {
     let waitedHere = 0;
@@ -66,14 +85,25 @@ export class RateLimiter {
       while (this.timestamps.length > 0 && now - this.timestamps[0] >= this.windowMs) {
         this.timestamps.shift();
       }
-      if (this.timestamps.length < this.maxPerWindow) {
+
+      // Constraint 1: spacing. A negative elapsed (a clock that stepped
+      // backwards) yields a wait larger than the interval, which is the safe
+      // direction — it never shortens the gap.
+      const sinceLast = this.lastRequestAt === null ? Number.POSITIVE_INFINITY : now - this.lastRequestAt;
+      const spacingWait = sinceLast >= this.minIntervalMs ? 0 : this.minIntervalMs - sinceLast;
+
+      // Constraint 2: the rolling window. The +1 avoids a spin when
+      // now - oldest lands precisely on the boundary.
+      const windowWait =
+        this.timestamps.length < this.maxPerWindow ? 0 : this.timestamps[0] + this.windowMs - now + 1;
+
+      const wait = Math.max(spacingWait, windowWait);
+      if (wait <= 0) {
         this.timestamps.push(now);
+        this.lastRequestAt = now;
         this.waited += waitedHere;
         return waitedHere;
       }
-      // Wait exactly until the oldest request leaves the window. The +1 avoids
-      // a spin when now - oldest lands precisely on the boundary.
-      const wait = this.timestamps[0] + this.windowMs - now + 1;
       await this.clock.sleep(wait);
       waitedHere += wait;
     }

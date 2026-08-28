@@ -61,13 +61,31 @@ describe('the coverage tool measures and nothing else', () => {
     expect(codeOnly(read(path.join(here, 'measure-coverage.ts')))).toContain('readAccessToken()');
   });
 
-  it('carries no field able to hold a URL or an identifier', () => {
+  it('carries no field able to hold a URL, an identifier, or free text', () => {
     // The redaction guarantee is a shape, not a filter: GpuCoverage holds ids,
-    // names and counts, and there is nowhere for a tracked link to live.
+    // names and counts, and there is nowhere for a tracked link — or for an
+    // error message quoting a response body — to live.
     const report = codeOnly(read(path.join(here, 'coverageReport.ts')));
-    for (const forbidden of ['trackedAffiliateUrl', 'imageUrl', 'linkurl', 'sku', 'upc']) {
+    for (const forbidden of ['trackedAffiliateUrl', 'imageUrl', 'linkurl', 'sku', 'upc', 'failureMessage', 'failureKind']) {
       expect(report.includes(forbidden), `coverageReport.ts must not carry ${forbidden}`).toBe(false);
     }
+  });
+
+  it('the report type has no string field beyond ids, names, categories and timestamps', () => {
+    // Enumerated deliberately: adding a string field to this type is the one
+    // change that could reintroduce arbitrary text into a pasted document, so
+    // it has to be a conscious edit here as well.
+    const report = read(path.join(here, 'coverageReport.ts'));
+    const stringFields = [...report.matchAll(/^\s{2}(\w+)(\?)?:\s*string(\s*\|\s*null)?;/gm)].map((m) => m[1]);
+    expect([...new Set(stringFields)].sort()).toEqual(['finishedAt', 'gpuId', 'gpuName', 'startedAt']);
+  });
+
+  it('classifies failures from the error TYPE, never from its message', () => {
+    const measure = codeOnly(read(path.join(here, 'measureCoverage.ts')));
+    expect(measure).toContain('instanceof RakutenRequestError');
+    // Reading .message anywhere in the sweep would be the reintroduction of
+    // exactly the field the structured category replaced.
+    expect(/\.message\b/.test(measure), 'measureCoverage.ts must not read an error message').toBe(false);
   });
 
   it('does not modify the adapter it measures', () => {
