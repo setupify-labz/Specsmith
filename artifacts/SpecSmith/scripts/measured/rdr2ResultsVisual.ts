@@ -429,6 +429,9 @@ export interface VisualSample {
   captureMs: number;
   /** Set when the sampler itself refused — a minimised window, an ambiguous match, a failed PrintWindow. */
   samplerRefusal?: string;
+  /** Client-area size the sample was taken from. Recorded so a calibration says what it was captured at; the grid is resampled, so detection never requires a match. */
+  windowWidth?: number;
+  windowHeight?: number;
 }
 
 export interface VisualBoundary {

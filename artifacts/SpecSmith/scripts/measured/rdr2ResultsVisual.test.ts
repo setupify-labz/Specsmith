@@ -265,6 +265,30 @@ describe('images cannot enter research bundles, observations or uploads', () => 
   });
 });
 
+describe('the Windows sampler avoids two defects that no unit test can reach', () => {
+  const sampler = (): string => fs.readFileSync(path.join(__dirname, 'detectRdr2Results.ps1'), 'utf-8');
+
+  it('never names a variable $pid, which is a read-only PowerShell automatic', () => {
+    // Shadowing $PID is a runtime hazard on the one platform this script runs
+    // on, and this repo cannot execute PowerShell to find out the hard way.
+    expect(sampler()).not.toMatch(/\$pid\b/);
+  });
+
+  it('enumerates top-level windows, so the documented ambiguity refusal can actually fire', () => {
+    // Get-Process yields ONE process carrying ONE MainWindowHandle, so a guard
+    // written against it could never see a second candidate window. The script
+    // documents that refusal, so the refusal has to be reachable.
+    const src = sampler();
+    expect(src).toMatch(/VisibleTopLevelWindowsFor/);
+    expect(src).toMatch(/EnumWindows/);
+    expect(src).toMatch(/GetWindowThreadProcessId/);
+    // The comment above the function explains why MainWindowHandle was
+    // abandoned, so this targets a CODE use of it rather than any mention.
+    expect(src).not.toMatch(/\$\w+\.MainWindowHandle/);
+    expect(src).toMatch(/visible top-level windows; refusing rather than guessing/);
+  });
+});
+
 describe('the visual evidence kind is distinct from the operator marker', () => {
   it('the operator-marker reader refuses visual evidence', () => {
     const dir = tmpDir();
@@ -373,6 +397,28 @@ describe('the CLI is opt-in and refuses misuse', () => {
     expect(samples[0].samplerRefusal).toMatch(/minimised/);
     expect(samples[1].grid).toHaveLength(GRID_CELLS);
     expect(samples[1].captureMs).toBe(9);
+  });
+
+  it('carries the window size through, so a calibration can record what it was captured at', async () => {
+    // An earlier version dropped w/h here and wrote 0x0 into the calibration —
+    // a false statement in a file whose whole job is to record provenance.
+    const samples = await collectSamples({
+      lines: (async function* () { yield JSON.stringify({ ok: true, grid: new Array(GRID_CELLS).fill(100), captureMs: 5, w: 2560, h: 1440 }); })(),
+      log: () => {},
+      monotonicNs: () => 1n,
+    });
+    expect(samples[0].windowWidth).toBe(2560);
+    expect(samples[0].windowHeight).toBe(1440);
+  });
+
+  it('leaves the window size undefined when the sampler omits it, rather than inventing zeros', async () => {
+    const samples = await collectSamples({
+      lines: (async function* () { yield JSON.stringify({ ok: true, grid: new Array(GRID_CELLS).fill(100), captureMs: 5 }); })(),
+      log: () => {},
+      monotonicNs: () => 1n,
+    });
+    expect(samples[0].windowWidth).toBeUndefined();
+    expect(samples[0].windowHeight).toBeUndefined();
   });
 
   it('refuses a sampler grid of the wrong size rather than scoring it', async () => {

@@ -17,7 +17,7 @@
 
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)][int]$ProcessId,
+  [Parameter(Mandatory = $true)][int]$TargetProcessId,
   [double]$CropX = 0.15,
   [double]$CropY = 0.08,
   [double]$CropW = 0.70,
@@ -42,7 +42,31 @@ public static class SpecsmithWin {
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd, out RECT rect);
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hwnd);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hwnd, uint cmd);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc cb, IntPtr lParam);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+  private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+
+  // Visible, non-owned top-level windows belonging to one process. Owned
+  // windows (GW_OWNER != 0) are dialogs and tooltips, not the game surface, so
+  // they are excluded rather than counted as ambiguity.
+  public static System.Collections.Generic.List<IntPtr> VisibleTopLevelWindowsFor(int targetPid) {
+    var found = new System.Collections.Generic.List<IntPtr>();
+    EnumWindows(delegate(IntPtr hwnd, IntPtr lParam) {
+      uint owner;
+      GetWindowThreadProcessId(hwnd, out owner);
+      if ((int)owner != targetPid) return true;
+      if (!IsWindowVisible(hwnd)) return true;
+      if (GetWindow(hwnd, 4 /* GW_OWNER */) != IntPtr.Zero) return true;
+      RECT r;
+      if (!GetClientRect(hwnd, out r)) return true;
+      if ((r.Right - r.Left) < 64 || (r.Bottom - r.Top) < 64) return true;
+      found.Add(hwnd);
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
 }
 "@
 
@@ -77,16 +101,20 @@ Without the debug-image option no frame is ever written to disk.
 # Resolve exactly one candidate window for the PID. Ambiguity is refused rather
 # than resolved by picking the first, because capturing the wrong window would
 # produce a confident answer about something that is not the game.
-function Resolve-GameWindow([int]$pid) {
-  $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
-  if ($null -eq $proc) { return @{ ok = $false; reason = "no process with pid $pid" } }
-  $handles = @()
-  foreach ($p in @($proc)) {
-    if ($p.MainWindowHandle -ne [IntPtr]::Zero) { $handles += $p.MainWindowHandle }
+#
+# This ENUMERATES top-level windows rather than reading MainWindowHandle. An
+# earlier version used Get-Process, which yields one process object carrying one
+# MainWindowHandle — so the "more than one candidate" branch below could never
+# be reached, and the ambiguity guard this script documents was dead code.
+# A game with a splash window still up, or a second instance, is exactly the
+# case that must be refused, so the check has to be able to see it.
+function Resolve-GameWindow([int]$TargetPid) {
+  if ($null -eq (Get-Process -Id $TargetPid -ErrorAction SilentlyContinue)) {
+    return @{ ok = $false; reason = "no process with pid $TargetPid" }
   }
-  $handles = @($handles | Sort-Object -Unique)
-  if ($handles.Count -eq 0) { return @{ ok = $false; reason = "pid $pid has no main window (it may be minimised to tray, or not yet showing)" } }
-  if ($handles.Count -gt 1) { return @{ ok = $false; reason = "pid $pid exposes $($handles.Count) candidate windows; refusing rather than guessing which is the game" } }
+  $handles = [SpecsmithWin]::VisibleTopLevelWindowsFor($TargetPid)
+  if ($handles.Count -eq 0) { return @{ ok = $false; reason = "pid $TargetPid has no visible top-level window (it may be minimised to tray, or not yet showing)" } }
+  if ($handles.Count -gt 1) { return @{ ok = $false; reason = "pid $TargetPid exposes $($handles.Count) visible top-level windows; refusing rather than guessing which is the game" } }
   return @{ ok = $true; hwnd = $handles[0] }
 }
 
@@ -98,7 +126,7 @@ while ($true) {
   $bmp = $null
   $gfx = $null
   try {
-    $win = Resolve-GameWindow -pid $ProcessId
+    $win = Resolve-GameWindow -TargetPid $TargetProcessId
     if (-not $win.ok) { Write-Sample @{ ok = $false; reason = $win.reason }; }
     else {
       $hwnd = $win.hwnd

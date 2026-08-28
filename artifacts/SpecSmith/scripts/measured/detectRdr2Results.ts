@@ -177,7 +177,13 @@ export async function collectSamples(io: SamplerIo, maxSamples?: number): Promis
     } else if (!Array.isArray(raw.grid) || raw.grid.length !== GRID_CELLS) {
       out.push({ atMonotonicNs, grid: [], captureMs: Number.NaN, samplerRefusal: `sampler returned ${raw.grid?.length ?? 0} cells, expected ${GRID_CELLS}` });
     } else {
-      out.push({ atMonotonicNs, grid: raw.grid, captureMs: Number(raw.captureMs ?? Number.NaN) });
+      out.push({
+        atMonotonicNs,
+        grid: raw.grid,
+        captureMs: Number(raw.captureMs ?? Number.NaN),
+        windowWidth: Number.isFinite(raw.w) ? raw.w : undefined,
+        windowHeight: Number.isFinite(raw.h) ? raw.h : undefined,
+      });
     }
     if (maxSamples !== undefined && out.length >= maxSamples) break;
   }
@@ -229,6 +235,10 @@ export async function main(argv: readonly string[]): Promise<number> {
       console.error(`Could not capture a usable frame: ${samples[0]?.samplerRefusal ?? 'no samples at all'}`);
       return 1;
     }
+    if (usable.windowWidth === undefined || usable.windowHeight === undefined) {
+      console.error('The sampler did not report the window size, so a calibration could not record what it was captured at. Refusing to write one that misstates its own provenance.');
+      return 1;
+    }
     const signature = signatureFromGrid(usable.grid);
     writeVisualCalibration(args.outPath, {
       schemaVersion: RDR2_VISUAL_SCHEMA_VERSION,
@@ -237,10 +247,12 @@ export async function main(argv: readonly string[]): Promise<number> {
       note: 'Reference signature for RDR2\'s results-screen title, captured on this machine at this resolution and language. Research only.',
       capturedAtWallClock: new Date().toISOString(),
       crop: args.crop,
-      sourceWindow: { width: 0, height: 0 },
+      // What it was actually captured at. Writing a placeholder here would put a
+      // false statement into a file whose whole job is to record provenance.
+      sourceWindow: { width: usable.windowWidth, height: usable.windowHeight },
       signature,
     }, args.bundleDir);
-    console.log(`\nWrote calibration to ${args.outPath} (ink fraction ${signature.inkFraction.toFixed(4)}).`);
+    console.log(`\nWrote calibration to ${args.outPath} (ink fraction ${signature.inkFraction.toFixed(4)}, captured at ${usable.windowWidth}x${usable.windowHeight}).`);
     console.log('Check that number looks like a line of text and not a blank screen before relying on it.');
     return 0;
   }

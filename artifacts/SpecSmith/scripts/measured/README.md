@@ -960,7 +960,10 @@ Match at >= 0.70, no-match below 0.45, **anything between is refused**. These
 are provisional: they come from a synthetic block font, not from RDR2, and must
 be re-checked against a real calibration.
 
-**Fails closed** on: no window for the PID, more than one candidate window, a
+**Fails closed** on: no visible top-level window for the PID, more than one
+visible top-level window (enumerated via `EnumWindows` +
+`GetWindowThreadProcessId`, excluding owned dialogs — a splash window still up,
+or a second instance, is refused rather than guessed at), a
 minimized or invisible window, a client rect too small, `PrintWindow` failure
 (exclusive fullscreen returns black), a crop outside the rect, a blank or black
 crop, a crop too dense to be a title, a grid of the wrong size, and any score
