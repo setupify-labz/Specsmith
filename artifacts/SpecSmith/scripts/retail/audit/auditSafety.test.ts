@@ -98,14 +98,10 @@ describe('the audit CLI is a one-way, fail-closed evidence tool', () => {
   });
 });
 
-describe('the audit workflow is temporary and non-publishing', () => {
-  it('has a one-file bootstrap push plus workflow_dispatch — no PR or schedule', () => {
-    expect(body).toMatch(/on:\s*\n\s*push:/);
-    expect(body).toContain('claude/rakuten-newegg-adapter-97h85y');
-    expect(body).toContain("'.github/workflows/audit-accepted-offers.yml'");
-    expect(body).toContain('workflow_dispatch:');
-    expect(body).not.toMatch(/^\s*(pull_request|pull_request_target|schedule):/m);
-    expect(body).not.toContain("'artifacts/**'");
+describe('the audit workflow is manual, temporary and non-publishing', () => {
+  it('has only workflow_dispatch — no push, PR or schedule', () => {
+    expect(body).toMatch(/on:\s*\n\s*workflow_dispatch:/);
+    expect(body).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule):/m);
   });
 
   it('has read-only permissions, an exact checkout and no persisted git credential', () => {

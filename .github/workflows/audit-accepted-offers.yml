@@ -6,14 +6,6 @@
 name: Audit accepted GPU offers
 
 on:
-  # One-time bootstrap for the first evidence run: this path can start only
-  # when this workflow file itself changes on the implementation branch. The
-  # trigger is removed immediately after the artifact is collected.
-  push:
-    branches:
-      - claude/rakuten-newegg-adapter-97h85y
-    paths:
-      - '.github/workflows/audit-accepted-offers.yml'
   workflow_dispatch:
 
 permissions:
