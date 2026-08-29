@@ -933,9 +933,14 @@ sidesteps localization — your signature is in your language, at your
 resolution and UI scale.
 
 **How it works.** `detectRdr2Results.ps1` resolves the HWND for the exact PID,
-captures the **window** with `PrintWindow(PW_RENDERFULLCONTENT)` — never the
-desktop, and tolerant of partial occlusion — crops a normalized band, and
-reduces it to a 320x80 greyscale grid **inside its own process**. Only that
+captures the window's **client area** with
+`PrintWindow(PW_CLIENTONLY | PW_RENDERFULLCONTENT)` — never the desktop, and
+tolerant of partial occlusion — crops a normalized band, and reduces it to a
+320x80 greyscale grid **inside its own process** via `LockBits`. The
+client-only flag matters: the bitmap is sized from `GetClientRect`, and
+`PrintWindow`'s default copies the whole window including caption and border,
+which would offset the content inside that bitmap and silently move every crop
+fraction onto the wrong band. Only that
 grid crosses into Node. Recognition binarizes with Otsu, normalizes the ink's
 bounding box to a canonical shape, and scores Matthews correlation against the
 calibrated reference.

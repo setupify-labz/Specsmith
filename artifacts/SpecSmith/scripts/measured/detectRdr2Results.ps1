@@ -48,6 +48,20 @@ public static class SpecsmithWin {
   private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
+  // Rec. 601 luma from a 32bpp BGRA buffer. Compiled rather than looped in
+  // PowerShell: this runs once per pixel per sample, beside a benchmark.
+  public static int[] LumaFromBgra(byte[] buffer, int stride, int width, int height) {
+    var outp = new int[width * height];
+    for (int y = 0; y < height; y++) {
+      int row = y * stride;
+      for (int x = 0; x < width; x++) {
+        int i = row + x * 4;
+        outp[y * width + x] = (int)(0.114 * buffer[i] + 0.587 * buffer[i + 1] + 0.299 * buffer[i + 2]);
+      }
+    }
+    return outp;
+  }
+
   // Visible, non-owned top-level windows belonging to one process. Owned
   // windows (GW_OWNER != 0) are dialogs and tooltips, not the game surface, so
   // they are excluded rather than counted as ambiguity.
@@ -122,6 +136,14 @@ $intervalMs = [int](1000.0 / $Hz)
 $count = 0
 
 while ($true) {
+  # Two stopwatches on purpose. $started measures CAPTURE, which is what
+  # captureMs reports and is stopped before the sample is serialised. $loop
+  # measures the whole iteration including writing 25,600 numbers to stdout,
+  # which is what the sleep has to subtract if the requested rate is to be the
+  # real one. Reusing the capture stopwatch for pacing made every interval
+  # longer than asked for, and the sample interval is what sets the width of
+  # the boundary this tool reports.
+  $loop = [System.Diagnostics.Stopwatch]::StartNew()
   $started = [System.Diagnostics.Stopwatch]::StartNew()
   $bmp = $null
   $gfx = $null
@@ -143,11 +165,24 @@ while ($true) {
             $bmp = New-Object System.Drawing.Bitmap($w, $h)
             $gfx = [System.Drawing.Graphics]::FromImage($bmp)
             $hdc = $gfx.GetHdc()
-            # PW_RENDERFULLCONTENT (0x2): renders the window's own content, so a
-            # partially occluded window still captures correctly and the desktop
-            # is never read. DX exclusive fullscreen can return black here; that
-            # is detected below and refused rather than reported as a negative.
-            $printed = [SpecsmithWin]::PrintWindow($hwnd, $hdc, 0x2)
+            # PW_CLIENTONLY (0x1) | PW_RENDERFULLCONTENT (0x2).
+            #
+            # The bitmap above is sized from GetClientRect, so the flags MUST ask
+            # for the client area. PrintWindow's default copies the ENTIRE
+            # window including border and caption, which on a titled window
+            # would land the client content offset down-and-right inside a
+            # client-sized bitmap — every crop fraction would then address the
+            # wrong band, silently, and calibration would bake the same error in
+            # rather than failing closed. PW_CLIENTONLY keeps the two agreeing.
+            #
+            # RENDERFULLCONTENT is what makes a partially occluded or
+            # composited window capture its own content instead of the desktop.
+            # DX exclusive fullscreen can still hand back an all-black frame
+            # with a TRUE return; that is caught downstream by the ink-fraction
+            # floor in rdr2ResultsVisual.ts, which refuses a blank crop rather
+            # than counting it as a negative. It is deliberately checked in one
+            # place only, so there is a single bar rather than two that can drift.
+            $printed = [SpecsmithWin]::PrintWindow($hwnd, $hdc, 0x3)
             $gfx.ReleaseHdc($hdc)
             if (-not $printed) { Write-Sample @{ ok = $false; reason = 'PrintWindow failed (the window may be in exclusive fullscreen)' } }
             else {
@@ -166,14 +201,18 @@ while ($true) {
                 $sg.DrawImage($bmp, $dstRect, $srcRect, [System.Drawing.GraphicsUnit]::Pixel)
                 $sg.Dispose()
 
-                $grid = New-Object 'System.Collections.Generic.List[int]'
-                for ($y = 0; $y -lt $GridHeight; $y++) {
-                  for ($x = 0; $x -lt $GridWidth; $x++) {
-                    $p = $small.GetPixel($x, $y)
-                    # Rec. 601 luma.
-                    $grid.Add([int](0.299 * $p.R + 0.587 * $p.G + 0.114 * $p.B))
-                  }
-                }
+                # LockBits, not GetPixel. GetPixel is a per-call round trip and
+                # this reads 25,600 pixels a sample; on a process deliberately
+                # running beside a benchmark, that cost lands on the machine
+                # whose frame times are being measured. One locked copy plus a
+                # compiled luma loop keeps the sampler cheap.
+                $lockRect = New-Object System.Drawing.Rectangle(0, 0, $GridWidth, $GridHeight)
+                $data = $small.LockBits($lockRect, [System.Drawing.Imaging.ImageLockMode]::ReadOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+                $stride = $data.Stride
+                $buffer = New-Object byte[] ($stride * $GridHeight)
+                [System.Runtime.InteropServices.Marshal]::Copy($data.Scan0, $buffer, 0, $buffer.Length)
+                $small.UnlockBits($data)
+                $grid = [SpecsmithWin]::LumaFromBgra($buffer, $stride, $GridWidth, $GridHeight)
 
                 if ($DebugDir -ne '') {
                   $crop = New-Object System.Drawing.Bitmap($cw, $ch)
@@ -186,7 +225,7 @@ while ($true) {
                 $small.Dispose()
 
                 $started.Stop()
-                Write-Sample @{ ok = $true; grid = $grid.ToArray(); w = $w; h = $h; captureMs = $started.Elapsed.TotalMilliseconds }
+                Write-Sample @{ ok = $true; grid = $grid; w = $w; h = $h; captureMs = $started.Elapsed.TotalMilliseconds }
               }
             }
           }
@@ -203,7 +242,6 @@ while ($true) {
 
   $count++
   if ($MaxSamples -gt 0 -and $count -ge $MaxSamples) { break }
-  $elapsed = $started.Elapsed.TotalMilliseconds
-  $sleep = [int]([Math]::Max(0, $intervalMs - $elapsed))
+  $sleep = [int]([Math]::Max(0, $intervalMs - $loop.Elapsed.TotalMilliseconds))
   if ($sleep -gt 0) { Start-Sleep -Milliseconds $sleep }
 }

@@ -265,13 +265,52 @@ describe('images cannot enter research bundles, observations or uploads', () => 
   });
 });
 
-describe('the Windows sampler avoids two defects that no unit test can reach', () => {
+describe('the Windows sampler avoids defects that no unit test can reach', () => {
   const sampler = (): string => fs.readFileSync(path.join(__dirname, 'detectRdr2Results.ps1'), 'utf-8');
 
   it('never names a variable $pid, which is a read-only PowerShell automatic', () => {
     // Shadowing $PID is a runtime hazard on the one platform this script runs
     // on, and this repo cannot execute PowerShell to find out the hard way.
     expect(sampler()).not.toMatch(/\$pid\b/);
+  });
+
+  it('asks PrintWindow for the CLIENT area, matching the client-sized bitmap', () => {
+    // The bitmap is sized from GetClientRect. PrintWindow's default copies the
+    // whole window including caption and border, which would offset the client
+    // content inside that bitmap and silently move every crop fraction onto the
+    // wrong band — and calibration would bake the same error in rather than
+    // failing closed. PW_CLIENTONLY (0x1) | PW_RENDERFULLCONTENT (0x2) = 0x3.
+    const src = sampler();
+    expect(src).toMatch(/PrintWindow\(\$hwnd, \$hdc, 0x3\)/);
+    expect(src).not.toMatch(/PrintWindow\(\$hwnd, \$hdc, 0x2\)/);
+  });
+
+  it('reads pixels with LockBits rather than GetPixel', () => {
+    // 25,600 GetPixel round trips per sample lands on the machine whose frame
+    // times are being measured, which is the one thing this sampler must not
+    // disturb.
+    const src = sampler();
+    expect(src).toMatch(/LockBits/);
+    expect(src).toMatch(/LumaFromBgra/);
+    // The comment above the reduction explains why GetPixel was abandoned, so
+    // this targets a CODE call rather than any mention of the name.
+    expect(src).not.toMatch(/\$\w+\.GetPixel\(/);
+  });
+
+  it('paces the loop on a stopwatch that includes writing the sample', () => {
+    // The capture stopwatch stops before serialising 25,600 numbers, so pacing
+    // on it made every interval longer than requested — and the sample interval
+    // is exactly what sets the width of the boundary this tool reports.
+    const src = sampler();
+    expect(src).toMatch(/\$loop = \[System\.Diagnostics\.Stopwatch\]::StartNew\(\)/);
+    expect(src).toMatch(/\$intervalMs - \$loop\.Elapsed\.TotalMilliseconds/);
+  });
+
+  it('does not claim the black-frame check happens in the sampler when it happens downstream', () => {
+    // The comment used to say a black frame was "detected below" in this
+    // script. It is not: the ink-fraction floor in rdr2ResultsVisual.ts catches
+    // it. One bar in one place, and the comment has to say where.
+    expect(sampler()).not.toMatch(/detected below and refused/);
   });
 
   it('enumerates top-level windows, so the documented ambiguity refusal can actually fire', () => {
