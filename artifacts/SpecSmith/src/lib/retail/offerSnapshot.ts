@@ -148,8 +148,54 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 /** A non-empty string with no surrounding whitespace to trim away. */
 const isText = (v: unknown): v is string => typeof v === 'string' && v.trim() !== '';
 
-/** A real, finite, non-negative amount. NaN, Infinity and negatives are not prices. */
-const isPrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+/**
+ * A real, finite amount ABOVE zero.
+ *
+ * Zero is not a price at either end. The adapter already refuses a listing
+ * whose `<price>` is zero or less, and it normalizes a zero `<saleprice>` to
+ * null because the feed writes 0 for "no sale running". Re-stating the rule
+ * here is not duplication: this parser is the last thing between a file and a
+ * page, it runs in a browser against a file it did not write, and "$0.00" is
+ * the single most damaging number a shopping page can display.
+ */
+const isPositivePrice = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+
+/**
+ * ISO 4217: exactly three uppercase letters.
+ *
+ * A currency is a label on an amount, and a wrong or empty one turns a price
+ * into a number. Anchored and exact — no lowercase, no padding, no 'US$' — so
+ * a page can render the code beside the figure without inspecting it first.
+ */
+export const CURRENCY_PATTERN = /^[A-Z]{3}$/;
+export const isCurrencyCode = (v: unknown): boolean => typeof v === 'string' && CURRENCY_PATTERN.test(v);
+
+/**
+ * The only hosts a tracked affiliate link may point at.
+ *
+ * Attribution lives in the redirect: a link to newegg.com directly, or to
+ * anywhere else, produces a buy button that silently earns nothing — and a
+ * link to an attacker-chosen host produces something worse. The adapter
+ * refuses a listing whose `<linkurl>` is not one of these; this keeps the same
+ * promise at the point where a URL becomes an href.
+ *
+ * Compared as an EXACT hostname, never a prefix or a substring:
+ * `click.linksynergy.com.evil.test` and `evil.test/click.linksynergy.com` both
+ * contain the string and neither is the network.
+ */
+export const TRACKED_LINK_HOSTS: readonly string[] = ['click.linksynergy.com', 'www.linksynergy.com'];
+
+export const isTrackedAffiliateUrl = (v: unknown): boolean => {
+  if (!isText(v)) return false;
+  try {
+    const url = new URL(v);
+    // https only: the tracking redirect carries the click, and an http hop is
+    // one a network can rewrite.
+    return url.protocol === 'https:' && TRACKED_LINK_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
+};
 
 /** An ISO 8601 instant the runtime can actually parse. */
 export const isInstant = (v: unknown): v is string =>
@@ -176,13 +222,18 @@ function parseOffer(raw: unknown): SnapshotOffer | null {
   if (!isObject(raw)) return null;
   const { sku, upc, productName, retailPrice, salePrice, currency, imageUrl, trackedAffiliateUrl, fetchedAt, availability } = raw;
 
-  if (!isText(sku) || !isText(productName) || !isText(currency)) return null;
+  if (!isText(sku) || !isText(productName)) return null;
+  if (!isCurrencyCode(currency)) return null;
   if (upc !== null && !isText(upc)) return null;
-  if (!isPrice(retailPrice)) return null;
+  if (!isPositivePrice(retailPrice)) return null;
   // Null means "nothing discounted". A zero would make every un-discounted
   // card look free, so it is not a value this schema accepts at all.
-  if (salePrice !== null && (!isPrice(salePrice) || salePrice === 0)) return null;
-  if (!isHttpUrl(imageUrl) || !isHttpUrl(trackedAffiliateUrl)) return null;
+  if (salePrice !== null && !isPositivePrice(salePrice)) return null;
+  if (!isHttpUrl(imageUrl)) return null;
+  // The tracked link is held to the network's own hosts; the image is only
+  // held to being http(s), because it is a picture from a merchant CDN and
+  // pinning that host list is a promise this code cannot keep.
+  if (!isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
   if (!isInstant(fetchedAt)) return null;
   if (availability !== AVAILABILITY_UNKNOWN) return null;
 
@@ -192,7 +243,7 @@ function parseOffer(raw: unknown): SnapshotOffer | null {
     productName,
     retailPrice,
     salePrice: salePrice === null ? null : (salePrice as number),
-    currency,
+    currency: currency as string,
     imageUrl: imageUrl as string,
     trackedAffiliateUrl: trackedAffiliateUrl as string,
     fetchedAt,

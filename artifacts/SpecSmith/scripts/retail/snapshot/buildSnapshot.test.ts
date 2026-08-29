@@ -44,6 +44,15 @@ const ok = (gpuId: string, offers: NeweggOffer[], over: Partial<Extract<GpuSweep
   ...over,
 });
 
+/**
+ * The expected list for a test whose subject is NOT catalogue coverage.
+ *
+ * Derived from the outcomes deliberately: these cases are about collapse,
+ * failures and schema, so the coverage check must be satisfied and silent. The
+ * coverage rules get their own suite below, where the two lists differ.
+ */
+const covering = (outcomes: readonly GpuSweepOutcome[]): string[] => outcomes.map((o) => o.gpuId);
+
 const failed = (gpuId: string): GpuSweepOutcome => ({
   gpuId,
   status: 'failed',
@@ -84,27 +93,23 @@ describe('only accepted offers are persisted, and only what a reader needs', () 
   it('a GPU whose listings were all rejected is stored as such, with no offers', () => {
     // The rejected listings themselves are never persisted — they are other
     // cards, and their prices are not this card's price.
-    const built = buildSnapshot({
-      outcomes: [ok('arca750', [], { emptyResult: false, itemsSeen: 1 })],
-      generatedAt: GENERATED_AT,
-    });
+    const outcomes = [ok('arca750', [], { emptyResult: false, itemsSeen: 1 })];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.snapshot.gpus).toEqual([{ gpuId: 'arca750', result: 'listings-all-rejected', offers: [] }]);
   });
 
   it('separates "no matching listing" from "listings came back and none matched"', () => {
-    const built = buildSnapshot({
-      outcomes: [ok('rtx4090', [], { emptyResult: true, itemsSeen: 0 }), ok('arca750', [], { emptyResult: false, itemsSeen: 3 })],
-      generatedAt: GENERATED_AT,
-    });
+    const outcomes = [ok('rtx4090', [], { emptyResult: true, itemsSeen: 0 }), ok('arca750', [], { emptyResult: false, itemsSeen: 3 })];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.snapshot.gpus.map((g) => g.result)).toEqual(['no-matching-listing', 'listings-all-rejected']);
   });
 
   it('stamps the schema and adapter versions so old records stay detectable', () => {
-    const built = buildSnapshot({ outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')])], generatedAt: GENERATED_AT });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx5070'], outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')])], generatedAt: GENERATED_AT });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.snapshot.schemaVersion).toBe(OFFER_SNAPSHOT_SCHEMA_VERSION);
@@ -115,7 +120,7 @@ describe('only accepted offers are persisted, and only what a reader needs', () 
   it('refuses an offer filed under a GPU it was not verified against', () => {
     // A defect rather than a condition, and the one that would put an RTX 4060
     // price on the RTX 4090's row.
-    const built = buildSnapshot({ outcomes: [ok('rtx4090', [accepted('rtx4060', 'A')])], generatedAt: GENERATED_AT });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx4090'], outcomes: [ok('rtx4090', [accepted('rtx4060', 'A')])], generatedAt: GENERATED_AT });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('offer-gpu-mismatch');
@@ -124,10 +129,8 @@ describe('only accepted offers are persisted, and only what a reader needs', () 
 
 describe('a partial sweep is never published', () => {
   it('refuses when any GPU request failed', () => {
-    const built = buildSnapshot({
-      outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')]), failed('rtx5080')],
-      generatedAt: GENERATED_AT,
-    });
+    const outcomes = [ok('rtx5070', [accepted('rtx5070', 'A')]), failed('rtx5080')];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('gpu-request-failed');
@@ -136,23 +139,20 @@ describe('a partial sweep is never published', () => {
 
   it('refuses even when the failures are the only thing wrong and everything else looks fine', () => {
     const outcomes = [...Array.from({ length: 20 }, (_, i) => ok(`gpu${i}`, [accepted(`gpu${i}`, `SKU${i}`)])), failed('gpu99')];
-    const built = buildSnapshot({ outcomes, generatedAt: GENERATED_AT });
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT });
     expect(built.ok).toBe(false);
     if (!built.ok) expect(built.refusal.code).toBe('gpu-request-failed');
   });
 
   it('refuses a sweep that covered nothing', () => {
-    const built = buildSnapshot({ outcomes: [], generatedAt: GENERATED_AT });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx5070'], outcomes: [], generatedAt: GENERATED_AT });
     expect(built.ok).toBe(false);
-    if (!built.ok) expect(built.refusal.code).toBe('no-gpus-swept');
+    if (!built.ok) expect(built.refusal.code).toBe('outcome-missing-gpu');
   });
 
   it('publishes when every GPU answered, including the ones with no offers', () => {
-    const built = buildSnapshot({
-      outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')]), ok('rtx4090', [], { emptyResult: true, itemsSeen: 0 })],
-      generatedAt: GENERATED_AT,
-    });
-    expect(built.ok).toBe(true);
+    const outcomes = [ok('rtx5070', [accepted('rtx5070', 'A')]), ok('rtx4090', [], { emptyResult: true, itemsSeen: 0 })];
+    expect(buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT }).ok).toBe(true);
   });
 });
 
@@ -166,11 +166,8 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
     );
 
   it('refuses a sweep that lost most of the GPUs that had offers', () => {
-    const built = buildSnapshot({
-      outcomes: [...sweepOf(3), ...Array.from({ length: 17 }, (_, i) => ok(`gpu${i + 3}`, [], { emptyResult: true, itemsSeen: 0 }))],
-      generatedAt: GENERATED_AT,
-      previous: previousWith(20),
-    });
+    const outcomes = [...sweepOf(3), ...Array.from({ length: 17 }, (_, i) => ok(`gpu${i + 3}`, [], { emptyResult: true, itemsSeen: 0 }))];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(20) });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('gpu-coverage-collapse');
@@ -181,11 +178,8 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
   it('refuses a whole-store wipe — every GPU answering with nothing', () => {
     // The dangerous shape: an upstream outage answering 200 with an empty
     // catalogue looks exactly like a successful sweep finding nothing.
-    const built = buildSnapshot({
-      outcomes: Array.from({ length: 20 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 })),
-      generatedAt: GENERATED_AT,
-      previous: previousWith(20),
-    });
+    const outcomes = Array.from({ length: 20 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 }));
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(20) });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('gpu-coverage-collapse');
@@ -195,11 +189,8 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
   it('refuses a collapse in offer COUNT even when the same GPUs still have one each', () => {
     // Coverage holds at 10 GPUs; the store goes from 40 offers to 10. A
     // GPU-count-only guard would wave this through.
-    const built = buildSnapshot({
-      outcomes: sweepOf(10, 1),
-      generatedAt: GENERATED_AT,
-      previous: previousWith(10, 4),
-    });
+    const outcomes = sweepOf(10, 1);
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(10, 4) });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('offer-count-collapse');
@@ -210,22 +201,26 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
   it('allows an ordinary shrink — feeds move between runs', () => {
     // 20 GPUs to 15, 40 offers to 30. Normal, and refusing it would make the
     // guard something people turn off.
-    const built = buildSnapshot({ outcomes: sweepOf(15), generatedAt: GENERATED_AT, previous: previousWith(20) });
-    expect(built.ok).toBe(true);
+    const outcomes = sweepOf(15);
+    expect(buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(true);
   });
 
   it('allows a drop of exactly half, and refuses one past it', () => {
-    expect(buildSnapshot({ outcomes: sweepOf(10), generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(true);
-    expect(buildSnapshot({ outcomes: sweepOf(9), generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(false);
+    const ten = sweepOf(10);
+    const nine = sweepOf(9);
+    expect(buildSnapshot({ expectedGpuIds: covering(ten), outcomes: ten, generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(true);
+    expect(buildSnapshot({ expectedGpuIds: covering(nine), outcomes: nine, generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(false);
     expect(MAX_SHRINK_RATIO).toBe(0.5);
   });
 
   it('allows growth, however large', () => {
-    expect(buildSnapshot({ outcomes: sweepOf(40), generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(true);
+    const outcomes = sweepOf(40);
+    expect(buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(20) }).ok).toBe(true);
   });
 
   it('does not fire when there is no previous snapshot — the first run has no baseline', () => {
-    const built = buildSnapshot({ outcomes: sweepOf(1), generatedAt: GENERATED_AT, previous: null });
+    const outcomes = sweepOf(1);
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: null });
     expect(built.ok).toBe(true);
   });
 
@@ -235,20 +230,14 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
     const tiny = previousWith(MIN_BASELINE_GPUS_WITH_OFFERS - 1, 1);
     expect(snapshotSize(tiny).gpusWithOffers).toBeLessThan(MIN_BASELINE_GPUS_WITH_OFFERS);
     expect(snapshotSize(tiny).offers).toBeLessThan(MIN_BASELINE_OFFERS);
-    const built = buildSnapshot({
-      outcomes: Array.from({ length: 4 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 })),
-      generatedAt: GENERATED_AT,
-      previous: tiny,
-    });
+    const outcomes = Array.from({ length: 4 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 }));
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: tiny });
     expect(built.ok).toBe(true);
   });
 
   it('checks failures BEFORE collapse, so the actionable reason is the one reported', () => {
-    const built = buildSnapshot({
-      outcomes: [...Array.from({ length: 19 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 })), failed('gpu19')],
-      generatedAt: GENERATED_AT,
-      previous: previousWith(20),
-    });
+    const outcomes = [...Array.from({ length: 19 }, (_, i) => ok(`gpu${i}`, [], { emptyResult: true, itemsSeen: 0 })), failed('gpu19')];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT, previous: previousWith(20) });
     expect(built.ok).toBe(false);
     if (!built.ok) expect(built.refusal.code).toBe('gpu-request-failed');
   });
@@ -256,10 +245,8 @@ describe('collapse protection keeps a known-good snapshot in place', () => {
 
 describe('what a refusal may say', () => {
   it('carries counts and a closed code — never a URL, a name or a price', () => {
-    const built = buildSnapshot({
-      outcomes: [ok('rtx5070', [accepted('rtx5070', 'N82E16814137837')]), failed('rtx5080')],
-      generatedAt: GENERATED_AT,
-    });
+    const outcomes = [ok('rtx5070', [accepted('rtx5070', 'N82E16814137837')]), failed('rtx5080')];
+    const built = buildSnapshot({ expectedGpuIds: covering(outcomes), outcomes, generatedAt: GENERATED_AT });
     expect(built.ok).toBe(false);
     if (built.ok) return;
 
@@ -270,7 +257,7 @@ describe('what a refusal may say', () => {
     }
     expect(line).toContain('[gpu-request-failed]');
     expect(Object.keys(built.refusal).sort()).toEqual(
-      ['code', 'failedGpus', 'gpusWithOffers', 'offers', 'previousGpusWithOffers', 'previousOffers', 'problem'].sort(),
+      ['code', 'failedGpus', 'gpuIds', 'gpusWithOffers', 'offers', 'previousGpusWithOffers', 'previousOffers', 'problem'].sort(),
     );
   });
 });
@@ -280,6 +267,7 @@ describe('the built snapshot is validated by the browser rules before it can be 
     // A price the feed could publish and the schema will not accept. Catching
     // it here means the file that replaces a working one is known readable.
     const built = buildSnapshot({
+      expectedGpuIds: ['rtx5070'],
       outcomes: [ok('rtx5070', [accepted('rtx5070', 'A', { salePrice: 0 })])],
       generatedAt: GENERATED_AT,
     });
@@ -290,8 +278,117 @@ describe('the built snapshot is validated by the browser rules before it can be 
   });
 
   it('refuses a candidate whose timestamp is not an instant', () => {
-    const built = buildSnapshot({ outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')])], generatedAt: 'just now' });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx5070'], outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')])], generatedAt: 'just now' });
     expect(built.ok).toBe(false);
     if (!built.ok) expect(built.refusal.code).toBe('schema-invalid');
+  });
+});
+
+describe('the sweep must have covered exactly the catalogue it was given', () => {
+  const three = ['rtx5070', 'rtx5080', 'rtx4090'];
+  const sweptOk = (ids: readonly string[]) => ids.map((id) => ok(id, [accepted(id, `SKU-${id}`)]));
+
+  it('publishes when the outcomes and the expected ids match exactly', () => {
+    const built = buildSnapshot({ expectedGpuIds: three, outcomes: sweptOk(three), generatedAt: GENERATED_AT });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.snapshot.gpus.map((g) => g.gpuId)).toEqual(three);
+  });
+
+  it('refuses when a catalogue GPU has no outcome, and names it', () => {
+    // The failure this exists for: a loop that stopped early produces a
+    // shorter list of perfectly valid outcomes, and the snapshot would look
+    // exactly like a catalogue that no longer contains those GPUs.
+    const built = buildSnapshot({ expectedGpuIds: three, outcomes: sweptOk(['rtx5070', 'rtx4090']), generatedAt: GENERATED_AT });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.refusal.code).toBe('outcome-missing-gpu');
+    expect(built.refusal.gpuIds).toEqual(['rtx5080']);
+  });
+
+  it('refuses one missing GPU out of many, not merely a mostly-empty sweep', () => {
+    // Mutation-resistant: a check written as "outcomes.length === 0" or
+    // "outcomes.length < expected.length / 2" passes this and it must not.
+    const many = Array.from({ length: 40 }, (_, i) => `gpu${i}`);
+    const built = buildSnapshot({ expectedGpuIds: many, outcomes: sweptOk(many.slice(0, 39)), generatedAt: GENERATED_AT });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.refusal.code).toBe('outcome-missing-gpu');
+    expect(built.refusal.gpuIds).toEqual(['gpu39']);
+  });
+
+  it('refuses an outcome for a GPU that was not expected', () => {
+    const built = buildSnapshot({
+      expectedGpuIds: ['rtx5070', 'rtx5080'],
+      outcomes: sweptOk(['rtx5070', 'rtx5080', 'rtx4090']),
+      generatedAt: GENERATED_AT,
+    });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.refusal.code).toBe('outcome-unexpected-gpu');
+    expect(built.refusal.gpuIds).toEqual(['rtx4090']);
+  });
+
+  it('refuses two outcomes for the same GPU', () => {
+    // A count-only check (outcomes.length === expected.length) passes a sweep
+    // that swept one GPU twice and another not at all. This is that sweep.
+    const built = buildSnapshot({
+      expectedGpuIds: three,
+      outcomes: [...sweptOk(['rtx5070', 'rtx5080']), ok('rtx5070', [accepted('rtx5070', 'SKU-again')])],
+      generatedAt: GENERATED_AT,
+    });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.refusal.code).toBe('outcome-duplicate-gpu');
+    expect(built.refusal.gpuIds).toEqual(['rtx5070']);
+  });
+
+  it('counting alone is not enough — same length, different sets', () => {
+    const built = buildSnapshot({ expectedGpuIds: three, outcomes: sweptOk(['rtx5070', 'rtx5080', 'rx9070']), generatedAt: GENERATED_AT });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    // Reported as the unexpected id; the missing one follows on the next run.
+    expect(built.refusal.code).toBe('outcome-unexpected-gpu');
+    expect(built.refusal.gpuIds).toEqual(['rx9070']);
+  });
+
+  it('refuses an expected list that is empty or names a GPU twice', () => {
+    const empty = buildSnapshot({ expectedGpuIds: [], outcomes: [], generatedAt: GENERATED_AT });
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.refusal.code).toBe('expected-ids-invalid');
+
+    const dup = buildSnapshot({
+      expectedGpuIds: ['rtx5070', 'rtx5070'],
+      outcomes: sweptOk(['rtx5070']),
+      generatedAt: GENERATED_AT,
+    });
+    expect(dup.ok).toBe(false);
+    if (dup.ok) return;
+    expect(dup.refusal.code).toBe('expected-ids-invalid');
+    expect(dup.refusal.gpuIds).toEqual(['rtx5070']);
+  });
+
+  it('checks coverage BEFORE failures and collapse — a short sweep makes those numbers meaningless', () => {
+    const built = buildSnapshot({
+      expectedGpuIds: three,
+      outcomes: [ok('rtx5070', [accepted('rtx5070', 'A')]), failed('rtx5080')],
+      generatedAt: GENERATED_AT,
+      previous: previousWith(20),
+    });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    expect(built.refusal.code).toBe('outcome-missing-gpu');
+    expect(built.refusal.gpuIds).toEqual(['rtx4090']);
+  });
+
+  it('names the offending GPUs in the refusal line, capped', () => {
+    const many = Array.from({ length: 40 }, (_, i) => `gpu${i}`);
+    const built = buildSnapshot({ expectedGpuIds: many, outcomes: [], generatedAt: GENERATED_AT });
+    expect(built.ok).toBe(false);
+    if (built.ok) return;
+    const line = describeRefusal(built.refusal);
+    expect(line).toContain('gpu0');
+    expect(line).toContain('and 35 more');
+    expect(line.split('\n')).toHaveLength(1);
   });
 });

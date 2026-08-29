@@ -43,29 +43,70 @@ export class SnapshotWriteError extends Error {
 }
 
 /**
- * The snapshot currently published at `file`, or null.
+ * What is currently published at `file`.
  *
- * Null covers three cases that are all "no baseline": the file does not exist,
- * it is not JSON, or it does not validate. That is deliberate — collapse
- * protection compares against a KNOWN-GOOD previous snapshot, and a file that
- * cannot be read is not one. The caller is told which it was so an unreadable
- * existing file is visible rather than silently treated as a fresh start.
+ * FAIL CLOSED. Only ENOENT means "nothing published yet": that is the first
+ * run, and it is the single case in which having no baseline is a fact rather
+ * than an unanswered question. Everything else — a permission error, a
+ * directory where a file should be, a truncated body, a file that does not
+ * validate — is reported as its own status so the caller can STOP.
+ *
+ * The distinction matters because the two are opposite. Treating an unreadable
+ * file as "absent" would silently disarm collapse protection at exactly the
+ * moment something is already wrong with the file it protects, and the next
+ * sweep would then be free to replace it with anything at all.
  */
-export function readPublishedSnapshot(file: string): { snapshot: GpuOfferSnapshot | null; problem: SnapshotProblem | 'absent' | null } {
+export type PublishedSnapshotRead =
+  | { status: 'ok'; snapshot: GpuOfferSnapshot }
+  /** ENOENT, and only ENOENT. No snapshot has ever been published here. */
+  | { status: 'absent' }
+  /** The file exists and could not be read. `errnoCode` is Node's own code, never a message. */
+  | { status: 'unreadable'; errnoCode: string | null }
+  /** Read, but not JSON at all. */
+  | { status: 'malformed' }
+  /** Parsed as JSON, but not a snapshot this reader accepts. */
+  | { status: 'invalid'; problem: SnapshotProblem };
+
+export function readPublishedSnapshot(file: string): PublishedSnapshotRead {
   let text: string;
   try {
     text = fs.readFileSync(file, 'utf-8');
-  } catch {
-    return { snapshot: null, problem: 'absent' };
+  } catch (cause) {
+    // Node's errno code, which is a closed vocabulary of its own making. The
+    // error's MESSAGE is never read: it interpolates the path, and this line
+    // goes into a CI log.
+    const code = (cause as NodeJS.ErrnoException | null)?.code ?? null;
+    return code === 'ENOENT' ? { status: 'absent' } : { status: 'unreadable', errnoCode: code };
   }
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { snapshot: null, problem: 'not-an-object' };
+    return { status: 'malformed' };
   }
   const parsed = parseOfferSnapshot(raw);
-  return parsed.ok ? { snapshot: parsed.snapshot, problem: null } : { snapshot: null, problem: parsed.problem };
+  return parsed.ok ? { status: 'ok', snapshot: parsed.snapshot } : { status: 'invalid', problem: parsed.problem };
+}
+
+/**
+ * One line for an operator, naming the status and nothing else.
+ *
+ * Never the file's contents and never the underlying error message — both can
+ * carry a path or, for a hand-edited file, anything at all.
+ */
+export function describePublishedRead(read: PublishedSnapshotRead): string {
+  switch (read.status) {
+    case 'ok':
+      return 'The published snapshot was read and validated; it is the collapse baseline for this run.';
+    case 'absent':
+      return 'No snapshot has been published yet; this run would be the first.';
+    case 'unreadable':
+      return `The published snapshot exists but could not be read [${read.errnoCode ?? 'unknown'}].`;
+    case 'malformed':
+      return 'The published snapshot is not valid JSON.';
+    case 'invalid':
+      return `The published snapshot does not satisfy the schema [${read.problem}].`;
+  }
 }
 
 /** Serialized exactly as it will be published: one trailing newline, stable key order. */

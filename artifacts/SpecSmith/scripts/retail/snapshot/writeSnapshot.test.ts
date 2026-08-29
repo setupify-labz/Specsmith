@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { AVAILABILITY_UNKNOWN, OFFER_SNAPSHOT_SCHEMA_VERSION, parseOfferSnapshot, type GpuOfferSnapshot } from '../../../src/lib/retail/offerSnapshot';
 import { RAKUTEN_ADAPTER_VERSION } from '../rakuten/types';
-import { SnapshotWriteError, readPublishedSnapshot, serializeSnapshot, writeSnapshotAtomically } from './writeSnapshot';
+import { SnapshotWriteError, describePublishedRead, readPublishedSnapshot, serializeSnapshot, writeSnapshotAtomically } from './writeSnapshot';
 
 const snapshot = (over: Partial<GpuOfferSnapshot> = {}): GpuOfferSnapshot => ({
   schemaVersion: OFFER_SNAPSHOT_SCHEMA_VERSION,
@@ -131,10 +131,9 @@ describe('the write is atomic and validated', () => {
 });
 
 describe('reading the currently published snapshot', () => {
-  it('reports absent when nothing has been published yet', () => {
+  it('reports absent ONLY when the file does not exist', () => {
     withTempDir((dir) => {
-      const result = readPublishedSnapshot(path.join(dir, 'gpu-offers.json'));
-      expect(result).toEqual({ snapshot: null, problem: 'absent' });
+      expect(readPublishedSnapshot(path.join(dir, 'gpu-offers.json'))).toEqual({ status: 'absent' });
     });
   });
 
@@ -143,22 +142,74 @@ describe('reading the currently published snapshot', () => {
       const file = path.join(dir, 'gpu-offers.json');
       writeSnapshotAtomically(file, snapshot());
       const result = readPublishedSnapshot(file);
-      expect(result.problem).toBeNull();
-      expect(result.snapshot?.gpus[0].gpuId).toBe('rtx5070');
+      expect(result.status).toBe('ok');
+      if (result.status !== 'ok') return;
+      expect(result.snapshot.gpus[0].gpuId).toBe('rtx5070');
     });
   });
 
-  it('reports an unreadable file as a problem, not as a fresh start', () => {
-    // It still yields no baseline — collapse protection compares against a
-    // KNOWN-GOOD previous snapshot — but the caller is told, so an unreadable
-    // file is visible rather than discovered later.
+  it('distinguishes malformed from invalid, and neither is absent', () => {
+    // Absent means "first publish, no baseline needed". Anything else means
+    // the baseline is in an unknown state, and the two must never collapse
+    // into one status — that is what would silently disarm the collapse guard.
     withTempDir((dir) => {
       const file = path.join(dir, 'gpu-offers.json');
+
       fs.writeFileSync(file, '{ not json');
-      expect(readPublishedSnapshot(file)).toEqual({ snapshot: null, problem: 'not-an-object' });
+      expect(readPublishedSnapshot(file)).toEqual({ status: 'malformed' });
 
       fs.writeFileSync(file, JSON.stringify({ ...snapshot(), availability: 'in-stock' }));
-      expect(readPublishedSnapshot(file)).toEqual({ snapshot: null, problem: 'availability-not-unknown' });
+      expect(readPublishedSnapshot(file)).toEqual({ status: 'invalid', problem: 'availability-not-unknown' });
     });
+  });
+
+  it('reports a permission error as unreadable, carrying Node\'s errno code and no message', () => {
+    withTempDir((dir) => {
+      const file = path.join(dir, 'gpu-offers.json');
+      writeSnapshotAtomically(file, snapshot());
+      fs.chmodSync(file, 0o000);
+      try {
+        const result = readPublishedSnapshot(file);
+        // Running as root defeats a mode-based denial; skip rather than assert
+        // something the filesystem did not actually do.
+        if (result.status === 'ok') return;
+        expect(result.status).toBe('unreadable');
+        if (result.status !== 'unreadable') return;
+        expect(result.errnoCode).toBe('EACCES');
+        // The errno code, never the error's message — which interpolates the path.
+        expect(JSON.stringify(result)).not.toContain(dir);
+      } finally {
+        fs.chmodSync(file, 0o644);
+      }
+    });
+  });
+
+  it('reports a directory in the file\'s place as unreadable, not absent', () => {
+    withTempDir((dir) => {
+      const asDir = path.join(dir, 'gpu-offers.json');
+      fs.mkdirSync(asDir);
+      const result = readPublishedSnapshot(asDir);
+      expect(result.status).toBe('unreadable');
+      if (result.status !== 'unreadable') return;
+      expect(result.errnoCode).toBe('EISDIR');
+    });
+  });
+
+  it('describes every status in one line that quotes no file content', () => {
+    const lines = [
+      describePublishedRead({ status: 'absent' }),
+      describePublishedRead({ status: 'unreadable', errnoCode: 'EACCES' }),
+      describePublishedRead({ status: 'malformed' }),
+      describePublishedRead({ status: 'invalid', problem: 'offer-invalid' }),
+      describePublishedRead({ status: 'ok', snapshot: snapshot() }),
+    ];
+    for (const line of lines) {
+      expect(line.split('\n')).toHaveLength(1);
+      expect(line).not.toContain('linksynergy');
+      expect(line).not.toContain('599.99');
+      expect(line).not.toContain('N82E');
+    }
+    expect(lines[1]).toContain('EACCES');
+    expect(lines[3]).toContain('offer-invalid');
   });
 });

@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 
 import {
   AVAILABILITY_NOTICE,
+  CURRENCY_PATTERN,
+  TRACKED_LINK_HOSTS,
+  isCurrencyCode,
+  isTrackedAffiliateUrl,
   AVAILABILITY_UNKNOWN,
   DEFAULT_MAX_SNAPSHOT_AGE_MS,
   MAX_CLOCK_SKEW_MS,
@@ -289,5 +293,128 @@ describe('a malformed snapshot is refused with a closed problem code', () => {
     expect(offersForGpu(view, 'no-such-gpu')).toEqual([]);
     expect(offersForGpu({ status: 'absent' }, 'rtx5070')).toEqual([]);
     expect(offersForGpu({ status: 'invalid', problem: 'not-an-object' }, 'rtx5070')).toEqual([]);
+  });
+});
+
+describe('the parser keeps the invariants the adapter admitted the listing under', () => {
+  const withOffer = (over: Partial<SnapshotOffer>) =>
+    parseOfferSnapshot(asJson({ ...snapshot(), gpus: [{ gpuId: 'rtx5070', result: 'offers', offers: [offer(over)] }] }));
+
+  describe('a retail price is strictly above zero', () => {
+    it('refuses zero — the number a shopping page must never show', () => {
+      // The adapter refuses a listing whose <price> is zero or less. This is
+      // the same rule at the point where a file becomes a price tag, because
+      // the browser reads a file it did not write.
+      const parsed = withOffer({ retailPrice: 0 });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok) expect(parsed.problem).toBe('offer-invalid');
+    });
+
+    it('refuses a negative price', () => {
+      expect(withOffer({ retailPrice: -0.01 }).ok).toBe(false);
+      expect(withOffer({ retailPrice: -599.99 }).ok).toBe(false);
+    });
+
+    it('refuses a sale price of zero, which the feed writes for "no sale"', () => {
+      expect(withOffer({ salePrice: 0 }).ok).toBe(false);
+      expect(withOffer({ salePrice: -1 }).ok).toBe(false);
+    });
+
+    it('accepts the smallest real price, so the rule is > 0 and not > 1', () => {
+      // Mutation-resistant in the other direction: a check tightened to some
+      // arbitrary floor would reject a legitimately cheap listing.
+      expect(withOffer({ retailPrice: 0.01 }).ok).toBe(true);
+      expect(withOffer({ retailPrice: 0.01, salePrice: 0.01 }).ok).toBe(true);
+    });
+  });
+
+  describe('a tracked affiliate link points at the network, over https', () => {
+    it('accepts exactly the two documented hosts', () => {
+      expect([...TRACKED_LINK_HOSTS].sort()).toEqual(['click.linksynergy.com', 'www.linksynergy.com']);
+      for (const host of TRACKED_LINK_HOSTS) {
+        expect(withOffer({ trackedAffiliateUrl: `https://${host}/link?id=EXAMPLE` }).ok, host).toBe(true);
+      }
+    });
+
+    it('refuses a lookalike host that merely CONTAINS the real one', () => {
+      // The whole reason the comparison is an exact hostname rather than a
+      // prefix, a substring or a suffix. Each of these defeats one of those.
+      const lookalikes = [
+        'https://click.linksynergy.com.evil.test/link',
+        'https://evil.test/click.linksynergy.com',
+        'https://evil.test/?next=https://click.linksynergy.com',
+        'https://notclick.linksynergy.com/link',
+        'https://linksynergy.com.evil.test/link',
+        'https://click.linksynergy.evil.test/link',
+        'https://evil.test#click.linksynergy.com',
+      ];
+      for (const url of lookalikes) {
+        expect(withOffer({ trackedAffiliateUrl: url }).ok, url).toBe(false);
+        expect(isTrackedAffiliateUrl(url), url).toBe(false);
+      }
+    });
+
+    it('refuses a subdomain of an allowed host, and the bare domain', () => {
+      for (const url of ['https://a.click.linksynergy.com/link', 'https://linksynergy.com/link', 'https://click.linksynergy.com.br/link']) {
+        expect(isTrackedAffiliateUrl(url), url).toBe(false);
+      }
+    });
+
+    it('refuses http, and every other scheme', () => {
+      for (const url of [
+        'http://click.linksynergy.com/link',
+        'ftp://click.linksynergy.com/link',
+        'javascript:alert(1)',
+        'data:text/html,<script>',
+        '//click.linksynergy.com/link',
+        'click.linksynergy.com/link',
+      ]) {
+        expect(isTrackedAffiliateUrl(url), url).toBe(false);
+      }
+    });
+
+    it('refuses an untracked merchant link — a buy button that earns nothing', () => {
+      expect(withOffer({ trackedAffiliateUrl: 'https://www.newegg.com/p/N82E16814137837' }).ok).toBe(false);
+    });
+
+    it('accepts an allowed host written in mixed case, which is the same host', () => {
+      // URL parsing lowercases the hostname, so this is not a hole; asserted
+      // so a future "fix" does not add a case-sensitive comparison.
+      expect(isTrackedAffiliateUrl('https://CLICK.LinkSynergy.COM/link?id=EXAMPLE')).toBe(true);
+    });
+
+    it('leaves the image URL to any http(s) host — a merchant CDN is not ours to pin', () => {
+      expect(withOffer({ imageUrl: 'https://c1.neweggimages.com/x.jpg' }).ok).toBe(true);
+      expect(withOffer({ imageUrl: 'https://images.example.test/x.jpg' }).ok).toBe(true);
+      expect(withOffer({ imageUrl: 'javascript:alert(1)' }).ok).toBe(false);
+    });
+  });
+
+  describe('a currency is exactly three uppercase letters', () => {
+    it('accepts real ISO 4217 codes', () => {
+      for (const code of ['USD', 'CAD', 'GBP', 'EUR']) {
+        expect(withOffer({ currency: code }).ok, code).toBe(true);
+      }
+    });
+
+    it('refuses the wrong case, the wrong length, and anything that is not letters', () => {
+      for (const bad of ['usd', 'Usd', 'US', 'USDD', 'US1', 'U$D', '$', 'US ', ' USD', 'USD ', '', '   ']) {
+        expect(withOffer({ currency: bad }).ok, JSON.stringify(bad)).toBe(false);
+        expect(isCurrencyCode(bad), JSON.stringify(bad)).toBe(false);
+      }
+    });
+
+    it('is anchored at both ends', () => {
+      // Mutation-resistant: an unanchored /[A-Z]{3}/ passes all of these.
+      for (const bad of ['xUSD', 'USDx', 'aUSDa', 'USD\nEUR']) {
+        expect(CURRENCY_PATTERN.test(bad), bad).toBe(false);
+      }
+    });
+
+    it('refuses a currency that is not a string at all', () => {
+      for (const bad of [null, 840, ['USD']]) {
+        expect(withOffer({ currency: bad as never }).ok, String(bad)).toBe(false);
+      }
+    });
   });
 });

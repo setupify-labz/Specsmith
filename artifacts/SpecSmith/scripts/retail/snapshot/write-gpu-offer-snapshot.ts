@@ -31,7 +31,7 @@ import { loadGpuCatalog, readAccessToken } from '../rakuten';
 import { DEFAULT_REQUESTS_PER_MINUTE, RAKUTEN_CALLS_PER_MINUTE } from '../coverage/rateLimiter';
 import { buildSnapshot, describeRefusal, snapshotSize } from './buildSnapshot';
 import { sweepOffers } from './sweepOffers';
-import { readPublishedSnapshot, writeSnapshotAtomically } from './writeSnapshot';
+import { describePublishedRead, readPublishedSnapshot, writeSnapshotAtomically } from './writeSnapshot';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 /** artifacts/SpecSmith/scripts/retail/snapshot -> artifacts/SpecSmith */
@@ -113,11 +113,17 @@ async function run(argv: string[]): Promise<number> {
   readAccessToken();
 
   const catalog = loadGpuCatalog();
+
+  // BEFORE the sweep, because the answer decides whether to sweep at all. Only
+  // ENOENT is a green light without a baseline: an unreadable or invalid
+  // existing file means collapse protection has nothing to compare against,
+  // and continuing would let this run replace a file that is already in an
+  // unknown state with whatever the feed happens to say today.
   const existing = readPublishedSnapshot(options.out);
-  if (existing.problem !== null && existing.problem !== 'absent') {
-    // Visible, not silent: the collapse guard has no baseline this run, and
-    // that is worth saying out loud rather than discovering later.
-    console.error(`The published snapshot at --out could not be read [${existing.problem}]; collapse protection has no baseline this run.`);
+  console.error(describePublishedRead(existing));
+  if (existing.status !== 'ok' && existing.status !== 'absent') {
+    console.error('Refusing to sweep or write. Repair or remove the published snapshot first; nothing has been changed.');
+    return 1;
   }
 
   console.error(`Sweeping ${catalog.length} GPU(s) at ${options.requestsPerMinute} requests/minute…`);
@@ -131,9 +137,12 @@ async function run(argv: string[]): Promise<number> {
   });
 
   const built = buildSnapshot({
+    // The catalogue as it was READ, not as the sweep reports it. This is the
+    // only place that knows what the run set out to cover.
+    expectedGpuIds: catalog.map((g) => g.id),
     outcomes: sweep.outcomes,
     generatedAt: sweep.finishedAt,
-    previous: existing.snapshot,
+    previous: existing.status === 'ok' ? existing.snapshot : null,
   });
 
   if (!built.ok) {

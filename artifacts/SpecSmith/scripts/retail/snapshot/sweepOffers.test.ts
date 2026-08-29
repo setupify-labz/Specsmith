@@ -87,7 +87,7 @@ describe('the sweep keeps the offers and records the failures', () => {
       fetch: serve([{ body: fixture('newegg-rtx5070-live-shape.xml') }, { body: 'nope', status: 503 }]),
     });
 
-    const built = buildSnapshot({ outcomes: sweep.outcomes, generatedAt: sweep.finishedAt });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx5070', 'rtx4090'], outcomes: sweep.outcomes, generatedAt: sweep.finishedAt });
     expect(built.ok).toBe(false);
     if (built.ok) return;
     expect(built.refusal.code).toBe('gpu-request-failed');
@@ -102,7 +102,7 @@ describe('the sweep keeps the offers and records the failures', () => {
       fetch: serve([{ body: fixture('newegg-rtx5070-live-shape.xml') }, { body: EMPTY }]),
     });
 
-    const built = buildSnapshot({ outcomes: sweep.outcomes, generatedAt: sweep.finishedAt });
+    const built = buildSnapshot({ expectedGpuIds: ['rtx5070', 'rtx4090'], outcomes: sweep.outcomes, generatedAt: sweep.finishedAt });
     expect(built.ok).toBe(true);
     if (!built.ok) return;
     expect(built.snapshot.gpus.map((g) => g.gpuId)).toEqual(['rtx5070', 'rtx4090']);

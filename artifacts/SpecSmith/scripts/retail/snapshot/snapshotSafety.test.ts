@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 // literals actually present in code, never prose — the same approach
 // serverOnly.test.ts takes to the adapter.
 
+import { TRACKED_LINK_HOSTS } from '../../../src/lib/retail/offerSnapshot';
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const specsmithRoot = path.join(here, '..', '..', '..');
 const srcRoot = path.join(specsmithRoot, 'src');
@@ -181,5 +183,49 @@ describe('the writer writes one file, once, and only that', () => {
     for (const wf of fs.readdirSync(workflows)) {
       expect(read(path.join(workflows, wf)).includes('write-gpu-offer-snapshot'), `${wf} must not run the writer yet`).toBe(false);
     }
+  });
+});
+
+describe('the storage rules do not drift from the admission rules', () => {
+  it('the parser allows exactly the hosts the adapter admits a listing under', () => {
+    // admitOffer.ts refuses a listing whose <linkurl> is not one of these, and
+    // offerSnapshot.ts refuses to store one that is not. Two copies of one
+    // rule is a drift risk, so the copies are checked against each other: if
+    // the adapter ever learns a third host, this fails until the parser does
+    // too, rather than silently discarding every offer from it.
+    const admission = read(path.join(specsmithRoot, 'scripts', 'retail', 'rakuten', 'admitOffer.ts'));
+    const admitted = /\^https:\\\/\\\/\(click\|www\)\\\.linksynergy\\\.com\\\//;
+    expect(admitted.test(admission), 'admitOffer.ts no longer pins the linksynergy hosts as expected').toBe(true);
+    expect([...TRACKED_LINK_HOSTS].sort()).toEqual(['click.linksynergy.com', 'www.linksynergy.com']);
+  });
+
+  it('both sides refuse a zero retail price', () => {
+    const admission = codeOnly(read(path.join(specsmithRoot, 'scripts', 'retail', 'rakuten', 'admitOffer.ts')));
+    expect(admission).toContain('price.amount <= 0');
+    const schema = codeOnly(read(path.join(readerDir, 'offerSnapshot.ts')));
+    expect(schema).toContain('Number.isFinite(v) && v > 0');
+  });
+});
+
+describe('the writer decides whether to sweep before it sweeps', () => {
+  const cli = codeOnly(read(path.join(here, 'write-gpu-offer-snapshot.ts')));
+
+  it('reads the published snapshot before calling the sweep', () => {
+    // Order is the point: an unreadable baseline must cost nothing, not a
+    // minute of API calls followed by a refusal.
+    expect(cli.indexOf('readPublishedSnapshot(')).toBeLessThan(cli.indexOf('await sweepOffers('));
+  });
+
+  it('continues on ok and absent only', () => {
+    expect(cli).toContain("existing.status !== 'ok' && existing.status !== 'absent'");
+    // The baseline is passed on only when it was actually validated.
+    expect(cli).toContain("previous: existing.status === 'ok' ? existing.snapshot : null");
+  });
+
+  it('hands buildSnapshot the catalogue it read, not the ids the sweep returned', () => {
+    // Deriving the expected list from the sweep's own output would make the
+    // coverage check compare a list against itself.
+    expect(cli).toContain('expectedGpuIds: catalog.map((g) => g.id)');
+    expect(/expectedGpuIds:\s*sweep\./.test(cli), 'expected ids must not come from the sweep').toBe(false);
   });
 });

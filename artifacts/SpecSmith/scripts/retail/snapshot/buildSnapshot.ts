@@ -81,8 +81,14 @@ export const MIN_BASELINE_OFFERS = 20;
 export type SnapshotRefusalCode =
   /** At least one GPU's request failed, so coverage is unknown rather than measured. */
   | 'gpu-request-failed'
-  /** The sweep covered no GPUs at all. */
-  | 'no-gpus-swept'
+  /** The expected id list is itself unusable — empty, or naming the same GPU twice. */
+  | 'expected-ids-invalid'
+  /** A catalogue GPU the sweep was supposed to cover has no outcome. */
+  | 'outcome-missing-gpu'
+  /** An outcome arrived for a GPU that was not in the expected list. */
+  | 'outcome-unexpected-gpu'
+  /** Two outcomes arrived for the same GPU. */
+  | 'outcome-duplicate-gpu'
   /** Far fewer GPUs have offers than last time. */
   | 'gpu-coverage-collapse'
   /** Far fewer offers in total than last time. */
@@ -102,6 +108,15 @@ export interface SnapshotRefusal {
   previousOffers: number;
   /** Set only for 'schema-invalid'; the parser's closed problem code. */
   problem: SnapshotProblem | null;
+  /**
+   * The offending catalogue ids, for the coverage codes above; empty otherwise.
+   *
+   * These are SpecSmith's own ids, read from src/data/gpus.json — the same
+   * strings the coverage report already carries. Nothing from the feed reaches
+   * this field: an outcome's gpuId is the catalogue entry that was swept, not
+   * anything a listing said.
+   */
+  gpuIds: readonly string[];
 }
 
 export type SnapshotBuild =
@@ -109,6 +124,17 @@ export type SnapshotBuild =
   | { ok: false; refusal: SnapshotRefusal };
 
 export interface BuildInput {
+  /**
+   * Every catalogue GPU this sweep was supposed to cover.
+   *
+   * Required, not optional. The sweep's own output cannot answer "did we cover
+   * the catalogue?" — a loop that stopped early produces a shorter list of
+   * perfectly valid outcomes, and the resulting snapshot would silently drop
+   * the GPUs it never reached while looking, to every later reader, exactly
+   * like a catalogue that no longer contains them. Only the caller knows what
+   * was asked for, so the caller has to say.
+   */
+  expectedGpuIds: readonly string[];
   outcomes: readonly GpuSweepOutcome[];
   /** ISO 8601. Supplied by the caller so this stays pure. */
   generatedAt: string;
@@ -163,11 +189,30 @@ function resultFor(outcome: Extract<GpuSweepOutcome, { status: 'ok' }>): GpuOffe
 }
 
 export function buildSnapshot(input: BuildInput): SnapshotBuild {
-  const { outcomes, generatedAt } = input;
+  const { expectedGpuIds, outcomes, generatedAt } = input;
   const previous = input.previous ?? null;
   const previousSize = previous ? snapshotSize(previous) : { gpusWithOffers: 0, offers: 0 };
 
   const failedGpus = outcomes.filter((o) => o.status === 'failed').length;
+  const empty = { failedGpus, previousSize, gpusWithOffers: 0, offers: 0 };
+
+  // THE SWEEP MUST HAVE COVERED EXACTLY THE CATALOGUE — checked first, because
+  // every count below is meaningless if it did not. A short sweep would
+  // otherwise pass through as a smaller-but-valid snapshot.
+  const expected = new Set(expectedGpuIds);
+  if (expectedGpuIds.length === 0 || expected.size !== expectedGpuIds.length) {
+    return { ok: false, refusal: refusal('expected-ids-invalid', empty, duplicatesOf(expectedGpuIds)) };
+  }
+
+  const duplicates = duplicatesOf(outcomes.map((o) => o.gpuId));
+  if (duplicates.length > 0) return { ok: false, refusal: refusal('outcome-duplicate-gpu', empty, duplicates) };
+
+  const swept = new Set(outcomes.map((o) => o.gpuId));
+  const unexpected = [...swept].filter((id) => !expected.has(id));
+  if (unexpected.length > 0) return { ok: false, refusal: refusal('outcome-unexpected-gpu', empty, unexpected) };
+
+  const missing = expectedGpuIds.filter((id) => !swept.has(id));
+  if (missing.length > 0) return { ok: false, refusal: refusal('outcome-missing-gpu', empty, missing) };
 
   const gpus: SnapshotGpu[] = [];
   for (const outcome of outcomes) {
@@ -196,7 +241,6 @@ export function buildSnapshot(input: BuildInput): SnapshotBuild {
   // Order matters. A failed sweep is refused before its numbers are compared
   // to anything, because those numbers are not measurements.
   if (failedGpus > 0) return { ok: false, refusal: refusal('gpu-request-failed', counts) };
-  if (outcomes.length === 0) return { ok: false, refusal: refusal('no-gpus-swept', counts) };
 
   if (
     previousSize.gpusWithOffers >= MIN_BASELINE_GPUS_WITH_OFFERS &&
@@ -220,6 +264,7 @@ export function buildSnapshot(input: BuildInput): SnapshotBuild {
 function refusal(
   code: SnapshotRefusalCode,
   counts: { failedGpus: number; previousSize: { gpusWithOffers: number; offers: number }; gpusWithOffers: number; offers: number },
+  gpuIds: readonly string[] = [],
 ): SnapshotRefusal {
   return {
     code,
@@ -229,15 +274,34 @@ function refusal(
     offers: counts.offers,
     previousOffers: counts.previousSize.offers,
     problem: null,
+    gpuIds,
   };
+}
+
+/** Ids appearing more than once, each reported once, in first-seen order. */
+function duplicatesOf(ids: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const id of ids) {
+    if (seen.has(id)) repeated.add(id);
+    seen.add(id);
+  }
+  return [...repeated];
 }
 
 /** One line for an operator. Counts and a code — never a URL, a name or a price. */
 export function describeRefusal(r: SnapshotRefusal): string {
   const detail = r.problem === null ? '' : ` (${r.problem})`;
+  // Capped: a refusal naming all 57 catalogue ids is a wall of text where a
+  // handful is a diagnosis.
+  const shown = r.gpuIds.slice(0, 5);
+  const ids =
+    r.gpuIds.length === 0
+      ? ''
+      : ` GPU(s): ${shown.join(', ')}${r.gpuIds.length > shown.length ? ` and ${r.gpuIds.length - shown.length} more` : ''}.`;
   return (
     `Snapshot not published [${r.code}]${detail}: ` +
     `${r.failedGpus} failed GPU(s); ${r.gpusWithOffers} GPU(s) with offers and ${r.offers} offer(s), ` +
-    `against ${r.previousGpusWithOffers} and ${r.previousOffers} previously.`
+    `against ${r.previousGpusWithOffers} and ${r.previousOffers} previously.${ids}`
   );
 }
