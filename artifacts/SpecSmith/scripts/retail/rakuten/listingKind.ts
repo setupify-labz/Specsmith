@@ -48,6 +48,15 @@ export interface KindVerdict {
   detail: string;
 }
 
+/** Condition-only check shared by non-GPU retail categories. */
+export function classifyListingCondition(productName: string): KindVerdict {
+  const name = String(productName ?? '');
+  const used = USED_RE.exec(name);
+  return used
+    ? { issue: 'condition-not-new', detail: `Title indicates a non-new condition ("${used[0]}").` }
+    : { issue: null, detail: '' };
+}
+
 /**
  * Classifies a listing by product kind and condition.
  *
@@ -73,8 +82,8 @@ export function classifyListing(productName: string, description = ''): KindVerd
   const prebuilt = PREBUILT_RE.exec(name);
   if (prebuilt) return { issue: 'prebuilt-system', detail: `Title indicates a complete system ("${prebuilt[0]}"), which contains a card rather than being one.` };
 
-  const used = USED_RE.exec(name);
-  if (used) return { issue: 'condition-not-new', detail: `Title indicates a non-new condition ("${used[0]}").` };
+  const condition = classifyListingCondition(name);
+  if (condition.issue) return condition;
 
   return { issue: null, detail: '' };
 }
