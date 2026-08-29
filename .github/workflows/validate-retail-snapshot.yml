@@ -1,0 +1,109 @@
+# Snapshot-tier validation: the half of the retail pilot that holds no
+# credential and talks to nobody.
+#
+# WHY THIS IS A SEPARATE WORKFLOW
+# -------------------------------
+# The live coverage workflow ran `vitest run scripts/retail`, which is the
+# server-only half. It never ran src/lib/retail — the browser-side schema, the
+# freshness rule, the price, currency and affiliate-host checks, and the
+# availability wording. Those are the rules standing between a stored file and
+# a price on a page, and they were the only ones CI was not enforcing.
+#
+# They could have been added to the live workflow's test step. They are not,
+# because that workflow mints a Rakuten access token and spends a 57-GPU sweep
+# on every run, and none of these tests need either. Running them here means a
+# change to the snapshot writer or the browser loader is validated in seconds,
+# for free, without touching an API — and the live sweep is spent only on the
+# code that actually calls one.
+#
+# NOTHING HERE TOUCHES A CREDENTIAL
+# ---------------------------------
+# No `secrets.` reference, no token minting, no network request to Rakuten, no
+# snapshot written. That is not a promise in a comment: it is asserted
+# structurally by snapshotWorkflowSafety.test.ts, which reads this file.
+
+name: Validate retail snapshot tier
+
+on:
+  push:
+    branches:
+      - claude/rakuten-newegg-adapter-97h85y
+    paths:
+      - '.github/workflows/validate-retail-snapshot.yml'
+      - 'artifacts/SpecSmith/scripts/retail/snapshot/**'
+      - 'artifacts/SpecSmith/src/lib/retail/**'
+  workflow_dispatch:
+
+# Read-only. This job clones, installs and runs tests. It writes nothing and
+# has no token that would let it.
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-snapshot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Snapshot writer and browser loader
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # The same three actions, at the same audited commits as the live
+      # workflow. A tag is a pointer its owner can move; these two workflows
+      # are pinned together so an upgrade is one reviewed change, not a drift
+      # between them.
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Report the commit under test
+        run: |
+          set -euo pipefail
+          echo "Validating commit ${GITHUB_SHA}"
+          echo "commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          git log -1 --pretty='format:%s' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      # pnpm before Node: setup-node's pnpm cache needs the package manager to
+      # already be on PATH. No `version:` key — action-setup reads
+      # `packageManager` from the root package.json, so CI and local installs
+      # cannot drift apart.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # BOTH halves of the tier, named explicitly rather than as one broad
+      # glob: the server-only writer and the browser-side reader live on
+      # opposite sides of a boundary, and a path that quietly stopped matching
+      # one of them would leave exactly the gap this workflow exists to close.
+      - name: Run the snapshot writer and browser loader tests
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run scripts/retail/snapshot src/lib/retail
+
+      # This job installs and tests. Anything in the working tree afterwards is
+      # something it did that it should not have — a written snapshot above all.
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "The working tree was modified by this workflow:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "Working tree clean."

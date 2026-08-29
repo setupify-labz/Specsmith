@@ -39,9 +39,15 @@ on:
   push:
     branches:
       - claude/rakuten-newegg-adapter-97h85y
+    # Narrowed to the code this sweep actually exercises. It used to watch all
+    # of scripts/retail/**, which meant a change to the snapshot writer — which
+    # makes no API calls at all — spent a full 57-GPU live sweep to prove
+    # nothing about itself. Those paths have their own credential-free
+    # workflow; this one runs when the adapter or the coverage tool changes.
     paths:
       - '.github/workflows/validate-rakuten-gpu-coverage.yml'
-      - 'artifacts/SpecSmith/scripts/retail/**'
+      - 'artifacts/SpecSmith/scripts/retail/rakuten/**'
+      - 'artifacts/SpecSmith/scripts/retail/coverage/**'
   workflow_dispatch:
 
 # Read-only. This job clones, installs, tests and calls an external API. It has

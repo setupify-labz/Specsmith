@@ -45,17 +45,44 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is a single workflow at the expected path', () => {
+  it('is one of exactly two workflows, and the only one holding a credential', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
-    const all = fs.readdirSync(path.join(repoRoot, '.github', 'workflows'));
-    expect(all).toEqual(['validate-rakuten-gpu-coverage.yml']);
+    const all = fs.readdirSync(path.join(repoRoot, '.github', 'workflows')).sort();
+    expect(all).toEqual(['validate-rakuten-gpu-coverage.yml', 'validate-retail-snapshot.yml']);
+    // The other one is credential-free by construction; that is asserted in
+    // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
+    // Comment lines are stripped here too — that file's header explains at
+    // length what it does NOT reference, and prose must not fail a check any
+    // more than it may satisfy one.
+    const other = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'validate-retail-snapshot.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(other).not.toContain('secrets.');
   });
 
-  it('triggers on push to the implementation branch, scoped to the retail paths', () => {
+  it('the live sweep no longer runs on every change under scripts/retail', () => {
+    // It used to. A change to the snapshot writer — which makes no API call at
+    // all — spent a full 57-GPU sweep to prove nothing about itself.
+    expect(body).not.toContain("'artifacts/SpecSmith/scripts/retail/**'");
+    expect(body).not.toContain("'artifacts/SpecSmith/src/lib/retail/**'");
+    expect(body).not.toContain("'artifacts/SpecSmith/scripts/retail/snapshot/**'");
+  });
+
+  it('still runs on the code the sweep actually exercises', () => {
+    // Narrowing must not have gone one step too far: these two directories are
+    // the adapter and the coverage tool, and a change to either is exactly
+    // what a live run exists to validate.
+    expect(body).toContain("'artifacts/SpecSmith/scripts/retail/rakuten/**'");
+    expect(body).toContain("'artifacts/SpecSmith/scripts/retail/coverage/**'");
+    expect(body).toContain("'.github/workflows/validate-rakuten-gpu-coverage.yml'");
+  });
+
+  it('triggers on push to the implementation branch', () => {
     expect(body).toMatch(/on:\s*\n\s*push:/);
     expect(body).toContain('claude/rakuten-newegg-adapter-97h85y');
-    expect(body).toContain('artifacts/SpecSmith/scripts/retail/**');
-    expect(body).toContain('.github/workflows/validate-rakuten-gpu-coverage.yml');
+    // Which paths, exactly, is asserted by the two tests above.
   });
 
   it('offers workflow_dispatch for manual reruns', () => {
