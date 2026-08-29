@@ -75,22 +75,47 @@ describe('the workflow holds the least authority it can', () => {
 });
 
 describe('the secret is confined to one step and never becomes an argument', () => {
-  it('references the secret exactly once, as a step-scoped env value', () => {
+  it('references only this secret, and only as a step-scoped env value', () => {
     const references = [...body.matchAll(/\$\{\{\s*secrets\.[A-Z_]+\s*\}\}/g)].map((m) => m[0]);
-    expect(references).toEqual([secretExpr]);
-    // The line before it must be the env key, i.e. `NAME: ${{ secrets.NAME }}`.
+    // Two steps legitimately need it: the presence preflight and the sweep.
+    // Both must be the env-assignment form and no other secret may appear.
+    expect(new Set(references)).toEqual(new Set([secretExpr]));
+    expect(references.length).toBe(2);
     expect(body).toContain(`${SECRET}: ${secretExpr}`);
   });
 
+  it('the preflight tests presence only — it never reads, prints or measures the value', () => {
+    const preflight = body.slice(
+      body.indexOf('Confirm the API credential is available'),
+      body.indexOf('Run the full GPU coverage sweep'),
+    );
+    // `-z` is the whole interaction: is it empty, yes or no.
+    expect(preflight).toContain('if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]');
+    // No length, no substring, no hashing, no echo of the variable itself.
+    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c']) {
+      expect(preflight, forbidden).not.toContain(forbidden);
+    }
+    // It says what to fix, so a missing secret is self-diagnosing.
+    expect(preflight).toContain('Repository secrets');
+    expect(preflight).toContain('not a coverage result');
+  });
+
   it('never places the secret in a command argument or a query parameter', () => {
+    // Only INTERPOLATIONS matter. The preflight's help text names the secret
+    // in prose so a missing one is self-diagnosing; naming it is not exposing
+    // it, and the value never reaches that string.
     for (const line of body.split('\n')) {
-      if (!line.includes('secrets.')) continue;
-      // The only permitted form is an env assignment.
+      if (!line.includes('${{ secrets.')) continue;
       expect(line.trim(), line).toMatch(new RegExp(`^${SECRET}: \\$\\{\\{ secrets\\.${SECRET} \\}\\}$`));
     }
-    // And the variable is never interpolated into a run: line either.
-    const runLines = body.split('\n').filter((l) => /\$\{?RAKUTEN|--token|token=/.test(l));
-    expect(runLines).toEqual([]);
+    // The shell variable is never expanded into a command, a flag or a URL.
+    // `[ -z "${VAR:-}" ]` is the one permitted use: a presence test.
+    const expansions = body
+      .split('\n')
+      .filter((l) => /\$\{?RAKUTEN_API_ACCESS_TOKEN/.test(l))
+      .filter((l) => !l.includes('if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]'));
+    expect(expansions).toEqual([]);
+    expect(body).not.toMatch(/--token|token=|access_token=/);
   });
 
   it('the reporting step does not receive the secret', () => {

@@ -88,6 +88,37 @@ jobs:
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run scripts/retail
 
+      # Presence check ONLY — `-z` tests whether the variable is empty and
+      # does nothing else with it. It is never printed, never measured, never
+      # compared to anything. The adapter makes the same check for the same
+      # reason; doing it here first turns "the sweep produced no JSON" into a
+      # message that names the actual problem and where to fix it.
+      - name: Confirm the API credential is available to this run
+        env:
+          RAKUTEN_API_ACCESS_TOKEN: ${{ secrets.RAKUTEN_API_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]; then
+            {
+              echo "### Credential unavailable"
+              echo ""
+              echo "\`secrets.RAKUTEN_API_ACCESS_TOKEN\` resolved to an empty value for this run,"
+              echo "so no live sweep was attempted. This is a configuration problem, **not** a"
+              echo "coverage result: nothing here says anything about the Rakuten feed."
+              echo ""
+              echo "Check, in Settings for this repository:"
+              echo ""
+              echo "1. **Secrets and variables > Actions > Repository secrets** contains a secret"
+              echo "   named exactly \`RAKUTEN_API_ACCESS_TOKEN\`. Environment secrets and"
+              echo "   Dependabot secrets are separate stores and are not visible here."
+              echo "2. If it is an *organization* secret, this repository is in its access list."
+              echo "3. The name has no trailing space and no typo."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Credential unavailable::secrets.RAKUTEN_API_ACCESS_TOKEN is empty for this run. See the job summary. No live sweep was attempted; this is not a coverage result."
+            exit 1
+          fi
+          echo "Credential is present. Its value is never read, printed or measured here."
+
       # THE ONLY STEP THAT SEES THE TOKEN.
       #
       # It is read from the environment by the adapter and sent as an

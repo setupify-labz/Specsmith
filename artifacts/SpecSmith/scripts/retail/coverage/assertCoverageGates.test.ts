@@ -234,12 +234,31 @@ describe('readReport refuses anything that is not a coverage report', () => {
     }
   };
 
-  it('reports a missing file as a sweep that produced nothing', () => {
-    withTemp(null, (file) => expect(() => readReport(file)).toThrow(/did not produce one/));
+  it('reports a missing file', () => {
+    withTemp(null, (file) => expect(() => readReport(file)).toThrow(/No coverage report/));
   });
 
   it('reports an empty file distinctly', () => {
     withTemp('', (file) => expect(() => readReport(file)).toThrow(/is empty/));
+  });
+
+  it('blames the sweep, not the report, when the sweep exited nonzero', () => {
+    // The first CI run failed this way: a missing credential produced no JSON,
+    // and the gate step reported "empty JSON" — pointing at the reporting path
+    // when the fault was upstream of it.
+    withTemp('', (file) => {
+      const message = (() => {
+        try {
+          readReport(file, 1);
+          return '';
+        } catch (e) {
+          return (e as Error).message;
+        }
+      })();
+      expect(message).toContain('The sweep exited 1');
+      expect(message).toContain('credential');
+      expect(message).toContain('not a coverage result');
+    });
   });
 
   it('does not quote a malformed body into the error message', () => {

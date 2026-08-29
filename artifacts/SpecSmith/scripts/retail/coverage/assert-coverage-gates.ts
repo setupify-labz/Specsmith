@@ -74,13 +74,21 @@ const FORBIDDEN_LEAKS: readonly { pattern: RegExp; label: string }[] = [
 ];
 
 /** Reads and shallowly validates the report file. Throws with a short message. */
-export function readReport(file: string): CoverageReport {
+export function readReport(file: string, sweepExit = 0): CoverageReport {
+  // A missing or empty report almost always means the sweep died before it
+  // could write one, and the sweep's own exit code is the better explanation.
+  // Leading with "the JSON is empty" points at the reporting path when the
+  // fault is upstream of it.
+  const upstream =
+    sweepExit !== 0
+      ? ` The sweep exited ${sweepExit} without producing one — read the sweep step's output for the reason; a missing or rejected credential is the usual cause, and is not a coverage result.`
+      : '';
   if (!fs.existsSync(file)) {
-    throw new Error(`No coverage report at ${path.basename(file)} — the sweep did not produce one.`);
+    throw new Error(`No coverage report at ${path.basename(file)}.${upstream}`);
   }
   const raw = fs.readFileSync(file, 'utf-8').trim();
   if (raw === '') {
-    throw new Error(`Coverage report ${path.basename(file)} is empty — the sweep produced no JSON.`);
+    throw new Error(`Coverage report ${path.basename(file)} is empty.${upstream}`);
   }
   let parsed: unknown;
   try {
@@ -245,7 +253,7 @@ async function run(argv: string[]): Promise<number> {
   const sweepExitRaw = flag(argv, 'sweep-exit') ?? '0';
   if (!/^\d+$/.test(sweepExitRaw)) throw new Error('--sweep-exit must be a non-negative integer.');
 
-  const report = readReport(reportFile);
+  const report = readReport(reportFile, Number(sweepExitRaw));
   const catalogSize = loadGpuCatalog().length;
   const gates = evaluateGates(report, catalogSize, Number(sweepExitRaw));
 
