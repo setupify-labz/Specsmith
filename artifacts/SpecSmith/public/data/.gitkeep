@@ -1,0 +1,8 @@
+The GPU offer snapshot is published here as gpu-offers.json by
+scripts/retail/snapshot/write-gpu-offer-snapshot.ts. This directory is kept in
+the repository so the writer has somewhere to rename its temporary file to; it
+deliberately does not create directories of its own.
+
+The snapshot itself is not committed here by hand. Until a sweep has published
+one, the loader fetches this path, receives a 404, and reports 'absent' — which
+is a normal state, not an error.
