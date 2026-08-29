@@ -45,11 +45,11 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly two workflows, and the only one holding a credential', () => {
+  it('is one of exactly three workflows, and the only push-triggered one holding credentials', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const all = fs.readdirSync(path.join(repoRoot, '.github', 'workflows')).sort();
-    expect(all).toEqual(['validate-rakuten-gpu-coverage.yml', 'validate-retail-snapshot.yml']);
-    // The other one is credential-free by construction; that is asserted in
+    expect(all).toEqual(['audit-accepted-offers.yml', 'validate-rakuten-gpu-coverage.yml', 'validate-retail-snapshot.yml']);
+    // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
     // Comment lines are stripped here too — that file's header explains at
     // length what it does NOT reference, and prose must not fail a check any
@@ -60,6 +60,18 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(other).not.toContain('secrets.');
+
+    // The accepted-offer audit is a second, manual live tool. Its own safety
+    // suite proves its credentials are confined to one step and that it can
+    // neither publish nor commit its one-day evidence artifact.
+    const audit = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'audit-accepted-offers.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(audit).toContain('secrets.');
+    expect(audit).toContain('workflow_dispatch:');
+    expect(audit).not.toMatch(/^\s*(push|pull_request|schedule):/m);
   });
 
   it('the live sweep no longer runs on every change under scripts/retail', () => {
