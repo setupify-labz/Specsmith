@@ -6,6 +6,10 @@
 // secret BEFORE anything else can emit it, then writes the token to the file
 // named by --out with owner-only permissions. Nothing else is printed.
 //
+// A token carrying a control character is refused before either happens — see
+// assertTokenIsSafeToMask, which keeps a hostile response from forging a second
+// workflow command out of the mask line.
+//
 // WHY A FILE AND NOT STDOUT
 // -------------------------
 // The mask has to reach the runner to work, and the runner only sees output
@@ -64,9 +68,43 @@ function flag(argv: readonly string[], name: string): string | undefined {
 /** The one line this command prints on success. Exported so a test can pin it. */
 export const maskCommand = (token: string): string => `::add-mask::${token}`;
 
+/** C0 controls, DEL, and the C1 range. Anything unprintable. */
+const CONTROL_CHARACTER = /[\u0000-\u001F\u007F-\u009F]/;
+
+/**
+ * Rejects a token that could not safely be written into a workflow command.
+ *
+ * `::add-mask::<token>` is a LINE-ORIENTED protocol: the runner reads stdout a
+ * line at a time and executes any line beginning `::`. A token containing a
+ * newline would therefore end the mask early and let whatever follows be
+ * executed as a second command of the attacker's choosing — `::add-path::`,
+ * `::set-output::`, an `echo` of something else. A carriage return can hide the
+ * remainder of a line in the rendered log, and a NUL truncates it for anything
+ * reading C strings.
+ *
+ * The far end is not trusted to be well behaved just because it answered 200,
+ * so this is checked here rather than assumed. A real Rakuten token is opaque
+ * printable text; nothing legitimate is lost by refusing the rest. The failure
+ * says only that a control character was present — never which one, never
+ * where, and never any part of the value.
+ */
+export class UnsafeTokenError extends Error {}
+
+export function assertTokenIsSafeToMask(token: string): void {
+  if (CONTROL_CHARACTER.test(token)) {
+    throw new UnsafeTokenError(
+      'The token endpoint returned a value containing a control character. It was not masked, not written and not used.',
+    );
+  }
+}
+
 async function run(argv: string[], io: { log: (l: string) => void; fetch?: typeof globalThis.fetch; env?: NodeJS.ProcessEnv }): Promise<void> {
   const outPath = resolveTokenOutputPath(flag(argv, 'out') ?? '');
   const token = await requestAccessToken({ fetch: io.fetch, env: io.env });
+
+  // BEFORE the mask, because the mask itself is the thing a hostile token would
+  // subvert: nothing is printed until the value is known to be one line.
+  assertTokenIsSafeToMask(token);
 
   // Mask FIRST. Until this line is read by the runner, the value is not
   // redacted anywhere, so nothing may touch it before the mask is registered.
@@ -89,6 +127,9 @@ export function sanitizedFailureLine(cause: unknown): string {
     return `Access token request failed [${cause.category}]${status}: ${cause.message}`;
   }
   if (cause instanceof TokenOutputPathError) return `Access token output path rejected: ${cause.message}`;
+  // Names the condition, never the value: the whole point of refusing this
+  // token is that it is not safe to put on a line.
+  if (cause instanceof UnsafeTokenError) return `Access token request failed [unsafe-token]: ${cause.message}`;
   return 'Access token request failed [unexpected].';
 }
 

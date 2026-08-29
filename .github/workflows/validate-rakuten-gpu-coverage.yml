@@ -10,15 +10,25 @@
 # The job mints its own short-lived access token from long-lived client
 # credentials, so nothing has to be pasted by hand and nothing expires between
 # runs. All three credentials reach exactly ONE step as step-scoped environment
-# variables, and the token they produce never leaves that step: it is masked
-# with ::add-mask:: before anything can emit it, written to a file outside the
+# variables — there is no separate preflight, because a second step holding them
+# would double the surface to prove nothing the minter does not already prove:
+# it fails with a `missing-credentials` category naming the absent VARIABLES.
+# The token they produce never leaves that one step either: it is masked with
+# ::add-mask:: before anything can emit it, written to a file outside the
 # checkout with owner-only permissions, read into a shell variable, and the file
 # is removed. The step that renders and publishes the report runs WITHOUT any of
 # it, so a leak from the reporting path is not unlikely — it is unreachable.
 #
 # GitHub masks exact secret values in logs. That masking is a backstop, not the
 # boundary: the boundary is that the credential is never placed in an argument,
-# a query string, a file, an artifact or a summary in the first place.
+# a query string, a file, an artifact or a summary in the first place. The
+# minter also refuses to emit a mask for a token carrying a control character,
+# so a hostile token response cannot forge a second workflow command.
+#
+# Every action is pinned to the full commit SHA that ran successfully, with the
+# tag it resolved from in a trailing comment. A tag is a moving pointer the
+# upstream owner can repoint at any commit; these credentials must not be
+# exposed to code that changed between one run and the next.
 
 name: Validate Rakuten GPU coverage
 
@@ -53,7 +63,7 @@ jobs:
 
     steps:
       - name: Check out the exact triggering commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -67,14 +77,15 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
       # pnpm before Node: setup-node's pnpm cache needs the package manager to
-      # already be on PATH. The version is not pinned here — action-setup reads
+      # already be on PATH. The action is SHA-pinned, but the pnpm VERSION it
+      # installs deliberately is not — with no `version:` key, action-setup reads
       # `packageManager` from the root package.json, so CI and local installs
       # can never drift apart.
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: pnpm
@@ -91,40 +102,11 @@ jobs:
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run scripts/retail
 
-      # Presence check ONLY — `-z` tests whether each variable is empty and does
-      # nothing else with it. None is printed, measured, hashed or compared.
-      # Doing this first turns an opaque downstream failure into a message that
-      # names the missing secret and where to add it.
-      - name: Confirm the API credentials are available to this run
-        env:
-          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
-          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
-          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
-        run: |
-          set -euo pipefail
-          missing=""
-          if [ -z "${RAKUTEN_CLIENT_ID:-}" ]; then missing="${missing} RAKUTEN_CLIENT_ID"; fi
-          if [ -z "${RAKUTEN_CLIENT_SECRET:-}" ]; then missing="${missing} RAKUTEN_CLIENT_SECRET"; fi
-          if [ -z "${RAKUTEN_PUBLISHER_SID:-}" ]; then missing="${missing} RAKUTEN_PUBLISHER_SID"; fi
-          if [ -n "${missing}" ]; then
-            {
-              echo "### Credentials unavailable"
-              echo ""
-              echo "These resolved to empty values for this run:**${missing}**"
-              echo ""
-              echo "No live sweep was attempted. This is a configuration problem, **not** a"
-              echo "coverage result: nothing here says anything about the Rakuten feed."
-              echo ""
-              echo "Check **Settings > Secrets and variables > Actions > Repository secrets**."
-              echo "Environment secrets and Dependabot secrets are separate stores and are not"
-              echo "visible here; an organization secret needs this repository in its access list."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error title=Credentials unavailable::Missing:${missing}. See the job summary. No live sweep was attempted; this is not a coverage result."
-            exit 1
-          fi
-          echo "All three credentials are present. No value is read, printed or measured here."
-
-      # THE ONLY STEP THAT SEES ANY CREDENTIAL.
+      # THE ONLY STEP THAT SEES ANY CREDENTIAL — there is no preflight, on
+      # purpose. A missing or blank credential is caught by the minter itself,
+      # which fails with the closed `missing-credentials` category naming the
+      # variables that were empty; a second step existing only to repeat that
+      # check would hand the three long-lived secrets to twice as much shell.
       #
       # Minting and sweeping are one step on purpose: the access token lives in
       # a shell variable inside this step and in no other scope. $GITHUB_ENV

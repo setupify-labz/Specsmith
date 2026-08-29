@@ -17,7 +17,15 @@ import {
   TOKEN_REQUEST_AUTH_SCHEME,
   TOKEN_REQUEST_GRANT_TYPE,
 } from './accessTokenRequest';
-import { main, maskCommand, resolveTokenOutputPath, sanitizedFailureLine, TokenOutputPathError } from './request-access-token';
+import {
+  assertTokenIsSafeToMask,
+  main,
+  maskCommand,
+  resolveTokenOutputPath,
+  sanitizedFailureLine,
+  TokenOutputPathError,
+  UnsafeTokenError,
+} from './request-access-token';
 
 const CLIENT_ID = 'test-client-id';
 const CLIENT_SECRET = 'test-client-secret-not-real';
@@ -271,5 +279,154 @@ describe('the CLI masks the token and keeps it out of the checkout', () => {
   it('requires an absolute --out', () => {
     expect(() => resolveTokenOutputPath('token', '/tmp/fake-repo')).toThrow(/absolute/);
     expect(() => resolveTokenOutputPath('', '/tmp/fake-repo')).toThrow(/required/);
+  });
+});
+
+describe('a token that could forge a workflow command is refused before it is masked', () => {
+  // `::add-mask::<token>` is line-oriented: the runner executes any stdout line
+  // beginning `::`. A newline inside the token would end the mask early and
+  // hand the rest of the line to the runner as a command of the far end's
+  // choosing. The token comes from an external service over the network, so
+  // "Rakuten would not do that" is not a control.
+  const INJECTION = 'tok-part-one\n::add-path::/tmp/evil\n::set-output name=x::pwned';
+
+  const withTempDir = async (fn: (dir: string) => Promise<void>) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rakuten-token-'));
+    try {
+      await fn(dir);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it('rejects CR, LF, NUL and every other control character', () => {
+    // Written as code points rather than literals: a control character pasted
+    // into a source file is invisible to the next reader.
+    const named: ReadonlyArray<readonly [string, number]> = [
+      ['NUL', 0x00],
+      ['BEL', 0x07],
+      ['TAB', 0x09],
+      ['LF', 0x0a],
+      ['VT', 0x0b],
+      ['FF', 0x0c],
+      ['CR', 0x0d],
+      ['ESC', 0x1b],
+      ['US', 0x1f],
+      ['DEL', 0x7f],
+      ['C1 NEL', 0x85],
+    ];
+    for (const [name, code] of named) {
+      expect(() => assertTokenIsSafeToMask(`abc${String.fromCharCode(code)}def`), name).toThrow(UnsafeTokenError);
+    }
+    // Every C0 code point, exhaustively — no gap for one to slip through.
+    for (let code = 0x00; code <= 0x1f; code += 1) {
+      expect(() => assertTokenIsSafeToMask(`a${String.fromCharCode(code)}b`), `U+${code.toString(16)}`).toThrow(UnsafeTokenError);
+    }
+    // Including a token that is nothing but a control character.
+    expect(() => assertTokenIsSafeToMask('\n')).toThrow(UnsafeTokenError);
+  });
+
+  it('accepts an ordinary opaque token, including punctuation and a space', () => {
+    for (const ok of [TOKEN, 'AbC123._-~+/=', 'has a space']) {
+      expect(() => assertTokenIsSafeToMask(ok), ok).not.toThrow();
+    }
+  });
+
+  it('never says which character it found, or any part of the value', () => {
+    const err = (() => {
+      try {
+        assertTokenIsSafeToMask(INJECTION);
+        throw new Error('expected a failure');
+      } catch (e) {
+        return e as Error;
+      }
+    })();
+    expect(err).toBeInstanceOf(UnsafeTokenError);
+    expect(err.message).not.toContain('tok-part-one');
+    expect(err.message).not.toContain('add-path');
+    expect(err.message).not.toContain('\n');
+    expect(sanitizedFailureLine(err)).toContain('[unsafe-token]');
+    expect(sanitizedFailureLine(err)).not.toContain('add-path');
+  });
+
+  it('emits no workflow command at all for a multiline token — not even the mask', async () => {
+    await withTempDir(async (dir) => {
+      const out = path.join(dir, 'token');
+      const logged: string[] = [];
+      const code = await main(['--out', out], {
+        env,
+        fetch: jsonResponse({ access_token: INJECTION }),
+        log: (l) => logged.push(l),
+        error: (l) => logged.push(l),
+      });
+
+      expect(code).toBe(1);
+      // Not one `::` anywhere in the output. A partial mask would be worse than
+      // none: it would register a prefix as the secret and leave the rest live,
+      // while the remainder of the line ran as a command.
+      const all = logged.join('\n');
+      expect(all).not.toContain('::add-mask::');
+      expect(all).not.toContain('::');
+      expect(all).not.toContain('add-path');
+      expect(all).not.toContain('tok-part-one');
+      // Exactly one line, naming the closed category.
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).toContain('[unsafe-token]');
+    });
+  });
+
+  it('writes no token file for a multiline token', async () => {
+    await withTempDir(async (dir) => {
+      const out = path.join(dir, 'token');
+      const code = await main(['--out', out], {
+        env,
+        fetch: jsonResponse({ access_token: INJECTION }),
+        log: () => {},
+        error: () => {},
+      });
+      expect(code).toBe(1);
+      expect(fs.existsSync(out)).toBe(false);
+      expect(fs.readdirSync(dir)).toEqual([]);
+    });
+  });
+
+  it('is not satisfied by the trim in extractAccessToken', () => {
+    // trim() tidies surrounding whitespace, so it would remove a trailing
+    // newline and do nothing at all about one in the middle. The middle is the
+    // case that matters, and it is the one trim cannot reach.
+    expect(extractAccessToken({ access_token: `  ${TOKEN}\n` })).toBe(TOKEN);
+    expect(extractAccessToken({ access_token: INJECTION })).toContain('\n');
+  });
+
+  it('refuses a padded injection rather than trimming it into something printable', async () => {
+    await withTempDir(async (dir) => {
+      const out = path.join(dir, 'token');
+      const logged: string[] = [];
+      const code = await main(['--out', out], {
+        env,
+        fetch: jsonResponse({ access_token: `  ${INJECTION}  ` }),
+        log: (l) => logged.push(l),
+        error: (l) => logged.push(l),
+      });
+      expect(code).toBe(1);
+      expect(logged.join('\n')).toContain('[unsafe-token]');
+      expect(fs.existsSync(out)).toBe(false);
+    });
+  });
+
+  it('refuses a CR-only token, so nothing can overwrite a rendered log line', async () => {
+    await withTempDir(async (dir) => {
+      const out = path.join(dir, 'token');
+      const logged: string[] = [];
+      const code = await main(['--out', out], {
+        env,
+        fetch: jsonResponse({ access_token: 'good-looking\rmasked' }),
+        log: (l) => logged.push(l),
+        error: (l) => logged.push(l),
+      });
+      expect(code).toBe(1);
+      expect(fs.existsSync(out)).toBe(false);
+      expect(logged.join('\n')).not.toContain('good-looking');
+    });
   });
 });

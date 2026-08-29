@@ -91,15 +91,33 @@ describe('the workflow holds the least authority it can', () => {
   it('checks out the exact triggering commit', () => {
     expect(body).toContain('ref: ${{ github.sha }}');
   });
+
+  it('pins every action to a full commit SHA, with the tag it came from in a comment', () => {
+    // A tag is a pointer its owner can move. This job hands three long-lived
+    // credentials to whatever these actions are on the day it runs, so "v4"
+    // is not good enough: each is pinned to the 40-character commit that
+    // actually ran, and the tag survives only as a comment for readers.
+    const uses = [...yaml.matchAll(/^\s*uses:\s*(\S+)(.*)$/gm)];
+    expect(uses.length).toBeGreaterThan(0);
+    for (const [, ref, rest] of uses) {
+      expect(ref, ref).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/);
+      // The version comment is what makes the pin reviewable and upgradable.
+      expect(rest.trim(), ref).toMatch(/^#\s*v\d/);
+    }
+    // No floating ref survives anywhere, comments included.
+    expect(yaml).not.toMatch(/uses:\s*\S+@(v\d|main|master|latest)\b/);
+  });
 });
 
 describe('credentials are confined and never become arguments', () => {
   it('references exactly the three credential secrets, each only as a step-scoped env value', () => {
     const references = [...body.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1]);
-    // Two steps legitimately need them: the presence preflight and the step
-    // that mints a token and sweeps.
+    // ONE step needs them: the one that mints a token and sweeps. There is no
+    // preflight — a second step existing only to test presence would double the
+    // number of places a long-lived credential is expanded, to prove something
+    // the minter already fails on with `missing-credentials`.
     expect(new Set(references)).toEqual(new Set(CREDENTIAL_SECRETS));
-    expect(references.length).toBe(CREDENTIAL_SECRETS.length * 2);
+    expect(references.length).toBe(CREDENTIAL_SECRETS.length);
 
     // Every interpolation is an env assignment whose key matches its secret.
     for (const line of body.split('\n')) {
@@ -123,30 +141,28 @@ describe('credentials are confined and never become arguments', () => {
     expect(body).toContain('request-access-token.ts');
   });
 
-  it('the preflight tests presence only — it never reads, prints or measures a value', () => {
-    const preflight = body.slice(
-      body.indexOf('Confirm the API credentials are available'),
-      body.indexOf('Mint an access token and run the full GPU coverage sweep'),
-    );
-    // `-z` is the whole interaction, once per credential.
+  it('there is no separate credential preflight step', () => {
+    // Retired deliberately: the token minter already fails with the closed
+    // `missing-credentials` category naming the empty VARIABLES, so a preflight
+    // bought nothing and cost a second step holding all three secrets.
+    expect(body).not.toContain('Confirm the API credentials are available');
     for (const name of CREDENTIAL_SECRETS) {
-      expect(preflight, name).toContain(`if [ -z "\${${name}:-}" ]`);
+      expect(body, name).not.toContain(`if [ -z "\${${name}:-}" ]`);
     }
-    // No length, no substring, no hashing, no echo of any value.
-    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c', 'base64']) {
-      expect(preflight, forbidden).not.toContain(forbidden);
-    }
-    expect(preflight).toContain('Repository secrets');
-    expect(preflight).toContain('not a coverage result');
+    // The three secrets appear in exactly one step's env block, contiguously.
+    const lines = body.split('\n');
+    const at = lines.flatMap((l, i) => (l.includes('${{ secrets.') ? [i] : []));
+    expect(at).toHaveLength(CREDENTIAL_SECRETS.length);
+    expect(at[at.length - 1] - at[0]).toBe(CREDENTIAL_SECRETS.length - 1);
   });
 
   it('a credential is never expanded into a command, a flag or a URL', () => {
-    // The only permitted expansions are the presence tests and the two
-    // additions to the `missing` list, which append the NAME, not the value.
+    // With the preflight gone there is no permitted expansion at all: the three
+    // credentials are set as env vars and read by the minter, never by shell.
     const expansions = body
       .split('\n')
-      .filter((l) => CREDENTIAL_SECRETS.some((n) => new RegExp(`\\$\\{?${n}\\b`).test(l)))
-      .filter((l) => !/if \[ -z "\$\{RAKUTEN_[A-Z_]+:-\}" \]/.test(l));
+      .filter((l) => !l.includes('${{ secrets.'))
+      .filter((l) => CREDENTIAL_SECRETS.some((n) => new RegExp(`\\$\\{?${n}\\b`).test(l)));
     expect(expansions).toEqual([]);
     expect(body).not.toMatch(/--token|--client|token=|client_secret=|access_token=/);
   });
@@ -229,7 +245,7 @@ describe('the workflow writes nothing into the repository', () => {
   it('reads the toolchain from the repository instead of inventing versions', () => {
     // pnpm/action-setup with no `version` reads packageManager from
     // package.json, so CI and local installs cannot drift.
-    expect(body).toContain('pnpm/action-setup@v4');
+    expect(body).toMatch(/uses: pnpm\/action-setup@[0-9a-f]{40}\b/);
     // No bare `version:` key anywhere — that key belongs to action-setup, and
     // pinning it there is exactly the drift this avoids. (`node-version:` is a
     // different key and is allowed.)
