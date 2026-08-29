@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ACCESS_TOKEN_ENV_VAR } from '../rakuten/types';
+
 // Structural checks on the validation workflow.
 //
 // A workflow is the one file in this repository that can hand a credential to
@@ -22,8 +24,13 @@ const body = yaml
   .filter((l) => !/^\s*#/.test(l))
   .join('\n');
 
-const SECRET = 'RAKUTEN_API_ACCESS_TOKEN';
+/** The GitHub Actions secret — where the credential is STORED. */
+const SECRET = 'RAKUTEN_API_KEY';
+/** The environment variable the adapter READS. Deliberately a different name. */
+const ENV_VAR = ACCESS_TOKEN_ENV_VAR;
 const secretExpr = `\${{ secrets.${SECRET} }}`;
+/** The one permitted form: env key = secret expression. */
+const mapping = `${ENV_VAR}: ${secretExpr}`;
 
 describe('the validation workflow exists and is wired to the right events', () => {
   it('is a single workflow at the expected path', () => {
@@ -81,7 +88,27 @@ describe('the secret is confined to one step and never becomes an argument', () 
     // Both must be the env-assignment form and no other secret may appear.
     expect(new Set(references)).toEqual(new Set([secretExpr]));
     expect(references.length).toBe(2);
-    expect(body).toContain(`${SECRET}: ${secretExpr}`);
+    expect(body).toContain(mapping);
+  });
+
+  it('maps the stored secret name onto the env var the adapter declares', () => {
+    // Two names for one credential: RAKUTEN_API_KEY is where it lives in
+    // GitHub, RAKUTEN_API_ACCESS_TOKEN is what the server-only adapter reads.
+    // Tying the env key to ACCESS_TOKEN_ENV_VAR means renaming the constant
+    // breaks this test rather than silently producing an unset variable and a
+    // sweep that looks like zero coverage.
+    expect(ENV_VAR).toBe('RAKUTEN_API_ACCESS_TOKEN');
+    expect(SECRET).not.toBe(ENV_VAR);
+    expect(body).toContain(mapping);
+
+    // Every env assignment of the adapter's variable uses the secret; none
+    // hard-codes a value or points at a differently named secret.
+    const assignments = body.split('\n').filter((l) => l.trim().startsWith(`${ENV_VAR}:`));
+    expect(assignments.length).toBe(2);
+    for (const line of assignments) expect(line.trim()).toBe(mapping);
+
+    // The old secret name is gone everywhere, including prose.
+    expect(body).not.toContain('secrets.RAKUTEN_API_ACCESS_TOKEN');
   });
 
   it('the preflight tests presence only — it never reads, prints or measures the value', () => {
@@ -89,15 +116,23 @@ describe('the secret is confined to one step and never becomes an argument', () 
       body.indexOf('Confirm the API credential is available'),
       body.indexOf('Run the full GPU coverage sweep'),
     );
-    // `-z` is the whole interaction: is it empty, yes or no.
-    expect(preflight).toContain('if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]');
+    // `-z` is the whole interaction: is it empty, yes or no. It tests the
+    // ENV VAR, which is what the adapter will read moments later.
+    expect(preflight).toContain(`if [ -z "\${${ENV_VAR}:-}" ]`);
     // No length, no substring, no hashing, no echo of the variable itself.
-    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c']) {
+    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c', '${RAKUTEN_API_KEY']) {
       expect(preflight, forbidden).not.toContain(forbidden);
     }
-    // It says what to fix, so a missing secret is self-diagnosing.
+    // It says what to fix, and names the secret that must EXIST — the stored
+    // name, not the env var, since that is what Aaron adds in Settings.
     expect(preflight).toContain('Repository secrets');
     expect(preflight).toContain('not a coverage result');
+    expect(preflight).toContain(`secrets.${SECRET}`);
+    expect(preflight).toContain('named exactly');
+    // The guidance names the STORED secret, since that is what gets added in
+    // Settings — pointing at the env var there would send Aaron to the wrong
+    // field entirely.
+    expect(preflight.slice(preflight.indexOf('named exactly'))).toContain(SECRET);
   });
 
   it('never places the secret in a command argument or a query parameter', () => {
@@ -106,14 +141,14 @@ describe('the secret is confined to one step and never becomes an argument', () 
     // it, and the value never reaches that string.
     for (const line of body.split('\n')) {
       if (!line.includes('${{ secrets.')) continue;
-      expect(line.trim(), line).toMatch(new RegExp(`^${SECRET}: \\$\\{\\{ secrets\\.${SECRET} \\}\\}$`));
+      expect(line.trim(), line).toBe(mapping);
     }
     // The shell variable is never expanded into a command, a flag or a URL.
     // `[ -z "${VAR:-}" ]` is the one permitted use: a presence test.
     const expansions = body
       .split('\n')
-      .filter((l) => /\$\{?RAKUTEN_API_ACCESS_TOKEN/.test(l))
-      .filter((l) => !l.includes('if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]'));
+      .filter((l) => new RegExp(`\\$\\{?${ENV_VAR}`).test(l))
+      .filter((l) => !l.includes(`if [ -z "\${${ENV_VAR}:-}" ]`));
     expect(expansions).toEqual([]);
     expect(body).not.toMatch(/--token|token=|access_token=/);
   });
@@ -124,6 +159,7 @@ describe('the secret is confined to one step and never becomes an argument', () 
     const afterSweep = body.slice(body.indexOf('Validate gates and publish the report'));
     expect(afterSweep).not.toContain('secrets.');
     expect(afterSweep).not.toContain(SECRET);
+    expect(afterSweep).not.toContain(ENV_VAR);
   });
 
   it('uses no shell tracing and echoes no environment', () => {
