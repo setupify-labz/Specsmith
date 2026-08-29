@@ -1,0 +1,137 @@
+# Live validation of the Rakuten x Newegg GPU coverage sweep.
+#
+# This is a VALIDATION workflow, not the scheduled price-refresh workflow. It
+# runs the full catalogue sweep once against the live Product Search API and
+# asserts the correction in c378f33 holds against real responses. It writes
+# nothing back to the repository and publishes no offer data.
+#
+# WHY THE SECRET IS SAFE HERE
+# ---------------------------
+# The token is supplied to exactly ONE step, as a step-scoped environment
+# variable, and that step's only output is a JSON report whose type cannot hold
+# a URL, an identifier or free text from the far end. The step that renders and
+# publishes the report runs WITHOUT the secret in its environment at all, so a
+# leak from the reporting path is not unlikely — it is unreachable.
+#
+# GitHub masks exact secret values in logs. That masking is a backstop, not the
+# boundary: the boundary is that the credential is never placed in an argument,
+# a query string, a file, an artifact or a summary in the first place.
+
+name: Validate Rakuten GPU coverage
+
+on:
+  # Push only, and only on the implementation branch. Deliberately NOT
+  # pull_request: a fork PR must never be able to run a job holding this
+  # credential, and a same-repo PR would only duplicate the push run.
+  push:
+    branches:
+      - claude/rakuten-newegg-adapter-97h85y
+    paths:
+      - '.github/workflows/validate-rakuten-gpu-coverage.yml'
+      - 'artifacts/SpecSmith/scripts/retail/**'
+  workflow_dispatch:
+
+# Read-only. This job clones, installs, tests and calls an external API. It has
+# no reason to write to the repository and no token that would let it.
+permissions:
+  contents: read
+
+# One validation at a time. A superseded push should not race a newer one
+# against a rate-limited account.
+concurrency:
+  group: rakuten-gpu-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Full 57-GPU live sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Report the commit under test
+        run: |
+          set -euo pipefail
+          echo "Validating commit ${GITHUB_SHA}"
+          echo "commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          git log -1 --pretty='format:%s' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      # pnpm before Node: setup-node's pnpm cache needs the package manager to
+      # already be on PATH. The version is not pinned here — action-setup reads
+      # `packageManager` from the root package.json, so CI and local installs
+      # can never drift apart.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Everything that can be proven without the credential is proven first.
+      # A broken matcher should fail here, before a single API call is spent.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run the retail adapter and coverage tests
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run scripts/retail
+
+      # THE ONLY STEP THAT SEES THE TOKEN.
+      #
+      # It is read from the environment by the adapter and sent as an
+      # Authorization header. It is never an argument, never a query parameter,
+      # and the JSON written here is a report of counts, not a response body.
+      #
+      # The CLI's exit code is captured rather than allowed to end the job, so
+      # the reporting step below still runs and explains WHY a sweep failed.
+      # The captured code is then asserted as a gate, so a failure cannot be
+      # swallowed.
+      - name: Run the full GPU coverage sweep
+        id: sweep
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_API_ACCESS_TOKEN: ${{ secrets.RAKUTEN_API_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          status=0
+          pnpm exec tsx scripts/retail/coverage/measure-coverage.ts --json \
+            > "${RUNNER_TEMP}/coverage.json" || status=$?
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          echo "coverage sweep exited ${status}"
+
+      # Runs WITHOUT the secret. Renders the report, asserts every gate, and
+      # refuses to publish a summary containing a URL or identifier.
+      - name: Validate gates and publish the report
+        if: always()
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -euo pipefail
+          pnpm exec tsx scripts/retail/coverage/assert-coverage-gates.ts \
+            --report "${RUNNER_TEMP}/coverage.json" \
+            --sweep-exit "${{ steps.sweep.outputs.exit_code || '1' }}"
+
+      # Belt and braces: the report lives in RUNNER_TEMP, outside the checkout,
+      # so it cannot be committed even by accident. This proves the working
+      # tree is unchanged.
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "The working tree was modified by this workflow:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "Working tree clean."

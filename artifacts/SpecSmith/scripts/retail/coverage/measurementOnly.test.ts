@@ -27,8 +27,12 @@ const walk = (dir: string): string[] =>
   });
 
 describe('the coverage tool measures and nothing else', () => {
-  it('writes nothing, anywhere', () => {
+  it('the measurement path writes nothing, anywhere', () => {
+    // assert-coverage-gates.ts is exempt and constrained separately below: it
+    // is the reporting half, and its one write is to the CI step summary. The
+    // exemption is by filename, so a new module cannot inherit it by accident.
     for (const { file, text } of sourceFiles) {
+      if (file === 'assert-coverage-gates.ts') continue;
       const code = codeOnly(text);
       for (const forbidden of ['writeFileSync', 'writeFile', 'appendFile', 'mkdirSync', 'rmSync', 'unlinkSync', 'createWriteStream']) {
         expect(code.includes(forbidden), `${file} must not write — this command is measurement only`).toBe(false);
@@ -36,12 +40,47 @@ describe('the coverage tool measures and nothing else', () => {
     }
   });
 
+  it('the gate reporter writes only to the CI step summary', () => {
+    // Its single write target is a path GitHub supplies in the environment,
+    // which is outside the checkout. It creates no directory and deletes
+    // nothing, so it cannot touch the repository even if the path were wrong.
+    const code = codeOnly(read(path.join(here, 'assert-coverage-gates.ts')));
+    const writes = [...code.matchAll(/(appendFileSync|writeFileSync)\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => `${m[1]}:${m[2]}`);
+    expect(writes).toEqual(['appendFileSync:summaryFile']);
+    expect(code).toContain('const summaryFile = process.env.GITHUB_STEP_SUMMARY;');
+    for (const forbidden of ['mkdirSync', 'rmSync', 'unlinkSync', 'createWriteStream']) {
+      expect(code.includes(forbidden), `must not ${forbidden}`).toBe(false);
+    }
+  });
+
   it('reads no production data store, only the GPU catalog through the adapter', () => {
     for (const { file, text } of sourceFiles) {
       const jsonImports = importsOf(text).filter((s) => s.endsWith('.json'));
       expect(jsonImports, `${file} must not import a data file directly`).toEqual([]);
+      // Same exemption, same reason: the reporter reads one file, and which
+      // file is decided by its caller, not by a path it builds.
+      if (file === 'assert-coverage-gates.ts') continue;
       expect(codeOnly(text).includes('readFileSync'), `${file} must not read files itself`).toBe(false);
     }
+  });
+
+  it('the gate reporter reads only the report file it is handed', () => {
+    const code = codeOnly(read(path.join(here, 'assert-coverage-gates.ts')));
+    const reads = [...code.matchAll(/readFileSync\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
+    expect(reads).toEqual(['file']);
+    // No path is constructed from a repository root, so it cannot wander into
+    // one; `--report` is the only way to name the file.
+    expect(code.includes('path.join(here'), 'must not build a repo path').toBe(false);
+    expect(code).toContain("flag(argv, 'report')");
+  });
+
+  it('the gate reporter never reads the credential', () => {
+    // It renders output into a CI log. Reading the token in order to check
+    // for it would put the secret somewhere it currently is not.
+    const code = codeOnly(read(path.join(here, 'assert-coverage-gates.ts')));
+    expect(code.includes('RAKUTEN'), 'must not name the token variable').toBe(false);
+    const envReads = [...code.matchAll(/process\.env\.([A-Z_]+)/g)].map((m) => m[1]);
+    expect(envReads).toEqual(['GITHUB_STEP_SUMMARY']);
   });
 
   it('stays server-only: nothing under src/ can reach it', () => {
