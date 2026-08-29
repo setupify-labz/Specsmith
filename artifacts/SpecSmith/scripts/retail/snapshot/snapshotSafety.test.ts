@@ -171,12 +171,16 @@ describe('the writer writes one file, once, and only that', () => {
     expect(cli.includes("'src'"), 'must not publish into src/, which Vite bundles').toBe(false);
   });
 
-  it('is not wired into any page, component or workflow yet', () => {
+  it('the dated offer snapshot is not wired into any page, component or workflow yet', () => {
     for (const dir of ['pages', 'components']) {
       const full = path.join(srcRoot, dir);
       if (!fs.existsSync(full)) continue;
       for (const file of walk(full)) {
-        expect(importsOf(read(file)).filter((s) => /retail\//.test(s)), file).toEqual([]);
+        // The separate price-free affiliate catalog now intentionally lives
+        // under lib/retail and is used by the builder. This boundary is about
+        // the dated GPU offer snapshot only, so name its two browser modules
+        // exactly instead of banning unrelated retail modules by directory.
+        expect(importsOf(read(file)).filter((s) => /offerSnapshot(?:Loader)?$/.test(s)), file).toEqual([]);
       }
     }
     const workflows = path.join(specsmithRoot, '..', '..', '.github', 'workflows');

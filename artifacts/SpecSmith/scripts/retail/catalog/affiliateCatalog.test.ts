@@ -69,6 +69,15 @@ describe('generic affiliate part admission', () => {
     expect(isSelectableBuilderPart(category, title)).toBe(false);
   });
 
+  it('applies the product-kind rule at the storage admission boundary', () => {
+    expect(admitAffiliatePart(
+      item({ leaf: 'Keyboards', title: 'Coiled USB-C Cable for Mechanical Keyboard' }),
+      'keyboard',
+      'Keyboards',
+      fetchedAt,
+    )).toEqual({ status: 'rejected', reason: 'kind' });
+  });
+
   it.each([
     ['motherboard', 'ASUS ROG B850 ATX Motherboard'],
     ['keyboard', 'Keychron Q6 Mechanical Keyboard'],
