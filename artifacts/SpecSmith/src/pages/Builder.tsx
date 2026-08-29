@@ -17,6 +17,8 @@ import peripheralData from '../data/peripherals.json';
 import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
+import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -83,6 +85,69 @@ export default function Builder() {
   useSeo(getRouteMeta('/builder'));
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
+  const affiliateCatalog = useAffiliatePartCatalog();
+
+  const retailByCategory = useMemo(() => {
+    const grouped = new Map<RetailPartCategory, AffiliatePart[]>();
+    if (affiliateCatalog.status !== 'ok') return grouped;
+    for (const part of affiliateCatalog.catalog.parts) {
+      const list = grouped.get(part.category) ?? [];
+      list.push(part);
+      grouped.set(part.category, list);
+    }
+    return grouped;
+  }, [affiliateCatalog]);
+
+  const retailBase = (part: AffiliatePart) => ({
+    id: part.id,
+    name: part.name,
+    image: part.imageUrl,
+    affiliateUrl: part.trackedAffiliateUrl,
+    specsVerified: part.specsVerified,
+    canonicalPartId: part.canonicalPartId,
+    retailPart: true,
+  });
+
+  const builderGpus = useMemo<GPU[]>(() => {
+    const retail = retailByCategory.get('gpu') ?? [];
+    const firstLink = new Map<string, AffiliatePart>();
+    for (const part of retail) if (part.canonicalPartId && !firstLink.has(part.canonicalPartId)) firstLink.set(part.canonicalPartId, part);
+    const canonical = gpus.map((gpu) => {
+      const offer = firstLink.get(gpu.id);
+      return {
+        ...gpu,
+        image: `/images/gpus/${gpu.id}.png`,
+        specsVerified: true,
+        ...(offer ? { affiliateUrl: offer.trackedAffiliateUrl } : {}),
+      };
+    });
+    const skuParts = retail.flatMap((part) => {
+      const base = gpus.find((gpu) => gpu.id === part.canonicalPartId);
+      return base ? [{ ...base, ...retailBase(part), price_usd: undefined } as unknown as GPU] : [];
+    });
+    return [...canonical, ...skuParts];
+  }, [retailByCategory]);
+
+  const builderCpus = useMemo<CPU[]>(() => [
+    ...cpus.map((part) => ({ ...part, specsVerified: true })),
+    ...(retailByCategory.get('cpu') ?? []).map((part) => ({ ...retailBase(part), price_usd: undefined } as unknown as CPU)),
+  ], [retailByCategory]);
+
+  const withRetail = <T extends { id: string }>(category: RetailPartCategory, canonical: T[]): T[] => [
+    ...canonical.map((part) => ({ ...part, specsVerified: true })),
+    ...(retailByCategory.get(category) ?? []).map((part) => ({ ...retailBase(part), price_usd: undefined } as unknown as T)),
+  ];
+
+  const builderMotherboards = useMemo(() => withRetail('motherboard', componentData.motherboards as Motherboard[]), [retailByCategory]);
+  const builderRam = useMemo(() => withRetail('ram', componentData.ram as RAM[]), [retailByCategory]);
+  const builderStorage = useMemo(() => withRetail('storage', componentData.storage as Storage[]), [retailByCategory]);
+  const builderPsus = useMemo(() => withRetail('psu', componentData.psus as PSU[]), [retailByCategory]);
+  const builderCases = useMemo(() => withRetail('case', componentData.cases as Case[]), [retailByCategory]);
+  const builderCoolers = useMemo(() => withRetail('cooler', componentData.coolers as Cooler[]), [retailByCategory]);
+  const builderMonitors = useMemo(() => withRetail('monitor', peripheralData.monitors as Monitor[]), [retailByCategory]);
+  const builderKeyboards = useMemo(() => withRetail('keyboard', peripheralData.keyboards as Keyboard[]), [retailByCategory]);
+  const builderMice = useMemo(() => withRetail('mouse', peripheralData.mice as Mouse[]), [retailByCategory]);
+  const builderHeadsets = useMemo(() => withRetail('headset', peripheralData.headsets as Headset[]), [retailByCategory]);
 
   // Parse initial state from URL params (from prebuilts "Load into Builder" or share link)
   const initialBuild = useMemo(() => {
@@ -132,18 +197,18 @@ export default function Builder() {
   const cpuSectionRef = useRef<HTMLDivElement>(null);
   const fpsSectionRef = useRef<HTMLDivElement>(null);
 
-  const selectedGpu = gpus.find(g => g.id === build.gpu) ?? null;
-  const selectedCpu = cpus.find(c => c.id === build.cpu) ?? null;
-  const selectedMb = (componentData.motherboards as Motherboard[]).find(m => m.id === build.motherboard) ?? null;
-  const selectedRam = (componentData.ram as RAM[]).find(r => r.id === build.ram) ?? null;
-  const selectedStorage = (componentData.storage as Storage[]).find(s => s.id === build.storage) ?? null;
-  const selectedPsu = (componentData.psus as PSU[]).find(p => p.id === build.psu) ?? null;
-  const selectedCase = (componentData.cases as Case[]).find(c => c.id === build.case) ?? null;
-  const selectedCooler = (componentData.coolers as Cooler[]).find(c => c.id === build.cooler) ?? null;
-  const selectedMonitor = (peripheralData.monitors as Monitor[]).find(m => m.id === build.monitor) ?? null;
-  const selectedKeyboard = (peripheralData.keyboards as Keyboard[]).find(k => k.id === build.keyboard) ?? null;
-  const selectedMouse = (peripheralData.mice as Mouse[]).find(m => m.id === build.mouse) ?? null;
-  const selectedHeadset = (peripheralData.headsets as Headset[]).find(h => h.id === build.headset) ?? null;
+  const selectedGpu = builderGpus.find(g => g.id === build.gpu) ?? null;
+  const selectedCpu = builderCpus.find(c => c.id === build.cpu) ?? null;
+  const selectedMb = builderMotherboards.find(m => m.id === build.motherboard) ?? null;
+  const selectedRam = builderRam.find(r => r.id === build.ram) ?? null;
+  const selectedStorage = builderStorage.find(s => s.id === build.storage) ?? null;
+  const selectedPsu = builderPsus.find(p => p.id === build.psu) ?? null;
+  const selectedCase = builderCases.find(c => c.id === build.case) ?? null;
+  const selectedCooler = builderCoolers.find(c => c.id === build.cooler) ?? null;
+  const selectedMonitor = builderMonitors.find(m => m.id === build.monitor) ?? null;
+  const selectedKeyboard = builderKeyboards.find(k => k.id === build.keyboard) ?? null;
+  const selectedMouse = builderMice.find(m => m.id === build.mouse) ?? null;
+  const selectedHeadset = builderHeadsets.find(h => h.id === build.headset) ?? null;
 
   const compat = useMemo(() => {
     const result = checkCompatibility({
@@ -151,7 +216,7 @@ export default function Builder() {
       psu: selectedPsu, case: selectedCase, cooler: selectedCooler,
     });
     // Monitor pairing warnings
-    if (selectedMonitor && selectedGpu) {
+    if (selectedMonitor && selectedGpu && typeof selectedMonitor.resolution === 'string' && typeof selectedMonitor.refresh_rate_hz === 'number' && typeof selectedGpu.tier === 'number') {
       const res = selectedMonitor.resolution;
       const hz = selectedMonitor.refresh_rate_hz;
       const tier = selectedGpu.tier;
@@ -185,30 +250,34 @@ export default function Builder() {
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
   const corePartsList = [
-    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: selectedGpu.price_usd },
-    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: selectedCpu.price_usd },
-    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: selectedMb.price_usd },
-    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: selectedRam.price_usd },
-    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: selectedStorage.price_usd },
-    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: selectedPsu.price_usd },
-    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: selectedCase.price_usd },
-    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: selectedCooler.price_usd },
-  ].filter(Boolean) as { label: string; name: string; price: number }[];
+    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: selectedGpu.price_usd, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
+    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: selectedCpu.price_usd, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
+    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: selectedMb.price_usd, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
+    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: selectedRam.price_usd, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
+    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: selectedStorage.price_usd, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
+    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: selectedPsu.price_usd, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
+    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: selectedCase.price_usd, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
+    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: selectedCooler.price_usd, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; price?: number; affiliateUrl?: string }[];
 
   const peripheralPartsList = [
-    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: selectedMonitor.price_usd },
-    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: selectedKeyboard.price_usd },
-    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: selectedMouse.price_usd },
-    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: selectedHeadset.price_usd },
-  ].filter(Boolean) as { label: string; name: string; price: number }[];
+    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: selectedMonitor.price_usd, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
+    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: selectedKeyboard.price_usd, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
+    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: selectedMouse.price_usd, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
+    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: selectedHeadset.price_usd, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; price?: number; affiliateUrl?: string }[];
 
   const summaryParts = [
     ...corePartsList,
     ...peripheralPartsList,
     ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: cp.price, customId: cp.id })),
   ];
-  const totalCost = summaryParts.reduce((sum, p) => sum + p.price, 0);
-  const canEstimate = !!(selectedGpu && selectedCpu);
+  const totalCost = summaryParts.reduce((sum, p) => sum + (p.price ?? 0), 0);
+  const canEstimate = Boolean(
+    selectedGpu && selectedCpu &&
+    typeof selectedGpu.gpu_multiplier === 'number' && Number.isFinite(selectedGpu.gpu_multiplier) &&
+    typeof selectedCpu.cpu_multiplier === 'number' && Number.isFinite(selectedCpu.cpu_multiplier),
+  );
 
   const buildState: Record<string, string | null> = {
     gpu: build.gpu, cpu: build.cpu,
@@ -234,7 +303,9 @@ export default function Builder() {
     gpuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     // Highlight top GPUs
     if (selectedCpu) {
-      const top3 = gpus.filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id);
+      const top3 = typeof selectedCpu.benchmark_score === 'number'
+        ? gpus.filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id)
+        : [];
       setRecommendedIds(top3);
       setTimeout(() => setRecommendedIds([]), 3500);
     }
@@ -292,11 +363,12 @@ export default function Builder() {
             <div ref={gpuSectionRef}>
               <PartSelector
                 category="gpu" label="GPU — Graphics Card" defaultOpen
-                parts={gpus}
+                parts={builderGpus}
                 selectedId={build.gpu}
                 recommendedIds={recommendedIds}
                 onSelect={id => { selectPart('gpu', id); setShowFps(false); }}
                 getSpecs={p => {
+                  if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
                   const g = p as GPU;
                   return [
                     { label: 'VRAM', value: `${g.vram_gb}GB ${g.architecture}` },
@@ -310,11 +382,12 @@ export default function Builder() {
             <div ref={cpuSectionRef}>
               <PartSelector
                 category="cpu" label="CPU — Processor"
-                parts={cpus}
+                parts={builderCpus}
                 selectedId={build.cpu}
                 recommendedIds={recommendedIds}
                 onSelect={id => { selectPart('cpu', id); setShowFps(false); }}
                 getSpecs={p => {
+                  if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
                   const c = p as CPU;
                   return [
                     { label: 'Cores/Threads', value: `${c.cores}C / ${c.threads}T` },
@@ -325,34 +398,34 @@ export default function Builder() {
               />
             </div>
             <PartSelector category="motherboard" label="Motherboard"
-              parts={componentData.motherboards as Motherboard[]} selectedId={build.motherboard}
+              parts={builderMotherboards} selectedId={build.motherboard}
               onSelect={id => selectPart('motherboard', id)}
-              getSpecs={p => { const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
             />
             <PartSelector category="ram" label="RAM — Memory"
-              parts={componentData.ram as RAM[]} selectedId={build.ram}
+              parts={builderRam} selectedId={build.ram}
               onSelect={id => selectPart('ram', id)}
-              getSpecs={p => { const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
             />
             <PartSelector category="storage" label="Storage"
-              parts={componentData.storage as Storage[]} selectedId={build.storage}
+              parts={builderStorage} selectedId={build.storage}
               onSelect={id => selectPart('storage', id)}
-              getSpecs={p => { const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
             />
             <PartSelector category="psu" label="PSU — Power Supply"
-              parts={componentData.psus as PSU[]} selectedId={build.psu}
+              parts={builderPsus} selectedId={build.psu}
               onSelect={id => selectPart('psu', id)}
-              getSpecs={p => { const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
             />
             <PartSelector category="case" label="Case"
-              parts={componentData.cases as Case[]} selectedId={build.case}
+              parts={builderCases} selectedId={build.case}
               onSelect={id => selectPart('case', id)}
-              getSpecs={p => { const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
             />
             <PartSelector category="cooler" label="CPU Cooler"
-              parts={componentData.coolers as Cooler[]} selectedId={build.cooler}
+              parts={builderCoolers} selectedId={build.cooler}
               onSelect={id => selectPart('cooler', id)}
-              getSpecs={p => { const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
+              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
             />
 
             {/* Peripherals section */}
@@ -407,24 +480,24 @@ export default function Builder() {
                   >
                     <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
                       <PartSelector category="monitor" label="Monitor"
-                        parts={peripheralData.monitors as Monitor[]} selectedId={build.monitor}
+                        parts={builderMonitors} selectedId={build.monitor}
                         onSelect={id => selectPart('monitor', id)}
-                        getSpecs={p => { const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
+                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
                       />
                       <PartSelector category="keyboard" label="Keyboard"
-                        parts={peripheralData.keyboards as Keyboard[]} selectedId={build.keyboard}
+                        parts={builderKeyboards} selectedId={build.keyboard}
                         onSelect={id => selectPart('keyboard', id)}
-                        getSpecs={p => { const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
+                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
                       />
                       <PartSelector category="mouse" label="Mouse"
-                        parts={peripheralData.mice as Mouse[]} selectedId={build.mouse}
+                        parts={builderMice} selectedId={build.mouse}
                         onSelect={id => selectPart('mouse', id)}
-                        getSpecs={p => { const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
+                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
                       />
                       <PartSelector category="headset" label="Headset"
-                        parts={peripheralData.headsets as Headset[]} selectedId={build.headset}
+                        parts={builderHeadsets} selectedId={build.headset}
                         onSelect={id => selectPart('headset', id)}
-                        getSpecs={p => { const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
+                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
                       />
                     </div>
                   </motion.div>

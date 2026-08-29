@@ -95,6 +95,10 @@ async function run(argv: readonly string[]): Promise<number> {
     candidates.set(config.category, accepted);
   }
 
+  console.error(
+    `Admitted candidates: ${RETAIL_CATEGORY_CONFIG.map((config) => `${config.category}=${candidates.get(config.category)?.length ?? 0}`).join(', ')}.`,
+  );
+
   let catalog;
   try {
     catalog = buildAffiliatePartCatalog(candidates, new Date().toISOString());

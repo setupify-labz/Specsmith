@@ -15,10 +15,62 @@ import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 export type CatalogAdmission =
   | { status: 'accepted'; part: AffiliatePart }
-  | { status: 'rejected'; reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'url' };
+  | { status: 'rejected'; reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'kind' | 'url' };
 
 const safeId = (category: RetailPartCategory, sku: string): string =>
   `newegg-${category}-${sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.replace(/-+$/g, '');
+
+export const normalizeCatalogName = (name: string): string =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const has = (title: string, pattern: RegExp): boolean => pattern.test(title);
+
+/**
+ * Rakuten's category leaf is necessary but not sufficient: the retailer puts
+ * replacement batteries, stands, cables and bundles in the same leaves as the
+ * component they relate to. These rules only admit a product that can occupy
+ * the named slot in the PC builder. They intentionally use product-kind words,
+ * never model/spec inference.
+ */
+export function isSelectableBuilderPart(category: RetailPartCategory, name: string): boolean {
+  const title = normalizeCatalogName(name);
+  switch (category) {
+    case 'gpu':
+      return true; // GPU candidates have already passed the stricter GPU adapter.
+    case 'cpu':
+      return has(title, /\b(processor|ryzen|athlon|celeron|pentium|intel core)\b/);
+    case 'motherboard':
+      return has(title, /\b(motherboard|mainboard)\b/)
+        && !has(title, /\b(combo|bundle|laptop|notebook|thinkcentre|replacement)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
+    case 'ram':
+      return has(title, /\b(ram|memory)\b/)
+        && !has(title, /\b(laptop|notebook|sodimm|so dimm)\b/);
+    case 'storage':
+      return has(title, /\b(ssd|solid state drive)\b/)
+        && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case)\b/);
+    case 'psu':
+      return has(title, /\b(atx|sfx|computer|desktop|workstation|pc)\b.*\b(power supply|psu)\b|\b(power supply|psu)\b.*\b(atx|sfx|computer|desktop|workstation|pc)\b/)
+        && !has(title, /\b(ups|backup battery|mining|server|switching converter)\b/);
+    case 'case':
+      return has(title, /\b(computer case|pc case|tower case|gaming case|desktop chassis|computer chassis)\b/)
+        && !has(title, /\b(carrying|protective|fan only)\b/);
+    case 'cooler':
+      return has(title, /\b(cpu cooler|cpu air cooler|liquid cpu cooler|aio liquid|processor cooler|cpu heatsink)\b/)
+        && !has(title, /\b(case fan|laptop|notebook|router|switch|replacement)\b/);
+    case 'monitor':
+      return has(title, /\b(monitor|display)\b/)
+        && !has(title, /\b(stand|mount|arm|screen protector|replacement panel)\b/);
+    case 'keyboard':
+      return has(title, /\bkeyboard\b/)
+        && !has(title, /\b(cable|keycap|keycaps|switch tester|wrist rest|keyboard case)\b|\bswitches?\s*\(/);
+    case 'mouse':
+      return has(title, /\b(mouse|mice)\b/)
+        && !has(title, /\b(mouse pad|mousepad|desk mat|skates|grips|feet|replacement cable)\b/);
+    case 'headset':
+      return has(title, /\b(headset|headphones)\b/)
+        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b/);
+  }
+}
 
 export function admitAffiliatePart(
   item: XmlElement,
@@ -35,6 +87,7 @@ export function admitAffiliatePart(
   const trackedAffiliateUrl = childText(item, 'linkurl');
   if (!sku || !name || !imageUrl || !trackedAffiliateUrl) return { status: 'rejected', reason: 'required-field' };
   if (classifyListingCondition(name).issue) return { status: 'rejected', reason: 'condition' };
+  if (!isSelectableBuilderPart(category, name)) return { status: 'rejected', reason: 'kind' };
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return { status: 'rejected', reason: 'url' };
 
   return {
@@ -81,10 +134,13 @@ export function buildAffiliatePartCatalog(
 ): AffiliatePartCatalog {
   const selected: AffiliatePart[] = [];
   const ids = new Set<string>();
+  const names = new Set<string>();
   for (const config of RETAIL_CATEGORY_CONFIG) {
     const unique = (candidates.get(config.category) ?? []).filter((part) => {
-      if (ids.has(part.id)) return false;
+      const name = normalizeCatalogName(part.name);
+      if (ids.has(part.id) || names.has(name)) return false;
       ids.add(part.id);
+      names.add(name);
       return true;
     });
     if (unique.length < config.quota) throw new AffiliateCatalogFailure('category-shortfall');

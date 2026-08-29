@@ -5,6 +5,7 @@
 name: Build 500-part affiliate catalog
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - claude/rakuten-newegg-adapter-97h85y

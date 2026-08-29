@@ -13,7 +13,8 @@ import SaveBuildModal from './SaveBuildModal';
 interface SummaryPart {
   label: string;
   name: string;
-  price: number;
+  price?: number;
+  affiliateUrl?: string;
   customId?: string;
 }
 
@@ -125,6 +126,8 @@ export default function BuildSummary({
   };
 
   const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
+  const hasAffiliateParts = parts.some((part) => Boolean(part.affiliateUrl));
+  const hasUnknownPrices = parts.some((part) => part.price === undefined);
 
   return (
     <>
@@ -178,13 +181,15 @@ export default function BuildSummary({
                       </button>
                     ) : (
                       <>
-                        <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
-                          title="Buy on Amazon"
-                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
-                          Amazon
-                        </a>
-                        <a href={getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer"
-                          title="Buy on Newegg"
+                        {!p.affiliateUrl && (
+                          <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer sponsored"
+                            title="Search Amazon"
+                            className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+                            Amazon
+                          </a>
+                        )}
+                        <a href={p.affiliateUrl ?? getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel={p.affiliateUrl ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
+                          title={p.affiliateUrl ? `View ${p.name} at Newegg (affiliate link)` : 'Search Newegg'}
                           className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-newegg)' }}>
                           Newegg
                         </a>
@@ -193,11 +198,17 @@ export default function BuildSummary({
                   </div>
                 </div>
                 <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text)' }}>
-                  ${p.price.toLocaleString()}
+                  {p.price === undefined ? 'Retailer price' : `$${p.price.toLocaleString()}`}
                 </span>
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {hasAffiliateParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
+            </p>
+          )}
 
           {/* Custom / unlisted part */}
           {onAddCustomPart && (
@@ -245,10 +256,12 @@ export default function BuildSummary({
         {/* Total */}
         <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>Total Cost</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Known-price subtotal' : 'Total Cost'}</span>
             <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
           </div>
-          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>Est. street pricing · updated {PRICES_UPDATED}</p>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
+            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
+          </p>
           <div className="flex items-center justify-between gap-2 mt-2">
             <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
               Sales tax

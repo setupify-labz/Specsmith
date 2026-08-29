@@ -16,7 +16,7 @@ export const RETAIL_CATEGORY_CONFIG: readonly RetailCategoryConfig[] = [
   { category: 'motherboard', keyword: 'motherboard', categoryLeaf: 'Motherboards', quota: 45 },
   { category: 'ram', keyword: 'desktop memory', categoryLeaf: 'RAM', quota: 45 },
   { category: 'storage', keyword: 'internal SSD', categoryLeaf: 'Storage Devices', quota: 55 },
-  { category: 'psu', keyword: 'power supply', categoryLeaf: 'Computer Power Supplies', quota: 35 },
+  { category: 'psu', keyword: 'ATX power supply', categoryLeaf: 'Computer Power Supplies', quota: 35 },
   { category: 'case', keyword: 'computer case', categoryLeaf: 'Desktop Computer & Server Cases', quota: 35 },
   { category: 'cooler', keyword: 'CPU cooler', categoryLeaf: 'Computer System Cooling Parts', quota: 35 },
   { category: 'monitor', keyword: 'gaming monitor', categoryLeaf: 'Computer Monitors', quota: 40 },

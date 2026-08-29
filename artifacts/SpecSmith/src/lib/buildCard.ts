@@ -4,7 +4,7 @@ import gamesData from '../data/games.json';
 export interface BuildCardPart {
   label: string;
   name: string;
-  price: number;
+  price?: number;
 }
 
 export interface BuildCardOptions {
@@ -132,6 +132,7 @@ function getFpsColor(fps: number): string {
 
 export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasElement {
   const { buildName, parts, totalCost, gpu, cpu } = options;
+  const hasUnknownPrices = parts.some((part) => part.price === undefined);
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -260,7 +261,7 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
     ctx.font = '600 11px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = C.text2;
     ctx.textAlign = 'right';
-    ctx.fillText(`$${part.price.toLocaleString()}`, colDivX - 10, y + 24);
+    ctx.fillText(part.price === undefined ? 'Retailer price' : `$${part.price.toLocaleString()}`, colDivX - 10, y + 24);
     ctx.textAlign = 'left';
   });
 
@@ -276,7 +277,7 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
   ctx.font = '600 11px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = C.text2;
   ctx.textAlign = 'left';
-  ctx.fillText('TOTAL', colLeft, totalY + 10);
+  ctx.fillText(hasUnknownPrices ? 'KNOWN SUBTOTAL' : 'TOTAL', colLeft, totalY + 10);
 
   ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = C.text;

@@ -7,7 +7,8 @@ interface PartCardProps {
   name: string;
   image?: string;
   searchQuery?: string;
-  price_usd: number;
+  price_usd?: number;
+  affiliateUrl?: string;
   selected: boolean;
   sponsored?: boolean;
   recommended?: boolean;
@@ -52,7 +53,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price_usd, selected, sponsored, recommended, badge, specs, tier, onSelect
+  id, name, image, searchQuery, price_usd, affiliateUrl, selected, sponsored, recommended, badge, specs, tier, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
   return (
@@ -85,7 +86,7 @@ export default function PartCard({
         style={{ zIndex: 0 }}
         onClick={() => onSelect(id)}
         aria-pressed={selected}
-        aria-label={`${name}, $${price_usd.toLocaleString()}${selected ? ', selected' : ''}`}
+        aria-label={`${name}${price_usd === undefined ? '' : `, $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
       />
 
       <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
@@ -130,7 +131,7 @@ export default function PartCard({
               className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden flex items-center justify-center"
               style={{ backgroundColor: 'var(--ff-bg)' }}
             >
-              <img src={image} alt={name} loading="lazy" className="w-full h-full object-contain p-1" />
+              <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-contain p-1" />
             </div>
           )}
           <div className="flex-1 min-w-0 pr-14">
@@ -162,25 +163,30 @@ export default function PartCard({
 
         {/* Price + Buy */}
         <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>${price_usd.toLocaleString()}</span>
+          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
+            {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
+          </span>
           <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
+            {!affiliateUrl && (
+              <a
+                href={getAffiliateUrl(query)}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
+                style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
+              >
+                Amazon <ExternalLink size={10} />
+              </a>
+            )}
             <a
-              href={getAffiliateUrl(query)}
+              href={affiliateUrl ?? getNeweggUrl(query)}
               target="_blank"
-              rel="noopener noreferrer sponsored"
-              className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-              style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
-            >
-              Amazon <ExternalLink size={10} />
-            </a>
-            <a
-              href={getNeweggUrl(query)}
-              target="_blank"
-              rel="noopener noreferrer"
+              rel={affiliateUrl ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
+              aria-label={affiliateUrl ? `View ${name} at Newegg (affiliate link)` : `Search Newegg for ${name}`}
               className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
               style={{ color: 'var(--ff-newegg)', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
             >
-              Newegg <ExternalLink size={10} />
+              {affiliateUrl ? 'View at Newegg' : 'Newegg'} <ExternalLink size={10} />
             </a>
           </div>
         </div>

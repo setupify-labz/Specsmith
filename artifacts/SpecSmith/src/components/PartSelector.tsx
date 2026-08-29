@@ -29,7 +29,9 @@ interface Part {
   id: string;
   name: string;
   image?: string;
-  price_usd: number;
+  price_usd?: number;
+  affiliateUrl?: string;
+  specsVerified?: boolean;
   tier?: number;
   benchmark_score?: number;
   sponsored?: boolean;
@@ -57,9 +59,13 @@ export default function PartSelector({
 
   const filtered = useMemo(() => {
     let result = parts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    if (sort === 'price') result.sort((a, b) => a.price_usd - b.price_usd);
+    if (sort === 'price') result.sort((a, b) => (a.price_usd ?? Number.POSITIVE_INFINITY) - (b.price_usd ?? Number.POSITIVE_INFINITY));
     else if (sort === 'performance') result.sort((a, b) => (b.benchmark_score ?? b.tier ?? 0) - (a.benchmark_score ?? a.tier ?? 0));
-    else if (sort === 'value') result.sort((a, b) => ((b.benchmark_score ?? b.tier ?? 0) / b.price_usd) - ((a.benchmark_score ?? a.tier ?? 0) / a.price_usd));
+    else if (sort === 'value') result.sort((a, b) => {
+      const aValue = a.price_usd && a.price_usd > 0 ? (a.benchmark_score ?? a.tier ?? 0) / a.price_usd : -1;
+      const bValue = b.price_usd && b.price_usd > 0 ? (b.benchmark_score ?? b.tier ?? 0) / b.price_usd : -1;
+      return bValue - aValue;
+    });
     // Recommended first when present
     if (recommendedIds.length > 0) {
       result = [
@@ -74,13 +80,15 @@ export default function PartSelector({
   // (highest raw benchmark score) — one of each per category, GPU/CPU only.
   const { bestValueId, bestPerformanceId } = useMemo(() => {
     if (category !== 'gpu' && category !== 'cpu') return { bestValueId: null, bestPerformanceId: null };
-    const withScores = parts.filter(p => typeof p.benchmark_score === 'number' && p.price_usd > 0);
+    const withScores = parts.filter((p): p is Part & { benchmark_score: number; price_usd: number } =>
+      typeof p.benchmark_score === 'number' && typeof p.price_usd === 'number' && p.price_usd > 0,
+    );
     if (withScores.length === 0) return { bestValueId: null, bestPerformanceId: null };
     const bestValue = withScores.reduce((best, p) =>
-      (p.benchmark_score! / p.price_usd) > (best.benchmark_score! / best.price_usd) ? p : best
+      (p.benchmark_score / p.price_usd) > (best.benchmark_score / best.price_usd) ? p : best
     );
     const bestPerformance = withScores.reduce((best, p) =>
-      p.benchmark_score! > best.benchmark_score! ? p : best
+      p.benchmark_score > best.benchmark_score ? p : best
     );
     return { bestValueId: bestValue.id, bestPerformanceId: bestPerformance.id };
   }, [parts, category]);
@@ -128,7 +136,7 @@ export default function PartSelector({
         <div className="flex items-center gap-3 flex-shrink-0">
           {selectedPart && (
             <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>
-              ${selectedPart.price_usd.toLocaleString()}
+              {selectedPart.price_usd === undefined ? 'Retailer price' : `$${selectedPart.price_usd.toLocaleString()}`}
             </span>
           )}
           {open
@@ -190,6 +198,11 @@ export default function PartSelector({
               </div>
 
               {/* Parts grid */}
+              {filtered.some(part => Boolean(part.affiliateUrl)) && (
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                  Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
+                </p>
+              )}
               <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pt-1 pr-1">
                 {filtered.length === 0 ? (
                   <p className="text-sm text-center py-4" style={{ color: 'var(--ff-text-2)' }}>No parts found</p>
@@ -202,6 +215,7 @@ export default function PartSelector({
                       image={part.image}
                       searchQuery={buildPartQuery(part.name, part.brand as string | undefined, category)}
                       price_usd={part.price_usd}
+                      affiliateUrl={part.affiliateUrl}
                       selected={part.id === selectedId}
                       sponsored={part.sponsored}
                       recommended={recommendedIds.includes(part.id)}

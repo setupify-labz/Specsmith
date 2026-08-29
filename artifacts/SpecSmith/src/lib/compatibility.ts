@@ -30,7 +30,7 @@ export function checkCompatibility(parts: {
   const passed: string[] = [];
 
   // CPU socket vs motherboard socket
-  if (parts.cpu && parts.motherboard) {
+  if (parts.cpu && parts.motherboard && typeof parts.cpu.socket === 'string' && typeof parts.motherboard.socket === 'string') {
     if (parts.cpu.socket !== parts.motherboard.socket) {
       warnings.push({
         id: 'socket-mismatch',
@@ -49,7 +49,7 @@ export function checkCompatibility(parts: {
   // brackets and have no socket_support field at all (treated as
   // compatible with everything); a handful of compact low-profile
   // coolers are genuinely single-socket designs.
-  if (parts.cooler?.socket_support && parts.cpu) {
+  if (Array.isArray(parts.cooler?.socket_support) && parts.cpu && typeof parts.cpu.socket === 'string') {
     if (!parts.cooler.socket_support.includes(parts.cpu.socket)) {
       warnings.push({
         id: 'cooler-socket-mismatch',
@@ -65,7 +65,7 @@ export function checkCompatibility(parts: {
   }
 
   // RAM type vs motherboard support
-  if (parts.ram && parts.motherboard) {
+  if (parts.ram && parts.motherboard && typeof parts.ram.type === 'string' && Array.isArray(parts.motherboard.supported_ram)) {
     if (!parts.motherboard.supported_ram.includes(parts.ram.type)) {
       warnings.push({
         id: 'ram-type-mismatch',
@@ -81,7 +81,7 @@ export function checkCompatibility(parts: {
   }
 
   // RAM type vs CPU support
-  if (parts.ram && parts.cpu) {
+  if (parts.ram && parts.cpu && typeof parts.ram.type === 'string' && Array.isArray(parts.cpu.supported_ram)) {
     if (!parts.cpu.supported_ram.includes(parts.ram.type)) {
       warnings.push({
         id: 'ram-cpu-mismatch',
@@ -97,9 +97,10 @@ export function checkCompatibility(parts: {
   }
 
   // PSU wattage check
-  if (parts.psu && (parts.gpu || parts.cpu)) {
-    const gpuTdp = parts.gpu?.tdp_watts ?? 0;
-    const cpuTdp = parts.cpu?.tdp_watts ?? 0;
+  if (parts.psu && typeof parts.psu.wattage === 'number' &&
+      (typeof parts.gpu?.tdp_watts === 'number' || typeof parts.cpu?.tdp_watts === 'number')) {
+    const gpuTdp = typeof parts.gpu?.tdp_watts === 'number' ? parts.gpu.tdp_watts : 0;
+    const cpuTdp = typeof parts.cpu?.tdp_watts === 'number' ? parts.cpu.tdp_watts : 0;
     const required = gpuTdp + cpuTdp + 100;
     if (parts.psu.wattage < required) {
       warnings.push({
@@ -125,7 +126,7 @@ export function checkCompatibility(parts: {
   }
 
   // Motherboard form factor vs case support
-  if (parts.motherboard?.form_factor && parts.case?.motherboard_support) {
+  if (typeof parts.motherboard?.form_factor === 'string' && Array.isArray(parts.case?.motherboard_support)) {
     if (!parts.case.motherboard_support.includes(parts.motherboard.form_factor)) {
       warnings.push({
         id: 'mobo-case-mismatch',
@@ -142,7 +143,7 @@ export function checkCompatibility(parts: {
 
   // GPU length vs case clearance — lengths vary by card model, so this is a
   // 'likely' check based on typical models of each GPU.
-  if (parts.gpu?.length_mm && parts.case?.gpu_clearance_mm) {
+  if (typeof parts.gpu?.length_mm === 'number' && typeof parts.case?.gpu_clearance_mm === 'number') {
     const len = parts.gpu.length_mm;
     const max = parts.case.gpu_clearance_mm;
     if (len > max) {
@@ -170,7 +171,7 @@ export function checkCompatibility(parts: {
 
   // Air cooler height vs case clearance (AIO pumps are low-profile, so the
   // height check only applies to tower air coolers)
-  if (parts.cooler?.height_mm && parts.case?.cooler_clearance_mm) {
+  if (typeof parts.cooler?.height_mm === 'number' && typeof parts.case?.cooler_clearance_mm === 'number') {
     const h = parts.cooler.height_mm;
     const max = parts.case.cooler_clearance_mm;
     if (h > max) {
@@ -197,7 +198,7 @@ export function checkCompatibility(parts: {
   }
 
   // Cooler capacity vs CPU heat
-  if (parts.cooler?.max_tdp_watts && parts.cpu) {
+  if (typeof parts.cooler?.max_tdp_watts === 'number' && parts.cpu && typeof parts.cpu.tdp_watts === 'number') {
     if (parts.cpu.tdp_watts > parts.cooler.max_tdp_watts) {
       warnings.push({
         id: 'cooler-undersized',

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { findItems, parseProductSearchXml } from '../rakuten';
 import { AFFILIATE_PART_TARGET, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
-import { admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog } from './affiliateCatalog';
+import { admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, isSelectableBuilderPart } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 const fetchedAt = '2026-08-29T23:00:00.000Z';
@@ -54,6 +54,31 @@ describe('generic affiliate part admission', () => {
     expect(admitAffiliatePart(item({ title: 'Open Box Example Processor' }), 'cpu', 'Computer Processors', fetchedAt)).toMatchObject({ reason: 'condition' });
     expect(admitAffiliatePart(item({ link: 'https://www.newegg.com/p/1' }), 'cpu', 'Computer Processors', fetchedAt)).toMatchObject({ reason: 'url' });
   });
+
+  it.each([
+    ['motherboard', 'ASUS Motherboard & AMD Ryzen 9 CPU Combo'],
+    ['keyboard', 'Coiled USB-C Cable for Mechanical Keyboard'],
+    ['keyboard', 'Anime Keycaps for Mechanical Keyboard'],
+    ['mouse', 'XXL Gaming Mouse Pad Desk Mat'],
+    ['headset', 'PC Gaming Headset Hook Holder Stand'],
+    ['headset', 'Replacement Earpads for Gaming Headset'],
+    ['headset', 'Battery Replacement for Wireless Gaming Headset'],
+    ['cooler', '80mm Case Fan for Server CPU Cooler'],
+    ['psu', '2000W Mining Server Power Supply'],
+  ] as const)('refuses a %s accessory or bundle: %s', (category, title) => {
+    expect(isSelectableBuilderPart(category, title)).toBe(false);
+  });
+
+  it.each([
+    ['motherboard', 'ASUS ROG B850 ATX Motherboard'],
+    ['keyboard', 'Keychron Q6 Mechanical Keyboard'],
+    ['mouse', 'Logitech G Pro Wireless Gaming Mouse'],
+    ['headset', 'SteelSeries Arctis Wireless Gaming Headset'],
+    ['cooler', 'Noctua NH-D15 CPU Cooler'],
+    ['psu', 'Corsair RM850x ATX Power Supply'],
+  ] as const)('keeps a real %s component: %s', (category, title) => {
+    expect(isSelectableBuilderPart(category, title)).toBe(true);
+  });
 });
 
 describe('500-part catalog gate', () => {
@@ -68,6 +93,17 @@ describe('500-part catalog gate', () => {
   it('fails closed if even one category is short', () => {
     const input = candidates();
     input.get('headset')!.pop();
+    expect(() => buildAffiliatePartCatalog(input, fetchedAt)).toThrow(AffiliateCatalogFailure);
+  });
+
+  it('does not count two listings with the same normalized product name as two parts', () => {
+    const input = candidates();
+    const headset = input.get('headset')!;
+    headset[headset.length - 1] = {
+      ...headset[0],
+      id: 'newegg-headset-another-sku',
+      name: `  ${headset[0].name.toUpperCase()}!!!`,
+    };
     expect(() => buildAffiliatePartCatalog(input, fetchedAt)).toThrow(AffiliateCatalogFailure);
   });
 

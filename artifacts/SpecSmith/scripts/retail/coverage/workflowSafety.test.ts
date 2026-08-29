@@ -45,10 +45,10 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly three workflows, and the only push-triggered one holding credentials', () => {
+  it('is one of exactly four workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const all = fs.readdirSync(path.join(repoRoot, '.github', 'workflows')).sort();
-    expect(all).toEqual(['audit-accepted-offers.yml', 'validate-rakuten-gpu-coverage.yml', 'validate-retail-snapshot.yml']);
+    expect(all).toEqual(['audit-accepted-offers.yml', 'build-retail-affiliate-catalog.yml', 'validate-rakuten-gpu-coverage.yml', 'validate-retail-snapshot.yml']);
     // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
     // Comment lines are stripped here too — that file's header explains at
@@ -72,6 +72,16 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(audit).toContain('secrets.');
     expect(audit).toContain('workflow_dispatch:');
     expect(audit).not.toMatch(/^\s*(push|pull_request|schedule):/m);
+
+    const catalog = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'build-retail-affiliate-catalog.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(catalog).toContain('secrets.');
+    expect(catalog).toMatch(/^\s*push:/m);
+    expect(catalog).not.toMatch(/^\s*pull_request(_target)?:/m);
+    expect(catalog).not.toMatch(/^\s*schedule:/m);
   });
 
   it('the live sweep no longer runs on every change under scripts/retail', () => {
