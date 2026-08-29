@@ -38,10 +38,11 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
     case 'gpu':
       return true; // GPU candidates have already passed the stricter GPU adapter.
     case 'cpu':
-      return has(title, /\b(processor|ryzen|athlon|celeron|pentium|intel core)\b/);
+      return has(title, /\b(processor|ryzen|athlon|celeron|pentium|intel core)\b/)
+        && !has(title, /\b(combo|bundle|starter kit)\b|\band\b.*\bmotherboard\b/);
     case 'motherboard':
       return has(title, /\b(motherboard|mainboard)\b/)
-        && !has(title, /\b(combo|bundle|laptop|notebook|thinkcentre|replacement)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
+        && !has(title, /\b(combo|comb|bundle|starter kit|laptop|notebook|thinkcentre|replacement|extension cable)\b|motherboard\s+set\b|motherboard\b.*\bcpu\b.*\b(2x\d+gb|\d+gb ram|memory set)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
     case 'ram':
       return has(title, /\b(ram|memory)\b/)
         && !has(title, /\b(laptop|notebook|sodimm|so dimm)\b/);
@@ -50,7 +51,7 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case)\b/);
     case 'psu':
       return has(title, /\b(atx|sfx|computer|desktop|workstation|pc)\b.*\b(power supply|psu)\b|\b(power supply|psu)\b.*\b(atx|sfx|computer|desktop|workstation|pc)\b/)
-        && !has(title, /\b(ups|backup battery|mining|server|switching converter)\b/);
+        && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester)\b/);
     case 'case':
       return has(title, /\b(computer case|pc case|tower case|gaming case|desktop chassis|computer chassis)\b/)
         && !has(title, /\b(carrying|protective|fan only)\b/);
@@ -62,13 +63,13 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(stand|mount|arm|screen protector|replacement panel)\b/);
     case 'keyboard':
       return has(title, /\bkeyboard\b/)
-        && !has(title, /\b(cable|keycap|keycaps|switch tester|wrist rest|keyboard case)\b|\bswitches?\s*\(/);
+        && !has(title, /\b(cable|keycap|keycaps|switch tester|wrist rest|keyboard case)\b|^custom switch\b|\bswitches\b.*\b(pcs|housing)\b|\bswitches?\s*\(/);
     case 'mouse':
       return has(title, /\b(mouse|mice)\b/)
         && !has(title, /\b(mouse pad|mousepad|desk mat|skates|grips|feet|replacement cable)\b/);
     case 'headset':
       return has(title, /\b(headset|headphones)\b/)
-        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b/);
+        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b|\bears universal\b/);
   }
 }
 

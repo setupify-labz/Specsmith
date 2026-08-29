@@ -57,14 +57,20 @@ describe('generic affiliate part admission', () => {
 
   it.each([
     ['motherboard', 'ASUS Motherboard & AMD Ryzen 9 CPU Combo'],
+    ['motherboard', 'X79 Motherboard+E5 CPU+2X8GB RAM Memory Set'],
+    ['motherboard', 'Lian Li RGB Motherboard Power Extension Cable'],
+    ['cpu', 'AMD Ryzen 5 Processor and ASUS B550 Motherboard'],
     ['keyboard', 'Coiled USB-C Cable for Mechanical Keyboard'],
     ['keyboard', 'Anime Keycaps for Mechanical Keyboard'],
+    ['keyboard', 'Custom Switch Gateron Ink V2 Switches Transparent Housing for Mechanical Keyboard'],
     ['mouse', 'XXL Gaming Mouse Pad Desk Mat'],
     ['headset', 'PC Gaming Headset Hook Holder Stand'],
     ['headset', 'Replacement Earpads for Gaming Headset'],
     ['headset', 'Battery Replacement for Wireless Gaming Headset'],
     ['cooler', '80mm Case Fan for Server CPU Cooler'],
     ['psu', '2000W Mining Server Power Supply'],
+    ['psu', 'ATX Power Supply Tester'],
+    ['headset', 'Kitten Ears Universal for Gaming Headset'],
   ] as const)('refuses a %s accessory or bundle: %s', (category, title) => {
     expect(isSelectableBuilderPart(category, title)).toBe(false);
   });
