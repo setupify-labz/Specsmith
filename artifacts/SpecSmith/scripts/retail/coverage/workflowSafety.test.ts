@@ -4,6 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { ACCESS_TOKEN_ENV_VAR } from '../rakuten/types';
+import {
+  CLIENT_ID_ENV_VAR,
+  CLIENT_SECRET_ENV_VAR,
+  PUBLISHER_SID_ENV_VAR,
+} from '../rakuten/accessTokenRequest';
 
 // Structural checks on the validation workflow.
 //
@@ -24,13 +29,20 @@ const body = yaml
   .filter((l) => !/^\s*#/.test(l))
   .join('\n');
 
-/** The GitHub Actions secret — where the credential is STORED. */
-const SECRET = 'RAKUTEN_API_KEY';
-/** The environment variable the adapter READS. Deliberately a different name. */
+/**
+ * The three long-lived credentials, stored as GitHub Actions secrets and
+ * exchanged for a short-lived access token at the start of every run.
+ *
+ * Names come from accessTokenRequest.ts rather than string literals, so
+ * renaming a constant breaks this test instead of silently producing an unset
+ * variable and a sweep that looks like an authentication failure.
+ */
+const CREDENTIAL_SECRETS = [CLIENT_ID_ENV_VAR, CLIENT_SECRET_ENV_VAR, PUBLISHER_SID_ENV_VAR];
+/** The variable the adapter reads. Produced by the token exchange, never stored. */
 const ENV_VAR = ACCESS_TOKEN_ENV_VAR;
-const secretExpr = `\${{ secrets.${SECRET} }}`;
-/** The one permitted form: env key = secret expression. */
-const mapping = `${ENV_VAR}: ${secretExpr}`;
+const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
+/** The temporary secret from the previous approach. Must no longer be referenced. */
+const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
   it('is a single workflow at the expected path', () => {
@@ -81,92 +93,92 @@ describe('the workflow holds the least authority it can', () => {
   });
 });
 
-describe('the secret is confined to one step and never becomes an argument', () => {
-  it('references only this secret, and only as a step-scoped env value', () => {
-    const references = [...body.matchAll(/\$\{\{\s*secrets\.[A-Z_]+\s*\}\}/g)].map((m) => m[0]);
-    // Two steps legitimately need it: the presence preflight and the sweep.
-    // Both must be the env-assignment form and no other secret may appear.
-    expect(new Set(references)).toEqual(new Set([secretExpr]));
-    expect(references.length).toBe(2);
-    expect(body).toContain(mapping);
-  });
+describe('credentials are confined and never become arguments', () => {
+  it('references exactly the three credential secrets, each only as a step-scoped env value', () => {
+    const references = [...body.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1]);
+    // Two steps legitimately need them: the presence preflight and the step
+    // that mints a token and sweeps.
+    expect(new Set(references)).toEqual(new Set(CREDENTIAL_SECRETS));
+    expect(references.length).toBe(CREDENTIAL_SECRETS.length * 2);
 
-  it('maps the stored secret name onto the env var the adapter declares', () => {
-    // Two names for one credential: RAKUTEN_API_KEY is where it lives in
-    // GitHub, RAKUTEN_API_ACCESS_TOKEN is what the server-only adapter reads.
-    // Tying the env key to ACCESS_TOKEN_ENV_VAR means renaming the constant
-    // breaks this test rather than silently producing an unset variable and a
-    // sweep that looks like zero coverage.
-    expect(ENV_VAR).toBe('RAKUTEN_API_ACCESS_TOKEN');
-    expect(SECRET).not.toBe(ENV_VAR);
-    expect(body).toContain(mapping);
-
-    // Every env assignment of the adapter's variable uses the secret; none
-    // hard-codes a value or points at a differently named secret.
-    const assignments = body.split('\n').filter((l) => l.trim().startsWith(`${ENV_VAR}:`));
-    expect(assignments.length).toBe(2);
-    for (const line of assignments) expect(line.trim()).toBe(mapping);
-
-    // The old secret name is gone everywhere, including prose.
-    expect(body).not.toContain('secrets.RAKUTEN_API_ACCESS_TOKEN');
-  });
-
-  it('the preflight tests presence only — it never reads, prints or measures the value', () => {
-    const preflight = body.slice(
-      body.indexOf('Confirm the API credential is available'),
-      body.indexOf('Run the full GPU coverage sweep'),
-    );
-    // `-z` is the whole interaction: is it empty, yes or no. It tests the
-    // ENV VAR, which is what the adapter will read moments later.
-    expect(preflight).toContain(`if [ -z "\${${ENV_VAR}:-}" ]`);
-    // No length, no substring, no hashing, no echo of the variable itself.
-    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c', '${RAKUTEN_API_KEY']) {
-      expect(preflight, forbidden).not.toContain(forbidden);
-    }
-    // It says what to fix, and names the secret that must EXIST — the stored
-    // name, not the env var, since that is what Aaron adds in Settings.
-    expect(preflight).toContain('Repository secrets');
-    expect(preflight).toContain('not a coverage result');
-    expect(preflight).toContain(`secrets.${SECRET}`);
-    expect(preflight).toContain('named exactly');
-    // The guidance names the STORED secret, since that is what gets added in
-    // Settings — pointing at the env var there would send Aaron to the wrong
-    // field entirely.
-    expect(preflight.slice(preflight.indexOf('named exactly'))).toContain(SECRET);
-  });
-
-  it('never places the secret in a command argument or a query parameter', () => {
-    // Only INTERPOLATIONS matter. The preflight's help text names the secret
-    // in prose so a missing one is self-diagnosing; naming it is not exposing
-    // it, and the value never reaches that string.
+    // Every interpolation is an env assignment whose key matches its secret.
     for (const line of body.split('\n')) {
       if (!line.includes('${{ secrets.')) continue;
-      expect(line.trim(), line).toBe(mapping);
+      const name = /secrets\.([A-Z_]+)/.exec(line)![1];
+      expect(CREDENTIAL_SECRETS, line).toContain(name);
+      expect(line.trim(), line).toBe(mappingFor(name));
     }
-    // The shell variable is never expanded into a command, a flag or a URL.
-    // `[ -z "${VAR:-}" ]` is the one permitted use: a presence test.
-    const expansions = body
-      .split('\n')
-      .filter((l) => new RegExp(`\\$\\{?${ENV_VAR}`).test(l))
-      .filter((l) => !l.includes(`if [ -z "\${${ENV_VAR}:-}" ]`));
-    expect(expansions).toEqual([]);
-    expect(body).not.toMatch(/--token|token=|access_token=/);
   });
 
-  it('the reporting step does not receive the secret', () => {
-    // Everything after the sweep step renders output; none of it needs the
-    // credential, so none of it has it.
+  it('no longer uses the temporary RAKUTEN_API_KEY secret', () => {
+    // Left in place in GitHub, simply unused here.
+    expect(body).not.toContain(RETIRED_SECRET);
+    expect(yaml).not.toContain(`secrets.${RETIRED_SECRET}`);
+  });
+
+  it('the access token is produced, never stored as a secret', () => {
+    // RAKUTEN_API_ACCESS_TOKEN is minted at run time; it must never appear as
+    // a `secrets.` reference, which would mean a human is pasting one again.
+    expect(body).not.toContain(`secrets.${ENV_VAR}`);
+    expect(body).toContain('request-access-token.ts');
+  });
+
+  it('the preflight tests presence only — it never reads, prints or measures a value', () => {
+    const preflight = body.slice(
+      body.indexOf('Confirm the API credentials are available'),
+      body.indexOf('Mint an access token and run the full GPU coverage sweep'),
+    );
+    // `-z` is the whole interaction, once per credential.
+    for (const name of CREDENTIAL_SECRETS) {
+      expect(preflight, name).toContain(`if [ -z "\${${name}:-}" ]`);
+    }
+    // No length, no substring, no hashing, no echo of any value.
+    for (const forbidden of ['${#RAKUTEN', 'echo "$RAKUTEN', 'echo $RAKUTEN', 'wc -c', 'md5sum', 'sha256sum', 'cut -c', 'base64']) {
+      expect(preflight, forbidden).not.toContain(forbidden);
+    }
+    expect(preflight).toContain('Repository secrets');
+    expect(preflight).toContain('not a coverage result');
+  });
+
+  it('a credential is never expanded into a command, a flag or a URL', () => {
+    // The only permitted expansions are the presence tests and the two
+    // additions to the `missing` list, which append the NAME, not the value.
+    const expansions = body
+      .split('\n')
+      .filter((l) => CREDENTIAL_SECRETS.some((n) => new RegExp(`\\$\\{?${n}\\b`).test(l)))
+      .filter((l) => !/if \[ -z "\$\{RAKUTEN_[A-Z_]+:-\}" \]/.test(l));
+    expect(expansions).toEqual([]);
+    expect(body).not.toMatch(/--token|--client|token=|client_secret=|access_token=/);
+  });
+
+  it('the minted token stays inside the one step that uses it', () => {
+    const sweep = body.slice(
+      body.indexOf('Mint an access token and run the full GPU coverage sweep'),
+      body.indexOf('Validate gates and publish the report'),
+    );
+    // Never exported to later steps: $GITHUB_ENV would hand it to the step
+    // that writes a job summary.
+    expect(sweep).not.toContain('GITHUB_ENV');
+    // Written under the runner's temp, owner-only, and removed twice over.
+    expect(sweep).toContain('umask 077');
+    expect(sweep).toContain('${RUNNER_TEMP}/rakuten-access-token');
+    expect(sweep).toContain("trap 'rm -f \"${token_file}\"' EXIT");
+    expect(sweep).toContain('rm -f "${token_file}"');
+    // The token reaches the sweep as an exported variable, not an argument.
+    expect(sweep).toContain('export RAKUTEN_API_ACCESS_TOKEN');
+  });
+
+  it('the reporting step receives no credential of any kind', () => {
     const afterSweep = body.slice(body.indexOf('Validate gates and publish the report'));
     expect(afterSweep).not.toContain('secrets.');
-    expect(afterSweep).not.toContain(SECRET);
     expect(afterSweep).not.toContain(ENV_VAR);
+    for (const name of CREDENTIAL_SECRETS) expect(afterSweep, name).not.toContain(name);
   });
 
   it('uses no shell tracing and echoes no environment', () => {
     for (const forbidden of ['set -x', 'set -o xtrace', 'printenv', 'env |', 'echo $RAKUTEN', 'ACTIONS_STEP_DEBUG']) {
       expect(body, forbidden).not.toContain(forbidden);
     }
-    // `set -euo pipefail` is required where output is piped or chained.
     expect(body).toContain('set -euo pipefail');
   });
 });

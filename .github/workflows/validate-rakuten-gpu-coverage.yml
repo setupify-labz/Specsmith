@@ -5,13 +5,16 @@
 # asserts the correction in c378f33 holds against real responses. It writes
 # nothing back to the repository and publishes no offer data.
 #
-# WHY THE SECRET IS SAFE HERE
-# ---------------------------
-# The token is supplied to exactly ONE step, as a step-scoped environment
-# variable, and that step's only output is a JSON report whose type cannot hold
-# a URL, an identifier or free text from the far end. The step that renders and
-# publishes the report runs WITHOUT the secret in its environment at all, so a
-# leak from the reporting path is not unlikely — it is unreachable.
+# WHY THE CREDENTIALS ARE SAFE HERE
+# ---------------------------------
+# The job mints its own short-lived access token from long-lived client
+# credentials, so nothing has to be pasted by hand and nothing expires between
+# runs. All three credentials reach exactly ONE step as step-scoped environment
+# variables, and the token they produce never leaves that step: it is masked
+# with ::add-mask:: before anything can emit it, written to a file outside the
+# checkout with owner-only permissions, read into a shell variable, and the file
+# is removed. The step that renders and publishes the report runs WITHOUT any of
+# it, so a leak from the reporting path is not unlikely — it is unreachable.
 #
 # GitHub masks exact secret values in logs. That masking is a backstop, not the
 # boundary: the boundary is that the credential is never placed in an argument,
@@ -88,70 +91,77 @@ jobs:
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run scripts/retail
 
-      # TWO NAMES, ONE CREDENTIAL.
-      #
-      # The GitHub Actions secret is `RAKUTEN_API_KEY`; the environment
-      # variable the adapter reads is `RAKUTEN_API_ACCESS_TOKEN`, declared as
-      # ACCESS_TOKEN_ENV_VAR in scripts/retail/rakuten/types.ts. The mapping
-      # happens here and nowhere else, so the storage name and the server-only
-      # contract can each change without the other. A test ties the env key to
-      # that constant, so the two cannot drift apart silently.
-      #
-      # Presence check ONLY — `-z` tests whether the variable is empty and
-      # does nothing else with it. It is never printed, never measured, never
-      # compared to anything. The adapter makes the same check for the same
-      # reason; doing it here first turns "the sweep produced no JSON" into a
-      # message that names the actual problem and where to fix it.
-      - name: Confirm the API credential is available to this run
+      # Presence check ONLY — `-z` tests whether each variable is empty and does
+      # nothing else with it. None is printed, measured, hashed or compared.
+      # Doing this first turns an opaque downstream failure into a message that
+      # names the missing secret and where to add it.
+      - name: Confirm the API credentials are available to this run
         env:
-          RAKUTEN_API_ACCESS_TOKEN: ${{ secrets.RAKUTEN_API_KEY }}
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
         run: |
           set -euo pipefail
-          if [ -z "${RAKUTEN_API_ACCESS_TOKEN:-}" ]; then
+          missing=""
+          if [ -z "${RAKUTEN_CLIENT_ID:-}" ]; then missing="${missing} RAKUTEN_CLIENT_ID"; fi
+          if [ -z "${RAKUTEN_CLIENT_SECRET:-}" ]; then missing="${missing} RAKUTEN_CLIENT_SECRET"; fi
+          if [ -z "${RAKUTEN_PUBLISHER_SID:-}" ]; then missing="${missing} RAKUTEN_PUBLISHER_SID"; fi
+          if [ -n "${missing}" ]; then
             {
-              echo "### Credential unavailable"
+              echo "### Credentials unavailable"
               echo ""
-              echo "\`secrets.RAKUTEN_API_KEY\` resolved to an empty value for this run,"
-              echo "so no live sweep was attempted. This is a configuration problem, **not** a"
+              echo "These resolved to empty values for this run:**${missing}**"
+              echo ""
+              echo "No live sweep was attempted. This is a configuration problem, **not** a"
               echo "coverage result: nothing here says anything about the Rakuten feed."
               echo ""
-              echo "Check, in Settings for this repository:"
-              echo ""
-              echo "1. **Secrets and variables > Actions > Repository secrets** contains a secret"
-              echo "   named exactly \`RAKUTEN_API_KEY\`. Environment secrets and"
-              echo "   Dependabot secrets are separate stores and are not visible here."
-              echo "2. If it is an *organization* secret, this repository is in its access list."
-              echo "3. The name has no trailing space and no typo."
+              echo "Check **Settings > Secrets and variables > Actions > Repository secrets**."
+              echo "Environment secrets and Dependabot secrets are separate stores and are not"
+              echo "visible here; an organization secret needs this repository in its access list."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error title=Credential unavailable::secrets.RAKUTEN_API_KEY is empty for this run. See the job summary. No live sweep was attempted; this is not a coverage result."
+            echo "::error title=Credentials unavailable::Missing:${missing}. See the job summary. No live sweep was attempted; this is not a coverage result."
             exit 1
           fi
-          echo "Credential is present. Its value is never read, printed or measured here."
+          echo "All three credentials are present. No value is read, printed or measured here."
 
-      # THE ONLY STEP THAT SEES THE TOKEN.
+      # THE ONLY STEP THAT SEES ANY CREDENTIAL.
       #
-      # It is read from the environment by the adapter and sent as an
-      # Authorization header. It is never an argument, never a query parameter,
-      # and the JSON written here is a report of counts, not a response body.
+      # Minting and sweeping are one step on purpose: the access token lives in
+      # a shell variable inside this step and in no other scope. $GITHUB_ENV
+      # would have exported it to every later step, including the one that
+      # writes a job summary.
+      #
+      # The token file is created with umask 077 under RUNNER_TEMP — outside the
+      # checkout, so it cannot be committed — is removed as soon as it has been
+      # read, and again by the trap if anything exits early.
       #
       # The CLI's exit code is captured rather than allowed to end the job, so
       # the reporting step below still runs and explains WHY a sweep failed.
       # The captured code is then asserted as a gate, so a failure cannot be
       # swallowed.
-      - name: Run the full GPU coverage sweep
+      - name: Mint an access token and run the full GPU coverage sweep
         id: sweep
         working-directory: artifacts/SpecSmith
         env:
-          RAKUTEN_API_ACCESS_TOKEN: ${{ secrets.RAKUTEN_API_KEY }}
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
         run: |
           set -euo pipefail
+          umask 077
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
           status=0
           pnpm exec tsx scripts/retail/coverage/measure-coverage.ts --json \
             > "${RUNNER_TEMP}/coverage.json" || status=$?
           echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
           echo "coverage sweep exited ${status}"
 
-      # Runs WITHOUT the secret. Renders the report, asserts every gate, and
+      # Runs WITHOUT any credential. Renders the report, asserts every gate, and
       # refuses to publish a summary containing a URL or identifier.
       - name: Validate gates and publish the report
         if: always()

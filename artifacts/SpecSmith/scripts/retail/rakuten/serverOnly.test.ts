@@ -63,9 +63,31 @@ describe('the Rakuten adapter is server-only', () => {
     }
   });
 
-  it('only client.ts reads the environment', () => {
-    const readers = adapterSource.filter(({ text }) => /\bprocess\.env\b/.test(codeOnly(text))).map((f) => f.file);
-    expect(readers).toEqual(['client.ts']);
+  it('only the two credential modules read the environment', () => {
+    // Two modules, two different credentials: accessTokenRequest.ts reads the
+    // long-lived client id, secret and SID in order to mint a token;
+    // client.ts reads the short-lived access token in order to spend it.
+    // Nothing else reads the environment at all.
+    const readers = adapterSource.filter(({ text }) => /\bprocess\.env\b/.test(codeOnly(text))).map((f) => f.file).sort();
+    expect(readers).toEqual(['accessTokenRequest.ts', 'client.ts']);
+  });
+
+  it('each credential module reads only its own credentials', () => {
+    // The split is the point: a module that could read both would be a module
+    // that could put a long-lived secret where a short-lived token belongs.
+    const client = codeOnly(read(path.join(here, 'client.ts')));
+    for (const forbidden of ['RAKUTEN_CLIENT_ID', 'RAKUTEN_CLIENT_SECRET', 'RAKUTEN_PUBLISHER_SID']) {
+      expect(client.includes(forbidden), `client.ts must not name ${forbidden}`).toBe(false);
+    }
+    const minter = codeOnly(read(path.join(here, 'accessTokenRequest.ts')));
+    expect(minter.includes('RAKUTEN_API_ACCESS_TOKEN'), 'the minter must not name the access-token variable').toBe(false);
+  });
+
+  it('the token minter never logs, and never returns anything but the token', () => {
+    const minter = codeOnly(read(path.join(here, 'accessTokenRequest.ts')));
+    for (const forbidden of ['console.log', 'console.error', 'console.warn', 'writeFileSync', 'refresh_token']) {
+      expect(minter.includes(forbidden), `accessTokenRequest.ts must not use ${forbidden}`).toBe(false);
+    }
   });
 
   it('the token never reaches a URL — only an Authorization header', () => {
@@ -79,10 +101,28 @@ describe('the Rakuten adapter is server-only', () => {
     // fixture, so it is exempt. Nothing that can be imported into a pipeline
     // is: the adapter reads a feed and returns records, and a module that can
     // also write is a module that can write somewhere unexpected.
+    // request-access-token.ts is the same kind of exemption: a CI command
+    // whose job is to hand one token to one step. Its write target is
+    // constrained separately, below.
     for (const { file, text } of adapterSource) {
-      if (file === 'capture-fixture.ts') continue;
+      if (file === 'capture-fixture.ts' || file === 'request-access-token.ts') continue;
       expect(codeOnly(text).includes('writeFileSync'), `${file} must not write`).toBe(false);
     }
+  });
+
+  it('the token CLI writes only outside the repository, and only the token', () => {
+    const cli = codeOnly(read(path.join(here, 'request-access-token.ts')));
+    const writes = [...cli.matchAll(/writeFileSync\(\s*([A-Za-z_$][\w$]*)/g)].map((m) => m[1]);
+    expect(writes).toEqual(['outPath']);
+    // The path is validated before anything is written, and a path inside the
+    // checkout is refused: a credential in the working tree could be committed
+    // by a later step or picked up by a build.
+    expect(cli).toContain('resolveTokenOutputPath');
+    expect(cli).toContain('inside the repository');
+    // Owner-only.
+    expect(cli).toContain('mode: 0o600');
+    // The mask is registered before the value is written anywhere.
+    expect(cli.indexOf('maskCommand(token)')).toBeLessThan(cli.indexOf('writeFileSync'));
   });
 
   it('the capture CLI writes only to a path the resolver approved', () => {
