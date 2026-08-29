@@ -21,7 +21,7 @@
  * accessory nouns below carry the meaning instead.
  */
 const ACCESSORY_RE =
-  /\b(cable|cord|riser|extender|extension|bracket|backplate|back plate|anti-?sag|sag bracket|gpu support|support (?:bracket|stick|arm)|holder|stand|mount|water ?block|cooler kit|thermal (?:pad|paste)|shroud|screw kit|splitter|dongle|dust cover|display ?port adapter|hdmi adapter|dvi adapter|vga adapter|usb adapter|pcie? adapter|m\.2 adapter|docking station|egpu enclosure|enclosure)\b/i;
+  /\b(cable|cord|riser|extender|extension|bracket|backplate|back plate|anti-?sag|sag bracket|gpu support|support (?:bracket|stick|arm)|holder|stand|mount|water ?block|cooler kit|thermal (?:pad|paste)|shroud|screw kit|splitter|dongle|dust cover|display ?port adapter|hdmi adapter|dvi adapter|vga adapter|usb adapter|pcie? adapter|m\.2 adapter|docking station|egpu enclosure|enclosure|ai box)\b/i;
 
 /** Laptops, and laptop GPUs, which share a name with their desktop siblings but not their power limit. */
 const LAPTOP_RE = /\b(laptop|notebook|max-?q)\b|\(\s*mobile\b|\bmobile (?:gpu|graphics)\b/i;

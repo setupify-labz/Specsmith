@@ -56,6 +56,11 @@ export function redactToken(text: string, token: string): string {
 export interface ProductSearchQuery {
   /** Search terms. Sent as the `keyword` parameter. */
   keyword: string;
+  /**
+   * Exact Rakuten/merchant category leaf. Omit for the GPU adapter default;
+   * pass null only while discovering the leaf for a new product tier.
+   */
+  categoryLeaf?: string | null;
   /** Max results per page. Rakuten's own cap is 100. */
   max?: number;
   pageNumber?: number;
@@ -91,7 +96,8 @@ export function buildProductSearchUrl(query: ProductSearchQuery): string {
   const url = new URL(PRODUCT_SEARCH_ENDPOINT);
   url.searchParams.set('keyword', query.keyword);
   url.searchParams.set('mid', NEWEGG_MID);
-  url.searchParams.set('cat', REQUIRED_CATEGORY_LEAF);
+  const categoryLeaf = query.categoryLeaf === undefined ? REQUIRED_CATEGORY_LEAF : query.categoryLeaf;
+  if (categoryLeaf !== null) url.searchParams.set('cat', categoryLeaf);
   if (query.max !== undefined) url.searchParams.set('max', String(query.max));
   if (query.pageNumber !== undefined) url.searchParams.set('pagenumber', String(query.pageNumber));
   return url.toString();

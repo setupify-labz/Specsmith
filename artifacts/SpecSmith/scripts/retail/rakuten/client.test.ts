@@ -58,6 +58,18 @@ describe('buildProductSearchUrl', () => {
     expect(url).not.toContain(TOKEN);
     expect(url.toLowerCase()).not.toContain('token');
   });
+
+  it('can omit the category only for an explicit discovery request', () => {
+    const url = new URL(buildProductSearchUrl({ keyword: 'desktop memory', categoryLeaf: null, max: 100 }));
+    expect(url.searchParams.get('mid')).toBe(NEWEGG_MID);
+    expect(url.searchParams.has('cat')).toBe(false);
+    expect(url.searchParams.get('max')).toBe('100');
+  });
+
+  it('pins a non-GPU search to the exact category leaf it was given', () => {
+    const url = new URL(buildProductSearchUrl({ keyword: 'desktop memory', categoryLeaf: 'Desktop Memory' }));
+    expect(url.searchParams.get('cat')).toBe('Desktop Memory');
+  });
 });
 
 describe('fetchProductSearchXml', () => {

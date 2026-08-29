@@ -33,6 +33,26 @@ describe('classifyListing', () => {
     expect(classifyListing('CORSAIR 12VHPWR Power Cable for RTX 4070').issue).toBe('not-a-graphics-card');
     expect(classifyListing('upHere GPU Support Bracket for RTX 4090').issue).toBe('not-a-graphics-card');
     expect(classifyListing('EZDIY-FAB Vertical GPU Riser Cable').issue).toBe('not-a-graphics-card');
+    expect(
+      classifyListing('GIGABYTE AORUS GeForce RTX 5060 Ti Graphics AORUS RTX 5060 TI AI BOX').issue,
+    ).toBe('not-a-graphics-card');
+  });
+
+  it('rejects the observed AORUS AI BOX external GPU before model matching', () => {
+    const source = page1()[0];
+    const aiBox = {
+      ...source,
+      children: source.children.map((node) =>
+        node.name === 'productname'
+          ? { ...node, text: 'GIGABYTE AORUS GeForce RTX 5060 Ti Graphics AORUS RTX 5060 TI AI BOX' }
+          : node,
+      ),
+    };
+
+    expect(admitOffer(aiBox, gpu('rtx5060ti'), FETCHED_AT)).toMatchObject({
+      status: 'rejected',
+      reason: 'not-a-graphics-card',
+    });
   });
 
   it('rejects laptops and laptop GPUs', () => {

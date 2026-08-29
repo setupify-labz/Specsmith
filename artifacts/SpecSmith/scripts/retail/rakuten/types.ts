@@ -79,7 +79,7 @@ export const ACCESS_TOKEN_ENV_VAR = 'RAKUTEN_API_ACCESS_TOKEN';
  * Bump on ANY change to parsing or admission rules, so a stored offer built
  * by older rules is detectable rather than silently trusted.
  */
-export const RAKUTEN_ADAPTER_VERSION = 2;
+export const RAKUTEN_ADAPTER_VERSION = 3;
 
 /**
  * Why a listing was refused.

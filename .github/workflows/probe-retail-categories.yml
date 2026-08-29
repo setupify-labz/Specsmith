@@ -1,0 +1,83 @@
+# Temporary, branch-only discovery run for the exact Newegg category leaves
+# needed by the 500-part catalog. The artifact contains category names and
+# counts only; it expires after one day and this workflow is removed once read.
+
+name: Probe retail category leaves
+
+on:
+  push:
+    branches:
+      - claude/rakuten-newegg-adapter-97h85y
+    paths:
+      - '.github/workflows/probe-retail-categories.yml'
+      - 'artifacts/SpecSmith/scripts/retail/catalog/probe-categories.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-category-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run focused tests and typecheck
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          cd artifacts/SpecSmith
+          pnpm exec vitest run scripts/retail/catalog scripts/retail/rakuten
+
+      - name: Mint an access token and probe category leaves
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/category-probe"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          pnpm exec tsx scripts/retail/catalog/probe-categories.ts \
+            --out "${RUNNER_TEMP}/category-probe/categories.json"
+
+      - name: Upload category counts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: retail-category-probe-${{ github.run_id }}
+          path: ${{ runner.temp }}/category-probe/categories.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
