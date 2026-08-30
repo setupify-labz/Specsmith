@@ -60,6 +60,7 @@ describe('generic affiliate part admission', () => {
     ['motherboard', 'X79 Motherboard+E5 CPU+2X8GB RAM Memory Set'],
     ['motherboard', 'Lian Li RGB Motherboard Power Extension Cable'],
     ['cpu', 'AMD Ryzen 5 Processor and ASUS B550 Motherboard'],
+    ['cpu', 'AMD Ryzen 5 4500 Desktop Processor and ASUS TUF GAMING B550M-PLUS WIFI II AM4 AMD B550 SATA 6Gb/s Micro...'],
     ['keyboard', 'Coiled USB-C Cable for Mechanical Keyboard'],
     ['keyboard', 'Anime Keycaps for Mechanical Keyboard'],
     ['keyboard', 'Custom Switch Gateron Ink V2 Switches Transparent Housing for Mechanical Keyboard'],

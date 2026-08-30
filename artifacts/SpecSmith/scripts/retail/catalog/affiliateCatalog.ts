@@ -39,7 +39,7 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
       return true; // GPU candidates have already passed the stricter GPU adapter.
     case 'cpu':
       return has(title, /\b(processor|ryzen|athlon|celeron|pentium|intel core)\b/)
-        && !has(title, /\b(combo|bundle|starter kit)\b|\band\b.*\bmotherboard\b/);
+        && !has(title, /\b(combo|bundle|starter kit)\b|\band\b.*\bmotherboard\b|\band\s+(asus|msi|gigabyte|asrock|biostar)\b/);
     case 'motherboard':
       return has(title, /\b(motherboard|mainboard)\b/)
         && !has(title, /\b(combo|comb|bundle|starter kit|laptop|notebook|thinkcentre|replacement|extension cable)\b|motherboard\s+set\b|motherboard\b.*\bcpu\b.*\b(2x\d+gb|\d+gb ram|memory set)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
