@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { AFFILIATE_PART_CATALOG_SCHEMA_VERSION } from './partCatalog';
+import {
+  AFFILIATE_PART_CATALOG_SCHEMA_VERSION,
+  AFFILIATE_PART_CATEGORY_TARGETS,
+  RETAIL_PART_CATEGORIES,
+} from './partCatalog';
 import { loadAffiliatePartCatalog } from './partCatalogLoader';
 
 const catalog = {
@@ -8,7 +12,20 @@ const catalog = {
   generatedAt: '2026-08-29T23:00:00.000Z',
   merchant: 'Newegg',
   availability: 'unknown',
-  parts: [],
+  parts: RETAIL_PART_CATEGORIES.flatMap((category) =>
+    Array.from({ length: AFFILIATE_PART_CATEGORY_TARGETS[category] }, (_, index) => ({
+      id: `newegg-${category}-sku-${index}`,
+      category,
+      merchant: 'Newegg',
+      name: `Example ${category} ${index}`,
+      imageUrl: `https://c1.neweggimages.com/${category}-${index}.jpg`,
+      trackedAffiliateUrl: `https://click.linksynergy.com/link?id=site&offerid=${category}-${index}`,
+      fetchedAt: '2026-08-29T23:00:00.000Z',
+      availability: 'unknown',
+      canonicalPartId: category === 'gpu' ? `gpu-${index}` : null,
+      specsVerified: category === 'gpu',
+    })),
+  ),
 };
 
 describe('affiliate catalog loader', () => {

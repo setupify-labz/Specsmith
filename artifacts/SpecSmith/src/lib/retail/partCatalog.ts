@@ -28,6 +28,21 @@ export const RETAIL_PART_CATEGORIES = [
 
 export type RetailPartCategory = (typeof RETAIL_PART_CATEGORIES)[number];
 
+export const AFFILIATE_PART_CATEGORY_TARGETS: Readonly<Record<RetailPartCategory, number>> = {
+  gpu: 80,
+  cpu: 55,
+  motherboard: 45,
+  ram: 45,
+  storage: 55,
+  psu: 35,
+  case: 35,
+  cooler: 35,
+  monitor: 40,
+  keyboard: 25,
+  mouse: 25,
+  headset: 25,
+};
+
 export interface AffiliatePart {
   /** Stable, repository-safe identity derived from category + Newegg SKU. */
   id: string;
@@ -60,8 +75,12 @@ export type AffiliateCatalogProblem =
   | 'merchant-invalid'
   | 'availability-not-unknown'
   | 'parts-not-an-array'
+  | 'part-count-invalid'
   | 'part-invalid'
-  | 'duplicate-part-id';
+  | 'duplicate-part-id'
+  | 'duplicate-part-name'
+  | 'duplicate-affiliate-url'
+  | 'category-count-invalid';
 
 export type AffiliateCatalogParse =
   | { ok: true; catalog: AffiliatePartCatalog }
@@ -82,8 +101,11 @@ function parsePart(raw: unknown): AffiliatePart | null {
   if (!isCategory(category) || merchant !== 'Newegg' || !isText(name)) return null;
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
   if (!isInstant(fetchedAt) || availability !== AVAILABILITY_UNKNOWN) return null;
-  if (canonicalPartId !== null && !isText(canonicalPartId)) return null;
-  if (typeof specsVerified !== 'boolean' || specsVerified !== (canonicalPartId !== null)) return null;
+  if (category === 'gpu') {
+    if (!isText(canonicalPartId) || specsVerified !== true) return null;
+  } else if (canonicalPartId !== null || specsVerified !== false) {
+    return null;
+  }
   return {
     id,
     category,
@@ -107,16 +129,31 @@ export function parseAffiliatePartCatalog(raw: unknown): AffiliateCatalogParse {
   if (raw.merchant !== 'Newegg') return { ok: false, problem: 'merchant-invalid' };
   if (raw.availability !== AVAILABILITY_UNKNOWN) return { ok: false, problem: 'availability-not-unknown' };
   if (!Array.isArray(raw.parts)) return { ok: false, problem: 'parts-not-an-array' };
+  if (raw.parts.length !== AFFILIATE_PART_TARGET) return { ok: false, problem: 'part-count-invalid' };
 
   const parts: AffiliatePart[] = [];
   const ids = new Set<string>();
+  const names = new Set<string>();
+  const affiliateUrls = new Set<string>();
+  const categoryCounts = Object.fromEntries(
+    RETAIL_PART_CATEGORIES.map((category) => [category, 0]),
+  ) as Record<RetailPartCategory, number>;
   for (const candidate of raw.parts) {
     const part = parsePart(candidate);
     if (!part) return { ok: false, problem: 'part-invalid' };
     if (ids.has(part.id)) return { ok: false, problem: 'duplicate-part-id' };
+    const normalizedName = part.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (names.has(normalizedName)) return { ok: false, problem: 'duplicate-part-name' };
+    if (affiliateUrls.has(part.trackedAffiliateUrl)) return { ok: false, problem: 'duplicate-affiliate-url' };
     ids.add(part.id);
+    names.add(normalizedName);
+    affiliateUrls.add(part.trackedAffiliateUrl);
+    categoryCounts[part.category] += 1;
     parts.push(part);
   }
+  if (RETAIL_PART_CATEGORIES.some(
+    (category) => categoryCounts[category] !== AFFILIATE_PART_CATEGORY_TARGETS[category],
+  )) return { ok: false, problem: 'category-count-invalid' };
   return {
     ok: true,
     catalog: {

@@ -25,7 +25,7 @@ const part = (category: RetailPartCategory, index: number): AffiliatePart => ({
   merchant: 'Newegg',
   name: `${category} ${index}`,
   imageUrl: 'https://c1.neweggimages.com/example.jpg',
-  trackedAffiliateUrl: 'https://click.linksynergy.com/link?id=site&offerid=offer',
+  trackedAffiliateUrl: `https://click.linksynergy.com/link?id=site&offerid=${category}-${index}`,
   fetchedAt,
   availability: AVAILABILITY_UNKNOWN,
   canonicalPartId: category === 'gpu' ? 'rtx4070' : null,
