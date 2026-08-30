@@ -1,7 +1,14 @@
-// Builds the committed, browser-readable catalog of 500 image-and-link parts.
-// Prices and stock are intentionally absent. Merchant pages remain the source
-// of truth for both, while the tracked destination and product image can be
-// safely used as a durable catalog entry.
+// Builds the committed, browser-readable catalog of 500 priced parts.
+//
+// Every published part carries the merchant's own retail price, its sale price
+// when one is genuinely lower, the currency, and the instant all three were
+// read. A candidate whose pricing cannot be trusted is REJECTED and another
+// qualified candidate takes its place, so the catalogue reaches its quota with
+// 500 parts and 500 valid prices — never 500 parts and 493 prices.
+//
+// Stock is still absent, and still cannot be inferred: the feed is a catalogue
+// of listings, not an inventory. Availability is unknown for every part, and
+// the merchant page remains the source of truth after a click.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -73,7 +80,15 @@ async function run(argv: readonly string[]): Promise<number> {
 
   const candidates = new Map<RetailPartCategory, AffiliatePart[]>();
   const gpuParts = gpuSweep.outcomes.flatMap((outcome) =>
-    outcome.status === 'ok' ? outcome.offers.map(gpuOfferToAffiliatePart) : [],
+    // An offer whose pricing would not satisfy the published schema yields
+    // null and is dropped here, exactly like a non-GPU candidate rejected for
+    // 'price'. The quota then draws on the next qualified candidate.
+    outcome.status === 'ok'
+      ? outcome.offers.flatMap((offer) => {
+          const part = gpuOfferToAffiliatePart(offer);
+          return part === null ? [] : [part];
+        })
+      : [],
   );
   candidates.set('gpu', gpuParts);
 

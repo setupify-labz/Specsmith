@@ -7,7 +7,7 @@ import { admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog,
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 const fetchedAt = '2026-08-29T23:00:00.000Z';
-const item = (over: { mid?: string; leaf?: string; title?: string; link?: string } = {}) =>
+const item = (over: { mid?: string; leaf?: string; title?: string; link?: string; price?: string; sale?: string } = {}) =>
   findItems(
     parseProductSearchXml(`<result><item>
       <mid>${over.mid ?? '44583'}</mid>
@@ -16,6 +16,8 @@ const item = (over: { mid?: string; leaf?: string; title?: string; link?: string
       <category><primary>Electronics</primary><secondary>Components~~${over.leaf ?? 'Computer Processors'}</secondary></category>
       <imageurl>https://c1.neweggimages.com/example.jpg</imageurl>
       <linkurl>${over.link ?? 'https://click.linksynergy.com/link?id=site&amp;offerid=offer'}</linkurl>
+      <price currency="USD">${over.price ?? '299.99'}</price>
+      <saleprice currency="USD">${over.sale ?? '0.00'}</saleprice>
     </item></result>`),
   )[0];
 
@@ -28,6 +30,9 @@ const part = (category: RetailPartCategory, index: number): AffiliatePart => ({
   trackedAffiliateUrl: `https://click.linksynergy.com/link?id=site&offerid=${category}-${index}`,
   fetchedAt,
   availability: AVAILABILITY_UNKNOWN,
+  retailPrice: 100 + index,
+  salePrice: null,
+  currency: 'USD',
   canonicalPartId: category === 'gpu' ? 'rtx4070' : null,
   specsVerified: category === 'gpu',
 });
@@ -126,5 +131,67 @@ describe('500-part catalog gate', () => {
   it('the quota registry itself is exactly 500 and has every category once', () => {
     expect(RETAIL_CATEGORY_CONFIG.reduce((sum, config) => sum + config.quota, 0)).toBe(AFFILIATE_PART_TARGET);
     expect(new Set(RETAIL_CATEGORY_CONFIG.map((config) => config.category)).size).toBe(RETAIL_CATEGORY_CONFIG.length);
+  });
+});
+
+describe('the publication gate requires 500 parts AND 500 prices', () => {
+  it('refuses a catalogue where one selected part lost its price', () => {
+    // The failure the gate exists for: a quota met in count but not in
+    // evidence. Publishing it would ship 499 priced cards and one that renders
+    // an empty price with no explanation.
+    const map = candidates();
+    const gpus = [...(map.get('gpu') ?? [])];
+    gpus[0] = { ...gpus[0], retailPrice: 0 };
+    map.set('gpu', gpus);
+    expect(() => buildAffiliatePartCatalog(map, fetchedAt)).toThrow(
+      expect.objectContaining({ code: 'price-missing' }),
+    );
+  });
+
+  it('refuses a sale price that is not below the retail price', () => {
+    const map = candidates();
+    const cpus = [...(map.get('cpu') ?? [])];
+    cpus[0] = { ...cpus[0], retailPrice: 100, salePrice: 100 };
+    map.set('cpu', cpus);
+    expect(() => buildAffiliatePartCatalog(map, fetchedAt)).toThrow(
+      expect.objectContaining({ code: 'price-missing' }),
+    );
+  });
+
+  it('publishes when every selected part carries a valid price', () => {
+    const catalog = buildAffiliatePartCatalog(candidates(), fetchedAt);
+    expect(catalog.parts).toHaveLength(500);
+    expect(catalog.parts.every((p) => p.retailPrice > 0 && /^[A-Z]{3}$/.test(p.currency))).toBe(true);
+  });
+});
+
+describe('prices are read from the listing, and a bad one costs the candidate', () => {
+  it('reads the retail price and its currency', () => {
+    const admitted = admitAffiliatePart(item({ price: '449.99' }), 'cpu', 'Computer Processors', fetchedAt);
+    expect(admitted).toMatchObject({ status: 'accepted', part: { retailPrice: 449.99, currency: 'USD', salePrice: null } });
+  });
+
+  it('treats saleprice=0 as no sale, not as free', () => {
+    const admitted = admitAffiliatePart(item({ price: '449.99', sale: '0.00' }), 'cpu', 'Computer Processors', fetchedAt);
+    expect(admitted).toMatchObject({ status: 'accepted', part: { salePrice: null } });
+  });
+
+  it('keeps a genuine discount', () => {
+    const admitted = admitAffiliatePart(item({ price: '449.99', sale: '399.99' }), 'cpu', 'Computer Processors', fetchedAt);
+    expect(admitted).toMatchObject({ status: 'accepted', part: { retailPrice: 449.99, salePrice: 399.99 } });
+  });
+
+  it('drops a sale that is not lower rather than rendering a false discount', () => {
+    const admitted = admitAffiliatePart(item({ price: '449.99', sale: '449.99' }), 'cpu', 'Computer Processors', fetchedAt);
+    expect(admitted).toMatchObject({ status: 'accepted', part: { salePrice: null } });
+  });
+
+  it('rejects a listing with a zero or unparseable retail price', () => {
+    for (const price of ['0.00', 'call for price', '']) {
+      expect(admitAffiliatePart(item({ price }), 'cpu', 'Computer Processors', fetchedAt), price).toMatchObject({
+        status: 'rejected',
+        reason: 'price',
+      });
+    }
   });
 });

@@ -7,7 +7,8 @@ import {
   type RetailPartCategory,
 } from '../../../src/lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN, isHttpUrl, isTrackedAffiliateUrl } from '../../../src/lib/retail/offerSnapshot';
-import { childText, type XmlElement } from '../rakuten/parseProductSearchXml';
+import { checkPartPricing } from '../../../src/lib/retail/partCatalog';
+import { childText, readPrice, type XmlElement } from '../rakuten/parseProductSearchXml';
 import { classifyListingCondition } from '../rakuten/listingKind';
 import { readCategory } from '../rakuten/admitOffer';
 import { NEWEGG_MID, type NeweggOffer } from '../rakuten/types';
@@ -15,7 +16,10 @@ import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 export type CatalogAdmission =
   | { status: 'accepted'; part: AffiliatePart }
-  | { status: 'rejected'; reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'kind' | 'url' };
+  | {
+      status: 'rejected';
+      reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'kind' | 'url' | 'price';
+    };
 
 const safeId = (category: RetailPartCategory, sku: string): string =>
   `newegg-${category}-${sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.replace(/-+$/g, '');
@@ -91,6 +95,9 @@ export function admitAffiliatePart(
   if (!isSelectableBuilderPart(category, name)) return { status: 'rejected', reason: 'kind' };
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return { status: 'rejected', reason: 'url' };
 
+  const pricing = readListingPricing(item);
+  if (!pricing) return { status: 'rejected', reason: 'price' };
+
   return {
     status: 'accepted',
     part: {
@@ -102,13 +109,71 @@ export function admitAffiliatePart(
       trackedAffiliateUrl,
       fetchedAt,
       availability: AVAILABILITY_UNKNOWN,
+      retailPrice: pricing.retailPrice,
+      salePrice: pricing.salePrice,
+      currency: pricing.currency,
       canonicalPartId: null,
       specsVerified: false,
     },
   };
 }
 
-export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart {
+/**
+ * Reads `<price>` and `<saleprice>` off a listing, or refuses it.
+ *
+ * The same rules the GPU adapter's `admitOffer` already applies, reached here
+ * through the SAME `readPrice` parser rather than a second reader:
+ *
+ *   - the retail price must parse, be above zero, and carry its own currency;
+ *   - `saleprice=0` means "no sale running", not "free", so it becomes null;
+ *   - a sale price must carry a currency of its own and match the retail one,
+ *     because the two elements can legitimately differ and a discount silently
+ *     relabelled into another currency is a wrong price that looks normal;
+ *   - a sale price at or above the retail price is not a discount, and is
+ *     dropped rather than displayed as one.
+ *
+ * A listing that fails any of these is REJECTED, not published without a
+ * price: the generator simply takes the next qualified candidate, so the
+ * catalogue reaches its quota with every part priced.
+ */
+export function readListingPricing(
+  item: XmlElement,
+): { retailPrice: number; salePrice: number | null; currency: string } | null {
+  const price = readPrice(item, 'price');
+  if (!price || price.amount === null || !price.currency) return null;
+
+  const sale = readPrice(item, 'saleprice');
+  let salePrice: number | null = null;
+  if (sale && sale.amount !== null && sale.amount > 0) {
+    // A discount in a different currency is not a discount we can render
+    // beside the retail figure, so the listing loses the sale rather than the
+    // price. Same-currency is the only comparable case.
+    if (sale.currency && sale.currency === price.currency && sale.amount < price.amount) {
+      salePrice = sale.amount;
+    }
+  }
+
+  const pricing = { retailPrice: price.amount, salePrice, currency: price.currency };
+  return checkPartPricing(pricing).ok ? pricing : null;
+}
+
+/**
+ * A verified GPU offer, narrowed to a catalogue part.
+ *
+ * The offer already carries `retailPrice`, `salePrice` and `currency`, admitted
+ * under the adapter's own price rules; they are carried through here rather
+ * than re-derived. Returns null when the offer's pricing would not satisfy the
+ * published schema — a sale price not below retail, say — so the generator
+ * takes another candidate instead of publishing a part the reader would refuse.
+ */
+export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | null {
+  // The adapter permits a sale price equal to or above the retail price; the
+  // catalogue does not, because a card would strike the retail price through
+  // and show a "discount" that is not one. Drop the sale, keep the listing.
+  const salePrice = offer.salePrice !== null && offer.salePrice < offer.retailPrice ? offer.salePrice : null;
+  const pricing = { retailPrice: offer.retailPrice, salePrice, currency: offer.currency };
+  if (!checkPartPricing(pricing).ok) return null;
+
   return {
     id: safeId('gpu', offer.sku),
     category: 'gpu',
@@ -118,13 +183,24 @@ export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart {
     trackedAffiliateUrl: offer.trackedAffiliateUrl,
     fetchedAt: offer.fetchedAt,
     availability: AVAILABILITY_UNKNOWN,
+    retailPrice: pricing.retailPrice,
+    salePrice: pricing.salePrice,
+    currency: pricing.currency,
     canonicalPartId: offer.canonicalGpuId,
     specsVerified: true,
   };
 }
 
 export class AffiliateCatalogFailure extends Error {
-  constructor(readonly code: 'category-shortfall' | 'duplicate-part' | 'count-mismatch' | 'catalog-invalid') {
+  constructor(
+    readonly code:
+      | 'category-shortfall'
+      | 'duplicate-part'
+      | 'count-mismatch'
+      /** A selected part carries pricing the published schema would refuse. */
+      | 'price-missing'
+      | 'catalog-invalid',
+  ) {
     super(code);
   }
 }
@@ -149,6 +225,15 @@ export function buildAffiliatePartCatalog(
   }
   if (new Set(selected.map((part) => part.id)).size !== selected.length) throw new AffiliateCatalogFailure('duplicate-part');
   if (selected.length !== AFFILIATE_PART_TARGET) throw new AffiliateCatalogFailure('count-mismatch');
+
+  // 500 PARTS AND 500 PRICES. Checked as its own gate, before the schema
+  // parse, so the failure names the actual problem: `catalog-invalid` would
+  // say only that something in a 500-part document did not validate, and a
+  // missing price is the one fault worth naming on its own.
+  const priced = selected.filter((part) =>
+    checkPartPricing({ retailPrice: part.retailPrice, salePrice: part.salePrice, currency: part.currency }).ok,
+  );
+  if (priced.length !== AFFILIATE_PART_TARGET) throw new AffiliateCatalogFailure('price-missing');
 
   const catalog: AffiliatePartCatalog = {
     schemaVersion: AFFILIATE_PART_CATALOG_SCHEMA_VERSION,

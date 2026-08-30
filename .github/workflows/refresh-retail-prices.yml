@@ -1,0 +1,146 @@
+# Daily price refresh: regenerate the 500-part catalogue and commit it.
+#
+# THIS IS THE ONE WORKFLOW IN THE REPOSITORY THAT CAN WRITE TO IT.
+# ----------------------------------------------------------------
+# `contents: write` is declared here and nowhere else. The other four retail
+# workflows stay `contents: read`, and retailWorkflowSafety asserts that, so
+# the write permission is confined to one reviewable file rather than granted
+# repository-wide.
+#
+# WHY A COMMIT, AND NOT SOMETHING CLEVERER
+# ----------------------------------------
+# The site is a static Cloudflare deployment with no runtime, so a browser can
+# only read a file that is already deployed. Committing the regenerated JSON is
+# the whole publication mechanism: the push triggers the existing deploy, and
+# the file the browser fetches is the file in the repository. The alternatives
+# were weighed and rejected — an R2 bucket needs new credentials this job does
+# not have and adds a second origin the page depends on at runtime, and a daily
+# pull request only publishes on days somebody merges, which is exactly when a
+# 26-hour freshness window lapses and every price disappears.
+#
+# WHY DAILY IS THE RIGHT CADENCE
+# ------------------------------
+# partPricing.ts hides any price older than 26 hours. A once-a-day refresh
+# leaves two hours of slack for a late or failed run before the catalogue stops
+# showing prices at all — which is the designed failure, not an outage: cards
+# fall back to "See current price at Newegg" and the build summary re-labels
+# itself. Nothing shows a stale number while this workflow is broken.
+#
+# A FAILED REFRESH CHANGES NOTHING
+# --------------------------------
+# The generator writes outside the checkout and its 500/500 price gate throws
+# rather than emit a short catalogue. The commit step only runs if that
+# succeeded, and only if the file actually changed, so a bad API day leaves
+# yesterday's catalogue in place to age out on its own terms.
+
+name: Refresh retail prices
+
+on:
+  schedule:
+    # 03:20 UTC daily. Off the hour because every scheduler on GitHub fires at
+    # :00 and the queue there is longest.
+    - cron: '20 3 * * *'
+  workflow_dispatch:
+
+# Write, and only contents. No packages, no id-token, no pull-requests.
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-retail-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Regenerate and publish the priced catalogue
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # persist-credentials is TRUE here, unlike every other workflow: this job
+      # has to push, and the checkout token is how it does so. It is the
+      # narrowest option available — scoped to this repository and this run —
+      # and nothing else in the job reads it.
+      - name: Check out the branch being refreshed
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Proven before a single API call is spent, and before anything is
+      # committed: a broken price rule must fail here, not in a published file.
+      - name: Run the retail and pricing tests
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run scripts/retail src/lib/retail
+
+      # THE ONLY STEP THAT SEES A CREDENTIAL. Identical confinement to the
+      # other live workflows: three secrets reach one step, which mints a
+      # short-lived token, masks it, writes it outside the checkout with
+      # owner-only permissions, reads it and removes the file.
+      #
+      # The generator writes to RUNNER_TEMP, never into the working tree, so a
+      # failure cannot leave a half-written catalogue staged for commit.
+      - name: Mint an access token and regenerate the catalogue
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/affiliate-catalog"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          pnpm exec tsx scripts/retail/catalog/generate-affiliate-catalog.ts \
+            --out "${RUNNER_TEMP}/affiliate-catalog/retail-parts.json"
+
+      # Runs WITHOUT any credential. Copies the one file, and commits only if
+      # it changed — an unchanged catalogue produces no commit, so the history
+      # records refreshes that moved a price rather than one commit a day
+      # regardless.
+      - name: Publish the refreshed catalogue
+        run: |
+          set -euo pipefail
+          target="artifacts/SpecSmith/public/data/retail-parts.json"
+          cp "${RUNNER_TEMP}/affiliate-catalog/retail-parts.json" "${target}"
+
+          if [ -z "$(git status --porcelain -- "${target}")" ]; then
+            echo "Catalogue unchanged; nothing to publish."
+            exit 0
+          fi
+
+          # Only this path may be staged. `git add -A` here would let any other
+          # change the job happened to leave behind ride along on a commit made
+          # with write permission.
+          git add -- "${target}"
+          if [ -n "$(git diff --cached --name-only | grep -v "^${target}$" || true)" ]; then
+            echo "Refusing to commit: something other than the catalogue is staged."
+            git diff --cached --name-only
+            exit 1
+          fi
+
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m 'Refresh retail catalogue prices' \
+                     -m 'Automated daily regeneration. 500 parts, 500 verified prices, availability unknown.'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "Published a refreshed catalogue."

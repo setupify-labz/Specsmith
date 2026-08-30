@@ -1,13 +1,41 @@
-// Browser-safe schema for the image-and-link retail catalog.
+// Browser-safe schema for the retail catalog: image, tracked link, and the
+// merchant's own price as published at a stated instant.
 //
-// This is deliberately NOT a price snapshot. The user-facing feature is a
-// verified retailer image and tracked affiliate destination. Prices and stock
-// are omitted because neither can stay true for the lifetime of a committed
-// static catalog. The merchant page is the source of truth after a click.
+// PRICES ARE HERE NOW, AND THEY WERE NOT BEFORE.
+// ----------------------------------------------
+// Version 1 of this file omitted prices, on the reasoning that a price cannot
+// stay true for the lifetime of a committed static catalog. That reasoning was
+// right about the danger and wrong about the remedy: the answer to "a number
+// goes stale" is not "publish no number", it is "publish the number with the
+// instant it was read, refresh it daily, and HIDE it the moment it is older
+// than the window". All three of those now exist — the refresh workflow, the
+// `fetchedAt` on every part, and `partPricing.ts`'s freshness rule — so a
+// price can be shown honestly. Availability still cannot: the feed is a
+// catalogue of listings, not an inventory, so `availability` remains the
+// literal 'unknown' and no code here may say otherwise.
+//
+// A PRICE BELONGS TO A SKU, NEVER TO A MODEL
+// ------------------------------------------
+// `retailPrice` is a field of one merchant listing. A canonical part (an "RTX
+// 5090") is not a thing anyone can buy — dozens of SKUs carry that model at
+// different prices — so a canonical row must never display one. That is
+// enforced by shape: the price lives on AffiliatePart, which IS a SKU, and no
+// canonical grouping in the UI may lift it upward.
+//
+// The merchant page remains the source of truth after a click.
 
 import { AVAILABILITY_UNKNOWN, isHttpUrl, isInstant, isTrackedAffiliateUrl } from './offerSnapshot';
 
-export const AFFILIATE_PART_CATALOG_SCHEMA_VERSION = 1;
+/**
+ * Bumped from 1 to 2 when prices became part of the shape.
+ *
+ * A version-1 catalogue — every one published before this change — is now
+ * REFUSED rather than read as a priceless catalogue. That is deliberate: a
+ * reader that silently accepted the old shape would render 500 cards with no
+ * prices and no explanation, which looks like a pricing outage rather than a
+ * catalogue that predates pricing.
+ */
+export const AFFILIATE_PART_CATALOG_SCHEMA_VERSION = 2;
 export const AFFILIATE_PART_CATALOG_URL = '/data/retail-parts.json';
 export const AFFILIATE_PART_TARGET = 500;
 
@@ -53,11 +81,79 @@ export interface AffiliatePart {
   imageUrl: string;
   /** Network-generated redirect; attribution is already encoded in it. */
   trackedAffiliateUrl: string;
+  /**
+   * When this listing — including its price — was read from the feed.
+   *
+   * This is the "Price checked" instant the card shows, and the value the
+   * freshness rule measures. A price without one is not evidence.
+   */
   fetchedAt: string;
   availability: typeof AVAILABILITY_UNKNOWN;
+  /** The merchant's list price for THIS SKU. Always finite and above zero. */
+  retailPrice: number;
+  /**
+   * The discounted price, or null when nothing is discounted.
+   *
+   * Null is the normal case. The feed writes `saleprice=0` to mean "no sale
+   * running", which the adapter normalizes to null at the parse boundary — a
+   * stored 0 would make every un-discounted part look free. When present it is
+   * strictly LOWER than retailPrice, so a card can strike the retail price
+   * through without checking first: a "sale" that is not lower is not a sale,
+   * and this schema will not carry one.
+   */
+  salePrice: number | null;
+  /** ISO 4217, exactly three uppercase letters, as the merchant published it. */
+  currency: string;
   /** Present only when the existing SpecSmith catalog verified the specs. */
   canonicalPartId: string | null;
   specsVerified: boolean;
+}
+
+/** Why a listing's pricing was refused. A closed set, so a test can name each case. */
+export type PricingProblem =
+  /** Missing, non-numeric, NaN or Infinite retail price. */
+  | 'retail-price-not-a-number'
+  /** Zero or negative. Neither is a price. */
+  | 'retail-price-not-positive'
+  /** A sale price that is present but not a positive finite number. */
+  | 'sale-price-invalid'
+  /** A sale price at or above the retail price — not a discount. */
+  | 'sale-price-not-lower'
+  /** Currency absent, lowercase, padded, or not three letters. */
+  | 'currency-invalid';
+
+const isPositiveAmount = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+/** ISO 4217: exactly three uppercase letters. Anchored, so 'xUSD' is refused. */
+export const CATALOG_CURRENCY_PATTERN = /^[A-Z]{3}$/;
+
+/**
+ * Checks the three pricing fields together, or names what is wrong.
+ *
+ * Together, because they constrain each other: a sale price is only meaningful
+ * relative to a retail price, and both are only meaningful under a currency.
+ * Exported so the price rules can be tested directly rather than inferred from
+ * whether a whole 500-part catalogue happened to parse.
+ */
+export function checkPartPricing(raw: {
+  retailPrice?: unknown;
+  salePrice?: unknown;
+  currency?: unknown;
+}): { ok: true } | { ok: false; problem: PricingProblem } {
+  const { retailPrice, salePrice, currency } = raw;
+  if (typeof retailPrice !== 'number' || Number.isNaN(retailPrice) || !Number.isFinite(retailPrice)) {
+    return { ok: false, problem: 'retail-price-not-a-number' };
+  }
+  if (retailPrice <= 0) return { ok: false, problem: 'retail-price-not-positive' };
+  if (typeof currency !== 'string' || !CATALOG_CURRENCY_PATTERN.test(currency)) {
+    return { ok: false, problem: 'currency-invalid' };
+  }
+  if (salePrice !== null) {
+    if (!isPositiveAmount(salePrice)) return { ok: false, problem: 'sale-price-invalid' };
+    if (salePrice >= retailPrice) return { ok: false, problem: 'sale-price-not-lower' };
+  }
+  return { ok: true };
 }
 
 export interface AffiliatePartCatalog {
@@ -96,11 +192,15 @@ const isCategory = (value: unknown): value is RetailPartCategory =>
 
 function parsePart(raw: unknown): AffiliatePart | null {
   if (!isObject(raw)) return null;
-  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, canonicalPartId, specsVerified } = raw;
+  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified } = raw;
   if (!isText(id) || !/^newegg-[a-z]+-[a-z0-9-]+$/.test(id)) return null;
   if (!isCategory(category) || merchant !== 'Newegg' || !isText(name)) return null;
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
   if (!isInstant(fetchedAt) || availability !== AVAILABILITY_UNKNOWN) return null;
+  // A part without a trustworthy price is not published at all — the generator
+  // rejects the candidate and picks another. So by the time a catalogue is
+  // read, every part has one, and a missing price is a corrupt file.
+  if (!checkPartPricing({ retailPrice, salePrice, currency }).ok) return null;
   if (category === 'gpu') {
     if (!isText(canonicalPartId) || specsVerified !== true) return null;
   } else if (canonicalPartId !== null || specsVerified !== false) {
@@ -115,6 +215,9 @@ function parsePart(raw: unknown): AffiliatePart | null {
     trackedAffiliateUrl: trackedAffiliateUrl as string,
     fetchedAt,
     availability: AVAILABILITY_UNKNOWN,
+    retailPrice: retailPrice as number,
+    salePrice: (salePrice ?? null) as number | null,
+    currency: currency as string,
     canonicalPartId: canonicalPartId as string | null,
     specsVerified,
   };

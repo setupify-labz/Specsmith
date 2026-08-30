@@ -22,6 +22,9 @@ const valid = () => ({
       trackedAffiliateUrl: `https://click.linksynergy.com/link?id=site&offerid=${category}-${index}`,
       fetchedAt: '2026-08-29T23:00:00.000Z',
       availability: 'unknown',
+      retailPrice: 100 + index,
+      salePrice: index % 5 === 0 ? 90 + index : null,
+      currency: 'USD',
       canonicalPartId: category === 'gpu' ? `gpu-${index}` : null,
       specsVerified: category === 'gpu',
     })),
@@ -29,10 +32,15 @@ const valid = () => ({
 });
 
 describe('affiliate part catalog', () => {
-  it('accepts a validated image-and-link record without a price or stock claim', () => {
+  it('accepts a validated priced record that makes no stock claim', () => {
     const parsed = parseAffiliatePartCatalog(valid());
     expect(parsed.ok).toBe(true);
-    expect(JSON.stringify(valid())).not.toMatch(/price|in.stock|out.of.stock|unavailable/i);
+    if (!parsed.ok) return;
+    // Prices are now carried; stock claims still are not, and no wording that
+    // implies one may appear anywhere in the document.
+    expect(parsed.catalog.parts[0].retailPrice).toBeGreaterThan(0);
+    expect(parsed.catalog.parts[0].currency).toBe('USD');
+    expect(JSON.stringify(valid())).not.toMatch(/in.stock|out.of.stock|unavailable|sold.out|ships/i);
   });
 
   it('refuses untracked and lookalike destinations', () => {
