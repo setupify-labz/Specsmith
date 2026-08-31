@@ -53,6 +53,10 @@ describe('the screenshot workflow starts on one branch or by hand, and nothing e
       '.github/workflows/capture-ui-screenshots.yml',
       'artifacts/SpecSmith/scripts/ui/**',
       'artifacts/SpecSmith/src/components/builder/**',
+      // The framing rule lives here, and it decides how large a product is
+      // drawn. A change to it that never got photographed is exactly the kind
+      // of thing this run exists to catch.
+      'artifacts/SpecSmith/src/lib/retail/**',
       'artifacts/SpecSmith/src/pages/Builder.tsx',
     ]);
   });
