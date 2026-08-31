@@ -69,7 +69,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
   }, [games, resolution, preset, gpu, cpu]);
 
   const toggleStyle = (active: boolean) => active
-    ? { backgroundColor: 'var(--ff-accent-solid)', color: '#fff' }
+    ? { backgroundColor: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }
     : { color: 'var(--ff-text-2)', backgroundColor: 'transparent' };
 
   const targetBtnStyle = (t: FpsTarget) => {
@@ -82,7 +82,7 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
       cursor: 'pointer',
       border: isActive ? '1px solid var(--ff-accent-solid)' : '1px solid var(--ff-border)',
       backgroundColor: isActive ? 'var(--ff-accent-solid)' : 'transparent',
-      color: isActive ? '#fff' : 'var(--ff-text-2)',
+      color: isActive ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
       transition: 'all 0.15s',
     } as React.CSSProperties;
   };

@@ -155,10 +155,10 @@ export default function RetailCatalog({ category, parts, selectedId, now, onTogg
                   onClick={() => toggleBrand(brand)}
                   aria-pressed={on}
                   data-testid={`filter-brand-${brand}`}
-                  className="rounded-full px-2.5 py-1 text-xs"
+                  className="ff-accent-control rounded-full px-2.5 py-1 text-xs"
                   style={{
                     background: on ? 'var(--ff-accent-solid)' : 'var(--ff-card)',
-                    color: on ? 'var(--ff-accent-text)' : 'var(--ff-text-2)',
+                    color: on ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
                     border: `1px solid ${on ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
                   }}
                 >

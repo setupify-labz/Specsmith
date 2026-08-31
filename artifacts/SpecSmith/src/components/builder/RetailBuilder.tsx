@@ -124,8 +124,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
             type="button"
             onClick={() => setMobileSummaryOpen((open) => !open)}
             data-testid="view-build"
-            className="flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold"
-            style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-accent-text)' }}
+            className="ff-accent-control flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold"
+            style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
           >
             <ShoppingCart size={16} aria-hidden="true" />
             View build ({selectedParts.length})

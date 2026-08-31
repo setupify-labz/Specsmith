@@ -278,7 +278,7 @@ export default function GpuMatchup() {
                 <button key={r} onClick={() => setResolution(r)}
                   className="px-4 py-2 text-xs font-semibold transition-colors"
                   style={resolution === r
-                    ? { backgroundColor: 'var(--ff-accent-solid)', color: '#fff' }
+                    ? { backgroundColor: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }
                     : { backgroundColor: 'transparent', color: 'var(--ff-text-2)' }}>
                   {resLabels[r]}
                 </button>

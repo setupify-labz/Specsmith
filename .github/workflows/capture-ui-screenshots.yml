@@ -184,6 +184,13 @@ jobs:
               lines.push(`| ${name} | ${s.measured} | ${pct(s.min)} | ${pct(s.median)} | ${pct(s.max)} | ${pct(s.spread)} | ${s.smallProducts} | ${s.heavilyPadded} |`);
             }
             if (report.mobileCard) lines.push("", "Mobile card: " + JSON.stringify(report.mobileCard));
+            lines.push("", "| theme | control | foreground on fill | contrast |", "| --- | --- | --- | --- |");
+            for (const [theme, controls] of Object.entries(report.accentControls ?? {})) {
+              for (const [control, m] of Object.entries(controls)) {
+                if (!m) continue;
+                lines.push(`| ${theme} | ${control} | ${m.color} on ${m.background} | ${m.contrast}:1 |`);
+              }
+            }
             lines.push("", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
             const text = lines.join("\n") + "\n";
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
@@ -257,6 +264,18 @@ jobs:
               if (s.measured === 0) continue;
               if (s.smallProducts / s.measured > 0.15) {
                 failures.push(`${name}: ${s.smallProducts}/${s.measured} products drawn under half their frame`);
+              }
+            }
+
+            // WCAG AA for normal text, measured on the rendered control after
+            // the cascade resolved every variable — not on the tokens.
+            for (const [theme, controls] of Object.entries(report.accentControls ?? {})) {
+              for (const [control, m] of Object.entries(controls)) {
+                if (!m) {
+                  failures.push(`${theme}: could not measure the ${control} control`);
+                } else if (m.contrast < 4.5) {
+                  failures.push(`${theme}: ${control} is ${m.contrast}:1, under the 4.5:1 AA floor`);
+                }
               }
             }
 

@@ -36,7 +36,7 @@ export default function VerifiedBenchmarkPanel({ gpuId, gpuName, cpuId, cpuName 
   const result = lookupVerifiedFps(query);
 
   const toggleStyle = (active: boolean) => active
-    ? { backgroundColor: 'var(--ff-accent-solid)', color: '#fff' }
+    ? { backgroundColor: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }
     : { color: 'var(--ff-text-2)', backgroundColor: 'transparent' };
 
   return (

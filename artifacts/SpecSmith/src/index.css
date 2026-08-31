@@ -119,6 +119,17 @@
      text — white-on-#6C63FF only hits ~4.3:1, under WCAG AA's 4.5:1 floor
      for normal text. Same hue/saturation, nudged darker to clear it. */
   --ff-accent-solid: #6259FF;
+  /* The foreground for text sitting ON --ff-accent-solid, and the only
+     token that belongs there.
+     NOT --ff-accent-text. That one is the accent colour made readable
+     against a dark neutral surface — a pale lilac, #9B94FF, which lands at
+     about 1.6:1 on the purple fill and reads as a disabled control rather
+     than a chosen one. It stays exactly as it is for links and accent text
+     on neutral backgrounds, which still need it.
+     White is deliberate: --ff-accent-solid was itself darkened from
+     --ff-accent so that white on it clears WCAG AA, as the comment above
+     says. This token names the pairing that reasoning already assumed. */
+  --ff-on-accent: #FFFFFF;
   --ff-cyan:      #00D4FF;
   --ff-green:     #00E676;
   --ff-newegg:    #FF9E1B;
@@ -177,6 +188,9 @@
      4.5:1 against those tints too, not just white. */
   --ff-accent-text: #453DC8;
   --ff-accent-solid: #5A52EE;
+  /* Same pairing in light theme, and for the same reason: #453DC8 on
+     #5A52EE is roughly 1.5:1. White on #5A52EE clears AA. */
+  --ff-on-accent: #FFFFFF;
   /* #0099CC only hits ~3.27:1 against white — under WCAG AA's 4.5:1 floor.
      Darkened; still reads as "cyan" and only gains contrast as a button
      gradient stop (white text on top). */
@@ -356,6 +370,18 @@
     transition: border-color 0.15s, box-shadow 0.15s;
     outline: none;
   }
+/* Keyboard focus on the solid-accent controls.
+   These are styled inline, so there is no class to hang a ring on and the
+   UA default outline sits badly against a filled purple pill. `ff-accent-
+   control` gives them one ring that is visible on both the filled and the
+   unfilled state: an offset white/dark halo plus the accent, so it reads on
+   the purple fill AND on the card behind it. Pointer users never see it —
+   :focus-visible only fires for keyboard focus. */
+.ff-accent-control:focus-visible {
+  outline: 2px solid var(--ff-accent-text);
+  outline-offset: 2px;
+}
+
   .ff-input:focus {
     border-color: var(--ff-accent);
     box-shadow: 0 0 0 3px rgba(108,99,255,0.15);

@@ -106,10 +106,10 @@ export function CategoryChips({ active, counts, selected, onSelect }: Props) {
             aria-current={isActive ? 'true' : undefined}
             data-testid={`category-chip-${category}`}
             data-active={isActive ? 'true' : 'false'}
-            className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs whitespace-nowrap"
+            className="ff-accent-control flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs whitespace-nowrap"
             style={{
               background: isActive ? 'var(--ff-accent-solid)' : 'var(--ff-card)',
-              color: isActive ? 'var(--ff-accent-text)' : 'var(--ff-text-2)',
+              color: isActive ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
               border: `1px solid ${isActive ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
               fontWeight: isActive ? 600 : 400,
             }}

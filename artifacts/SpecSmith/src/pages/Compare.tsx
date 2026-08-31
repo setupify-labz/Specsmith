@@ -297,7 +297,7 @@ export default function Compare() {
                       key={r}
                       onClick={() => setResolution(r)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors ${
-                        resolution === r ? 'text-white bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
+                        resolution === r ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {r === '4k' ? '4K' : r}
@@ -313,7 +313,7 @@ export default function Compare() {
                       key={p}
                       onClick={() => setPreset(p)}
                       className={`px-4 py-2 text-xs font-semibold transition-colors capitalize ${
-                        preset === p ? 'text-white bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
+                        preset === p ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
                       }`}
                     >
                       {p}

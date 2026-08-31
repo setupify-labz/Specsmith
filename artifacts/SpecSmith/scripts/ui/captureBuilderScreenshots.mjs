@@ -344,6 +344,90 @@ async function measureLayout(page) {
   });
 }
 
+/**
+ * Photographs the filled accent controls in both themes, and measures the
+ * contrast a person actually gets.
+ *
+ * WHY MEASURED IN THE BROWSER. The tokens can be checked arithmetically — and
+ * are, in accentContrast.test.ts — but that proves a pairing, not a rendering.
+ * Here the computed styles are read off the live controls after the cascade
+ * has resolved every variable, so a control that inherits some other colour is
+ * caught even though the token it names is fine.
+ */
+async function captureAccentControls(context, report) {
+  const results = {};
+  for (const theme of ['dark', 'light']) {
+    const page = await open(context, { width: 390, height: 844 });
+    if (theme === 'light') {
+      await page.getByRole('button', { name: /toggle theme/i }).first().click();
+      await page.waitForTimeout(600);
+    }
+    await settleImages(page);
+
+    // Two products chosen, so "View build (2)" and a selected card both exist.
+    await page.locator('[data-testid="add-to-build"]:visible').first().click();
+    await page.waitForTimeout(300);
+    await page.locator('[data-testid="category-chip-cpu"]:visible').first().click();
+    await page.waitForTimeout(700);
+    await settleImages(page);
+    await page.locator('[data-testid="add-to-build"]:visible').first().click();
+    await page.waitForTimeout(400);
+
+    const shots = [
+      ['view-build', '[data-testid="view-build"]'],
+      ['in-build', '[data-testid="retail-product-card"][data-selected="true"]'],
+      ['active-chip', '[data-testid="category-chip-cpu"]'],
+    ];
+    for (const [name, selector] of shots) {
+      const element = page.locator(selector).first();
+      await element.scrollIntoViewIfNeeded().catch(() => {});
+      await page.waitForTimeout(200);
+      await element.screenshot({ path: path.join(OUT_DIR, `${LABEL}-${theme}-${name}.png`) }).catch(() => {});
+    }
+
+    // The whole phone screen with products chosen and the button at rest, so
+    // the button's contrast can be judged against what surrounds it.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 3));
+    await page.waitForTimeout(400);
+    await shot(page, `${theme}-mobile-with-selection`);
+
+    results[theme] = await page.evaluate(() => {
+      const parse = (value) => {
+        const nums = (value.match(/[\d.]+/g) ?? []).map(Number);
+        return nums.length >= 3 ? nums.slice(0, 3) : null;
+      };
+      const luminance = (rgb) => {
+        const [r, g, b] = rgb.map((v) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const ratio = (fg, bg) => {
+        const [hi, lo] = [luminance(fg), luminance(bg)].sort((a, b) => b - a);
+        return (hi + 0.05) / (lo + 0.05);
+      };
+      const measure = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return null;
+        const style = getComputedStyle(element);
+        const fg = parse(style.color);
+        const bg = parse(style.backgroundColor);
+        if (!fg || !bg) return null;
+        return { color: style.color, background: style.backgroundColor, contrast: Number(ratio(fg, bg).toFixed(2)) };
+      };
+      return {
+        viewBuild: measure('[data-testid="view-build"]'),
+        inBuild: measure('[data-testid="retail-product-card"][data-selected="true"] [data-testid="add-to-build"]'),
+        activeChip: measure('[data-testid="category-chip-cpu"]'),
+      };
+    });
+
+    await page.close();
+  }
+  report.accentControls = results;
+}
+
 const browser = await chromium.launch();
 const context = await browser.newContext({ deviceScaleFactor: 2 });
 const report = {
@@ -470,6 +554,9 @@ for (const viewport of VIEWPORTS) {
 
   await page.close();
 }
+
+// The filled accent controls, in both themes.
+if (LABEL === 'after') await captureAccentControls(context, report);
 
 // The header, across a range of widths rather than the three the screenshots
 // happen to use — the tablet defect lived between two of them.

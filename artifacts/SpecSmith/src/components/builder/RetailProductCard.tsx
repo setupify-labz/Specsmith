@@ -155,10 +155,10 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             type="button"
             onClick={() => onToggle(part.id)}
             data-testid="add-to-build"
-            className="flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
+            className="ff-accent-control flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
             style={{
               background: selected ? 'var(--ff-accent-solid)' : 'var(--ff-surface)',
-              color: selected ? 'var(--ff-accent-text)' : 'var(--ff-text)',
+              color: selected ? 'var(--ff-on-accent)' : 'var(--ff-text)',
               border: '1px solid var(--ff-border)',
             }}
           >

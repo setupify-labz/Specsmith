@@ -211,6 +211,20 @@ describe('the capture script measures rather than merely photographs', () => {
     expect(values).toContain(1280);
   });
 
+  it('measures rendered contrast on the filled accent controls in both themes', () => {
+    // The tokens are checked arithmetically elsewhere. This checks the
+    // rendering: a control that inherits some other colour has a fine token
+    // and a bad screen, and only the computed style tells them apart.
+    expect(script).toContain('captureAccentControls');
+    expect(script).toContain("for (const theme of ['dark', 'light'])");
+    expect(script).toContain('getComputedStyle');
+    for (const control of ['viewBuild', 'inBuild', 'activeChip']) {
+      expect(script.includes(control), control).toBe(true);
+    }
+    expect(body).toContain('under the 4.5:1 AA floor');
+    expect(body).toContain('m.contrast < 4.5');
+  });
+
   it('reads the picture, not just the element, when judging product size', () => {
     // An <img> that is exactly the right size can still show a product at
     // half the size of its neighbour, because the emptiness is inside the
