@@ -27,6 +27,7 @@ const catalog = {
       availability: 'unknown',
       canonicalPartId: category === 'gpu' ? `gpu-${index}` : null,
       specsVerified: category === 'gpu',
+      imageContentRatio: null,
     })),
   ),
 };
@@ -35,6 +36,22 @@ describe('affiliate catalog loader', () => {
   it('returns ok only after browser-side validation', async () => {
     const view = await loadAffiliatePartCatalog({ fetch: async () => new Response(JSON.stringify(catalog), { status: 200 }) });
     expect(view).toEqual({ status: 'ok', catalog });
+  });
+
+  it('reads a file written before image framing was measured', async () => {
+    // The field was added after the first catalogues were published. Absent
+    // and "measured, and the answer is nothing" are the same thing to a card,
+    // so an older file loads rather than being refused.
+    const older = {
+      ...catalog,
+      parts: catalog.parts.map(({ imageContentRatio: _dropped, ...rest }) => rest),
+    };
+    const view = await loadAffiliatePartCatalog({
+      fetch: async () => new Response(JSON.stringify(older), { status: 200 }),
+    });
+    expect(view.status).toBe('ok');
+    if (view.status !== 'ok') return;
+    expect(view.catalog.parts.every((part) => part.imageContentRatio === null)).toBe(true);
   });
 
   it('never throws for absence, transport failure, or malformed JSON', async () => {

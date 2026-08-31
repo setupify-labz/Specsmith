@@ -172,7 +172,18 @@ jobs:
               worst = Math.min(worst, rate);
               lines.push(`| ${name} | ${m.cards} | ${m.loaded} | ${(rate * 100).toFixed(1)}% | ${m.placeholders} | ${m.collapsed} | ${m.stretched} | ${m.tiny} |`);
             }
-            lines.push("", "Layout: " + JSON.stringify(report.layout), "", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
+            lines.push("", "Layout: " + JSON.stringify(report.layout));
+            lines.push("", "| width | header controls | clipped | wrapped | page overflow |", "| --- | --- | --- | --- | --- |");
+            for (const [width, h] of Object.entries(report.header ?? {})) {
+              lines.push(`| ${width}px | ${h.visibleControls} | ${h.clippedControls} | ${h.wrappedControls} | ${h.horizontalOverflowPx}px |`);
+            }
+            lines.push("", "| category | products measured | smallest drawn | median | largest | spread | drawn small | heavily padded |", "| --- | --- | --- | --- | --- | --- | --- | --- |");
+            const pct = (v) => (v === null || v === undefined ? "n/a" : `${(v * 100).toFixed(0)}%`);
+            for (const [name, s] of Object.entries(report.productSpans ?? {})) {
+              lines.push(`| ${name} | ${s.measured} | ${pct(s.min)} | ${pct(s.median)} | ${pct(s.max)} | ${pct(s.spread)} | ${s.smallProducts} | ${s.heavilyPadded} |`);
+            }
+            if (report.mobileCard) lines.push("", "Mobile card: " + JSON.stringify(report.mobileCard));
+            lines.push("", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
             const text = lines.join("\n") + "\n";
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
             console.log(text);
@@ -215,16 +226,43 @@ jobs:
       # Last, so the evidence is published even when the number is bad: a
       # failing rate is a thing to diagnose from the screenshots, not a reason
       # to throw them away.
-      - name: Require at least 95% of measured cards to show a real image
+      - name: Check images, header fit and how large products are actually drawn
         run: |
           set -euo pipefail
           node --input-type=module -e '
             import fs from "node:fs";
             const report = JSON.parse(fs.readFileSync(process.env.GITHUB_WORKSPACE + "/screenshots/image-report.json", "utf-8"));
-            const failed = Object.entries(report.categories).filter(([, m]) => m.cards > 0 && m.loaded / m.cards < 0.95);
-            if (failed.length > 0) {
-              console.error("Categories below the 95% image threshold: " + failed.map(([n]) => n).join(", "));
+            const failures = [];
+
+            const belowRate = Object.entries(report.categories).filter(([, m]) => m.cards > 0 && m.loaded / m.cards < 0.95);
+            if (belowRate.length > 0) failures.push("below the 95% image threshold: " + belowRate.map(([n]) => n).join(", "));
+
+            for (const [width, h] of Object.entries(report.header ?? {})) {
+              if (h.clippedControls > 0) failures.push(`header control clipped at ${width}px`);
+              if (h.wrappedControls > 0) failures.push(`header control wrapped onto two lines at ${width}px`);
+              if (h.horizontalOverflowPx > 0) failures.push(`page scrolls sideways at ${width}px`);
+            }
+
+            for (const [name, l] of Object.entries(report.layout ?? {})) {
+              if (l.horizontalOverflowPx > 0) failures.push(`page scrolls sideways at ${name}`);
+              if (l.nestedCatalogScrollers > 0) failures.push(`nested catalogue scroller at ${name}`);
+            }
+
+            // Products drawn far smaller than their neighbours. This is the
+            // check that an <img> measurement cannot make: it reads the
+            // picture, not the element, so a product floating in white is
+            // caught even though its element is exactly the right size.
+            for (const [name, s] of Object.entries(report.productSpans ?? {})) {
+              if (s.measured === 0) continue;
+              if (s.smallProducts / s.measured > 0.15) {
+                failures.push(`${name}: ${s.smallProducts}/${s.measured} products drawn under half their frame`);
+              }
+            }
+
+            if (failures.length > 0) {
+              console.error("Visual checks failed:");
+              for (const failure of failures) console.error(" - " + failure);
               process.exit(1);
             }
-            console.log("Every measured category is at or above 95%.");
+            console.log("Images, header fit and product framing all within thresholds.");
           '

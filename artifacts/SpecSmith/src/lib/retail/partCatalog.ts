@@ -35,7 +35,7 @@ import { AVAILABILITY_UNKNOWN, isHttpUrl, isInstant, isTrackedAffiliateUrl } fro
  * prices and no explanation, which looks like a pricing outage rather than a
  * catalogue that predates pricing.
  */
-export const AFFILIATE_PART_CATALOG_SCHEMA_VERSION = 2;
+export const AFFILIATE_PART_CATALOG_SCHEMA_VERSION = 3;
 export const AFFILIATE_PART_CATALOG_URL = '/data/retail-parts.json';
 export const AFFILIATE_PART_TARGET = 500;
 
@@ -107,6 +107,27 @@ export interface AffiliatePart {
   /** Present only when the existing SpecSmith catalog verified the specs. */
   canonicalPartId: string | null;
   specsVerified: boolean;
+  /**
+   * How much of the merchant's image the product itself spans, 0 to 1.
+   *
+   * Retailer photographs are not framed consistently: one arrives cropped to
+   * the card, the next sits in a wide margin of white. Both pass every check
+   * on the <img> element — same box, same aspect, nothing stretched — and yet
+   * one product looks half the size of the other on screen. The difference is
+   * inside the raster, so it can only be measured by looking at the pixels.
+   *
+   * This is the larger of the content box's width and height as a fraction of
+   * the image's own width and height: 1.0 for a photograph that fills its
+   * frame, ~0.5 for one that occupies the middle of a blank field. The card
+   * uses it to enlarge the sparse ones until the products themselves are a
+   * comparable size, which moves the surplus margin out of view without
+   * touching the product.
+   *
+   * Null means unmeasured — an image that could not be fetched, a format
+   * without a decoder, or content too far off-centre to enlarge safely. The
+   * card treats null as "frame it exactly as it arrived".
+   */
+  imageContentRatio: number | null;
 }
 
 /** Why a listing's pricing was refused. A closed set, so a test can name each case. */
@@ -187,12 +208,16 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 
 const isText = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
 
+/** A measured fraction of an image frame: finite, above zero, at most one. */
+const isContentRatio = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= 1;
+
 const isCategory = (value: unknown): value is RetailPartCategory =>
   typeof value === 'string' && (RETAIL_PART_CATEGORIES as readonly string[]).includes(value);
 
 function parsePart(raw: unknown): AffiliatePart | null {
   if (!isObject(raw)) return null;
-  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified } = raw;
+  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified, imageContentRatio } = raw;
   if (!isText(id) || !/^newegg-[a-z]+-[a-z0-9-]+$/.test(id)) return null;
   if (!isCategory(category) || merchant !== 'Newegg' || !isText(name)) return null;
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
@@ -206,6 +231,10 @@ function parsePart(raw: unknown): AffiliatePart | null {
   } else if (canonicalPartId !== null || specsVerified !== false) {
     return null;
   }
+  // Absent is not the same as unmeasured-and-recorded, but both mean the same
+  // thing to a card, so an older file missing the field reads as null rather
+  // than being rejected. A present value must be a real fraction.
+  if (imageContentRatio !== undefined && imageContentRatio !== null && !isContentRatio(imageContentRatio)) return null;
   return {
     id,
     category,
@@ -220,6 +249,7 @@ function parsePart(raw: unknown): AffiliatePart | null {
     currency: currency as string,
     canonicalPartId: canonicalPartId as string | null,
     specsVerified,
+    imageContentRatio: (imageContentRatio ?? null) as number | null,
   };
 }
 

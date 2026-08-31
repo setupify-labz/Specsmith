@@ -10,6 +10,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import catalogData from '../../../public/data/retail-parts.json';
 import { parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../lib/retail/partCatalog';
 import { PRICE_FRESHNESS_MS } from '../../lib/retail/partPricing';
+import { CONTENT_TARGET_SPAN, MAX_ZOOM } from '../../lib/retail/imageFraming';
 import { PRODUCT_BATCH_SIZE } from '../../lib/retail/retailShopping';
 import RetailBuilder from './RetailBuilder';
 import RetailProductCard from './RetailProductCard';
@@ -230,6 +231,65 @@ describe('a card states its price honestly', () => {
     expect(screen.getByTestId('price-primary')).toBeDefined();
     expect(screen.getByTestId('add-to-build')).toBeDefined();
     expect(screen.getByTestId('view-at-newegg')).toBeDefined();
+  });
+
+  it('draws a well-framed photograph at its natural size', () => {
+    const part = { ...gpuParts[0], imageContentRatio: 0.95 };
+    const { container } = cardFor(part, FRESH_NOW);
+    const image = container.querySelector('img')!;
+    expect(image.style.maxHeight).toBe('100%');
+    expect(image.style.maxWidth).toBe('100%');
+  });
+
+  it('enlarges a photograph whose product floats in a wide margin', () => {
+    // The defect this fixes: two cards, same box, same `object-contain`, and
+    // one product drawn half the size of the other because its own image is
+    // mostly white. The sparse one is drawn larger so the PRODUCTS match.
+    const sparse = { ...gpuParts[0], imageContentRatio: 0.6 };
+    const { container } = cardFor(sparse, FRESH_NOW);
+    const image = container.querySelector('img')!;
+    const zoom = Number.parseFloat(image.style.maxHeight);
+    expect(zoom).toBeGreaterThan(100);
+    expect(image.style.maxWidth).toBe(image.style.maxHeight);
+    // And the product lands at the shared target span, not at some arbitrary
+    // larger size: 0.6 of the frame, drawn 1.533x, spans 0.92.
+    expect((0.6 * zoom) / 100).toBeCloseTo(CONTENT_TARGET_SPAN, 6);
+  });
+
+  it('leaves an unmeasured photograph exactly as it arrives', () => {
+    const { container } = cardFor({ ...gpuParts[0], imageContentRatio: null }, FRESH_NOW);
+    expect(container.querySelector('img')!.style.maxHeight).toBe('100%');
+  });
+
+  it('never enlarges past the cap, however sparse the measurement', () => {
+    for (const ratio of [0.5, 0.55, 0.7]) {
+      cleanup();
+      const { container } = cardFor({ ...gpuParts[0], imageContentRatio: ratio }, FRESH_NOW);
+      const zoom = Number.parseFloat(container.querySelector('img')!.style.maxHeight) / 100;
+      expect(zoom, `ratio ${ratio}`).toBeLessThanOrEqual(MAX_ZOOM);
+      expect(zoom, `ratio ${ratio}`).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('contains the image rather than cropping or stretching it, at every width', () => {
+    const { container } = cardFor(gpuParts[0], FRESH_NOW);
+    const image = container.querySelector('img')!;
+    expect(image.className).toContain('object-contain');
+    expect(image.className).not.toContain('object-cover');
+  });
+
+  it('uses a shorter image frame on a phone and a taller one from md up', () => {
+    // A 4:3 frame on a 358px-wide phone card is 268px, which pushed the title,
+    // price and buttons off the screen. The phone gets a fixed 240px frame;
+    // `md` and up go back to 4:3, where there is room for it.
+    const { container } = cardFor(gpuParts[0], FRESH_NOW);
+    const frame = container.querySelector('img')!.parentElement!;
+    expect(frame.className).toContain('h-[240px]');
+    expect(frame.className).toContain('md:aspect-[4/3]');
+    expect(frame.className).toContain('overflow-hidden');
+    const height = Number.parseInt(/h-\[(\d+)px\]/.exec(frame.className)![1], 10);
+    expect(height).toBeGreaterThanOrEqual(220);
+    expect(height).toBeLessThanOrEqual(280);
   });
 
   it('shows the full merchant title as the accessible name', () => {

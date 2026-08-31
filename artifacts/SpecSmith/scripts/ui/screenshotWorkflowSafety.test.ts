@@ -175,6 +175,45 @@ describe('the capture script measures rather than merely photographs', () => {
 
   it('is gated on 95% of measured cards showing a real image', () => {
     expect(body).toContain('0.95');
-    expect(body).toContain('Categories below the 95% image threshold');
+    expect(body).toContain('below the 95% image threshold');
+  });
+
+  it('is also gated on the header fitting and on products not being drawn tiny', () => {
+    // Three defects that a green image-rate would have said nothing about:
+    // a clipped header control, a header control wrapped onto two lines, and
+    // a product drawn at half the size of the one beside it.
+    for (const failure of [
+      'header control clipped at',
+      'header control wrapped onto two lines at',
+      'page scrolls sideways at',
+      'products drawn under half their frame',
+    ]) {
+      expect(body.includes(failure), failure).toBe(true);
+    }
+  });
+
+  it('measures the header across a range of widths, not only the screenshot ones', () => {
+    // The tablet defect sat between two screenshot widths. A check that only
+    // looks where a screenshot is taken would have missed it again.
+    const widths = /HEADER_WIDTHS = \[([^\]]+)\]/.exec(script);
+    expect(widths).not.toBeNull();
+    const values = (widths?.[1] ?? '').split(',').map((value) => Number(value.trim()));
+    expect(Math.min(...values)).toBeLessThanOrEqual(768);
+    expect(Math.max(...values)).toBeGreaterThanOrEqual(1100);
+    expect(values.length).toBeGreaterThanOrEqual(6);
+    // Both sides of the switch, so neither the compact nor the full header
+    // can be the one that was never looked at.
+    expect(values).toContain(1279);
+    expect(values).toContain(1280);
+  });
+
+  it('reads the picture, not just the element, when judging product size', () => {
+    // An <img> that is exactly the right size can still show a product at
+    // half the size of its neighbour, because the emptiness is inside the
+    // raster. Only a pixel measurement tells the two apart.
+    expect(script).toContain('measureRenderedProductSpans');
+    expect(script).toContain('getImageData');
+    expect(script).toContain('SMALL_PRODUCT_SPAN');
+    expect(script).toContain('heavilyPadded');
   });
 });

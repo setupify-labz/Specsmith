@@ -13,6 +13,7 @@ import { classifyListingCondition } from '../rakuten/listingKind';
 import { readCategory } from '../rakuten/admitOffer';
 import { NEWEGG_MID, type NeweggOffer } from '../rakuten/types';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
+import type { ImageMeasurement } from './imageContent';
 
 export type CatalogAdmission =
   | { status: 'accepted'; part: AffiliatePart }
@@ -114,6 +115,10 @@ export function admitAffiliatePart(
       currency: pricing.currency,
       canonicalPartId: null,
       specsVerified: false,
+      // Measured from the pixels later, once the quota is settled: there is no
+      // reason to download five thousand candidate images to publish five
+      // hundred. See attachImageContentRatios.
+      imageContentRatio: null,
     },
   };
 }
@@ -188,6 +193,54 @@ export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | nul
     currency: pricing.currency,
     canonicalPartId: offer.canonicalGpuId,
     specsVerified: true,
+    imageContentRatio: null,
+  };
+}
+
+/**
+ * Measures every published part's photograph and records how much of its frame
+ * the product spans.
+ *
+ * BEST EFFORT, ON PURPOSE. This runs inside the daily price refresh. An image
+ * host that is slow, a format without a decoder, a product sitting off-centre
+ * — none of those are reasons to withhold five hundred prices, so each one
+ * simply leaves that part's ratio null and the card frames the image exactly
+ * as it arrives today. The returned tally is for the run's log, so a
+ * measurement that quietly stopped working is visible rather than silent.
+ *
+ * Requests go out `concurrency` at a time. The images are public files on a
+ * CDN and carry no credential of ours; the limit is politeness and a bound on
+ * how long the step can take, not a rate limit anyone imposed.
+ */
+export async function attachImageContentRatios(
+  parts: readonly AffiliatePart[],
+  measure: (url: string) => Promise<ImageMeasurement>,
+  concurrency = 8,
+): Promise<{ parts: AffiliatePart[]; measured: number; problems: Record<string, number> }> {
+  const results = new Array<number | null>(parts.length).fill(null);
+  const problems: Record<string, number> = {};
+  let next = 0;
+
+  const worker = async (): Promise<void> => {
+    for (;;) {
+      const index = next;
+      next += 1;
+      if (index >= parts.length) return;
+      const outcome = await measure(parts[index].imageUrl);
+      if (outcome.ok) {
+        results[index] = outcome.contentRatio;
+      } else {
+        problems[outcome.problem] = (problems[outcome.problem] ?? 0) + 1;
+      }
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.max(1, concurrency) }, worker));
+
+  return {
+    parts: parts.map((part, index) => ({ ...part, imageContentRatio: results[index] })),
+    measured: results.filter((value) => value !== null).length,
+    problems,
   };
 }
 

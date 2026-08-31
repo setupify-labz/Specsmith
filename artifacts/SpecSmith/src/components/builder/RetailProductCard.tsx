@@ -9,6 +9,7 @@ import {
   formatCheckedAt,
   priceView,
 } from '../../lib/retail/partPricing';
+import { imageZoom } from '../../lib/retail/imageFraming';
 import { UNVERIFIED_NOTICE, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
 
 interface Props {
@@ -33,6 +34,7 @@ interface Props {
  */
 export default function RetailProductCard({ part, selected, now, onToggle }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
+  const zoom = imageZoom(part.imageContentRatio);
   const view = priceView(part, now);
   const confidence = confidenceOf(part);
   const shortTitle = shortenTitle(part.name);
@@ -51,12 +53,19 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
         borderWidth: selected ? 2 : 1,
       }}
     >
-      {/* Fixed-ratio box: every image occupies the same space and is contained
+      {/* The image frame. Every image occupies the same space and is contained
           rather than cropped or stretched, so a tall PSU and a wide monitor
-          still line up in the grid. */}
+          still line up in the grid.
+
+          SHORTER ON A PHONE. A 4:3 frame is 268px across a 358px-wide phone
+          card, which pushed the title, price and buttons below the fold and
+          made a single product fill the screen. Below `md` the frame is a
+          fixed 240px, so image, title, price and both actions are visible
+          together; from `md` up — where cards sit two to a row and there is
+          room — it goes back to 4:3. `object-contain` holds in both. */}
       <div
-        className="relative flex items-center justify-center rounded-t-xl overflow-hidden"
-        style={{ aspectRatio: '4 / 3', background: 'var(--ff-surface)' }}
+        className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
+        style={{ background: 'var(--ff-surface)' }}
       >
         {imageFailed ? (
           // A broken image loses the picture, never the product: the card keeps
@@ -76,7 +85,17 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             loading="lazy"
             decoding="async"
             onError={() => setImageFailed(true)}
-            className="max-h-full max-w-full object-contain p-3"
+            className="object-contain p-3"
+            style={{
+              // Normally 100% — the image is contained in the frame and that
+              // is that. For a photograph measured as floating in a wide
+              // margin, the element is grown by exactly enough to bring the
+              // PRODUCT up to the size of its neighbours'; the surplus margin
+              // then falls outside the frame and is clipped. imageFraming.ts
+              // explains why this cannot clip the product itself.
+              maxHeight: `${zoom * 100}%`,
+              maxWidth: `${zoom * 100}%`,
+            }}
           />
         )}
         {confidence === 'unverified' && (

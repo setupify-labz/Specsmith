@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { AffiliatePart, RetailPartCategory } from '../../../src/lib/retail/partCatalog';
+import { parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import {
   assertPagingConsistent,
   fetchProductSearchXml,
@@ -27,7 +27,14 @@ import {
 import { DEFAULT_REQUESTS_PER_MINUTE, RateLimiter } from '../coverage/rateLimiter';
 import { buildSnapshot } from '../snapshot/buildSnapshot';
 import { sweepOffers } from '../snapshot/sweepOffers';
-import { admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, gpuOfferToAffiliatePart } from './affiliateCatalog';
+import {
+  admitAffiliatePart,
+  AffiliateCatalogFailure,
+  attachImageContentRatios,
+  buildAffiliatePartCatalog,
+  gpuOfferToAffiliatePart,
+} from './affiliateCatalog';
+import { measureImageAtUrl } from './imageContent';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -123,6 +130,24 @@ async function run(argv: readonly string[]): Promise<number> {
     }
     throw new GeneratorFailure('catalog-invalid');
   }
+
+  // Frame measurement, after the quota is settled so only the 500 published
+  // images are fetched. Best effort: an image that cannot be measured keeps a
+  // null ratio and is framed exactly as it arrives, and no failure here can
+  // stop the prices from being published.
+  const framing = await attachImageContentRatios(catalog.parts, (url) => measureImageAtUrl(url));
+  catalog = { ...catalog, parts: framing.parts };
+  const problems = Object.entries(framing.problems)
+    .map(([problem, count]) => `${problem}=${count}`)
+    .join(', ');
+  console.error(
+    `Image framing measured for ${framing.measured}/${catalog.parts.length} parts${problems ? ` (${problems})` : ''}.`,
+  );
+
+  // The measured catalogue is re-validated before it is written. The ratios
+  // came from outside, and the file on disk must satisfy the same reader the
+  // browser uses — the build's own validation ran before these were attached.
+  if (!parseAffiliatePartCatalog(catalog).ok) throw new GeneratorFailure('catalog-invalid');
 
   try {
     fs.writeFileSync(out, `${JSON.stringify(catalog, null, 2)}\n`, { encoding: 'utf-8', mode: 0o600, flag: 'wx' });

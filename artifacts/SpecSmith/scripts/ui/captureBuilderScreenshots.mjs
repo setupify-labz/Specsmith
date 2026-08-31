@@ -30,6 +30,18 @@ const MEASURE = process.env.MEASURE === '1';
 /** The batch the grid shows before "Load more" — the window the audit covers. */
 const PRODUCTS_MEASURED = 24;
 
+/** Widths the header is checked at — not only the three the screenshots use. */
+const HEADER_WIDTHS = [768, 834, 900, 960, 1024, 1100, 1279, 1280, 1440];
+
+/** Header widths that also get a screenshot, because they are the ones in review. */
+const HEADER_SHOT_WIDTHS = [768, 834, 1024];
+
+/**
+ * A rendered product spanning less than this share of its card's image frame
+ * looks small beside its neighbours, whatever the <img> element measures.
+ */
+const SMALL_PRODUCT_SPAN = 0.5;
+
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 834, height: 1112 },
@@ -101,6 +113,156 @@ async function settleImages(page) {
     )
     .catch(() => {});
   await page.waitForTimeout(500);
+}
+
+/**
+ * Walks the header across a range of widths and reports anything that does not
+ * fit.
+ *
+ * MEASURING FIT, NOT PRESENCE. The tablet header rendered every one of its
+ * controls; two of them were simply unusable, because "Sign In" had wrapped
+ * onto two lines and "Start Building" ran off the right edge. Both are
+ * invisible to a check that asks whether an element exists, so this asks the
+ * two questions that actually distinguish them: is the control's box inside
+ * the window, and is it one line tall?
+ */
+async function measureHeaderFit(page) {
+  const results = {};
+  for (const width of HEADER_WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(250);
+    results[width] = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const nav = document.querySelector('nav');
+      const controls = nav ? [...nav.querySelectorAll('a, button')] : [];
+      let clipped = 0;
+      let wrapped = 0;
+      let visible = 0;
+      for (const control of controls) {
+        const box = control.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) continue;
+        visible += 1;
+        if (box.right > window.innerWidth + 0.5 || box.left < -0.5) clipped += 1;
+        // One line of a 14px control is about 20px; with padding a single-line
+        // button lands near 36-40px. Past 48 it has wrapped.
+        if (box.height > 48) wrapped += 1;
+      }
+      return {
+        visibleControls: visible,
+        clippedControls: clipped,
+        wrappedControls: wrapped,
+        horizontalOverflowPx: Math.max(0, doc.scrollWidth - doc.clientWidth),
+      };
+    });
+  }
+  return results;
+}
+
+/**
+ * How large each product is actually drawn, as a share of its card's frame.
+ *
+ * WHY THE ELEMENT'S OWN DIMENSIONS ARE NOT ENOUGH. Two cards can hold two
+ * <img> elements of identical size, both contained, neither stretched, and
+ * still show one product at half the size of the other — because one of the
+ * photographs is mostly empty margin. Every check on the element passes and
+ * the grid still looks wrong. So this reads the PIXELS: it measures how much
+ * of each raster the product occupies, then multiplies by how large that
+ * raster is drawn, which is the size a person actually sees.
+ *
+ * The bytes are fetched through Playwright rather than by the page, so no
+ * cross-origin canvas restriction applies and no CORS header is needed from
+ * the retailer.
+ */
+async function measureRenderedProductSpans(page, context) {
+  const cards = await page.evaluate((limit) => {
+    return [...document.querySelectorAll('[data-testid="retail-product-card"]')]
+      .slice(0, limit)
+      .flatMap((card) => {
+        const img = card.querySelector('img');
+        if (!img || !img.complete || img.naturalWidth <= 1) return [];
+        const frame = img.parentElement.getBoundingClientRect();
+        const box = img.getBoundingClientRect();
+        if (frame.width === 0 || frame.height === 0) return [];
+        return [{ src: img.currentSrc || img.src, drawn: Math.max(box.width / frame.width, box.height / frame.height) }];
+      });
+  }, PRODUCTS_MEASURED);
+
+  const spans = [];
+  for (const card of cards) {
+    const ratio = await contentRatioOf(page, context, card.src);
+    if (ratio === null) continue;
+    spans.push({ contentRatio: ratio, renderedSpan: Math.min(1, ratio * card.drawn) });
+  }
+  return spans;
+}
+
+/** Cache: the same photograph shows up in more than one screenshot pass. */
+const contentRatioCache = new Map();
+
+async function contentRatioOf(page, context, url) {
+  if (contentRatioCache.has(url)) return contentRatioCache.get(url);
+  let ratio = null;
+  try {
+    const response = await context.request.get(url, { timeout: 20_000 });
+    if (response.ok()) {
+      const body = await response.body();
+      // A real MIME type, taken from the response: `image/*` is a match
+      // pattern, not a media type, and a browser is right to refuse it.
+      const declared = (response.headers()['content-type'] ?? '').split(';')[0].trim();
+      const mime = declared.startsWith('image/') ? declared : 'image/jpeg';
+      const dataUrl = `data:${mime};base64,${body.toString('base64')}`;
+      ratio = await page.evaluate(async (source) => {
+        const image = new Image();
+        image.src = source;
+        try {
+          await image.decode();
+        } catch {
+          return null;
+        }
+        const width = Math.min(240, image.naturalWidth);
+        const height = Math.min(240, image.naturalHeight);
+        if (width < 8 || height < 8) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0, width, height);
+        const { data } = ctx.getImageData(0, 0, width, height);
+        const at = (x, y) => {
+          const i = (y * width + x) * 4;
+          return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+        };
+        // Same rule the catalogue build uses: the background is whatever the
+        // corners agree on, and anything else is the product.
+        const corners = [at(0, 0), at(width - 1, 0), at(0, height - 1), at(width - 1, height - 1)].filter((c) => c[3] > 16);
+        const bg = corners.length
+          ? [0, 1, 2].map((c) => Math.round(corners.reduce((sum, corner) => sum + corner[c], 0) / corners.length))
+          : null;
+        if (bg && corners.some((c) => [0, 1, 2].some((i) => Math.abs(c[i] - bg[i]) > 18))) return 1;
+        let minX = width;
+        let minY = height;
+        let maxX = -1;
+        let maxY = -1;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const [r, g, b, a] = at(x, y);
+            if (a <= 16) continue;
+            if (bg && Math.abs(r - bg[0]) <= 18 && Math.abs(g - bg[1]) <= 18 && Math.abs(b - bg[2]) <= 18) continue;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+        if (maxX < minX) return 1;
+        return Math.min(1, Math.max((maxX - minX + 1) / width, (maxY - minY + 1) / height));
+      }, dataUrl);
+    }
+  } catch {
+    ratio = null;
+  }
+  contentRatioCache.set(url, ratio);
+  return ratio;
 }
 
 /**
@@ -184,7 +346,14 @@ async function measureLayout(page) {
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ deviceScaleFactor: 2 });
-const report = { label: LABEL, productsMeasured: PRODUCTS_MEASURED, categories: {}, layout: {} };
+const report = {
+  label: LABEL,
+  productsMeasured: PRODUCTS_MEASURED,
+  categories: {},
+  layout: {},
+  header: {},
+  productSpans: {},
+};
 
 for (const viewport of VIEWPORTS) {
   const page = await open(context, viewport);
@@ -217,6 +386,22 @@ for (const viewport of VIEWPORTS) {
     await page.locator('[data-testid="category-chips"]').screenshot({
       path: path.join(OUT_DIR, `${LABEL}-mobile-category-controls.png`),
     });
+    // One whole card: image, title, price and BOTH actions in a single frame,
+    // which is the thing the taller image frame used to make impossible.
+    await page.locator('[data-testid="retail-product-card"]').first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.locator('[data-testid="retail-product-card"]').first().screenshot({
+      path: path.join(OUT_DIR, `${LABEL}-mobile-card-complete.png`),
+    });
+    report.mobileCard = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="retail-product-card"]');
+      const frame = card.querySelector('img')?.parentElement ?? card.querySelector('[data-testid="image-placeholder"]')?.parentElement;
+      return {
+        cardHeightPx: Math.round(card.getBoundingClientRect().height),
+        imageFrameHeightPx: frame ? Math.round(frame.getBoundingClientRect().height) : null,
+        fitsInViewport: card.getBoundingClientRect().height <= window.innerHeight,
+      };
+    });
   }
 
   // Build something, so "selected exact SKU" and the summary have content.
@@ -243,6 +428,15 @@ for (const viewport of VIEWPORTS) {
   }
 
   if (viewport.name === 'mobile') {
+    // The sticky button in its resting, closed state with products chosen —
+    // the view in which its contrast is judged.
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 3));
+    await page.waitForTimeout(400);
+    await shot(page, 'mobile-view-build-closed');
+    await page.locator('[data-testid="view-build"]').screenshot({
+      path: path.join(OUT_DIR, `${LABEL}-mobile-view-build-button.png`),
+    });
+
     await page.locator('[data-testid="view-build"]').click();
     await page.waitForTimeout(600);
     await shot(page, 'mobile-build-summary');
@@ -257,9 +451,37 @@ for (const viewport of VIEWPORTS) {
       await settleImages(page);
       await revealCards(page);
       report.categories[category] = await measureCategory(page);
+      const spans = await measureRenderedProductSpans(page, context);
+      const sorted = spans.map((entry) => entry.renderedSpan).sort((a, b) => a - b);
+      report.productSpans[category] = {
+        measured: sorted.length,
+        // How small the smallest products are drawn, and how far apart the
+        // smallest and largest end up: the two numbers that describe "one of
+        // these looks half the size of the other".
+        min: sorted[0] ?? null,
+        median: sorted.length ? sorted[Math.floor(sorted.length / 2)] : null,
+        max: sorted[sorted.length - 1] ?? null,
+        spread: sorted.length ? sorted[sorted.length - 1] - sorted[0] : null,
+        smallProducts: sorted.filter((span) => span < SMALL_PRODUCT_SPAN).length,
+        heavilyPadded: spans.filter((entry) => entry.contentRatio < 0.7).length,
+      };
     }
   }
 
+  await page.close();
+}
+
+// The header, across a range of widths rather than the three the screenshots
+// happen to use — the tablet defect lived between two of them.
+{
+  const page = await open(context, { width: 1440, height: 900 });
+  report.header = await measureHeaderFit(page);
+  for (const width of HEADER_SHOT_WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(400);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator('nav').first().screenshot({ path: path.join(OUT_DIR, `${LABEL}-header-${width}.png`) });
+  }
   await page.close();
 }
 

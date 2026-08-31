@@ -77,8 +77,13 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Desktop Nav */}
-            <div className="hidden md:flex items-center gap-1">
+            {/* Desktop Nav.
+                AT xl, NOT md. Seven links plus the theme toggle, "Sign In" and
+                "Start Building" need about 1100px. Showing them from 768px put
+                "Sign In" on two lines and pushed "Start Building" off the right
+                edge on a tablet. Below xl the same links live in the hamburger
+                menu, where they are all reachable and none of them is clipped. */}
+            <div className="hidden xl:flex items-center gap-1">
               {navLinks.map(link => (
                 <Link
                   key={link.to}
@@ -189,7 +194,7 @@ export default function Navbar() {
               {/* Mobile hamburger */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="md:hidden p-2 rounded-lg transition-colors"
+                className="xl:hidden p-2 rounded-lg transition-colors"
                 style={{ color: 'var(--ff-text-2)', backgroundColor: 'var(--ff-card)' }}
                 aria-label={menuOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={menuOpen}
@@ -209,7 +214,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-16 left-0 right-0 z-40 md:hidden"
+            className="fixed top-16 left-0 right-0 z-40 xl:hidden"
             style={{ backgroundColor: 'var(--ff-nav-bg)', backdropFilter: 'blur(12px)', borderBottom: '1px solid var(--ff-border)' }}
           >
             <div className="px-4 py-4 space-y-1">
