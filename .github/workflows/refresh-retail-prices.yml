@@ -97,9 +97,18 @@ jobs:
 
       # Proven before a single API call is spent, and before anything is
       # committed: a broken price rule must fail here, not in a published file.
+      #
+      # publishedPartCatalog.test.ts is excluded, and only here. It asserts that
+      # the catalogue CURRENTLY committed is valid — a repository-integrity
+      # check that belongs in ordinary CI. Running it in the job whose entire
+      # purpose is to replace that file is circular: on the day the schema
+      # changes, the old artifact is invalid by definition and the refresh that
+      # would fix it could never start. Every rule the refresh itself depends on
+      # — the price parser, the schema, the freshness window, the 500/500 gate —
+      # still runs.
       - name: Run the retail and pricing tests
         working-directory: artifacts/SpecSmith
-        run: pnpm exec vitest run scripts/retail src/lib/retail
+        run: pnpm exec vitest run scripts/retail src/lib/retail --exclude '**/publishedPartCatalog.test.ts'
 
       # THE ONLY STEP THAT SEES A CREDENTIAL. Identical confinement to the
       # other live workflows: three secrets reach one step, which mints a
