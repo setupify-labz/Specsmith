@@ -63,12 +63,23 @@ describe('the enlargement cannot crop the product', () => {
   });
 
   it('refuses to act on a ratio too small to be believable', () => {
-    // A product genuinely occupying a fifth of its frame would need a 4x
-    // enlargement. Far likelier the measurement found a watermark or a
-    // gradient; either way, guessing is worse than leaving it alone.
+    // A product measured at a tenth of its frame is likelier to be a
+    // measurement that found a watermark than a real photograph.
     expect(imageZoom(MIN_TRUSTED_RATIO - 0.01)).toBe(1);
-    expect(imageZoom(0.2)).toBe(1);
+    expect(imageZoom(0.1)).toBe(1);
     expect(imageZoom(0.01)).toBe(1);
+  });
+
+  it('still normalizes the low-profile card that prompted this', () => {
+    // Measured at 0.47 and previously skipped for sitting a hundredth under
+    // the old 0.5 floor — while being drawn at half the size of the card
+    // beside it, which is the whole complaint.
+    expect(imageZoom(0.47)).toBeGreaterThan(1);
+    expect(normalizedSpan(0.47) as number).toBeGreaterThan(0.7);
+    // The cap still holds, so it is enlarged a long way short of filling the
+    // frame rather than to the target.
+    expect(imageZoom(0.47)).toBe(MAX_ZOOM);
+    expect(normalizedSpan(0.47) as number).toBeLessThan(1);
   });
 });
 

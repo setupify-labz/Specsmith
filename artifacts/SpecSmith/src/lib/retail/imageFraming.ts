@@ -21,9 +21,18 @@
  *    to a little under the full frame and keeps a margin on every side.
  *  - `MAX_ZOOM` caps the enlargement, so a mis-measured ratio cannot produce
  *    an arbitrary blow-up.
- *  - Below `MIN_TRUSTED_RATIO` nothing is enlarged at all. A product that
- *    genuinely occupies a fifth of its frame would need a 4x zoom to normalize
- *    and is far more likely to be a measurement that went wrong.
+ *  - Below `MIN_TRUSTED_RATIO` nothing is enlarged at all. A product measured
+ *    at a tenth of its frame is far more likely to be a measurement that went
+ *    wrong than a real photograph, and guessing is worse than leaving it.
+ *
+ * THE CAP IS THE REAL GUARD, NOT THE FLOOR. The floor started at 0.5 and was
+ * lowered, because 0.5 excluded the case this exists for: a low-profile card
+ * measured at 0.47, drawn at half the size of the full-height card beside it,
+ * and skipped for being one hundredth of a point too sparse. The floor never
+ * protected against the dangerous failure anyway — a ratio that UNDERSTATES
+ * how much of the frame the product covers, which is what would crop it — and
+ * an underestimate is bounded by the cap at either floor. So the floor is set
+ * where a measurement stops being believable, and the cap does the protecting.
  *
  * A null ratio — unmeasured, undecodable, or off-centre — always yields 1.
  */
@@ -38,7 +47,7 @@ export const CONTENT_TARGET_SPAN = 0.92;
 export const MAX_ZOOM = 1.6;
 
 /** Below this, a ratio is treated as unreliable rather than as very sparse. */
-export const MIN_TRUSTED_RATIO = 0.5;
+export const MIN_TRUSTED_RATIO = 0.3;
 
 /**
  * The factor to draw an image at, given how much of its frame its product spans.
