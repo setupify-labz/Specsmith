@@ -18,6 +18,7 @@ import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import RetailBuilder from '../components/builder/RetailBuilder';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -98,56 +99,57 @@ export default function Builder() {
     return grouped;
   }, [affiliateCatalog]);
 
-  const retailBase = (part: AffiliatePart) => ({
-    id: part.id,
-    name: part.name,
-    image: part.imageUrl,
-    affiliateUrl: part.trackedAffiliateUrl,
-    specsVerified: part.specsVerified,
-    canonicalPartId: part.canonicalPartId,
-    retailPart: true,
-  });
+  // Canonical parts ONLY. They are the source of FPS estimates, compatibility
+  // rules and specifications, and they are what a legacy saved build names.
+  // They are no longer concatenated with retailer SKUs: a canonical row beside
+  // a real listing carries a hand-maintained price and a placeholder image,
+  // which is what produced the "RTX 5090 — $3,979" card. The shopping grid is
+  // fed from the affiliate catalogue instead.
+  const builderGpus = useMemo<GPU[]>(
+    () => gpus.map((gpu) => ({ ...gpu, image: `/images/gpus/${gpu.id}.png`, specsVerified: true })),
+    [],
+  );
 
-  const builderGpus = useMemo<GPU[]>(() => {
-    const retail = retailByCategory.get('gpu') ?? [];
-    const firstLink = new Map<string, AffiliatePart>();
-    for (const part of retail) if (part.canonicalPartId && !firstLink.has(part.canonicalPartId)) firstLink.set(part.canonicalPartId, part);
-    const canonical = gpus.map((gpu) => {
-      const offer = firstLink.get(gpu.id);
-      return {
-        ...gpu,
-        image: `/images/gpus/${gpu.id}.png`,
-        specsVerified: true,
-        ...(offer ? { affiliateUrl: offer.trackedAffiliateUrl } : {}),
-      };
-    });
-    const skuParts = retail.flatMap((part) => {
-      const base = gpus.find((gpu) => gpu.id === part.canonicalPartId);
-      return base ? [{ ...base, ...retailBase(part), price_usd: undefined } as unknown as GPU] : [];
-    });
-    return [...canonical, ...skuParts];
-  }, [retailByCategory]);
+  const builderCpus = useMemo<CPU[]>(() => cpus.map((part) => ({ ...part, specsVerified: true })), []);
 
-  const builderCpus = useMemo<CPU[]>(() => [
-    ...cpus.map((part) => ({ ...part, specsVerified: true })),
-    ...(retailByCategory.get('cpu') ?? []).map((part) => ({ ...retailBase(part), price_usd: undefined } as unknown as CPU)),
-  ], [retailByCategory]);
+  const canonicalOnly = <T extends { id: string }>(canonical: T[]): T[] =>
+    canonical.map((part) => ({ ...part, specsVerified: true }));
 
-  const withRetail = <T extends { id: string }>(category: RetailPartCategory, canonical: T[]): T[] => [
-    ...canonical.map((part) => ({ ...part, specsVerified: true })),
-    ...(retailByCategory.get(category) ?? []).map((part) => ({ ...retailBase(part), price_usd: undefined } as unknown as T)),
-  ];
+  const builderMotherboards = useMemo(() => canonicalOnly(componentData.motherboards as Motherboard[]), []);
+  const builderRam = useMemo(() => canonicalOnly(componentData.ram as RAM[]), []);
+  const builderStorage = useMemo(() => canonicalOnly(componentData.storage as Storage[]), []);
+  const builderPsus = useMemo(() => canonicalOnly(componentData.psus as PSU[]), []);
+  const builderCases = useMemo(() => canonicalOnly(componentData.cases as Case[]), []);
+  const builderCoolers = useMemo(() => canonicalOnly(componentData.coolers as Cooler[]), []);
+  const builderMonitors = useMemo(() => canonicalOnly(peripheralData.monitors as Monitor[]), []);
+  const builderKeyboards = useMemo(() => canonicalOnly(peripheralData.keyboards as Keyboard[]), []);
+  const builderMice = useMemo(() => canonicalOnly(peripheralData.mice as Mouse[]), []);
+  const builderHeadsets = useMemo(() => canonicalOnly(peripheralData.headsets as Headset[]), []);
 
-  const builderMotherboards = useMemo(() => withRetail('motherboard', componentData.motherboards as Motherboard[]), [retailByCategory]);
-  const builderRam = useMemo(() => withRetail('ram', componentData.ram as RAM[]), [retailByCategory]);
-  const builderStorage = useMemo(() => withRetail('storage', componentData.storage as Storage[]), [retailByCategory]);
-  const builderPsus = useMemo(() => withRetail('psu', componentData.psus as PSU[]), [retailByCategory]);
-  const builderCases = useMemo(() => withRetail('case', componentData.cases as Case[]), [retailByCategory]);
-  const builderCoolers = useMemo(() => withRetail('cooler', componentData.coolers as Cooler[]), [retailByCategory]);
-  const builderMonitors = useMemo(() => withRetail('monitor', peripheralData.monitors as Monitor[]), [retailByCategory]);
-  const builderKeyboards = useMemo(() => withRetail('keyboard', peripheralData.keyboards as Keyboard[]), [retailByCategory]);
-  const builderMice = useMemo(() => withRetail('mouse', peripheralData.mice as Mouse[]), [retailByCategory]);
-  const builderHeadsets = useMemo(() => withRetail('headset', peripheralData.headsets as Headset[]), [retailByCategory]);
+  /**
+   * Every retailer SKU by id, plus the canonical part each verified SKU maps to.
+   *
+   * This is the internal bridge: choosing an exact listing still produces a
+   * canonical GPU or CPU for the FPS estimator and the compatibility checker.
+   * The canonical part informs those calculations and never becomes a second
+   * selectable product in the grid. A SKU with no verified mapping resolves to
+   * null, and the estimate is withheld rather than guessed.
+   */
+  const retailById = useMemo(() => {
+    const map = new Map<string, AffiliatePart>();
+    if (affiliateCatalog.status === 'ok') for (const part of affiliateCatalog.catalog.parts) map.set(part.id, part);
+    return map;
+  }, [affiliateCatalog]);
+
+  const resolveCanonical = <T extends { id: string }>(list: T[], id: string | null): T | null => {
+    if (!id) return null;
+    // A legacy saved build names a canonical id directly.
+    const direct = list.find((part) => part.id === id);
+    if (direct) return direct;
+    const sku = retailById.get(id);
+    const canonicalId = sku && sku.specsVerified ? sku.canonicalPartId : null;
+    return canonicalId ? list.find((part) => part.id === canonicalId) ?? null : null;
+  };
 
   // Parse initial state from URL params (from prebuilts "Load into Builder" or share link)
   const initialBuild = useMemo(() => {
@@ -197,18 +199,18 @@ export default function Builder() {
   const cpuSectionRef = useRef<HTMLDivElement>(null);
   const fpsSectionRef = useRef<HTMLDivElement>(null);
 
-  const selectedGpu = builderGpus.find(g => g.id === build.gpu) ?? null;
-  const selectedCpu = builderCpus.find(c => c.id === build.cpu) ?? null;
-  const selectedMb = builderMotherboards.find(m => m.id === build.motherboard) ?? null;
-  const selectedRam = builderRam.find(r => r.id === build.ram) ?? null;
-  const selectedStorage = builderStorage.find(s => s.id === build.storage) ?? null;
-  const selectedPsu = builderPsus.find(p => p.id === build.psu) ?? null;
-  const selectedCase = builderCases.find(c => c.id === build.case) ?? null;
-  const selectedCooler = builderCoolers.find(c => c.id === build.cooler) ?? null;
-  const selectedMonitor = builderMonitors.find(m => m.id === build.monitor) ?? null;
-  const selectedKeyboard = builderKeyboards.find(k => k.id === build.keyboard) ?? null;
-  const selectedMouse = builderMice.find(m => m.id === build.mouse) ?? null;
-  const selectedHeadset = builderHeadsets.find(h => h.id === build.headset) ?? null;
+  const selectedGpu = resolveCanonical(builderGpus, build.gpu);
+  const selectedCpu = resolveCanonical(builderCpus, build.cpu);
+  const selectedMb = resolveCanonical(builderMotherboards, build.motherboard);
+  const selectedRam = resolveCanonical(builderRam, build.ram);
+  const selectedStorage = resolveCanonical(builderStorage, build.storage);
+  const selectedPsu = resolveCanonical(builderPsus, build.psu);
+  const selectedCase = resolveCanonical(builderCases, build.case);
+  const selectedCooler = resolveCanonical(builderCoolers, build.cooler);
+  const selectedMonitor = resolveCanonical(builderMonitors, build.monitor);
+  const selectedKeyboard = resolveCanonical(builderKeyboards, build.keyboard);
+  const selectedMouse = resolveCanonical(builderMice, build.mouse);
+  const selectedHeadset = resolveCanonical(builderHeadsets, build.headset);
 
   const compat = useMemo(() => {
     const result = checkCompatibility({
@@ -356,178 +358,201 @@ export default function Builder() {
           <CompatibilityBanner warnings={warnings} passed={compat.passed} />
         </div>
 
+        {affiliateCatalog.status === 'ok' ? (
+          /* THE SHOPPING INTERFACE. Fed exclusively from the 500-part retailer
+             catalogue: exact SKUs, each with its own image, price, tracked link
+             and price timestamp. Canonical parts are not passed in, so they
+             cannot appear as products — they stay behind the scenes powering
+             the FPS estimate and compatibility check above. */
+          <RetailBuilder
+            parts={affiliateCatalog.catalog.parts}
+            selection={build}
+            onSelect={(category, id) => {
+              selectPart(category as keyof BuildState, id);
+              if (category === 'gpu' || category === 'cpu') setShowFps(false);
+            }}
+          />
+        ) : (
+          /* No catalogue: fall back to the canonical parts so the builder still
+             works offline or before the first refresh. These carry editorial
+             estimates, which is why they are labelled as such and never mixed
+             with retailer pricing. */
+          <div data-testid="canonical-fallback">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Part selectors */}
-          <div className="lg:col-span-2 space-y-3">
-            {/* GPU */}
-            <div ref={gpuSectionRef}>
-              <PartSelector
-                category="gpu" label="GPU — Graphics Card" defaultOpen
-                parts={builderGpus}
-                selectedId={build.gpu}
-                recommendedIds={recommendedIds}
-                onSelect={id => { selectPart('gpu', id); setShowFps(false); }}
-                getSpecs={p => {
-                  if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
-                  const g = p as GPU;
-                  return [
-                    { label: 'VRAM', value: `${g.vram_gb}GB ${g.architecture}` },
-                    { label: 'TDP', value: `${g.tdp_watts}W` },
-                    { label: 'Release', value: String(g.release_year) },
-                  ];
-                }}
+            {/* Part selectors */}
+            <div className="lg:col-span-2 space-y-3">
+              {/* GPU */}
+              <div ref={gpuSectionRef}>
+                <PartSelector
+                  category="gpu" label="GPU — Graphics Card" defaultOpen
+                  parts={builderGpus}
+                  selectedId={build.gpu}
+                  recommendedIds={recommendedIds}
+                  onSelect={id => { selectPart('gpu', id); setShowFps(false); }}
+                  getSpecs={p => {
+                    if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
+                    const g = p as GPU;
+                    return [
+                      { label: 'VRAM', value: `${g.vram_gb}GB ${g.architecture}` },
+                      { label: 'TDP', value: `${g.tdp_watts}W` },
+                      { label: 'Release', value: String(g.release_year) },
+                    ];
+                  }}
+                />
+              </div>
+              {/* CPU */}
+              <div ref={cpuSectionRef}>
+                <PartSelector
+                  category="cpu" label="CPU — Processor"
+                  parts={builderCpus}
+                  selectedId={build.cpu}
+                  recommendedIds={recommendedIds}
+                  onSelect={id => { selectPart('cpu', id); setShowFps(false); }}
+                  getSpecs={p => {
+                    if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
+                    const c = p as CPU;
+                    return [
+                      { label: 'Cores/Threads', value: `${c.cores}C / ${c.threads}T` },
+                      { label: 'Boost', value: `${c.boost_ghz}GHz` },
+                      { label: 'Socket', value: `${c.socket} · ${c.supported_ram.join('/')}` },
+                    ];
+                  }}
+                />
+              </div>
+              <PartSelector category="motherboard" label="Motherboard"
+                parts={builderMotherboards} selectedId={build.motherboard}
+                onSelect={id => selectPart('motherboard', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
               />
-            </div>
-            {/* CPU */}
-            <div ref={cpuSectionRef}>
-              <PartSelector
-                category="cpu" label="CPU — Processor"
-                parts={builderCpus}
-                selectedId={build.cpu}
-                recommendedIds={recommendedIds}
-                onSelect={id => { selectPart('cpu', id); setShowFps(false); }}
-                getSpecs={p => {
-                  if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }];
-                  const c = p as CPU;
-                  return [
-                    { label: 'Cores/Threads', value: `${c.cores}C / ${c.threads}T` },
-                    { label: 'Boost', value: `${c.boost_ghz}GHz` },
-                    { label: 'Socket', value: `${c.socket} · ${c.supported_ram.join('/')}` },
-                  ];
-                }}
+              <PartSelector category="ram" label="RAM — Memory"
+                parts={builderRam} selectedId={build.ram}
+                onSelect={id => selectPart('ram', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
               />
-            </div>
-            <PartSelector category="motherboard" label="Motherboard"
-              parts={builderMotherboards} selectedId={build.motherboard}
-              onSelect={id => selectPart('motherboard', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
-            />
-            <PartSelector category="ram" label="RAM — Memory"
-              parts={builderRam} selectedId={build.ram}
-              onSelect={id => selectPart('ram', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
-            />
-            <PartSelector category="storage" label="Storage"
-              parts={builderStorage} selectedId={build.storage}
-              onSelect={id => selectPart('storage', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
-            />
-            <PartSelector category="psu" label="PSU — Power Supply"
-              parts={builderPsus} selectedId={build.psu}
-              onSelect={id => selectPart('psu', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
-            />
-            <PartSelector category="case" label="Case"
-              parts={builderCases} selectedId={build.case}
-              onSelect={id => selectPart('case', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
-            />
-            <PartSelector category="cooler" label="CPU Cooler"
-              parts={builderCoolers} selectedId={build.cooler}
-              onSelect={id => selectPart('cooler', id)}
-              getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
-            />
+              <PartSelector category="storage" label="Storage"
+                parts={builderStorage} selectedId={build.storage}
+                onSelect={id => selectPart('storage', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
+              />
+              <PartSelector category="psu" label="PSU — Power Supply"
+                parts={builderPsus} selectedId={build.psu}
+                onSelect={id => selectPart('psu', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
+              />
+              <PartSelector category="case" label="Case"
+                parts={builderCases} selectedId={build.case}
+                onSelect={id => selectPart('case', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
+              />
+              <PartSelector category="cooler" label="CPU Cooler"
+                parts={builderCoolers} selectedId={build.cooler}
+                onSelect={id => selectPart('cooler', id)}
+                getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
+              />
 
-            {/* Peripherals section */}
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                border: monitorWarningCount > 0 && !peripheralsOpen ? '1px solid var(--ff-amber)' : '1px solid var(--ff-border)',
-                backgroundColor: 'var(--ff-surface)',
-                boxShadow: peripheralsOpen ? '0 8px 24px -8px rgba(108,99,255,0.18)' : 'none',
-              }}
-            >
-              <button
-                onClick={() => setPeripheralsOpen(!peripheralsOpen)}
-                className="w-full flex items-center justify-between p-4 text-sm font-semibold transition-colors"
-                style={{ color: 'var(--ff-text)', backgroundColor: peripheralsOpen ? 'var(--ff-card-hover)' : 'var(--ff-surface)' }}
+              {/* Peripherals section */}
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{
+                  border: monitorWarningCount > 0 && !peripheralsOpen ? '1px solid var(--ff-amber)' : '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-surface)',
+                  boxShadow: peripheralsOpen ? '0 8px 24px -8px rgba(108,99,255,0.18)' : 'none',
+                }}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center relative"
-                    style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
-                  >
-                    <MonitorIcon size={16} style={{ color: 'var(--ff-text-2)' }} />
-                    {monitorWarningCount > 0 && !peripheralsOpen && (
-                      <span
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-black"
-                        style={{ backgroundColor: 'var(--ff-amber)' }}
-                        aria-hidden="true"
-                      >
-                        {monitorWarningCount}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-left">
-                    <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional)</span></span>
-                    <p className="text-xs font-normal mt-0.5" style={{ color: monitorWarningCount > 0 && !peripheralsOpen ? 'var(--ff-amber)' : 'var(--ff-text-3)' }}>
-                      {monitorWarningCount > 0 && !peripheralsOpen
-                        ? `${monitorWarningCount} monitor pairing note${monitorWarningCount > 1 ? 's' : ''} — open to review`
-                        : 'Pairing a monitor checks it against your GPU — also Keyboard, Mouse, Headset'}
-                    </p>
-                  </div>
-                </div>
-                <ChevronDown size={18} className={`transition-transform duration-300 ${peripheralsOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
-              </button>
-              <AnimatePresence>
-                {peripheralsOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
-                      <PartSelector category="monitor" label="Monitor"
-                        parts={builderMonitors} selectedId={build.monitor}
-                        onSelect={id => selectPart('monitor', id)}
-                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
-                      />
-                      <PartSelector category="keyboard" label="Keyboard"
-                        parts={builderKeyboards} selectedId={build.keyboard}
-                        onSelect={id => selectPart('keyboard', id)}
-                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
-                      />
-                      <PartSelector category="mouse" label="Mouse"
-                        parts={builderMice} selectedId={build.mouse}
-                        onSelect={id => selectPart('mouse', id)}
-                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
-                      />
-                      <PartSelector category="headset" label="Headset"
-                        parts={builderHeadsets} selectedId={build.headset}
-                        onSelect={id => selectPart('headset', id)}
-                        getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
-                      />
+                <button
+                  onClick={() => setPeripheralsOpen(!peripheralsOpen)}
+                  className="w-full flex items-center justify-between p-4 text-sm font-semibold transition-colors"
+                  style={{ color: 'var(--ff-text)', backgroundColor: peripheralsOpen ? 'var(--ff-card-hover)' : 'var(--ff-surface)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center relative"
+                      style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
+                    >
+                      <MonitorIcon size={16} style={{ color: 'var(--ff-text-2)' }} />
+                      {monitorWarningCount > 0 && !peripheralsOpen && (
+                        <span
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-black"
+                          style={{ backgroundColor: 'var(--ff-amber)' }}
+                          aria-hidden="true"
+                        >
+                          {monitorWarningCount}
+                        </span>
+                      )}
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <div className="text-left">
+                      <span>Peripherals <span className="text-xs font-normal ml-1" style={{ color: 'var(--ff-text-2)' }}>(optional)</span></span>
+                      <p className="text-xs font-normal mt-0.5" style={{ color: monitorWarningCount > 0 && !peripheralsOpen ? 'var(--ff-amber)' : 'var(--ff-text-3)' }}>
+                        {monitorWarningCount > 0 && !peripheralsOpen
+                          ? `${monitorWarningCount} monitor pairing note${monitorWarningCount > 1 ? 's' : ''} — open to review`
+                          : 'Pairing a monitor checks it against your GPU — also Keyboard, Mouse, Headset'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`transition-transform duration-300 ${peripheralsOpen ? 'rotate-180' : ''}`} style={{ color: 'var(--ff-text-2)' }} />
+                </button>
+                <AnimatePresence>
+                  {peripheralsOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
+                        <PartSelector category="monitor" label="Monitor"
+                          parts={builderMonitors} selectedId={build.monitor}
+                          onSelect={id => selectPart('monitor', id)}
+                          getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
+                        />
+                        <PartSelector category="keyboard" label="Keyboard"
+                          parts={builderKeyboards} selectedId={build.keyboard}
+                          onSelect={id => selectPart('keyboard', id)}
+                          getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
+                        />
+                        <PartSelector category="mouse" label="Mouse"
+                          parts={builderMice} selectedId={build.mouse}
+                          onSelect={id => selectPart('mouse', id)}
+                          getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
+                        />
+                        <PartSelector category="headset" label="Headset"
+                          parts={builderHeadsets} selectedId={build.headset}
+                          onSelect={id => selectPart('headset', id)}
+                          getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Right panel */}
+            <div className="lg:col-span-1 space-y-6">
+              <BuildSummary
+                parts={summaryParts}
+                totalCost={totalCost}
+                onEstimateFps={handleEstimateFps}
+                canEstimate={canEstimate}
+                compatibilityOk={warnings.filter(w => w.type === 'error').length === 0}
+                gpu={selectedGpu}
+                cpu={selectedCpu}
+                buildState={buildState}
+                shareView={{ resolution: fpsResolution, preset: fpsPreset }}
+                customParts={customParts}
+                onAddCustomPart={addCustomPart}
+                onRemoveCustomPart={removeCustomPart}
+                onScrollToGpu={handleScrollToGpu}
+                onScrollToCpu={handleScrollToCpu}
+                onStartOver={startOver}
+                onImportBuild={importBuild}
+              />
             </div>
           </div>
 
-          {/* Right panel */}
-          <div className="lg:col-span-1 space-y-6">
-            <BuildSummary
-              parts={summaryParts}
-              totalCost={totalCost}
-              onEstimateFps={handleEstimateFps}
-              canEstimate={canEstimate}
-              compatibilityOk={warnings.filter(w => w.type === 'error').length === 0}
-              gpu={selectedGpu}
-              cpu={selectedCpu}
-              buildState={buildState}
-              shareView={{ resolution: fpsResolution, preset: fpsPreset }}
-              customParts={customParts}
-              onAddCustomPart={addCustomPart}
-              onRemoveCustomPart={removeCustomPart}
-              onScrollToGpu={handleScrollToGpu}
-              onScrollToCpu={handleScrollToCpu}
-              onStartOver={startOver}
-              onImportBuild={importBuild}
-            />
           </div>
-        </div>
+        )}
 
         {/* FPS Estimator */}
         <div ref={fpsSectionRef}>
