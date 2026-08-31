@@ -41,20 +41,6 @@ on:
     # :00 and the queue there is longest.
     - cron: '20 3 * * *'
   workflow_dispatch:
-  # TEMPORARY, AND REMOVED IN THE NEXT COMMIT.
-  #
-  # GitHub only registers workflow_dispatch for a workflow that exists on the
-  # default branch, so this one cannot be triggered by hand until it merges —
-  # and the catalogue has to be regenerated with prices before then, or the
-  # published file stays at version 1 and every card renders unpriced. This
-  # narrow trigger bootstraps exactly that first refresh. It fires only for
-  # this branch and only when this file itself changes, and a commit made with
-  # GITHUB_TOKEN does not start another run, so it cannot loop.
-  push:
-    branches:
-      - claude/rakuten-newegg-adapter-97h85y
-    paths:
-      - '.github/workflows/refresh-retail-prices.yml'
 
 # Write, and only contents. No packages, no id-token, no pull-requests.
 permissions:
