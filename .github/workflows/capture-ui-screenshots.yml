@@ -214,6 +214,7 @@ jobs:
             for (const [name, n] of Object.entries(report.whiteBuild ?? {})) {
               lines.push(`| ${name} | ${n} |`);
             }
+            lines.push("", `Settle timeouts: ${(report.settleTimeouts ?? []).length === 0 ? "none" : report.settleTimeouts.join(", ")}`);
             lines.push("", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
             const text = lines.join("\n") + "\n";
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
@@ -254,6 +255,15 @@ jobs:
 
             const belowRate = Object.entries(report.categories).filter(([, m]) => m.cards > 0 && m.loaded / m.cards < 0.95);
             if (belowRate.length > 0) failures.push("below the 95% image threshold: " + belowRate.map(([n]) => n).join(", "));
+
+            // A settle that gave up means the numbers above describe images
+            // that had not loaded. That was swallowed silently for two runs and
+            // read as a CDN problem; it is now a failure in its own right, so
+            // the image rate can never again be reported against a page the
+            // harness never finished waiting for.
+            if ((report.settleTimeouts ?? []).length > 0) {
+              failures.push("image settle timed out for: " + report.settleTimeouts.join(", "));
+            }
 
             for (const [width, h] of Object.entries(report.header ?? {})) {
               if (h.clippedControls > 0) failures.push(`header control clipped at ${width}px`);

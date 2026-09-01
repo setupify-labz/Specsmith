@@ -96,7 +96,55 @@ const isRetailBuilder = (page) => page.locator('[data-testid="retail-builder"]')
  * Waits until no <img> in the grid is still in flight, so a card counted as
  * failed has genuinely failed rather than merely not arrived yet.
  */
-async function settleImages(page) {
+/**
+ * Categories whose images never finished settling, by label. Empty is the
+ * expected state; a non-empty list means the measurement below ran against
+ * images that had not loaded, which is exactly what made the lazy-loading
+ * defect look like a CDN problem for two runs.
+ */
+const settleTimeouts = [];
+
+/**
+ * Walks the page to the bottom and back so lazy images actually start loading.
+ *
+ * Product cards carry `loading="lazy"`, so an <img> below the fold is never
+ * requested until it comes near the viewport. The settle check below waits for
+ * every image to have DECODED, which such an image can never do — so it sat
+ * out its full timeout in every category and the measurement then counted the
+ * cards that had never been asked for as missing. The signature was exactly
+ * two per category across all twelve, with zero placeholders: a failed image
+ * swaps in the placeholder, and none had, because nothing had failed.
+ *
+ * Scrolling is what a reader does, and it is what makes this measure the page
+ * rather than the harness. The scroll position is restored afterwards so the
+ * screenshots still frame the top of the grid.
+ */
+async function revealLazyImages(page) {
+  const previous = await page.evaluate(() => window.scrollY);
+  await page.evaluate(async () => {
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
+    for (let y = 0; y <= document.body.scrollHeight; y += step) {
+      window.scrollTo(0, y);
+      await pause(60);
+    }
+    window.scrollTo(0, document.body.scrollHeight);
+    await pause(150);
+  });
+  await page.evaluate((y) => window.scrollTo(0, y), previous);
+  await page.waitForTimeout(150);
+}
+
+async function settleImages(page, label = 'unlabelled') {
+  // The grid has to exist before there is anything to scroll past.
+  await page
+    .waitForFunction(() => document.querySelectorAll('[data-testid="retail-product-card"]').length > 0, undefined, {
+      timeout: 30_000,
+    })
+    .catch(() => {});
+  await revealLazyImages(page);
+
+  let settled = true;
   await page
     .waitForFunction(
       () => {
@@ -121,8 +169,16 @@ async function settleImages(page) {
       undefined,
       { timeout: 30_000 },
     )
-    .catch(() => {});
+    // A swallowed timeout is how the lazy-loading defect stayed invisible for
+    // two runs: the wait quietly gave up and the measurement proceeded against
+    // images that had never loaded. Record it, so a future one is diagnosable
+    // from the report instead of from a 30-second pause in the log.
+    .catch(() => {
+      settled = false;
+    });
+  if (!settled) settleTimeouts.push(label);
   await page.waitForTimeout(500);
+  return settled;
 }
 
 /**
@@ -139,7 +195,7 @@ async function measureWideDesktop(page) {
   for (const width of DESKTOP_WIDTHS) {
     await page.setViewportSize({ width, height: 1000 });
     await page.waitForTimeout(400);
-    await settleImages(page);
+    await settleImages(page, `width ${width}`);
     results[width] = await page.evaluate(() => {
       const doc = document.documentElement;
       const shell = document.querySelector('.ff-builder-shell');
@@ -343,7 +399,7 @@ async function revealCards(page) {
     window.scrollTo(0, 0);
     await sleep(120);
   }, PRODUCTS_MEASURED);
-  await settleImages(page);
+  await settleImages(page, 'product spans');
 }
 
 /**
@@ -439,7 +495,7 @@ async function chooseFirstProduct(page) {
   const card = page.locator('[data-testid="retail-product-card"]').first();
   await card.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
-  await settleImages(page);
+  await settleImages(page, 'mobile card');
   // "Add to build" TOGGLES, and the build survives a reload — so on a page
   // opened after an earlier pass the first card may already be chosen, and
   // clicking it would remove it. That is what produced a "View build (0)"
@@ -458,7 +514,7 @@ async function captureAccentControls(context, report) {
       await page.getByRole('button', { name: /toggle theme/i }).first().click();
       await page.waitForTimeout(600);
     }
-    await settleImages(page);
+    await settleImages(page, 'accent controls');
 
     // Two products chosen, so "View build (2)" and a selected card both exist.
     await chooseFirstProduct(page);
@@ -550,7 +606,7 @@ for (const viewport of VIEWPORTS) {
     continue;
   }
 
-  await settleImages(page);
+  await settleImages(page, viewport.name);
   report.layout[viewport.name] = await measureLayout(page);
 
   await shot(page, `${viewport.name}-grid`);
@@ -597,7 +653,7 @@ for (const viewport of VIEWPORTS) {
   if (await cpu.count()) {
     await cpu.click();
     await page.waitForTimeout(800);
-    await settleImages(page);
+    await settleImages(page, 'cpu rail');
     await page.locator('[data-testid="add-to-build"]:visible').first().click();
     await page.waitForTimeout(400);
   }
@@ -630,7 +686,7 @@ for (const viewport of VIEWPORTS) {
       if ((await rail.count()) === 0) continue;
       await rail.click();
       await page.waitForTimeout(700);
-      await settleImages(page);
+      await settleImages(page, `${category}`);
       await revealCards(page);
       report.categories[category] = await measureCategory(page);
       const spans = await measureRenderedProductSpans(page, context);
@@ -660,7 +716,7 @@ if (LABEL === 'after') {
   for (const width of DESKTOP_WIDTHS) {
     await page.setViewportSize({ width, height: 1000 });
     await page.waitForTimeout(500);
-    await settleImages(page);
+    await settleImages(page, `width ${width}`);
     await revealCards(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot(page, `desktop-${width}`);
@@ -679,7 +735,7 @@ if (LABEL === 'after') {
   await page.waitForTimeout(400);
   await page.locator('[data-testid="white-build-toggle"]').click();
   await page.waitForTimeout(600);
-  await settleImages(page);
+  await settleImages(page, 'white build gpu');
   await shot(page, 'white-build-gpu');
   const countCards = () =>
     page.evaluate(() => document.querySelectorAll('[data-testid="retail-product-card"]').length);
@@ -687,7 +743,7 @@ if (LABEL === 'after') {
   for (const category of ['case', 'psu', 'keyboard', 'cpu', 'storage']) {
     await page.locator(`[data-testid="category-rail-${category}"]`).click();
     await page.waitForTimeout(600);
-    await settleImages(page);
+    await settleImages(page, `${category}`);
     report.whiteBuild[category] = await countCards();
     await shot(page, `white-build-${category}`);
   }
@@ -737,6 +793,7 @@ await context.close();
 await browser.close();
 
 if (MEASURE) {
-  fs.writeFileSync(path.join(OUT_DIR, 'image-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  report.settleTimeouts = settleTimeouts;
+fs.writeFileSync(path.join(OUT_DIR, 'image-report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }
 console.log(JSON.stringify(report, null, 2));
