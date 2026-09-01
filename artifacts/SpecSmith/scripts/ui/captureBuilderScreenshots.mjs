@@ -357,21 +357,32 @@ async function measureLayout(page) {
 /**
  * Adds the first product in the current category to the build, and proves it.
  *
- * Clicking and hoping is what broke here: the cards load their images lazily,
- * so scrolling toward a button loads the images above it and moves the button
- * out from under the pointer. The click reported success, nothing was
- * selected, and the run published a screenshot of an empty build labelled as a
- * full one. Now the card is scrolled in and the images settled BEFORE the
- * click, the button is addressed within its own card rather than by document
- * order, and the selection is waited for — so a click that misses raises
- * instead of passing quietly.
+ * Clicking and hoping is what broke here, twice over. The button TOGGLES and
+ * the build survives a reload, so on a page opened after an earlier pass the
+ * first card is often already chosen and the click removed it — two clicks,
+ * both reporting success, and a "View build (0)" screenshot captioned as a
+ * full build. Separately, the cards load their images lazily, so scrolling
+ * toward a button loads the images above it and can move the button out from
+ * under the pointer.
+ *
+ * So: the card is scrolled in and its images settled before anything is
+ * clicked, the button is addressed within its own card rather than by document
+ * order, the click happens only if the card is not already chosen, and the
+ * selection is waited for afterwards — a miss raises instead of passing
+ * quietly.
  */
 async function chooseFirstProduct(page) {
   const card = page.locator('[data-testid="retail-product-card"]').first();
   await card.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   await settleImages(page);
-  await card.locator('[data-testid="add-to-build"]').click();
+  // "Add to build" TOGGLES, and the build survives a reload — so on a page
+  // opened after an earlier pass the first card may already be chosen, and
+  // clicking it would remove it. That is what produced a "View build (0)"
+  // screenshot from two clicks that both reported success.
+  if ((await card.getAttribute('data-selected')) !== 'true') {
+    await card.locator('[data-testid="add-to-build"]').click();
+  }
   await page.waitForSelector('[data-testid="retail-product-card"][data-selected="true"]', { timeout: 15_000 });
 }
 
