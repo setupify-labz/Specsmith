@@ -354,6 +354,27 @@ async function measureLayout(page) {
  * has resolved every variable, so a control that inherits some other colour is
  * caught even though the token it names is fine.
  */
+/**
+ * Adds the first product in the current category to the build, and proves it.
+ *
+ * Clicking and hoping is what broke here: the cards load their images lazily,
+ * so scrolling toward a button loads the images above it and moves the button
+ * out from under the pointer. The click reported success, nothing was
+ * selected, and the run published a screenshot of an empty build labelled as a
+ * full one. Now the card is scrolled in and the images settled BEFORE the
+ * click, the button is addressed within its own card rather than by document
+ * order, and the selection is waited for — so a click that misses raises
+ * instead of passing quietly.
+ */
+async function chooseFirstProduct(page) {
+  const card = page.locator('[data-testid="retail-product-card"]').first();
+  await card.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await settleImages(page);
+  await card.locator('[data-testid="add-to-build"]').click();
+  await page.waitForSelector('[data-testid="retail-product-card"][data-selected="true"]', { timeout: 15_000 });
+}
+
 async function captureAccentControls(context, report) {
   const results = {};
   for (const theme of ['dark', 'light']) {
@@ -365,13 +386,10 @@ async function captureAccentControls(context, report) {
     await settleImages(page);
 
     // Two products chosen, so "View build (2)" and a selected card both exist.
-    await page.locator('[data-testid="add-to-build"]:visible').first().click();
-    await page.waitForTimeout(300);
+    await chooseFirstProduct(page);
     await page.locator('[data-testid="category-chip-cpu"]:visible').first().click();
     await page.waitForTimeout(700);
-    await settleImages(page);
-    await page.locator('[data-testid="add-to-build"]:visible').first().click();
-    await page.waitForTimeout(400);
+    await chooseFirstProduct(page);
 
     const shots = [
       ['view-build', '[data-testid="view-build"]'],
@@ -379,16 +397,20 @@ async function captureAccentControls(context, report) {
       ['active-chip', '[data-testid="category-chip-cpu"]'],
     ];
     for (const [name, selector] of shots) {
+      // No catch. A control that cannot be photographed is the finding, and
+      // swallowing it published a run that looked complete and was not.
       const element = page.locator(selector).first();
-      await element.scrollIntoViewIfNeeded().catch(() => {});
-      await page.waitForTimeout(200);
-      await element.screenshot({ path: path.join(OUT_DIR, `${LABEL}-${theme}-${name}.png`) }).catch(() => {});
+      await element.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      await element.screenshot({ path: path.join(OUT_DIR, `${LABEL}-${theme}-${name}.png`) });
     }
 
     // The whole phone screen with products chosen and the button at rest, so
     // the button's contrast can be judged against what surrounds it.
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 3));
-    await page.waitForTimeout(400);
+    // Long enough for the sticky header to settle at the new offset; a shorter
+    // wait caught it mid-scroll and painted it across the middle of the page.
+    await page.waitForTimeout(1200);
     await shot(page, `${theme}-mobile-with-selection`);
 
     results[theme] = await page.evaluate(() => {
