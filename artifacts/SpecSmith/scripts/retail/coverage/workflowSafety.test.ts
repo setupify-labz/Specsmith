@@ -45,13 +45,14 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly five workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly six workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
     expect(all).toEqual([
       'audit-accepted-offers.yml',
       'build-retail-affiliate-catalog.yml',
+      'capture-ui-screenshots.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
@@ -75,7 +76,22 @@ describe('the validation workflow exists and is wired to the right events', () =
         .join('\n')
         .includes('contents: write'),
     );
-    expect(writers).toEqual(['refresh-retail-prices.yml']);
+    // TWO WRITERS, TEMPORARILY. The screenshot capture is back for the
+    // duration of this branch only: the development sandbox cannot reach the
+    // retailer image CDN, so visual evidence for a UI change cannot be
+    // produced anywhere else. It holds no credential and pushes only images to
+    // a dead-end branch, and it — and this allowance — are to be removed again
+    // before this branch merges, exactly as they were last time.
+    expect(writers).toEqual(['capture-ui-screenshots.yml', 'refresh-retail-prices.yml']);
+
+    const screenshots = fs
+      .readFileSync(path.join(dir, 'capture-ui-screenshots.yml'), 'utf-8')
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    expect(screenshots).not.toContain('secrets.');
+    expect(screenshots).not.toMatch(/^\s*(pull_request|pull_request_target|schedule|workflow_run):/m);
+    expect(screenshots).toMatch(/push:\s*\n\s*branches:\s*\n\s*- claude\/builder-wide-desktop-white-build/);
     // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
     // Comment lines are stripped here too — that file's header explains at

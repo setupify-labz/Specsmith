@@ -42,6 +42,9 @@ const HEADER_SHOT_WIDTHS = [768, 834, 1024];
  */
 const SMALL_PRODUCT_SPAN = 0.5;
 
+/** The wide-desktop widths the review named, measured for shell and columns. */
+const DESKTOP_WIDTHS = [1280, 1440, 1920, 2048];
+
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 834, height: 1112 },
@@ -113,6 +116,54 @@ async function settleImages(page) {
     )
     .catch(() => {});
   await page.waitForTimeout(500);
+}
+
+/**
+ * How the builder uses the width it is given.
+ *
+ * The defect: on a 2048px display the catalogue sat in a 1280px column with a
+ * 384px empty margin on each side. So this reads the numbers that describe
+ * that — the shell's rendered width, the margin either side of it, the grid's
+ * computed column count and how wide one card ends up — at every width the
+ * review named, rather than asking the eye to judge a screenshot.
+ */
+async function measureWideDesktop(page) {
+  const results = {};
+  for (const width of DESKTOP_WIDTHS) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.waitForTimeout(400);
+    await settleImages(page);
+    results[width] = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const shell = document.querySelector('.ff-builder-shell');
+      const grid = document.querySelector('[data-testid="product-grid"]');
+      const rail = document.querySelector('[data-testid="category-rail"]');
+      const summary = document.querySelector('[data-testid="build-summary"]');
+      const card = document.querySelector('[data-testid="retail-product-card"]');
+      const box = (element) => {
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 ? Math.round(rect.width) : null;
+      };
+      const nested = [...document.querySelectorAll('[data-testid="product-grid"], [data-testid="product-grid"] *')]
+        .filter((element) => {
+          const overflow = getComputedStyle(element).overflowY;
+          return (overflow === 'auto' || overflow === 'scroll') && element.scrollHeight > element.clientHeight + 1;
+        }).length;
+      const shellWidth = box(shell);
+      return {
+        shellPx: shellWidth,
+        marginEachSidePx: shellWidth === null ? null : Math.round((window.innerWidth - shellWidth) / 2),
+        columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length : 0,
+        cardPx: box(card),
+        railPx: box(rail),
+        summaryPx: box(summary),
+        horizontalOverflowPx: Math.max(0, doc.scrollWidth - doc.clientWidth),
+        nestedCatalogScrollers: nested,
+      };
+    });
+  }
+  return results;
 }
 
 /**
@@ -585,6 +636,57 @@ for (const viewport of VIEWPORTS) {
     }
   }
 
+  await page.close();
+}
+
+// The wide-desktop widths, measured and photographed.
+if (LABEL === 'after') {
+  const page = await open(context, { width: 1920, height: 1000 });
+  report.wideDesktop = await measureWideDesktop(page);
+  for (const width of DESKTOP_WIDTHS) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.waitForTimeout(500);
+    await settleImages(page);
+    await revealCards(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await shot(page, `desktop-${width}`);
+  }
+
+  // The White build collection, across several categories.
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await page.waitForTimeout(400);
+  await page.locator('[data-testid="white-build-toggle"]').click();
+  await page.waitForTimeout(600);
+  await settleImages(page);
+  await shot(page, 'white-build-gpu');
+  for (const category of ['case', 'psu', 'keyboard']) {
+    await page.locator(`[data-testid="category-rail-${category}"]`).click();
+    await page.waitForTimeout(600);
+    await settleImages(page);
+    await shot(page, `white-build-${category}`);
+  }
+  await page.locator('[data-testid="white-build-toggle"]').click();
+  await page.waitForTimeout(400);
+
+  // A populated summary with thumbnails, and the product gallery.
+  await page.locator('[data-testid="category-rail-gpu"]').click();
+  await page.waitForTimeout(600);
+  await chooseFirstProduct(page);
+  await page.locator('[data-testid="category-rail-cpu"]').click();
+  await page.waitForTimeout(700);
+  await chooseFirstProduct(page);
+  await page.locator('[data-testid="build-summary"]').first().screenshot({
+    path: path.join(OUT_DIR, `${LABEL}-summary-thumbnails.png`),
+  });
+  await shot(page, 'desktop-with-build');
+
+  await page.locator('[data-testid="view-details"]').first().click();
+  await page.waitForSelector('[data-testid="product-detail"]');
+  await page.waitForTimeout(700);
+  await page.locator('[data-testid="product-detail"]').screenshot({
+    path: path.join(OUT_DIR, `${LABEL}-product-detail.png`),
+  });
+  await page.keyboard.press('Escape');
   await page.close();
 }
 
