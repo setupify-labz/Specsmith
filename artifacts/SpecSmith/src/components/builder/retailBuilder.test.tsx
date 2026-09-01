@@ -293,9 +293,13 @@ describe('a card states its price honestly', () => {
   });
 
   it('shows the full merchant title as the accessible name', () => {
+    // The heading still holds the shortened title; the full merchant title is
+    // the accessible name of the control inside it, which is the thing a
+    // screen reader announces and a keyboard user lands on.
     const long = catalog.parts.find((part) => part.name.length > 80)!;
     cardFor(long, FRESH_NOW);
-    expect(screen.getByRole('heading', { level: 3 }).getAttribute('aria-label')).toBe(long.name);
+    const heading = screen.getByRole('heading', { level: 3 });
+    expect(within(heading).getByTestId('open-details-title').getAttribute('aria-label')).toBe(long.name);
   });
 });
 

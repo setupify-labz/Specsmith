@@ -17,6 +17,8 @@ interface Props {
   selected: boolean;
   now: number;
   onToggle: (id: string) => void;
+  /** Opens the product detail view. The card itself stays a card. */
+  onOpenDetails?: (id: string) => void;
 }
 
 /**
@@ -32,7 +34,7 @@ interface Props {
  * separate controls, because an invisible overlay covering the whole card
  * makes the destination of a click unguessable and swallows the link.
  */
-export default function RetailProductCard({ part, selected, now, onToggle }: Props) {
+export default function RetailProductCard({ part, selected, now, onToggle, onOpenDetails }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
   const zoom = imageZoom(part.imageContentRatio);
   const view = priceView(part, now);
@@ -63,8 +65,13 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           fixed 240px, so image, title, price and both actions are visible
           together; from `md` up — where cards sit two to a row and there is
           room — it goes back to 4:3. `object-contain` holds in both. */}
-      <div
-        className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
+      <button
+        type="button"
+        onClick={() => onOpenDetails?.(part.id)}
+        aria-label={`View details for ${part.name}`}
+        data-testid="open-details-image"
+        disabled={onOpenDetails === undefined}
+        className="ff-accent-control relative flex h-[240px] w-full items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
         style={{ background: 'var(--ff-surface)' }}
       >
         {imageFailed ? (
@@ -107,18 +114,24 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             Specs unverified
           </span>
         )}
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         {/* The shortened title is what is shown; the complete merchant title is
             the accessible name, so nothing is withheld from a screen reader. */}
-        <h3
-          className="text-sm font-medium leading-snug"
-          style={{ color: 'var(--ff-text)' }}
-          title={part.name}
-          aria-label={part.name}
-        >
-          {shortTitle}
+        <h3 className="text-sm font-medium leading-snug" style={{ color: 'var(--ff-text)' }}>
+          <button
+            type="button"
+            onClick={() => onOpenDetails?.(part.id)}
+            disabled={onOpenDetails === undefined}
+            title={part.name}
+            aria-label={part.name}
+            data-testid="open-details-title"
+            className="ff-accent-control text-left disabled:cursor-default"
+            style={{ color: 'inherit' }}
+          >
+            {shortTitle}
+          </button>
         </h3>
 
         <div className="mt-auto flex flex-col gap-1">
@@ -149,6 +162,18 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             {AVAILABILITY_UNKNOWN_LABEL}
           </p>
         </div>
+
+        {onOpenDetails !== undefined && (
+          <button
+            type="button"
+            onClick={() => onOpenDetails(part.id)}
+            data-testid="view-details"
+            className="ff-accent-control self-start rounded text-[11px] font-medium underline"
+            style={{ color: 'var(--ff-text-2)' }}
+          >
+            View details
+          </button>
+        )}
 
         <div className="flex gap-2 pt-1">
           <button

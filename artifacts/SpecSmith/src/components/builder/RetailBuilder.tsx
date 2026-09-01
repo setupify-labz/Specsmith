@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
 import { groupByCategory } from '../../lib/retail/retailShopping';
+import { WHITE_COLLECTION_NOTE, whiteParts } from '../../lib/retail/whiteBuild';
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
@@ -33,7 +34,14 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const clock = now ?? Date.now();
 
-  const byCategory = useMemo(() => groupByCategory(parts), [parts]);
+  // THE WHITE COLLECTION IS A FILTER, NOT A CATEGORY. The twelve categories
+  // stay exactly as they are; switching it on narrows each one to the listings
+  // whose own merchant title states a white finish. Every SKU keeps its price,
+  // its image and its link, because it is the same SKU.
+  const [whiteOnly, setWhiteOnly] = useState(false);
+  const visibleParts = useMemo(() => (whiteOnly ? whiteParts(parts) : [...parts]), [parts, whiteOnly]);
+
+  const byCategory = useMemo(() => groupByCategory(visibleParts), [visibleParts]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);
 
   const counts = useMemo(() => {
@@ -41,6 +49,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
     for (const [category, list] of byCategory) result[category] = list.length;
     return result;
   }, [byCategory]);
+
+  const whiteTotal = useMemo(() => whiteParts(parts).length, [parts]);
 
   const selectedParts = useMemo(
     () =>
@@ -71,6 +81,30 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
   return (
     <div data-testid="retail-builder">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setWhiteOnly((on) => !on)}
+          aria-pressed={whiteOnly}
+          data-testid="white-build-toggle"
+          className="ff-accent-control flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold"
+          style={{
+            background: whiteOnly ? 'var(--ff-accent-solid)' : 'var(--ff-card)',
+            color: whiteOnly ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
+            border: `1px solid ${whiteOnly ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
+          }}
+        >
+          <Sparkles size={15} aria-hidden="true" />
+          White build
+          <span style={{ opacity: 0.8 }}>{whiteTotal}</span>
+        </button>
+        {whiteOnly && (
+          <p className="text-[11px] leading-snug" style={{ color: 'var(--ff-text-3)', maxWidth: '52ch' }} data-testid="white-build-note">
+            {WHITE_COLLECTION_NOTE}
+          </p>
+        )}
+      </div>
+
       {/* Mobile category controls. */}
       <div className="mb-4 lg:hidden">
         <CategoryChips {...navProps} />
@@ -78,7 +112,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
       <div className="flex gap-6">
         {/* Left rail — desktop only. */}
-        <div className="hidden w-56 shrink-0 lg:block">
+        {/* 224px, widening to 240px on a large desktop — the review's 220-250 band. */}
+        <div className="hidden w-56 shrink-0 lg:block 2xl:w-60">
           <div className="sticky top-20">
             <CategoryRail {...navProps} />
           </div>
@@ -88,6 +123,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
         <div className="min-w-0 flex-1">
           <RetailCatalog
             category={active}
+            whiteOnly={whiteOnly}
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
             now={clock}
@@ -96,7 +132,9 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
         </div>
 
         {/* Right summary — desktop only, sticky rather than independently scrolling. */}
-        <div className="hidden w-72 shrink-0 xl:block">
+        {/* 320px, widening to 360px — the review's 320-380 band. It was 288px,
+            which cropped the longer merchant titles in the summary. */}
+        <div className="hidden w-80 shrink-0 xl:block 2xl:w-[360px]">
           <div className="sticky top-20">{summary}</div>
         </div>
       </div>

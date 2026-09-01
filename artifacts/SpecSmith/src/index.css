@@ -377,6 +377,19 @@
    unfilled state: an offset white/dark halo plus the accent, so it reads on
    the purple fill AND on the card behind it. Pointer users never see it —
    :focus-visible only fires for keyboard focus. */
+/* The builder's page shell.
+   max-w-7xl caps at 1280px, which on a 2048px display left the catalogue in a
+   narrow column between two 380px margins. clamp keeps the floor at exactly
+   the old 1280 — so nothing below xl moves, and mobile and tablet are
+   untouched — then grows with the viewport to a 1760px ceiling. The ceiling
+   exists because a line of text and a row of cards both stop being readable
+   before the screen stops getting wider. */
+.ff-builder-shell {
+  width: 100%;
+  max-width: clamp(80rem, 94vw, 1760px);
+  margin-inline: auto;
+}
+
 .ff-accent-control:focus-visible {
   outline: 2px solid var(--ff-accent-text);
   outline-offset: 2px;
