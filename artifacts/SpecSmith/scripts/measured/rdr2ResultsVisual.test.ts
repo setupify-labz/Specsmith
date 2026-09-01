@@ -297,6 +297,17 @@ describe('the Windows sampler avoids defects that no unit test can reach', () =>
     expect(src).not.toMatch(/\$\w+\.GetPixel\(/);
   });
 
+  it('handles SIGINT in detect mode, because that is the documented way to end a run', () => {
+    // The CLI's own instruction is "press Ctrl+C when the run is over". Without
+    // a handler that is a hard kill before writeVisualEvidence is ever reached,
+    // so the tool's primary path could never produce its output.
+    const cli = fs.readFileSync(path.join(__dirname, 'detectRdr2Results.ts'), 'utf-8');
+    expect(cli).toMatch(/process\.on\('SIGINT', onInterrupt\)/);
+    expect(cli).toMatch(/stopSignal: stopping\.signal/);
+    // And a second interrupt must always get the operator out.
+    expect(cli).toMatch(/interrupts > 1/);
+  });
+
   it('paces the loop on a stopwatch that includes writing the sample', () => {
     // The capture stopwatch stops before serialising 25,600 numbers, so pacing
     // on it made every interval longer than requested — and the sample interval
@@ -458,6 +469,53 @@ describe('the CLI is opt-in and refuses misuse', () => {
     });
     expect(samples[0].windowWidth).toBeUndefined();
     expect(samples[0].windowHeight).toBeUndefined();
+  });
+
+  it('stops collecting when the stop signal fires, KEEPING what was gathered', async () => {
+    // Detect mode runs the sampler with no sample limit, so collection ends
+    // only when the stream ends or this signal fires. The CLI tells the
+    // operator to press Ctrl+C when the run is over, so that keypress has to be
+    // a normal exit that still yields evidence — not a way to lose the run.
+    const stopping = new AbortController();
+    let emitted = 0;
+    async function* forever(): AsyncGenerator<string> {
+      // A sampler that never ends, exactly like the real one at --hz 2.
+      while (true) {
+        emitted += 1;
+        if (emitted === 3) stopping.abort();
+        yield JSON.stringify({ ok: true, grid: new Array(GRID_CELLS).fill(100), captureMs: 4, w: 1920, h: 1080 });
+      }
+    }
+    let t = 0n;
+    const samples = await collectSamples({
+      lines: forever(),
+      log: () => {},
+      monotonicNs: () => { t += 500_000_000n; return t; },
+      stopSignal: stopping.signal,
+    });
+    // Aborted on the 3rd line, which is checked at the top of the 4th pass, so
+    // the first three survive. The point is that it returns at all, with data.
+    expect(samples.length).toBeGreaterThan(0);
+    expect(samples.length).toBeLessThan(10);
+  });
+
+  it('returns immediately when the stop signal is already aborted', async () => {
+    const stopping = new AbortController();
+    stopping.abort();
+    async function* forever(): AsyncGenerator<string> {
+      while (true) yield JSON.stringify({ ok: true, grid: new Array(GRID_CELLS).fill(100), captureMs: 4 });
+    }
+    const samples = await collectSamples({ lines: forever(), log: () => {}, monotonicNs: () => 1n, stopSignal: stopping.signal });
+    expect(samples).toHaveLength(0);
+  });
+
+  it('still ends naturally when there is no stop signal at all', async () => {
+    const samples = await collectSamples({
+      lines: (async function* () { yield JSON.stringify({ ok: true, grid: new Array(GRID_CELLS).fill(100), captureMs: 4 }); })(),
+      log: () => {},
+      monotonicNs: () => 1n,
+    });
+    expect(samples).toHaveLength(1);
   });
 
   it('refuses a sampler grid of the wrong size rather than scoring it', async () => {

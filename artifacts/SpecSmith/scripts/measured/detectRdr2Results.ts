@@ -145,6 +145,16 @@ export interface SamplerIo {
   lines: AsyncIterable<string>;
   log: (line: string) => void;
   monotonicNs?: () => bigint;
+  /**
+   * Ends collection early, keeping everything gathered so far.
+   *
+   * Detect mode runs the sampler with no sample limit, so without this the loop
+   * below only ends when the sampler process dies — and the operator's one
+   * instruction, "press Ctrl+C when the run is over", would kill the process
+   * before any evidence was written. Stopping has to be a normal exit that
+   * still produces a file, not a way to lose the run.
+   */
+  stopSignal?: AbortSignal;
 }
 
 /**
@@ -161,6 +171,7 @@ export async function collectSamples(io: SamplerIo, maxSamples?: number): Promis
   const now = io.monotonicNs ?? (() => process.hrtime.bigint());
   const out: VisualSample[] = [];
   for await (const line of io.lines) {
+    if (io.stopSignal?.aborted) break;
     const text = line.trim();
     if (text.length === 0) continue;
     let raw: RawSample;
@@ -266,10 +277,37 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 
   const startedAt = new Date().toISOString();
-  console.log(`Sampling pid ${args.pid} at ${args.hz} Hz. Press Ctrl+C when the run is over.`);
+  console.log(`Sampling pid ${args.pid} at ${args.hz} Hz. Press Ctrl+C when the run is over — the evidence is written on the way out.`);
   const sampler = spawnSampler(args, 0);
-  const samples = await collectSamples({ lines: sampler.lines, log: (l) => console.log(l) });
-  sampler.stop();
+
+  // Ctrl+C is the DOCUMENTED way to end a run, so it has to be a graceful stop
+  // that still writes the file. Closing the sampler ends the line stream, which
+  // ends collection; the abort flag is belt and braces for a stream that has
+  // already gone quiet. A second Ctrl+C exits hard, so an operator can always
+  // get out even if something below wedges.
+  const stopping = new AbortController();
+  let interrupts = 0;
+  const onInterrupt = (): void => {
+    interrupts += 1;
+    if (interrupts > 1) {
+      console.error('\nSecond interrupt — exiting without writing evidence.');
+      process.exit(130);
+    }
+    console.log('\nStopping: finishing the current sample and writing what was collected.');
+    stopping.abort();
+    sampler.stop();
+  };
+  process.on('SIGINT', onInterrupt);
+  process.on('SIGTERM', onInterrupt);
+
+  let samples: VisualSample[];
+  try {
+    samples = await collectSamples({ lines: sampler.lines, log: (l) => console.log(l), stopSignal: stopping.signal });
+  } finally {
+    process.off('SIGINT', onInterrupt);
+    process.off('SIGTERM', onInterrupt);
+    sampler.stop();
+  }
 
   const detection = detectBoundary(samples, calibration.signature);
   const evidence: Rdr2VisualEvidenceFile = {

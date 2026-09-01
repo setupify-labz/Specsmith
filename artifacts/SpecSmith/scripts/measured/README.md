@@ -976,6 +976,10 @@ in the refusal band. A refusal is **never** usable as the negative that bounds
 the boundary, so refusals *widen* the reported interval rather than narrowing
 it.
 
+**Ending a run.** Press Ctrl+C when the benchmark is over: that is a graceful
+stop which writes the evidence on the way out. A second Ctrl+C exits
+immediately without writing, so an operator can always get out.
+
 **The boundary is an interval**, bounded by the last confident negative and the
 first confident positive — roughly 500ms at 2 Hz. A run whose first sample is
 already positive is **refused**, because that boundary has no lower bound.
