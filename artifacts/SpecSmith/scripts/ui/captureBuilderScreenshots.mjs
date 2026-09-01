@@ -108,11 +108,18 @@ async function settleImages(page) {
         // A card whose image failed swaps the <img> for the placeholder, so an
         // all-failed grid has no images left to wait for. That is a settled
         // state, not a reason to sit here until the timeout.
+        // `complete` alone is not settled enough: it turns true the instant a
+        // response arrives, before the bitmap is decoded, so a measurement
+        // taken here can count a perfectly good image as missing. Waiting for
+        // naturalWidth means waiting for a picture that exists. A FAILED image
+        // also reports complete with naturalWidth 0, so it would hang here —
+        // except that the card swaps a failed image for the placeholder and
+        // removes it from the DOM, which is why this can afford to be strict.
         const images = [...document.querySelectorAll('[data-testid="product-grid"] img')];
-        return images.every((img) => img.complete);
+        return images.every((img) => img.complete && img.naturalWidth > 1);
       },
       undefined,
-      { timeout: 20_000 },
+      { timeout: 30_000 },
     )
     .catch(() => {});
   await page.waitForTimeout(500);
@@ -352,6 +359,7 @@ async function measureCategory(page) {
   return page.evaluate((limit) => {
     const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')].slice(0, limit);
     let loaded = 0;
+    const missing = [];
     let placeholders = 0;
     let collapsed = 0;
     let stretched = 0;
@@ -363,7 +371,12 @@ async function measureCategory(page) {
       const placeholder = card.querySelector('[data-testid="image-placeholder"]');
       if (placeholder) placeholders += 1;
       if (!img) continue;
-      if (!img.complete || img.naturalWidth <= 1) continue;
+      if (!img.complete || img.naturalWidth <= 1) {
+        // Named, not just counted. A rate below the threshold has to be
+        // diagnosable from the run rather than from a guess.
+        missing.push({ src: img.currentSrc || img.src, complete: img.complete, naturalWidth: img.naturalWidth });
+        continue;
+      }
       loaded += 1;
       const box = img.getBoundingClientRect();
       if (box.width < 40 || box.height < 40) tiny += 1;
@@ -374,7 +387,7 @@ async function measureCategory(page) {
       const fit = getComputedStyle(img).objectFit;
       if (fit !== 'contain' && Math.abs(source - painted) / source > 0.02) stretched += 1;
     }
-    return { cards: cards.length, loaded, placeholders, collapsed, stretched, tiny };
+    return { cards: cards.length, loaded, placeholders, collapsed, stretched, tiny, missing };
   }, PRODUCTS_MEASURED);
 }
 

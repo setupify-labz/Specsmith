@@ -183,6 +183,11 @@ jobs:
               worst = Math.min(worst, rate);
               lines.push(`| ${name} | ${m.cards} | ${m.loaded} | ${(rate * 100).toFixed(1)}% | ${m.placeholders} | ${m.collapsed} | ${m.stretched} | ${m.tiny} |`);
             }
+            for (const [name, m] of Object.entries(report.categories)) {
+              for (const miss of m.missing ?? []) {
+                lines.push(`- ${name} image not counted: complete=${miss.complete} naturalWidth=${miss.naturalWidth} ${miss.src}`);
+              }
+            }
             lines.push("", "Layout: " + JSON.stringify(report.layout));
             lines.push("", "| width | header controls | clipped | wrapped | page overflow |", "| --- | --- | --- | --- | --- |");
             for (const [width, h] of Object.entries(report.header ?? {})) {
