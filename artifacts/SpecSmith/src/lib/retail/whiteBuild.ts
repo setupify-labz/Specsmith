@@ -135,6 +135,44 @@ export function whiteParts(parts: readonly AffiliatePart[]): AffiliatePart[] {
   return parts.filter((part) => classifyWhiteFinish(part.name).white);
 }
 
+/**
+ * Categories whose finish is not part of how a finished build looks.
+ *
+ * A CPU sits under a cooler and an SSD sits inside the case or under a
+ * motherboard heatsink; neither is visible once the side panel is on, and
+ * merchant titles for them never state a colour. Filtering these by finish
+ * therefore removes every option in the category on the strength of a word
+ * that was never going to appear — which does not make the build whiter, it
+ * makes it impossible to finish.
+ *
+ * Deliberately a short list. Everything not named here is treated as visible
+ * and is filtered, including motherboards, RAM and peripherals — those do
+ * come in white, so a category with none is a real absence and says so.
+ */
+export const COLOR_NEUTRAL_CATEGORIES: readonly string[] = ['cpu', 'storage'];
+
+export function isColorNeutralCategory(category: string): boolean {
+  return COLOR_NEUTRAL_CATEGORIES.includes(category);
+}
+
+/**
+ * What the White build shows.
+ *
+ * Appearance-relevant categories are narrowed to listings whose merchant title
+ * states a white finish. Colour-neutral ones keep their normal compatible
+ * products, because the collection is about what the build LOOKS like and
+ * these parts are not part of that.
+ *
+ * This is not a relaxation of the evidence rule: nothing here is called white.
+ * A CPU shown in this view is shown as an ordinary CPU, and the white claim is
+ * still made only where a merchant title makes it.
+ */
+export function whiteBuildParts(parts: readonly AffiliatePart[]): AffiliatePart[] {
+  return parts.filter(
+    (part) => isColorNeutralCategory(part.category) || classifyWhiteFinish(part.name).white,
+  );
+}
+
 /** How many white products each category has, for the navigation counts. */
 export function whiteCountsByCategory(
   parts: readonly AffiliatePart[],
@@ -146,7 +184,7 @@ export function whiteCountsByCategory(
   return counts;
 }
 
-/** Shown where a category has no verified white product. Not an error. */
+/** Shown where an APPEARANCE-RELEVANT category has no verified white product. Not an error. */
 export const WHITE_EMPTY_MESSAGE =
   'No listing in this category states a white finish in its title. Rather than guess from a photograph, this collection shows nothing here.';
 

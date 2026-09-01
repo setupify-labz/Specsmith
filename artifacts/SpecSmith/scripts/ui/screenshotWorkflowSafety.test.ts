@@ -103,28 +103,42 @@ describe('the screenshot workflow holds no credential', () => {
   });
 });
 
-describe('the write permission is confined to one branch and one directory', () => {
-  it('pushes only to the screenshot branch, never to a ref it was handed', () => {
-    expect(body).toContain('contents: write');
-    expect(body).toContain(`SCREENSHOT_BRANCH: ${SCREENSHOT_BRANCH}`);
-    expect(body).toContain('"HEAD:refs/heads/${SCREENSHOT_BRANCH}"');
+describe('the job cannot write to the repository at all', () => {
+  // This used to assert that a `contents: write` push was confined to one
+  // dead-end branch. Confinement is a weaker property than absence, and the
+  // permission turned out to be unnecessary: a run artifact carries the images
+  // off the runner without any write access. So these now assert that no write
+  // channel exists, which is what lets refresh-retail-prices.yml remain the
+  // only workflow in the repository holding `contents: write`.
 
-    // Exactly one push, and its destination is the constant above.
-    // A `git push` and its backslash continuations, taken as one command.
-    const pushes = [...body.matchAll(/git push(?:[^\n]*\\\n)*[^\n]*/g)].map((match) => match[0]);
-    expect(pushes).toHaveLength(1);
-    expect(pushes[0]).toContain('${SCREENSHOT_BRANCH}');
-
-    // Nothing here touches the default branch or the working branch.
-    expect(pushes[0]).not.toContain('refs/heads/main');
-    expect(pushes[0]).not.toContain('claude/builder-wide-desktop-white-build');
-    expect(body).not.toContain('refs/heads/main');
+  it('runs read-only', () => {
+    expect(body).toContain('contents: read');
+    expect(body).not.toContain('contents: write');
+    expect(body).not.toContain('packages: write');
+    expect(body).not.toContain('id-token: write');
+    expect(body).not.toContain('permissions: write-all');
   });
 
-  it('refuses to publish anything outside the screenshots directory', () => {
-    expect(body).toContain('git add -f -- screenshots');
-    expect(body).toContain("grep -v '^screenshots/'");
-    expect(body).toContain('Refusing to publish');
+  it('has no push, no token and no publishing branch', () => {
+    expect(body).not.toMatch(/git push/);
+    expect(body).not.toContain('github.token');
+    expect(body).not.toContain('GH_PUSH_TOKEN');
+    expect(body).not.toContain('x-access-token');
+    expect(body).not.toContain('SCREENSHOT_BRANCH');
+    expect(body).not.toContain('git checkout --orphan');
+    expect(body).not.toContain('refs/heads/');
+  });
+
+  it('carries the screenshots out as a run artifact instead', () => {
+    // The images still have to leave the runner, so the replacement channel
+    // must actually be present — otherwise this suite would pass on a workflow
+    // that produces no evidence at all.
+    expect(body).toContain('actions/upload-artifact');
+    expect(body).toContain('name: builder-screenshots');
+    expect(body).toContain('path: screenshots');
+    // Published even when a threshold check fails: a bad number is diagnosed
+    // FROM the screenshots.
+    expect(body).toMatch(/uses: actions\/upload-artifact[\s\S]{0,200}if: always\(\)/);
   });
 
   it('deploys nothing', () => {

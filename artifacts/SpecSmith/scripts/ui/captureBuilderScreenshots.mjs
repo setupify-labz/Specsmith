@@ -534,6 +534,7 @@ const report = {
   layout: {},
   header: {},
   productSpans: {},
+  whiteBuild: {},
 };
 
 for (const viewport of VIEWPORTS) {
@@ -666,16 +667,28 @@ if (LABEL === 'after') {
   }
 
   // The White build collection, across several categories.
+  //
+  // The list deliberately spans all three cases the collection has to get
+  // right: a visible category with white stock (gpu, case, psu), a visible one
+  // with none (keyboard), which must show the honest empty state, and the
+  // colour-neutral ones (cpu, storage), which must keep their ordinary
+  // options. Filtering those last two to nothing left the collection unable
+  // to finish a PC, so their counts are recorded and checked, not just
+  // photographed.
   await page.setViewportSize({ width: 1920, height: 1000 });
   await page.waitForTimeout(400);
   await page.locator('[data-testid="white-build-toggle"]').click();
   await page.waitForTimeout(600);
   await settleImages(page);
   await shot(page, 'white-build-gpu');
-  for (const category of ['case', 'psu', 'keyboard']) {
+  const countCards = () =>
+    page.evaluate(() => document.querySelectorAll('[data-testid="retail-product-card"]').length);
+  report.whiteBuild = { gpu: await countCards() };
+  for (const category of ['case', 'psu', 'keyboard', 'cpu', 'storage']) {
     await page.locator(`[data-testid="category-rail-${category}"]`).click();
     await page.waitForTimeout(600);
     await settleImages(page);
+    report.whiteBuild[category] = await countCards();
     await shot(page, `white-build-${category}`);
   }
   await page.locator('[data-testid="white-build-toggle"]').click();

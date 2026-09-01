@@ -191,7 +191,13 @@ describe('the product detail view', () => {
     expect(screen.queryByTestId('detail-next')).toBeNull();
     expect(screen.queryByTestId('detail-thumbnails')).toBeNull();
     expect(screen.queryByTestId('detail-position')).toBeNull();
-    expect(screen.getByTestId('detail-single-image-note').textContent).toContain('one image');
+    // A count, not a description of the retailer's feed. The old copy
+    // ("The retailer feed publishes one image for this listing") explained our
+    // plumbing to a shopper; this asserts the replacement stays a bare count
+    // and never grows back into an explanation or an apology.
+    const note = screen.getByTestId('detail-single-image-note').textContent ?? '';
+    expect(note.trim()).toBe('1 image available');
+    expect(note).not.toMatch(/retailer|feed|publishes|listing|only|unfortunately/i);
   });
 
   it('falls back safely when the image fails, keeping price and actions', () => {

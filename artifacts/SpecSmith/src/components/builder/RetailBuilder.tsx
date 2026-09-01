@@ -3,7 +3,7 @@ import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
 import { groupByCategory } from '../../lib/retail/retailShopping';
-import { WHITE_COLLECTION_NOTE, whiteParts } from '../../lib/retail/whiteBuild';
+import { WHITE_COLLECTION_NOTE, whiteBuildParts, whiteParts } from '../../lib/retail/whiteBuild';
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
@@ -39,7 +39,12 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
   // whose own merchant title states a white finish. Every SKU keeps its price,
   // its image and its link, because it is the same SKU.
   const [whiteOnly, setWhiteOnly] = useState(false);
-  const visibleParts = useMemo(() => (whiteOnly ? whiteParts(parts) : [...parts]), [parts, whiteOnly]);
+  // whiteBuildParts, not whiteParts: the colour filter applies to the parts a
+  // finished build shows, and leaves the ones it hides — a CPU under a cooler,
+  // an SSD inside the case — with their ordinary compatible options. Filtering
+  // those to nothing made the collection unable to complete a PC without
+  // making it any whiter.
+  const visibleParts = useMemo(() => (whiteOnly ? whiteBuildParts(parts) : [...parts]), [parts, whiteOnly]);
 
   const byCategory = useMemo(() => groupByCategory(visibleParts), [visibleParts]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);

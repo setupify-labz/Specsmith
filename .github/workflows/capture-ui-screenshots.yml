@@ -1,12 +1,16 @@
-# TEMPORARY, AGAIN, AND ON THIS BRANCH ONLY.
+# TEMPORARY, AND ON THIS BRANCH ONLY. READ-ONLY.
 #
-# This workflow was removed from main after the last review, because a second
-# workflow holding `contents: write` is not something to keep around. It is
-# back for the same reason it existed before and for no longer than that: the
-# development sandbox cannot reach the retailer image CDN, so visual evidence
-# for this branch cannot be produced anywhere else. It is to be deleted again,
-# along with the two-writer allowance in workflowSafety.test.ts, before this
-# branch merges.
+# This workflow holds `contents: read` and writes nothing to the repository.
+# An earlier version took `contents: write` so it could push images to a
+# dead-end branch; that is gone. Screenshots leave the runner as a run
+# ARTIFACT instead, which needs no write permission at all, so the rule that
+# refresh-retail-prices.yml is the only workflow able to write to this
+# repository holds without an exception. That rule is asserted centrally in
+# scripts/retail/coverage/workflowSafety.test.ts and is not to be widened
+# again.
+#
+# It is still to be deleted before this branch merges — a capture job is not
+# something main needs — but its presence no longer costs a write permission.
 #
 # Photographs the builder in an environment where the retailer image CDN is
 # actually reachable.
@@ -23,12 +27,11 @@
 #
 # WHAT THIS JOB IS ALLOWED TO TOUCH
 # ---------------------------------
-# It has `contents: write` for exactly one reason: the screenshots have to
-# leave the runner, and a branch is the only channel that survives. It pushes
-# to SCREENSHOT_BRANCH and nothing else — the publish step refuses if anything
-# outside `screenshots/` is staged, and refuses to push to any other ref. It
-# references no secret, mints no token, contacts no retailer API and never
-# touches the default branch or a deployment. That is asserted structurally by
+# Nothing. It has `contents: read`, so it cannot write to any ref including
+# the one it is triggered from. The screenshots leave as a run artifact, which
+# is a first-class delivery channel requiring no permission. It references no
+# secret, mints no token, contacts no retailer API, and never touches the
+# default branch or a deployment. That is asserted structurally by
 # scripts/ui/screenshotWorkflowSafety.test.ts, which reads this file.
 
 name: Capture builder UI screenshots
@@ -56,16 +59,13 @@ on:
         default: '619d40e'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ui-screenshots
   cancel-in-progress: true
 
 env:
-  # The published-screenshots branch. Not the working branch, not the default
-  # branch: a dead-end ref that holds images and nothing else.
-  SCREENSHOT_BRANCH: claude/ui-screenshots-97h85y
   AFTER_PORT: '4319'
   BEFORE_PORT: '4320'
   PLAYWRIGHT_VERSION: 1.56.1
@@ -210,6 +210,10 @@ jobs:
                 lines.push(`| ${theme} | ${control} | ${m.color} on ${m.background} | ${m.contrast}:1 |`);
               }
             }
+            lines.push("", "| White build category | products shown |", "| --- | --- |");
+            for (const [name, n] of Object.entries(report.whiteBuild ?? {})) {
+              lines.push(`| ${name} | ${n} |`);
+            }
             lines.push("", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
             const text = lines.join("\n") + "\n";
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
@@ -217,31 +221,11 @@ jobs:
             fs.writeFileSync(process.env.GITHUB_WORKSPACE + "/screenshots/image-report.md", text);
           '
 
-      - name: Publish the screenshots to the screenshot branch
-        env:
-          GH_PUSH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          cd "${GITHUB_WORKSPACE}"
-          # A detached, single-commit history: this branch is a delivery
-          # channel for images, never a base anything is built on.
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git checkout --orphan publish-screenshots
-          git rm -rq --cached . || true
-          git add -f -- screenshots
-          if [ -n "$(git diff --cached --name-only | grep -v '^screenshots/' || true)" ]; then
-            echo "Refusing to publish: something outside screenshots/ is staged."
-            git diff --cached --name-only
-            exit 1
-          fi
-          git commit -m "UI screenshots for ${GITHUB_SHA}"
-          git push --force \
-            "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            "HEAD:refs/heads/${SCREENSHOT_BRANCH}"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Screenshots pushed to \`${SCREENSHOT_BRANCH}\` for commit \`${GITHUB_SHA}\`." >> "$GITHUB_STEP_SUMMARY"
-
+      # The ONLY way the images leave this runner. An artifact needs no write
+      # permission, which is what lets this job run under `contents: read`.
+      # `always()` so the evidence survives a failing threshold check below —
+      # a bad number is a thing to diagnose from the screenshots, not a reason
+      # to discard them.
       - name: Upload the screenshots as a run artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -249,6 +233,13 @@ jobs:
           name: builder-screenshots
           path: screenshots
           retention-days: 7
+
+      - name: Say where the screenshots went
+        if: always()
+        run: |
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Screenshots for \`${GITHUB_SHA}\` are attached to this run as the **builder-screenshots** artifact." >> "$GITHUB_STEP_SUMMARY"
+          echo "This workflow holds \`contents: read\` and pushed nothing." >> "$GITHUB_STEP_SUMMARY"
 
       # Last, so the evidence is published even when the number is bad: a
       # failing rate is a thing to diagnose from the screenshots, not a reason
@@ -303,6 +294,18 @@ jobs:
                 }
               }
             }
+
+            // The White build has to be able to finish a PC. Colour-neutral
+            // categories keep their ordinary options; visible ones are still
+            // narrowed to titles that state a white finish, and a visible
+            // category with none stays honestly empty.
+            const white = report.whiteBuild ?? {};
+            for (const category of ["cpu", "storage"]) {
+              if ((white[category] ?? 0) === 0) {
+                failures.push(`White build shows no ${category}, so it cannot complete a build`);
+              }
+            }
+            if ((white.gpu ?? 0) === 0) failures.push("White build shows no GPUs, though the catalogue has white ones");
 
             // WCAG AA for normal text, measured on the rendered control after
             // the cascade resolved every variable — not on the tokens.

@@ -30,9 +30,72 @@ const SWIPE_THRESHOLD_PX = 40;
  *
  * ON FOCUS. Opening moves focus into the dialog and closing returns it to
  * whatever opened it, so a keyboard user is never dropped back at the top of
- * a 500-product grid. Escape closes, and arrow keys move between images when
- * there is more than one.
+ * a 500-product grid. Tab and Shift+Tab are trapped inside the dialog, the
+ * page behind it cannot scroll, Escape closes, the backdrop closes, and arrow
+ * keys move between images when there is more than one.
  */
+/**
+ * Everything inside the dialog a keyboard can land on, in document order.
+ *
+ * Disabled and aria-hidden elements are excluded because they are not
+ * reachable; visibility is deliberately NOT tested by geometry, since a
+ * layout-free test environment reports every element as unrendered and would
+ * empty this list.
+ */
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+function focusableWithin(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => element.getAttribute('aria-hidden') !== 'true',
+  );
+}
+
+/**
+ * Keeps Tab and Shift+Tab inside the dialog.
+ *
+ * `aria-modal` tells a screen reader the rest of the page is inert; it does
+ * nothing to the tab ring, so without this a keyboard user tabs straight out
+ * of an open modal and into the grid behind it — still able to reach controls
+ * the dialog is covering, with no way back except Escape.
+ *
+ * Focus sitting on the dialog container itself counts as "at the edge": that
+ * is where focus starts, so the first Tab has to land on the first control
+ * and the first Shift+Tab on the last.
+ */
+function trapTab(event: KeyboardEvent, root: HTMLElement | null): void {
+  if (!root) return;
+  const items = focusableWithin(root);
+  if (items.length === 0) {
+    // Nothing to move to, so the only correct behaviour is to stay put.
+    event.preventDefault();
+    root.focus();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+  const outside = !active || !root.contains(active) || active === root;
+
+  if (event.shiftKey) {
+    if (outside || active === first) {
+      event.preventDefault();
+      last.focus();
+    }
+    return;
+  }
+  if (outside || active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export default function ProductDetailDrawer({ part, now, onClose, onToggle, selected }: Props) {
   const images = verifiedImages(part);
   const [index, setIndex] = useState(0);
@@ -48,13 +111,38 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
     [images.length],
   );
 
+  // OPENING AND CLOSING. Deliberately mount-only: the opener has to be the
+  // element that was focused when the dialog appeared, and re-running this on
+  // every parent render would recapture it as something INSIDE the dialog,
+  // sending focus to a removed node on close.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     dialogRef.current?.focus();
+
+    // The page behind a modal must not scroll. Without this a wheel or a
+    // trackpad swipe over the backdrop moves the 500-product grid underneath,
+    // so closing the dialog returns the reader somewhere they never went.
+    // The previous value is restored rather than cleared, so this composes
+    // with anything else that has locked scrolling.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      // Focus goes back where it came from, not to the top of the document.
+      opener?.focus?.();
+    };
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
+        return;
+      }
+      if (event.key === 'Tab') {
+        trapTab(event, dialogRef.current);
         return;
       }
       if (!many) return;
@@ -67,11 +155,7 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
       }
     };
     document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      // Focus goes back where it came from, not to the top of the document.
-      opener?.focus?.();
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [many, onClose, step]);
 
   const current = images[index];
@@ -195,10 +279,13 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
             </div>
           </>
         ) : (
-          // One verified image. Saying why is better than silently showing a
-          // gallery with nothing to page through.
+          // One verified image. A plain count, not an explanation: how many
+          // pictures a retailer's feed happens to publish is our plumbing, and
+          // a shopper reading it learns nothing they can act on. It also has
+          // to stay a COUNT rather than an apology — describing one image as a
+          // shortfall implies more exist somewhere, and none do.
           <p className="mt-2 text-center text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="detail-single-image-note">
-            The retailer feed publishes one image for this listing.
+            1 image available
           </p>
         )}
 

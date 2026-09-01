@@ -11,7 +11,7 @@ import {
   type CatalogFilters,
   type ProductSort,
 } from '../../lib/retail/retailShopping';
-import { WHITE_EMPTY_MESSAGE } from '../../lib/retail/whiteBuild';
+import { WHITE_EMPTY_MESSAGE, isColorNeutralCategory } from '../../lib/retail/whiteBuild';
 import ProductDetailDrawer from './ProductDetailDrawer';
 import RetailProductCard from './RetailProductCard';
 
@@ -180,8 +180,15 @@ export default function RetailCatalog({ category, whiteOnly = false, parts, sele
         // Two different emptinesses. "Your filters match nothing" is the user's
         // doing; "no listing here states a white finish" is ours, and saying so
         // is better than padding the collection with guesses.
+        //
+        // The white message is only ever right for a category the collection
+        // actually filters. A colour-neutral one is never narrowed by finish,
+        // so an empty result there is the user's filters and blaming it on
+        // missing white stock would be a false explanation.
         <p className="py-10 text-center text-sm" style={{ color: 'var(--ff-text-2)' }} data-testid="catalog-empty">
-          {whiteOnly && parts.length === 0 ? WHITE_EMPTY_MESSAGE : 'No products match these filters.'}
+          {whiteOnly && parts.length === 0 && !isColorNeutralCategory(category)
+            ? WHITE_EMPTY_MESSAGE
+            : 'No products match these filters.'}
         </p>
       ) : (
         <>

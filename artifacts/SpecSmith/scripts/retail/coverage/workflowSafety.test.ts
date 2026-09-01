@@ -62,12 +62,13 @@ describe('the validation workflow exists and is wired to the right events', () =
     // refresh. Every other one stays read-only, so the write permission is
     // confined to a single reviewable file rather than spreading quietly.
     //
-    // A second writer existed for a while: a screenshot capture that pushed
-    // images to a dead-end branch so a redesign could be reviewed from an
-    // environment where the retailer's image CDN is reachable. It was
-    // temporary and has been removed, and this list is back to one name. Its
-    // capture script is kept — see scripts/ui — but nothing in CI runs it, so
-    // no workflow holds write access on its behalf.
+    // This has been relaxed once, for a screenshot capture that pushed images
+    // to a dead-end branch, and that turned out to be unnecessary: a run
+    // ARTIFACT carries images off a runner without any write permission at
+    // all. The capture workflow now holds `contents: read` and this list is
+    // back to a single name. There is no evidence-gathering need that
+    // justifies a second writer, so this expectation takes exactly one entry
+    // and is not to be widened again.
     const writers = all.filter((name) =>
       fs
         .readFileSync(path.join(dir, name), 'utf-8')
@@ -76,13 +77,7 @@ describe('the validation workflow exists and is wired to the right events', () =
         .join('\n')
         .includes('contents: write'),
     );
-    // TWO WRITERS, TEMPORARILY. The screenshot capture is back for the
-    // duration of this branch only: the development sandbox cannot reach the
-    // retailer image CDN, so visual evidence for a UI change cannot be
-    // produced anywhere else. It holds no credential and pushes only images to
-    // a dead-end branch, and it — and this allowance — are to be removed again
-    // before this branch merges, exactly as they were last time.
-    expect(writers).toEqual(['capture-ui-screenshots.yml', 'refresh-retail-prices.yml']);
+    expect(writers).toEqual(['refresh-retail-prices.yml']);
 
     const screenshots = fs
       .readFileSync(path.join(dir, 'capture-ui-screenshots.yml'), 'utf-8')
@@ -91,6 +86,13 @@ describe('the validation workflow exists and is wired to the right events', () =
       .join('\n');
     expect(screenshots).not.toContain('secrets.');
     expect(screenshots).not.toMatch(/^\s*(pull_request|pull_request_target|schedule|workflow_run):/m);
+    // Read-only, and with no channel that could write anyway.
+    expect(screenshots).toContain('contents: read');
+    expect(screenshots).not.toContain('contents: write');
+    expect(screenshots).not.toMatch(/git push/);
+    expect(screenshots).not.toContain('github.token');
+    // The images still have to leave the runner; an artifact is how.
+    expect(screenshots).toContain('actions/upload-artifact');
     expect(screenshots).toMatch(/push:\s*\n\s*branches:\s*\n\s*- claude\/builder-wide-desktop-white-build/);
     // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.

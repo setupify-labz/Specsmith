@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import catalogData from '../../../public/data/retail-parts.json';
 import { parseAffiliatePartCatalog } from './partCatalog';
 import {
+  COLOR_NEUTRAL_CATEGORIES,
+  isColorNeutralCategory,
+  whiteBuildParts,
   WHITE_EMPTY_MESSAGE,
   classifyWhiteFinish,
   whiteCountsByCategory,
@@ -161,5 +164,70 @@ describe('against the real published catalogue', () => {
     expect(WHITE_EMPTY_MESSAGE).toContain('white finish');
     expect(WHITE_EMPTY_MESSAGE.toLowerCase()).not.toContain('in stock');
     expect(WHITE_EMPTY_MESSAGE.toLowerCase()).not.toContain('out of stock');
+  });
+});
+
+describe('the White build can still complete a PC', () => {
+  // The defect this covers: filtering EVERY category by finish emptied the
+  // ones whose merchant titles never state a colour, so the collection could
+  // not produce a working machine. Zero CPUs does not make a build whiter.
+
+  const parts = catalog.parts;
+  const inView = whiteBuildParts(parts);
+  const countIn = (list: readonly { category: string }[], category: string) =>
+    list.filter((part) => part.category === category).length;
+
+  it('keeps every colour-neutral category at its full, unfiltered count', () => {
+    for (const category of COLOR_NEUTRAL_CATEGORIES) {
+      const all = countIn(parts, category);
+      expect(all, `${category} should exist in the catalogue`).toBeGreaterThan(0);
+      expect(countIn(inView, category), category).toBe(all);
+    }
+  });
+
+  it('leaves CPU and storage selectable, which is what makes the build finishable', () => {
+    // Named explicitly, because these two are the ones the review called out.
+    expect(countIn(inView, 'cpu')).toBeGreaterThan(0);
+    expect(countIn(inView, 'storage')).toBeGreaterThan(0);
+  });
+
+  it('still narrows every appearance-relevant category to stated-white listings', () => {
+    // The filter is not weakened where it means something: each remaining part
+    // in a visible category has to carry the claim in its own title.
+    for (const part of inView) {
+      if (isColorNeutralCategory(part.category)) continue;
+      expect(classifyWhiteFinish(part.name).white, part.name).toBe(true);
+    }
+  });
+
+  it('does not smuggle a colour claim into the neutral categories', () => {
+    // They are shown as ordinary parts. Nothing asserts they are white, and
+    // the catalogue in fact states white for none of them.
+    for (const category of COLOR_NEUTRAL_CATEGORIES) {
+      const stated = parts.filter((part) => part.category === category && classifyWhiteFinish(part.name).white);
+      expect(stated, `${category} titles state no colour`).toHaveLength(0);
+    }
+  });
+
+  it('still shows an honest absence where a visible category has no white product', () => {
+    // Motherboards, RAM, keyboards and mice have zero stated-white listings in
+    // the current catalogue. Those must stay empty — that is a real absence,
+    // and the fix for CPUs must not paper over it.
+    const empty = ['motherboard', 'ram', 'keyboard', 'mouse'];
+    for (const category of empty) {
+      expect(countIn(parts, category), `${category} should exist`).toBeGreaterThan(0);
+      expect(countIn(inView, category), category).toBe(0);
+    }
+  });
+
+  it('keeps the white filter itself unchanged for counting purposes', () => {
+    // whiteParts is what the collection note counts. It must still mean
+    // "titles stating white", not "parts the build view shows".
+    expect(whiteParts(parts).every((part) => classifyWhiteFinish(part.name).white)).toBe(true);
+    expect(whiteParts(parts).length).toBeLessThan(inView.length);
+  });
+
+  it('names only categories a finished build hides', () => {
+    expect([...COLOR_NEUTRAL_CATEGORIES].sort()).toEqual(['cpu', 'storage']);
   });
 });
