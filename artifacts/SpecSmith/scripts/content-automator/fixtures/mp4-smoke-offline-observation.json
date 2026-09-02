@@ -1,0 +1,53 @@
+{
+  "masterSha256": "d047ee3272b042753b98fc0076ba9224fac01afb84abcaac0d2a841245cbadcb",
+  "reviewedBy": "claude-code-manual-review",
+  "reviewedAt": "2026-09-02T20:36:00.000Z",
+  "notes": [
+    "Genuine one-time visual/audio inspection of the exact render at this masterSha256, produced by offlineCompositorSmoke.ts after the caption-cue reorder (issue #82 PR review blocker #5): frames extracted with ffmpeg at 0.3s, 4.6s, and 9.2s and actually viewed.",
+    "0.3s (opening, static visual-1 shot): real live /compare page, both full cards (RTX 4080 Super vs RTX 4080, same CPU), prices $2,128/$1,691, Avg FPS 164/160, 'Better Value' badge, 20-0 tally, per-game bar chart. The 'ESTIMATED FPS. SEE THE FULL RESULT.' caption is already on screen at this frame — the estimated-FPS qualifier is visible from the opening frame, not reached only after several seconds of unlabeled numbers. Understandable with sound off.",
+    "4.6s (mid, sequence visual-2 shot): the resolution/quality sequence genuinely drove the live app — 4K/High selected in the UI, Avg FPS genuinely recomputed to 107/104 (not the same 164/160 numbers relabeled). Caption reads 'RTX 4080 SUPER VS RTX 4080'.",
+    "9.2s (closing, narration-hold extension frame): clean 1440p/High state (164/160), no caption (past the last cue's end at 8s), no consent banner, no fake data.",
+    "This same content (opening/mid/closing state, caption text/position, no consent-banner overlap) was also independently confirmed across several other same-commit renders of this compositor during this review (including sampling the visual-3 shot around 6.8-6.9s, always 1440p/High/164/160 with 'SAME CPU. SAME SETTINGS.') — the compositor's UI-capture sequence step drives real, timing-sensitive browser interactions, so exact bytes differ render to render even though the observable application state and on-screen content do not; this evidence file is bound to the one specific masterSha256 above, not to 'renders that look like this'.",
+    "No consent-banner overlap in any sampled frame (uiRender/capture.ts's declined-consent seed is working).",
+    "No fake/generated UI anywhere — every visible pixel across all sampled frames is the real, live Compare page or this pipeline's own caption overlay text. No fabricated benchmark/price data — every number is the app's real estimateFpsForBuild()/gpus.json/cpus.json output.",
+    "Caption legibility: all three cues render as large, high-contrast white-on-dark text with a solid outline/shadow. The first cue's wrapped text ('ESTIMATED FPS. SEE THE FULL' / 'RESULT.') runs close to both the left and right edges at this font size — legible and not clipped in this exact render, but close enough that a caption-layout follow-up (captionRender.ts's wrapCaption max-chars heuristic) remains worth a separate look; not treated as a defect in this render.",
+    "Audio: espeak-ng narration is clearly intelligible (every word distinguishable) but audibly synthetic/robotic. This dimension measures clarity, not naturalness; a real ElevenLabs render (once approved) would sound materially better. The narration text and TTS fixture code are unchanged by the caption-cue reorder, and framemd5 comparison across repeated renders confirms the audio stream is byte-identical run to run — only the video stream's mid-sequence transition frames vary slightly between renders (real browser timing during the live resolution/quality clicks), which is exactly why this evidence is bound to one exact masterSha256 rather than trusted for any render that merely looks similar."
+  ],
+  "observation": {
+    "packageId": "mp4-smoke-offline-evidence-record",
+    "platform": "youtube-shorts",
+    "masterSha256": "d047ee3272b042753b98fc0076ba9224fac01afb84abcaac0d2a841245cbadcb",
+    "durationSeconds": 9.365,
+    "openingDecisionClearWithoutAudio": true,
+    "captionsLegibilityScore": 9,
+    "captionSafeAreaRatio": 0.97,
+    "audioClarityScore": 8,
+    "visualCoherenceScore": 10,
+    "pacingScore": 9,
+    "specSmithRelevanceScore": 10,
+    "genericAiBrollRatio": 0,
+    "observedCtaRoute": "/compare",
+    "claims": [
+      {
+        "text": "RTX 4080 Super and RTX 4080 Avg FPS values shown are SpecSmith's estimated FPS, not measured benchmark FPS.",
+        "kind": "estimated-fps",
+        "verification": "verified",
+        "evidenceRefs": ["live-compare-page-capture:estimateFpsForBuild"],
+        "displayLabel": "Estimated FPS"
+      },
+      {
+        "text": "The real Compare page state (both cards, prices, Avg FPS, per-game bars) is shown live.",
+        "kind": "other",
+        "verification": "verified",
+        "evidenceRefs": ["deterministic-ui-render:compare"]
+      }
+    ],
+    "uiShots": [
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "mp4-smoke-offline-visual-1" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "mp4-smoke-offline-visual-2" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "mp4-smoke-offline-visual-3" }
+    ],
+    "missingRequiredFacts": [],
+    "failedTaskIds": []
+  }
+}

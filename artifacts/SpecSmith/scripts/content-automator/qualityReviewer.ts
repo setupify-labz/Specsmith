@@ -121,6 +121,121 @@ function requireSha256(value: string, field: string): string {
   return digest;
 }
 
+/**
+ * A committed, versioned record of a genuine one-time human/Claude visual
+ * inspection of one exact render's bytes: the sha256 of the render that was
+ * actually watched, alongside the observation that inspection produced.
+ *
+ * This exists because `RenderedVideoObservation.masterSha256` is entirely
+ * self-reported by whatever code constructs the observation — nothing in
+ * `reviewRenderedVideo` on its own proves the scores/claims in that
+ * observation were ever produced by watching those specific bytes. A
+ * `RecordedRenderEvidence` is the external anchor: it must be committed to
+ * the repository (not generated at run time) so its content is a durable,
+ * reviewable record of a real inspection, independent of whatever the render
+ * pipeline produces on any later run.
+ */
+export interface RecordedRenderEvidence {
+  /** sha256 of the exact master file that was actually watched. */
+  masterSha256: string;
+  /** Who performed the inspection this evidence records (e.g. "claude-code-manual-review"). */
+  reviewedBy: string;
+  /** ISO 8601 timestamp of the inspection. */
+  reviewedAt: string;
+  /** Free-form notes about what was inspected and found. */
+  notes: string[];
+  /** The observation that inspection produced. */
+  observation: RenderedVideoObservation;
+}
+
+export type RenderEvidenceMatch =
+  | { matched: true; observation: RenderedVideoObservation }
+  | { matched: false; reason: string };
+
+/**
+ * Binds a freshly-rendered master's actual sha256 to a committed,
+ * previously-recorded evidence file before its observation may be trusted.
+ *
+ * This is the fail-closed gate blocker #2 requires: a hardcoded
+ * `RenderedVideoObservation` in a script is not evidence of anything about
+ * whatever bytes get rendered on a later run — only a match between THIS
+ * run's actual sha256 and a committed record's sha256 is. If the render this
+ * run produced is not the exact bytes that were actually inspected to
+ * produce `evidence.observation`, this returns `matched: false` and the
+ * caller must stop before treating the review as a pass.
+ */
+export function matchRenderToRecordedEvidence(
+  actualMasterSha256: string,
+  evidence: RecordedRenderEvidence,
+): RenderEvidenceMatch {
+  const actual = requireSha256(actualMasterSha256, "actualMasterSha256");
+  const recorded = requireSha256(evidence.masterSha256, "evidence.masterSha256");
+  const observed = requireSha256(evidence.observation.masterSha256, "evidence.observation.masterSha256");
+
+  if (recorded !== observed) {
+    return {
+      matched: false,
+      reason: `Evidence record is internally inconsistent: its masterSha256 (${recorded}) does not match its own observation.masterSha256 (${observed}).`,
+    };
+  }
+  if (actual !== recorded) {
+    return {
+      matched: false,
+      reason: `This run's rendered master (sha256 ${actual}) does not match the committed evidence record (sha256 ${recorded}). This render has no matching evidence of having actually been inspected — it is awaiting review and not publishable.`,
+    };
+  }
+  return { matched: true, observation: evidence.observation };
+}
+
+export class RecordedRenderEvidenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RecordedRenderEvidenceError";
+  }
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * Structurally validates a parsed evidence JSON file before it is trusted.
+ * Fails closed on anything malformed rather than letting a broken record
+ * silently pass through as `undefined` fields.
+ */
+export function parseRecordedRenderEvidence(input: unknown): RecordedRenderEvidence {
+  if (!input || typeof input !== "object") {
+    throw new RecordedRenderEvidenceError("Recorded render evidence must be an object.");
+  }
+  const raw = input as Record<string, unknown>;
+  if (!isNonEmptyString(raw.masterSha256)) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence is missing masterSha256.");
+  }
+  if (!isNonEmptyString(raw.reviewedBy)) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence is missing reviewedBy.");
+  }
+  if (!isNonEmptyString(raw.reviewedAt)) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence is missing reviewedAt.");
+  }
+  if (!Array.isArray(raw.notes) || !raw.notes.every((entry) => typeof entry === "string")) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence notes must be an array of strings.");
+  }
+  if (!raw.observation || typeof raw.observation !== "object") {
+    throw new RecordedRenderEvidenceError("Recorded render evidence is missing an observation.");
+  }
+  const observation = raw.observation as Record<string, unknown>;
+  if (!isNonEmptyString(observation.masterSha256)) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence's observation is missing masterSha256.");
+  }
+  return {
+    masterSha256: requireSha256(raw.masterSha256, "evidence.masterSha256"),
+    reviewedBy: raw.reviewedBy,
+    reviewedAt: raw.reviewedAt,
+    notes: raw.notes as string[],
+    observation: raw.observation as RenderedVideoObservation,
+  };
+}
+
 const clamp10 = (value: number) => Math.max(0, Math.min(10, value));
 const round = (value: number, digits = 2) => Number(value.toFixed(digits));
 

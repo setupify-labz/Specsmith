@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
 import { buildProductionPlanPackage } from "./productionPlan.ts";
 import {
   buildQualityReviewRequest,
   reviewRenderedVideo,
+  matchRenderToRecordedEvidence,
+  parseRecordedRenderEvidence,
+  RecordedRenderEvidenceError,
   type RenderedVideoObservation,
+  type RecordedRenderEvidence,
 } from "./qualityReviewer.ts";
 import type { ContentIdea } from "./types.ts";
 
@@ -184,5 +191,102 @@ describe("automated quality reviewer", () => {
     }));
     expect(result.decision).toBe("regenerate-full");
     expect(result.issues.some((issue) => issue.code === "score-mislabeled-as-measured-fps")).toBe(true);
+  });
+});
+
+/**
+ * Blocker #2 fix: a RenderedVideoObservation's scores/claims must never be
+ * trusted for a render whose actual bytes were never inspected. These tests
+ * cover matchRenderToRecordedEvidence and parseRecordedRenderEvidence — the
+ * reusable helpers endToEndOfflinePipeline.ts binds a fresh render's sha256
+ * against — directly, since the full offline pipeline's own render is not
+ * byte-reproducible run to run (real, timing-sensitive browser capture
+ * during its UI-sequence step), so its "matched" path cannot be exercised
+ * deterministically end-to-end in CI. See qualityReviewer.ts's
+ * RecordedRenderEvidence doc comment for why this exists.
+ */
+describe("recorded render evidence binds an observation to one exact render's bytes", () => {
+  function recordedEvidence(overrides: Partial<RecordedRenderEvidence> = {}): RecordedRenderEvidence {
+    return {
+      masterSha256: MASTER_SHA256,
+      reviewedBy: "claude-code-manual-review",
+      reviewedAt: "2026-09-02T18:05:00.000Z",
+      notes: ["Frames extracted and actually inspected for this exact render."],
+      observation: cleanObservation({ masterSha256: MASTER_SHA256 }),
+      ...overrides,
+    };
+  }
+
+  it("proceeds with the recorded observation when this run's actual sha256 matches the committed record", () => {
+    const evidence = recordedEvidence();
+    const match = matchRenderToRecordedEvidence(MASTER_SHA256, evidence);
+    expect(match.matched).toBe(true);
+    if (!match.matched) throw new Error("expected a match");
+    expect(match.observation).toEqual(evidence.observation);
+
+    // The downstream review gate then runs exactly as it would with any
+    // other observation — evidence-binding only decides whether the
+    // observation may be used at all, not how it is scored.
+    const result = reviewRenderedVideo(request, { ...match.observation, packageId: content.packageId, platform: "youtube-shorts" });
+    expect(result.publishable).toBe(true);
+  });
+
+  it("stops, not-publishable, when this run's actual sha256 does not match the committed record", () => {
+    const evidence = recordedEvidence();
+    const freshlyRenderedSha256 = "c".repeat(64);
+    const match = matchRenderToRecordedEvidence(freshlyRenderedSha256, evidence);
+    expect(match.matched).toBe(false);
+    if (match.matched) throw new Error("expected no match");
+    expect(match.reason).toContain(freshlyRenderedSha256);
+    expect(match.reason).toContain(MASTER_SHA256);
+    expect(match.reason.toLowerCase()).toContain("awaiting review");
+  });
+
+  it("refuses an internally inconsistent evidence record (its own masterSha256 disagrees with its observation)", () => {
+    const evidence = recordedEvidence({
+      observation: cleanObservation({ masterSha256: "d".repeat(64) }),
+    });
+    const match = matchRenderToRecordedEvidence(MASTER_SHA256, evidence);
+    expect(match.matched).toBe(false);
+    if (match.matched) throw new Error("expected no match");
+    expect(match.reason).toContain("internally inconsistent");
+  });
+
+  it("parses a well-formed evidence JSON file's shape", () => {
+    const evidence = recordedEvidence();
+    const parsed = parseRecordedRenderEvidence(JSON.parse(JSON.stringify(evidence)));
+    expect(parsed.masterSha256).toBe(MASTER_SHA256);
+    expect(parsed.reviewedBy).toBe("claude-code-manual-review");
+    expect(parsed.observation.masterSha256).toBe(MASTER_SHA256);
+  });
+
+  it("fails closed on a malformed evidence file rather than silently producing undefined fields", () => {
+    expect(() => parseRecordedRenderEvidence(null)).toThrow(RecordedRenderEvidenceError);
+    expect(() => parseRecordedRenderEvidence({})).toThrow(RecordedRenderEvidenceError);
+    expect(() => parseRecordedRenderEvidence({ masterSha256: MASTER_SHA256, reviewedBy: "x", reviewedAt: "x", notes: [] }))
+      .toThrow(/observation/i);
+    expect(() => parseRecordedRenderEvidence({
+      masterSha256: MASTER_SHA256,
+      reviewedBy: "x",
+      reviewedAt: "x",
+      notes: "not-an-array",
+      observation: recordedEvidence().observation,
+    })).toThrow(/notes/i);
+  });
+
+  it("the real committed offline-smoke evidence file parses and is internally consistent", () => {
+    // Guards the actual file endToEndOfflinePipeline.ts reads at run time —
+    // a malformed commit here would fail every future run of that script,
+    // not just this test.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const path = join(here, "fixtures", "mp4-smoke-offline-observation.json");
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    const evidence = parseRecordedRenderEvidence(raw);
+    expect(evidence.masterSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(evidence.observation.masterSha256.toLowerCase()).toBe(evidence.masterSha256);
+    expect(evidence.notes.length).toBeGreaterThan(0);
+    // The gate must actually pass for the exact recorded bytes.
+    const match = matchRenderToRecordedEvidence(evidence.masterSha256, evidence);
+    expect(match.matched).toBe(true);
   });
 });

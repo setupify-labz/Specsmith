@@ -138,6 +138,13 @@ describe("asset rights policy", () => {
     expect(result.issues.some((entry) => entry.code === "visual-review-required")).toBe(true);
   });
 
+  it("accepts an honest claude-code-manual-review value as a completed review, not automated tooling", () => {
+    const result = evaluateAssetRights(cleanManifest({ reviewedBy: "claude-code-manual-review" }));
+    expect(result.decision).toBe("allow");
+    expect(result.autoPublishAllowed).toBe(true);
+    expect(result.issues.some((entry) => entry.code === "visual-review-required")).toBe(false);
+  });
+
   it("treats no-reference generation as eligible only after the actual pixels are reviewed", () => {
     const beforeReview = evaluateAssetRights(cleanManifest({
       generationMode: "generated-no-reference",

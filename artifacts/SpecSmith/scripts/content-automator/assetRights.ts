@@ -54,7 +54,14 @@ export interface AssetRightsManifest {
   /** Exact product identity should normally be added later as plain deterministic text. */
   productIdentityMode: "none" | "deterministic-plain-text-overlay" | "baked-branding";
   restrictedFeatures: RestrictedVisualFeatureReview;
-  reviewedBy: "automated" | "human" | "automated-and-human" | "not-reviewed";
+  /**
+   * "automated" means an automated scorer/checker actually reviewed the
+   * asset. A script constructing this record by itself is NOT automated
+   * review — that is a human or Claude, once, off-line; record that
+   * distinctly as "claude-code-manual-review" rather than implying tooling
+   * that does not exist.
+   */
+  reviewedBy: "automated" | "human" | "automated-and-human" | "claude-code-manual-review" | "not-reviewed";
   notes?: string[];
 }
 
