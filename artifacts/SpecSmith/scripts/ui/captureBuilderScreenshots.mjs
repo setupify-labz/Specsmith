@@ -119,18 +119,17 @@ const settleTimeouts = [];
  * rather than the harness. The scroll position is restored afterwards so the
  * screenshots still frame the top of the grid.
  */
-async function revealLazyImages(page) {
+async function revealLazyImages(page, limit) {
   const previous = await page.evaluate(() => window.scrollY);
-  await page.evaluate(async () => {
+  await page.evaluate(async (max) => {
     const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const step = Math.max(200, Math.floor(window.innerHeight * 0.8));
-    for (let y = 0; y <= document.body.scrollHeight; y += step) {
-      window.scrollTo(0, y);
-      await pause(60);
+    const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')].slice(0, max);
+    for (const card of cards) {
+      card.scrollIntoView({ block: 'center' });
+      await pause(30);
     }
-    window.scrollTo(0, document.body.scrollHeight);
     await pause(150);
-  });
+  }, limit);
   await page.evaluate((y) => window.scrollTo(0, y), previous);
   await page.waitForTimeout(150);
 }
@@ -157,31 +156,37 @@ async function settleImages(page, label = 'unlabelled') {
 
   // Let the grid mount before scrolling past it.
   await page.waitForFunction(readyPredicate, undefined, { timeout: 30_000 }).catch(() => {});
-  await revealLazyImages(page);
+  await revealLazyImages(page, PRODUCTS_MEASURED);
 
   let settled = true;
   await page
     .waitForFunction(
-      () => {
+      (max) => {
         const grid = document.querySelector('[data-testid="product-grid"]');
         if (!grid) return true;
         if (document.querySelector('[data-testid="catalog-empty"]')) return true;
-        const cards = document.querySelectorAll('[data-testid="retail-product-card"]');
+        const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')];
         if (cards.length === 0) return false;
-        // A card whose image failed swaps the <img> for the placeholder, so an
-        // all-failed grid has no images left to wait for. That is a settled
-        // state, not a reason to sit here until the timeout.
-        // `complete` alone is not settled enough: it turns true the instant a
-        // response arrives, before the bitmap is decoded, so a measurement
-        // taken here can count a perfectly good image as missing. Waiting for
-        // naturalWidth means waiting for a picture that exists. A FAILED image
-        // also reports complete with naturalWidth 0, so it would hang here —
-        // except that the card swaps a failed image for the placeholder and
-        // removes it from the DOM, which is why this can afford to be strict.
-        const images = [...grid.querySelectorAll('img')];
+        // ONLY the cards that get measured, and every one of those.
+        //
+        // A category grid holds every product in it — eighty GPUs — while the
+        // measurement reads the first `max` cards and nothing else. Requiring
+        // all eighty to decode let one hanging request among the fifty-six
+        // nobody looks at stall this for its whole timeout, which is what
+        // happened: the image rate passed at 100% while the settle reported a
+        // timeout for the same page.
+        //
+        // Within that set the condition stays strict. `complete` alone turns
+        // true the instant a response arrives, before the bitmap is decoded,
+        // so a measurement taken then can count a perfectly good image as
+        // missing; naturalWidth means a picture that actually exists. A FAILED
+        // image also reports complete with naturalWidth 0 and would hang here,
+        // except that a card swaps its failed image for the placeholder and
+        // removes the <img>, which is what makes strictness affordable.
+        const images = cards.slice(0, max).flatMap((card) => [...card.querySelectorAll('img')]);
         return images.every((img) => img.complete && img.naturalWidth > 1);
       },
-      undefined,
+      PRODUCTS_MEASURED,
       { timeout: 30_000 },
     )
     // A swallowed timeout is how the lazy-loading defect stayed invisible for
