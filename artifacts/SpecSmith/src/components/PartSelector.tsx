@@ -203,6 +203,11 @@ export default function PartSelector({
                   Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
                 </p>
               )}
+              {filtered.some(part => !part.affiliateUrl) && (
+                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                  &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
+                </p>
+              )}
               <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pt-1 pr-1">
                 {filtered.length === 0 ? (
                   <p className="text-sm text-center py-4" style={{ color: 'var(--ff-text-2)' }}>No parts found</p>

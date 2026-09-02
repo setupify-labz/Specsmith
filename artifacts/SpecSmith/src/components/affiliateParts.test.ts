@@ -21,12 +21,17 @@ describe('affiliate catalog builder integration', () => {
     }
   });
 
-  it('uses a validated tracked URL directly and never replaces it with a search URL', () => {
+  it('routes both retailer CTAs through the shared link-integrity classifier, never a re-derived URL', () => {
     const card = read('PartCard.tsx');
-    expect(card).toContain('href={affiliateUrl ?? getNeweggUrl(query)}');
-    expect(card).toContain("rel={affiliateUrl ? 'noopener noreferrer sponsored'");
-    expect(card).toContain('{!affiliateUrl && (');
-    expect(card).toContain('View at Newegg');
+    const summary = read('BuildSummary.tsx');
+    for (const source of [card, summary]) {
+      expect(source).toContain("from '../lib/retailerLinkState'");
+      expect(source).toContain('getAmazonLink(');
+      expect(source).toContain('getNeweggLink(');
+      // The exact-link path is real only when the caller's own tracked URL
+      // is passed through — never re-derived from a search-URL builder.
+      expect(source).not.toMatch(/getNeweggLink\([^)]*getNeweggUrl/);
+    }
   });
 
   it('keeps a clear affiliate disclosure next to links in both selection and summary views', () => {

@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
-import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
+import { Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
+import { buildPartQuery } from '../lib/fps';
+import { getAmazonLink, getNeweggLink } from '../lib/retailerLinkState';
+import RetailerLinkCta from './RetailerLinkCta';
 import { downloadBuildFile, parseBuildFileContent, type ShareView, type SharedCustomPart } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
@@ -127,6 +129,7 @@ export default function BuildSummary({
 
   const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
   const hasAffiliateParts = parts.some((part) => Boolean(part.affiliateUrl));
+  const hasFallbackSearchParts = parts.some((part) => !part.customId && !part.affiliateUrl);
   const hasUnknownPrices = parts.some((part) => part.price === undefined);
 
   return (
@@ -170,7 +173,7 @@ export default function BuildSummary({
               >
                 <div className="min-w-0 flex-1">
                   <span className="block text-[10px] uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{p.label}</span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
                     {p.customId ? (
                       <button onClick={() => onRemoveCustomPart?.(p.customId!)}
@@ -180,20 +183,33 @@ export default function BuildSummary({
                         Remove
                       </button>
                     ) : (
-                      <>
-                        {!p.affiliateUrl && (
-                          <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer sponsored"
-                            title="Search Amazon"
-                            className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
-                            Amazon
-                          </a>
-                        )}
-                        <a href={p.affiliateUrl ?? getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel={p.affiliateUrl ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
-                          title={p.affiliateUrl ? `View ${p.name} at Newegg (affiliate link)` : 'Search Newegg'}
-                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-newegg)' }}>
-                          Newegg
-                        </a>
-                      </>
+                      (() => {
+                        const query = buildPartQuery(p.name, undefined, p.label.toLowerCase());
+                        const amazonLink = getAmazonLink(query);
+                        const neweggLink = getNeweggLink(query, p.affiliateUrl);
+                        return (
+                          <div className="flex flex-shrink-0 items-center gap-1.5">
+                            {neweggLink.state !== 'exact' && (
+                              <RetailerLinkCta
+                                retailer="Amazon"
+                                partName={p.name}
+                                link={amazonLink}
+                                variant="text"
+                                sponsored
+                                accentColor="var(--ff-accent-text)"
+                              />
+                            )}
+                            <RetailerLinkCta
+                              retailer="Newegg"
+                              partName={p.name}
+                              link={neweggLink}
+                              variant="text"
+                              sponsored={neweggLink.state === 'exact'}
+                              accentColor="var(--ff-newegg)"
+                            />
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 </div>
@@ -207,6 +223,11 @@ export default function BuildSummary({
           {hasAffiliateParts && (
             <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
+            </p>
+          )}
+          {hasFallbackSearchParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
             </p>
           )}
 
