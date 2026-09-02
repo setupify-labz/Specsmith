@@ -17,12 +17,22 @@ pnpm --dir artifacts/SpecSmith build
 npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
 
 # 3. Run the full offline pipeline: real idea -> real content package/script
-#    /storyboard/production-plan contract -> one real 1080x1920 MP4 (real
+#    /storyboard/production-plan CONTRACT (built from the real generated
+#    storyboard, but only used to shape the quality-review request — it is
+#    NOT what gets rendered; see below) -> one real 1080x1920 MP4 from a
+#    separate, already-proven, hand-authored render timeline (real
 #    Playwright capture of the live Compare page, offline espeak-ng
-#    narration, real burned-in .ass captions, real ffmpeg compose) -> a
-#    quality-review verdict -> a rights-approved asset bundle -> a tracked,
-#    draft-only Metricool-ready publishing request -> a durable ledger that
-#    fails closed on a duplicate publish. Nothing is posted anywhere.
+#    narration, real burned-in .ass captions, real ffmpeg compose) -> an
+#    evidence-bound quality-review verdict (the render's actual sha256 must
+#    match a committed, previously-inspected evidence record, or the run
+#    stops before publishing) -> a rights-approved asset bundle -> a
+#    tracked, draft-only Metricool-ready publishing request -> a durable
+#    ledger that stops at qc-passed (never "scheduled" — nothing here calls
+#    Metricool) and fails closed on a duplicate publish. Nothing is posted
+#    anywhere. Wiring the actual generated storyboard through to a real
+#    render remains separate, tracked future work — this proves the chain of
+#    custody from a real render onward, not full automatic
+#    idea->storyboard->render automation.
 SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
   pnpm --dir artifacts/SpecSmith exec tsx scripts/content-automator/endToEndOfflinePipeline.ts
 ```

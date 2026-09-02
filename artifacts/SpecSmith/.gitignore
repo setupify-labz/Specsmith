@@ -5,3 +5,4 @@ render-output/
 # Generated content-automator batches and local publishing/analytics stores
 content-ideas/generated/
 content-ideas/publishing-store/
+content-ideas/.e2e-demo-store/
