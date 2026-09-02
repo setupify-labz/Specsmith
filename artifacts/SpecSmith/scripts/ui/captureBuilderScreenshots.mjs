@@ -29,6 +29,19 @@ const MEASURE = process.env.MEASURE === '1';
 
 /** The batch the grid shows before "Load more" — the window the audit covers. */
 const PRODUCTS_MEASURED = 24;
+/**
+ * The share of measured images that must have decoded before a measurement is
+ * taken. Deliberately the SAME number the workflow enforces on the result.
+ *
+ * The wait exists so the rate is never computed against a page that has not
+ * finished loading. It was written to require every image, which is stricter
+ * than the bar it protects: at 24 cards the threshold tolerates one missing
+ * image, so a single slow response from the retailer's CDN passed the check
+ * and stalled the wait for its full timeout — thirteen times in one run, on a
+ * different image each time. A wait that fails where the check would pass is
+ * measuring something nobody asked about.
+ */
+const IMAGE_RATE_FLOOR = 0.95;
 
 /** Widths the header is checked at — not only the three the screenshots use. */
 const HEADER_WIDTHS = [768, 834, 900, 960, 1024, 1100, 1279, 1280, 1440];
@@ -161,7 +174,7 @@ async function settleImages(page, label = 'unlabelled') {
   let settled = true;
   await page
     .waitForFunction(
-      (max) => {
+      ({ max, floor }) => {
         const grid = document.querySelector('[data-testid="product-grid"]');
         if (!grid) return true;
         if (document.querySelector('[data-testid="catalog-empty"]')) return true;
@@ -176,17 +189,21 @@ async function settleImages(page, label = 'unlabelled') {
         // happened: the image rate passed at 100% while the settle reported a
         // timeout for the same page.
         //
-        // Within that set the condition stays strict. `complete` alone turns
-        // true the instant a response arrives, before the bitmap is decoded,
-        // so a measurement taken then can count a perfectly good image as
-        // missing; naturalWidth means a picture that actually exists. A FAILED
-        // image also reports complete with naturalWidth 0 and would hang here,
-        // except that a card swaps its failed image for the placeholder and
-        // removes the <img>, which is what makes strictness affordable.
+        // What counts as decoded stays strict per image. `complete` alone
+        // turns true the instant a response arrives, before the bitmap is
+        // decoded, so a measurement taken then can count a perfectly good
+        // image as missing; naturalWidth means a picture that actually exists.
+        //
+        // What changes is how many have to be there: the same share the run
+        // requires of the result, not all of them. Waiting for every image
+        // while tolerating one missing made a single slow CDN response a build
+        // failure.
         const images = cards.slice(0, max).flatMap((card) => [...card.querySelectorAll('img')]);
-        return images.every((img) => img.complete && img.naturalWidth > 1);
+        if (images.length === 0) return true;
+        const decoded = images.filter((img) => img.complete && img.naturalWidth > 1).length;
+        return decoded / images.length >= floor;
       },
-      PRODUCTS_MEASURED,
+      { max: PRODUCTS_MEASURED, floor: IMAGE_RATE_FLOOR },
       { timeout: 30_000 },
     )
     // A swallowed timeout is how the lazy-loading defect stayed invisible for
@@ -214,6 +231,7 @@ async function settleImages(page, label = 'unlabelled') {
           emptyState: Boolean(document.querySelector('[data-testid="catalog-empty"]')),
           cards: cards.length,
           measuredImages: images.length,
+          decoded: images.filter((img) => img.complete && img.naturalWidth > 1).length,
           incomplete: images
             .filter((img) => !(img.complete && img.naturalWidth > 1))
             .slice(0, 5)
