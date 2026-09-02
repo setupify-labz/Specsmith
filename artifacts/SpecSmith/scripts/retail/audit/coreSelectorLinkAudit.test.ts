@@ -19,6 +19,11 @@ describe('auditCoreSelectorEntry', () => {
       expect(row.source).toBe('core-selector');
       expect(row.partId).toBe('rtx5090');
       expect(row.intendedProduct).toBe('RTX 5090');
+      // No per-part affiliate link exists to check an identity against, and
+      // the price beside these buttons is the editorial price_usd estimate,
+      // never a live retailer price — see linkAuditReport.ts.
+      expect(row.identityEvidence).toBe('shape-only');
+      expect(row.priceSource).toBe('editorial-estimate');
     }
   });
 

@@ -42,6 +42,9 @@ export function auditCatalogPartLink(part: AffiliatePart): LinkAuditRow {
       urlType: 'unverifiable',
       attributed: false,
       evidence: 'no-intended-identity',
+      // No usable id at all — there is nothing to be self-consistent WITH.
+      identityEvidence: 'shape-only',
+      priceSource: 'retailer-feed',
       status: 'fail',
     };
   }
@@ -56,6 +59,13 @@ export function auditCatalogPartLink(part: AffiliatePart): LinkAuditRow {
     category: part.category,
     retailer: 'Newegg',
     ...classification,
+    // Checked against `part.id` — reconstructed from the SAME upstream
+    // listing as the link itself, so this is self-consistency, not
+    // independent verification. See the caveat in `linkIntegrity.ts`'s
+    // module doc and `LinkIdentityEvidence` in `linkAuditReport.ts`.
+    identityEvidence: expectedItemId !== null ? 'self-consistent' : 'shape-only',
+    // The merchant's own listing price, stamped with `part.fetchedAt` — see `AffiliatePart` in partCatalog.ts.
+    priceSource: 'retailer-feed',
     status: statusFor(classification.urlType, classification.attributed),
   };
 }

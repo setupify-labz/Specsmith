@@ -37,6 +37,8 @@ function unverifiableRow(entry: CoreSelectorCatalogEntry, retailer: 'Amazon' | '
     urlType: 'unverifiable',
     attributed: false,
     evidence: 'no-intended-identity',
+    identityEvidence: 'shape-only',
+    priceSource: 'editorial-estimate',
     status: 'fail',
   };
 }
@@ -50,6 +52,11 @@ export function auditCoreSelectorEntry(entry: CoreSelectorCatalogEntry): LinkAud
   const amazon = classifyAmazonUrl(getAffiliateUrl(query));
   const newegg = classifyDirectNeweggUrl(getNeweggUrl(query));
 
+  // No per-part affiliate link exists for a canonical part at all (see the
+  // module doc), so there is nothing to compare a destination id against —
+  // every core-selector row's identity evidence is 'shape-only'. The price
+  // shown beside these buy buttons is `price_usd` from `src/data/*.json`,
+  // SpecSmith's own hand-maintained estimate, never a live retailer price.
   return [
     {
       partId: entry.id,
@@ -58,6 +65,8 @@ export function auditCoreSelectorEntry(entry: CoreSelectorCatalogEntry): LinkAud
       category: entry.category,
       retailer: 'Amazon',
       ...amazon,
+      identityEvidence: 'shape-only',
+      priceSource: 'editorial-estimate',
       status: statusFor(amazon.urlType, amazon.attributed),
     },
     {
@@ -67,6 +76,8 @@ export function auditCoreSelectorEntry(entry: CoreSelectorCatalogEntry): LinkAud
       category: entry.category,
       retailer: 'Newegg',
       ...newegg,
+      identityEvidence: 'shape-only',
+      priceSource: 'editorial-estimate',
       status: statusFor(newegg.urlType, newegg.attributed),
     },
   ];

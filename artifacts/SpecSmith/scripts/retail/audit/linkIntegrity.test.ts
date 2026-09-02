@@ -14,8 +14,9 @@ const TRACKED_EXACT =
 
 // A real listing whose Newegg URL-path item id ("274-000M-001T4") differs
 // from its query-string item id ("9SIAWKTKFU6722") — two valid identifiers
-// for the same page. The query parameter is the one this repository's own
-// `id` field is derived from (see `expectedItemIdFromPartId`), so it must win.
+// for the same live page, not a corrupted link. This audit has no way to
+// tell that apart from a genuine mismatch using the URL alone, so both being
+// present and disagreeing is 'ambiguous', never 'exact' — see the test below.
 const TRACKED_DUAL_ITEM_ID =
   'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.445835507703677803621270&type=15&murl=https%3A%2F%2Fwww.newegg.com%2Famd-ryzen-5-5000-series-ryzen-5-5600-vermeer-socket-am4-processors-desktops%2Fp%2F274-000M-001T4%3Fitem%3D9SIAWKTKFU6722';
 
@@ -47,6 +48,14 @@ describe('classifyAmazonUrl', () => {
       urlType: 'exact',
       attributed: false,
       evidence: 'affiliate-tag-missing',
+    });
+  });
+
+  it('flags a FOREIGN affiliate tag as unattributed — a nonempty tag is not automatically ours', () => {
+    expect(classifyAmazonUrl('https://www.amazon.com/dp/B0CJKX8QYT?tag=someone-elses-tag-20')).toEqual({
+      urlType: 'exact',
+      attributed: false,
+      evidence: 'affiliate-tag-foreign',
     });
   });
 
@@ -88,6 +97,19 @@ describe('classifyDirectNeweggUrl', () => {
     });
   });
 
+  it('catches a link whose PATH and QUERY name two different products, even when the query agrees with what was expected — regression for a real reviewed bug', () => {
+    // Exact repro from the independent review of this audit: the path says
+    // BAD, the query says GOOD, and GOOD is what was expected. An earlier
+    // version of this function read only the query parameter when present,
+    // so this passed as 'exact'. Trusting either field alone is a guess.
+    const url = 'https://www.newegg.com/some-slug/p/BAD?item=GOOD';
+    expect(classifyDirectNeweggUrl(url, 'GOOD')).toEqual({
+      urlType: 'ambiguous',
+      attributed: false,
+      evidence: 'product-path-and-query-id-disagree',
+    });
+  });
+
   it('never counts a product-page shape with no item id at all as exact', () => {
     expect(classifyDirectNeweggUrl('https://www.newegg.com/some-slug-with-no-item-id')).toMatchObject({ urlType: 'ambiguous' });
   });
@@ -111,8 +133,18 @@ describe('classifyTrackedNeweggUrl', () => {
     });
   });
 
-  it('prefers the destination query item id over the path item id when the two real ids differ', () => {
-    expect(classifyTrackedNeweggUrl(TRACKED_DUAL_ITEM_ID, '9SIAWKTKFU6722')).toMatchObject({ urlType: 'exact', attributed: true });
+  it('classifies a real listing whose path id and query id genuinely differ as ambiguous, not exact — even though the query matches what was expected', () => {
+    // A real committed URL (see the fixture doc comment): Newegg's own path
+    // id ("274-000M-001T4") and the marketplace query id ("9SIAWKTKFU6722")
+    // are two different, both-real identifiers for the same live page. This
+    // audit cannot tell that apart from a genuinely mismatched/corrupted
+    // link from the URL alone, so it fails closed on both rather than
+    // silently trusting whichever field happens to match what was expected.
+    expect(classifyTrackedNeweggUrl(TRACKED_DUAL_ITEM_ID, '9SIAWKTKFU6722')).toEqual({
+      urlType: 'ambiguous',
+      attributed: true,
+      evidence: 'product-path-and-query-id-disagree',
+    });
   });
 
   it('catches a WRONG VARIANT inside a tracked link', () => {
@@ -120,6 +152,15 @@ describe('classifyTrackedNeweggUrl', () => {
       urlType: 'ambiguous',
       attributed: true,
       evidence: 'product-path-item-id-mismatch',
+    });
+  });
+
+  it('catches a link whose PATH and QUERY name two different products inside a tracked link too', () => {
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.1&type=15&murl=' + encodeURIComponent('https://www.newegg.com/some-slug/p/BAD?item=GOOD');
+    expect(classifyTrackedNeweggUrl(url, 'GOOD')).toEqual({
+      urlType: 'ambiguous',
+      attributed: true,
+      evidence: 'product-path-and-query-id-disagree',
     });
   });
 
@@ -134,23 +175,41 @@ describe('classifyTrackedNeweggUrl', () => {
     });
   });
 
+  it('flags FOREIGN attribution: a nonempty id/offerid that is not SpecSmith\'s own, even though the destination is exact', () => {
+    const url = 'https://click.linksynergy.com/link?id=someOtherPublisher&offerid=9999999.1&type=15&murl=' + encodeURIComponent(
+      'https://www.newegg.com/gigabyte-.../p/N82E16814932765?item=N82E16814932765',
+    );
+    expect(classifyTrackedNeweggUrl(url, 'N82E16814932765')).toEqual({
+      urlType: 'exact',
+      attributed: false,
+      evidence: 'tracked-link-foreign-affiliate-ids',
+    });
+  });
+
+  it('flags a foreign offerid even when the publisher id happens to be ours (both must check out)', () => {
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=9999999.1&type=15&murl=' + encodeURIComponent(
+      'https://www.newegg.com/gigabyte-.../p/N82E16814932765?item=N82E16814932765',
+    );
+    expect(classifyTrackedNeweggUrl(url, 'N82E16814932765')).toMatchObject({ attributed: false, evidence: 'tracked-link-foreign-affiliate-ids' });
+  });
+
   it('classifies a REDIRECT to a generic search page as fallback-search, never exact', () => {
-    const url = 'https://click.linksynergy.com/link?id=x&offerid=1.1&type=15&murl=' + encodeURIComponent('https://www.newegg.com/p/pl?d=graphics+card');
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.1&type=15&murl=' + encodeURIComponent('https://www.newegg.com/p/pl?d=graphics+card');
     expect(classifyTrackedNeweggUrl(url)).toEqual({ urlType: 'fallback-search', attributed: true, evidence: 'search-path-shape' });
   });
 
   it('classifies a MALFORMED tracked link (destination does not parse)', () => {
-    const url = 'https://click.linksynergy.com/link?id=x&offerid=1.1&type=15&murl=not-a-url';
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.1&type=15&murl=not-a-url';
     expect(classifyTrackedNeweggUrl(url)).toMatchObject({ urlType: 'malformed', evidence: 'tracked-link-destination-does-not-parse' });
   });
 
   it('classifies a tracked link with no destination param at all as ambiguous', () => {
-    const url = 'https://click.linksynergy.com/link?id=x&offerid=1.1&type=15';
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.1&type=15';
     expect(classifyTrackedNeweggUrl(url)).toMatchObject({ urlType: 'ambiguous', evidence: 'tracked-link-missing-destination-param' });
   });
 
   it('classifies a WRONG-DOMAIN destination inside an otherwise-valid tracking hop', () => {
-    const url = 'https://click.linksynergy.com/link?id=x&offerid=1.1&type=15&murl=' + encodeURIComponent('https://www.walmart.com/ip/rtx-5090/123');
+    const url = 'https://click.linksynergy.com/link?id=ptE95Z94djU&offerid=1786142.1&type=15&murl=' + encodeURIComponent('https://www.walmart.com/ip/rtx-5090/123');
     expect(classifyTrackedNeweggUrl(url)).toMatchObject({ urlType: 'wrong-domain', evidence: 'tracked-link-destination-wrong-host' });
   });
 

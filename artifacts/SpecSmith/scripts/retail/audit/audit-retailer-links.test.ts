@@ -68,14 +68,39 @@ describe('a full run against the real repository catalogs', () => {
     const coreSelectorRows = report.rows.filter((row: { source: string }) => row.source === 'core-selector');
     expect(coreSelectorRows.every((row: { urlType: string }) => row.urlType === 'fallback-search')).toBe(true);
     expect(coreSelectorRows.every((row: { status: string }) => row.status === 'fail')).toBe(true);
+    expect(coreSelectorRows.every((row: { identityEvidence: string }) => row.identityEvidence === 'shape-only')).toBe(true);
+    expect(coreSelectorRows.every((row: { priceSource: string }) => row.priceSource === 'editorial-estimate')).toBe(true);
 
     // A generic search link is never counted as exact coverage anywhere in the report.
     for (const row of report.rows) {
       if (row.urlType === 'fallback-search') expect(row.status).toBe('fail');
     }
+    // No row's identity was ever checked against a source independent of the
+    // link's own record — this repository has no such source today (see
+    // linkAuditReport.ts's LinkIdentityEvidence doc). A row claiming
+    // 'independent' would be an overclaim this test exists to catch.
+    expect(report.rows.every((row: { identityEvidence: string }) => row.identityEvidence !== 'independent')).toBe(true);
+
+    // A real, previously-hidden finding this run surfaces (not the audit's
+    // own bug): a meaningful share of real retail-parts-catalog listings have
+    // a Newegg path id and a query item id that genuinely disagree — see
+    // `product-path-and-query-id-disagree` in linkIntegrity.test.ts — so they
+    // fail closed as 'ambiguous' rather than being counted as exact. Assert
+    // only that SOME real rows land in every one of the three buckets this
+    // audit can actually produce on today's data, not exact counts that would
+    // make this test brittle against ordinary catalog refreshes.
+    const retailPartsRows = report.rows.filter((row: { source: string }) => row.source === 'retail-parts-catalog');
+    expect(retailPartsRows.length).toBe(500);
+    const byUrlType = new Map<string, number>();
+    for (const row of retailPartsRows) byUrlType.set(row.urlType, (byUrlType.get(row.urlType) ?? 0) + 1);
+    expect(byUrlType.get('exact')).toBeGreaterThan(0);
+    expect(byUrlType.get('ambiguous')).toBeGreaterThan(0);
+    expect((byUrlType.get('exact') ?? 0) + (byUrlType.get('ambiguous') ?? 0)).toBe(500);
 
     expect(logs.join('\n')).toContain('Retailer link integrity audit');
-    expect(exitCode).toBe(0);
+    // A real ambiguous row is present on today's data (see above), and this
+    // tool fails closed rather than silently passing: it must exit nonzero.
+    expect(exitCode).toBe(1);
   });
 
   it('refuses to write inside the repository', async () => {

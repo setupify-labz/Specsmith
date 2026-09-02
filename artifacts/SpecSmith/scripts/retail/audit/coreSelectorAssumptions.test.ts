@@ -69,3 +69,37 @@ describe('every core-selector page still calls the gated fallback-link builders 
     expect(source).not.toMatch(/https?:\/\/(www\.)?(amazon|newegg)\.com/);
   });
 });
+
+// PartCard.tsx and BuildSummary.tsx take a DIFFERENT shape than the pages
+// above: they accept an optional `affiliateUrl` prop and prefer it when
+// present (`affiliateUrl ?? getNeweggUrl(...)`) — the same conditional
+// `src/components/affiliateParts.test.ts` already locks down for PartCard.
+// That conditional is exactly why this audit's "always fallback-search"
+// finding depends on Builder.tsx never actually HAVING a real affiliateUrl to
+// pass — proven by the "canonical part catalogs never carry an affiliateUrl"
+// block above. If any of these three files changed, that finding — which the
+// PR for issue #85 explicitly claims covers PartCard.tsx and BuildSummary.tsx
+// — would go stale silently without this guard.
+describe('the core-selector journey (Builder.tsx -> PartCard/BuildSummary) still cannot supply a real affiliateUrl', () => {
+  it('PartCard.tsx keeps its affiliateUrl-first conditional for both retailers', () => {
+    const source = fs.readFileSync(path.join(componentsDir, 'PartCard.tsx'), 'utf-8');
+    expect(source).toContain('!affiliateUrl &&');
+    expect(source).toContain('href={affiliateUrl ?? getNeweggUrl(query)}');
+  });
+
+  it('BuildSummary.tsx keeps its affiliateUrl-first conditional for both retailers', () => {
+    const source = fs.readFileSync(path.join(componentsDir, 'BuildSummary.tsx'), 'utf-8');
+    expect(source).toContain('!p.affiliateUrl &&');
+    expect(source).toMatch(/href=\{p\.affiliateUrl \?\? getNeweggUrl\(/);
+  });
+
+  it("Builder.tsx reads affiliateUrl straight off the canonical part object, with no other source merged in", () => {
+    const source = fs.readFileSync(path.join(pagesDir, 'Builder.tsx'), 'utf-8');
+    // Every selected-part entry passes `affiliateUrl: selectedX.affiliateUrl`
+    // — a field the canonical JSON never has (see above) — and nothing in
+    // this file reads `retail-parts.json`/`AffiliatePart` data to backfill one.
+    expect(source).toMatch(/affiliateUrl:\s*selected\w+\.affiliateUrl/);
+    expect(source).not.toContain('retail-parts.json');
+    expect(source).not.toMatch(/AFFILIATE_PART_CATALOG_URL/);
+  });
+});

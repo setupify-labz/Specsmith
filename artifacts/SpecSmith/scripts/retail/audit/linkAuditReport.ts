@@ -11,6 +11,18 @@
 // SpecSmith's own maintained catalog name ("RTX 5090"), never merchant text.
 // Nothing else here is free text: `evidence` is the closed vocabulary from
 // `linkIntegrity.ts`, and no URL, token or credential is ever stored on a row.
+//
+// WHAT "pass" DOES AND DOES NOT MEAN — READ THIS BEFORE TRUSTING A COUNT
+// ------------------------------------------------------------------------
+// `status: 'pass'` means the URL's shape names one specific product page
+// (`urlType: 'exact'`) AND carries SpecSmith's own known attribution. It does
+// NOT mean an independent source confirmed the product behind that URL is
+// the one SpecSmith intended — see `identityEvidence` below, and the longer
+// explanation in `linkIntegrity.ts`'s module doc. A "500/500 pass" count is a
+// real, useful signal (every one of those links is well-formed, points at a
+// specific product, and is properly attributed) — it is not a claim that 500
+// independent product-identity checks were performed, because none exist in
+// this repository today.
 
 import type { RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { ALL_LINK_URL_TYPES, type LinkEvidence, type LinkUrlType } from './linkIntegrity';
@@ -18,6 +30,33 @@ import { ALL_LINK_URL_TYPES, type LinkEvidence, type LinkUrlType } from './linkI
 export type LinkAuditSource = 'retail-parts-catalog' | 'core-selector';
 export type LinkAuditRetailer = 'Amazon' | 'Newegg';
 export type LinkAuditStatus = 'pass' | 'fail';
+
+/**
+ * What evidence, if any, backs the claim that a link's declared product
+ * identity is the one SpecSmith intended.
+ *
+ *   - 'self-consistent': the link's own declared id agrees with an id
+ *     reconstructed from the catalog's own record — but both were derived
+ *     from the SAME upstream listing, so this catches a record that
+ *     contradicts itself (a swapped or corrupted link), not a record that is
+ *     consistently wrong about which product it is.
+ *   - 'shape-only': there was no expected identifier to compare against at
+ *     all (e.g. no per-part affiliate link exists to check — the
+ *     core-selector rows today). The urlType still reflects the URL's shape,
+ *     with nothing behind it.
+ *   - 'independent': reserved for a future check against a source that does
+ *     not share provenance with the link itself (e.g. a stored manufacturer
+ *     part number cross-checked separately). Not produced anywhere today —
+ *     see the PR discussion on issue #85 for why.
+ */
+export type LinkIdentityEvidence = 'self-consistent' | 'shape-only' | 'independent';
+
+/** Where the price shown beside this link comes from — never the price value itself, which goes stale immediately. */
+export type LinkPriceSource =
+  /** A retailer feed's own listing price, stamped with when it was read (see `fetchedAt` on `AffiliatePart`). */
+  | 'retailer-feed'
+  /** SpecSmith's own hand-maintained planning estimate (`price_usd` in `src/data/*.json`) — not a live retailer price. */
+  | 'editorial-estimate';
 
 export interface LinkAuditRow {
   partId: string;
@@ -28,11 +67,13 @@ export interface LinkAuditRow {
   urlType: LinkUrlType;
   attributed: boolean;
   evidence: LinkEvidence;
-  /** 'pass' only for an exact, attributed link. Every other outcome fails closed. */
+  identityEvidence: LinkIdentityEvidence;
+  priceSource: LinkPriceSource;
+  /** 'pass' only for an exact, attributed link — see the module doc for exactly what that does and does not prove. */
   status: LinkAuditStatus;
 }
 
-/** A row is 'pass' only when the destination is exact AND the network's own attribution is present. */
+/** A row is 'pass' only when the destination is exact AND SpecSmith's own attribution is present. */
 export const statusFor = (urlType: LinkUrlType, attributed: boolean): LinkAuditStatus =>
   urlType === 'exact' && attributed ? 'pass' : 'fail';
 
@@ -49,6 +90,8 @@ export interface LinkAuditSummary {
   bySource: Record<LinkAuditSource, { total: number; pass: number }>;
   byRetailer: Record<LinkAuditRetailer, { total: number; pass: number }>;
   byUrlType: Record<LinkUrlType, number>;
+  byIdentityEvidence: Record<LinkIdentityEvidence, number>;
+  byPriceSource: Record<LinkPriceSource, number>;
 }
 
 /** Counts only — safe for a CI log. No part id, name, URL or evidence string. */
@@ -62,12 +105,16 @@ export function summarizeLinkAudit(report: LinkAuditReport): LinkAuditSummary {
     Amazon: { total: 0, pass: 0 },
     Newegg: { total: 0, pass: 0 },
   };
+  const byIdentityEvidence: LinkAuditSummary['byIdentityEvidence'] = { 'self-consistent': 0, 'shape-only': 0, independent: 0 };
+  const byPriceSource: LinkAuditSummary['byPriceSource'] = { 'retailer-feed': 0, 'editorial-estimate': 0 };
 
   let passCount = 0;
   for (const row of report.rows) {
     byUrlType[row.urlType] += 1;
     bySource[row.source].total += 1;
     byRetailer[row.retailer].total += 1;
+    byIdentityEvidence[row.identityEvidence] += 1;
+    byPriceSource[row.priceSource] += 1;
     if (row.status === 'pass') {
       passCount += 1;
       bySource[row.source].pass += 1;
@@ -83,6 +130,8 @@ export function summarizeLinkAudit(report: LinkAuditReport): LinkAuditSummary {
     bySource,
     byRetailer,
     byUrlType,
+    byIdentityEvidence,
+    byPriceSource,
   };
 }
 
@@ -97,7 +146,7 @@ export function renderLinkAuditSummary(summary: LinkAuditSummary): string {
   lines.push('='.repeat(60));
   lines.push(`Generated  ${summary.generatedAt}`);
   lines.push(`Rows       ${num(summary.totalRows, 6)}`);
-  lines.push(`Pass       ${num(summary.passCount, 6)}   ${pct(summary.passCount, summary.totalRows)} (exact AND attributed)`);
+  lines.push(`Pass       ${num(summary.passCount, 6)}   ${pct(summary.passCount, summary.totalRows)} (exact AND attributed — see "pass" caveat below)`);
   lines.push(`Fail       ${num(summary.failCount, 6)}   ${pct(summary.failCount, summary.totalRows)}`);
   lines.push('');
 
@@ -117,6 +166,24 @@ export function renderLinkAuditSummary(summary: LinkAuditSummary): string {
   for (const type of ALL_LINK_URL_TYPES) {
     lines.push(`  ${pad(type, 24)} ${num(summary.byUrlType[type], 6)}`);
   }
+  lines.push('');
+
+  lines.push('By identity evidence (what backs an "exact" classification — see the "pass" caveat below)');
+  for (const [evidence, count] of Object.entries(summary.byIdentityEvidence)) {
+    lines.push(`  ${pad(evidence, 24)} ${num(count, 6)}`);
+  }
+  lines.push('');
+
+  lines.push('By displayed-price source');
+  for (const [source, count] of Object.entries(summary.byPriceSource)) {
+    lines.push(`  ${pad(source, 24)} ${num(count, 6)}`);
+  }
+  lines.push('');
+
+  lines.push('"pass" means: the URL is shaped as one specific product page, and carries');
+  lines.push('SpecSmith\'s own known attribution. It does NOT mean an independently sourced');
+  lines.push('identifier confirmed the product is the one intended — "self-consistent" rows');
+  lines.push('were only checked against the catalog\'s own record, not a second source.');
 
   return lines.join('\n');
 }

@@ -43,9 +43,19 @@ describe('expectedItemIdFromPartId', () => {
 });
 
 describe('auditCatalogPartLink', () => {
-  it('marks a real, matching, attributed tracked link as pass', () => {
+  it('marks a real, matching, attributed tracked link as pass, with honest identity/price evidence', () => {
     const row = auditCatalogPartLink(part({}));
-    expect(row).toMatchObject({ retailer: 'Newegg', source: 'retail-parts-catalog', urlType: 'exact', attributed: true, status: 'pass' });
+    expect(row).toMatchObject({
+      retailer: 'Newegg',
+      source: 'retail-parts-catalog',
+      urlType: 'exact',
+      attributed: true,
+      status: 'pass',
+      // Self-consistent with the catalog's own id, NOT independently
+      // verified — see the caveat in linkIntegrity.ts's module doc.
+      identityEvidence: 'self-consistent',
+      priceSource: 'retailer-feed',
+    });
   });
 
   it('fails closed on a WRONG VARIANT: tracked link resolves to a different SKU than the part id names', () => {
@@ -68,6 +78,16 @@ describe('auditCatalogPartLink', () => {
     });
     const row = auditCatalogPartLink(unattributed);
     expect(row).toMatchObject({ urlType: 'exact', attributed: false, status: 'fail' });
+  });
+
+  it('fails closed on FOREIGN ATTRIBUTION (a nonempty but non-SpecSmith affiliate id) even though the destination is exact', () => {
+    const foreign = part({
+      trackedAffiliateUrl:
+        'https://click.linksynergy.com/link?id=someOtherPublisher&offerid=9999999.1&type=15&murl=' +
+        encodeURIComponent('https://www.newegg.com/gigabyte/p/N82E16814932765?item=N82E16814932765'),
+    });
+    const row = auditCatalogPartLink(foreign);
+    expect(row).toMatchObject({ urlType: 'exact', attributed: false, status: 'fail', evidence: 'tracked-link-foreign-affiliate-ids' });
   });
 
   it('fails closed on a MALFORMED tracked link', () => {

@@ -12,6 +12,8 @@ function row(overrides: Partial<LinkAuditRow>): LinkAuditRow {
     urlType: 'fallback-search',
     attributed: false,
     evidence: 'search-path-shape',
+    identityEvidence: 'shape-only',
+    priceSource: 'editorial-estimate',
     status: 'fail',
     ...overrides,
   };
