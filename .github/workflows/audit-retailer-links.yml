@@ -11,12 +11,17 @@
 # file, the same way auditSafety.test.ts already does for the credentialed
 # accepted-offers audit.
 #
-# WHY workflow_dispatch ONLY
-# ---------------------------
-# Matches the existing manual-evidence-gate pattern (audit-accepted-offers.yml)
-# rather than adding a new pull_request trigger to the repository: a rerun is
-# one click away for whoever is reviewing, and the roster of what starts
-# automatically on a fork PR stays exactly what it was.
+# WHY push-on-one-branch, NOT a generic pull_request trigger
+# -------------------------------------------------------------
+# GitHub only lets workflow_dispatch be triggered via the API for a workflow
+# file already present on the repository's DEFAULT branch — this file cannot
+# be, until this PR merges. `validate-retail-snapshot.yml` solves the same
+# "evidence for one specific implementation branch, before merge" problem the
+# same way: `push` scoped to the one branch by name, not a generic
+# `pull_request` trigger that would start running on every fork PR. That
+# pattern is reused here rather than introduced fresh. `workflow_dispatch`
+# stays too, for a rerun once this lands on main and the branch trigger no
+# longer applies.
 #
 # WHAT THE UPLOADED ARTIFACT CONTAINS
 # -------------------------------------
@@ -30,6 +35,16 @@
 name: Audit retailer links
 
 on:
+  push:
+    branches:
+      - claude/intelligent-bohr-gm9u8f
+    paths:
+      - '.github/workflows/audit-retailer-links.yml'
+      - 'artifacts/SpecSmith/scripts/retail/audit/**'
+      - 'artifacts/SpecSmith/public/data/retail-parts.json'
+      - 'artifacts/SpecSmith/src/data/**'
+      - 'artifacts/SpecSmith/src/lib/fps.ts'
+      - 'artifacts/SpecSmith/src/lib/retail/**'
   workflow_dispatch:
 
 permissions:
