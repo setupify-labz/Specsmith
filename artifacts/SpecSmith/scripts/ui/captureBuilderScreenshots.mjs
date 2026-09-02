@@ -196,7 +196,33 @@ async function settleImages(page, label = 'unlabelled') {
     .catch(() => {
       settled = false;
     });
-  if (!settled) settleTimeouts.push(label);
+
+  if (!settled) {
+    // WHY it gave up, not just that it did.
+    //
+    // Two guesses at this were right and one was wrong, and the wrong one cost
+    // a full run to disprove because the failure only ever said "timed out".
+    // The page is asked directly what state it was in, so the next diagnosis
+    // is read rather than inferred.
+    const why = await page
+      .evaluate((max) => {
+        const grid = document.querySelector('[data-testid="product-grid"]');
+        const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')];
+        const images = cards.slice(0, max).flatMap((card) => [...card.querySelectorAll('img')]);
+        return {
+          gridPresent: Boolean(grid),
+          emptyState: Boolean(document.querySelector('[data-testid="catalog-empty"]')),
+          cards: cards.length,
+          measuredImages: images.length,
+          incomplete: images
+            .filter((img) => !(img.complete && img.naturalWidth > 1))
+            .slice(0, 5)
+            .map((img) => ({ complete: img.complete, naturalWidth: img.naturalWidth, src: img.currentSrc || img.src })),
+        };
+      }, PRODUCTS_MEASURED)
+      .catch(() => null);
+    settleTimeouts.push({ label, ...(why ?? { unreadable: true }) });
+  }
   await page.waitForTimeout(500);
   return settled;
 }

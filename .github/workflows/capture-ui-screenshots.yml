@@ -214,7 +214,12 @@ jobs:
             for (const [name, n] of Object.entries(report.whiteBuild ?? {})) {
               lines.push(`| ${name} | ${n} |`);
             }
-            lines.push("", `Settle timeouts: ${(report.settleTimeouts ?? []).length === 0 ? "none" : report.settleTimeouts.join(", ")}`);
+            lines.push("", "| settle timeout | grid | empty state | cards | measured imgs | first incomplete |", "| --- | --- | --- | --- | --- | --- |");
+            for (const t of report.settleTimeouts ?? []) {
+              const first = (t.incomplete ?? [])[0];
+              lines.push(`| ${t.label ?? t} | ${t.gridPresent} | ${t.emptyState} | ${t.cards} | ${t.measuredImages} | ${first ? `complete=${first.complete} nw=${first.naturalWidth} ${first.src}` : "none"} |`);
+            }
+            if ((report.settleTimeouts ?? []).length === 0) lines.push("| none | | | | | |");
             lines.push("", `Worst category image rate: ${(worst * 100).toFixed(1)}%`);
             const text = lines.join("\n") + "\n";
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, text);
@@ -262,7 +267,7 @@ jobs:
             // the image rate can never again be reported against a page the
             // harness never finished waiting for.
             if ((report.settleTimeouts ?? []).length > 0) {
-              failures.push("image settle timed out for: " + report.settleTimeouts.join(", "));
+              failures.push("image settle timed out for: " + report.settleTimeouts.map((t) => t.label ?? t).join(", "));
             }
 
             for (const [width, h] of Object.entries(report.header ?? {})) {
