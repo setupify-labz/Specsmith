@@ -1,0 +1,130 @@
+# Manual, credential-free evidence gate for the retailer-link integrity audit
+# (scripts/retail/audit/audit-retailer-links.ts, issue #85 / PR #86).
+#
+# NOTHING HERE TOUCHES A CREDENTIAL
+# ----------------------------------
+# No `secrets.` reference anywhere in this file. The audit is a pure function
+# of files already committed to the repository (public/data/retail-parts.json,
+# src/data/*.json) and the app's own source — it makes no network call and
+# needs no API key. That is not a promise in a comment: it is asserted
+# structurally by auditRetailerLinksWorkflowSafety.test.ts, which reads this
+# file, the same way auditSafety.test.ts already does for the credentialed
+# accepted-offers audit.
+#
+# WHY workflow_dispatch ONLY
+# ---------------------------
+# Matches the existing manual-evidence-gate pattern (audit-accepted-offers.yml)
+# rather than adding a new pull_request trigger to the repository: a rerun is
+# one click away for whoever is reviewing, and the roster of what starts
+# automatically on a fork PR stays exactly what it was.
+#
+# WHAT THE UPLOADED ARTIFACT CONTAINS
+# -------------------------------------
+# The commit under test, install/typecheck/test/build logs, the audit run's
+# own log (counts only — see linkAuditReport.ts), its real exit code, and the
+# full row-level JSON report. That JSON repeats retail-parts-catalog rows'
+# merchant-controlled product titles — already public, already committed
+# verbatim in public/data/retail-parts.json — so it gets the same short
+# retention as the other audit's one-day artifact, not a longer-lived one.
+
+name: Audit retailer links
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retailer-link-audit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Typecheck, test, build and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the exact selected commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Report the commit under test
+        run: |
+          set -euo pipefail
+          echo "Auditing commit ${GITHUB_SHA}"
+          mkdir -p "${RUNNER_TEMP}/audit"
+          {
+            echo "commit: ${GITHUB_SHA}"
+            git log -1 --pretty='format:%s%n'
+          } > "${RUNNER_TEMP}/audit/commit.txt"
+          echo "commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/audit/install.log"
+
+      - name: Typecheck
+        run: pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/audit/typecheck.log"
+
+      - name: Run the retailer-link audit test suite (targeted)
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run scripts/retail/audit 2>&1 | tee "${RUNNER_TEMP}/audit/test-targeted.log"
+
+      - name: Run the full test suite
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/audit/test-full.log"
+
+      - name: Build the production application
+        working-directory: artifacts/SpecSmith
+        run: pnpm run build 2>&1 | tee "${RUNNER_TEMP}/audit/build.log"
+
+      # A nonzero exit here is EXPECTED today — the audit fails closed on any
+      # row it cannot classify with confidence, and it currently finds 371
+      # such rows in the real retail-parts catalog (see the PR discussion).
+      # That is a finding to report, not a workflow failure, so the exit code
+      # is captured rather than allowed to fail the step.
+      - name: Run the retailer-link audit
+        working-directory: artifacts/SpecSmith
+        run: |
+          set +e
+          pnpm exec tsx scripts/retail/audit/audit-retailer-links.ts \
+            --out "${RUNNER_TEMP}/audit/retailer-link-audit.json" \
+            > "${RUNNER_TEMP}/audit/audit-run.log" 2>&1
+          code=$?
+          set -e
+          echo "exit code: ${code}" | tee "${RUNNER_TEMP}/audit/audit-exit-code.txt"
+          cat "${RUNNER_TEMP}/audit/audit-run.log"
+
+      - name: Confirm the report was written
+        run: test -s "${RUNNER_TEMP}/audit/retailer-link-audit.json"
+
+      - name: Upload the evidence for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: retailer-link-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/audit
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "The working tree was modified by this workflow:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "Working tree clean."
