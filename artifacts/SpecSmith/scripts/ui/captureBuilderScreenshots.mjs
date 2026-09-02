@@ -136,21 +136,36 @@ async function revealLazyImages(page) {
 }
 
 async function settleImages(page, label = 'unlabelled') {
-  // The grid has to exist before there is anything to scroll past.
-  await page
-    .waitForFunction(() => document.querySelectorAll('[data-testid="retail-product-card"]').length > 0, undefined, {
-      timeout: 30_000,
-    })
-    .catch(() => {});
+  // WHEN THERE IS NOTHING TO WAIT FOR.
+  //
+  // An earlier version treated "no cards" as "keep waiting", which is right
+  // just after a category change — the old grid is gone and the new one has
+  // not mounted — and wrong everywhere else. It hung the full timeout on the
+  // White build's keyboard category, which has no white listings and correctly
+  // shows the empty state, and on every view that has no catalogue at all.
+  // Three cases, distinguished rather than lumped together:
+  //
+  //   no product grid on the page  -> nothing to settle
+  //   grid showing the empty state -> settled, and legitimately empty
+  //   grid with cards              -> wait for every image to decode
+  const readyPredicate = () => {
+    const grid = document.querySelector('[data-testid="product-grid"]');
+    if (!grid) return true;
+    if (document.querySelector('[data-testid="catalog-empty"]')) return true;
+    return document.querySelectorAll('[data-testid="retail-product-card"]').length > 0;
+  };
+
+  // Let the grid mount before scrolling past it.
+  await page.waitForFunction(readyPredicate, undefined, { timeout: 30_000 }).catch(() => {});
   await revealLazyImages(page);
 
   let settled = true;
   await page
     .waitForFunction(
       () => {
-        // Cards first: right after a category change the old grid is gone and
-        // the new one has not mounted, and "no images in flight" would be
-        // trivially true of an empty page.
+        const grid = document.querySelector('[data-testid="product-grid"]');
+        if (!grid) return true;
+        if (document.querySelector('[data-testid="catalog-empty"]')) return true;
         const cards = document.querySelectorAll('[data-testid="retail-product-card"]');
         if (cards.length === 0) return false;
         // A card whose image failed swaps the <img> for the placeholder, so an
@@ -163,7 +178,7 @@ async function settleImages(page, label = 'unlabelled') {
         // also reports complete with naturalWidth 0, so it would hang here —
         // except that the card swaps a failed image for the placeholder and
         // removes it from the DOM, which is why this can afford to be strict.
-        const images = [...document.querySelectorAll('[data-testid="product-grid"] img')];
+        const images = [...grid.querySelectorAll('img')];
         return images.every((img) => img.complete && img.naturalWidth > 1);
       },
       undefined,
