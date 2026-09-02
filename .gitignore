@@ -61,3 +61,8 @@ Thumbs.db
 # per corpus, rewritten wholesale on every capture; the observation records
 # keep a content hash instead.
 .frametimes/
+
+# Claude Code agent worktrees: transient per-session working copies used by
+# background subagents (isolation: worktree). Local harness state, not
+# repository content.
+.claude/worktrees/
