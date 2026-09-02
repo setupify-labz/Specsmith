@@ -45,12 +45,13 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly five workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly six workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
     expect(all).toEqual([
       'audit-accepted-offers.yml',
+      'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
@@ -87,6 +88,16 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(other).not.toContain('secrets.');
+
+    // The retailer-link audit is a THIRD credential-free tool, alongside the
+    // snapshot validation above — see auditRetailerLinksWorkflowSafety.test.ts
+    // for its full shape.
+    const linkAudit = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'audit-retailer-links.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(linkAudit).not.toContain('secrets.');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can
