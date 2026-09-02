@@ -195,7 +195,6 @@ export default function BuildSummary({
                                 partName={p.name}
                                 link={amazonLink}
                                 variant="text"
-                                sponsored
                                 accentColor="var(--ff-accent-text)"
                               />
                             )}
@@ -204,7 +203,6 @@ export default function BuildSummary({
                               partName={p.name}
                               link={neweggLink}
                               variant="text"
-                              sponsored={neweggLink.state === 'exact'}
                               accentColor="var(--ff-newegg)"
                             />
                           </div>

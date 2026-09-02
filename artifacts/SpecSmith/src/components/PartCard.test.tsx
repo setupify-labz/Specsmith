@@ -40,8 +40,8 @@ describe('PartCard — no tracked affiliate URL (every canonical GPU/CPU/compone
   });
 });
 
-describe('PartCard — a real tracked Newegg URL is supplied', () => {
-  const trackedUrl = 'https://www.newegg.com/p/N82E16819113476?item=N82E16819113476&aid=example';
+describe('PartCard — a real, structurally exact Newegg product URL is supplied', () => {
+  const trackedUrl = 'https://www.newegg.com/p/N82E16819113476';
 
   it('renders only the exact Newegg link and hides the Amazon search CTA', () => {
     render(<PartCard {...baseProps} affiliateUrl={trackedUrl} />);
@@ -51,5 +51,29 @@ describe('PartCard — a real tracked Newegg URL is supplied', () => {
     expect(links[0].getAttribute('data-link-state')).toBe('exact');
     expect(links[0].textContent).toContain('View at Newegg');
     expect(screen.queryByRole('link', { name: /Amazon/i })).toBeNull();
+  });
+
+  it('does not claim sponsorship it cannot verify for an untracked direct URL', () => {
+    render(<PartCard {...baseProps} affiliateUrl={trackedUrl} />);
+    const link = screen.getAllByRole('link')[0];
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(link.getAttribute('aria-label')).not.toMatch(/affiliate link/i);
+  });
+});
+
+describe('PartCard — an untrustworthy affiliateUrl override never becomes exact', () => {
+  it.each([
+    ['a search-results URL', 'https://www.newegg.com/p/pl?d=rtx+4090'],
+    ['a wrong-domain URL', 'https://example.com/not-newegg'],
+    ['a malformed URL string', 'not a url at all'],
+    ['a path/query id disagreement', 'https://www.newegg.com/p/N82E16819113476?item=N82E16814932765'],
+  ])('falls back to search for %s', (_label, badUrl) => {
+    render(<PartCard {...baseProps} affiliateUrl={badUrl} />);
+    const links = screen.getAllByRole('link');
+    // Both retailers render, exactly as when no override is supplied at all.
+    expect(links).toHaveLength(2);
+    for (const a of links) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+    }
   });
 });

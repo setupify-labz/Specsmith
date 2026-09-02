@@ -70,14 +70,26 @@ describe('BuildSummary — parts with no tracked affiliate URL', () => {
   });
 });
 
-describe('BuildSummary — a part with a real tracked Newegg URL', () => {
-  const trackedUrl = 'https://www.newegg.com/p/N82E16819113476?item=N82E16819113476';
+describe('BuildSummary — a part with a real, structurally exact Newegg product URL', () => {
+  const trackedUrl = 'https://www.newegg.com/p/N82E16819113476';
 
-  it('renders only the exact Newegg link for that part', () => {
+  it('renders only the exact Newegg link for that part, without claiming unverified sponsorship', () => {
     renderSummary({ parts: [{ label: 'CPU', name: 'AMD Ryzen 5 5600', price: 129, affiliateUrl: trackedUrl }] });
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute('href')).toBe(trackedUrl);
     expect(links[0].getAttribute('data-link-state')).toBe('exact');
+    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer');
+  });
+});
+
+describe('BuildSummary — an untrustworthy affiliateUrl override never becomes exact', () => {
+  it('falls back to search for a wrong-domain URL, exactly as when no override is supplied', () => {
+    renderSummary({ parts: [{ label: 'CPU', name: 'AMD Ryzen 5 5600', price: 129, affiliateUrl: 'https://example.com/not-newegg' }] });
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(2);
+    for (const a of links) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+    }
   });
 });

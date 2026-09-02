@@ -176,7 +176,6 @@ export default function PartCard({
                 partName={name}
                 link={amazonLink}
                 variant="pill"
-                sponsored
                 accentColor="var(--ff-accent-text)"
                 pillBackground="rgba(108,99,255,0.12)"
                 pillBorder="1px solid rgba(108,99,255,0.3)"
@@ -187,7 +186,6 @@ export default function PartCard({
               partName={name}
               link={neweggLink}
               variant="pill"
-              sponsored={neweggLink.state === 'exact'}
               accentColor="var(--ff-newegg)"
               pillBackground="rgba(255,158,27,0.10)"
               pillBorder="1px solid rgba(255,158,27,0.3)"
