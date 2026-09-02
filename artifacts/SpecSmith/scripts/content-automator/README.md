@@ -2,6 +2,49 @@
 
 This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, multi-platform audio-trend discovery, rendering orchestration, and automated quality-review contracts. The renderer can execute end-to-end in dry-run mode now; real external media providers are still plugged in later through adapters. It does **not** post videos yet.
 
+## Run one real end-to-end render right now (no paid credentials required)
+
+```bash
+# 1. ffmpeg/ffprobe and a Chromium build must be on PATH (or pointed to via env,
+#    see below). Playwright's own `playwright install chromium` works in a
+#    normal CI/dev box; see the note at the end of this section for sandboxes
+#    where that download host is blocked.
+pnpm --dir artifacts/SpecSmith exec playwright install --with-deps chromium
+
+# 2. Build once and serve it locally — the deterministic UI-render adapter
+#    captures real product UI from a running SpecSmith instance.
+pnpm --dir artifacts/SpecSmith build
+npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
+
+# 3. Run the full offline pipeline: real idea -> real content package/script
+#    /storyboard/production-plan contract -> one real 1080x1920 MP4 (real
+#    Playwright capture of the live Compare page, offline espeak-ng
+#    narration, real burned-in .ass captions, real ffmpeg compose) -> a
+#    quality-review verdict -> a rights-approved asset bundle -> a tracked,
+#    draft-only Metricool-ready publishing request -> a durable ledger that
+#    fails closed on a duplicate publish. Nothing is posted anywhere.
+SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
+  pnpm --dir artifacts/SpecSmith exec tsx scripts/content-automator/endToEndOfflinePipeline.ts
+```
+
+Just the render, without the rights/publishing wiring:
+
+```bash
+SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
+  pnpm --dir artifacts/SpecSmith content:render:mp4-smoke:offline
+```
+
+**Why "offline"**: this pipeline's real narration/video providers (`elevenLabsTts.ts`, `elevenLabsVideo.ts`, `geminiVeoVideo.ts`) all need a paid API key, and posting/paid generation is deliberately out of scope without explicit approval. `localFixtureAdapters.ts` supplies three offline stand-ins instead — local `espeak-ng` narration, an abstract ffmpeg placeholder card for `image-generation`, and true digital silence for `music-sfx` — each clearly labeled `isFixture: true` / `isPaidProvider: false` in its own artifact metadata so nothing downstream can mistake it for a production render. Swap in the real adapters (see the sections below) once ElevenLabs/Gemini Veo credentials and approval to spend them are available; nothing else in the pipeline has to change to do that, because the fixtures implement the exact same `RenderAdapter` contract.
+
+**Remaining external steps before this can post anything for real:**
+- ElevenLabs (or another approved TTS/voice provider) credentials + explicit approval to spend them, to replace the offline narration fixture with production-quality voice.
+- A real video-generation provider (Gemini Veo is wired in `geminiVeoVideo.ts`) if a beat's hook needs generated motion rather than a real SpecSmith UI capture or the abstract placeholder card.
+- TikTok/YouTube/Instagram trend-source credentials (see the "Multi-platform audio trend sources" section below) if trending-audio selection is wanted; a missing source safely falls back to original/licensed SpecSmith audio.
+- A real Metricool account/connection and somewhere to actually host a finished master at an `https://` URL Metricool can fetch — `buildMetricoolPublishingRequest` only ever builds a `draft: true` request object locally; nothing in this repository calls Metricool's API.
+- A human decision on whether/how to wire any of this into CI. The stack this was ported from included three GitHub Actions workflows referencing those paid-provider secrets; they were deliberately **not** ported here because two of them auto-trigger on `pull_request: branches: [main]` and this repo has a dedicated tripwire test (`scripts/retail/coverage/workflowSafety.test.ts`) that locks the exact roster of workflow files specifically to force a human to review any new credential-bearing one before it's added.
+
+**Sandbox note**: in a network-sandboxed environment where `cdn.playwright.dev` (Playwright's browser-download CDN) is blocked, download a matching Chrome for Testing build directly (e.g. from `https://storage.googleapis.com/chrome-for-testing-public/<version>/linux64/chrome-linux64.zip` — find `<version>` in `node_modules/playwright-core/browsers.json`) and point `SPECSMITH_RENDER_CHROMIUM` at its `chrome` executable. Running as root needs `--no-sandbox`; wrap the binary in a one-line script that adds it and point `SPECSMITH_RENDER_CHROMIUM` at the wrapper instead.
+
 ## Product-first rule
 
 The content engine starts with **what SpecSmith helps a user do**, not with a random PC-video idea.
