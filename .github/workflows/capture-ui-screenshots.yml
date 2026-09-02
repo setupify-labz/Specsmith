@@ -267,7 +267,16 @@ jobs:
             // the image rate can never again be reported against a page the
             // harness never finished waiting for.
             if ((report.settleTimeouts ?? []).length > 0) {
-              failures.push("image settle timed out for: " + report.settleTimeouts.map((t) => t.label ?? t).join(", "));
+              // The detail goes in the FAILURE line, not only the step summary.
+              // A summary table is unreadable from the job log, so two runs
+              // were spent re-reading "timed out" with no state attached.
+              for (const t of report.settleTimeouts) {
+                const first = (t.incomplete ?? [])[0];
+                failures.push(
+                  `settle timed out [${t.label ?? t}] grid=${t.gridPresent} empty=${t.emptyState} cards=${t.cards} imgs=${t.measuredImages}` +
+                    (first ? ` first-incomplete: complete=${first.complete} nw=${first.naturalWidth} ${first.src}` : " incomplete: none"),
+                );
+              }
             }
 
             for (const [width, h] of Object.entries(report.header ?? {})) {
