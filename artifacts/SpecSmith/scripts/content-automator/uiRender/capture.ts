@@ -70,6 +70,17 @@ export async function launchBrowser(viewport: CaptureViewport): Promise<BrowserS
     // by construction, but this also keeps scrollbars out of the frame.
     hasTouch: false,
   });
+  // Runs before any page script, so KrystalViewAnalytics.tsx sees a stored
+  // decision on its very first read and never mounts the "Help improve
+  // SpecSmith" consent banner. Without this the banner overlaps whatever is
+  // captured — including, on Compare, the bottom third where captions are
+  // burned in — which is a real defect this file exists to prevent, not a
+  // cosmetic one. Declined rather than accepted: this is an automated render
+  // against a real deployment, not a visit from an actual person consenting
+  // to session analytics.
+  await context.addInitScript(`
+    try { window.localStorage.setItem('specsmith-krystalview-consent', 'declined'); } catch (e) {}
+  `);
   return {
     browser,
     context,
