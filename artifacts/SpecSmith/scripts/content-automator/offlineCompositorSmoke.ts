@@ -78,21 +78,24 @@ export function buildOfflineSmokePlan(): { pkg: ProductionPlanPackage; plan: Pla
     capability: "caption-render",
     sourceBeat: null,
     purpose: "Render deterministic short-form captions.",
-    inputRequirements: ["RTX 4080 SUPER VS RTX 4080", "SAME CPU. SAME SETTINGS.", "ESTIMATED FPS. SEE THE FULL RESULT."],
+    inputRequirements: ["ESTIMATED FPS. SEE THE FULL RESULT.", "RTX 4080 SUPER VS RTX 4080", "SAME CPU. SAME SETTINGS."],
     outputRequirements: ["Keep captions inside short-form safe areas."],
   };
   (captions as ProductionTask & { captionRenderState?: unknown }).captionRenderState = {
     durationSeconds: OFFLINE_SMOKE_DURATION_SECONDS,
     cues: [
-      { startSecond: 0, endSecond: 2.5, text: "RTX 4080 SUPER VS RTX 4080" },
-      { startSecond: 2.5, endSecond: 5.5, text: "SAME CPU. SAME SETTINGS." },
       // Compare.tsx's on-screen "Avg FPS" numbers are SpecSmith's own
       // estimateFpsForBuild() estimate, not a measured benchmark, and the
-      // live page shows no on-screen qualifier saying so. This pipeline's own
-      // data-integrity rule (README.md, qualityReviewer.ts) requires
-      // estimated FPS to stay explicitly labeled — so the caption carries the
-      // label the source page's own UI doesn't.
-      { startSecond: 5.5, endSecond: 8, text: "ESTIMATED FPS. SEE THE FULL RESULT." },
+      // live page shows no on-screen qualifier saying so — and that number is
+      // visible from the very first rendered frame (the opening shot is
+      // already a static capture of the full Compare page). This pipeline's
+      // own data-integrity rule (README.md, qualityReviewer.ts) requires
+      // estimated FPS to stay explicitly labeled, so this qualifier is the
+      // FIRST cue, on screen from t=0 — not a later cue reached after several
+      // seconds of unlabeled "Avg FPS" numbers.
+      { startSecond: 0, endSecond: 2.5, text: "ESTIMATED FPS. SEE THE FULL RESULT." },
+      { startSecond: 2.5, endSecond: 5.5, text: "RTX 4080 SUPER VS RTX 4080" },
+      { startSecond: 5.5, endSecond: 8, text: "SAME CPU. SAME SETTINGS." },
     ],
   };
 
