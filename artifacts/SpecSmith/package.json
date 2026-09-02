@@ -11,7 +11,8 @@
     "test": "vitest run",
     "validate:benchmarks": "vitest run src/lib/benchmarks/validate.test.ts",
     "collect:measured": "tsx scripts/measured/collect.ts",
-    "test:cancel-harness": "tsx scripts/measured/__fixtures__/cancelHarness.ts"
+    "test:cancel-harness": "tsx scripts/measured/__fixtures__/cancelHarness.ts",
+    "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts"
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
