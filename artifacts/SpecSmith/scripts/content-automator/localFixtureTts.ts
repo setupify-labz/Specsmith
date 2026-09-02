@@ -29,9 +29,11 @@
 // that's a real next step (see the PR description's Limitations), left out
 // here rather than shipped unexercised by any actual render in this change.
 
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { mkdir, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { copyFile, mkdir, rename, stat, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
 import { narrationTextFromRenderContext } from "./elevenLabsTts.ts";
@@ -39,6 +41,23 @@ import { narrationTextFromRenderContext } from "./elevenLabsTts.ts";
 function safeFilePart(value: string): string {
   const normalized = value.trim().replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
   return normalized || "fixture";
+}
+
+/**
+ * Moves a file, falling back to copy+delete across devices.
+ *
+ * `/tmp` (where espeak-ng's scratch file lives, see below) is not guaranteed
+ * to be the same filesystem as the caller's outputDir, and a plain `rename`
+ * fails with EXDEV across devices.
+ */
+async function moveFile(from: string, to: string): Promise<void> {
+  try {
+    await rename(from, to);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
+    await copyFile(from, to);
+    await unlink(from);
+  }
 }
 
 async function runProcess(command: string, args: string[], timeoutMs = 60_000): Promise<void> {
@@ -99,17 +118,39 @@ export function createLocalFixtureTtsAdapter(options: {
       await mkdir(options.outputDir, { recursive: true });
       const filename = [context.packageId, context.platform, context.task.taskId].map(safeFilePart).join("-");
       const outputPath = resolve(options.outputDir, `${filename}.wav`);
-      await runProcess(espeakPath, [
-        "-v", voice,
-        "-s", String(speedWpm),
-        "-p", String(pitch),
-        "-w", outputPath,
-        text,
-      ]);
-      const { size } = await stat(outputPath).catch(() => {
-        throw new Error(`espeak-ng did not produce ${outputPath}.`);
-      });
-      if (size === 0) throw new Error(`espeak-ng produced an empty audio file for task ${context.task.taskId}.`);
+
+      // espeak-ng 1.51 (as packaged for Ubuntu 24.04/noble) silently
+      // TRUNCATES its `-w` output path once the full path passes ~194 bytes
+      // — confirmed by direct testing, not documented behavior — and still
+      // exits 0. It does not fail; it writes a *different*, wrong file next
+      // to the one this task asked for, which then makes the `stat` below
+      // fail with a misleading "did not produce" error, or worse, silently
+      // reuse whatever partial file already sat at the truncated name. This
+      // repository's own output path
+      // (.../render-output/<package>/audio/<package>-<platform>-<taskId>.wav)
+      // can cross that threshold on a long checkout path (a deep worktree, a
+      // long CI workspace). Rather than depend on staying under an
+      // undocumented, version-specific limit, espeak-ng always writes to a
+      // short scratch path under the OS temp directory, and the real,
+      // descriptive output path is applied by moving the file afterward.
+      const scratchPath = join(tmpdir(), `espeak-${randomUUID()}.wav`);
+      try {
+        await runProcess(espeakPath, [
+          "-v", voice,
+          "-s", String(speedWpm),
+          "-p", String(pitch),
+          "-w", scratchPath,
+          text,
+        ]);
+        const { size: scratchSize } = await stat(scratchPath).catch(() => {
+          throw new Error(`espeak-ng did not produce ${scratchPath}.`);
+        });
+        if (scratchSize === 0) throw new Error(`espeak-ng produced an empty audio file for task ${context.task.taskId}.`);
+        await moveFile(scratchPath, outputPath);
+      } finally {
+        await unlink(scratchPath).catch(() => {});
+      }
+      const { size } = await stat(outputPath);
 
       return [{
         artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-local-tts-fixture`,
