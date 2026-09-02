@@ -4,7 +4,7 @@
 // (RTX 4080 Super vs RTX 4080, same CPU) captured live through a real
 // browser, cut against real timed captions and a real ffmpeg composite — with
 // one substitution: narration comes from the local offline espeak-ng fixture
-// (see localFixtureAdapters.ts) instead of paid ElevenLabs TTS, because no
+// (see localFixtureTts.ts) instead of paid ElevenLabs TTS, because no
 // ElevenLabs credential is available in this environment and issue #82's
 // excluded scope forbids spending a paid API call without explicit approval.
 //
@@ -19,7 +19,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createCaptionRenderAdapter } from "./captionRender.ts";
-import { createLocalFixtureTtsAdapter } from "./localFixtureAdapters.ts";
+import { createLocalFixtureTtsAdapter } from "./localFixtureTts.ts";
 import { createMotionCompositorAdapter } from "./motionCompositor.ts";
 import { RenderAdapterRegistry, renderPlatformPlan, type PlatformRenderResult } from "./rendering.ts";
 import type { PlatformProductionPlan, ProductionPlanPackage, ProductionTask } from "./types.ts";

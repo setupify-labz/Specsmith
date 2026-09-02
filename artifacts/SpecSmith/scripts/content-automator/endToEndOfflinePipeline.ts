@@ -9,7 +9,7 @@
 // -----------------------------------------------------------------------
 // - It renders one real, non-placeholder MP4 via offlineCompositorSmoke.ts.
 //   That render's narration comes from the local espeak-ng fixture, not paid
-//   ElevenLabs — see localFixtureAdapters.ts for why and how it's labeled.
+//   ElevenLabs — see localFixtureTts.ts for why and how it's labeled.
 // - It builds the REAL content package / script-storyboard for the real
 //   "compare-rtx4080s-rtx4080" idea using this repo's real, tested
 //   buildContentPackage / buildScriptStoryboardPackage / buildProductionPlanPackage
