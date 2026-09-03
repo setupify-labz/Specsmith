@@ -1,6 +1,6 @@
 # SpecSmith Master Roadmap
 
-Last evidence review: 2026-09-02
+Last evidence review: 2026-09-03
 
 ## North star
 
@@ -19,16 +19,10 @@ Make SpecSmith the easiest trustworthy place for a beginner to choose a compatib
 ### 1. Finish one end-to-end content-machine path
 
 - Tracking issue: #82.
-- Implementation PR: #83.
-- Current status: independent review requested changes.
-- Required before approval:
-  - Never delete durable publication ledgers in test/demo runs.
-  - Bind quality and rights evidence to the exact media hash.
-  - Do not record `scheduled` without an actual scheduling action.
-  - Reject non-resolving placeholder media from publishable gates.
-  - Add reproducible credential-free CI/artifact evidence.
-  - Label estimated FPS whenever visible.
-  - Render the generated storyboard rather than a disconnected hand-authored smoke plan, or narrow the claim and track the missing handoff.
+- Foundation PR #83 merged after independent review and exact-head verification.
+- Verified foundation: isolated demo storage, SHA-256-bound quality evidence, truthful lifecycle state, estimated-FPS labeling, credential-free CI, 285 targeted tests, 2,020 full-suite tests, successful typecheck/build, and a real vertical MP4 artifact.
+- Remaining milestone: #89 must connect the generated six-beat storyboard to the actual rendered MP4 before #82 is complete.
+- Fresh renders without matching inspected evidence remain awaiting review and non-publishable.
 - No public publishing or paid calls are approved.
 
 ### 2. Stabilize the core buying journey
