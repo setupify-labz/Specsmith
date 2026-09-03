@@ -45,7 +45,7 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly six workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly seven workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
@@ -53,6 +53,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-accepted-offers.yml',
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
+      'content-e2e-offline.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
@@ -98,6 +99,17 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(linkAudit).not.toContain('secrets.');
+
+    // The content-automator offline end-to-end pipeline is a FOURTH
+    // credential-free tool, alongside the two above — see
+    // scripts/content-automator/contentE2eOfflineWorkflowSafety.test.ts for
+    // its full shape.
+    const contentE2eOffline = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'content-e2e-offline.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(contentE2eOffline).not.toContain('secrets.');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can
