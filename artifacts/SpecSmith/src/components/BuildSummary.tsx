@@ -128,8 +128,10 @@ export default function BuildSummary({
   };
 
   const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
-  const hasAffiliateParts = parts.some((part) => Boolean(part.affiliateUrl));
-  const hasFallbackSearchParts = parts.some((part) => !part.customId && !part.affiliateUrl);
+  // Every retailer CTA a non-custom part renders is a fallback-search link
+  // today (see retailerLinkState.ts: neither getAmazonLink nor
+  // getNeweggLink can currently return 'exact' in this component tier).
+  const hasFallbackSearchParts = parts.some((part) => !part.customId);
   const hasUnknownPrices = parts.some((part) => part.price === undefined);
 
   return (
@@ -189,15 +191,13 @@ export default function BuildSummary({
                         const neweggLink = getNeweggLink(query, p.affiliateUrl);
                         return (
                           <div className="flex flex-shrink-0 items-center gap-1.5">
-                            {neweggLink.state !== 'exact' && (
-                              <RetailerLinkCta
-                                retailer="Amazon"
-                                partName={p.name}
-                                link={amazonLink}
-                                variant="text"
-                                accentColor="var(--ff-accent-text)"
-                              />
-                            )}
+                            <RetailerLinkCta
+                              retailer="Amazon"
+                              partName={p.name}
+                              link={amazonLink}
+                              variant="text"
+                              accentColor="var(--ff-accent-text)"
+                            />
                             <RetailerLinkCta
                               retailer="Newegg"
                               partName={p.name}
@@ -218,11 +218,6 @@ export default function BuildSummary({
             ))}
           </AnimatePresence>
 
-          {hasAffiliateParts && (
-            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
-              Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
-            </p>
-          )}
           {hasFallbackSearchParts && (
             <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.

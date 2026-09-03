@@ -198,12 +198,14 @@ export default function PartSelector({
               </div>
 
               {/* Parts grid */}
-              {filtered.some(part => Boolean(part.affiliateUrl)) && (
-                <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
-                  Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
-                </p>
-              )}
-              {filtered.some(part => !part.affiliateUrl) && (
+              {/*
+                Every retailer CTA this grid renders is a fallback-search
+                link today (see retailerLinkState.ts: neither getAmazonLink
+                nor getNeweggLink can currently return 'exact' in this
+                component tier, and neither is genuinely sponsored), so this
+                disclosure applies whenever there's at least one part.
+              */}
+              {filtered.length > 0 && (
                 <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
                   &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
                 </p>

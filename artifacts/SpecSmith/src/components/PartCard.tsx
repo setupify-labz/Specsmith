@@ -170,17 +170,15 @@ export default function PartCard({
             {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
           </span>
           <div className="flex flex-wrap items-center justify-end gap-1.5" style={{ pointerEvents: 'auto' }}>
-            {neweggLink.state !== 'exact' && (
-              <RetailerLinkCta
-                retailer="Amazon"
-                partName={name}
-                link={amazonLink}
-                variant="pill"
-                accentColor="var(--ff-accent-text)"
-                pillBackground="rgba(108,99,255,0.12)"
-                pillBorder="1px solid rgba(108,99,255,0.3)"
-              />
-            )}
+            <RetailerLinkCta
+              retailer="Amazon"
+              partName={name}
+              link={amazonLink}
+              variant="pill"
+              accentColor="var(--ff-accent-text)"
+              pillBackground="rgba(108,99,255,0.12)"
+              pillBorder="1px solid rgba(108,99,255,0.3)"
+            />
             <RetailerLinkCta
               retailer="Newegg"
               partName={name}

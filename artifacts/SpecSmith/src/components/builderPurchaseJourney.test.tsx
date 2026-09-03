@@ -21,7 +21,7 @@ const parts = [
 ];
 
 describe('the primary builder-to-summary journey agrees on link state, both retailers', () => {
-  it('the selection grid shows one search pair and one exact link, matching the summary sidebar', () => {
+  it('the selection grid shows a search pair for every part — including one with a well-shaped tracked URL — matching the summary sidebar', () => {
     render(
       <PartSelector
         category="gpu"
@@ -38,11 +38,17 @@ describe('the primary builder-to-summary journey agrees on link state, both reta
     expect(within(rtxCard).getByRole('link', { name: /Search Amazon/i })).not.toBeNull();
     expect(within(rtxCard).getByRole('link', { name: /Search Newegg/i })).not.toBeNull();
 
+    // Even with a well-shaped tracked Newegg URL, this component tier has
+    // no verified part-to-item-id binding to trust it against (#88's
+    // round-2 review), so it fails closed to the same search pair as the
+    // untracked part above, not an exact link to trackedNeweggUrl.
     const ryzenCard = screen.getByText('AMD Ryzen 5 5600').closest<HTMLElement>('[class*="relative"]')!;
     const ryzenLinks = within(ryzenCard).getAllByRole('link');
-    expect(ryzenLinks).toHaveLength(1);
-    expect(ryzenLinks[0].getAttribute('href')).toBe(trackedNeweggUrl);
-    expect(ryzenLinks[0].getAttribute('data-link-state')).toBe('exact');
+    expect(ryzenLinks).toHaveLength(2);
+    for (const a of ryzenLinks) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+      expect(a.getAttribute('href')).not.toBe(trackedNeweggUrl);
+    }
 
     cleanup();
 
@@ -72,8 +78,11 @@ describe('the primary builder-to-summary journey agrees on link state, both reta
     expect(gpuLinks.length).toBe(2);
     expect(gpuLinks.every((a) => a.getAttribute('data-link-state') === 'fallback-search')).toBe(true);
 
-    const cpuLink = screen.getByRole('link', { name: /Ryzen 5 5600/i });
-    expect(cpuLink.getAttribute('data-link-state')).toBe('exact');
-    expect(cpuLink.getAttribute('href')).toBe(trackedNeweggUrl);
+    const cpuLinks = screen.getAllByRole('link', { name: /Ryzen 5 5600/i });
+    expect(cpuLinks.length).toBe(2);
+    for (const a of cpuLinks) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+      expect(a.getAttribute('href')).not.toBe(trackedNeweggUrl);
+    }
   });
 });

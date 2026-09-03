@@ -34,12 +34,15 @@ describe('affiliate catalog builder integration', () => {
     }
   });
 
-  it('keeps a clear affiliate disclosure next to links in both selection and summary views', () => {
+  it('keeps a clear search-is-not-exact disclosure next to links, and never claims an unverified commission', () => {
     const selector = read('PartSelector.tsx');
     const summary = read('BuildSummary.tsx');
     for (const source of [selector, summary]) {
-      expect(source).toContain('Affiliate disclosure:');
-      expect(source).toContain('may earn a commission');
+      expect(source).toContain('a retailer search, not the exact product');
+      // Neither getAmazonLink nor getNeweggLink can currently mark a link
+      // sponsored (see retailerLinkState.ts) — an "SpecSmith may earn a
+      // commission" claim here would be false today.
+      expect(source).not.toContain('may earn a commission');
     }
   });
 

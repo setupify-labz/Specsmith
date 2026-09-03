@@ -8,19 +8,24 @@ import { getAffiliateUrl, getNeweggUrl } from './fps';
  * BuildSummary.tsx, which render off `RetailerLink.state`, never off href
  * shape or label text).
  *
- * `exact` is a claim about PRODUCT IDENTITY only (the URL's own shape names
- * one specific product, checked below) — never about revenue attribution.
- * See `RetailerLink.sponsored` for that, a separate, independently-computed
- * field. Conflating the two — as an earlier version of this file did, by
- * trusting any nonempty override URL as both exact and sponsored — is
- * exactly the trust bug #85/#86 exist to catch; a read-only, CI-evidenced
- * audit under scripts/ classifies these same shapes for the wider
- * catalogue (see linkIntegrity.ts's classifiers there). This file cannot
- * import that module (src/ may not depend on the scripts/ tier — see the
- * header of `src/lib/retail/offerSnapshot.ts`), so the fail-closed shape
- * checks below are a browser-safe, intentionally-scoped-down
- * reimplementation of the same product-page-vs-search-vs-malformed rules
- * for the one override this component accepts (`trackedAffiliateUrl`).
+ * `exact` is a claim about PRODUCT IDENTITY: not just that a URL has the
+ * shape of a real product page, but that it has been independently bound
+ * to the SPECIFIC intended part — otherwise a validly-shaped URL for the
+ * wrong product would announce itself as "the exact product page" (the
+ * wrong-variant trust bug #88's round-2 review caught: a well-shaped Newegg
+ * `/p/<id>` URL proves a product page exists at that address, not that it
+ * is the part it's attached to). This canonical/primary-builder path (the
+ * `PartSelector` → `PartCard` grid, `BuildSummary` sidebar) has no
+ * independently-verified catalog binding between a part and a specific
+ * retailer item id today — that verification (a Rakuten-attribution and
+ * item-id match against the canonical model) exists only in the separate
+ * retail-parts.json / RetailBuilder pipeline this issue doesn't touch (see
+ * `classifyTrackedNeweggUrl` in the scripts/ tier's linkIntegrity.ts). So
+ * `getNeweggLink` below never returns `exact`: per data-integrity rules,
+ * prefer no exact-product claim over an unverified one. `exact` stays a
+ * valid, tested state on `RetailerLinkCta` (see its own tests) for the day
+ * a trusted per-part binding is wired in — it just isn't reachable from
+ * this file until then.
  */
 export type RetailerLinkState = 'exact' | 'fallback-search' | 'unavailable';
 
@@ -36,74 +41,30 @@ export interface RetailerLink {
   sponsored: boolean;
 }
 
-const NEWEGG_HOSTS = ['www.newegg.com', 'newegg.com'];
-
-/** Newegg's product-page shape: `.../p/<ITEM-ID>`. Its search shape is `/p/pl`. */
-const NEWEGG_PRODUCT_PATH_ITEM_ID = /\/p\/([A-Za-z0-9-]+)\/?$/;
-
-/**
- * True only for a URL that is, by its own shape, unambiguously a single
- * Newegg product page — https, newegg.com/www.newegg.com host, a
- * `/.../p/<id>` path (never the `/p/pl` search-results shape), and — when
- * the id is redundantly repeated as an `item=` query parameter, as every
- * real tracked Newegg listing in this repository does — that query id
- * AGREES with the path id. A URL this cannot place confidently (malformed,
- * wrong domain, search-shaped, or a path/query id disagreement — the exact
- * shape a swapped or corrupted link takes) returns false: never guess
- * toward `exact`. Mirrors `classifyDirectNeweggUrl` from the scripts/
- * tier's linkIntegrity.ts, scoped to the one thing this component needs
- * (a boolean), since that module cannot be imported here.
- */
-function isExactNeweggProductUrl(raw: string): boolean {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== 'https:') return false;
-  if (!NEWEGG_HOSTS.includes(url.hostname)) return false;
-  if (url.pathname === '/p/pl' || url.pathname === '/p/pl/') return false;
-
-  const match = url.pathname.match(NEWEGG_PRODUCT_PATH_ITEM_ID);
-  if (!match) return false;
-  const pathId = match[1];
-  const queryId = url.searchParams.get('item');
-  if (queryId !== null && queryId.toUpperCase() !== pathId.toUpperCase()) return false;
-  return true;
-}
-
 /**
  * Amazon has no per-part tracked deep link anywhere in this app today — see
- * AMAZON_AFFILIATE_TAG's placeholder-tag note in fps.ts — so every Amazon
- * CTA here is a generic search. It is still genuinely `sponsored`: this
- * component builds the URL itself with SpecSmith's own configured
- * `AMAZON_AFFILIATE_TAG`, so — unlike an externally-supplied override —
- * there is nothing to verify; the code is the attribution's own source.
+ * AMAZON_AFFILIATE_TAG's placeholder-tag note in fps.ts, which is itself a
+ * placeholder pending Amazon Associates account approval. `sponsored` is
+ * therefore false: constructing a URL with a not-yet-approved tag is not
+ * evidence of an owned, live revenue relationship, and claiming `rel="sponsored"`
+ * plus an "affiliate link"/commission-disclosure claim for a link that earns
+ * nothing would itself be the false attribution claim #88 exists to prevent.
+ * Flip this back to `true` once the Associates account is actually approved
+ * and `AMAZON_AFFILIATE_TAG` is the real tag.
  */
 export function getAmazonLink(query: string): RetailerLink {
   const trimmed = query.trim();
   if (!trimmed) return { state: 'unavailable', href: null, sponsored: false };
-  return { state: 'fallback-search', href: getAffiliateUrl(trimmed), sponsored: true };
+  return { state: 'fallback-search', href: getAffiliateUrl(trimmed), sponsored: false };
 }
 
 /**
- * `exact` only when the caller's `trackedAffiliateUrl` passes
- * `isExactNeweggProductUrl` above — never merely for being nonempty.
- * `sponsored` is false even then: unlike the Amazon URL this module builds
- * itself, a caller-supplied Newegg URL carries no tracking parameter this
- * component can verify as SpecSmith's own (that verification — a Rakuten
- * publisher SID match — belongs to the separate retail-parts.json/
- * RetailBuilder pipeline this issue does not touch; see
- * `classifyTrackedNeweggUrl` in the scripts/ tier's linkIntegrity.ts).
- * Overclaiming sponsorship here would repeat the exact bug this rewrite
- * fixes, just on a different field.
+ * Always `fallback-search` (or `unavailable` for an empty query) — see the
+ * `exact` doc comment above for why. `trackedAffiliateUrl` is accepted so a
+ * future trusted-binding lookup has somewhere to plug in, but today it is
+ * not used to change the returned state.
  */
-export function getNeweggLink(query: string, trackedAffiliateUrl?: string): RetailerLink {
-  const trimmedOverride = trackedAffiliateUrl?.trim();
-  if (trimmedOverride && isExactNeweggProductUrl(trimmedOverride)) {
-    return { state: 'exact', href: trimmedOverride, sponsored: false };
-  }
+export function getNeweggLink(query: string, _trackedAffiliateUrl?: string): RetailerLink {
   const trimmed = query.trim();
   if (!trimmed) return { state: 'unavailable', href: null, sponsored: false };
   return { state: 'fallback-search', href: getNeweggUrl(trimmed), sponsored: false };

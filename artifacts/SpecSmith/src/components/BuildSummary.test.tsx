@@ -70,20 +70,27 @@ describe('BuildSummary — parts with no tracked affiliate URL', () => {
   });
 });
 
-describe('BuildSummary — a part with a real, structurally exact Newegg product URL', () => {
+describe('BuildSummary — a part with a well-shaped affiliateUrl still fails closed to search', () => {
+  // Same fail-closed reasoning as PartCard: a well-shaped Newegg product
+  // URL is not evidence it names the intended part without an
+  // independently verified binding, which this component tier doesn't
+  // have today (see retailerLinkState.ts).
   const trackedUrl = 'https://www.newegg.com/p/N82E16819113476';
 
-  it('renders only the exact Newegg link for that part, without claiming unverified sponsorship', () => {
+  it('renders both retailers as fallback-search for that part, without claiming unverified sponsorship', () => {
     renderSummary({ parts: [{ label: 'CPU', name: 'AMD Ryzen 5 5600', price: 129, affiliateUrl: trackedUrl }] });
     const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0].getAttribute('href')).toBe(trackedUrl);
-    expect(links[0].getAttribute('data-link-state')).toBe('exact');
-    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links).toHaveLength(2);
+    for (const a of links) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+      expect(a.getAttribute('rel')).toBe('noopener noreferrer');
+    }
+    const newegg = links.find((a) => a.textContent?.includes('Newegg'));
+    expect(newegg?.getAttribute('href')).not.toBe(trackedUrl);
   });
 });
 
-describe('BuildSummary — an untrustworthy affiliateUrl override never becomes exact', () => {
+describe('BuildSummary — an untrustworthy affiliateUrl override falls back to search, same as any other', () => {
   it('falls back to search for a wrong-domain URL, exactly as when no override is supplied', () => {
     renderSummary({ parts: [{ label: 'CPU', name: 'AMD Ryzen 5 5600', price: 129, affiliateUrl: 'https://example.com/not-newegg' }] });
     const links = screen.getAllByRole('link');

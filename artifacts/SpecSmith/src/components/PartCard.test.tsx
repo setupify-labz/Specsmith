@@ -40,28 +40,36 @@ describe('PartCard — no tracked affiliate URL (every canonical GPU/CPU/compone
   });
 });
 
-describe('PartCard — a real, structurally exact Newegg product URL is supplied', () => {
+describe('PartCard — a well-shaped affiliateUrl override still fails closed to search', () => {
+  // #88's round-2 independent review: a URL whose shape unambiguously
+  // names a Newegg product page is still not evidence it names the
+  // *intended* part, since this component tier has no independently
+  // verified part-to-item-id binding to check it against. So even a
+  // structurally exact tracked URL renders as a fallback-search CTA today,
+  // not as "View at Newegg" — identical to no override being supplied.
   const trackedUrl = 'https://www.newegg.com/p/N82E16819113476';
 
-  it('renders only the exact Newegg link and hides the Amazon search CTA', () => {
+  it('renders both retailers as fallback-search, the same as no override at all', () => {
     render(<PartCard {...baseProps} affiliateUrl={trackedUrl} />);
     const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0].getAttribute('href')).toBe(trackedUrl);
-    expect(links[0].getAttribute('data-link-state')).toBe('exact');
-    expect(links[0].textContent).toContain('View at Newegg');
-    expect(screen.queryByRole('link', { name: /Amazon/i })).toBeNull();
+    expect(links).toHaveLength(2);
+    for (const a of links) {
+      expect(a.getAttribute('data-link-state')).toBe('fallback-search');
+    }
+    const newegg = links.find((a) => a.textContent?.includes('Newegg'));
+    expect(newegg?.getAttribute('href')).not.toBe(trackedUrl);
   });
 
-  it('does not claim sponsorship it cannot verify for an untracked direct URL', () => {
+  it('does not claim sponsorship it cannot verify', () => {
     render(<PartCard {...baseProps} affiliateUrl={trackedUrl} />);
-    const link = screen.getAllByRole('link')[0];
-    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
-    expect(link.getAttribute('aria-label')).not.toMatch(/affiliate link/i);
+    for (const a of screen.getAllByRole('link')) {
+      expect(a.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(a.getAttribute('aria-label')).not.toMatch(/affiliate link/i);
+    }
   });
 });
 
-describe('PartCard — an untrustworthy affiliateUrl override never becomes exact', () => {
+describe('PartCard — an untrustworthy affiliateUrl override falls back to search, same as any other', () => {
   it.each([
     ['a search-results URL', 'https://www.newegg.com/p/pl?d=rtx+4090'],
     ['a wrong-domain URL', 'https://example.com/not-newegg'],
