@@ -109,29 +109,49 @@ jobs:
           node-version: '22'
           cache: pnpm
 
+      # Every piped `cmd | tee log` step below sets `set -o pipefail` FIRST.
+      # Without it, the step's exit code is `tee`'s (always 0), not the
+      # piped command's — independent review of this exact workflow found
+      # precisely that: run 33680791532's uploaded test-full.log recorded
+      # "1 failed / 1,929 passed" while GitHub reported the step and job
+      # green. Confirmed by direct local reproduction: `false | tee log`
+      # exits 0 without pipefail, 1 with it — every step below now sets it
+      # explicitly rather than relying on the runner's default shell flags.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/e2e/install.log"
+        run: |
+          set -o pipefail
+          pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/e2e/install.log"
 
       - name: Typecheck
-        run: pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/e2e/typecheck.log"
+        run: |
+          set -o pipefail
+          pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/e2e/typecheck.log"
 
       - name: Run the content-automator test suite (targeted)
         working-directory: artifacts/SpecSmith
-        run: pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
+        run: |
+          set -o pipefail
+          pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
 
       - name: Run the full test suite
         working-directory: artifacts/SpecSmith
-        run: pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
+        run: |
+          set -o pipefail
+          pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
 
       - name: Build the production application
         working-directory: artifacts/SpecSmith
-        run: pnpm run build 2>&1 | tee "${RUNNER_TEMP}/e2e/build.log"
+        run: |
+          set -o pipefail
+          pnpm run build 2>&1 | tee "${RUNNER_TEMP}/e2e/build.log"
 
       # No API key, no account, no paid provider — just a browser binary, the
       # same way any other Playwright-based test in this repo would get one.
       - name: Install Playwright Chromium
         working-directory: artifacts/SpecSmith
-        run: pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
+        run: |
+          set -o pipefail
+          pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
 
       # ffmpeg/ffprobe compose the real MP4; espeak-ng is the offline TTS
       # fixture (see localFixtureTts.ts) — neither needs a credential.

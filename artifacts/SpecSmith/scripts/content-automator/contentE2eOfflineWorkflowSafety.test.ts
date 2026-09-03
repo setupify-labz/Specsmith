@@ -119,6 +119,33 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     }
   });
 
+  it('every step piping a command through `tee` sets pipefail first, so a real failure cannot report green', () => {
+    // Real bug, found by independent review of an actual CI run: `cmd | tee
+    // log` reports the STEP's exit code as `tee`'s (always 0), not `cmd`'s,
+    // unless pipefail is set — confirmed by direct local reproduction
+    // (`false | tee log` exits 0 without it, 1 with it). That let a real
+    // vitest failure (1 failed / 1,929 passed, scripts/measured/
+    // cancellation.test.ts) show as a green step and a green job. Every step
+    // block containing `| tee` must set pipefail before the piped command.
+    const steps = body.split(/\n(?=\s*- name:)/);
+    const teeSteps = steps.filter((step) => step.includes('| tee'));
+    expect(teeSteps.length).toBeGreaterThan(0);
+    for (const step of teeSteps) {
+      // `echo "literal string" | tee <path>` cannot itself fail — there is no
+      // command upstream of the pipe whose exit code pipefail needs to catch
+      // — so it is not an instance of the masking bug this test guards
+      // against and is exempted rather than forced into an unneeded
+      // `set -o pipefail`.
+      const teeLines = step.split('\n').filter((line) => line.includes('| tee') && !line.trim().startsWith('echo '));
+      if (teeLines.length === 0) continue;
+      const teeLine = teeLines[0];
+      const pipefailIndex = step.indexOf('set -o pipefail') !== -1 ? step.indexOf('set -o pipefail') : step.indexOf('set -euo pipefail');
+      const teeIndex = step.indexOf(teeLine);
+      expect(pipefailIndex, `step missing pipefail before: ${teeLine.trim()}`).toBeGreaterThan(-1);
+      expect(pipefailIndex, `pipefail must come before the piped command in: ${teeLine.trim()}`).toBeLessThan(teeIndex);
+    }
+  });
+
   it('confirms the checkout stayed clean, ignoring only this run\'s own gitignored output', () => {
     expect(body).toContain('git status --porcelain');
     // The pipeline's own render/store output is real, gitignored, generated

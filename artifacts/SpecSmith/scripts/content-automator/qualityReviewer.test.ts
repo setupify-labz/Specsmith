@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildContentPackage } from "./contentPackage.ts";
@@ -288,5 +288,24 @@ describe("recorded render evidence binds an observation to one exact render's by
     // The gate must actually pass for the exact recorded bytes.
     const match = matchRenderToRecordedEvidence(evidence.masterSha256, evidence);
     expect(match.matched).toBe(true);
+  });
+
+  it("the committed evidence file's referenced frames actually exist, so a reviewer can open the exact bytes it approves", () => {
+    // Independent review correctly pointed out that a downloaded CI artifact
+    // for any given run almost never contains the bytes this record
+    // approves (see the file's own note on non-determinism) — these
+    // committed PNGs, extracted from the one masterSha256 this record is
+    // about, are the only durable, independently-openable evidence of what
+    // was actually inspected. A missing file here would make that claim
+    // false.
+    const here = dirname(fileURLToPath(import.meta.url));
+    const raw = JSON.parse(readFileSync(join(here, "fixtures", "mp4-smoke-offline-observation.json"), "utf8"));
+    const frameRefs: unknown = raw.frameRefs;
+    expect(Array.isArray(frameRefs)).toBe(true);
+    expect((frameRefs as unknown[]).length).toBeGreaterThan(0);
+    for (const ref of frameRefs as string[]) {
+      const framePath = join(here, "fixtures", ref);
+      expect(existsSync(framePath), `missing committed frame: ${ref}`).toBe(true);
+    }
   });
 });

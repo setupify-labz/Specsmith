@@ -2,7 +2,14 @@
   "masterSha256": "319413adfba9d8d86062ecdbad0ecdfa1644ffb43ba040810762975cdd5c2ecc",
   "reviewedBy": "claude-code-manual-review",
   "reviewedAt": "2026-09-02T22:20:00.000Z",
+  "frameRefs": [
+    "mp4-smoke-offline-observation-frames/opening-t0.0s.png",
+    "mp4-smoke-offline-observation-frames/mid-sequence-t4.0s.png",
+    "mp4-smoke-offline-observation-frames/visual3-t6.5s.png",
+    "mp4-smoke-offline-observation-frames/closing-t9.0s.png"
+  ],
   "notes": [
+    "Independent review correctly pointed out that the CI-uploaded artifact for a given run almost never contains the exact bytes this record approves (the render is not byte-reproducible — see the last note below) — so the ONLY way to actually look at what masterSha256 above was approved for is the four PNG frames committed alongside this file, listed in frameRefs. They are extracted (ffmpeg, 2fps) directly from the one MP4 whose sha256 is 319413ad...ecc, the same file this record's `observation` describes below — not from any other render. Open them directly to check the claims in this file rather than trusting them blind.",
     "Genuine one-time visual/audio inspection of the exact render at this masterSha256, produced by offlineCompositorSmoke.ts after (a) the caption-cue reorder (issue #82 PR review blocker #5, first pass) and (b) fixing the same gap at its actual source: Compare.tsx's two 'Avg FPS: <n>' summary labels now read 'Est. Avg FPS: <n>', matching the qualifier SffBuildPage.tsx's own FPS estimate already carries. Frames extracted with ffmpeg at 2fps (0, 0.5, 1.0, ... 9.0s) and actually viewed at 0s, ~4s, ~6.5s and ~9.0s.",
     "0.0s (opening, static visual-1 shot): real live /compare page, both full cards (RTX 4080 Super vs RTX 4080, same CPU), prices $2,128/$1,691, 'Est. Avg FPS: 164' / 'Est. Avg FPS: 160', 'Better Value' badge, 20-0 tally, per-game bar chart. Both the on-screen label AND the 'ESTIMATED FPS. SEE THE FULL RESULT.' caption are visible from the very first frame — the estimated-FPS qualifier is no longer reached only after several seconds of unlabeled numbers, and now it is true even for a viewer who skips or mutes the caption track. Understandable with sound off.",
     "~4.0s (mid, sequence visual-2 shot): the resolution/quality sequence genuinely drove the live app — 4K/High selected in the UI, values genuinely recomputed to 'Est. Avg FPS: 107' / 'Est. Avg FPS: 104' (not the same 164/160 numbers relabeled), and still correctly labeled 'Est.' in this different UI state, not just the default one. Caption reads 'RTX 4080 SUPER VS RTX 4080'.",
