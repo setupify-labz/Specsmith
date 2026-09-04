@@ -274,12 +274,12 @@ describe("recorded render evidence binds an observation to one exact render's by
     })).toThrow(/notes/i);
   });
 
-  it("the real committed offline-smoke evidence file parses and is internally consistent", () => {
+  it("the real committed generated-plan offline evidence file parses and is internally consistent", () => {
     // Guards the actual file endToEndOfflinePipeline.ts reads at run time —
     // a malformed commit here would fail every future run of that script,
     // not just this test.
     const here = dirname(fileURLToPath(import.meta.url));
-    const path = join(here, "fixtures", "mp4-smoke-offline-observation.json");
+    const path = join(here, "fixtures", "generated-plan-offline-observation.json");
     const raw = JSON.parse(readFileSync(path, "utf8"));
     const evidence = parseRecordedRenderEvidence(raw);
     expect(evidence.masterSha256).toMatch(/^[a-f0-9]{64}$/);
@@ -299,7 +299,7 @@ describe("recorded render evidence binds an observation to one exact render's by
     // was actually inspected. A missing file here would make that claim
     // false.
     const here = dirname(fileURLToPath(import.meta.url));
-    const raw = JSON.parse(readFileSync(join(here, "fixtures", "mp4-smoke-offline-observation.json"), "utf8"));
+    const raw = JSON.parse(readFileSync(join(here, "fixtures", "generated-plan-offline-observation.json"), "utf8"));
     const frameRefs: unknown = raw.frameRefs;
     expect(Array.isArray(frameRefs)).toBe(true);
     expect((frameRefs as unknown[]).length).toBeGreaterThan(0);

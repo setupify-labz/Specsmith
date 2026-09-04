@@ -1,55 +1,56 @@
-// One command, proving one honest chain of custody — NOT full automatic
-// idea->storyboard->render automation; read the next paragraph before
-// trusting what this proves:
+// One command, proving one honest chain of custody, end to end:
 //
-// real SpecSmith idea -> real generated storyboard/production-plan CONTRACT
-// -> a real, separately-authored, already-proven render timeline (real
-// deterministic UI capture, offline fixture narration, real burned-in
-// captions, real ffmpeg compose) -> rights gate -> quality gate -> tracked,
-// draft-only Metricool-ready publishing request -> durable, fail-closed
-// publication ledger -> analytics-identity wiring proof.
+// real SpecSmith idea -> real generated six-beat storyboard/production-plan
+// -> that EXACT generated plan rendered (real deterministic UI capture for
+// 5 of the 6 beats, a labeled offline fixture card for the hook beat, offline
+// fixture narration and silence, real burned-in captions, real ffmpeg
+// compose) -> rights gate -> quality gate -> tracked, draft-only
+// Metricool-ready publishing request -> durable, fail-closed publication
+// ledger -> analytics-identity wiring proof.
 //
 // WHAT THIS DOES AND DOES NOT DO (read this before trusting its output)
 // -----------------------------------------------------------------------
-// - This does NOT prove the automatic idea->storyboard->MP4 handoff. It
-//   builds the REAL content package / script-storyboard for the real
-//   "compare-rtx4080s-rtx4080" idea using this repo's real, tested
-//   buildContentPackage / buildScriptStoryboardPackage / buildProductionPlanPackage
-//   functions — but the generated production-plan package is used ONLY to
-//   build a real QualityReviewRequest CONTRACT (expected route, hard
-//   blockers, required facts); it is never rendered through. The MP4 that
-//   actually gets rendered and carried through the rest of this script comes
-//   from offlineCompositorSmoke.ts's separate, hand-authored, already-proven
-//   3-visual/8-second timeline (the same one compositorSmoke.ts already
-//   proves against paid ElevenLabs) — not the full generated 6-beat
-//   automatic storyboard. A prior attempt to wire the actual generated
-//   6-beat storyboard through offline fixtures (for the video-generation and
-//   music-sfx beats it also needs) was deliberately reverted, because it was
-//   never exercised by a real render; wiring the real generated storyboard
-//   through to a real render remains separate, tracked future work, not
-//   something this script does. What this script proves end-to-end is the
-//   chain of custody AFTER a render exists: real render bytes -> rights gate
-//   -> quality gate -> tracked draft publish request -> durable ledger ->
-//   analytics-identity binding, all bound to the same sha256/creativeId.
-// - It renders one real, non-placeholder MP4 via offlineCompositorSmoke.ts.
-//   That render's narration comes from the local espeak-ng fixture, not paid
-//   ElevenLabs — see localFixtureTts.ts for why and how it's labeled.
+// - This proves the automatic idea->storyboard->MP4 handoff issue #89 asked
+//   for. It builds the REAL content package / script-storyboard / six-beat
+//   production plan for the real "compare-rtx4080s-rtx4080" idea using this
+//   repo's real, tested buildContentPackage / buildScriptStoryboardPackage /
+//   buildProductionPlanPackage functions, and section 2 below renders that
+//   SAME production-plan package object — the one section 1 also used to
+//   build the QualityReviewRequest contract — through
+//   offlineGeneratedPlanRender.ts. There is no separate, parallel,
+//   hand-authored timeline standing in for it: every beat the plan generated
+//   is rendered, in the exact order and identity the plan generated it (see
+//   generatedPlanRenderWiring.test.ts for the automated check that a
+//   hand-authored substitute cannot silently return). An earlier attempt at
+//   this wiring was deliberately reverted for being unexercised by any real
+//   render before offline fixtures existed for the video-generation and
+//   music-sfx beats the plan also needs — offlineGeneratedPlanRender.ts adds
+//   those two fixtures (localFixtureVideo.ts, localFixtureMusic.ts) and is
+//   the exercised, tested version of that same idea.
+// - It renders one real, non-placeholder MP4 via
+//   offlineGeneratedPlanRender.ts. Narration comes from the local espeak-ng
+//   fixture, not paid ElevenLabs (localFixtureTts.ts); the hook beat's
+//   visual is a plainly labeled offline fixture card, not a paid Veo
+//   generation (localFixtureVideo.ts); the always-present music-sfx beat is
+//   digital silence, not licensed music (localFixtureMusic.ts). All three
+//   are labeled `isFixture: true` / `isPaidProvider: false` in their
+//   artifact metadata.
 // - The quality-review observation is NOT a hardcoded object literal in this
-//   script. It is loaded from fixtures/mp4-smoke-offline-observation.json —
-//   a committed, versioned record of a genuine one-time human/Claude visual
-//   inspection of one exact render's bytes — and this run's actual rendered
-//   sha256 must match that file's recorded sha256 before the observation is
-//   trusted at all (see section 3, and matchRenderToRecordedEvidence in
+//   script. It is loaded from
+//   fixtures/generated-plan-offline-observation.json — a committed,
+//   versioned record of a genuine one-time human/Claude visual inspection of
+//   one exact render's bytes — and this run's actual rendered sha256 must
+//   match that file's recorded sha256 before the observation is trusted at
+//   all (see section 3, and matchRenderToRecordedEvidence in
 //   qualityReviewer.ts). A render whose bytes do not match the recorded
 //   evidence stops here as awaiting-review/not-publishable, rather than
-//   reusing scores that were never actually about those bytes. The original
-//   inspection found one real defect (an analytics-consent banner
-//   overlapping the burned-in captions) and one real labeling gap (the
-//   source page's on-screen "Avg FPS" had no "Estimated" qualifier, and it
-//   appeared several seconds before any caption qualified it); both were
-//   fixed in this repository (capture.ts now suppresses the consent banner;
-//   offlineCompositorSmoke.ts's estimated-FPS caption is now the FIRST cue,
-//   on screen from t=0) rather than scored around.
+//   reusing scores that were never actually about those bytes. That
+//   inspection also found and recorded a genuine limitation, not scored
+//   around: 5 of the 6 beats show the same static Compare-page capture (the
+//   generated plan derives one UI state per beat and productionPlan.ts's
+//   deriveUiRenderState always requests a static, not sequence, capture for
+//   this feature/idea), so the visuals are repetitive rather than varied —
+//   see that file's notes for the full record.
 // - The Metricool publishing request needs an https:// URL Metricool could
 //   fetch. This sandbox has nothing to upload the test render to, and
 //   nothing here should actually publish anything, so the "approved master
@@ -68,16 +69,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { buildContentPackage } from "./contentPackage.ts";
-import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
-import { buildProductionPlanPackage } from "./productionPlan.ts";
-import {
-  buildQualityReviewRequest,
-  reviewRenderedVideo,
-  matchRenderToRecordedEvidence,
-  parseRecordedRenderEvidence,
-  type RenderedVideoObservation,
-} from "./qualityReviewer.ts";
+import { buildQualityReviewRequest, reviewRenderedVideo, matchRenderToRecordedEvidence, parseRecordedRenderEvidence, type RenderedVideoObservation } from "./qualityReviewer.ts";
 import { buildCreativeFingerprint } from "./creativeFingerprint.ts";
 import {
   buildProductVisualAssetRegistry,
@@ -87,11 +79,13 @@ import {
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type PublishingConfig } from "./publishing.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
-import type { ContentIdea, VideoPlatform } from "./types.ts";
+import type { VideoPlatform } from "./types.ts";
 import {
-  runOfflineCompositorSmoke,
-  OFFLINE_SMOKE_PLATFORM,
-} from "./offlineCompositorSmoke.ts";
+  buildGeneratedPlanPackages,
+  renderGeneratedProductionPlan,
+  GENERATED_PLAN_IDEA,
+  GENERATED_PLAN_PLATFORM,
+} from "./offlineGeneratedPlanRender.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // This demo/smoke script must never touch content-ideas/publishing-store —
@@ -121,52 +115,16 @@ function generatedAtStamp(): string {
 // Committed, versioned record of a genuine one-time human/Claude visual
 // inspection of one exact render's bytes (see matchRenderToRecordedEvidence
 // in qualityReviewer.ts for why this exists). Regenerate this file — with a
-// fresh genuine inspection — whenever offlineCompositorSmoke.ts's render
+// fresh genuine inspection — whenever offlineGeneratedPlanRender.ts's render
 // actually changes; do not hand-edit its masterSha256 to make a mismatch
 // disappear.
-const renderEvidencePath = join(here, "fixtures", "mp4-smoke-offline-observation.json");
+const renderEvidencePath = join(here, "fixtures", "generated-plan-offline-observation.json");
 
-// The real SpecSmith idea this whole run is about. Copied verbatim from
-// mediaRender.test.ts's fixture — a real, already-relied-upon ContentIdea,
-// not invented for this script. requiredFacts is deliberately just
-// ["comparison state"]: the one fact the actual rendered evidence (the live
-// Compare page, captured through a real browser) substantiates.
-const idea: ContentIdea = {
-  id: "compare-rtx4080s-rtx4080",
-  format: "comparison",
-  title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
-  angle: "Use Compare as the evidence and reveal.",
-  targetAudience: "PC builders",
-  requiredFacts: ["comparison state"],
-  subjectIds: ["rtx4080s", "rtx4080"],
-  productConnection: {
-    feature: "compare",
-    route: "/compare",
-    userProblem: "Buyers cannot tell which near-name GPU is the better choice.",
-    whySpecSmith: "SpecSmith Compare holds the rest of the build constant.",
-    continuationAction: "Open Compare and change the cards.",
-    sitePayoff: "The viewer can continue the exact comparison.",
-  },
-  creativeDNA: {
-    conceptName: "Blind Compare",
-    visualWorld: "real SpecSmith comparison",
-    narrativeEngine: "blind choice -> evidence -> reveal",
-    openingImage: "Two anonymous cards",
-    patternInterrupt: "Names hidden",
-    retentionBeats: ["1", "2", "3", "4", "5"],
-    payoff: "Reveal the winner",
-    audioDirection: "Tight",
-    originalityConstraint: "Compare is essential",
-    antiSlopRules: ["a", "b", "c", "d", "e", "f"],
-  },
-  scores: {
-    curiosity: 9, usefulness: 9, visualPotential: 9, purchaseIntent: 8, novelty: 8,
-    originality: 9, retentionPotential: 9, shareability: 8, productFit: 10, siteContinuation: 10, total: 9,
-  },
-};
+// The real SpecSmith idea this whole run is about — the shared fixture idea
+// reused across this pipeline (see fixtures/compareRtx4080sRtx4080Idea.ts).
+const idea = GENERATED_PLAN_IDEA;
 
-const PLATFORM: VideoPlatform = OFFLINE_SMOKE_PLATFORM;
+const PLATFORM: VideoPlatform = GENERATED_PLAN_PLATFORM;
 
 function section(title: string): void {
   console.log(`\n=== ${title} ===`);
@@ -184,10 +142,8 @@ function fileUriToPath(uri: string): string {
 async function main(): Promise<void> {
   const generatedAt = new Date();
 
-  section("1. Real idea -> real content package -> real script/storyboard -> real generated production-plan CONTRACT (not rendered through — see header comment)");
-  const content = buildContentPackage(idea, generatedAt);
-  const storyboard = buildScriptStoryboardPackage(idea, content);
-  const production = buildProductionPlanPackage(storyboard);
+  section("1. Real idea -> real content package -> real script/storyboard -> real generated six-beat production plan");
+  const { content, storyboard, production } = buildGeneratedPlanPackages(generatedAt);
   const script = storyboard.scripts.find((entry) => entry.platform === PLATFORM);
   if (!script) throw new Error(`No ${PLATFORM} script in the storyboard.`);
   console.log(`Idea: ${idea.id} ("${idea.title}")`);
@@ -198,8 +154,8 @@ async function main(): Promise<void> {
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
 
-  section("2. Real render of a separate, already-proven, hand-authored timeline (NOT the generated storyboard above): deterministic UI capture + offline fixture narration + real captions + real ffmpeg compose");
-  const { result } = await runOfflineCompositorSmoke();
+  section("2. Real render of the EXACT generated plan from step 1 — no hand-authored substitute timeline: deterministic UI capture (5 beats) + offline fixture video card (hook beat) + offline fixture narration + offline silence + real captions + real ffmpeg compose");
+  const { result } = await renderGeneratedProductionPlan(production, PLATFORM);
   const finalArtifact = result.finalArtifacts[0];
   const mp4Path = fileUriToPath(finalArtifact.uri);
   const masterSha256 = await sha256File(mp4Path);
@@ -210,19 +166,18 @@ async function main(): Promise<void> {
 
   section("3. Quality review — bound to a committed record of a genuine one-time inspection of THESE exact bytes");
   // The scores/claims below are NOT a hardcoded object literal trusted
-  // blindly. They come from fixtures/mp4-smoke-offline-observation.json — a
-  // committed, versioned record of a genuine one-time human/Claude visual
-  // inspection of one exact render's bytes (see that file's own notes for
-  // what was actually watched). Before that recorded observation may be
-  // trusted for THIS run, this run's actual rendered sha256 must match the
-  // sha256 the evidence file says was inspected. If this run rendered
-  // different bytes than what was ever inspected — which a fresh render of
-  // this compositor can genuinely do; the UI-capture sequence step drives
-  // real, timing-sensitive browser interactions, so byte-for-byte
-  // reproducibility across runs is not guaranteed even though the
-  // application STATE at each step is deterministic — this stops here,
-  // before the rights/publishing gate, rather than reusing a stale
-  // observation for content nobody has actually looked at.
+  // blindly. They come from fixtures/generated-plan-offline-observation.json
+  // — a committed, versioned record of a genuine one-time human/Claude
+  // visual inspection of one exact render's bytes (see that file's own
+  // notes for what was actually watched). Before that recorded observation
+  // may be trusted for THIS run, this run's actual rendered sha256 must
+  // match the sha256 the evidence file says was inspected. If this run
+  // rendered different bytes than what was ever inspected — every UI beat
+  // here is a static capture (no interactive sequence step), but ffmpeg's
+  // own encode/mux is not guaranteed byte-identical run to run even for
+  // identical inputs (container timestamps, encoder scheduling) — this
+  // stops here, before the rights/publishing gate, rather than reusing a
+  // stale observation for content nobody has actually looked at.
   const rawEvidence = JSON.parse(await readFile(renderEvidencePath, "utf8"));
   const evidence = parseRecordedRenderEvidence(rawEvidence);
   const evidenceMatch = matchRenderToRecordedEvidence(masterSha256, evidence);
@@ -254,8 +209,10 @@ async function main(): Promise<void> {
     assetId: masterAssetId,
     role: "specsmith-evidence",
     // Every pixel is either the real SpecSmith Compare UI (Playwright
-    // capture) or this pipeline's own overlays (captions, silence bed) — no
-    // third-party reference of any kind went into producing it.
+    // capture, 5 of 6 beats), this pipeline's own plain text-only offline
+    // fixture card (the hook beat), or this pipeline's own overlays
+    // (captions, silence bed) — no third-party reference of any kind went
+    // into producing it.
     uri: pathToFileURL(mp4Path).toString(),
     mimeType: "video/mp4",
     sha256: masterSha256,
@@ -279,19 +236,21 @@ async function main(): Promise<void> {
       productIdentityMode: "none",
       // Genuinely reviewed: every frame in the exact evidence-matched render
       // above was extracted and visually inspected — see
-      // fixtures/mp4-smoke-offline-observation.json's notes for what was
-      // actually watched. No third-party logo, wordmark, watermark, artwork,
-      // serial/sticker text, retailer mark, copied product photography, or
-      // distinctive third-party industrial design appears anywhere in it —
-      // it is plain SpecSmith UI chrome and this pipeline's own text
-      // overlays. reviewedBy is deliberately NOT "automated" — no automated
-      // scorer reviewed this; a human/Claude did, once, off-line, and that
-      // review is what fixtures/mp4-smoke-offline-observation.json records.
+      // fixtures/generated-plan-offline-observation.json's notes for what
+      // was actually watched. No third-party logo, wordmark, watermark,
+      // artwork, serial/sticker text, retailer mark, copied product
+      // photography, or distinctive third-party industrial design appears
+      // anywhere in it — every beat is either plain SpecSmith UI chrome, this
+      // pipeline's own text-only offline fixture card (the hook beat), or
+      // this pipeline's own caption overlays. reviewedBy is deliberately NOT
+      // "automated" — no automated scorer reviewed this; a human/Claude did,
+      // once, off-line, and that review is what
+      // fixtures/generated-plan-offline-observation.json records.
       restrictedFeatures: cleanRestrictedFeatureReview(),
       reviewedBy: "claude-code-manual-review",
       notes: [
-        "Rendered by scripts/content-automator/offlineCompositorSmoke.ts using local fixtures (no paid provider).",
-        `Frames visually inspected by ${evidence.reviewedBy} at ${evidence.reviewedAt}; see fixtures/mp4-smoke-offline-observation.json for the full record.`,
+        "Rendered by scripts/content-automator/offlineGeneratedPlanRender.ts from the actual generated six-beat production plan, using local fixtures (no paid provider).",
+        `Frames visually inspected by ${evidence.reviewedBy} at ${evidence.reviewedAt}; see fixtures/generated-plan-offline-observation.json for the full record.`,
       ],
     },
   };
@@ -326,7 +285,11 @@ async function main(): Promise<void> {
     { rank: 1, idea, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
     content,
     script,
-    { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "deterministic-ui", uiProofRatio: 1, generatedVisualRatio: 0, exactProductAssetRatio: 1 },
+    // 5 of the video's 6 beats are the real deterministic Compare-page
+    // capture; the hook beat is this pipeline's own offline fixture card,
+    // not a real product capture or a paid generated visual — "mixed" is
+    // the honest classification for the finished video.
+    { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "mixed", uiProofRatio: 5 / 6, generatedVisualRatio: 1 / 6, exactProductAssetRatio: 5 / 6 },
   );
   console.log(`Creative id: ${fingerprint.creativeId}`);
 
@@ -429,7 +392,7 @@ async function main(): Promise<void> {
   }
 
   section("Done");
-  console.log("Real idea -> real generated storyboard/production-plan contract -> real (separately-authored) render -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger stopped at qc-passed -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled. Wiring the generated storyboard through to a real render is separate future work — see the header comment.");
+  console.log("Real idea -> real generated six-beat storyboard/production plan -> that EXACT plan rendered (no hand-authored substitute) -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger stopped at qc-passed -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled.");
 }
 
 main().catch((error) => {

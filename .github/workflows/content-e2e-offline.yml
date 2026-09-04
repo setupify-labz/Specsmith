@@ -1,6 +1,6 @@
 # Manual, credential-free CI evidence gate for the content-automator's real
 # offline end-to-end path (scripts/content-automator/endToEndOfflinePipeline.ts,
-# issue #82 / PR #83).
+# issue #82 / PR #83 / issue #89's actual-generated-plan wiring).
 #
 # NOTHING HERE TOUCHES A CREDENTIAL
 # ----------------------------------
@@ -30,14 +30,14 @@
 # endToEndOfflinePipeline.ts's quality-review gate (section 3) only trusts a
 # render's scores if this run's actual rendered sha256 matches the sha256
 # recorded, once, in the committed
-# scripts/content-automator/fixtures/mp4-smoke-offline-observation.json —
+# scripts/content-automator/fixtures/generated-plan-offline-observation.json —
 # fail-closed by design (see that file and qualityReviewer.ts's
-# matchRenderToRecordedEvidence). offlineCompositorSmoke.ts's UI-capture
-# sequence step drives real, timing-sensitive browser interactions, so the
-# exact rendered bytes are not guaranteed to reproduce across machines/runs
-# even though the underlying application STATE is deterministic — confirmed
-# empirically (four separate local renders of the same commit produced four
-# distinct sha256 hashes). A CI runner is yet another machine, so this step's
+# matchRenderToRecordedEvidence). Every UI beat here is a static capture (no
+# interactive sequence step), but ffmpeg's own encode/mux is still not
+# guaranteed byte-identical across runs of identical inputs (container
+# timestamps, encoder scheduling) — confirmed empirically (two separate local
+# renders of the same commit produced two distinct sha256 hashes with
+# visually/audibly identical content). A CI runner is yet another machine, so this step's
 # most likely outcome is the pipeline correctly stopping at that evidence gate
 # rather than reaching "Done" — that is the fix working as designed, not a
 # regression, and it is NOT the same as the pipeline crashing for some other
@@ -62,6 +62,7 @@ on:
   push:
     branches:
       - claude/intelligent-bohr-naord4
+      - claude/intelligent-bohr-srl3f9
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
@@ -206,8 +207,13 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          mp4="artifacts/SpecSmith/render-output/mp4-smoke-offline/mp4-smoke-offline-youtube-shorts-mp4-smoke-offline-compose.mp4"
-          if [ -f "${mp4}" ]; then
+          # offlineGeneratedPlanRender.ts always writes into this fixed
+          # directory, but its filename embeds the content package's
+          # timestamp-based id (see contentPackage.ts's campaignId), so it
+          # cannot be hardcoded the way offlineCompositorSmoke.ts's fixed
+          # OFFLINE_SMOKE_PACKAGE_ID output name could be.
+          mp4="$(find artifacts/SpecSmith/render-output/generated-plan-offline -maxdepth 1 -name '*.mp4' -print -quit || true)"
+          if [ -n "${mp4}" ] && [ -f "${mp4}" ]; then
             ffmpeg -y -ss 0.3 -i "${mp4}" -frames:v 1 -update 1 -q:v 2 "${RUNNER_TEMP}/e2e/frame-opening.png"
             ffmpeg -y -ss 6.9 -i "${mp4}" -frames:v 1 -update 1 -q:v 2 "${RUNNER_TEMP}/e2e/frame-later.png"
             cp "${mp4}" "${RUNNER_TEMP}/e2e/rendered-master.mp4"
