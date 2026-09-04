@@ -79,6 +79,14 @@ on:
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
+      # The "Run the full test suite" step below runs pnpm exec vitest run
+      # with no path filter of its own — it exercises scripts/measured/
+      # (and everything else in the repo) regardless, so a change there can
+      # flip this check red or green exactly like a content-automator change
+      # can. Missing this path meant a push touching only scripts/measured/
+      # never re-ran this workflow at all — found when porting #94's fix for
+      # issue #93's flake into this branch didn't retrigger CI.
+      - 'artifacts/SpecSmith/scripts/measured/**'
       - 'artifacts/SpecSmith/src/**'
       - 'artifacts/SpecSmith/public/data/**'
   workflow_dispatch:
