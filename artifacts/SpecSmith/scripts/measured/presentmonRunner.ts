@@ -55,7 +55,7 @@
 // its digest — that pairing is checkable by whoever runs the capture, which a
 // vendored blob is not.
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { execFileSync, spawn as nodeSpawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -721,12 +721,21 @@ export async function runPresentMonCapture(
     ownedTempDir = fsLike.mkdtempSync(path.join(os.tmpdir(), 'specsmith-capture-'));
     outputDir = ownedTempDir;
   }
-  const csvPath = path.join(outputDir, `presentmon-${target.processId}-${Date.now()}.csv`);
+  // Date.now() alone is not unique: two captures of the same process within
+  // the same millisecond — the exact case of two back-to-back calls in a
+  // test, and not impossible for two real captures started in quick
+  // succession either — produce the identical path. A random suffix makes
+  // collision actually impossible rather than merely unlikely, which is what
+  // the existsSync check below is supposed to be guarding against.
+  const csvPath = path.join(
+    outputDir,
+    `presentmon-${target.processId}-${Date.now()}-${randomBytes(4).toString('hex')}.csv`,
+  );
 
   try {
     // A pre-existing file at this path would be read back as though PresentMon
-    // had written it. The name embeds a pid and a timestamp so this is close to
-    // impossible, which is exactly why it must be checked rather than assumed.
+    // had written it. The name embeds a pid, a timestamp and a random suffix,
+    // which is why this can still be checked rather than merely assumed.
     if (fsLike.existsSync(csvPath)) {
       throw new CaptureFailedError(`Refusing to overwrite an existing file at ${csvPath}.`);
     }

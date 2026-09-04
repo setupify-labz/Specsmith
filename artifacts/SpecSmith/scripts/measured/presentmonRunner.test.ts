@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 
@@ -742,6 +742,49 @@ describe('temporary capture files', () => {
         { spawn: () => child, listProcesses: () => [proc(1, 'g.exe')], fsLike: collidingFs as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
       ),
     ).rejects.toThrow(/Refusing to overwrite/);
+  });
+
+  // Regression coverage for issue #93's real, reproducible flake: two
+  // captures of the SAME process id started within the same millisecond
+  // (Date.now()'s own resolution) used to generate the identical output
+  // path, so the second's own existsSync guard rejected it with "Refusing
+  // to overwrite an existing file" instead of running at all — reproduced
+  // directly against this exact test, at roughly a 1-in-5 rate under the
+  // full suite's real concurrent load, before the fix. The clock is frozen
+  // here specifically to make that millisecond-collision deterministic
+  // rather than relying on real timing to land it.
+  it('never reuses the same output path for two captures of the same process started in the same millisecond', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(0);
+      const capturedPaths: string[] = [];
+      const runOnce = () => {
+        const child = new FakeChild();
+        const files: Record<string, string> = {};
+        const fsDouble = fakeFs(files);
+        const spawn = (_cmd: string, args: readonly string[]) => {
+          const outFile = String(args[args.indexOf('--output_file') + 1]);
+          capturedPaths.push(outFile);
+          files[outFile] = csvBody;
+          // Fake timers freeze setTimeout; a microtask still resolves
+          // without needing to advance the (frozen) clock.
+          queueMicrotask(() => child.emit('exit', 0, null));
+          return child;
+        };
+        return runPresentMonCapture(
+          { processId: 1, seconds: 30, binary },
+          { spawn, listProcesses: () => [proc(1, 'g.exe')], fsLike: fsDouble as never, platform: 'win32', deadlineMs: 500, acquireLock: noopLock },
+        );
+      };
+
+      await runOnce();
+      await runOnce();
+
+      expect(capturedPaths).toHaveLength(2);
+      expect(capturedPaths[0]).not.toBe(capturedPaths[1]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

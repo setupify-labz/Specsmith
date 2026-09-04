@@ -221,7 +221,12 @@ export function runDirect(scriptPath: string, args: readonly string[], options: 
       clearTimeout(timeout);
       reject(error);
     });
-    child.on('exit', (code, signal) => {
+    // 'close' rather than 'exit': Node does not guarantee a process's final
+    // stdio 'data' events have all been delivered by the time 'exit' fires —
+    // only 'close' waits for the stdio streams to end too. See
+    // cancellation.test.ts's runHarness/runViaPnpm for the same fix and the
+    // real flake it closes.
+    child.on('close', (code, signal) => {
       clearTimeout(timeout);
       resolve({ code, signal, stdout, stderr });
     });

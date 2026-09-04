@@ -85,12 +85,24 @@ export interface CancellationOptions {
   fsLike?: Pick<typeof fs, 'existsSync' | 'readFileSync' | 'rmSync' | 'unlinkSync'>;
   /** Signals to catch. SIGBREAK is Windows' Ctrl+Break and does not exist elsewhere. */
   signals?: readonly NodeJS.Signals[];
+  /** Injected clock, so tests can drive the debounce window deterministically. */
+  now?: () => number;
 }
 
 /** POSIX convention for "terminated by SIGINT": 128 + 2. */
 export const CANCELLED_EXIT_CODE = 130;
 
 export const DEFAULT_CANCEL_SIGNALS: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGBREAK'];
+
+/**
+ * A second signal delivered within this many milliseconds of the first is
+ * treated as a duplicate of the same interrupt, not a genuine second Ctrl+C
+ * — see the comment on the duplicate check in installCancellationHandler for
+ * why this is needed at all. Comfortably above the sub-100ms gap a
+ * process-group-wide signal plus a script runner's own forwarding produces,
+ * and comfortably below any realistic human double-press.
+ */
+export const DUPLICATE_SIGNAL_DEBOUNCE_MS = 150;
 
 /**
  * Deletes the lock file only if this process still owns it.
@@ -157,14 +169,17 @@ export function installCancellationHandler(options: CancellationOptions = {}): C
 
   const controller = new AbortController();
   let resources: CancellableResources = {};
+  const now = options.now ?? Date.now;
   let cancelled = false;
   let disposed = false;
+  let firstSignalAtMs = 0;
 
   const onSignal = (signal: NodeJS.Signals) => {
     if (disposed) return;
 
     if (!cancelled) {
       cancelled = true;
+      firstSignalAtMs = now();
       controller.abort();
       // Non-zero from here on. Set now rather than at exit, so even a torn-down
       // process reports failure rather than a successful-looking 0.
@@ -176,6 +191,19 @@ export function installCancellationHandler(options: CancellationOptions = {}): C
       );
       return;
     }
+
+    // A second delivery arriving within DUPLICATE_SIGNAL_DEBOUNCE_MS of the
+    // first is treated as the SAME physical interrupt, not a genuine second
+    // Ctrl+C. This is not a hypothetical: `pnpm run <script>` can deliver
+    // SIGINT to this process twice for one console-wide Ctrl+C — once
+    // directly (this process shares the signalled process group) and once
+    // forwarded by pnpm's own script runner — tens of milliseconds apart.
+    // Without this, that alone made the FIRST Ctrl+C behave like the second
+    // one: abandoning the wait instead of the graceful stop this file exists
+    // to guarantee. An operator pressing Ctrl+C twice on purpose is reliably
+    // much further apart than that (proven below with a 300ms gap, well
+    // outside the window) and still triggers this path correctly.
+    if (now() - firstSignalAtMs < DUPLICATE_SIGNAL_DEBOUNCE_MS) return;
 
     // Asked twice.
     log.error('Second interrupt — abandoning the wait. PresentMon may still be running; if a later ' +

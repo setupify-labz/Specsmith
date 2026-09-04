@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CANCELLED_EXIT_CODE,
   DEFAULT_CANCEL_SIGNALS,
+  DUPLICATE_SIGNAL_DEBOUNCE_MS,
   cleanUpResources,
   installCancellationHandler,
   removeOwnLock,
@@ -88,7 +89,16 @@ function runHarness(options: {
       clearTimeout(timer);
       reject(error);
     });
-    child.on('exit', (code, signal) => {
+    // 'close' rather than 'exit': Node does not guarantee the stdio 'data'
+    // events for a process's final output have all been delivered by the
+    // time 'exit' fires — only 'close' waits for the stdio streams to end
+    // too. Resolving on 'exit' let this test read `stdout`/`stderr` before a
+    // process's last write (e.g. cancelHarness.ts's own CHILD_EXIT_CONFIRMED,
+    // printed immediately before it calls process.exit()) had necessarily
+    // been delivered yet, which is exactly the flake this fixes: a real,
+    // final line the child process did print sometimes lost the race and
+    // appeared to be missing.
+    child.on('close', (code, signal) => {
       clearTimeout(timer);
       resolve({
         code,
@@ -142,8 +152,11 @@ describe('Ctrl+C at the real CLI boundary', () => {
 
   // The escape hatch: an operator who does not want to wait must not have to
   // reach for Task Manager, and must not be charged a leaked lock for it.
+  // gapMs is well outside DUPLICATE_SIGNAL_DEBOUNCE_MS (150ms) — this proves
+  // a realistically-spaced genuine second Ctrl+C still abandons the wait,
+  // not just any two signals.
   it('gives up on the second signal, still cleaning up', async () => {
-    const run = await runHarness({ signals: ['SIGINT', 'SIGINT'], args: ['--linger', '10000'], gapMs: 120 });
+    const run = await runHarness({ signals: ['SIGINT', 'SIGINT'], args: ['--linger', '10000'], gapMs: 300 });
     expect(run.stderr).toMatch(/second interrupt/i);
     expect(run.code).toBe(CANCELLED_EXIT_CODE);
     expect(fs.existsSync(run.tempDir)).toBe(false);
@@ -227,7 +240,16 @@ function runInternalCancelHarness(args: string[] = []): Promise<InternalCancelRu
       clearTimeout(timer);
       reject(error);
     });
-    child.on('exit', (code, signal) => {
+    // 'close' rather than 'exit': Node does not guarantee the stdio 'data'
+    // events for a process's final output have all been delivered by the
+    // time 'exit' fires — only 'close' waits for the stdio streams to end
+    // too. Resolving on 'exit' let this test read `stdout`/`stderr` before a
+    // process's last write (e.g. cancelHarness.ts's own CHILD_EXIT_CONFIRMED,
+    // printed immediately before it calls process.exit()) had necessarily
+    // been delivered yet, which is exactly the flake this fixes: a real,
+    // final line the child process did print sometimes lost the race and
+    // appeared to be missing.
+    child.on('close', (code, signal) => {
       clearTimeout(timer);
       resolve({ code, signal, stdout, stderr, tempDir, lockPath });
     });
@@ -298,7 +320,16 @@ function runExitCodeHarness(lingerMs = 150): Promise<{ code: number | null; sign
       clearTimeout(timer);
       reject(error);
     });
-    child.on('exit', (code, signal) => {
+    // 'close' rather than 'exit': Node does not guarantee the stdio 'data'
+    // events for a process's final output have all been delivered by the
+    // time 'exit' fires — only 'close' waits for the stdio streams to end
+    // too. Resolving on 'exit' let this test read `stdout`/`stderr` before a
+    // process's last write (e.g. cancelHarness.ts's own CHILD_EXIT_CONFIRMED,
+    // printed immediately before it calls process.exit()) had necessarily
+    // been delivered yet, which is exactly the flake this fixes: a real,
+    // final line the child process did print sometimes lost the race and
+    // appeared to be missing.
+    child.on('close', (code, signal) => {
       clearTimeout(timer);
       resolve({ code, signal, stderr });
     });
@@ -344,7 +375,19 @@ describe('the top-level catch does not clobber a deliberate cancellation exit co
 function runViaPnpm(
   pnpmArgs: readonly string[],
   lingerMs = 250,
+  options: { waitForClose?: boolean } = {},
 ): Promise<{ code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string; msFromSignalToExit: number }> {
+  // 'close' vs 'exit' is a real, deliberate choice, not interchangeable:
+  //   - true (default): waits for stdio to fully drain before resolving —
+  //     required to read a process's true final output (see the 'close'
+  //     comment below). This is what every "the wrapper waits" test needs.
+  //   - false: resolves on the WRAPPER's own 'exit', which is what "pnpm exec
+  //     does NOT wait for the collector" is specifically proving — its point
+  //     is that the wrapper dies quickly while an orphaned collector, still
+  //     holding the same inherited stdio pipe open, keeps running. Waiting
+  //     for 'close' there would wait for that orphan to finish too, which
+  //     defeats the test: it would make `pnpm exec` look like it waited.
+  const waitForClose = options.waitForClose ?? true;
   return new Promise((resolve, reject) => {
     const child = spawn('pnpm', [...pnpmArgs, '--', '--linger', String(lingerMs)], {
       cwd: specsmithRoot,
@@ -384,7 +427,16 @@ function runViaPnpm(
       clearTimeout(timer);
       reject(error);
     });
-    child.on('exit', (code, signal) => {
+    // 'close' rather than 'exit' (when waitForClose): Node does not guarantee
+    // the stdio 'data' events for a process's final output have all been
+    // delivered by the time 'exit' fires — only 'close' waits for the stdio
+    // streams to end too. Resolving on 'exit' let this test read
+    // `stdout`/`stderr` before a process's last write (e.g. cancelHarness.ts's
+    // own CHILD_EXIT_CONFIRMED, printed immediately before it calls
+    // process.exit()) had necessarily been delivered yet, which is exactly
+    // the flake this fixes: a real, final line the child process did print
+    // sometimes lost the race and appeared to be missing.
+    child.on(waitForClose ? 'close' : 'exit', (code, signal) => {
       clearTimeout(timer);
       resolve({ code, signal, stdout, stderr, msFromSignalToExit: Date.now() - signalledAt });
     });
@@ -445,7 +497,14 @@ describe('the real pnpm package-script boundary, not just a direct tsx subproces
   // platform, the exact "returned to the prompt before cleanup" failure
   // mode the Windows report described.
   it('`pnpm exec` does NOT wait for the collector — this is why it must not be used for cancellation-sensitive runs', async () => {
-    const run = await runViaPnpm(['exec', 'tsx', path.relative(specsmithRoot, harness)], 500);
+    // waitForClose: false — this is the one test in this file that WANTS
+    // 'exit' rather than 'close': its whole point is observing `pnpm exec`'s
+    // own wrapper process dying quickly while the collector underneath, an
+    // orphan still holding the same inherited stdio pipe open, keeps
+    // running. Waiting for 'close' here would wait for that orphan too,
+    // making `pnpm exec` look like it had waited — the opposite of what this
+    // test exists to prove.
+    const run = await runViaPnpm(['exec', 'tsx', path.relative(specsmithRoot, harness)], 500, { waitForClose: false });
     // pnpm exec's own process dies to the group signal before the 500ms
     // linger elapses; the collector underneath may still be cleaning up.
     expect(run.msFromSignalToExit).toBeLessThan(400);
@@ -508,10 +567,39 @@ describe('the cancellation lifecycle', () => {
     expect(proc.exitCode).toBe(CANCELLED_EXIT_CODE);
   });
 
-  it('exits on the second signal', () => {
+  it('exits on the second signal, realistically spaced', () => {
     const proc = fakeProc();
-    installCancellationHandler({ proc: proc as never, log: { error: () => {} } });
+    let t = 0;
+    installCancellationHandler({ proc: proc as never, log: { error: () => {} }, now: () => t });
     proc.emit('SIGINT');
+    t += DUPLICATE_SIGNAL_DEBOUNCE_MS + 50; // clearly outside the debounce window
+    proc.emit('SIGINT');
+    expect(proc.exits).toEqual([CANCELLED_EXIT_CODE]);
+  });
+
+  // Regression coverage for a real flake this closes: `pnpm run <script>`
+  // can deliver SIGINT to this process twice for a single console-wide
+  // Ctrl+C — once directly (this process shares the signalled process
+  // group) and once forwarded by pnpm's own script runner — tens of
+  // milliseconds apart (reproduced directly: observed gaps of 32-61ms
+  // across repeated real `pnpm run` invocations). Without debouncing, that
+  // alone made ONE Ctrl+C behave like the escape-hatch second one:
+  // abandoning the wait instead of the graceful stop this whole file exists
+  // to prove.
+  it('ignores a second signal that arrives within the duplicate-signal debounce window, as a forwarded duplicate of the same interrupt would', () => {
+    const proc = fakeProc();
+    let t = 0;
+    installCancellationHandler({ proc: proc as never, log: { error: () => {} }, now: () => t });
+    proc.emit('SIGINT');
+    t += DUPLICATE_SIGNAL_DEBOUNCE_MS - 20; // inside the window
+    proc.emit('SIGINT');
+    expect(proc.exits).toEqual([]); // did not abandon — still waiting
+    expect(proc.exitCode).toBe(CANCELLED_EXIT_CODE); // still a cancelled run
+
+    // A later signal, clearly past the window measured from the FIRST
+    // signal, still reaches the real escape hatch — the debounce does not
+    // silently disable it.
+    t += DUPLICATE_SIGNAL_DEBOUNCE_MS + 50;
     proc.emit('SIGINT');
     expect(proc.exits).toEqual([CANCELLED_EXIT_CODE]);
   });
