@@ -88,10 +88,14 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/evidence/install.log"
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/evidence/install.log"
 
       - name: Typecheck
-        run: pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/evidence/typecheck.log"
+        run: |
+          set -euo pipefail
+          pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/evidence/typecheck.log"
 
       # The two files reported flaky in issue #93, run back to back 20 times
       # under whatever concurrency this runner already has. Any single
@@ -110,15 +114,21 @@ jobs:
 
       - name: Run the full measured suite
         working-directory: artifacts/SpecSmith
-        run: pnpm exec vitest run scripts/measured 2>&1 | tee "${RUNNER_TEMP}/evidence/test-measured-full.log"
+        run: |
+          set -euo pipefail
+          pnpm exec vitest run scripts/measured 2>&1 | tee "${RUNNER_TEMP}/evidence/test-measured-full.log"
 
       - name: Run the full repository test suite
         working-directory: artifacts/SpecSmith
-        run: pnpm run test 2>&1 | tee "${RUNNER_TEMP}/evidence/test-full.log"
+        run: |
+          set -euo pipefail
+          pnpm run test 2>&1 | tee "${RUNNER_TEMP}/evidence/test-full.log"
 
       - name: Build the production application
         working-directory: artifacts/SpecSmith
-        run: pnpm run build 2>&1 | tee "${RUNNER_TEMP}/evidence/build.log"
+        run: |
+          set -euo pipefail
+          pnpm run build 2>&1 | tee "${RUNNER_TEMP}/evidence/build.log"
 
       - name: Upload the evidence for review
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
