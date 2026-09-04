@@ -45,7 +45,7 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly seven workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly eight workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
@@ -110,6 +111,17 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(contentE2eOffline).not.toContain('secrets.');
+
+    // The measured-process tests CI evidence gate is a FIFTH credential-free
+    // tool, alongside the three above (issue #93 / PR #94): typecheck,
+    // vitest and a production build against files already committed, no
+    // network call beyond installing dependencies.
+    const measuredTestsCi = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'measured-tests-ci.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(measuredTestsCi).not.toContain('secrets.');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can

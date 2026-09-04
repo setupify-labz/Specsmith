@@ -15,6 +15,8 @@
 //
 // Protocol, on stdout, one per line:
 //   READY <tempDir> <lockPath>   resources exist; safe to signal
+//   PARENT_PID <pid>             this process's direct parent — see cancellation.test.ts's
+//                                 runViaPnpmTargeted, which signals exactly this pid
 //   WAITING                      abort seen, standing by for "PresentMon"
 //   CHILD_EXIT_CONFIRMED         "PresentMon" is gone; orderly exit follows
 
@@ -43,6 +45,7 @@ const cancellation = installCancellationHandler();
 cancellation.track({ ownedTempDir: tempDir, lockPath });
 
 console.log(`READY ${tempDir} ${lockPath}`);
+console.log(`PARENT_PID ${process.ppid}`);
 
 if (finishImmediately) {
   // The success path: the run completed and owns its own files from here, so
