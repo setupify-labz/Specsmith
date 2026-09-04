@@ -63,6 +63,17 @@
 //   snapshot would be filed under is the one already bound to the media hash,
 //   the rights bundle, and the publishing ledger — it never calls
 //   recordAnalyticsSnapshot with fabricated view/engagement data.
+// - The quality gate also fails closed on audio: a passing verdict requires
+//   the recorded observation's audioReviewMethod to be "listened-full", not
+//   just a healthy ffmpeg silence/volume-level reading. The committed
+//   evidence file honestly records "signal-analysis-only" — no environment
+//   this script has ever run in can actually listen — so THIS RUN IS
+//   EXPECTED TO STOP at section 3 with decision=hold-for-human-review,
+//   before reaching the rights bundle, publishing request, or ledger. Those
+//   later sections' own logic is real and exercised (see
+//   qualityReviewer.test.ts and publishing.test.ts), but this script will
+//   only walk them for real once a human genuinely listens to this exact
+//   sha256-bound master and updates the evidence file accordingly.
 
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -71,6 +82,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildQualityReviewRequest, reviewRenderedVideo, matchRenderToRecordedEvidence, parseRecordedRenderEvidence, type RenderedVideoObservation } from "./qualityReviewer.ts";
 import { buildCreativeFingerprint } from "./creativeFingerprint.ts";
+import { GENERATED_PLAN_CREATIVE_RUNTIME_METADATA } from "./generatedPlanCreativeRuntime.ts";
 import {
   buildProductVisualAssetRegistry,
   evaluatePublicationAssetBundle,
@@ -196,6 +208,16 @@ async function main(): Promise<void> {
     durationSeconds,
     observedCtaRoute: content.site.route,
   };
+  // As of this fix, the quality gate also fails closed on audio: a passing
+  // verdict requires observation.audioReviewMethod === "listened-full" — see
+  // qualityReviewer.ts's audio-not-genuinely-reviewed check. The committed
+  // fixtures/generated-plan-offline-observation.json honestly records
+  // "signal-analysis-only" (ffmpeg silence/volume stats, not a real listen —
+  // no environment running this script has listening capability today), so
+  // this run is expected to stop here with decision=hold-for-human-review
+  // until someone genuinely listens to this exact sha256-bound master and
+  // updates that fixture. That is this gate working as designed, the same
+  // way an evidence-sha256 mismatch stops the run above — not a regression.
   const review = reviewRenderedVideo(reviewRequest, observation);
   console.log(`Decision: ${review.decision} (publishable=${review.publishable}, overallScore=${review.overallScore}/10)`);
   console.log(`Issues: ${review.issues.length === 0 ? "none" : review.issues.map((i) => `${i.severity}:${i.code}`).join(", ")}`);
@@ -288,8 +310,12 @@ async function main(): Promise<void> {
     // 5 of the video's 6 beats are the real deterministic Compare-page
     // capture; the hook beat is this pipeline's own offline fixture card,
     // not a real product capture or a paid generated visual — "mixed" is
-    // the honest classification for the finished video.
-    { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "mixed", uiProofRatio: 5 / 6, generatedVisualRatio: 1 / 6, exactProductAssetRatio: 5 / 6 },
+    // the honest classification for the finished video. See
+    // generatedPlanCreativeRuntime.ts for why generatedVisualRatio and
+    // exactProductAssetRatio are 0, not fractions that merely look
+    // plausible — that was a fabricated asset-mix classification
+    // independent review flagged, and it is unit tested directly there.
+    GENERATED_PLAN_CREATIVE_RUNTIME_METADATA,
   );
   console.log(`Creative id: ${fingerprint.creativeId}`);
 
@@ -323,7 +349,13 @@ async function main(): Promise<void> {
   console.log(`Ledger created for ${ledger.creativeId}, state: ${ledger.events.at(-1)?.status}`);
   const advanced = await advanceStoredPublicationLedger(publishingStoreRoot, fingerprint.creativeId, {
     status: "qc-passed",
-    note: `Passed automated review at ${review.overallScore}/10.`,
+    // Not "automated review": no automated scorer produced the
+    // scores/claims behind this decision. They come from a committed,
+    // evidence-bound record of a genuine one-time human/Claude inspection
+    // (see step 3's comment and fixtures/generated-plan-offline-observation.json),
+    // matched to these exact bytes by sha256. The ledger note must say that,
+    // not invent an "automated" provenance the run never had.
+    note: `Passed evidence-bound quality review (manual/Claude inspection by ${evidence.reviewedBy} at ${evidence.reviewedAt}, matched to sha256 ${masterSha256}) at ${review.overallScore}/10.`,
   });
   console.log(`Ledger advanced to: ${advanced.events.at(-1)?.status}`);
   // Deliberately stops here. "scheduled" is a real production status other

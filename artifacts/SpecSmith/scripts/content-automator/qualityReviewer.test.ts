@@ -81,6 +81,9 @@ function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): Re
     captionsLegibilityScore: 9.5,
     captionSafeAreaRatio: 1,
     audioClarityScore: 9.3,
+    // A test observation stands in for a genuine review by construction —
+    // see the dedicated "fails closed" tests below for the unreviewed cases.
+    audioReviewMethod: "listened-full",
     visualCoherenceScore: 9.2,
     pacingScore: 9.1,
     specSmithRelevanceScore: 9.7,
@@ -177,6 +180,21 @@ describe("automated quality reviewer", () => {
     const result = reviewRenderedVideo(request, cleanObservation({ genericAiBrollRatio: 0.75 }));
     expect(result.decision).toBe("regenerate-full");
     expect(result.issues.some((issue) => issue.code === "ai-slop-dominant")).toBe(true);
+  });
+
+  it.each(["signal-analysis-only", "not-reviewed"] as const)(
+    "holds for human review instead of trusting audioClarityScore when audioReviewMethod is %s, even with a high score",
+    (audioReviewMethod) => {
+      const result = reviewRenderedVideo(request, cleanObservation({ audioReviewMethod, audioClarityScore: 9.9 }));
+      expect(result.decision).toBe("hold-for-human-review");
+      expect(result.publishable).toBe(false);
+      expect(result.issues.some((issue) => issue.code === "audio-not-genuinely-reviewed")).toBe(true);
+    },
+  );
+
+  it("does not fail closed on audio review method when the master was genuinely listened to end-to-end", () => {
+    const result = reviewRenderedVideo(request, cleanObservation({ audioReviewMethod: "listened-full" }));
+    expect(result.issues.some((issue) => issue.code === "audio-not-genuinely-reviewed")).toBe(false);
   });
 
   it("prevents an internal SpecSmith score from masquerading as measured game FPS", () => {

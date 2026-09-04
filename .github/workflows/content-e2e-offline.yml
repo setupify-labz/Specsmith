@@ -41,10 +41,23 @@
 # most likely outcome is the pipeline correctly stopping at that evidence gate
 # rather than reaching "Done" — that is the fix working as designed, not a
 # regression, and it is NOT the same as the pipeline crashing for some other
-# reason. This step therefore captures the exit code and the full log: an
-# exit code of 0, or a nonzero exit whose log shows the specific, expected
-# "Evidence check: NO MATCH" stop, both pass the step; any other nonzero exit
-# fails it.
+# reason.
+#
+# Independently, even when the sha256 does match, the quality gate also
+# fails closed on audio (qualityReviewer.ts's audio-not-genuinely-reviewed
+# check): a passing verdict requires the recorded observation's
+# audioReviewMethod to be "listened-full", and the committed evidence file
+# honestly records "signal-analysis-only" (ffmpeg silence/volume stats, not
+# a real listen — no CI runner or agent environment this script has ever run
+# in can actually listen). So this run's other most likely outcome is
+# stopping at the same throw with decision=hold-for-human-review, logged as
+# `error:audio-not-genuinely-reviewed` in the Issues line — also the fix
+# working as designed, not a regression.
+#
+# This step therefore captures the exit code and the full log: an exit code
+# of 0, or a nonzero exit whose log shows one of these two specific, expected
+# stops ("Evidence check: NO MATCH" or `audio-not-genuinely-reviewed`), both
+# pass the step; any other nonzero exit fails it.
 #
 # WHAT THE UPLOADED ARTIFACT CONTAINS
 # -------------------------------------
@@ -200,7 +213,11 @@ jobs:
             echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — see this workflow file's header for why the render is not byte-reproducible across machines. This is the fail-closed gate working, not a regression."
             exit 0
           fi
-          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch — treating this as a real failure."
+          if grep -q "audio-not-genuinely-reviewed" "${RUNNER_TEMP}/e2e/pipeline.log"; then
+            echo "Pipeline stopped at the audio-review gate (hold-for-human-review): EXPECTED — see this workflow file's header. The committed evidence honestly records audioReviewMethod: signal-analysis-only, and no environment this script runs in can genuinely listen, so the gate correctly refuses to certify audio clarity from signal statistics alone. This is the fail-closed gate working, not a regression."
+            exit 0
+          fi
+          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch or audio-review gate — treating this as a real failure."
           exit "${code}"
 
       - name: Extract two frames from the rendered MP4, if one was produced
