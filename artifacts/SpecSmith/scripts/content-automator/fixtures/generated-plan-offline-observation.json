@@ -1,0 +1,70 @@
+{
+  "masterSha256": "597ba2bab04f76f56a3d3be142985d95060a6b5bfb2f90c68e7a1c472c78fb1e",
+  "reviewedBy": "claude-code-manual-review",
+  "reviewedAt": "2026-09-04T05:06:18.000Z",
+  "frameRefs": [
+    "generated-plan-offline-observation-frames/beat1-hook-t0.2s.png",
+    "generated-plan-offline-observation-frames/beat2-commitment-t3.5s.png",
+    "generated-plan-offline-observation-frames/beat3-evidence-t8.0s.png",
+    "generated-plan-offline-observation-frames/beat4-reversal-t14.5s.png",
+    "generated-plan-offline-observation-frames/beat5-payoff-t19.5s.png",
+    "generated-plan-offline-observation-frames/beat6-cta-t23.0s.png",
+    "generated-plan-offline-observation-frames/closing-t25.0s.png"
+  ],
+  "notes": [
+    "Genuine one-time inspection of the exact render at masterSha256 597ba2ad...78fb1e, produced by offlineGeneratedPlanRender.ts rendering the ACTUAL generated six-beat production plan for compare-rtx4080s-rtx4080 (issue #89) — not offlineCompositorSmoke.ts's earlier hand-authored 3-visual/8-second timeline. Seven frames extracted with ffmpeg at the approximate midpoint of each of the six generated beats plus one after the last caption cue ends, committed alongside this file (frameRefs) so a reviewer can open the exact bytes this record approves without re-rendering.",
+    "0.2s (beat 1, hook, video-generation capability): localFixtureVideo.ts's offline fixture card — solid background, 'OFFLINE FIXTURE' / 'Not generated video. No paid provider was called.' baked into the frame via ffmpeg drawtext (fontconfig-resolved DejaVu Sans, no hardcoded font path). Not real SpecSmith UI and not presented as such. The onScreenText caption (the idea's full title, 78 characters) is the first exercise of a caption this long anywhere in this pipeline — see the next note.",
+    "CAPTION-WRAP DEFECT FOUND AND FIXED DURING THIS REVIEW: captionRender.ts's wrapCaption() previously collapsed any caption needing MORE than two wrapped lines into one unwrapped second line (joined with spaces, no width limit), which rendered wider than the 1080px safe area — confirmed by direct inspection: the beat-1 caption ran off both the left and right edges of the frame in the render produced before this fix. Root-caused to wrapCaption's line-count fallback and fixed there (now truncates the overflow remainder to maxChars with an ellipsis instead of leaving it unwrapped); regression test added (mediaRender.test.ts, 'caption wrapping'). The masterSha256 and frames recorded in this file are from the render produced AFTER that fix, not before — the caption in beat1-hook-t0.2s.png reads 'Pick the GPU before / SpecSmith reveals the names…', fully inside the frame.",
+    "3.5s (beat 2, commitment, deterministic-ui-render): real live /compare page, RTX 4080 Super vs RTX 4080 (same CPU, r9-9950x3d both sides), prices $2,128/$1,691, 'Est. Avg FPS: 164'/'Est. Avg FPS: 160' both correctly labeled Estimated, 'Better Value' badge, 20-0 tally, per-game bar chart. Caption 'LOCK YOUR PICK' fully inside frame. No consent banner.",
+    "8.0s (beat 3, evidence): same real Compare state, scrolled to the per-game numeric breakdown (101/97, 60/58, 113/109, ... down the list) — a different, more detailed view of the SAME real app state, not a repeated identical screenshot. Caption 'REAL SPECS • REAL PRICES • REAL RULES' wraps to two lines; pixel-cropped inspection (not just eyeballing the full frame) confirms both lines sit fully inside the frame with visible margin on both edges — close to, but not touching, the sides.",
+    "14.5s (beat 4, reversal): same real Compare/per-game-breakdown state. Caption 'BUT HERE'S THE CATCH' fully inside frame, single line.",
+    "19.5s (beat 5, payoff): same real Compare/per-game-breakdown state. Caption 'SPECSMITH RESULT' fully inside frame, single line.",
+    "23.0s (beat 6, cta): same real Compare/per-game-breakdown state. Caption 'CONTINUE IN SPECSMITH →' / '/compare' — the exact CTA route (content.site.route === '/compare') — wraps to two lines, pixel-cropped inspection confirms both fully inside frame with margin on both edges.",
+    "25.0s (closing, past the last caption cue's end at 24s): clean Compare/per-game-breakdown state, no caption, no consent banner, no fake data.",
+    "REAL LIMITATION, not scored around: beats 2 through 6 (5 of the video's 6 beats) show the IDENTICAL captured Compare-page state — productionPlan.ts's deriveUiRenderState derives one static (not sequence) UI state per plan and every non-hook beat reuses it (see productionPlan.ts's buildTasks comment: 'every UI beat in a plan depicts the same verified state'). The video is visually repetitive across those 5 beats; only the burned-in caption text and narration change. This is a real, pre-existing characteristic of the generated plan this render wires through — not something offlineGeneratedPlanRender.ts introduced or something this PR's scope covers fixing (it would mean changing how productionPlan.ts derives UI beat state, a broader design decision). Reflected honestly in visualCoherenceScore/pacingScore below rather than inflated.",
+    "No fake/generated UI anywhere presented as real: the one non-UI beat (the hook) is a plain, clearly labeled offline fixture card, never claiming to be SpecSmith UI or paid-generated video (see uiShots below). No fabricated benchmark/price data — every number in the real-UI beats is the app's own estimateFpsForBuild()/gpus.json/cpus.json output.",
+    "Audio: this review did NOT include literal audio playback (no listening capability in this environment) — recorded honestly as audioReviewMethod: \"signal-analysis-only\" below, which the quality gate now treats as insufficient for a passing audio verdict on its own (see qualityReviewer.ts's audio-not-genuinely-reviewed check), regardless of audioClarityScore. What was verified: ffmpeg silencedetect (noise=-35dB, d=0.3s) over the full 25.338s master reports zero silence intervals — narration is continuous with no dropouts; ffmpeg volumedetect reports mean -21.7dB / max -2.0dB, a healthy non-clipping level, not silence and not distortion. Narration runs at 220wpm (localFixtureTts.ts's default 165wpm was too slow to fit the full six-beat script — see offlineGeneratedPlanRender.ts's comment on this) via espeak-ng, the same deterministic formant synthesizer the original offline evidence already used; its output stays word-distinguishable through roughly this rate, faster and more rushed-sounding than the original 165wpm smoke narration but not degraded to noise. audioClarityScore below is this signal-level basis (verified continuity/levels plus known engine behavior at this rate), not a subjective listen, and the quality gate will not treat it as passing until audioReviewMethod becomes \"listened-full\" for these exact bytes.",
+    "Confirmed across two separate renders of this exact committed code during this review that the rendered bytes are NOT reproducible run to run even though the on-screen content is identical (same root cause as offlineCompositorSmoke.ts's prior finding: ffmpeg's own encode/mux is not guaranteed byte-identical, plus MP4 container metadata) — this evidence file is bound to the one specific masterSha256 above, not to 'renders that look like this'."
+  ],
+  "observation": {
+    "packageId": "generated-plan-offline-evidence-record",
+    "platform": "youtube-shorts",
+    "masterSha256": "597ba2bab04f76f56a3d3be142985d95060a6b5bfb2f90c68e7a1c472c78fb1e",
+    "durationSeconds": 25.338,
+    "openingDecisionClearWithoutAudio": true,
+    "captionsLegibilityScore": 9,
+    "captionSafeAreaRatio": 0.95,
+    "audioClarityScore": 8,
+    "audioReviewMethod": "signal-analysis-only",
+    "visualCoherenceScore": 8,
+    "pacingScore": 8,
+    "specSmithRelevanceScore": 10,
+    "genericAiBrollRatio": 0.08,
+    "observedCtaRoute": "/compare",
+    "claims": [
+      {
+        "text": "RTX 4080 Super and RTX 4080 Avg FPS values shown are SpecSmith's estimated FPS, not measured benchmark FPS.",
+        "kind": "estimated-fps",
+        "verification": "verified",
+        "evidenceRefs": ["live-compare-page-capture:estimateFpsForBuild", "live-compare-page-capture:est-avg-fps-label"],
+        "displayLabel": "Estimated FPS"
+      },
+      {
+        "text": "The real Compare page state (both cards, prices, Est. Avg FPS, per-game bars) is shown live across the commitment, evidence, reversal, payoff, and CTA beats.",
+        "kind": "other",
+        "verification": "verified",
+        "evidenceRefs": ["deterministic-ui-render:compare"]
+      }
+    ],
+    "uiShots": [
+      { "source": "generated", "presentedAsRealSpecSmithUi": false, "taskId": "youtube-shorts-beat-1-visual" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "youtube-shorts-beat-2-visual" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "youtube-shorts-beat-3-visual" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "youtube-shorts-beat-4-visual" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "youtube-shorts-beat-5-visual" },
+      { "source": "deterministic", "presentedAsRealSpecSmithUi": true, "taskId": "youtube-shorts-beat-6-visual" }
+    ],
+    "missingRequiredFacts": [],
+    "failedTaskIds": []
+  }
+}

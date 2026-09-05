@@ -81,6 +81,9 @@ function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): Re
     captionsLegibilityScore: 9.5,
     captionSafeAreaRatio: 1,
     audioClarityScore: 9.3,
+    // A test observation stands in for a genuine review by construction —
+    // see the dedicated "fails closed" tests below for the unreviewed cases.
+    audioReviewMethod: "listened-full",
     visualCoherenceScore: 9.2,
     pacingScore: 9.1,
     specSmithRelevanceScore: 9.7,
@@ -179,6 +182,21 @@ describe("automated quality reviewer", () => {
     expect(result.issues.some((issue) => issue.code === "ai-slop-dominant")).toBe(true);
   });
 
+  it.each(["signal-analysis-only", "not-reviewed"] as const)(
+    "holds for human review instead of trusting audioClarityScore when audioReviewMethod is %s, even with a high score",
+    (audioReviewMethod) => {
+      const result = reviewRenderedVideo(request, cleanObservation({ audioReviewMethod, audioClarityScore: 9.9 }));
+      expect(result.decision).toBe("hold-for-human-review");
+      expect(result.publishable).toBe(false);
+      expect(result.issues.some((issue) => issue.code === "audio-not-genuinely-reviewed")).toBe(true);
+    },
+  );
+
+  it("does not fail closed on audio review method when the master was genuinely listened to end-to-end", () => {
+    const result = reviewRenderedVideo(request, cleanObservation({ audioReviewMethod: "listened-full" }));
+    expect(result.issues.some((issue) => issue.code === "audio-not-genuinely-reviewed")).toBe(false);
+  });
+
   it("prevents an internal SpecSmith score from masquerading as measured game FPS", () => {
     const result = reviewRenderedVideo(request, cleanObservation({
       claims: [{
@@ -274,12 +292,12 @@ describe("recorded render evidence binds an observation to one exact render's by
     })).toThrow(/notes/i);
   });
 
-  it("the real committed offline-smoke evidence file parses and is internally consistent", () => {
+  it("the real committed generated-plan offline evidence file parses and is internally consistent", () => {
     // Guards the actual file endToEndOfflinePipeline.ts reads at run time —
     // a malformed commit here would fail every future run of that script,
     // not just this test.
     const here = dirname(fileURLToPath(import.meta.url));
-    const path = join(here, "fixtures", "mp4-smoke-offline-observation.json");
+    const path = join(here, "fixtures", "generated-plan-offline-observation.json");
     const raw = JSON.parse(readFileSync(path, "utf8"));
     const evidence = parseRecordedRenderEvidence(raw);
     expect(evidence.masterSha256).toMatch(/^[a-f0-9]{64}$/);
@@ -299,7 +317,7 @@ describe("recorded render evidence binds an observation to one exact render's by
     // was actually inspected. A missing file here would make that claim
     // false.
     const here = dirname(fileURLToPath(import.meta.url));
-    const raw = JSON.parse(readFileSync(join(here, "fixtures", "mp4-smoke-offline-observation.json"), "utf8"));
+    const raw = JSON.parse(readFileSync(join(here, "fixtures", "generated-plan-offline-observation.json"), "utf8"));
     const frameRefs: unknown = raw.frameRefs;
     expect(Array.isArray(frameRefs)).toBe(true);
     expect((frameRefs as unknown[]).length).toBeGreaterThan(0);
