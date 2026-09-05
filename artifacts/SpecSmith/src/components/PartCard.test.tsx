@@ -33,6 +33,15 @@ describe('PartCard — no tracked affiliate URL (every canonical GPU/CPU/compone
     expect(screen.getByText('NVIDIA GeForce RTX 4090')).not.toBeNull();
   });
 
+  it('labels catalog prices as estimated rather than implying a current retailer price', () => {
+    render(<PartCard {...baseProps} price_usd={1599} />);
+    const price = screen.getByText('Est. $1,599');
+    expect(price).not.toBeNull();
+    expect(price.getAttribute('title')).toMatch(/Estimated catalog price/i);
+    expect(screen.queryByText('$1,599')).toBeNull();
+  });
+
+
   it('builds the Amazon/Newegg search from the given searchQuery, not the raw name', () => {
     render(<PartCard {...baseProps} searchQuery="NVIDIA GeForce RTX 4090 graphics card" />);
     const amazon = screen.getByRole('link', { name: /Search Amazon/i });
