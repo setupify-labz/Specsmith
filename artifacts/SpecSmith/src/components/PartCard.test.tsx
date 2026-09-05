@@ -39,6 +39,7 @@ describe('PartCard — no tracked affiliate URL (every canonical GPU/CPU/compone
     expect(price).not.toBeNull();
     expect(price.getAttribute('title')).toMatch(/Estimated catalog price/i);
     expect(screen.queryByText('$1,599')).toBeNull();
+    expect(screen.getByRole('button', { name: /estimated \\$1,599/i })).not.toBeNull();
   });
 
 
