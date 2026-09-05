@@ -46,6 +46,13 @@ describe('affiliate catalog builder integration', () => {
     }
   });
 
+  it('does not claim an unverified Amazon Associates relationship in the global footer', () => {
+    const footer = read('Footer.tsx');
+    expect(footer).not.toContain('As an Amazon Associate');
+    expect(footer).not.toContain('earns from qualifying purchases');
+    expect(footer).toContain('Confirm the exact model, current price, and availability');
+  });
+
   it('labels unreported prices and excludes them from the displayed subtotal', () => {
     const summary = read('BuildSummary.tsx');
     const builder = read('../pages/Builder.tsx');
