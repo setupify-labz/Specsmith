@@ -216,7 +216,1128 @@ export default function BuildSummary({
                   style={{ color: 'var(--ff-text)' }}
                   title={!p.customId && p.price !== undefined ? 'Estimated catalog price — verify the current price at the retailer' : undefined}
                 >
-                  {p.price === undefined ? 'Retailer price' : p.customId ? `${p.price.toLocaleString()}` : `Est. ${p.price.toLocaleString()}`}
+                  {p.price === undefined ? 'Retailer price' : p.customId ? '
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {hasFallbackSearchParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
+            </p>
+          )}
+
+          {/* Custom / unlisted part */}
+          {onAddCustomPart && (
+            customOpen ? (
+              <div className="rounded-lg p-2.5 space-y-2" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Part name (e.g. RGB fan kit, used GPU)"
+                  className="w-full px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                  style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitCustomPart()}
+                    placeholder="Price ($)"
+                    inputMode="decimal"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                    style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                  />
+                  <button onClick={submitCustomPart}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    Add
+                  </button>
+                  <button onClick={() => setCustomOpen(false)}
+                    className="px-2 py-1.5 rounded-md text-xs font-semibold"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setCustomOpen(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ border: '1px dashed var(--ff-border)', color: 'var(--ff-text-2)' }}>
+                + Add custom part (anything not in our list)
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
+            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
+          </p>
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+              Sales tax
+              <input
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                className="w-11 px-1.5 py-0.5 rounded text-[10px] text-right focus:outline-none"
+                style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              />
+              %
+            </label>
+            <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
+              {taxValid
+                ? 'Estimated with tax: 
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onEstimateFps}
+            disabled={!canEstimate}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 ${
+              canEstimate ? 'text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                         : 'cursor-not-allowed opacity-50'
+            }`}
+            style={canEstimate ? { background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }
+                               : { backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)' }}
+          >
+            <Zap size={16} />
+            {canEstimate ? 'Estimate FPS' : 'Select GPU + CPU to estimate'}
+          </button>
+
+          {/* Save + Share */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
+              >
+                <Save size={14} />
+                Save Build
+              </button>
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
+          )}
+        </div>
+
+        {/* Bottleneck Checker */}
+        {gpu && cpu && (
+          <BottleneckChecker
+            gpuScore={gpu.benchmark_score}
+            cpuScore={cpu.benchmark_score}
+            onFixGpu={onScrollToGpu}
+            onFixCpu={onScrollToCpu}
+          />
+        )}
+      </div>
+
+      <SaveBuildModal open={saveOpen} onClose={() => setSaveOpen(false)} buildState={buildState} />
+    </>
+  );
+}
+ + p.price.toLocaleString() : 'Est. 
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {hasFallbackSearchParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
+            </p>
+          )}
+
+          {/* Custom / unlisted part */}
+          {onAddCustomPart && (
+            customOpen ? (
+              <div className="rounded-lg p-2.5 space-y-2" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Part name (e.g. RGB fan kit, used GPU)"
+                  className="w-full px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                  style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitCustomPart()}
+                    placeholder="Price ($)"
+                    inputMode="decimal"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                    style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                  />
+                  <button onClick={submitCustomPart}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    Add
+                  </button>
+                  <button onClick={() => setCustomOpen(false)}
+                    className="px-2 py-1.5 rounded-md text-xs font-semibold"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setCustomOpen(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ border: '1px dashed var(--ff-border)', color: 'var(--ff-text-2)' }}>
+                + Add custom part (anything not in our list)
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
+            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
+          </p>
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+              Sales tax
+              <input
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                className="w-11 px-1.5 py-0.5 rounded text-[10px] text-right focus:outline-none"
+                style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              />
+              %
+            </label>
+            <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
+              {taxValid
+                ? `Estimated with tax: ${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onEstimateFps}
+            disabled={!canEstimate}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 ${
+              canEstimate ? 'text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                         : 'cursor-not-allowed opacity-50'
+            }`}
+            style={canEstimate ? { background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }
+                               : { backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)' }}
+          >
+            <Zap size={16} />
+            {canEstimate ? 'Estimate FPS' : 'Select GPU + CPU to estimate'}
+          </button>
+
+          {/* Save + Share */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
+              >
+                <Save size={14} />
+                Save Build
+              </button>
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
+          )}
+        </div>
+
+        {/* Bottleneck Checker */}
+        {gpu && cpu && (
+          <BottleneckChecker
+            gpuScore={gpu.benchmark_score}
+            cpuScore={cpu.benchmark_score}
+            onFixGpu={onScrollToGpu}
+            onFixCpu={onScrollToCpu}
+          />
+        )}
+      </div>
+
+      <SaveBuildModal open={saveOpen} onClose={() => setSaveOpen(false)} buildState={buildState} />
+    </>
+  );
+}
+ + p.price.toLocaleString()}
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {hasFallbackSearchParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
+            </p>
+          )}
+
+          {/* Custom / unlisted part */}
+          {onAddCustomPart && (
+            customOpen ? (
+              <div className="rounded-lg p-2.5 space-y-2" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Part name (e.g. RGB fan kit, used GPU)"
+                  className="w-full px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                  style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitCustomPart()}
+                    placeholder="Price ($)"
+                    inputMode="decimal"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                    style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                  />
+                  <button onClick={submitCustomPart}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    Add
+                  </button>
+                  <button onClick={() => setCustomOpen(false)}
+                    className="px-2 py-1.5 rounded-md text-xs font-semibold"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setCustomOpen(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ border: '1px dashed var(--ff-border)', color: 'var(--ff-text-2)' }}>
+                + Add custom part (anything not in our list)
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
+            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
+          </p>
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+              Sales tax
+              <input
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                className="w-11 px-1.5 py-0.5 rounded text-[10px] text-right focus:outline-none"
+                style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              />
+              %
+            </label>
+            <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
+              {taxValid
+                ? `Estimated with tax: ${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onEstimateFps}
+            disabled={!canEstimate}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 ${
+              canEstimate ? 'text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                         : 'cursor-not-allowed opacity-50'
+            }`}
+            style={canEstimate ? { background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }
+                               : { backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)' }}
+          >
+            <Zap size={16} />
+            {canEstimate ? 'Estimate FPS' : 'Select GPU + CPU to estimate'}
+          </button>
+
+          {/* Save + Share */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
+              >
+                <Save size={14} />
+                Save Build
+              </button>
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
+          )}
+        </div>
+
+        {/* Bottleneck Checker */}
+        {gpu && cpu && (
+          <BottleneckChecker
+            gpuScore={gpu.benchmark_score}
+            cpuScore={cpu.benchmark_score}
+            onFixGpu={onScrollToGpu}
+            onFixCpu={onScrollToCpu}
+          />
+        )}
+      </div>
+
+      <SaveBuildModal open={saveOpen} onClose={() => setSaveOpen(false)} buildState={buildState} />
+    </>
+  );
+}
+ + Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onEstimateFps}
+            disabled={!canEstimate}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 ${
+              canEstimate ? 'text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                         : 'cursor-not-allowed opacity-50'
+            }`}
+            style={canEstimate ? { background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }
+                               : { backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)' }}
+          >
+            <Zap size={16} />
+            {canEstimate ? 'Estimate FPS' : 'Select GPU + CPU to estimate'}
+          </button>
+
+          {/* Save + Share */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
+              >
+                <Save size={14} />
+                Save Build
+              </button>
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
+          )}
+        </div>
+
+        {/* Bottleneck Checker */}
+        {gpu && cpu && (
+          <BottleneckChecker
+            gpuScore={gpu.benchmark_score}
+            cpuScore={cpu.benchmark_score}
+            onFixGpu={onScrollToGpu}
+            onFixCpu={onScrollToCpu}
+          />
+        )}
+      </div>
+
+      <SaveBuildModal open={saveOpen} onClose={() => setSaveOpen(false)} buildState={buildState} />
+    </>
+  );
+}
+ + p.price.toLocaleString() : 'Est. 
+                </span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {hasFallbackSearchParts && (
+            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
+            </p>
+          )}
+
+          {/* Custom / unlisted part */}
+          {onAddCustomPart && (
+            customOpen ? (
+              <div className="rounded-lg p-2.5 space-y-2" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  placeholder="Part name (e.g. RGB fan kit, used GPU)"
+                  className="w-full px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                  style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={customPrice}
+                    onChange={e => setCustomPrice(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitCustomPart()}
+                    placeholder="Price ($)"
+                    inputMode="decimal"
+                    className="flex-1 min-w-0 px-2 py-1.5 rounded-md text-xs focus:outline-none"
+                    style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+                  />
+                  <button onClick={submitCustomPart}
+                    className="px-3 py-1.5 rounded-md text-xs font-bold text-white transition-opacity hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
+                    Add
+                  </button>
+                  <button onClick={() => setCustomOpen(false)}
+                    className="px-2 py-1.5 rounded-md text-xs font-semibold"
+                    style={{ color: 'var(--ff-text-2)' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setCustomOpen(true)}
+                className="w-full py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ border: '1px dashed var(--ff-border)', color: 'var(--ff-text-2)' }}>
+                + Add custom part (anything not in our list)
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
+            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
+          </p>
+          <div className="flex items-center justify-between gap-2 mt-2">
+            <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+              Sales tax
+              <input
+                value={taxPct}
+                onChange={e => setTaxPct(e.target.value)}
+                placeholder="0"
+                inputMode="decimal"
+                className="w-11 px-1.5 py-0.5 rounded text-[10px] text-right focus:outline-none"
+                style={{ backgroundColor: 'var(--ff-input-bg)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
+              />
+              %
+            </label>
+            <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
+              {taxValid
+                ? `Estimated with tax: ${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                : 'Prices exclude sales tax'}
+            </span>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onEstimateFps}
+            disabled={!canEstimate}
+            className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-200 ${
+              canEstimate ? 'text-white hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]'
+                         : 'cursor-not-allowed opacity-50'
+            }`}
+            style={canEstimate ? { background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }
+                               : { backgroundColor: 'var(--ff-card)', color: 'var(--ff-text-2)' }}
+          >
+            <Zap size={16} />
+            {canEstimate ? 'Estimate FPS' : 'Select GPU + CPU to estimate'}
+          </button>
+
+          {/* Save + Share */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setSaveOpen(true)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90"
+                style={{ border: '1px solid var(--ff-accent)', color: 'var(--ff-accent-text)' }}
+              >
+                <Save size={14} />
+                Save Build
+              </button>
+              <ShareButton buildState={buildState} view={shareView} customParts={customParts} size="sm" />
+            </motion.div>
+          )}
+
+          {/* Build Card buttons */}
+          {canEstimate && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={handleDownload}
+                disabled={cardState !== 'idle'}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                style={{
+                  border: '1px solid var(--ff-border)',
+                  backgroundColor: 'var(--ff-card)',
+                  color: 'var(--ff-text)',
+                }}
+                title="Download as PNG"
+              >
+                <Download size={13} />
+                {cardState === 'downloading' ? 'Generating…' : 'Build Card'}
+              </button>
+
+              {supportsClipboardWrite && (
+                <button
+                  onClick={handleCopy}
+                  disabled={cardState !== 'idle'}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-semibold text-xs transition-all hover:opacity-90 disabled:opacity-60"
+                  style={{
+                    border: '1px solid var(--ff-border)',
+                    backgroundColor: cardState === 'copied' ? 'rgba(0,230,118,0.1)' : 'var(--ff-card)',
+                    color: cardState === 'copied' ? 'var(--ff-green)' : 'var(--ff-text-2)',
+                    minWidth: 40,
+                  }}
+                  title="Copy image to clipboard"
+                >
+                  {cardState === 'copied'
+                    ? <Check size={13} />
+                    : cardState === 'copying'
+                    ? <span className="animate-spin inline-block text-[10px]">⟳</span>
+                    : <Copy size={13} />
+                  }
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Export / Import build file — a plain JSON backup that works
+              with no account and no backend, and is the only way today to
+              move a build to another browser or device (saved builds only
+              live in this browser's localStorage). */}
+          {(parts.length > 0 || onImportBuild) && (
+            <div className="flex items-center gap-2">
+              {parts.length > 0 && (
+                <button
+                  onClick={handleExportFile}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                  style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                  title="Download this build as a JSON file"
+                >
+                  <FileDown size={12} />
+                  Export File
+                </button>
+              )}
+              {onImportBuild && (
+                <>
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+                    style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
+                    title="Load a previously exported build file"
+                  >
+                    <FileUp size={12} />
+                    Import File
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFileChange}
+                    className="hidden"
+                    aria-label="Import build file"
+                  />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Start Over */}
+          {onStartOver && parts.length > 0 && (
+            <button
+              onClick={() => {
+                if (!startOverConfirm) { setStartOverConfirm(true); return; }
+                onStartOver();
+                setStartOverConfirm(false);
+              }}
+              onBlur={() => setStartOverConfirm(false)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl font-medium text-xs transition-all hover:opacity-80"
+              style={{ color: startOverConfirm ? 'var(--ff-red)' : 'var(--ff-text-3)' }}
+            >
+              <RotateCcw size={12} />
+              {startOverConfirm ? 'Click again to clear this build' : 'Start Over'}
+            </button>
+          )}
+        </div>
+
+        {/* Bottleneck Checker */}
+        {gpu && cpu && (
+          <BottleneckChecker
+            gpuScore={gpu.benchmark_score}
+            cpuScore={cpu.benchmark_score}
+            onFixGpu={onScrollToGpu}
+            onFixCpu={onScrollToCpu}
+          />
+        )}
+      </div>
+
+      <SaveBuildModal open={saveOpen} onClose={() => setSaveOpen(false)} buildState={buildState} />
+    </>
+  );
+}
+ + p.price.toLocaleString()}
                 </span>
               </motion.div>
             ))}
