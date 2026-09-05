@@ -55,6 +55,17 @@ describe('BuildSummary — parts with no tracked affiliate URL', () => {
     expect(screen.getByText(/open a retailer search, not the exact product/i)).not.toBeNull();
   });
 
+  it('labels catalog part prices and the total as estimated beside fallback searches', () => {
+    renderSummary({
+      totalCost: 1599,
+      parts: [{ label: 'GPU', name: 'NVIDIA GeForce RTX 4090', price: 1599 }],
+    });
+    const price = screen.getByText('Est. $1,599');
+    expect(price.getAttribute('title')).toMatch(/Estimated catalog price/i);
+    expect(screen.getByText('Estimated total')).not.toBeNull();
+  });
+
+
   it('renders the exact part name beside its CTAs and never truncates it out of the DOM', () => {
     renderSummary({ parts: [{ label: 'GPU', name: 'NVIDIA GeForce RTX 4090 Founders Edition', price: 1599 }] });
     expect(screen.getByText('NVIDIA GeForce RTX 4090 Founders Edition')).not.toBeNull();
