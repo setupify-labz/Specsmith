@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
-import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
+import { Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
+import { buildPartQuery } from '../lib/fps';
+import { getAmazonLink, getNeweggLink } from '../lib/retailerLinkState';
+import RetailerLinkCta from './RetailerLinkCta';
 import { downloadBuildFile, parseBuildFileContent, type ShareView, type SharedCustomPart } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
@@ -126,7 +128,10 @@ export default function BuildSummary({
   };
 
   const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
-  const hasAffiliateParts = parts.some((part) => Boolean(part.affiliateUrl));
+  // Every retailer CTA a non-custom part renders is a fallback-search link
+  // today (see retailerLinkState.ts: neither getAmazonLink nor
+  // getNeweggLink can currently return 'exact' in this component tier).
+  const hasFallbackSearchParts = parts.some((part) => !part.customId);
   const hasUnknownPrices = parts.some((part) => part.price === undefined);
 
   return (
@@ -170,7 +175,7 @@ export default function BuildSummary({
               >
                 <div className="min-w-0 flex-1">
                   <span className="block text-[10px] uppercase tracking-wider" style={{ color: 'var(--ff-text-3)' }}>{p.label}</span>
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{p.name}</span>
                     {p.customId ? (
                       <button onClick={() => onRemoveCustomPart?.(p.customId!)}
@@ -180,33 +185,46 @@ export default function BuildSummary({
                         Remove
                       </button>
                     ) : (
-                      <>
-                        {!p.affiliateUrl && (
-                          <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer sponsored"
-                            title="Search Amazon"
-                            className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
-                            Amazon
-                          </a>
-                        )}
-                        <a href={p.affiliateUrl ?? getNeweggUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel={p.affiliateUrl ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
-                          title={p.affiliateUrl ? `View ${p.name} at Newegg (affiliate link)` : 'Search Newegg'}
-                          className="flex-shrink-0 text-[9px] font-bold transition-opacity hover:opacity-80" style={{ color: 'var(--ff-newegg)' }}>
-                          Newegg
-                        </a>
-                      </>
+                      (() => {
+                        const query = buildPartQuery(p.name, undefined, p.label.toLowerCase());
+                        const amazonLink = getAmazonLink(query);
+                        const neweggLink = getNeweggLink(query, p.affiliateUrl);
+                        return (
+                          <div className="flex flex-shrink-0 items-center gap-1.5">
+                            <RetailerLinkCta
+                              retailer="Amazon"
+                              partName={p.name}
+                              link={amazonLink}
+                              variant="text"
+                              accentColor="var(--ff-accent-text)"
+                            />
+                            <RetailerLinkCta
+                              retailer="Newegg"
+                              partName={p.name}
+                              link={neweggLink}
+                              variant="text"
+                              accentColor="var(--ff-newegg)"
+                            />
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 </div>
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text)' }}>
-                  {p.price === undefined ? 'Retailer price' : `$${p.price.toLocaleString()}`}
+                <span
+                  className="text-sm font-semibold whitespace-nowrap"
+                  style={{ color: 'var(--ff-text)' }}
+                  title={!p.customId && p.price !== undefined ? 'Estimated catalog price — verify the current price at the retailer' : undefined}
+                >
+                  {p.price === undefined ? 'Retailer price' : p.customId ? '$' + p.price.toLocaleString() : 'Est. $' + p.price.toLocaleString()}
                 </span>
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {hasAffiliateParts && (
+          {hasFallbackSearchParts && (
             <p className="text-[10px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
-              Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
+              &quot;Search&quot; links open a retailer search, not the exact product — confirm the model, price, and availability before buying.
             </p>
           )}
 
@@ -256,7 +274,7 @@ export default function BuildSummary({
         {/* Total */}
         <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Known-price subtotal' : 'Total Cost'}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
             <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
           </div>
           <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
@@ -277,7 +295,7 @@ export default function BuildSummary({
             </label>
             <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
               {taxValid
-                ? `With tax: $${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                ? 'Estimated with tax: $' + Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()
                 : 'Prices exclude sales tax'}
             </span>
           </div>
