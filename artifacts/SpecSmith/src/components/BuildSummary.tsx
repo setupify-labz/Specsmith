@@ -211,8 +211,12 @@ export default function BuildSummary({
                     )}
                   </div>
                 </div>
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text)' }}>
-                  {p.price === undefined ? 'Retailer price' : `$${p.price.toLocaleString()}`}
+                <span
+                  className="text-sm font-semibold whitespace-nowrap"
+                  style={{ color: 'var(--ff-text)' }}
+                  title={!p.customId && p.price !== undefined ? 'Estimated catalog price — verify the current price at the retailer' : undefined}
+                >
+                  {p.price === undefined ? 'Retailer price' : p.customId ? `${p.price.toLocaleString()}` : `Est. ${p.price.toLocaleString()}`}
                 </span>
               </motion.div>
             ))}
@@ -270,7 +274,7 @@ export default function BuildSummary({
         {/* Total */}
         <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Known-price subtotal' : 'Total Cost'}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Estimated known-price subtotal' : 'Estimated total'}</span>
             <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
           </div>
           <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
