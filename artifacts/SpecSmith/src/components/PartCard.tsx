@@ -89,7 +89,7 @@ export default function PartCard({
         style={{ zIndex: 0 }}
         onClick={() => onSelect(id)}
         aria-pressed={selected}
-        aria-label={`${name}${price_usd === undefined ? '' : `, $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
+        aria-label={`${name}${price_usd === undefined ? '' : `, estimated ${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
       />
 
       <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
