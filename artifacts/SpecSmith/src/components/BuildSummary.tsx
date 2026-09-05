@@ -295,7 +295,7 @@ export default function BuildSummary({
             </label>
             <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
               {taxValid
-                ? `With tax: $${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                ? `Estimated with tax: ${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
                 : 'Prices exclude sales tax'}
             </span>
           </div>
