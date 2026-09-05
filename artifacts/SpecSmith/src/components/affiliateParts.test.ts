@@ -57,7 +57,7 @@ describe('affiliate catalog builder integration', () => {
     const summary = read('BuildSummary.tsx');
     const builder = read('../pages/Builder.tsx');
     expect(summary).toContain("'Retailer price'");
-    expect(summary).toContain("'Known-price subtotal'");
+    expect(summary).toContain("'Estimated known-price subtotal'");
     expect(builder).toContain('(p.price ?? 0)');
   });
 });
