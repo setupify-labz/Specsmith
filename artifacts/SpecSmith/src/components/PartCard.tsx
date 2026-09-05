@@ -166,8 +166,12 @@ export default function PartCard({
 
         {/* Price + retailer links */}
         <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
-            {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
+          <span
+            className="text-lg font-bold"
+            style={{ color: 'var(--ff-text)' }}
+            title={price_usd === undefined ? undefined : 'Estimated catalog price — verify the current price at the retailer'}
+          >
+            {price_usd === undefined ? 'Price at retailer' : `Est. ${price_usd.toLocaleString()}`}
           </span>
           <div className="flex flex-wrap items-center justify-end gap-1.5" style={{ pointerEvents: 'auto' }}>
             <RetailerLinkCta
