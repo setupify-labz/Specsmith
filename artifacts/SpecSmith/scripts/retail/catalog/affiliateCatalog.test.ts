@@ -1,9 +1,10 @@
+import type { NeweggOffer } from '../rakuten/types';
 import { describe, expect, it } from 'vitest';
 
 import { findItems, parseProductSearchXml } from '../rakuten';
 import { AFFILIATE_PART_TARGET, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
-import { admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, isSelectableBuilderPart } from './affiliateCatalog';
+import { gpuOfferToAffiliatePart, admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, isSelectableBuilderPart } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 const fetchedAt = '2026-08-29T23:00:00.000Z';
@@ -194,4 +195,11 @@ describe('prices are read from the listing, and a bad one costs the candidate', 
       });
     }
   });
+});
+
+
+it('the scheduled generator refuses contradictory GPU offers before publication', () => {
+  const trackedAffiliateUrl = 'https://click.linksynergy.com/link?id=test&offerid=test&murl=' + encodeURIComponent('https://www.newegg.com/msi-rtx-5060-gaming-oc/p/N82E16814137980');
+  const offer = { productName: 'MSI RTX 5050 GAMING OC', trackedAffiliateUrl } as NeweggOffer;
+  expect(gpuOfferToAffiliatePart(offer)).toBeNull();
 });
