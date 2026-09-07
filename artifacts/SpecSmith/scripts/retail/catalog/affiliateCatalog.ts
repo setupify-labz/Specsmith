@@ -14,12 +14,13 @@ import { readCategory } from '../rakuten/admitOffer';
 import { NEWEGG_MID, type NeweggOffer } from '../rakuten/types';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 import type { ImageMeasurement } from './imageContent';
+import { detectIdentityConflict } from '../../../src/lib/retail/identityConflict';
 
 export type CatalogAdmission =
   | { status: 'accepted'; part: AffiliatePart }
   | {
       status: 'rejected';
-      reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'kind' | 'url' | 'price';
+      reason: 'merchant' | 'category' | 'required-field' | 'condition' | 'kind' | 'url' | 'price' | 'identity-conflict';
     };
 
 const safeId = (category: RetailPartCategory, sku: string): string =>
@@ -95,6 +96,7 @@ export function admitAffiliatePart(
   if (classifyListingCondition(name).issue) return { status: 'rejected', reason: 'condition' };
   if (!isSelectableBuilderPart(category, name)) return { status: 'rejected', reason: 'kind' };
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return { status: 'rejected', reason: 'url' };
+  if (detectIdentityConflict(name, trackedAffiliateUrl)) return { status: 'rejected', reason: 'identity-conflict' };
 
   const pricing = readListingPricing(item);
   if (!pricing) return { status: 'rejected', reason: 'price' };
@@ -172,6 +174,7 @@ export function readListingPricing(
  * takes another candidate instead of publishing a part the reader would refuse.
  */
 export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | null {
+  if (detectIdentityConflict(offer.productName, offer.trackedAffiliateUrl)) return null;
   // The adapter permits a sale price equal to or above the retail price; the
   // catalogue does not, because a card would strike the retail price through
   // and show a "discount" that is not one. Drop the sale, keep the listing.
