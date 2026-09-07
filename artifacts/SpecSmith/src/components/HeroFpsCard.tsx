@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Zap } from 'lucide-react';
 
@@ -8,36 +7,15 @@ import { Trophy, Zap } from 'lucide-react';
 const CARD_A = { name: 'RTX 5090', price: 3979, fps: 211 };
 const CARD_B = { name: 'RTX 5070', price: 599, fps: 146 };
 
-function useCountUp(target: number, delayMs: number, durationMs = 1100) {
-  // Render the real value during SSR so prerendered HTML never advertises
-  // "0 FPS" to crawlers. The client hydrates with the same value, then the
-  // effect resets to zero and runs the visual count-up animation.
-  const [value, setValue] = useState(target);
-  useEffect(() => {
-    setValue(0);
-    let raf: number;
-    const start = performance.now() + delayMs;
-    const tick = (now: number) => {
-      const t = Math.min(1, Math.max(0, (now - start) / durationMs));
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(target * eased));
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, delayMs, durationMs]);
-  return value;
-}
-
 function Bar({ name, price, fps, color, delay, maxFps }: { name: string; price: number; fps: number; color: string; delay: number; maxFps: number }) {
-  const shown = useCountUp(fps, delay);
+  const shown = fps;
   const widthPct = Math.max(4, (shown / maxFps) * 100);
   return (
     <div>
       <div className="flex items-baseline justify-between mb-1.5">
         <span className="text-sm font-bold" style={{ color }}>{name}</span>
         <span className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
-          {shown} <span className="text-xs font-semibold" style={{ color: 'var(--ff-text-3)' }}>FPS</span>
+          Est. {shown} <span className="text-xs font-semibold" style={{ color: 'var(--ff-text-3)' }}>FPS</span>
         </span>
       </div>
       <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ff-border)' }}>
@@ -49,7 +27,7 @@ function Bar({ name, price, fps, color, delay, maxFps }: { name: string; price: 
           transition={{ duration: 1.1, delay: delay / 1000, ease: 'easeOut' }}
         />
       </div>
-      <div className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>${price.toLocaleString()}</div>
+      <div className="text-xs mt-1" style={{ color: 'var(--ff-text-3)' }}>Est. ${price.toLocaleString()}</div>
     </div>
   );
 }
@@ -98,7 +76,7 @@ export default function HeroFpsCard() {
 
         <div className="flex items-center gap-1.5 mt-4 pt-4 text-xs font-semibold" style={{ borderTop: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}>
           <Trophy size={13} style={{ color: 'var(--ff-amber)' }} />
-          20 games estimated · estimated pricing
+          Example estimates · 20-game average · Ryzen 7 9800X3D
         </div>
       </motion.div>
 

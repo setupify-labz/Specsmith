@@ -19,6 +19,7 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import RetailBuilder from '../components/builder/RetailBuilder';
+import RetailEstimateAction from '../components/builder/RetailEstimateAction';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -552,6 +553,10 @@ export default function Builder() {
           </div>
 
           </div>
+        )}
+
+        {affiliateCatalog.status === 'ok' && (
+          <RetailEstimateAction canEstimate={canEstimate} onEstimate={handleEstimateFps} />
         )}
 
         {/* FPS Estimator */}
