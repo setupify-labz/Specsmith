@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, XCircle, CheckCircle, Wrench } from 'lucide-react';
+import { AlertTriangle, XCircle, CheckCircle, Wrench, Info } from 'lucide-react';
 import type { CompatibilityWarning } from '../lib/compatibility';
 
 interface Props {
@@ -16,13 +16,14 @@ export default function CompatibilityBanner({ warnings, passed = [] }: Props) {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="flex items-center gap-2 p-3 rounded-lg bg-[#00E676]/8 border border-[#00E676]/20"
+          className="flex items-center gap-2 p-3 rounded-lg border"
+          style={{ color: passed.length ? 'var(--ff-green)' : 'var(--ff-text-2)', borderColor: 'var(--ff-border)' }}
         >
-          <CheckCircle size={16} className="text-[var(--ff-green)] shrink-0" />
-          <span className="text-sm text-[var(--ff-green)] font-medium">
+          {passed.length > 0 ? <CheckCircle size={16} className="shrink-0" /> : <Info size={16} className="shrink-0" />}
+          <span className="text-sm font-medium">
             {passed.length > 0
-              ? `All checks passed: ${passed.join(' · ')}`
-              : 'No compatibility issues detected'}
+              ? `Checked constraints passed: ${passed.join(' · ')}. Other compatibility constraints may remain unchecked.`
+              : 'Compatibility not checked yet. Select parts with supported specifications to run checks.'}
           </span>
         </motion.div>
       ) : (
