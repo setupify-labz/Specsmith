@@ -15,7 +15,7 @@ const homeFaqs = [
   },
   {
     title: 'Where do the prices and FPS numbers come from?',
-    content: `Prices are estimated US street pricing, refreshed monthly (last updated ${PRICES_UPDATED}). FPS estimates use a transparent tier-based algorithm explained in full on the About page — they're a planning guide to compare parts before you buy, not a live-scraped price feed or a guarantee of exact real-world performance. For a small set of configurations backed by an actual cited benchmark instead of an estimate, see Verified Benchmarks in the Builder.`,
+    content: `Homepage build costs use estimated US street pricing (catalogue date: ${PRICES_UPDATED}). Retailer listings in the Builder show separately dated price observations; confirm price and availability on the merchant page. FPS estimates use a transparent tier-based algorithm explained in full on the About page — they're a planning guide to compare parts before you buy, not a guarantee of exact real-world performance. For a small set of configurations backed by an actual cited benchmark instead of an estimate, see Verified Benchmarks in the Builder.`,
   },
   {
     title: 'Do I need to know anything about PC building to use this?',
@@ -51,7 +51,7 @@ const features = [
     icon: <Cpu size={24} className="text-[#6C63FF]" />,
     glow: 'rgba(108,99,255,0.35)',
     title: 'Part Picker',
-    description: 'Choose from 100+ real components with live compatibility checks to ensure everything works together perfectly.',
+    description: 'Choose from 100+ components and check supported compatibility constraints. Confirm exact specifications before buying.',
   },
   {
     icon: <Zap size={24} className="text-[var(--ff-cyan)]" />,
@@ -63,7 +63,7 @@ const features = [
     icon: <DollarSign size={24} className="text-[var(--ff-green)]" />,
     glow: 'rgba(0,230,118,0.35)',
     title: 'Build Cost Estimates',
-    description: 'See your estimated total build cost instantly. Every component shows estimated US street pricing with direct links to purchase.',
+    description: 'See your estimated total build cost instantly. Every component shows estimated US street pricing with retailer links to check the exact model, current price, and availability.',
   },
 ];
 
@@ -80,7 +80,7 @@ const exploreLinks = [
     icon: <Package size={22} className="text-[#FFD700]" />,
     glow: 'rgba(255,215,0,0.3)',
     title: 'Build Crate',
-    description: 'Open a randomized build, one part at a time — every crate guaranteed to fit together, rarity pulls for how good it lands.',
+    description: 'Open a randomized build, one part at a time — review the selected parts and supported compatibility checks before buying.',
     to: '/crate',
     cta: 'Open a Crate',
   },
@@ -96,7 +96,7 @@ const exploreLinks = [
     icon: <TrendingUp size={22} className="text-[var(--ff-cyan)]" />,
     glow: 'rgba(0,212,255,0.3)',
     title: 'Upgrade Guides',
-    description: 'See what your current GPU or CPU is worth used, and whether trading up is actually worth the money.',
+    description: 'Compare estimated used values and performance to explore whether an upgrade fits your budget.',
     to: '/upgrade',
     cta: 'Check Your Upgrade',
   },
@@ -157,12 +157,12 @@ export default function Home() {
                 Free PC Builder + FPS Estimator
               </span>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
-                Build the Fastest Gaming PC<br />
+                Plan Your Gaming PC<br />
                 <span className="gradient-text">for Your Budget</span>
               </h1>
               <p className="text-xl text-secondary-custom max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed">
-                Pick real parts, know your FPS in 20 top games before you buy, and catch compatibility
-                problems instantly — free, no account needed.
+                Pick parts, estimate FPS in 20 games before you buy, and check supported
+                compatibility constraints — free, no account needed.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link
@@ -273,7 +273,7 @@ export default function Home() {
               >
                 <div className="text-xl font-black text-ff-primary mb-1">{p.name}</div>
                 <p className="text-secondary-custom text-xs mb-4">{p.tagline}</p>
-                <div className="text-2xl font-black gradient-text mb-4">${p.price.toLocaleString()}</div>
+                <div className="text-2xl font-black gradient-text mb-4">Est. ${p.price.toLocaleString()}</div>
                 <Link
                   to={`/prebuilts/${p.id}`}
                   className="w-full flex items-center justify-center gap-1 py-2 px-4 rounded-lg text-sm font-semibold text-[var(--ff-accent-text)] border border-[#6C63FF]/30 hover:bg-[#6C63FF]/10 transition-colors"

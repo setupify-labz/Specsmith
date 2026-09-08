@@ -104,7 +104,7 @@ describe('category navigation', () => {
     renderBuilder();
     expect(screen.getByTestId('category-rail-gpu').getAttribute('data-active')).toBe('true');
     expect(screen.getByTestId('category-rail-cpu').getAttribute('data-active')).toBe('false');
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Graphics card');
+    expect(screen.getByRole('heading', { level: 2, name: /^(Graphics card|Keyboard|Monitor)$/ }).textContent).toBe('Graphics card');
     for (const card of screen.getAllByTestId('retail-product-card')) {
       expect(card.getAttribute('data-part-id')).toMatch(/^newegg-gpu-/);
     }
@@ -114,7 +114,7 @@ describe('category navigation', () => {
     renderBuilder();
     fireEvent.click(screen.getByTestId('category-rail-keyboard'));
 
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Keyboard');
+    expect(screen.getByRole('heading', { level: 2, name: /^(Graphics card|Keyboard|Monitor)$/ }).textContent).toBe('Keyboard');
     expect(screen.getByTestId('category-rail-keyboard').getAttribute('data-active')).toBe('true');
     expect(screen.getByTestId('category-rail-gpu').getAttribute('data-active')).toBe('false');
     for (const card of screen.getAllByTestId('retail-product-card')) {
@@ -133,7 +133,7 @@ describe('category navigation', () => {
   it('mobile chips select a category too', () => {
     renderBuilder();
     fireEvent.click(screen.getByTestId('category-chip-monitor'));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Monitor');
+    expect(screen.getByRole('heading', { level: 2, name: /^(Graphics card|Keyboard|Monitor)$/ }).textContent).toBe('Monitor');
     expect(screen.getByTestId('category-chip-monitor').getAttribute('data-active')).toBe('true');
   });
 
