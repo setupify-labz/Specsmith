@@ -86,7 +86,18 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
         {/* Centre catalogue. */}
         <div className="min-w-0 flex-1">
+          {/* Remounting on category change is what resets browsing state
+              (issue #102): a shopper's graphics-card search, brand and price
+              filters, sort, open filter panel and "Load more" page all belong
+              to the category they were chosen in, and must not follow them to
+              the next one. `key` clears all of it in the same render the new
+              category first appears, so no stale "0 of 55 products" is ever
+              painted; an effect-based reset would flash it first, and would
+              have to remember to clear each future piece of state by hand.
+              The build itself lives in `selection`, above this component, and
+              is deliberately untouched by any of this. */}
           <RetailCatalog
+            key={active}
             category={active}
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
