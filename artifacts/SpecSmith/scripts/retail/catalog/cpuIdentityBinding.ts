@@ -7,6 +7,9 @@
 import { verifyCpuModel } from '../rakuten/cpuModelMatch';
 import { bindingFor, type CpuIdentityBinding } from './cpuIdentityRegistry';
 
+/** How a binding is looked up. Injectable so tests drive this function itself. */
+export type BindingLookup = (retailPartId: string) => CpuIdentityBinding | null;
+
 export interface CpuIdentityInput {
   /** Published catalogue part id. */
   retailPartId: string;
@@ -23,7 +26,10 @@ export interface CanonicalCpuLike {
 
 export type CpuIdentityRefusal =
   | 'not-reviewed'
+  /** Recorded for review, but the manufacturer record has not been read. */
+  | 'manufacturer-unconfirmed'
   | 'canonical-missing'
+  | 'manufacturer-disagrees'
   | 'title-disagrees'
   | 'destination-unreadable'
   | 'destination-disagrees';
@@ -84,10 +90,27 @@ export function destinationNamesCpu(destination: string, cpuName: string): boole
 export function resolveCpuIdentity(
   input: CpuIdentityInput,
   canonicalCpus: readonly CanonicalCpuLike[],
+  lookup: BindingLookup = bindingFor,
 ): CpuIdentityOutcome {
-  const evidence = bindingFor(input.retailPartId);
+  const evidence = lookup(input.retailPartId);
   if (!evidence) {
     return { bound: false, refusal: 'not-reviewed', detail: `${input.retailPartId} has no reviewed identity binding.` };
+  }
+
+  // THE INDEPENDENT SOURCE, CHECKED FIRST. Everything below this point is the
+  // merchant describing its own record; none of it can establish what the part
+  // is. Without the manufacturer's own statement about the MPN there is
+  // nothing for the merchant's claim to be checked against, so the binding is
+  // refused before any of the self-consistency checks are even reached.
+  const { manufacturer } = evidence;
+  if (manufacturer.status !== 'confirmed') {
+    return {
+      bound: false,
+      refusal: 'manufacturer-unconfirmed',
+      detail:
+        `Manufacturer evidence for ${manufacturer.mpn} is "${manufacturer.status}". ` +
+        (manufacturer.blockedReason ?? 'It has not been read, so the part is not identified by its vendor.'),
+    };
   }
 
   const canonical = canonicalCpus.find((c) => c.id === evidence.canonicalCpuId);
@@ -99,9 +122,23 @@ export function resolveCpuIdentity(
     };
   }
 
-  // The registry records a past review; this re-checks it against the feed as
-  // it stands today, so a re-titled listing drops its binding instead of
-  // silently keeping an estimate pointed at the wrong chip.
+  // What the vendor says the MPN is must be the part we are binding to. A
+  // confirmed record that names a different chip is the case this whole
+  // structure exists to catch.
+  if (!manufacturer.statedProcessor || !verifyCpuModel(manufacturer.statedProcessor, canonical.name).ok) {
+    return {
+      bound: false,
+      refusal: 'manufacturer-disagrees',
+      detail:
+        `The manufacturer record for ${manufacturer.mpn} states ` +
+        `${manufacturer.statedProcessor ? `"${manufacturer.statedProcessor}"` : 'nothing readable'}, ` +
+        `which does not verify as ${canonical.name}.`,
+    };
+  }
+
+  // The registry records a past review; these re-check it against the feed as
+  // it stands today, so a re-titled or re-pointed listing drops its binding
+  // instead of silently keeping an estimate aimed at the wrong chip.
   const title = verifyCpuModel(input.name, canonical.name);
   if (!title.ok) {
     return { bound: false, refusal: 'title-disagrees', detail: `${title.reason}: ${title.detail}` };
@@ -112,14 +149,14 @@ export function resolveCpuIdentity(
     return {
       bound: false,
       refusal: 'destination-unreadable',
-      detail: 'The tracked link carries no readable Newegg destination to corroborate the title against.',
+      detail: 'The tracked link carries no readable Newegg destination to check the title against.',
     };
   }
   if (!destinationNamesCpu(destination, canonical.name)) {
     return {
       bound: false,
       refusal: 'destination-disagrees',
-      detail: `The merchant destination does not name ${canonical.name}; title and link disagree, so identity is not established.`,
+      detail: `The merchant destination does not name ${canonical.name}; the listing contradicts itself.`,
     };
   }
 

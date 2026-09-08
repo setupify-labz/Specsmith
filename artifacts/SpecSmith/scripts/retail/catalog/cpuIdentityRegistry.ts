@@ -1,83 +1,126 @@
 // Issue #101: the reviewed bindings between a Newegg CPU listing and a
-// canonical SpecSmith processor.
+// canonical SpecSmith processor, and the evidence each one rests on.
 //
-// WHY A REGISTRY AND NOT JUST A MATCHER
-// -------------------------------------
-// `cpuModelMatch.ts` can prove that a title names exactly one processor and
-// which one. That is necessary but not sufficient to publish an FPS estimate
-// against a product someone is about to buy: it proves the merchant's TEXT is
-// unambiguous, not that a human ever agreed this listing is that part. #101 is
-// explicit on the point — "a similar title alone is not sufficient evidence to
-// mark this retailer item verified".
+// TWO INDEPENDENT SOURCES, NOT ONE RECORD AGREEING WITH ITSELF
+// ------------------------------------------------------------
+// An earlier revision of this file bound a processor on the strength of three
+// fields of the SAME Newegg feed record agreeing: the title, the deep-link
+// product slug, and the item id. That is self-consistency, not corroboration.
+// A merchant that mislabels an item mislabels it in every field of its own
+// record at once, and all three checks pass on a wrong product.
 //
-// So a binding needs BOTH:
+// So a binding now needs evidence from two sources that can fail
+// independently:
 //
-//   1. an entry here, added deliberately, naming the retailer SKU, the
-//      canonical id, the evidence consulted and when it was observed; and
-//   2. a passing `verifyCpuModel` against the listing's CURRENT title.
+//   RETAILER   — the merchant's own feed record: which SKU is being sold, at
+//                what price, behind which tracked link. This establishes WHAT
+//                IS ON SALE. It cannot establish what the part IS, because the
+//                merchant is the party whose labelling is in question.
 //
-// (1) alone would let a stale hand-written mapping outlive the listing it
-// described — Newegg reuses SKUs and merchants re-title items. (2) alone would
-// be exactly the title guess the issue rules out. Requiring both means a feed
-// that starts describing a different chip drops the binding automatically
-// rather than quietly re-pointing an estimate at the wrong processor.
+//   MANUFACTURER — the chip vendor's own specification/ordering record for the
+//                manufacturer part number. This establishes WHAT THE PART IS,
+//                from the only party that defines it.
 //
-// EVERYTHING ELSE STAYS UNSUPPORTED. This is a reviewed subset, not a coverage
-// target. An unlisted CPU keeps `canonicalPartId: null` and
-// `specsVerified: false`, and the builder's existing gate refuses to estimate
-// from it. Growing this list is a review action, never an automated one.
+// The MPN is the join between them: the retailer says "I am selling
+// BX8071513400F", the manufacturer says "BX8071513400F is a Core i5-13400F".
+// Neither sentence alone binds anything.
+//
+// FAIL CLOSED
+// -----------
+// `manufacturer.status` must be `confirmed` for a binding to be admitted. An
+// entry whose manufacturer evidence is `blocked` or `pending` is a recorded
+// INTENT to bind, not a binding: `admittedBindings()` excludes it, the
+// catalogue keeps `canonicalPartId: null`, and the builder's existing gate
+// refuses to estimate. Recording the intent is deliberate — it keeps the
+// unfinished work visible and reviewable instead of dropping it on the floor.
 
-/** What was actually consulted to justify a binding. */
-export type CpuEvidenceKind =
+/** How a manufacturer record was obtained, and whether it can be relied on. */
+export type ManufacturerEvidenceStatus =
+  /** The official record was retrieved and read. Only this admits a binding. */
+  | 'confirmed'
+  /** Not yet attempted. */
+  | 'pending'
+  /** Attempted and prevented. `blockedReason` says exactly what stopped it. */
+  | 'blocked';
+
+export interface RetailerEvidence {
+  /** The merchant product page, decoded from the record's tracked deep link. */
+  productUrl: string;
+  /** The retailer's own item identifier, as it appears in that URL. */
+  merchantItemId: string;
+  /** ISO date the feed record was observed. */
+  observedAt: string;
+}
+
+export interface ManufacturerEvidence {
+  /** The manufacturer part number this binding turns on. */
+  mpn: string;
+  /** The official vendor specification/ordering record for that MPN. */
+  sourceUrl: string;
+  status: ManufacturerEvidenceStatus;
+  /** ISO date the official record was read. Null unless `status` is 'confirmed'. */
+  observedAt: string | null;
   /**
-   * The merchant's own product record in the Rakuten/Newegg affiliate feed:
-   * its SKU, its full product title and its tracked deep link, captured
-   * together in one observation. This is Newegg describing its own item — a
-   * first-party record, not SpecSmith inferring identity from a fuzzy string.
+   * What the official record states, quoted, when it has been read. Null while
+   * unconfirmed. This is never paraphrased from memory: an unread source has
+   * no findings.
    */
-  | 'merchant-feed-record';
+  statedProcessor: string | null;
+  /** Why the official record could not be read. Null unless `status` is 'blocked'. */
+  blockedReason: string | null;
+}
 
 export interface CpuIdentityBinding {
   /** The published catalogue part id, e.g. `newegg-cpu-9sia4rekg24553`. */
   retailPartId: string;
-  /** The canonical processor id in `src/data/cpus.json`, e.g. `i5-13400f`. */
+  /** The canonical processor id in `src/data/cpus.json`. */
   canonicalCpuId: string;
-  /** Manufacturer part identifier when the listing states one; null when it does not. */
-  manufacturerPartId: string | null;
-  kind: CpuEvidenceKind;
-  /** Where the evidence was read. */
-  sourceUrl: string;
-  /** ISO date the evidence was observed. */
-  observedAt: string;
-  /** Why this specific binding is valid, in a sentence a reviewer can check. */
+  retailer: RetailerEvidence;
+  manufacturer: ManufacturerEvidence;
+  /** Why this binding is valid, in a sentence a reviewer can check. */
   reason: string;
 }
 
 /**
- * The reviewed bindings.
+ * Every binding under review, admitted or not.
  *
- * Deliberately small. Each entry was checked against the feed record named in
- * `sourceUrl` on `observedAt`; the title in that record names exactly one
- * processor, and `verifyCpuModel` re-checks that at catalogue-build time.
+ * Deliberately one entry. #101 asks for a single proven path, not coverage.
  */
 export const CPU_IDENTITY_BINDINGS: readonly CpuIdentityBinding[] = [
   {
     retailPartId: 'newegg-cpu-9sia4rekg24553',
     canonicalCpuId: 'i5-13400f',
-    // The feed record states no manufacturer part number for this item. Null
-    // records that absence; it is not an invitation to supply a plausible one.
-    manufacturerPartId: null,
-    kind: 'merchant-feed-record',
-    // The merchant destination decoded from the record's own tracked deep link.
-    sourceUrl:
-      'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E16819118431?item=9SIA4REKG24553',
-    observedAt: '2026-09-08',
+    retailer: {
+      productUrl:
+        'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E16819118431?item=9SIA4REKG24553',
+      merchantItemId: '9SIA4REKG24553',
+      observedAt: '2026-09-08',
+    },
+    manufacturer: {
+      mpn: 'BX8071513400F',
+      sourceUrl:
+        'https://www.intel.com/content/www/us/en/products/sku/230580/intel-core-i513400f-processor-20m-cache-up-to-4-60-ghz/specifications.html',
+      status: 'blocked',
+      observedAt: null,
+      statedProcessor: null,
+      blockedReason:
+        "This environment's network egress proxy denies every intel.com host (CONNECT answered 403 for www.intel.com:443, ark.intel.com, intel.com and edc.intel.com on 2026-09-08). The official ordering record for BX8071513400F could not be retrieved, so it has not been read and nothing is claimed about its contents. Until it is, this binding stays unadmitted and the part remains unsupported.",
+    },
     reason:
-      'Three fields of the merchant\'s own record agree and none contradicts: the title names exactly one processor ("Intel Core i5-13400F Desktop Processor 10 cores (6 P-cores + 4 E-cores)"), the deep-link product slug independently reads "core-i5-13400f", and the link\'s item id 9SIA4REKG24553 matches this part\'s own SKU. The F designator is explicit in both the title and the slug, so the binding does not rest on it being absent-or-present by inference.',
+      'The retailer record identifies the item being sold (Newegg item 9SIA4REKG24553, titled "Intel Core i5-13400F Desktop Processor"). Binding it to canonical i5-13400f additionally requires Intel\'s own ordering record for BX8071513400F to state that this MPN is a Core i5-13400F — an independent source that can disagree with the merchant. That record is not yet readable here, so this entry is recorded but not admitted.',
   },
 ];
 
-/** The binding for a retail part, or null when that part has not been reviewed. */
+/** The binding under review for a retail part, admitted or not. */
 export function bindingFor(retailPartId: string): CpuIdentityBinding | null {
   return CPU_IDENTITY_BINDINGS.find((b) => b.retailPartId === retailPartId) ?? null;
+}
+
+/**
+ * Only the bindings whose manufacturer evidence has actually been read.
+ *
+ * This is the list the catalogue generator is allowed to act on.
+ */
+export function admittedBindings(): readonly CpuIdentityBinding[] {
+  return CPU_IDENTITY_BINDINGS.filter((b) => b.manufacturer.status === 'confirmed');
 }
