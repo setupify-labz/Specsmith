@@ -79,6 +79,15 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
   }
 }
 
+import cpuCatalogData from '../../../src/data/cpus.json';
+import { resolveCpuIdentity } from './cpuIdentityBinding';
+
+/** Canonical processors, read once. Only `id` and `name` are used. */
+const CANONICAL_CPUS = (cpuCatalogData as unknown as { id: string; name: string }[]).map((c) => ({
+  id: c.id,
+  name: c.name,
+}));
+
 export function admitAffiliatePart(
   item: XmlElement,
   category: RetailPartCategory,
@@ -101,10 +110,17 @@ export function admitAffiliatePart(
   const pricing = readListingPricing(item);
   if (!pricing) return { status: 'rejected', reason: 'price' };
 
+  const partId = safeId(category, sku);
+  const identity =
+    category === 'cpu'
+      ? resolveCpuIdentity({ retailPartId: partId, name, trackedAffiliateUrl }, CANONICAL_CPUS)
+      : null;
+  const cpuIdentity = identity && identity.bound ? identity.canonicalCpuId : null;
+
   return {
     status: 'accepted',
     part: {
-      id: safeId(category, sku),
+      id: partId,
       category,
       merchant: 'Newegg',
       name,
@@ -115,8 +131,12 @@ export function admitAffiliatePart(
       retailPrice: pricing.retailPrice,
       salePrice: pricing.salePrice,
       currency: pricing.currency,
-      canonicalPartId: null,
-      specsVerified: false,
+      // Issue #101: a processor may carry a canonical id only when a reviewed
+      // registry entry, the current title and the merchant's own deep link all
+      // name the same chip. Every other part in every other category stays
+      // unsupported, exactly as before — this does not widen anything.
+      canonicalPartId: cpuIdentity,
+      specsVerified: cpuIdentity !== null,
       // Measured from the pixels later, once the quota is settled: there is no
       // reason to download five thousand candidate images to publish five
       // hundred. See attachImageContentRatios.
