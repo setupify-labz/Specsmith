@@ -136,16 +136,16 @@ const prebuiltHighlights = prebuilts.map(p => ({
 export default function Home() {
   useSeo(getRouteMeta('/'));
   return (
-    <div className="min-h-screen">
+    <div className="visual-refresh min-h-screen">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd()) }} />
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+      <section className="relative flex items-center overflow-hidden pt-20">
         {/* Glow orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-[#6C63FF]/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-[#00D4FF]/8 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -156,11 +156,11 @@ export default function Home() {
                 <Monitor size={14} />
                 Free PC Builder + FPS Estimator
               </span>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-ff-primary mb-6 leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-ff-primary mb-6 leading-tight tracking-tight">
                 Plan Your Gaming PC<br />
                 <span className="gradient-text">for Your Budget</span>
               </h1>
-              <p className="text-xl text-secondary-custom max-w-2xl mx-auto lg:mx-0 mb-10 leading-relaxed">
+              <p className="text-lg text-secondary-custom max-w-xl mx-auto lg:mx-0 mb-8 leading-relaxed">
                 Pick parts, estimate FPS in 20 games before you buy, and check supported
                 compatibility constraints — free, no account needed.
               </p>
@@ -168,7 +168,7 @@ export default function Home() {
                 <Link
                   to="/builder"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg transition-all hover:opacity-90 hover:scale-105"
-                  style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
+                  style={{ background: 'var(--ff-accent-solid)' }}
                 >
                   <Zap size={18} />
                   Start Building
@@ -250,8 +250,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Popular Builds</h2>
-              <p className="text-secondary-custom text-sm mt-1">Ready-to-go configurations for every budget</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-ff-primary">Find your starting point</h2>
+              <p className="text-secondary-custom text-sm mt-2">Curated part lists. Estimated costs. Yours to customize.</p>
             </div>
             <Link
               to="/prebuilts"
@@ -261,7 +261,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {prebuiltHighlights.map((p, i) => (
               <motion.div
                 key={p.id}
@@ -269,10 +269,10 @@ export default function Home() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="flex-shrink-0 w-64 rounded-2xl border border-subtle bg-card-dark p-5 card-hover"
+                className="rounded-2xl border border-subtle bg-card-dark p-6 card-hover"
               >
                 <div className="text-xl font-black text-ff-primary mb-1">{p.name}</div>
-                <p className="text-secondary-custom text-xs mb-4">{p.tagline}</p>
+                <p className="text-secondary-custom text-sm mb-4">{p.tagline}</p>
                 <div className="text-2xl font-black gradient-text mb-4">Est. ${p.price.toLocaleString()}</div>
                 <Link
                   to={`/prebuilts/${p.id}`}
@@ -333,7 +333,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="rounded-3xl overflow-hidden relative p-12 text-center"
+          className="rounded-3xl overflow-hidden relative p-6 sm:p-12 text-center"
           style={{ background: 'linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,212,255,0.08))' }}
         >
           <div className="absolute inset-0 border border-[#6C63FF]/20 rounded-3xl" />
@@ -345,7 +345,7 @@ export default function Home() {
             <Link
               to="/builder"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-lg transition-all hover:opacity-90 hover:scale-105"
-              style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
+              style={{ background: 'var(--ff-accent-solid)' }}
             >
               <Cpu size={18} />
               Open the Builder
@@ -360,7 +360,7 @@ export default function Home() {
           {homeFaqs.map((f) => (
             <div key={f.title} className="rounded-xl p-4 border border-subtle bg-card-dark">
               <h2 className="font-bold text-sm mb-1.5 text-ff-primary">{f.title}</h2>
-              <p className="text-xs leading-relaxed text-secondary-custom">{f.content}</p>
+              <p className="text-sm leading-relaxed text-secondary-custom">{f.content}</p>
             </div>
           ))}
         </div>
