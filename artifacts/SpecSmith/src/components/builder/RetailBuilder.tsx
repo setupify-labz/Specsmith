@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
@@ -15,6 +15,39 @@ interface Props {
   onSelect: (category: RetailPartCategory, id: string | null) => void;
   /** Injected so freshness is deterministic in tests. */
   now?: number;
+  /**
+   * The FPS estimator, rendered directly beneath the build summary.
+   *
+   * Passed in rather than built here so this component stays a shopping
+   * interface: it decides WHERE the estimator sits, never what it contains.
+   */
+  estimator?: ReactNode;
+}
+
+/** The `xl:` breakpoint, where the summary becomes a right-hand column. */
+const WIDE_LAYOUT_QUERY = '(min-width: 1280px)';
+
+/**
+ * Whether the summary is currently a right-hand column.
+ *
+ * Used to render the estimator in exactly ONE place. Rendering it in both
+ * positions and hiding one with CSS would mount two estimators, doing the work
+ * twice and putting a second copy in the accessibility tree.
+ *
+ * Starts false so the server-rendered and first-paint markup is the mobile
+ * arrangement, which is also the correct answer when matchMedia is unavailable.
+ */
+function useWideLayout(): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(WIDE_LAYOUT_QUERY);
+    const sync = () => setWide(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  return wide;
 }
 
 /**
@@ -27,11 +60,12 @@ interface Props {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now }: Props) {
+export default function RetailBuilder({ parts, selection, onSelect, now, estimator }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const clock = now ?? Date.now();
+  const wideLayout = useWideLayout();
 
   const byCategory = useMemo(() => groupByCategory(parts), [parts]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);
@@ -76,6 +110,17 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
         <CategoryChips {...navProps} />
       </div>
 
+      {/* Narrow layouts have no build summary in the page flow — it is the
+          sticky control at the bottom, opening over the page. So the estimator
+          goes here, at the top of the builder: reachable without scrolling past
+          a screen of products, which was the whole complaint. On wide layouts
+          this slot is empty and the estimator sits under the summary column. */}
+      {!wideLayout && estimator ? (
+        <div className="mb-6" data-testid="estimator-slot-mobile">
+          {estimator}
+        </div>
+      ) : null}
+
       <div className="flex gap-6">
         {/* Left rail — desktop only. */}
         <div className="hidden w-56 shrink-0 lg:block">
@@ -106,9 +151,15 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
           />
         </div>
 
-        {/* Right summary — desktop only, sticky rather than independently scrolling. */}
+        {/* Right summary — desktop only, sticky rather than independently scrolling.
+            The estimator sits directly under it: it is the thing a shopper wants
+            the moment the build looks right, so it belongs beside the build, not
+            at the bottom of the page. */}
         <div className="hidden w-72 shrink-0 xl:block">
-          <div className="sticky top-20">{summary}</div>
+          <div className="sticky top-20 space-y-4">
+            {summary}
+            {wideLayout && estimator ? <div data-testid="estimator-slot-desktop">{estimator}</div> : null}
+          </div>
         </div>
       </div>
 

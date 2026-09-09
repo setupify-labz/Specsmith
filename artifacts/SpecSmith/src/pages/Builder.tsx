@@ -322,6 +322,37 @@ export default function Builder() {
     }
   };
 
+  /**
+   * The estimator panel: the action, and the results it produces.
+   *
+   * Built once and placed once. On the retail path it is handed to
+   * RetailBuilder, which renders it directly beneath the build summary; on the
+   * canonical-fallback path it stays in its original position below the grid.
+   * Exactly one of those two renders it, so there is never a second panel.
+   */
+  const estimatorPanel = (
+    <div ref={fpsSectionRef} data-testid="builder-estimator">
+      <RetailEstimateAction canEstimate={canEstimate} onEstimate={handleEstimateFps} />
+      <AnimatePresence>
+        {showFps && selectedGpu && selectedCpu && (
+          <FpsEstimator
+            gpu={selectedGpu} cpu={selectedCpu} games={games}
+            resolution={fpsResolution} preset={fpsPreset}
+            onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showFps && selectedGpu && selectedCpu && (
+          <VerifiedBenchmarkPanel
+            gpuId={selectedGpu.id} gpuName={selectedGpu.name}
+            cpuId={selectedCpu.id} cpuName={selectedCpu.name}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(builderFaqJsonLd()) }} />
@@ -372,6 +403,7 @@ export default function Builder() {
               selectPart(category as keyof BuildState, id);
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
+            estimator={estimatorPanel}
           />
         ) : (
           /* No catalogue: fall back to the canonical parts so the builder still
@@ -555,30 +587,9 @@ export default function Builder() {
           </div>
         )}
 
-        {affiliateCatalog.status === 'ok' && (
-          <RetailEstimateAction canEstimate={canEstimate} onEstimate={handleEstimateFps} />
-        )}
-
-        {/* FPS Estimator */}
-        <div ref={fpsSectionRef}>
-          <AnimatePresence>
-            {showFps && selectedGpu && selectedCpu && (
-              <FpsEstimator
-                gpu={selectedGpu} cpu={selectedCpu} games={games}
-                resolution={fpsResolution} preset={fpsPreset}
-                onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
-              />
-            )}
-          </AnimatePresence>
-          <AnimatePresence>
-            {showFps && selectedGpu && selectedCpu && (
-              <VerifiedBenchmarkPanel
-                gpuId={selectedGpu.id} gpuName={selectedGpu.name}
-                cpuId={selectedCpu.id} cpuName={selectedCpu.name}
-              />
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Canonical-fallback path only. On the retail path this same panel is
+            rendered by RetailBuilder, directly beneath the build summary. */}
+        {affiliateCatalog.status !== 'ok' && estimatorPanel}
 
         <div className="mt-12 space-y-3">
           {builderFaqs.map((f) => (

@@ -28,6 +28,10 @@ export type CpuIdentityRefusal =
   | 'not-reviewed'
   /** Recorded for review, but the manufacturer record has not been read. */
   | 'manufacturer-unconfirmed'
+  /** One or both parties state no manufacturer part number. */
+  | 'mpn-missing'
+  /** The retailer and the manufacturer name different part numbers. */
+  | 'mpn-disagrees'
   | 'canonical-missing'
   | 'manufacturer-disagrees'
   | 'title-disagrees'
@@ -38,13 +42,25 @@ export type CpuIdentityOutcome =
   | { bound: true; canonicalCpuId: string; evidence: CpuIdentityBinding }
   | { bound: false; refusal: CpuIdentityRefusal; detail: string };
 
+/**
+ * Whether a hostname really is Newegg.
+ *
+ * `endsWith('newegg.com')` is not that test: it also accepts `evilnewegg.com`
+ * and `newegg.com.attacker.test`. Only the apex itself or a genuine subdomain
+ * under a leading dot qualifies.
+ */
+export function isNeweggHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  return host === 'newegg.com' || host.endsWith('.newegg.com');
+}
+
 /** The merchant destination a tracked link points at, or null. */
 export function decodeMerchantDestination(trackedAffiliateUrl: string): string | null {
   try {
     const murl = new URL(trackedAffiliateUrl).searchParams.get('murl');
     if (!murl) return null;
     const decoded = new URL(decodeURIComponent(murl));
-    return decoded.host.endsWith('newegg.com') ? decoded.toString() : null;
+    return isNeweggHost(decoded.hostname) ? decoded.toString() : null;
   } catch {
     return null;
   }
@@ -108,8 +124,34 @@ export function resolveCpuIdentity(
       bound: false,
       refusal: 'manufacturer-unconfirmed',
       detail:
-        `Manufacturer evidence for ${manufacturer.mpn} is "${manufacturer.status}". ` +
-        (manufacturer.blockedReason ?? 'It has not been read, so the part is not identified by its vendor.'),
+        `Manufacturer evidence is "${manufacturer.status}": the vendor's own records have not been ` +
+        'read, so the part is not identified by the party that defines it.',
+    };
+  }
+
+  // THE JOIN. The retailer names a part number; the manufacturer names the
+  // part number its record describes. Exact string equality, both directions
+  // required to be present. A missing number on either side is not a weaker
+  // match to fall back from — there is simply no join, so nothing binds.
+  const retailerMpn = evidence.retailer.mpn;
+  const orderingCode = manufacturer.orderingCode;
+  if (!retailerMpn || !orderingCode) {
+    return {
+      bound: false,
+      refusal: 'mpn-missing',
+      detail:
+        `Part numbers must be stated by both parties to be compared. Retailer states ` +
+        `${retailerMpn ? `"${retailerMpn}"` : 'none'}; manufacturer states ` +
+        `${orderingCode ? `"${orderingCode}"` : 'none'}.`,
+    };
+  }
+  if (retailerMpn !== orderingCode) {
+    return {
+      bound: false,
+      refusal: 'mpn-disagrees',
+      detail:
+        `Retailer states MPN "${retailerMpn}"; the manufacturer's ordering record states ` +
+        `"${orderingCode}". Two part numbers that are not the same string are not the same part.`,
     };
   }
 
@@ -130,7 +172,7 @@ export function resolveCpuIdentity(
       bound: false,
       refusal: 'manufacturer-disagrees',
       detail:
-        `The manufacturer record for ${manufacturer.mpn} states ` +
+        `The manufacturer record for ${manufacturer.orderingCode ?? 'this part'} states ` +
         `${manufacturer.statedProcessor ? `"${manufacturer.statedProcessor}"` : 'nothing readable'}, ` +
         `which does not verify as ${canonical.name}.`,
     };

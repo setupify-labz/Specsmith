@@ -1,73 +1,73 @@
 // Issue #101: the reviewed bindings between a Newegg CPU listing and a
 // canonical SpecSmith processor, and the evidence each one rests on.
 //
-// TWO INDEPENDENT SOURCES, NOT ONE RECORD AGREEING WITH ITSELF
-// ------------------------------------------------------------
-// An earlier revision of this file bound a processor on the strength of three
-// fields of the SAME Newegg feed record agreeing: the title, the deep-link
-// product slug, and the item id. That is self-consistency, not corroboration.
-// A merchant that mislabels an item mislabels it in every field of its own
-// record at once, and all three checks pass on a wrong product.
+// TWO INDEPENDENT SOURCES, JOINED BY THE PART NUMBER
+// --------------------------------------------------
+// A binding needs evidence from two parties that can disagree:
 //
-// So a binding now needs evidence from two sources that can fail
-// independently:
+//   RETAILER      the merchant's product record. Establishes WHAT IS ON SALE
+//                 and which manufacturer part number the merchant claims to be
+//                 selling. It cannot establish what that part IS, because the
+//                 merchant is the party whose labelling is in question.
 //
-//   RETAILER   — the merchant's own feed record: which SKU is being sold, at
-//                what price, behind which tracked link. This establishes WHAT
-//                IS ON SALE. It cannot establish what the part IS, because the
-//                merchant is the party whose labelling is in question.
+//   MANUFACTURER  the chip vendor's own specification and ordering records.
+//                 Establishes WHAT THE PART IS and which boxed ordering code
+//                 denotes it.
 //
-//   MANUFACTURER — the chip vendor's own specification/ordering record for the
-//                manufacturer part number. This establishes WHAT THE PART IS,
-//                from the only party that defines it.
+// The manufacturer part number is the JOIN, and it is enforced by exact string
+// equality in `cpuIdentityBinding.ts`: the retailer says "I am selling
+// BX8071513400F", Intel says "BX8071513400F is a Core i5-13400F". A missing
+// MPN on either side, or two that differ by a single character, fails closed.
+// Neither party's word alone binds anything.
 //
-// The MPN is the join between them: the retailer says "I am selling
-// BX8071513400F", the manufacturer says "BX8071513400F is a Core i5-13400F".
-// Neither sentence alone binds anything.
+// An earlier revision bound on three fields of the SAME merchant record
+// agreeing (title, deep-link slug, item id). That is self-consistency, not
+// corroboration: a merchant that mislabels an item mislabels it in every field
+// of its own record at once.
 //
 // FAIL CLOSED
 // -----------
-// `manufacturer.status` must be `confirmed` for a binding to be admitted. An
-// entry whose manufacturer evidence is `blocked` or `pending` is a recorded
-// INTENT to bind, not a binding: `admittedBindings()` excludes it, the
-// catalogue keeps `canonicalPartId: null`, and the builder's existing gate
-// refuses to estimate. Recording the intent is deliberate — it keeps the
-// unfinished work visible and reviewable instead of dropping it on the floor.
+// `manufacturer.status` must be `confirmed` AND the two part numbers must match
+// for a binding to be admitted. Anything else leaves the part unsupported, with
+// `canonicalPartId: null`, and the builder refuses to estimate from it.
 
-/** How a manufacturer record was obtained, and whether it can be relied on. */
-export type ManufacturerEvidenceStatus =
-  /** The official record was retrieved and read. Only this admits a binding. */
-  | 'confirmed'
-  /** Not yet attempted. */
-  | 'pending'
-  /** Attempted and prevented. `blockedReason` says exactly what stopped it. */
-  | 'blocked';
+/** Whether the vendor's own records have actually been read. */
+export type ManufacturerEvidenceStatus = 'confirmed' | 'pending';
 
 export interface RetailerEvidence {
   /** The merchant product page, decoded from the record's tracked deep link. */
   productUrl: string;
   /** The retailer's own item identifier, as it appears in that URL. */
   merchantItemId: string;
-  /** ISO date the feed record was observed. */
+  /**
+   * The manufacturer part number the MERCHANT states for this item.
+   *
+   * Null when the listing states none — which fails the binding closed rather
+   * than falling back to a title comparison. This is the retailer's half of the
+   * join and must never be copied from the manufacturer's record.
+   */
+  mpn: string | null;
+  /** ISO date the retailer record was observed. */
   observedAt: string;
 }
 
 export interface ManufacturerEvidence {
-  /** The manufacturer part number this binding turns on. */
-  mpn: string;
-  /** The official vendor specification/ordering record for that MPN. */
-  sourceUrl: string;
+  /** The vendor's specification record for the processor. */
+  specificationsUrl: string;
+  /** The vendor's ordering record, which names the boxed ordering code. */
+  orderingUrl: string;
   status: ManufacturerEvidenceStatus;
-  /** ISO date the official record was read. Null unless `status` is 'confirmed'. */
+  /** ISO date the vendor records were read. Null unless `status` is 'confirmed'. */
   observedAt: string | null;
-  /**
-   * What the official record states, quoted, when it has been read. Null while
-   * unconfirmed. This is never paraphrased from memory: an unread source has
-   * no findings.
-   */
+  /** The processor the specifications record identifies. Null while unconfirmed. */
   statedProcessor: string | null;
-  /** Why the official record could not be read. Null unless `status` is 'blocked'. */
-  blockedReason: string | null;
+  /**
+   * The boxed ordering code the ordering record identifies. Null while
+   * unconfirmed. This is the manufacturer's half of the join.
+   */
+  orderingCode: string | null;
+  /** How the vendor records were obtained, so a reviewer can re-check them. */
+  attribution: string;
 }
 
 export interface CpuIdentityBinding {
@@ -82,7 +82,7 @@ export interface CpuIdentityBinding {
 }
 
 /**
- * Every binding under review, admitted or not.
+ * Every binding under review.
  *
  * Deliberately one entry. #101 asks for a single proven path, not coverage.
  */
@@ -94,20 +94,23 @@ export const CPU_IDENTITY_BINDINGS: readonly CpuIdentityBinding[] = [
       productUrl:
         'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E16819118431?item=9SIA4REKG24553',
       merchantItemId: '9SIA4REKG24553',
+      mpn: 'BX8071513400F',
       observedAt: '2026-09-08',
     },
     manufacturer: {
-      mpn: 'BX8071513400F',
-      sourceUrl:
-        'https://www.intel.com/content/www/us/en/products/sku/230580/intel-core-i513400f-processor-20m-cache-up-to-4-60-ghz/specifications.html',
-      status: 'blocked',
-      observedAt: null,
-      statedProcessor: null,
-      blockedReason:
-        "This environment's network egress proxy denies every intel.com host (CONNECT answered 403 for www.intel.com:443, ark.intel.com, intel.com and edc.intel.com on 2026-09-08). The official ordering record for BX8071513400F could not be retrieved, so it has not been read and nothing is claimed about its contents. Until it is, this binding stays unadmitted and the part remains unsupported.",
+      specificationsUrl:
+        'https://www.intel.com/content/www/us/en/products/sku/230501/intel-core-i513400f-processor-20m-cache-up-to-4-60-ghz/specifications.html',
+      orderingUrl:
+        'https://www.intel.com/content/www/us/en/products/sku/230501/intel-core-i513400f-processor-20m-cache-up-to-4-60-ghz/ordering.html',
+      status: 'confirmed',
+      observedAt: '2026-09-08',
+      statedProcessor: 'Intel Core i5-13400F',
+      orderingCode: 'BX8071513400F',
+      attribution:
+        "Supplied by the repository owner and independently corroborated in Codex's review of PR #105, both citing Intel's SKU 230501 records: the specifications page identifies processor number i5-13400F, and the ordering page identifies boxed ordering code BX8071513400F. Not retrieved by the authoring agent, whose sandbox has no route to intel.com; a reviewer can re-check both URLs directly.",
     },
     reason:
-      'The retailer record identifies the item being sold (Newegg item 9SIA4REKG24553, titled "Intel Core i5-13400F Desktop Processor"). Binding it to canonical i5-13400f additionally requires Intel\'s own ordering record for BX8071513400F to state that this MPN is a Core i5-13400F — an independent source that can disagree with the merchant. That record is not yet readable here, so this entry is recorded but not admitted.',
+      'Newegg states it is selling MPN BX8071513400F as item 9SIA4REKG24553, titled "Intel Core i5-13400F Desktop Processor". Intel\'s ordering record states BX8071513400F is the boxed ordering code for the Core i5-13400F, which its specifications record identifies as processor number i5-13400F. The two parties agree on the part number, so the merchant\'s identity claim is corroborated by the party that defines the part rather than by more of the merchant\'s own record.',
   },
 ];
 
@@ -116,11 +119,7 @@ export function bindingFor(retailPartId: string): CpuIdentityBinding | null {
   return CPU_IDENTITY_BINDINGS.find((b) => b.retailPartId === retailPartId) ?? null;
 }
 
-/**
- * Only the bindings whose manufacturer evidence has actually been read.
- *
- * This is the list the catalogue generator is allowed to act on.
- */
+/** Only bindings whose manufacturer records have actually been read. */
 export function admittedBindings(): readonly CpuIdentityBinding[] {
   return CPU_IDENTITY_BINDINGS.filter((b) => b.manufacturer.status === 'confirmed');
 }
