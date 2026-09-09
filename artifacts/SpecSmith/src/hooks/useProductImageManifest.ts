@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import {
-  indexManifest,
-  type ProductImageEntry,
-  type ProductImageManifest,
-} from '../lib/retail/processedImages';
+import { indexManifest, type ProductImageEntry } from '../lib/retail/processedImages';
 
 export const PRODUCT_IMAGE_MANIFEST_URL = '/data/product-images.json';
 
@@ -28,9 +24,11 @@ export function useProductImageManifest(): Map<string, ProductImageEntry> {
           signal: controller.signal,
         });
         if (!response.ok) return;
-        const raw = (await response.json()) as ProductImageManifest;
-        if (!Array.isArray(raw?.entries)) return;
-        setByPart(indexManifest(raw));
+        // Whatever comes back is parsed and validated before any of it is
+        // believed — see parseProductImageManifest. The hook does not do its
+        // own shape check, because a half-check here is how an unvalidated
+        // entry reaches an <img>.
+        setByPart(indexManifest(await response.json()));
       } catch {
         // Keep the empty map: merchant images.
       }

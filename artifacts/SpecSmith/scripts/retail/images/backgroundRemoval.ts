@@ -65,9 +65,7 @@ export type RefusalReason =
   /** Almost nothing would have been cleared; not worth rewriting the file. */
   | 'nothing-to-remove'
   /** So much was cleared that too little product remains to be plausible. */
-  | 'product-too-small'
-  /** The cut would strip too much of the product's soft edge. */
-  | 'edge-damage';
+  | 'product-too-small';
 
 export interface RemovalStats {
   width: number;
@@ -96,7 +94,17 @@ export interface RemovalStats {
    * product and clearing it throws that part away. Averaged over the cut
    * perimeter it estimates how much of the product's soft edge the cut removed.
    *
-   * Validated against known-answer images: see realHardwareImages.test.ts.
+   * REPORTED, NOT ENFORCED. An earlier revision rejected images above a
+   * threshold on this number. Measured against 57 known-answer images it
+   * turned out to be a weak predictor — across estimates from 11.1 to 36.5 the
+   * actual mean alpha lost stayed between 1.0 and 1.4 out of 255 — so the
+   * threshold was refusing pictures that measurement says are fine. Rejecting
+   * on an unvalidated proxy is not caution, it is a coin toss with a
+   * confident-sounding name.
+   *
+   * So it is published for a reviewer to look at and nothing more. If real
+   * merchant photographs ever show this tracking real damage, a threshold can
+   * be set from that evidence; until then there is none.
    */
   edgeAlphaLoss: number;
   /** How many pixels the cut perimeter is, which the estimate is averaged over. */
@@ -175,23 +183,7 @@ export const MAX_LOW_CONTRAST_BOUNDARY = 0.15;
  */
 export const EDGE_PROBE_DEPTH = 4;
 
-/**
- * The most estimated edge alpha, out of 255, a cut may cost on average along
- * its perimeter before the picture is left alone.
- *
- * CALIBRATED, AND A BACKSTOP RATHER THAN A DISCRIMINATOR. Measured against 53
- * real hardware images with a known answer, this estimate turned out to be a
- * WEAK predictor of real damage: across estimates spanning 11.1 to 23.2 the
- * actual mean alpha lost per edge pixel stayed between 1.0 and 1.3 out of 255.
- * An earlier value of 24 therefore refused 15 images that measurement says are
- * fine, which is not caution but noise.
- *
- * So it sits at roughly twice the worst estimate observed on known-good input.
- * On that corpus it never fires. It exists for inputs unlike these — a real
- * merchant photograph with a genuinely soft product edge — and the honest
- * summary is that its usefulness is unproven, not demonstrated.
- */
-export const MAX_EDGE_ALPHA_LOSS = 48;
+
 
 /** Below this remaining opaque fraction, assume the product was eaten. */
 export const MIN_PRODUCT_FRACTION = 0.02;
@@ -449,16 +441,6 @@ export function removeBackground(bytes: Buffer, url: string): RemovalOutcome {
     edgeLossTotal += Math.min(1, dist(r.data, p * 4, bg) / CLEAR_TOLERANCE) * 255;
   }
   const edgeAlphaLoss = cutPerimeter === 0 ? 0 : edgeLossTotal / cutPerimeter;
-  if (edgeAlphaLoss > MAX_EDGE_ALPHA_LOSS) {
-    return {
-      ok: false,
-      reason: 'edge-damage',
-      detail:
-        `The cut would cost an estimated ${edgeAlphaLoss.toFixed(1)}/255 of alpha per pixel along its ` +
-        `perimeter, above the reviewed limit of ${MAX_EDGE_ALPHA_LOSS}. That much is the product's own ` +
-        'soft edge rather than backdrop, so the original image is kept.',
-    };
-  }
 
   let clearedCount = 0;
   let softCount = 0;

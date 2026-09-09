@@ -94,15 +94,173 @@ export type OriginalReason =
   /** Approved, but no licence basis for modifying and self-hosting was recorded. */
   | 'no-rights-basis';
 
-/** Index a manifest by part id once, rather than scanning it per card. */
-export function indexManifest(manifest: ProductImageManifest | null | undefined): Map<string, ProductImageEntry> {
-  const byPart = new Map<string, ProductImageEntry>();
-  for (const entry of manifest?.entries ?? []) {
-    // First entry wins; a duplicate part id is a manifest defect, and silently
-    // preferring the later one would make which picture you get depend on file
-    // order.
-    if (!byPart.has(entry.partId)) byPart.set(entry.partId, entry);
+/** Where every processed file must live. */
+export const PROCESSED_PATH_PREFIX = '/images/products/';
+
+/** The only path a processed entry may name, derived from its own hash. */
+export function expectedProcessedPath(sourceSha256: string): string {
+  return `${PROCESSED_PATH_PREFIX}${sourceSha256}.png`;
+}
+
+export type ManifestRejectionReason =
+  | 'not-an-object'
+  | 'entries-not-an-array'
+  | 'entry-not-an-object'
+  | 'bad-part-id'
+  | 'bad-source-url'
+  | 'bad-source-hash'
+  | 'bad-outcome'
+  | 'bad-approved-flag'
+  | 'bad-rights-basis'
+  | 'missing-processed-path'
+  | 'processed-path-not-ours'
+  | 'unexpected-processed-path'
+  | 'duplicate-part-id';
+
+export interface ManifestRejection {
+  partId: string | null;
+  reason: ManifestRejectionReason;
+  detail: string;
+}
+
+export interface ParsedProductImageManifest {
+  entries: ProductImageEntry[];
+  /** Everything thrown away, and why. Surfaced so a bad file is diagnosable. */
+  rejections: ManifestRejection[];
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+const isSha256 = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
+
+/**
+ * Validates a product-image manifest before any of it is believed.
+ *
+ * THIS FILE IS AN INPUT, NOT A CONFIGURATION. It decides which URL the browser
+ * loads into an <img> on a page about things people buy, so it is parsed with
+ * the same suspicion as any other untrusted document: a manifest that has been
+ * tampered with, half-written by a crashed run, or hand-edited must not be able
+ * to point a card anywhere.
+ *
+ * The processed path is not "checked" so much as DERIVED. An entry may name
+ * exactly one path — `/images/products/<its own sourceSha256>.png` — and any
+ * other string is rejected whatever it looks like. That single equality is what
+ * rules out absolute URLs to another origin, protocol-relative `//evil.test`,
+ * `../` traversal, a path belonging to a different image, and a file name that
+ * disagrees with the hash it claims, without needing a rule per attack.
+ *
+ * Duplicates are dropped ENTIRELY rather than resolved. Two entries for one
+ * part is a defect, and picking either would make which picture a shopper sees
+ * depend on file order.
+ */
+export function parseProductImageManifest(raw: unknown): ParsedProductImageManifest {
+  const rejections: ManifestRejection[] = [];
+  const reject = (partId: string | null, reason: ManifestRejectionReason, detail: string) => {
+    rejections.push({ partId, reason, detail });
+  };
+
+  if (!isObject(raw)) {
+    reject(null, 'not-an-object', 'The manifest is not a JSON object.');
+    return { entries: [], rejections };
   }
+  if (!Array.isArray(raw.entries)) {
+    reject(null, 'entries-not-an-array', 'The manifest has no `entries` array.');
+    return { entries: [], rejections };
+  }
+
+  const accepted: ProductImageEntry[] = [];
+  for (const candidate of raw.entries) {
+    if (!isObject(candidate)) {
+      reject(null, 'entry-not-an-object', 'An entry is not an object.');
+      continue;
+    }
+    const { partId, sourceUrl, sourceSha256, outcome, processedPath, approved, rightsBasis, reason } = candidate;
+
+    if (typeof partId !== 'string' || partId.trim() === '') {
+      reject(null, 'bad-part-id', 'An entry has no usable part id.');
+      continue;
+    }
+    if (typeof sourceUrl !== 'string' || !/^https?:\/\//i.test(sourceUrl)) {
+      reject(partId, 'bad-source-url', `${partId}: sourceUrl is not an http(s) URL.`);
+      continue;
+    }
+    if (!isSha256(sourceSha256)) {
+      reject(partId, 'bad-source-hash', `${partId}: sourceSha256 is not a 64-character hex digest.`);
+      continue;
+    }
+    if (outcome !== 'processed' && outcome !== 'kept-original') {
+      reject(partId, 'bad-outcome', `${partId}: outcome ${JSON.stringify(outcome)} is not a known outcome.`);
+      continue;
+    }
+    if (approved !== undefined && typeof approved !== 'boolean') {
+      reject(partId, 'bad-approved-flag', `${partId}: approved must be a boolean when present.`);
+      continue;
+    }
+    if (rightsBasis !== undefined && typeof rightsBasis !== 'string') {
+      reject(partId, 'bad-rights-basis', `${partId}: rightsBasis must be a string when present.`);
+      continue;
+    }
+
+    if (outcome === 'processed') {
+      if (typeof processedPath !== 'string' || processedPath === '') {
+        reject(partId, 'missing-processed-path', `${partId}: a processed entry names no file.`);
+        continue;
+      }
+      const expected = expectedProcessedPath(sourceSha256);
+      if (processedPath !== expected) {
+        // One equality covers other origins, protocol-relative hosts,
+        // traversal, and a name that disagrees with its own hash.
+        reject(
+          partId,
+          'processed-path-not-ours',
+          `${partId}: processedPath ${JSON.stringify(processedPath)} is not ${expected}.`,
+        );
+        continue;
+      }
+    } else if (processedPath !== undefined) {
+      reject(
+        partId,
+        'unexpected-processed-path',
+        `${partId}: an entry that kept the original must not name a processed file.`,
+      );
+      continue;
+    }
+
+    accepted.push({
+      partId,
+      sourceUrl,
+      sourceSha256,
+      outcome,
+      ...(typeof processedPath === 'string' ? { processedPath } : {}),
+      ...(typeof approved === 'boolean' ? { approved } : {}),
+      ...(typeof rightsBasis === 'string' ? { rightsBasis } : {}),
+      ...(typeof reason === 'string' ? { reason } : {}),
+    });
+  }
+
+  const seen = new Map<string, number>();
+  for (const entry of accepted) seen.set(entry.partId, (seen.get(entry.partId) ?? 0) + 1);
+  const entries = accepted.filter((entry) => {
+    if ((seen.get(entry.partId) ?? 0) > 1) return false;
+    return true;
+  });
+  for (const [partId, count] of seen) {
+    if (count > 1) {
+      reject(partId, 'duplicate-part-id', `${partId}: ${count} entries name this part; all are discarded.`);
+    }
+  }
+
+  return { entries, rejections };
+}
+
+/**
+ * Validates a manifest and indexes what survives, by part id.
+ *
+ * Takes `unknown` deliberately: there is no shape to trust before parsing.
+ */
+export function indexManifest(raw: unknown): Map<string, ProductImageEntry> {
+  const byPart = new Map<string, ProductImageEntry>();
+  for (const entry of parseProductImageManifest(raw).entries) byPart.set(entry.partId, entry);
   return byPart;
 }
 

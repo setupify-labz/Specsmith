@@ -49,7 +49,9 @@ describe('anything less than an exact match falls back to the merchant image', (
       'source-image-changed',
     ],
     ['the run kept the original', manifest({ outcome: 'kept-original', processedPath: undefined }), part, 'not-processed'],
-    ['a file exists but no path was recorded', manifest({ processedPath: undefined }), part, 'not-processed'],
+    // A processed entry naming no file is now rejected by the manifest parser
+    // rather than reaching this decision, so the map is empty.
+    ['a processed entry records no file', manifest({ processedPath: undefined }), part, 'no-manifest'],
     ['nobody has approved it', manifest({ approved: false }), part, 'not-approved'],
     ['approval is simply absent', manifest({ approved: undefined }), part, 'not-approved'],
   ])('uses the merchant image when %s', (_label, m, subject, reason) => {
