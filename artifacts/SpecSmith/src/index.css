@@ -147,7 +147,7 @@
   --ff-transition: 200ms ease;
   /* Photographs retain their original pixels. One neutral studio frame
      prevents transparent assets from changing appearance between themes. */
-  --ff-photo-bg: #F4F4F6;
+  --ff-photo-bg: #13131A;
   --ff-retailer-fill: #FF9E1B;
   --ff-on-retailer: #17110A;
 }
@@ -156,6 +156,7 @@
    SPECSMITH DESIGN SYSTEM — LIGHT
    ═══════════════════════════════════════ */
 [data-theme="light"] {
+  --ff-photo-bg: #FFFFFF;
   --background: 0 0% 96%;
   --foreground: 240 40% 5%;
   --border: 240 10% 85%;
