@@ -106,12 +106,12 @@ describe('the colour a cut-out is composited against is pinned', () => {
     const css = read(path.join('src', 'index.css'));
     const dark = css.slice(css.indexOf(':root'), css.indexOf('[data-theme="light"]'));
     const light = css.slice(css.indexOf('[data-theme="light"]'));
-    expect(dark).toMatch(/--ff-product-image-bg:\s*#13131A/i);
-    expect(light).toMatch(/--ff-product-image-bg:\s*#FFFFFF/i);
+    expect(dark).toMatch(/--ff-photo-bg:\s*#13131A/i);
+    expect(light).toMatch(/--ff-photo-bg:\s*#FFFFFF/i);
   });
 
   it('is what the product image frame actually uses', () => {
     const card = read(path.join('src', 'components', 'builder', 'RetailProductCard.tsx'));
-    expect(card).toContain("background: 'var(--ff-product-image-bg)'");
+    expect(card).toContain("background: 'var(--ff-photo-bg)'");
   });
 });

@@ -18,6 +18,7 @@ import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import RetailEstimateAction from '../components/builder/RetailEstimateAction';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
@@ -88,6 +89,7 @@ export default function Builder() {
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
   const affiliateCatalog = useAffiliatePartCatalog();
+  const processedImages = useProductImageManifest();
 
   const retailByCategory = useMemo(() => {
     const grouped = new Map<RetailPartCategory, AffiliatePart[]>();

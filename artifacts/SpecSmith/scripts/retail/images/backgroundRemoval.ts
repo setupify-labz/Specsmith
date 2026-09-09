@@ -144,6 +144,21 @@ export const PROTECTED_CENTRE_MAX_CLEARED = 0.5;
  */
 export const MAX_LOW_CONTRAST_BOUNDARY = 0.15;
 
+/**
+ * How far inside the cut to look for the product proper.
+ *
+ * Every real photograph has an anti-aliased rim: the pixel immediately inside
+ * the cut is a blend of product and backdrop and therefore close to the
+ * backdrop colour. Judging the edge on that pixel alone condemns every
+ * correctly-photographed product as a fade — measured at 50 of 57 real
+ * renders refused. What separates anti-aliasing from a genuine fade is
+ * DEPTH: a blended rim is a pixel or two thick and then the product begins,
+ * whereas a bright heatsink rim stays near-backdrop for many pixels. So a
+ * boundary point counts as a real step if the product asserts itself anywhere
+ * within this radius, and as a fade only if it never does.
+ */
+export const EDGE_PROBE_DEPTH = 4;
+
 /** Below this remaining opaque fraction, assume the product was eaten. */
 export const MIN_PRODUCT_FRACTION = 0.02;
 
@@ -177,6 +192,32 @@ export function decodeImage(bytes: Buffer, url: string): Raster | RefusalReason 
 const at = (r: Raster, x: number, y: number) => (y * r.width + x) * 4;
 const dist = (d: Uint8Array, i: number, bg: { r: number; g: number; b: number }) =>
   Math.max(Math.abs(d[i] - bg.r), Math.abs(d[i + 1] - bg.g), Math.abs(d[i + 2] - bg.b));
+
+/**
+ * Whether the product is clearly present within EDGE_PROBE_DEPTH of a point.
+ *
+ * "Clearly present" means an uncleared pixel further from the backdrop colour
+ * than the soft-edge band — i.e. unmistakably product rather than a blend.
+ */
+function productAssertsItselfNear(
+  r: Raster,
+  cleared: Uint8Array,
+  x: number,
+  y: number,
+  bg: { r: number; g: number; b: number },
+): boolean {
+  for (let dy = -EDGE_PROBE_DEPTH; dy <= EDGE_PROBE_DEPTH; dy += 1) {
+    for (let dx = -EDGE_PROBE_DEPTH; dx <= EDGE_PROBE_DEPTH; dx += 1) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= r.width || ny >= r.height) continue;
+      const p = ny * r.width + nx;
+      if (cleared[p] === 1) continue;
+      if (dist(r.data, p * 4, bg) > SOFT_EDGE_TOLERANCE) return true;
+    }
+  }
+  return false;
+}
 
 /** True when the image already carries meaningful transparency. */
 export function hasRealTransparency(r: Raster): boolean {
@@ -338,7 +379,7 @@ export function removeBackground(bytes: Buffer, url: string): RemovalOutcome {
       const q = ny * r.width + nx;
       if (cleared[q] === 1) continue;
       boundary += 1;
-      if (dist(r.data, q * 4, bg) <= SOFT_EDGE_TOLERANCE) lowContrast += 1;
+      if (!productAssertsItselfNear(r, cleared, nx, ny, bg)) lowContrast += 1;
       break;
     }
   }
