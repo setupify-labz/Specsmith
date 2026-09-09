@@ -64,8 +64,7 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           together; from `md` up — where cards sit two to a row and there is
           room — it goes back to 4:3. `object-contain` holds in both. */}
       <div
-        className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
-        style={{ background: 'var(--ff-surface)' }}
+        className="retail-photo-frame relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
       >
         {imageFailed ? (
           // A broken image loses the picture, never the product: the card keeps
@@ -109,7 +108,7 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-3">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         {/* The shortened title is what is shown; the complete merchant title is
             the accessible name, so nothing is withheld from a screen reader. */}
         <h3
@@ -134,7 +133,7 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
                   </span>
                 )}
               </div>
-              <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="price-checked">
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }} data-testid="price-checked">
                 {formatCheckedAt(view.checkedAt)}
               </p>
             </>
@@ -145,17 +144,17 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
               {STALE_PRICE_LABEL}
             </p>
           )}
-          <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="availability">
+          <p className="text-xs" style={{ color: 'var(--ff-text-2)' }} data-testid="availability">
             {AVAILABILITY_UNKNOWN_LABEL}
           </p>
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
             onClick={() => onToggle(part.id)}
             data-testid="add-to-build"
-            className="ff-accent-control flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
+            className="ff-accent-control flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
             style={{
               background: selected ? 'var(--ff-accent-solid)' : 'var(--ff-surface)',
               color: selected ? 'var(--ff-on-accent)' : 'var(--ff-text)',
@@ -170,8 +169,8 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             target="_blank"
             rel="sponsored noopener noreferrer"
             data-testid="view-at-newegg"
-            className="flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
-            style={{ background: 'var(--ff-newegg)', color: '#111' }}
+            className="ff-accent-control flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+            style={{ background: 'var(--ff-retailer-fill)', color: 'var(--ff-on-retailer)' }}
           >
             View at Newegg
             <ExternalLink size={12} aria-hidden="true" />

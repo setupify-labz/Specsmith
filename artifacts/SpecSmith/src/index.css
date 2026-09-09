@@ -145,6 +145,11 @@
   --ff-accent-10:  rgba(108,99,255,0.1);
   --ff-grid:       rgba(255,255,255,0.04);
   --ff-transition: 200ms ease;
+  /* Photographs retain their original pixels. One neutral studio frame
+     prevents transparent assets from changing appearance between themes. */
+  --ff-photo-bg: #F4F4F6;
+  --ff-retailer-fill: #FF9E1B;
+  --ff-on-retailer: #17110A;
 }
 
 /* ═══════════════════════════════════════
@@ -358,6 +363,22 @@
 }
 
 @layer components {
+  .retail-photo-frame {
+    background: var(--ff-photo-bg);
+    border-bottom: 1px solid var(--ff-border);
+    margin: 8px 8px 0;
+    border-radius: 10px;
+  }
+  .visual-refresh a:focus-visible,
+  .visual-refresh button:focus-visible,
+  .visual-refresh summary:focus-visible {
+    outline: 2px solid var(--ff-accent-text);
+    outline-offset: 4px;
+  }
+  .visual-refresh .primary-action {
+    background: var(--ff-accent-solid);
+    color: var(--ff-on-accent);
+  }
   .ff-input {
     height: 44px;
     padding: 0 1rem;

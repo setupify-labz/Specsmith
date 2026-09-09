@@ -11,6 +11,9 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
+import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import type { AffiliatePart } from '../lib/retail/partCatalog';
+import GuideProductImage, { guideGpuExample } from '../components/GuideProductImage';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
 interface CPU { id: string; name: string; price_usd: number; cpu_multiplier: number; [key: string]: unknown; }
@@ -57,7 +60,7 @@ function getFpsColor(fps: number): string {
   return 'var(--ff-red)';
 }
 
-function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }) {
+function PrebuiltCard({ prebuilt, index, retailParts }: { prebuilt: Prebuilt; index: number; retailParts: AffiliatePart[] }) {
   const navigate = useNavigate();
   const fpsRows = useFpsPreview(prebuilt);
   const totalPrice = useTotalPrice(prebuilt);
@@ -76,15 +79,17 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.08 }}
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl overflow-hidden min-w-0 flex flex-col"
       style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}
     >
       {/* Accent top bar */}
       <div className="h-1" style={{ background: `linear-gradient(90deg, ${accentColor}, transparent)` }} />
+      <GuideProductImage key={guideGpuExample(retailParts, prebuilt.parts.gpu)?.id ?? 'missing'}
+        part={guideGpuExample(retailParts, prebuilt.parts.gpu)} model={getPartName('gpu', prebuilt.parts.gpu)} />
 
       {/* Header */}
       <div className="p-6" style={{ borderBottom: '1px solid var(--ff-border)' }}>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: accentColor }} />
@@ -100,9 +105,11 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
               </span>
             </div>
             <p className="text-sm font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{prebuilt.tagline}</p>
-            <p className="text-sm max-w-xl" style={{ color: 'var(--ff-text-2)' }}>{prebuilt.description}</p>
+            <p className="text-sm leading-relaxed mt-3" style={{ color: 'var(--ff-text-2)' }}>
+              {getPartName('gpu', prebuilt.parts.gpu)} + {getPartName('cpu', prebuilt.parts.cpu)}
+            </p>
           </div>
-          <div className="text-right flex-shrink-0">
+          <div className="flex items-baseline gap-3 flex-wrap">
             <div className="text-3xl font-black gradient-text">${totalPrice.toLocaleString()}</div>
             <div className="text-xs mt-0.5" style={{ color: 'var(--ff-text-2)' }}>Estimated total</div>
           </div>
@@ -110,7 +117,9 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
       </div>
 
       {/* Parts grid */}
-      <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ borderBottom: '1px solid var(--ff-border)' }}>
+      <details className="px-6 py-4" style={{ borderBottom: '1px solid var(--ff-border)' }}>
+        <summary className="cursor-pointer font-semibold text-sm py-1 text-ff-primary">See all {Object.keys(prebuilt.parts).length} parts and estimated prices</summary>
+      <div className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         {Object.entries(prebuilt.parts).map(([cat, id]) => {
           const name = getPartName(cat, id);
           const price = getPartPrice(cat, id);
@@ -120,32 +129,32 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
               className="rounded-lg p-3"
               style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
             >
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>
+              <div className="text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-2)' }}>
                 {categoryLabels[cat]}
               </div>
-              <div className="text-xs font-medium leading-tight mb-1.5" style={{ color: 'var(--ff-text)' }}>{name}</div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent-text)' }}>${price}</span>
-                <div className="flex items-center gap-1.5">
+              <div className="text-sm font-medium leading-snug mb-2" style={{ color: 'var(--ff-text)' }}>{name}</div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold" style={{ color: 'var(--ff-accent-text)' }}>Est. ${price}</span>
+                <div className="flex flex-wrap items-center gap-3">
                   <a
                     href={getAffiliateUrl(getPartSearchQuery(cat, id))}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Buy on Amazon"
-                    className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
+                    title="Search Amazon — confirm the exact variant and price"
+                    className="flex min-h-10 items-center gap-1 text-xs font-semibold transition-opacity hover:opacity-80"
                     style={{ color: 'var(--ff-accent-text)' }}
                   >
-                    Amazon <ExternalLink size={9} />
+                    Search Amazon <ExternalLink size={12} />
                   </a>
                   <a
                     href={getNeweggUrl(getPartSearchQuery(cat, id))}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Buy on Newegg"
-                    className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
+                    title="Search Newegg — confirm the exact variant and price"
+                    className="flex min-h-10 items-center gap-1 text-xs font-semibold transition-opacity hover:opacity-80"
                     style={{ color: 'var(--ff-newegg)' }}
                   >
-                    Newegg <ExternalLink size={9} />
+                    Search Newegg <ExternalLink size={12} />
                   </a>
                 </div>
               </div>
@@ -153,26 +162,28 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
           );
         })}
       </div>
+      <p className="text-xs leading-relaxed text-secondary-custom mt-3">These links search retailers; they are not verified exact-product offers. Guide prices are estimates, not the price of the pictured variant.</p>
+      </details>
 
       {/* FPS Preview + CTA */}
-      <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="p-6 mt-auto flex flex-col gap-5">
         <div>
           <div className="text-xs uppercase tracking-wider mb-2 font-medium" style={{ color: 'var(--ff-text-2)' }}>
-            FPS Preview — {prebuilt.target_resolution}
+            Estimated FPS — {prebuilt.target_resolution}
           </div>
-          <div className="flex gap-6">
+          <div className="grid grid-cols-3 gap-3">
             {fpsRows.map(fp => (
               <div key={fp.game} className="text-center">
                 <div className="text-xl font-black" style={{ color: getFpsColor(fp.fps) }}>{fp.fps}</div>
-                <div className="text-xs max-w-[80px] leading-tight truncate" title={fp.game} style={{ color: 'var(--ff-text-2)' }}>{fp.game}</div>
+                <div className="text-xs leading-snug" style={{ color: 'var(--ff-text-2)' }}>{fp.game}</div>
               </div>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Link
             to={`/prebuilts/${prebuilt.id}`}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}
           >
             View Details
@@ -180,8 +191,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
           </Link>
           <button
             onClick={handleLoad}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
+            className="primary-action flex flex-1 items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
           >
             <Zap size={16} />
             Load into Builder
@@ -221,6 +231,8 @@ function prebuiltFaqJsonLd() {
 
 export default function Prebuilts() {
   useSeo(getRouteMeta('/prebuilts'));
+  const retail = useAffiliatePartCatalog();
+  const retailParts = retail.status === 'ok' ? retail.catalog.parts : [];
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -236,7 +248,7 @@ export default function Prebuilts() {
   };
 
   return (
-    <div className="relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
+    <div className="visual-refresh relative min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(prebuiltFaqJsonLd()) }} />
       <PageGlow variant="warm" />
@@ -244,26 +256,26 @@ export default function Prebuilts() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <h1 className="text-4xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
-            Curated <span className="gradient-text">Builds</span>
+            A starting point.<br /><span className="gradient-text">Not a guessing game.</span>
           </h1>
           <p className="text-lg max-w-xl mx-auto" style={{ color: 'var(--ff-text-2)' }}>
-            Expert-selected configurations for every budget. Load any build into the builder to customize it.
+            Five curated PC build guides, from 1080p to 4K. Compare the core parts, explore the full list, then make it yours.
           </p>
         </motion.div>
 
         {/* Disclaimer */}
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-          className="mb-8 rounded-xl px-4 py-3 text-xs text-center"
+          className="mb-8 rounded-xl px-4 py-4 text-sm leading-relaxed text-center"
           style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
         >
-          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are estimates based on typical US street pricing — last updated {PRICES_UPDATED}.
+          Planning estimates, not measured benchmarks or retailer quotes. Native resolution, no upscaling. Estimated US street prices last updated {PRICES_UPDATED}; check exact variants and current prices before buying.
         </motion.div>
 
         {/* Build cards */}
-        <div className="space-y-8">
+        <div className="grid md:grid-cols-2 gap-6 items-start">
           {prebuilts.map((prebuilt, i) => (
-            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} />
+            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} retailParts={retailParts} />
           ))}
         </div>
 
@@ -271,7 +283,7 @@ export default function Prebuilts() {
           {prebuiltFaqs.map((f) => (
             <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
               <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
             </div>
           ))}
         </div>

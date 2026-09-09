@@ -4,6 +4,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
+    "dev": "node artifacts/SpecSmith/node_modules/vite/bin/vite.js --config artifacts/SpecSmith/vite.config.ts",
     "preinstall": "node tools/preinstall.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",

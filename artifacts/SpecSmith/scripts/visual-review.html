@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>SpecSmith responsive review — development only</title>
+<style>
+body{margin:20px;background:#292934;color:white;font:16px system-ui}nav{display:flex;gap:12px;margin-bottom:16px}button{padding:12px;font:inherit}section{display:flex;align-items:start;gap:24px}iframe{display:block;border:1px solid #888;border-radius:8px;height:1000px;background:#0a0a0f}h2{font-size:16px}
+</style>
+<nav aria-label="Review page"><button data-route="/">Homepage</button><button data-route="/prebuilts">Build Guides</button><button data-route="/builder">Builder</button></nav>
+<section><div><h2>375px viewport</h2><iframe title="375px preview" width="375" src="/"></iframe></div><div><h2>320px viewport</h2><iframe title="320px preview" width="320" src="/"></iframe></div></section>
+<script>document.querySelectorAll('[data-route]').forEach(button=>button.addEventListener('click',()=>document.querySelectorAll('iframe').forEach(frame=>frame.src=button.dataset.route)));</script>
+</html>
