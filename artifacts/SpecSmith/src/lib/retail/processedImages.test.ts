@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { chooseProductImage, indexManifest, type ProductImageManifest } from './processedImages';
 
 const SOURCE = 'https://c1.neweggimages.test/ProductImageCompressAll640/14-126-744-02.png';
-const part = { id: 'newegg-gpu-a', imageUrl: SOURCE };
+const SHA = 'a'.repeat(64);
+const part = { id: 'newegg-gpu-a', imageUrl: SOURCE, imageSha256: SHA };
 
 const manifest = (over: Partial<ProductImageManifest['entries'][number]> = {}): ProductImageManifest => ({
   generatedAt: '2026-09-09',
@@ -44,7 +45,7 @@ describe('anything less than an exact match falls back to the merchant image', (
     [
       'the catalogue now points at a different photograph',
       manifest(),
-      { id: 'newegg-gpu-a', imageUrl: `${SOURCE}?v=2` },
+      { id: 'newegg-gpu-a', imageUrl: `${SOURCE}?v=2`, imageSha256: SHA },
       'source-image-changed',
     ],
     ['the run kept the original', manifest({ outcome: 'kept-original', processedPath: undefined }), part, 'not-processed'],
@@ -89,5 +90,28 @@ describe('a cut-out cannot display without a recorded licence basis', () => {
     const m = manifest({ rightsBasis: rightsBasis as string | undefined });
     const choice = chooseProductImage(part, indexManifest(m));
     expect(choice).toMatchObject({ kind: 'original', reason: 'no-rights-basis' });
+  });
+});
+
+describe('a URL is a location, not a version', () => {
+  it('refuses when the bytes behind an unchanged URL have changed', () => {
+    // Same URL, same part, approved — but the catalogue now hashes to
+    // something else, so the cut-out is of a photograph that is no longer
+    // there. This is the case URL equality alone cannot see.
+    const choice = chooseProductImage(
+      { id: 'newegg-gpu-a', imageUrl: SOURCE, imageSha256: 'f'.repeat(64) },
+      indexManifest(manifest()),
+    );
+    expect(choice).toMatchObject({ kind: 'original', reason: 'source-bytes-changed' });
+  });
+
+  it('refuses when the catalogue does not record which version it is serving', () => {
+    for (const imageSha256 of [undefined, null]) {
+      const choice = chooseProductImage(
+        { id: 'newegg-gpu-a', imageUrl: SOURCE, imageSha256 },
+        indexManifest(manifest()),
+      );
+      expect(choice).toMatchObject({ kind: 'original', reason: 'source-version-unknown' });
+    }
   });
 });

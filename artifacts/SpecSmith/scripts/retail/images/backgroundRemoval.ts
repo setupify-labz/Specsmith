@@ -65,7 +65,9 @@ export type RefusalReason =
   /** Almost nothing would have been cleared; not worth rewriting the file. */
   | 'nothing-to-remove'
   /** So much was cleared that too little product remains to be plausible. */
-  | 'product-too-small';
+  | 'product-too-small'
+  /** The cut would strip too much of the product's soft edge. */
+  | 'edge-damage';
 
 export interface RemovalStats {
   width: number;
@@ -85,6 +87,20 @@ export interface RemovalStats {
   softEdgePixels: number;
   /** The backdrop colour that was cleared, for the record. */
   backgroundColor: { r: number; g: number; b: number };
+  /**
+   * Estimated alpha, out of 255, lost per pixel along the cut.
+   *
+   * The remover has no ground truth at run time, so this is a proxy: a cleared
+   * pixel sitting exactly on the backdrop colour carried no product and costs
+   * nothing, while one near the far edge of the tolerance band was part
+   * product and clearing it throws that part away. Averaged over the cut
+   * perimeter it estimates how much of the product's soft edge the cut removed.
+   *
+   * Validated against known-answer images: see realHardwareImages.test.ts.
+   */
+  edgeAlphaLoss: number;
+  /** How many pixels the cut perimeter is, which the estimate is averaged over. */
+  cutPerimeter: number;
 }
 
 export type RemovalOutcome =
@@ -158,6 +174,24 @@ export const MAX_LOW_CONTRAST_BOUNDARY = 0.15;
  * within this radius, and as a fade only if it never does.
  */
 export const EDGE_PROBE_DEPTH = 4;
+
+/**
+ * The most estimated edge alpha, out of 255, a cut may cost on average along
+ * its perimeter before the picture is left alone.
+ *
+ * CALIBRATED, AND A BACKSTOP RATHER THAN A DISCRIMINATOR. Measured against 53
+ * real hardware images with a known answer, this estimate turned out to be a
+ * WEAK predictor of real damage: across estimates spanning 11.1 to 23.2 the
+ * actual mean alpha lost per edge pixel stayed between 1.0 and 1.3 out of 255.
+ * An earlier value of 24 therefore refused 15 images that measurement says are
+ * fine, which is not caution but noise.
+ *
+ * So it sits at roughly twice the worst estimate observed on known-good input.
+ * On that corpus it never fires. It exists for inputs unlike these — a real
+ * merchant photograph with a genuinely soft product edge — and the honest
+ * summary is that its usefulness is unproven, not demonstrated.
+ */
+export const MAX_EDGE_ALPHA_LOSS = 48;
 
 /** Below this remaining opaque fraction, assume the product was eaten. */
 export const MIN_PRODUCT_FRACTION = 0.02;
@@ -394,6 +428,38 @@ export function removeBackground(bytes: Buffer, url: string): RemovalOutcome {
     };
   }
 
+  // How much of the product's soft edge this cut costs. Estimated from how far
+  // each cleared perimeter pixel sat from the pure backdrop colour: on it,
+  // nothing was lost; near the tolerance limit, that pixel was part product.
+  let cutPerimeter = 0;
+  let edgeLossTotal = 0;
+  for (let p = 0; p < total; p += 1) {
+    if (cleared[p] !== 1) continue;
+    const x = p % r.width;
+    const y = (p - x) / r.width;
+    let onCut = false;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= r.width || ny >= r.height) continue;
+      if (cleared[ny * r.width + nx] !== 1) { onCut = true; break; }
+    }
+    if (!onCut) continue;
+    cutPerimeter += 1;
+    edgeLossTotal += Math.min(1, dist(r.data, p * 4, bg) / CLEAR_TOLERANCE) * 255;
+  }
+  const edgeAlphaLoss = cutPerimeter === 0 ? 0 : edgeLossTotal / cutPerimeter;
+  if (edgeAlphaLoss > MAX_EDGE_ALPHA_LOSS) {
+    return {
+      ok: false,
+      reason: 'edge-damage',
+      detail:
+        `The cut would cost an estimated ${edgeAlphaLoss.toFixed(1)}/255 of alpha per pixel along its ` +
+        `perimeter, above the reviewed limit of ${MAX_EDGE_ALPHA_LOSS}. That much is the product's own ` +
+        'soft edge rather than backdrop, so the original image is kept.',
+    };
+  }
+
   let clearedCount = 0;
   let softCount = 0;
   for (let p = 0; p < total; p += 1) {
@@ -454,6 +520,8 @@ export function removeBackground(bytes: Buffer, url: string): RemovalOutcome {
       interiorHolesKept,
       softEdgePixels: softCount,
       backgroundColor: bg,
+      edgeAlphaLoss,
+      cutPerimeter,
     },
   };
 }

@@ -11,7 +11,8 @@ import RetailProductCard from './RetailProductCard';
 
 const parsed = parseAffiliatePartCatalog(catalogData);
 if (!parsed.ok) throw new Error(`published catalogue invalid: ${parsed.problem}`);
-const part = parsed.catalog.parts.find((p) => p.category === 'gpu') as AffiliatePart;
+const found = parsed.catalog.parts.find((p) => p.category === 'gpu') as AffiliatePart;
+const part = { ...found, imageSha256: 'b'.repeat(64) } as AffiliatePart;
 const FRESH_NOW = Date.parse(part.fetchedAt) + 60_000;
 const LOCAL = `/images/products/${'b'.repeat(64)}.png`;
 

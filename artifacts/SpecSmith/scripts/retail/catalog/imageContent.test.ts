@@ -198,10 +198,28 @@ describe('attaching ratios to a catalogue cannot break the catalogue', () => {
     expect(result.problems).toEqual({ unreachable: 1 });
   });
 
-  it('changes nothing else about any part', async () => {
+  it('changes nothing about a part except the two things it measures', async () => {
+    // It writes the content ratio and the hash of the bytes that ratio was
+    // measured from — the pair that says "this much of THIS version of the
+    // picture is product". Neutralising both must give the input back exactly.
+    const parts = [part('a')];
+    const result = await attachImageContentRatios(
+      parts,
+      async () => ({ ok: true, contentRatio: 0.8, sha256: 'e'.repeat(64) }),
+      1,
+    );
+    expect(result.parts[0].imageContentRatio).toBe(0.8);
+    expect(result.parts[0].imageSha256).toBe('e'.repeat(64));
+    expect({ ...result.parts[0], imageContentRatio: null, imageSha256: null }).toEqual({
+      ...parts[0],
+      imageSha256: null,
+    });
+  });
+
+  it('records no image version when the measurement did not carry one', async () => {
     const parts = [part('a')];
     const result = await attachImageContentRatios(parts, async () => ({ ok: true, contentRatio: 0.8 }), 1);
-    expect({ ...result.parts[0], imageContentRatio: null }).toEqual(parts[0]);
+    expect(result.parts[0].imageSha256).toBeNull();
   });
 
   it('leaves every ratio null when every measurement fails', async () => {

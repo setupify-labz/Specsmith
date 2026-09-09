@@ -374,6 +374,7 @@ export default function Builder() {
               selectPart(category as keyof BuildState, id);
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
+            processedImages={processedImages}
           />
         ) : (
           /* No catalogue: fall back to the canonical parts so the builder still

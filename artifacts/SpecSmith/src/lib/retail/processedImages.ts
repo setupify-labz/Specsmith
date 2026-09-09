@@ -9,10 +9,13 @@
 // A processed image is used only when ALL of the following hold:
 //
 //   1. a manifest entry names this exact part id;
-//   2. that entry's `sourceUrl` is byte-identical to the part's CURRENT
-//      imageUrl — so if the merchant re-photographs a product or the catalogue
-//      refresh points at a different picture, the cut-out made from the OLD
-//      picture is abandoned rather than shown against the new listing;
+//   2. that entry's `sourceUrl` equals the part's CURRENT imageUrl, so a
+//      catalogue that now points somewhere else abandons the old cut-out;
+//   2b. AND the catalogue's recorded SHA-256 of the bytes at that URL equals
+//      the hash of the bytes the cut-out was made from. URL equality alone is
+//      not version matching: merchants replace the picture behind a stable URL,
+//      and a stale cut-out beside a new listing is a wrong product photo. A
+//      part whose version the catalogue could not record is refused outright;
 //   3. the entry actually produced a file (`outcome: 'processed'`);
 //   4. a human has approved that file for display.
 //
@@ -63,10 +66,15 @@ export interface ProductImageManifest {
   entries: ProductImageEntry[];
 }
 
-/** A part, narrowed to the two fields this decision needs. */
+/** A part, narrowed to the fields this decision needs. */
 export interface ImageSubject {
   id: string;
   imageUrl: string;
+  /**
+   * SHA-256 of the bytes currently at `imageUrl`, recorded by the catalogue
+   * build. Null when that build could not measure the picture.
+   */
+  imageSha256?: string | null;
 }
 
 export type ImageChoice =
@@ -77,6 +85,10 @@ export type OriginalReason =
   | 'no-manifest'
   | 'no-entry-for-part'
   | 'source-image-changed'
+  /** The catalogue does not say which version of the picture it is serving. */
+  | 'source-version-unknown'
+  /** The bytes at that URL are not the bytes the cut-out was made from. */
+  | 'source-bytes-changed'
   | 'not-processed'
   | 'not-approved'
   /** Approved, but no licence basis for modifying and self-hosting was recorded. */
@@ -114,6 +126,18 @@ export function chooseProductImage(
   // somewhere else, this cut-out is of a different picture.
   if (entry.sourceUrl !== original) {
     return { kind: 'original', src: original, reason: 'source-image-changed' };
+  }
+  // A URL identifies a LOCATION, not a version. A merchant can replace the
+  // photograph behind an unchanged URL whenever it likes — a new angle, a new
+  // cooler revision, a different card entirely — and a cut-out made from the
+  // old bytes would then be shown beside the new listing. So the catalogue's
+  // recorded hash of what is actually at that URL must equal the hash of the
+  // bytes this cut-out was made from.
+  if (!part.imageSha256) {
+    return { kind: 'original', src: original, reason: 'source-version-unknown' };
+  }
+  if (part.imageSha256 !== entry.sourceSha256) {
+    return { kind: 'original', src: original, reason: 'source-bytes-changed' };
   }
   if (entry.outcome !== 'processed' || !entry.processedPath) {
     return { kind: 'original', src: original, reason: 'not-processed' };
