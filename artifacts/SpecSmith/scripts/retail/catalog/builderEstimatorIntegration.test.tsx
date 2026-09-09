@@ -20,7 +20,7 @@ import { findItems, parseProductSearchXml } from '../rakuten/parseProductSearchX
 import { admitAffiliatePart } from './affiliateCatalog';
 import Builder from '../../../src/pages/Builder';
 
-const TARGET_CPU = 'newegg-cpu-9sia4rekg24553';
+const TARGET_CPU = 'newegg-cpu-9sic7vbm1r3247';
 const published = publishedCatalog as any;
 const publishedParts = (published.parts ?? published) as any[];
 const realCpu = publishedParts.find((p) => p.id === TARGET_CPU);
@@ -31,7 +31,7 @@ function generatedCpuPart() {
   const item = findItems(
     parseProductSearchXml(`<result><item>
       <mid>44583</mid>
-      <sku>9SIA4REKG24553</sku>
+      <sku>9SIC7VBM1R3247</sku>
       <productname>${xmlEscape(realCpu.name)}</productname>
       <category><primary>Electronics</primary><secondary>Components~~Computer Processors</secondary></category>
       <imageurl>${xmlEscape(realCpu.imageUrl)}</imageurl>

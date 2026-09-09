@@ -37,8 +37,23 @@ export type ManufacturerEvidenceStatus = 'confirmed' | 'pending';
 export interface RetailerEvidence {
   /** The merchant product page, decoded from the record's tracked deep link. */
   productUrl: string;
-  /** The retailer's own item identifier, as it appears in that URL. */
-  merchantItemId: string;
+  /**
+   * The merchant's identifier for the PRODUCT: the `/p/<id>` segment.
+   *
+   * This is the key a binding is looked up by. Newegg rotates the offer-level
+   * `item=` id for the same product — observed on 2026-09-09, when the feed
+   * replaced item 9SIA4REKG24553 with 9SIC7VBM1R3247 for this identical
+   * listing, same title and same product page. Because the published part id
+   * is derived from that item id, keying on the part id meant a binding died
+   * whenever the merchant re-issued the offer. The product id survives that.
+   */
+  merchantProductId: string;
+  /**
+   * The offer-level item id observed at review time.
+   *
+   * Recorded as provenance, NOT used as the key: it is expected to change.
+   */
+  observedItemId: string;
   /**
    * The manufacturer part number the MERCHANT states for this item.
    *
@@ -71,8 +86,6 @@ export interface ManufacturerEvidence {
 }
 
 export interface CpuIdentityBinding {
-  /** The published catalogue part id, e.g. `newegg-cpu-9sia4rekg24553`. */
-  retailPartId: string;
   /** The canonical processor id in `src/data/cpus.json`. */
   canonicalCpuId: string;
   retailer: RetailerEvidence;
@@ -88,12 +101,12 @@ export interface CpuIdentityBinding {
  */
 export const CPU_IDENTITY_BINDINGS: readonly CpuIdentityBinding[] = [
   {
-    retailPartId: 'newegg-cpu-9sia4rekg24553',
     canonicalCpuId: 'i5-13400f',
     retailer: {
       productUrl:
         'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E16819118431?item=9SIA4REKG24553',
-      merchantItemId: '9SIA4REKG24553',
+      merchantProductId: 'N82E16819118431',
+      observedItemId: '9SIA4REKG24553',
       mpn: 'BX8071513400F',
       observedAt: '2026-09-08',
     },
@@ -114,9 +127,14 @@ export const CPU_IDENTITY_BINDINGS: readonly CpuIdentityBinding[] = [
   },
 ];
 
-/** The binding under review for a retail part, admitted or not. */
-export function bindingFor(retailPartId: string): CpuIdentityBinding | null {
-  return CPU_IDENTITY_BINDINGS.find((b) => b.retailPartId === retailPartId) ?? null;
+/**
+ * The binding under review for a merchant PRODUCT id, admitted or not.
+ *
+ * Looked up by `/p/<id>` rather than by the published part id, so a binding
+ * survives the merchant re-issuing the same product under a new offer id.
+ */
+export function bindingFor(merchantProductId: string): CpuIdentityBinding | null {
+  return CPU_IDENTITY_BINDINGS.find((b) => b.retailer.merchantProductId === merchantProductId) ?? null;
 }
 
 /** Only bindings whose manufacturer records have actually been read. */

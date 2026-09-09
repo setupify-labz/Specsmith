@@ -17,7 +17,7 @@ import { findItems, parseProductSearchXml } from '../rakuten/parseProductSearchX
 import { admitAffiliatePart } from './affiliateCatalog';
 
 const PARTS = ((catalogData as any).parts ?? catalogData) as any[];
-const TARGET = 'newegg-cpu-9sia4rekg24553';
+const TARGET = 'newegg-cpu-9sic7vbm1r3247';
 const real = PARTS.find((p) => p.id === TARGET);
 
 const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -27,7 +27,7 @@ const feedItem = (over: { sku?: string; title?: string; link?: string } = {}) =>
   findItems(
     parseProductSearchXml(`<result><item>
       <mid>44583</mid>
-      <sku>${over.sku ?? '9SIA4REKG24553'}</sku>
+      <sku>${over.sku ?? '9SIC7VBM1R3247'}</sku>
       <productname>${xmlEscape(over.title ?? real.name)}</productname>
       <category><primary>Electronics</primary><secondary>Components~~Computer Processors</secondary></category>
       <imageurl>${xmlEscape(real.imageUrl)}</imageurl>
@@ -63,8 +63,23 @@ describe('the generator admits the reviewed processor as a verified part', () =>
 });
 
 describe('the generator still refuses everything it should', () => {
-  it('refuses an unreviewed SKU, even with an identical title', () => {
-    expect(admit({ sku: '9SIAOTHERSKU0001' })).toMatchObject({
+  it('still binds when only the offer id changes, which is why it is keyed on the product', () => {
+    // Newegg re-issues the same product under new item ids. The binding is
+    // keyed on the /p/ product id in the tracked link, so a new SKU for the
+    // same product page still resolves.
+    expect(admit({ sku: '9SIANEWOFFER0001' })).toMatchObject({
+      status: 'accepted',
+      part: { canonicalPartId: 'i5-13400f', specsVerified: true },
+    });
+  });
+
+  it('refuses a listing whose link points at an unreviewed product', () => {
+    const otherProduct =
+      'https://click.linksynergy.com/link?id=x&murl=' +
+      encodeURIComponent(
+        'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E99999999999?item=9SIA1',
+      );
+    expect(admit({ link: otherProduct })).toMatchObject({
       status: 'accepted',
       part: { canonicalPartId: null, specsVerified: false },
     });

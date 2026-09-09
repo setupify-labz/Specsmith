@@ -9,13 +9,14 @@ import {
   decodeMerchantDestination,
   destinationNamesCpu,
   isNeweggHost,
+  merchantProductIdFrom,
   resolveCpuIdentity,
 } from './cpuIdentityBinding';
 
 const CPUS = (cpuData as unknown as { id: string; name: string }[]).map((c) => ({ id: c.id, name: c.name }));
 const PARTS = ((catalogData as any).parts ?? catalogData) as any[];
 const partById = (id: string) => PARTS.find((p) => p.id === id);
-const TARGET = 'newegg-cpu-9sia4rekg24553';
+const TARGET = 'newegg-cpu-9sic7vbm1r3247';
 const BASE = CPU_IDENTITY_BINDINGS[0];
 
 const inputFor = (id: string) => {
@@ -36,19 +37,16 @@ const mutate = (patch: {
 ];
 
 const resolveWith = (bindings: CpuIdentityBinding[], input = inputFor(TARGET)) =>
-  resolveCpuIdentity(input, CPUS, (id) => bindings.find((b) => b.retailPartId === id) ?? null);
+  resolveCpuIdentity(input, CPUS, (id) => bindings.find((b) => b.retailer.merchantProductId === id) ?? null);
 
 describe('every entry records two independently-falsifiable sources', () => {
-  it.each(CPU_IDENTITY_BINDINGS.map((b) => [b.retailPartId, b] as const))(
-    '%s names a real part, a real canonical CPU, and both parties',
-    (retailPartId, binding) => {
-      const part = partById(retailPartId);
-      expect(part, `${retailPartId} is not in the published catalogue`).toBeTruthy();
-      expect(part.category).toBe('cpu');
+  it.each(CPU_IDENTITY_BINDINGS.map((b) => [b.retailer.merchantProductId, b] as const))(
+    'product %s names a real canonical CPU and both parties',
+    (merchantProductId, binding) => {
       expect(CPUS.some((c) => c.id === binding.canonicalCpuId)).toBe(true);
 
       expect(binding.retailer.productUrl).toMatch(/^https:\/\/www\.newegg\.com\//);
-      expect(binding.retailer.productUrl).toContain(binding.retailer.merchantItemId);
+      expect(binding.retailer.productUrl).toContain(merchantProductId);
       expect(binding.retailer.observedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
       // The manufacturer must be a different party on a different host.
@@ -76,7 +74,7 @@ describe('every entry records two independently-falsifiable sources', () => {
 
 describe('the reviewed processor binds', () => {
   it('admits the i5-13400F entry', () => {
-    expect(admittedBindings().map((b) => b.retailPartId)).toEqual([TARGET]);
+    expect(admittedBindings().map((b) => b.retailer.merchantProductId)).toEqual(['N82E16819118431']);
     expect(resolveCpuIdentity(inputFor(TARGET), CPUS)).toMatchObject({
       bound: true,
       canonicalCpuId: 'i5-13400f',
@@ -138,15 +136,16 @@ describe('merchant self-consistency alone can never admit a binding', () => {
     ).toMatchObject({ bound: false, refusal: 'title-disagrees' });
   });
 
-  it('still refuses when the tracked link points at a different chip', () => {
-    expect(
-      resolveWith(mutate({}), {
-        ...inputFor(TARGET),
-        trackedAffiliateUrl:
-          'https://click.linksynergy.com/link?id=x&murl=' +
-          encodeURIComponent('https://www.newegg.com/intel-core-i9-14900k-desktop-processor/p/N82E1'),
-      }),
-    ).toMatchObject({ bound: false, refusal: 'destination-disagrees' });
+  it('still refuses when the reviewed product page names a different chip', () => {
+    // Same reviewed product id, contradictory slug: the merchant's own record
+    // disagrees with itself, so the listing is refused.
+    const contradictory =
+      'https://click.linksynergy.com/link?id=x&murl=' +
+      encodeURIComponent('https://www.newegg.com/intel-core-i9-14900k-desktop-processor/p/N82E16819118431?item=9SIA1');
+    expect(resolveWith(mutate({}), { ...inputFor(TARGET), trackedAffiliateUrl: contradictory })).toMatchObject({
+      bound: false,
+      refusal: 'destination-disagrees',
+    });
   });
 });
 
@@ -189,10 +188,53 @@ describe('everything unreviewed stays fail-closed', () => {
     expect(bound).toEqual([TARGET]);
   });
 
-  it('corroborates the retailer URL against the record it came from', () => {
-    const destination = decodeMerchantDestination(partById(TARGET).trackedAffiliateUrl);
-    expect(destination).toBe(BASE.retailer.productUrl);
-    expect(destinationNamesCpu(destination!, 'i5-13400F')).toBe(true);
-    expect(destinationNamesCpu(destination!, 'i5-13400')).toBe(false);
+  it('corroborates the live record against the reviewed product id', () => {
+    const destination = decodeMerchantDestination(partById(TARGET).trackedAffiliateUrl)!;
+    // The recorded productUrl carries the item id observed at review time,
+    // which rotates; the product id is what must still agree.
+    expect(merchantProductIdFrom(destination)).toBe(BASE.retailer.merchantProductId);
+    expect(merchantProductIdFrom(BASE.retailer.productUrl)).toBe(BASE.retailer.merchantProductId);
+    expect(destinationNamesCpu(destination, 'i5-13400F')).toBe(true);
+    expect(destinationNamesCpu(destination, 'i5-13400')).toBe(false);
+  });
+});
+
+describe('a binding survives the merchant re-issuing the same product', () => {
+  it('binds the i5-13400F under its NEW offer id, which is why it is keyed on the product', () => {
+    // Observed 2026-09-09: Newegg replaced item 9SIA4REKG24553 with
+    // 9SIC7VBM1R3247 for this identical listing, changing the published part
+    // id with it. Keyed on the part id, the binding died overnight; keyed on
+    // the /p/ product id, it holds.
+    const part = partById(TARGET);
+    expect(part.id).toBe('newegg-cpu-9sic7vbm1r3247');
+    expect(part.trackedAffiliateUrl).toContain('9SIC7VBM1R3247');
+    expect(CPU_IDENTITY_BINDINGS[0].retailer.observedItemId).toBe('9SIA4REKG24553');
+
+    expect(resolveCpuIdentity(inputFor(TARGET), CPUS)).toMatchObject({
+      bound: true,
+      canonicalCpuId: 'i5-13400f',
+    });
+  });
+
+  it('refuses a destination that names no /p/ product at all', () => {
+    const noProduct =
+      'https://click.linksynergy.com/link?id=x&murl=' +
+      encodeURIComponent('https://www.newegg.com/some-search-page?d=i5-13400f');
+    expect(resolveWith(mutate({}), { ...inputFor(TARGET), trackedAffiliateUrl: noProduct })).toMatchObject({
+      bound: false,
+      refusal: 'destination-unreadable',
+    });
+  });
+
+  it('refuses a different Newegg product, even with a matching title', () => {
+    const otherProduct =
+      'https://click.linksynergy.com/link?id=x&murl=' +
+      encodeURIComponent(
+        'https://www.newegg.com/intel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor/p/N82E99999999999?item=9SIA1',
+      );
+    expect(resolveCpuIdentity({ ...inputFor(TARGET), trackedAffiliateUrl: otherProduct }, CPUS)).toMatchObject({
+      bound: false,
+      refusal: 'not-reviewed',
+    });
   });
 });

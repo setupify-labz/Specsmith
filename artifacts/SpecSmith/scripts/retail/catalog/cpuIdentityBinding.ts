@@ -8,7 +8,24 @@ import { verifyCpuModel } from '../rakuten/cpuModelMatch';
 import { bindingFor, type CpuIdentityBinding } from './cpuIdentityRegistry';
 
 /** How a binding is looked up. Injectable so tests drive this function itself. */
-export type BindingLookup = (retailPartId: string) => CpuIdentityBinding | null;
+export type BindingLookup = (merchantProductId: string) => CpuIdentityBinding | null;
+
+/**
+ * The merchant's PRODUCT id from a Newegg product URL: the `/p/<id>` segment.
+ *
+ * Null when the URL has no such segment, which fails the binding closed rather
+ * than falling back to the offer id — the offer id is the thing that rotates.
+ */
+export function merchantProductIdFrom(destination: string): string | null {
+  try {
+    const parts = new URL(destination).pathname.split('/').filter(Boolean);
+    const at = parts.lastIndexOf('p');
+    const id = at >= 0 ? parts[at + 1] : undefined;
+    return id && /^[A-Za-z0-9]+$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface CpuIdentityInput {
   /** Published catalogue part id. */
@@ -108,9 +125,33 @@ export function resolveCpuIdentity(
   canonicalCpus: readonly CanonicalCpuLike[],
   lookup: BindingLookup = bindingFor,
 ): CpuIdentityOutcome {
-  const evidence = lookup(input.retailPartId);
+  // The destination is read first because the binding is keyed on the
+  // merchant's PRODUCT id, which lives in it. An unreadable or non-Newegg
+  // destination therefore refuses before anything is looked up at all.
+  const destination = decodeMerchantDestination(input.trackedAffiliateUrl);
+  if (!destination) {
+    return {
+      bound: false,
+      refusal: 'destination-unreadable',
+      detail: 'The tracked link carries no readable Newegg destination, so the product it sells is unidentified.',
+    };
+  }
+  const productId = merchantProductIdFrom(destination);
+  if (!productId) {
+    return {
+      bound: false,
+      refusal: 'destination-unreadable',
+      detail: `The destination ${destination} names no /p/<id> product, so there is no stable identity to look up.`,
+    };
+  }
+
+  const evidence = lookup(productId);
   if (!evidence) {
-    return { bound: false, refusal: 'not-reviewed', detail: `${input.retailPartId} has no reviewed identity binding.` };
+    return {
+      bound: false,
+      refusal: 'not-reviewed',
+      detail: `Newegg product ${productId} has no reviewed identity binding.`,
+    };
   }
 
   // THE INDEPENDENT SOURCE, CHECKED FIRST. Everything below this point is the
@@ -186,14 +227,10 @@ export function resolveCpuIdentity(
     return { bound: false, refusal: 'title-disagrees', detail: `${title.reason}: ${title.detail}` };
   }
 
-  const destination = decodeMerchantDestination(input.trackedAffiliateUrl);
-  if (!destination) {
-    return {
-      bound: false,
-      refusal: 'destination-unreadable',
-      detail: 'The tracked link carries no readable Newegg destination to check the title against.',
-    };
-  }
+  // The product page's own slug must name the same chip as the title. Two
+  // fields of one merchant record agreeing is not what admits the binding —
+  // Intel's part number did that above — but a merchant contradicting itself
+  // is still reason to refuse.
   if (!destinationNamesCpu(destination, canonical.name)) {
     return {
       bound: false,
