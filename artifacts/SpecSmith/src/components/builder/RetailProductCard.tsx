@@ -64,8 +64,12 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           together; from `md` up — where cards sit two to a row and there is
           room — it goes back to 4:3. `object-contain` holds in both. */}
       <div
+        data-testid="product-image-frame"
         className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
-        style={{ background: 'var(--ff-surface)' }}
+        // A cut-out product shows this colour through it, so it is its own
+        // token rather than the general surface colour: #13131A in dark, white
+        // in light. See --ff-product-image-bg in index.css.
+        style={{ background: 'var(--ff-product-image-bg)' }}
       >
         {imageFailed ? (
           // A broken image loses the picture, never the product: the card keeps
