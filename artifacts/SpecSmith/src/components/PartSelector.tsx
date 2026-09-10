@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, ChevronUp, Search, Check,
@@ -47,13 +47,65 @@ interface PartSelectorProps {
   getSpecs: (part: Part) => { label: string; value: string }[];
   defaultOpen?: boolean;
   recommendedIds?: string[];
+  /**
+   * Bumped to open this selector from outside — the header's "choose a
+   * processor" action, which has to reach the processor rather than the top
+   * of the page.
+   *
+   * A token rather than a boolean, so the same selector can be asked for
+   * twice running: a `shouldOpen` flag is unchanged on the second click and
+   * would quietly do nothing after the shopper collapses the panel again.
+   */
+  openSignal?: number;
 }
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, recommendedIds = [],
+  defaultOpen = false, recommendedIds = [], openSignal,
 }: PartSelectorProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // Set when an outside request opens this selector, cleared once it has been
+  // scrolled to. See the effect below for why the two are separate steps.
+  const scrollWhenOpen = useRef(false);
+
+  useEffect(() => {
+    if (openSignal === undefined) return;
+    scrollWhenOpen.current = true;
+    setOpen(true);
+  }, [openSignal]);
+
+  /**
+   * Brings this selector into view once it has ACTUALLY OPENED.
+   *
+   * Not in the click handler, and not in the effect above. Opening this panel
+   * changes the height of the page, and `scrollIntoView` computes its target
+   * from the layout at the moment it is called — so a scroll issued while the
+   * panel is still collapsed aims at an offset that stops existing a
+   * millisecond later, and the browser abandons it. Measured on a 375px
+   * viewport: the page moved 14 pixels and the processor stayed off screen,
+   * which is the defect this is fixing, merely later in the sequence.
+   *
+   * Depending on `open` means this runs in the commit AFTER the panel has
+   * expanded, when the geometry is final. Not a timer: no guessed delay, and
+   * nothing to be flaky about on a slow machine.
+   */
+  useEffect(() => {
+    if (!open || !scrollWhenOpen.current) return;
+    scrollWhenOpen.current = false;
+    // TWO FRAMES, NOT A TIMER. The first rAF lands before the browser has
+    // laid out the panel that just expanded; the second runs after that paint,
+    // when the offset scrollIntoView computes is the one that will still exist
+    // when the scroll starts. A scroll issued any earlier is aimed at an
+    // offset the expansion invalidates, and Chromium abandons it — measured at
+    // 375px, the page moved 14 pixels and the processor stayed off screen.
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('performance');
 
@@ -98,6 +150,8 @@ export default function PartSelector({
 
   return (
     <div
+      ref={rootRef}
+      data-part-section={category}
       className="rounded-2xl overflow-hidden transition-shadow"
       style={{
         border: `1px solid ${selectedId ? 'var(--ff-accent-30)' : 'var(--ff-border)'}`,

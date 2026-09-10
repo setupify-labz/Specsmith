@@ -35,6 +35,8 @@ const onScreen = (category: string) =>
   filterAndSort(parts.filter((p) => p.category === category) as any, EMPTY_FILTERS)[0] as any;
 
 const CORE = ['gpu', 'cpu', 'motherboard', 'ram', 'storage', 'psu', 'case', 'cooler'] as const;
+/** A real canonical id — what the fallback builder, and a legacy draft, name. */
+const CANONICAL_GPU = 'rtx5090';
 
 function stubFetch() {
   vi.stubGlobal(
@@ -251,22 +253,42 @@ describe('a saved build', () => {
     await waitFor(() => expect(counter()).toContain('3 of 8'));
   }, 30000);
 
-  it('counts a saved id whose listing has since been delisted', async () => {
-    // A stale draft naming a SKU that is no longer in the catalogue. It is
-    // still a slot the shopper filled, so it counts — "count the actual
-    // selected ids" is the rule, and a delisted listing does not un-choose it.
-    //
-    // THE SUMMARY SHOWS ONE HERE, AND THAT IS NOT THE OLD BUG RETURNING. The
-    // old defect dropped SIX OF EIGHT categories from the count on every
-    // ordinary build, because their specs are unverified — parts that were
-    // present, priced and on screen. This is a listing that no longer exists:
-    // the summary has nothing to draw, and it says so by omission. If this
-    // divergence is unwanted, the fix belongs in what a delisted selection
-    // means, not in the counting rule.
+  it('does NOT count a saved id whose listing has been delisted', async () => {
+    // REVIEW BLOCKER. Counting every saved id produced "8 of 8" over a summary
+    // listing seven — the same contradiction this change set exists to remove,
+    // arriving from the other direction. A slot counts when the builder can
+    // actually put something in it.
     saveBuild({ gpu: onScreen('gpu').id, cpu: 'retail-cpu-that-no-longer-exists' });
     await openBuilder();
-    await waitFor(() => expect(counter()).toContain('2 of 8'));
+
+    await waitFor(() => expect(counter()).toContain('1 of 8'));
     expect(screen.getByTestId('view-build').textContent).toContain('(1)');
+  }, 30000);
+
+  it('never shows eight of eight while the summary lists seven', async () => {
+    // The exact shape the reviewer named, with a full build minus one delisted
+    // cooler. The two numbers are asserted against each other, so neither can
+    // drift without the other.
+    const build: Record<string, string> = {};
+    for (const category of CORE) build[category] = first(category).id;
+    build.cooler = 'retail-cooler-that-no-longer-exists';
+    saveBuild(build);
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('7 of 8'));
+    expect(counter()).not.toContain('8 of 8');
+    expect(screen.getByTestId('view-build').textContent).toContain('(7)');
+  }, 30000);
+
+  it('offers the delisted slot as the next part to choose', async () => {
+    const build: Record<string, string> = {};
+    for (const category of CORE) build[category] = first(category).id;
+    build.cooler = 'retail-cooler-that-no-longer-exists';
+    saveBuild(build);
+    await openBuilder();
+
+    const action = await screen.findByTestId('next-core-part');
+    expect(action.getAttribute('data-category')).toBe('cooler');
   }, 30000);
 });
 
@@ -294,5 +316,74 @@ describe('the counter is reachable', () => {
     // Reachable by keyboard, and it says what it does without relying on the icon.
     expect(action.textContent?.trim()).toBeTruthy();
     expect(action.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  }, 30000);
+});
+
+describe('when the catalogue has failed', () => {
+  // REVIEW BLOCKER. "Choose a processor" scrolled to the top of the fallback
+  // builder and stopped, leaving a shopper who asked for a processor looking
+  // at graphics cards with no sign that anything had happened.
+  const renderFailed = async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, json: async () => ({}) }) as unknown as Response) as unknown as typeof fetch,
+    );
+    renderBuilder();
+    await screen.findByTestId('canonical-fallback', {}, { timeout: 10000 });
+  };
+
+  const scrolled: Element[] = [];
+  beforeEach(() => {
+    scrolled.length = 0;
+    Element.prototype.scrollIntoView = function scrollIntoViewSpy(this: Element) {
+      scrolled.push(this);
+    };
+    // The scroll happens in an effect, after React commits the open state —
+    // deliberately not in the click handler, where the selector would still be
+    // collapsed and at its old position.
+  });
+
+  it('scrolls to the requested category section', async () => {
+    // A saved GPU means the next missing core part is the processor.
+    saveBuild({ gpu: CANONICAL_GPU });
+    await renderFailed();
+
+    const action = await screen.findByTestId('next-core-part');
+    const category = action.getAttribute('data-category')!;
+    fireEvent.click(action);
+
+    const section = document.querySelector(`[data-part-section="${category}"]`);
+    expect(section, `no fallback selector for ${category}`).toBeTruthy();
+    await waitFor(() => expect(scrolled).not.toHaveLength(0));
+    // The section itself, rather than the builder region wrapping everything.
+    expect(scrolled[scrolled.length - 1]).toBe(section);
+    // And it is open by then: scrolling to a collapsed panel lands on where it
+    // used to be, and it moves once it expands.
+    expect(section!.querySelectorAll('button').length).toBeGreaterThan(1);
+  }, 30000);
+
+  it('opens that selector so its parts are actually reachable', async () => {
+    saveBuild({ gpu: CANONICAL_GPU });
+    await renderFailed();
+
+    const action = await screen.findByTestId('next-core-part');
+    const category = action.getAttribute('data-category')!;
+    const section = document.querySelector(`[data-part-section="${category}"]`)!;
+    const before = section.querySelectorAll('button').length;
+
+    fireEvent.click(action);
+
+    await waitFor(() => {
+      expect(section.querySelectorAll('button').length).toBeGreaterThan(before);
+    });
+  }, 30000);
+
+  it('counts only parts the fallback can actually show', async () => {
+    // The fallback draws from the canonical parts, so a retail SKU id saved in
+    // the draft is not something it can put on screen.
+    saveBuild({ gpu: CANONICAL_GPU, cpu: first('cpu').id });
+    await renderFailed();
+
+    await waitFor(() => expect(counter()).toContain('1 of 8'));
   }, 30000);
 });

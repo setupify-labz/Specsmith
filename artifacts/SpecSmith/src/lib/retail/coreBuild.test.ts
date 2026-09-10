@@ -54,13 +54,59 @@ describe('counting', () => {
     expect(coreBuildCount(everything as never)).toBe(CORE_BUILD_TOTAL);
   });
 
-  it('asks nothing about the id beyond its existence', () => {
+  it('asks nothing about VERIFICATION, only about availability', () => {
     // THE DEFECT, AS A PROPERTY. The old counter resolved each id to a
-    // canonical part and only when the listing's specs were verified. Any
-    // string counts here, because "have you chosen one?" and "can we model
-    // it?" are different questions.
-    expect(coreBuildCount({ cpu: 'retail-cpu-nobody-has-verified' })).toBe(1);
-    expect(coreBuildCount({ psu: 'a-delisted-sku' })).toBe(1);
+    // canonical part and only when the listing's specs were verified.
+    // Verification is not asked about here at all — "have you chosen one?"
+    // and "can we model it?" are different questions.
+    const known = new Set(['retail-cpu-nobody-has-verified']);
+    expect(coreBuildCount({ cpu: 'retail-cpu-nobody-has-verified' }, known)).toBe(1);
+  });
+});
+
+describe('a part the builder cannot show', () => {
+  // THE SECOND HALF OF THE SAME BUG. Counting every id the draft holds looks
+  // right until a saved SKU drops out of the catalogue: the header then reads
+  // "8 of 8" over a summary listing seven, because the summary skips a
+  // selection it cannot render. Identical contradiction, opposite direction.
+  const eight = () => {
+    const selection: Record<string, string> = {};
+    for (const category of CORE_BUILD_CATEGORIES) selection[category] = `${category}-1`;
+    return selection;
+  };
+  const allButCooler = () =>
+    new Set(CORE_BUILD_CATEGORIES.filter((c) => c !== 'cooler').map((c) => `${c}-1`));
+
+  it('does not count a delisted selection', () => {
+    expect(coreBuildCount(eight() as never, allButCooler())).toBe(7);
+  });
+
+  it('never reports eight of eight when a slot cannot be shown', () => {
+    expect(coreBuildLabel(eight() as never, allButCooler())).toBe(
+      'Core build: 7 of 8 parts selected',
+    );
+  });
+
+  it('offers the delisted slot as the next part to choose', () => {
+    // The shopper has nothing there, so it is missing, and the action should
+    // offer to fill it rather than skip past it.
+    expect(nextMissingCoreCategory(eight() as never, allButCooler())).toBe('cooler');
+    expect(missingCoreCategories(eight() as never, allButCooler())).toEqual(['cooler']);
+  });
+
+  it('counts everything again once the ids are known', () => {
+    const known = new Set(CORE_BUILD_CATEGORIES.map((c) => `${c}-1`));
+    expect(coreBuildCount(eight() as never, known)).toBe(8);
+    expect(nextMissingCoreCategory(eight() as never, known)).toBeNull();
+  });
+
+  it('treats "not known yet" as different from "absent"', () => {
+    // While the catalogue is loading there is no summary on screen to
+    // contradict, and the shopper's own selections are the honest answer.
+    // Reporting zero because nothing has loaded would be its own lie.
+    expect(coreBuildCount(eight() as never, null)).toBe(8);
+    expect(coreBuildCount(eight() as never, undefined)).toBe(8);
+    expect(coreBuildCount(eight() as never, new Set())).toBe(0);
   });
 });
 

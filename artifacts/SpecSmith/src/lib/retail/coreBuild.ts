@@ -63,19 +63,55 @@ export type CoreSelection = {
 const isChosen = (id: string | null | undefined): id is string =>
   typeof id === 'string' && id.trim() !== '';
 
-/** Which core categories hold a part. */
-export function chosenCoreCategories(selection: CoreSelection): CoreBuildCategory[] {
-  return CORE_BUILD_CATEGORIES.filter((category) => isChosen(selection[category]));
+/**
+ * The ids the builder on screen can actually show, or null when it does not
+ * know yet.
+ *
+ * WHY THIS EXISTS — the second half of the same bug. Counting every id the
+ * draft holds looks right until a saved SKU drops out of the catalogue: the
+ * header then says "8 of 8" while the build summary lists seven, because the
+ * summary skips a selection it cannot render. That is the identical
+ * contradiction this change set exists to remove, arriving from the other
+ * direction.
+ *
+ * So a slot counts when the builder could put something in it. `null` means
+ * the catalogue has not answered yet — during loading there is no summary on
+ * screen to contradict, and the shopper's own selections are the best thing
+ * to report until availability is known.
+ */
+export type KnownPartIds = ReadonlySet<string> | null | undefined;
+
+const isPresent = (id: string | null | undefined, known: KnownPartIds): id is string => {
+  if (!isChosen(id)) return false;
+  // Not yet known is not the same as absent, and must not be reported as one.
+  if (known === null || known === undefined) return true;
+  return known.has(id);
+};
+
+/** Which core categories hold a part the builder can show. */
+export function chosenCoreCategories(
+  selection: CoreSelection,
+  known?: KnownPartIds,
+): CoreBuildCategory[] {
+  return CORE_BUILD_CATEGORIES.filter((category) => isPresent(selection[category], known));
 }
 
 /** How many of the eight are chosen. Never more than eight, never negative. */
-export function coreBuildCount(selection: CoreSelection): number {
-  return chosenCoreCategories(selection).length;
+export function coreBuildCount(selection: CoreSelection, known?: KnownPartIds): number {
+  return chosenCoreCategories(selection, known).length;
 }
 
-/** Which core categories are still empty, in assembly order. */
-export function missingCoreCategories(selection: CoreSelection): CoreBuildCategory[] {
-  return CORE_BUILD_CATEGORIES.filter((category) => !isChosen(selection[category]));
+/**
+ * Which core categories still need a part, in assembly order.
+ *
+ * A slot whose saved listing has been delisted is MISSING, not filled: the
+ * shopper has nothing there, and the next-part action should offer to fill it.
+ */
+export function missingCoreCategories(
+  selection: CoreSelection,
+  known?: KnownPartIds,
+): CoreBuildCategory[] {
+  return CORE_BUILD_CATEGORIES.filter((category) => !isPresent(selection[category], known));
 }
 
 /**
@@ -85,13 +121,16 @@ export function missingCoreCategories(selection: CoreSelection): CoreBuildCatego
  * the cheapest: a shopper working down the list should never be sent backwards,
  * and a stable answer is one they can follow without the target moving.
  */
-export function nextMissingCoreCategory(selection: CoreSelection): CoreBuildCategory | null {
-  return missingCoreCategories(selection)[0] ?? null;
+export function nextMissingCoreCategory(
+  selection: CoreSelection,
+  known?: KnownPartIds,
+): CoreBuildCategory | null {
+  return missingCoreCategories(selection, known)[0] ?? null;
 }
 
 /** The counter's label. One string, so the two numbers cannot be written apart. */
-export function coreBuildLabel(selection: CoreSelection): string {
-  return `Core build: ${coreBuildCount(selection)} of ${CORE_BUILD_TOTAL} parts selected`;
+export function coreBuildLabel(selection: CoreSelection, known?: KnownPartIds): string {
+  return `Core build: ${coreBuildCount(selection, known)} of ${CORE_BUILD_TOTAL} parts selected`;
 }
 
 /** What to call a core category on its own, e.g. as a heading. */

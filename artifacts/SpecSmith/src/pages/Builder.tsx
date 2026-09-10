@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
@@ -206,10 +206,40 @@ export default function Builder() {
   };
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
-  // Counted from the SELECTION, not from what the estimator can resolve.
-  const coreChosen = coreBuildCount(build);
-  const coreLabel = coreBuildLabel(build);
-  const nextCoreCategory = nextMissingCoreCategory(build);
+  /**
+   * The ids the builder currently on screen can actually show.
+   *
+   * Counted from the SELECTION rather than from what the estimator can
+   * resolve — but a slot only counts if something can go in it. A saved SKU
+   * that has dropped out of the catalogue is skipped by the build summary,
+   * so counting it here would say "8 of 8" over a summary listing seven:
+   * the same contradiction, arriving from the other side.
+   *
+   * Which ids are showable depends on which builder is up. The retail
+   * builder draws from the catalogue; the canonical fallback draws from the
+   * reference parts. While the catalogue is still loading the answer is not
+   * known yet — and there is no summary on screen to contradict — so the
+   * shopper's own selections stand until it is.
+   */
+  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (affiliateCatalog.status === 'loading') return null;
+    if (affiliateCatalog.status === 'ok') {
+      return new Set(affiliateCatalog.catalog.parts.map((part) => part.id));
+    }
+    return new Set(
+      [
+        ...builderGpus, ...builderCpus, ...builderMotherboards, ...builderRam,
+        ...builderStorage, ...builderPsus, ...builderCases, ...builderCoolers,
+      ].map((part) => part.id),
+    );
+  }, [
+    affiliateCatalog, builderGpus, builderCpus, builderMotherboards, builderRam,
+    builderStorage, builderPsus, builderCases, builderCoolers,
+  ]);
+
+  const coreChosen = coreBuildCount(build, knownPartIds);
+  const coreLabel = coreBuildLabel(build, knownPartIds);
+  const nextCoreCategory = nextMissingCoreCategory(build, knownPartIds);
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -224,8 +254,27 @@ export default function Builder() {
   const builderRegionRef = useRef<HTMLDivElement | null>(null);
   const handleChooseCategory = (category: RetailPartCategory) => {
     setCategoryRequest((current) => ({ category, token: (current?.token ?? 0) + 1 }));
-    builderRegionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  /**
+   * Brings the requested category into view.
+   *
+   * ONLY the retail builder is handled here. The canonical fallback's selector
+   * scrolls to itself once it has opened — see PartSelector — because opening
+   * changes the page height, and a scroll aimed from outside while the panel is
+   * still collapsed targets an offset that ceases to exist and is abandoned by
+   * the browser. The component that changes size is the one that can say when
+   * it has finished changing.
+   */
+  useEffect(() => {
+    if (!categoryRequest) return;
+    if (builderRegionRef.current?.querySelector('[data-part-section]')) return;
+    builderRegionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [categoryRequest]);
+
+  /** Opens the fallback's selector for a category when it is the one requested. */
+  const openSignalFor = (category: RetailPartCategory) =>
+    categoryRequest?.category === category ? categoryRequest.token : undefined;
 
   const gpuSectionRef = useRef<HTMLDivElement>(null);
   const cpuSectionRef = useRef<HTMLDivElement>(null);
@@ -471,7 +520,7 @@ export default function Builder() {
               {/* GPU */}
               <div ref={gpuSectionRef}>
                 <PartSelector
-                  category="gpu" label="GPU — Graphics Card" defaultOpen
+                  openSignal={openSignalFor('gpu')} category="gpu" label="GPU — Graphics Card" defaultOpen
                   parts={builderGpus}
                   selectedId={build.gpu}
                   recommendedIds={recommendedIds}
@@ -490,7 +539,7 @@ export default function Builder() {
               {/* CPU */}
               <div ref={cpuSectionRef}>
                 <PartSelector
-                  category="cpu" label="CPU — Processor"
+                  openSignal={openSignalFor('cpu')} category="cpu" label="CPU — Processor"
                   parts={builderCpus}
                   selectedId={build.cpu}
                   recommendedIds={recommendedIds}
@@ -506,32 +555,32 @@ export default function Builder() {
                   }}
                 />
               </div>
-              <PartSelector category="motherboard" label="Motherboard"
+              <PartSelector openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
                 parts={builderMotherboards} selectedId={build.motherboard}
                 onSelect={id => selectPart('motherboard', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
               />
-              <PartSelector category="ram" label="RAM — Memory"
+              <PartSelector openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
                 parts={builderRam} selectedId={build.ram}
                 onSelect={id => selectPart('ram', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
               />
-              <PartSelector category="storage" label="Storage"
+              <PartSelector openSignal={openSignalFor('storage')} category="storage" label="Storage"
                 parts={builderStorage} selectedId={build.storage}
                 onSelect={id => selectPart('storage', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
               />
-              <PartSelector category="psu" label="PSU — Power Supply"
+              <PartSelector openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
                 parts={builderPsus} selectedId={build.psu}
                 onSelect={id => selectPart('psu', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
               />
-              <PartSelector category="case" label="Case"
+              <PartSelector openSignal={openSignalFor('case')} category="case" label="Case"
                 parts={builderCases} selectedId={build.case}
                 onSelect={id => selectPart('case', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
               />
-              <PartSelector category="cooler" label="CPU Cooler"
+              <PartSelector openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
                 parts={builderCoolers} selectedId={build.cooler}
                 onSelect={id => selectPart('cooler', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
