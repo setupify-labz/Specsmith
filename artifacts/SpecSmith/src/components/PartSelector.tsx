@@ -59,53 +59,75 @@ interface PartSelectorProps {
   openSignal?: number;
 }
 
+/**
+ * How many frames a scroll request may keep re-asserting itself.
+ *
+ * Generous enough to outlast a panel expanding and the layout settling around
+ * it, small enough that an element which can never come into view stops trying
+ * well inside a second.
+ */
+const SCROLL_ATTEMPT_FRAMES = 30;
+
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
   defaultOpen = false, recommendedIds = [], openSignal,
 }: PartSelectorProps) {
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  // Set when an outside request opens this selector, cleared once it has been
-  // scrolled to. See the effect below for why the two are separate steps.
-  const scrollWhenOpen = useRef(false);
-
-  useEffect(() => {
-    if (openSignal === undefined) return;
-    scrollWhenOpen.current = true;
-    setOpen(true);
-  }, [openSignal]);
 
   /**
-   * Brings this selector into view once it has ACTUALLY OPENED.
+   * Opens this selector on request, and brings it into view — EVERY time.
    *
-   * Not in the click handler, and not in the effect above. Opening this panel
-   * changes the height of the page, and `scrollIntoView` computes its target
-   * from the layout at the moment it is called — so a scroll issued while the
-   * panel is still collapsed aims at an offset that stops existing a
-   * millisecond later, and the browser abandons it. Measured on a 375px
-   * viewport: the page moved 14 pixels and the processor stayed off screen,
-   * which is the defect this is fixing, merely later in the sequence.
+   * KEYED ON THE TOKEN, NOT ON `open`. This was two effects: one calling
+   * `setOpen(true)`, and one keyed on `open` that did the scrolling. That works
+   * exactly once, from closed. `setOpen(true)` on an already-open selector
+   * changes no state, so React does not re-render, so an effect watching `open`
+   * never runs again — and the request silently did nothing. Two cases hit this
+   * in ordinary use: the GPU selector, which is `defaultOpen`, and any category
+   * asked for twice running. Both are a shopper clicking a button and watching
+   * nothing happen.
    *
-   * Depending on `open` means this runs in the commit AFTER the panel has
-   * expanded, when the geometry is final. Not a timer: no guessed delay, and
-   * nothing to be flaky about on a slow machine.
+   * WHY IT RE-ASSERTS RATHER THAN SCROLLING ONCE. `scrollIntoView` computes its
+   * target from the layout at the moment it is called, and this panel is
+   * expanding as it is called — so a single scroll can be aimed at an offset
+   * that stops existing a frame later, and Chromium abandons it. Measured at
+   * 375px: the page moved two pixels and the processor stayed off screen, on
+   * the first request after a page load but not the second, which is the
+   * signature of a race rather than a mistake in the ordering.
+   *
+   * So it does not guess when the layout is final. It watches for the only
+   * thing that matters — is the selector actually on screen? — and re-issues
+   * the scroll until it is, giving up after a bounded number of frames so a
+   * genuinely unreachable element cannot spin forever. Converging on an
+   * observable condition, rather than a delay tuned to one machine.
    */
   useEffect(() => {
-    if (!open || !scrollWhenOpen.current) return;
-    scrollWhenOpen.current = false;
-    // TWO FRAMES, NOT A TIMER. The first rAF lands before the browser has
-    // laid out the panel that just expanded; the second runs after that paint,
-    // when the offset scrollIntoView computes is the one that will still exist
-    // when the scroll starts. A scroll issued any earlier is aimed at an
-    // offset the expansion invalidates, and Chromium abandons it — measured at
-    // 375px, the page moved 14 pixels and the processor stayed off screen.
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [open]);
+    if (openSignal === undefined) return;
+    setOpen(true);
+
+    let frame: number | null = null;
+    let framesLeft = SCROLL_ATTEMPT_FRAMES;
+
+    const settle = () => {
+      frame = null;
+      const element = rootRef.current;
+      if (!element) return;
+      const box = element.getBoundingClientRect();
+      const onScreen = box.top < window.innerHeight && box.bottom > 0;
+      if (onScreen || framesLeft <= 0) return;
+      framesLeft -= 1;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      frame = requestAnimationFrame(settle);
+    };
+
+    frame = requestAnimationFrame(settle);
+    // The pending frame is always cancelled — a selector unmounted, or a newer
+    // request arriving, must not leave a scroll scheduled against a stale
+    // target or a node that is gone.
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [openSignal]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('performance');
 
