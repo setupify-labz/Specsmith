@@ -14,13 +14,20 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import BuilderSkeleton from '../components/builder/BuilderSkeleton';
+import {
+  CORE_BUILD_TOTAL,
+  coreBuildCount,
+  coreBuildLabel,
+  coreCategoryAction,
+  nextMissingCoreCategory,
+} from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
@@ -199,6 +206,27 @@ export default function Builder() {
   };
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
+  // Counted from the SELECTION, not from what the estimator can resolve.
+  const coreChosen = coreBuildCount(build);
+  const coreLabel = coreBuildLabel(build);
+  const nextCoreCategory = nextMissingCoreCategory(build);
+
+  /**
+   * Sends the shopper to a category, and says so out loud.
+   *
+   * The retail builder owns which category is open, so this asks for one by
+   * bumping a token rather than by reaching in: the same category can be
+   * requested twice in a row and still register. The canonical fallback has no
+   * category rail, so there the request is honoured by scrolling to the
+   * builder region instead of silently doing nothing.
+   */
+  const [categoryRequest, setCategoryRequest] = useState<{ category: RetailPartCategory; token: number } | null>(null);
+  const builderRegionRef = useRef<HTMLDivElement | null>(null);
+  const handleChooseCategory = (category: RetailPartCategory) => {
+    setCategoryRequest((current) => ({ category, token: (current?.token ?? 0) + 1 }));
+    builderRegionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const gpuSectionRef = useRef<HTMLDivElement>(null);
   const cpuSectionRef = useRef<HTMLDivElement>(null);
   const fpsSectionRef = useRef<HTMLDivElement>(null);
@@ -335,26 +363,66 @@ export default function Builder() {
           </h1>
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
 
-          {corePartsList.length === 0 && (
+          {coreChosen === 0 && (
             <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
               style={{ color: 'var(--ff-accent-text)' }}>
               <Sparkles size={12} /> Not sure where to start? Take the 2-question PC Build Quiz →
             </Link>
           )}
 
-          <div className="flex items-center gap-3 max-w-xs">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ff-border)' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${(corePartsList.length / 8) * 100}%` }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-              />
+          {/* HOW MUCH OF A COMPUTER IS CHOSEN — and nothing else.
+              This counted resolved canonical parts, which meant it counted
+              only listings whose specs are verified. One core category is
+              verified in the published catalogue, so choosing a CPU and a
+              motherboard moved it not at all: the summary said three parts and
+              this said one. It now counts the eight core selections
+              themselves. Whether a part's specs are verified, and whether the
+              build is compatible, are different questions with their own
+              places on this page, and both stay fail-closed. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex items-center gap-3" style={{ minWidth: '16rem', maxWidth: '20rem', flex: '1 1 16rem' }}>
+              <div
+                className="flex-1 h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: 'var(--ff-border)' }}
+                role="progressbar"
+                aria-valuenow={coreChosen}
+                aria-valuemin={0}
+                aria-valuemax={CORE_BUILD_TOTAL}
+                aria-label={coreLabel}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(coreChosen / CORE_BUILD_TOTAL) * 100}%` }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+              </div>
+              {/* The label is the accessible name of the bar beside it, so a
+                  screen reader is not told the same number twice. */}
+              <span
+                aria-hidden="true"
+                data-testid="core-progress"
+                className="text-xs font-semibold whitespace-nowrap"
+                style={{ color: 'var(--ff-text-2)' }}
+              >
+                {coreLabel}
+              </span>
             </div>
-            <span className="text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text-2)' }}>
-              {corePartsList.length} of 8 selected
-            </span>
+
+            {nextCoreCategory !== null && (
+              <button
+                type="button"
+                data-testid="next-core-part"
+                data-category={nextCoreCategory}
+                onClick={() => handleChooseCategory(nextCoreCategory)}
+                className="ff-accent-control inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
+                style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+              >
+                {coreCategoryAction(nextCoreCategory)}
+                <ArrowRight size={12} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </motion.div>
 
@@ -362,6 +430,7 @@ export default function Builder() {
           <CompatibilityBanner warnings={warnings} passed={compat.passed} />
         </div>
 
+        <div ref={builderRegionRef}>
         {affiliateCatalog.status === 'ok' ? (
           /* THE SHOPPING INTERFACE. Fed exclusively from the 500-part retailer
              catalogue: exact SKUs, each with its own image, price, tracked link
@@ -377,6 +446,7 @@ export default function Builder() {
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
             processedImages={processedImages}
+            categoryRequest={categoryRequest}
           />
         ) : affiliateCatalog.status === 'loading' ? (
           /* STILL LOADING — NOT A FAILURE (issue #104). This branch used to
@@ -571,6 +641,7 @@ export default function Builder() {
           </div>
           </>
         )}
+        </div>
 
         {/* FPS Estimator */}
         <div ref={fpsSectionRef}>

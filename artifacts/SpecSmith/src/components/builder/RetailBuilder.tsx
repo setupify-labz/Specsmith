@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
@@ -21,6 +21,15 @@ interface Props {
   estimate?: { canEstimate: boolean; onEstimate: () => void };
   /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
   processedImages?: Map<string, ProductImageEntry> | null;
+  /**
+   * A request from outside to open a category — the header's "choose a
+   * motherboard" action.
+   *
+   * Carries a token rather than just a category so the SAME category can be
+   * requested twice running and still register; a bare category prop would be
+   * unchanged on the second click and quietly do nothing.
+   */
+  categoryRequest?: { category: RetailPartCategory; token: number } | null;
 }
 
 /**
@@ -40,8 +49,18 @@ export default function RetailBuilder({
   now,
   estimate,
   processedImages,
+  categoryRequest,
 }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
+  // Opening a category from outside is the same act as clicking it in the
+  // rail: `active` changes, the catalogue's key changes with it, and #102's
+  // browsing-state reset happens exactly as it does for any other switch.
+  const requestToken = categoryRequest?.token;
+  const requestedCategory = categoryRequest?.category;
+  useEffect(() => {
+    if (requestToken === undefined || requestedCategory === undefined) return;
+    setActive(requestedCategory);
+  }, [requestToken, requestedCategory]);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const clock = now ?? Date.now();
