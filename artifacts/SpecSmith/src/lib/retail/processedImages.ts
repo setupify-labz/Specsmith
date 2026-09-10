@@ -46,6 +46,16 @@ export interface ProductImageEntry {
   outcome: 'processed' | 'kept-original';
   /** Same-origin path, present only when `outcome` is 'processed'. */
   processedPath?: string;
+  /**
+   * SHA-256 of the OUTPUT bytes, which is also the file's name.
+   *
+   * Content-addressing the output rather than the input is what makes a
+   * regenerated cut-out a different URL. Two runs of a changed algorithm over
+   * the same merchant photograph produce the same `sourceSha256` and different
+   * `processedSha256`, so the new file cannot be shadowed by a CDN still
+   * holding the old one under a name derived from the input.
+   */
+  processedSha256?: string;
   /** A person has confirmed the cut-out looks right. */
   approved?: boolean;
   /**
@@ -97,9 +107,15 @@ export type OriginalReason =
 /** Where every processed file must live. */
 export const PROCESSED_PATH_PREFIX = '/images/products/';
 
-/** The only path a processed entry may name, derived from its own hash. */
-export function expectedProcessedPath(sourceSha256: string): string {
-  return `${PROCESSED_PATH_PREFIX}${sourceSha256}.png`;
+/**
+ * The only path a processed entry may name, derived from the OUTPUT's hash.
+ *
+ * Named after what the file contains, not what it was made from: an improved
+ * algorithm re-cutting the same photograph must produce a new URL, or a cache
+ * holding the old cut-out would go on serving it indefinitely.
+ */
+export function expectedProcessedPath(processedSha256: string): string {
+  return `${PROCESSED_PATH_PREFIX}${processedSha256}.png`;
 }
 
 export type ManifestRejectionReason =
@@ -109,6 +125,7 @@ export type ManifestRejectionReason =
   | 'bad-part-id'
   | 'bad-source-url'
   | 'bad-source-hash'
+  | 'bad-processed-hash'
   | 'bad-outcome'
   | 'bad-approved-flag'
   | 'bad-rights-basis'
@@ -174,7 +191,8 @@ export function parseProductImageManifest(raw: unknown): ParsedProductImageManif
       reject(null, 'entry-not-an-object', 'An entry is not an object.');
       continue;
     }
-    const { partId, sourceUrl, sourceSha256, outcome, processedPath, approved, rightsBasis, reason } = candidate;
+    const { partId, sourceUrl, sourceSha256, processedSha256, outcome, processedPath, approved, rightsBasis, reason } =
+      candidate;
 
     if (typeof partId !== 'string' || partId.trim() === '') {
       reject(null, 'bad-part-id', 'An entry has no usable part id.');
@@ -206,7 +224,11 @@ export function parseProductImageManifest(raw: unknown): ParsedProductImageManif
         reject(partId, 'missing-processed-path', `${partId}: a processed entry names no file.`);
         continue;
       }
-      const expected = expectedProcessedPath(sourceSha256);
+      if (!isSha256(processedSha256)) {
+        reject(partId, 'bad-processed-hash', `${partId}: processedSha256 is not a 64-character hex digest.`);
+        continue;
+      }
+      const expected = expectedProcessedPath(processedSha256);
       if (processedPath !== expected) {
         // One equality covers other origins, protocol-relative hosts,
         // traversal, and a name that disagrees with its own hash.
@@ -232,6 +254,7 @@ export function parseProductImageManifest(raw: unknown): ParsedProductImageManif
       sourceSha256,
       outcome,
       ...(typeof processedPath === 'string' ? { processedPath } : {}),
+      ...(isSha256(processedSha256) ? { processedSha256 } : {}),
       ...(typeof approved === 'boolean' ? { approved } : {}),
       ...(typeof rightsBasis === 'string' ? { rightsBasis } : {}),
       ...(typeof reason === 'string' ? { reason } : {}),

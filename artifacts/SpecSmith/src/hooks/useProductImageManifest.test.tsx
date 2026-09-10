@@ -18,7 +18,8 @@ const OTHER = 'b'.repeat(64);
 const validEntry = (over: Record<string, unknown> = {}) => ({
   partId: 'newegg-gpu-a',
   sourceUrl: 'https://c1.neweggimages.test/a.png',
-  sourceSha256: SHA,
+  sourceSha256: OTHER,
+  processedSha256: SHA,
   outcome: 'processed',
   processedPath: expectedProcessedPath(SHA),
   approved: true,
@@ -72,7 +73,7 @@ describe('a processed path may only ever be our own derived file', () => {
     ['a protocol-relative host', `//evil.test${expectedProcessedPath(SHA)}`],
     ['directory traversal', '/images/products/../../etc/passwd'],
     ['traversal that ends in the right name', `/images/products/../../${SHA}.png`],
-    ['a different image entirely', expectedProcessedPath(OTHER)],
+    ['a file belonging to different bytes', expectedProcessedPath(OTHER)],
     ['the right folder but a wrong name', '/images/products/something-else.png'],
     ['a data URI', 'data:image/png;base64,AAAA'],
     ['a javascript URI', 'javascript:alert(1)'],
@@ -88,8 +89,10 @@ describe('malformed entries are dropped, not repaired', () => {
     ['a non-object entry', 'nonsense'],
     ['no part id', validEntry({ partId: '' })],
     ['a non-http source', validEntry({ sourceUrl: 'ftp://x/a.png' })],
-    ['a short hash', validEntry({ sourceSha256: 'abc' })],
-    ['an uppercase hash', validEntry({ sourceSha256: SHA.toUpperCase() })],
+    ['a short source hash', validEntry({ sourceSha256: 'abc' })],
+    ['an uppercase source hash', validEntry({ sourceSha256: SHA.toUpperCase() })],
+    ['no output hash', validEntry({ processedSha256: undefined })],
+    ['a short output hash', validEntry({ processedSha256: 'abc' })],
     ['an unknown outcome', validEntry({ outcome: 'maybe' })],
     ['a processed entry with no file', validEntry({ processedPath: undefined })],
     ['a kept entry that names a file', validEntry({ outcome: 'kept-original' })],
@@ -115,7 +118,10 @@ describe('duplicates are discarded rather than resolved', () => {
     // Picking either would make which picture a shopper sees depend on file
     // order, which is not a decision this code is entitled to make.
     const result = await load({
-      entries: [validEntry(), validEntry({ sourceSha256: OTHER, processedPath: expectedProcessedPath(OTHER) })],
+      entries: [
+        validEntry(),
+        validEntry({ processedSha256: OTHER, processedPath: expectedProcessedPath(OTHER) }),
+      ],
     });
     expect(result.current.size).toBe(0);
   });

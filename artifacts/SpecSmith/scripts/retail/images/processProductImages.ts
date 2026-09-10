@@ -116,14 +116,18 @@ export function processOne(input: ProcessInput, outDir: string, observedAt: stri
   const outcome = removeBackground(input.bytes, input.sourceUrl);
   if (!outcome.ok) return { ...base, reason: outcome.reason, detail: outcome.detail };
 
-  const fileName = `${sourceSha256}.png`;
+  // Named after the OUTPUT, not the input. A changed algorithm re-cutting the
+  // same photograph yields the same sourceSha256 and a different file name, so
+  // a CDN holding the previous cut-out cannot keep serving it.
+  const processedSha256 = sha256(outcome.png);
+  const fileName = `${processedSha256}.png`;
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, fileName), outcome.png);
   return {
     ...base,
     outcome: 'processed',
     processedPath: `/images/products/${fileName}`,
-    processedSha256: sha256(outcome.png),
+    processedSha256,
     processedBytes: outcome.png.byteLength,
     stats: outcome.stats,
   };

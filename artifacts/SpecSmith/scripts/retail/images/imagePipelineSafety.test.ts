@@ -45,7 +45,7 @@ describe('a refusal writes nothing and keeps the merchant original', () => {
 });
 
 describe('a success is stored on our own origin, never hotlinked back', () => {
-  it('writes a local file named by the source hash and records both hashes', () => {
+  it('writes a local file named by the OUTPUT hash and records both hashes', () => {
     const dir = tmp();
     const entry = processOne(
       { partId: 'p', category: 'gpu', sourceUrl: 'https://c1.neweggimages.test/a.png', bytes: fx.darkGpuOnWhite() },
@@ -53,9 +53,13 @@ describe('a success is stored on our own origin, never hotlinked back', () => {
       '2026-09-09',
     );
     expect(entry.outcome).toBe('processed');
-    expect(entry.processedPath).toBe(`/images/products/${entry.sourceSha256}.png`);
+    // Named after what the file CONTAINS. A changed algorithm re-cutting the
+    // same photograph must produce a new URL, or a CDN holding the old cut-out
+    // would keep serving it.
     expect(entry.processedSha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(fs.readdirSync(dir)).toEqual([`${entry.sourceSha256}.png`]);
+    expect(entry.processedPath).toBe(`/images/products/${entry.processedSha256}.png`);
+    expect(entry.processedPath).not.toContain(entry.sourceSha256);
+    expect(fs.readdirSync(dir)).toEqual([`${entry.processedSha256}.png`]);
 
     // The stored path is same-origin: no merchant host survives into it.
     expect(entry.processedPath).not.toContain('neweggimages');
@@ -69,7 +73,7 @@ describe('a success is stored on our own origin, never hotlinked back', () => {
       dir,
       '2026-09-09',
     );
-    const png = PNG.sync.read(fs.readFileSync(path.join(dir, `${entry.sourceSha256}.png`)));
+    const png = PNG.sync.read(fs.readFileSync(path.join(dir, `${entry.processedSha256}.png`)));
     expect(png.data[3]).toBe(0);
   });
 });

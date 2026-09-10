@@ -5,6 +5,7 @@ import { chooseProductImage, indexManifest, type ProductImageManifest } from './
 
 const SOURCE = 'https://c1.neweggimages.test/ProductImageCompressAll640/14-126-744-02.png';
 const SHA = 'a'.repeat(64);
+const PROCESSED = 'c'.repeat(64);
 const part = { id: 'newegg-gpu-a', imageUrl: SOURCE, imageSha256: SHA };
 
 const manifest = (over: Partial<ProductImageManifest['entries'][number]> = {}): ProductImageManifest => ({
@@ -14,9 +15,12 @@ const manifest = (over: Partial<ProductImageManifest['entries'][number]> = {}): 
     {
       partId: 'newegg-gpu-a',
       sourceUrl: SOURCE,
-      sourceSha256: 'a'.repeat(64),
+      sourceSha256: SHA,
+      // The OUTPUT's hash, which is also the file name. Deliberately different
+      // from the source hash so a test cannot pass by conflating them.
+      processedSha256: PROCESSED,
       outcome: 'processed',
-      processedPath: `/images/products/${'a'.repeat(64)}.png`,
+      processedPath: `/images/products/${PROCESSED}.png`,
       approved: true,
       rightsBasis: 'test fixture: pretend clause',
       ...over,
@@ -31,7 +35,7 @@ describe('a cut-out is used only when everything matches', () => {
     const choice = choose(manifest());
     expect(choice.kind).toBe('processed');
     if (choice.kind !== 'processed') return;
-    expect(choice.src).toBe(`/images/products/${'a'.repeat(64)}.png`);
+    expect(choice.src).toBe(`/images/products/${PROCESSED}.png`);
     expect(choice.fallbackSrc).toBe(SOURCE);
     // Same-origin: no merchant host survives into the src we load.
     expect(choice.src.startsWith('/images/')).toBe(true);
@@ -70,11 +74,17 @@ describe('anything less than an exact match falls back to the merchant image', (
 });
 
 describe('a malformed manifest cannot change which picture is shown', () => {
-  it('ignores duplicate part ids deterministically, taking the first', () => {
+  it('discards duplicate part ids rather than picking one', () => {
     const m = manifest();
-    m.entries.push({ ...m.entries[0], processedPath: '/images/products/second.png' });
-    const choice = choose(m);
-    expect(choice.kind === 'processed' && choice.src).toBe(`/images/products/${'a'.repeat(64)}.png`);
+    // A second VALID entry for the same part. Picking either would make which
+    // picture a shopper sees depend on file order, so both are discarded.
+    const other = 'd'.repeat(64);
+    m.entries.push({
+      ...m.entries[0],
+      processedSha256: other,
+      processedPath: `/images/products/${other}.png`,
+    });
+    expect(choose(m)).toMatchObject({ kind: 'original', reason: 'no-manifest' });
   });
 
   it('treats an empty or absent entry list as no cut-outs', () => {

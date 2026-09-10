@@ -14,7 +14,8 @@ if (!parsed.ok) throw new Error(`published catalogue invalid: ${parsed.problem}`
 const found = parsed.catalog.parts.find((p) => p.category === 'gpu') as AffiliatePart;
 const part = { ...found, imageSha256: 'b'.repeat(64) } as AffiliatePart;
 const FRESH_NOW = Date.parse(part.fetchedAt) + 60_000;
-const LOCAL = `/images/products/${'b'.repeat(64)}.png`;
+const PROCESSED = 'b'.repeat(64);
+const LOCAL = `/images/products/${PROCESSED}.png`;
 
 afterEach(cleanup);
 
@@ -26,6 +27,7 @@ const manifest = (over: Record<string, unknown> = {}): ProductImageManifest => (
       partId: part.id,
       sourceUrl: part.imageUrl,
       sourceSha256: 'b'.repeat(64),
+      processedSha256: PROCESSED,
       outcome: 'processed',
       processedPath: LOCAL,
       approved: true,

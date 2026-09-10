@@ -25,8 +25,9 @@ const gpu = filterAndSort(
   parts.filter((p) => p.category === 'gpu') as any,
   EMPTY_FILTERS,
 )[0] as any;
-const SHA = 'c'.repeat(64);
-const LOCAL = `/images/products/${SHA}.png`;
+const SHA = 'c'.repeat(64);          // the SOURCE bytes
+const PROCESSED = 'e'.repeat(64);    // the OUTPUT bytes, which name the file
+const LOCAL = `/images/products/${PROCESSED}.png`;
 
 /** The catalogue as a build that recorded image hashes would publish it. */
 const catalogWithHashes = () => ({
@@ -42,6 +43,7 @@ const manifest = (over: Record<string, unknown> = {}) => ({
       partId: gpu.id,
       sourceUrl: gpu.imageUrl,
       sourceSha256: SHA,
+      processedSha256: PROCESSED,
       outcome: 'processed',
       processedPath: LOCAL,
       approved: true,
