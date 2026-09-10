@@ -7,6 +7,7 @@ import { WHITE_COLLECTION_NOTE, whiteBuildParts, whiteParts } from '../../lib/re
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -18,6 +19,8 @@ interface Props {
   now?: number;
   /** Passed to the summary, which renders the FPS action inside the build. */
   estimate?: { canEstimate: boolean; onEstimate: () => void };
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -30,7 +33,14 @@ interface Props {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now, estimate }: Props) {
+export default function RetailBuilder({
+  parts,
+  selection,
+  onSelect,
+  now,
+  estimate,
+  processedImages,
+}: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -82,6 +92,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
       onToggleCollapsed={() => setSummaryCollapsed((value) => !value)}
       onRemove={(category) => onSelect(category, null)}
       estimate={estimate}
+      processedImages={processedImages}
     />
   );
 
@@ -155,6 +166,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
             now={clock}
+            processedImages={processedImages}
             onToggle={(id) => onSelect(active, selection[active] === id ? null : id)}
           />
         </div>

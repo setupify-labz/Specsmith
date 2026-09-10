@@ -18,6 +18,7 @@ import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
@@ -87,6 +88,7 @@ export default function Builder() {
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
   const affiliateCatalog = useAffiliatePartCatalog();
+  const processedImages = useProductImageManifest();
 
   const retailByCategory = useMemo(() => {
     const grouped = new Map<RetailPartCategory, AffiliatePart[]>();
@@ -372,6 +374,7 @@ export default function Builder() {
               selectPart(category as keyof BuildState, id);
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
+            processedImages={processedImages}
           />
         ) : (
           /* No catalogue: fall back to the canonical parts so the builder still

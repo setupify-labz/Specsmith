@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, ExternalLink, ImageOff, Trash2 } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
@@ -12,6 +11,8 @@ import {
 } from '../../lib/retail/partPricing';
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
 import RetailEstimateAction from './RetailEstimateAction';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
   selectedParts: { category: RetailPartCategory; part: AffiliatePart }[];
@@ -28,6 +29,8 @@ interface Props {
    * rendered on its own in a test.
    */
   estimate?: { canEstimate: boolean; onEstimate: () => void };
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -44,7 +47,15 @@ interface Props {
  * Those describe a part; these describe a listing, and mixing them would put
  * an editorial number in a column headed by real ones.
  */
-export default function RetailBuildSummary({ selectedParts, now, collapsed, onToggleCollapsed, onRemove, estimate }: Props) {
+export default function RetailBuildSummary({
+  selectedParts,
+  now,
+  collapsed,
+  onToggleCollapsed,
+  onRemove,
+  estimate,
+  processedImages,
+}: Props) {
   const parts = selectedParts.map((entry) => entry.part);
   const summary = summarizeBuildPrices(parts, now);
   const excludedIds = new Set(summary.excluded.map((item) => item.partId));
@@ -81,7 +92,7 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
                 const view = priceView(part, now);
                 return (
                   <li key={category} className="flex gap-2" data-testid={`summary-item-${category}`}>
-                    <SummaryThumbnail part={part} />
+                    <SummaryThumbnail part={part} processedImages={processedImages} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--ff-text-3)' }}>
                         {CATEGORY_LABELS[category]}
@@ -191,24 +202,34 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
  * so the row does not reflow, and the title, price and controls beside it are
  * untouched.
  */
-function SummaryThumbnail({ part }: { part: AffiliatePart }) {
-  const [failed, setFailed] = useState(false);
+function SummaryThumbnail({
+  part,
+  processedImages,
+}: {
+  part: AffiliatePart;
+  processedImages?: Map<string, ProductImageEntry> | null;
+}) {
+  // Same ladder and same backdrop as the card and the drawer. A tile showing
+  // the merchant's photograph beside a card showing its cut-out would read as
+  // two different products.
+  const image = useResolvedProductImage(part, processedImages);
   return (
     <div
       data-testid="summary-thumb"
       data-part-id={part.id}
-      className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg"
-      style={{ background: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}
+      className="retail-photo-frame flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+      style={{ border: '1px solid var(--ff-border)' }}
     >
-      {failed ? (
+      {image.failed ? (
         <ImageOff size={16} aria-hidden="true" data-testid="summary-thumb-fallback" style={{ color: 'var(--ff-text-3)' }} />
       ) : (
         <img
-          src={part.imageUrl}
+          src={image.src}
           alt=""
           loading="lazy"
           decoding="async"
-          onError={() => setFailed(true)}
+          data-image-source={image.source}
+          onError={image.onError}
           className="max-h-full max-w-full object-contain p-1"
         />
       )}

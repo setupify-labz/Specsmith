@@ -14,6 +14,7 @@ import {
 import { WHITE_EMPTY_MESSAGE, isColorNeutralCategory } from '../../lib/retail/whiteBuild';
 import ProductDetailDrawer from './ProductDetailDrawer';
 import RetailProductCard from './RetailProductCard';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   category: RetailPartCategory;
@@ -23,6 +24,8 @@ interface Props {
   selectedId: string | null;
   now: number;
   onToggle: (id: string) => void;
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -36,7 +39,15 @@ interface Props {
  * accordion inside the page, which meant three scrollbars competing for the
  * same wheel gesture.
  */
-export default function RetailCatalog({ category, whiteOnly = false, parts, selectedId, now, onToggle }: Props) {
+export default function RetailCatalog({
+  category,
+  whiteOnly = false,
+  parts,
+  selectedId,
+  now,
+  onToggle,
+  processedImages,
+}: Props) {
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
   const [visible, setVisible] = useState(PRODUCT_BATCH_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -207,6 +218,7 @@ export default function RetailCatalog({ category, whiteOnly = false, parts, sele
                 now={now}
                 onToggle={onToggle}
                 onOpenDetails={setDetailId}
+                processedImages={processedImages}
               />
             ))}
           </div>
@@ -232,6 +244,7 @@ export default function RetailCatalog({ category, whiteOnly = false, parts, sele
           selected={detailPart.id === selectedId}
           onClose={() => setDetailId(null)}
           onToggle={onToggle}
+          processedImages={processedImages}
         />
       )}
 

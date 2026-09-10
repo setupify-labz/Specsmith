@@ -84,6 +84,14 @@
   /* SpecSmith custom tokens — dark */
   --ff-bg:        #0A0A0F;
   --ff-surface:   #13131A;
+  /* What a product photograph is composited against.
+     Held separately from --ff-surface on purpose: once images carry real
+     transparency, this colour shows THROUGH them, so retuning the general
+     surface colour must not silently tint every product. Dark stays #13131A;
+     light is pure white, which is what merchant studio sweeps are shot on.
+     The .retail-photo-frame class below owns this background; nothing should
+     set it inline. */
+  --ff-photo-bg: #13131A;
   --ff-card:      #1C1C26;
   --ff-card-hover:#222230;
   --ff-border:    rgba(255,255,255,0.08);
@@ -174,6 +182,7 @@
   /* SpecSmith custom tokens — light */
   --ff-bg:        #F4F4FA;
   --ff-surface:   #FFFFFF;
+  --ff-photo-bg: #FFFFFF;
   --ff-card:      #FFFFFF;
   --ff-card-hover:#F0F0FA;
   --ff-border:    rgba(0,0,20,0.1);
@@ -388,6 +397,18 @@
   width: 100%;
   max-width: clamp(80rem, 94vw, 1760px);
   margin-inline: auto;
+}
+
+/* WHAT A PRODUCT PHOTOGRAPH IS COMPOSITED AGAINST.
+   One declaration, three places: the card's image frame, the detail drawer's
+   frame and its thumbnails, and the build summary's tiles. Once a picture
+   carries real transparency this colour shows THROUGH it, so the three have to
+   agree exactly — the same cut-out sitting on two different greys in two parts
+   of one page reads as two different photographs. Held apart from --ff-surface
+   for the same reason: retuning the general surface colour must not silently
+   tint every product. */
+.retail-photo-frame {
+  background: var(--ff-photo-bg);
 }
 
 .ff-accent-control:focus-visible {

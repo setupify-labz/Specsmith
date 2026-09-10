@@ -6,6 +6,8 @@ import { AVAILABILITY_UNKNOWN_LABEL, STALE_PRICE_LABEL, formatAmount, formatChec
 import { imageAltText, verifiedImages } from '../../lib/retail/productImages';
 import { imageZoom } from '../../lib/retail/imageFraming';
 import { UNVERIFIED_NOTICE, confidenceOf } from '../../lib/retail/retailShopping';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
   part: AffiliatePart;
@@ -13,6 +15,8 @@ interface Props {
   onClose: () => void;
   onToggle: (id: string) => void;
   selected: boolean;
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /** How far a touch must travel before it counts as a swipe rather than a tap. */
@@ -96,8 +100,19 @@ function trapTab(event: KeyboardEvent, root: HTMLElement | null): void {
   }
 }
 
-export default function ProductDetailDrawer({ part, now, onClose, onToggle, selected }: Props) {
-  const images = verifiedImages(part);
+export default function ProductDetailDrawer({
+  part,
+  now,
+  onClose,
+  onToggle,
+  selected,
+  processedImages,
+}: Props) {
+  // The same ladder the card uses, so the picture a shopper clicked is the
+  // picture they get. Only the listing's own image can have a cut-out; any
+  // further verified image is a merchant URL and is shown as it arrived.
+  const primary = useResolvedProductImage(part, processedImages);
+  const images = verifiedImages(part).map((url) => (url === part.imageUrl ? primary.src : url));
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState<Record<number, boolean>>({});
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -212,9 +227,13 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
           </button>
         </div>
 
+        {/* Same background as the card's frame and the summary's tiles, from
+            the one .retail-photo-frame declaration: a cut-out shows this colour
+            through it, and the same picture must not sit on two different
+            greys in two parts of one page. */}
         <div
-          className="relative flex items-center justify-center overflow-hidden rounded-xl"
-          style={{ aspectRatio: '4 / 3', background: 'var(--ff-surface)' }}
+          className="retail-photo-frame relative flex items-center justify-center overflow-hidden rounded-xl"
+          style={{ aspectRatio: '4 / 3' }}
           data-testid="detail-image-frame"
         >
           {currentFailed || current === undefined ? (
@@ -227,7 +246,17 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
               src={current}
               alt={imageAltText(part.name, index, images.length)}
               decoding="async"
-              onError={() => setFailed((state) => ({ ...state, [index]: true }))}
+              data-image-source={current === part.imageUrl ? 'merchant' : 'processed'}
+              onError={() => {
+                // A cut-out that will not load costs the cut-out, not the
+                // picture: drop to the merchant's own image first, and only
+                // call the slot failed once that fails too.
+                if (current === primary.src && primary.source === 'processed') {
+                  primary.onError();
+                  return;
+                }
+                setFailed((state) => ({ ...state, [index]: true }));
+              }}
               className="object-contain p-4"
               style={{ maxHeight: `${zoom * 100}%`, maxWidth: `${zoom * 100}%` }}
               data-testid="detail-image"
@@ -274,9 +303,8 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
                   aria-label={`Show image ${thumbIndex + 1} of ${images.length}`}
                   aria-current={thumbIndex === index ? 'true' : undefined}
                   data-testid={`detail-thumb-${thumbIndex}`}
-                  className="ff-accent-control h-12 w-12 overflow-hidden rounded-lg"
+                  className="retail-photo-frame ff-accent-control h-12 w-12 overflow-hidden rounded-lg"
                   style={{
-                    background: 'var(--ff-surface)',
                     border: `1px solid ${thumbIndex === index ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
                   }}
                 >
