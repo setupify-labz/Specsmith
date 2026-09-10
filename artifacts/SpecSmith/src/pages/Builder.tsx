@@ -22,6 +22,11 @@ import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import BuilderSkeleton from '../components/builder/BuilderSkeleton';
 import {
+  importedRecommendations,
+  recognisedPartIds,
+  type CanonicalPartRef,
+} from '../lib/retail/importedBuild';
+import {
   CORE_BUILD_TOTAL,
   coreBuildCount,
   coreBuildLabel,
@@ -221,21 +226,62 @@ export default function Builder() {
    * known yet — and there is no summary on screen to contradict — so the
    * shopper's own selections stand until it is.
    */
-  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
-    if (affiliateCatalog.status === 'loading') return null;
-    if (affiliateCatalog.status === 'ok') {
-      return new Set(affiliateCatalog.catalog.parts.map((part) => part.id));
+  /**
+   * Every canonical core model the site knows, by id.
+   *
+   * This is what makes an imported build legible. Guides, the quiz, Build
+   * Crate, shared links and saved builds all hand `/builder` canonical model
+   * ids, and the retail builder recognises only exact SKUs — so Budget Beast
+   * arrived as eight ids and displayed as nothing at all.
+   */
+  const canonicalCoreById = useMemo<ReadonlyMap<string, CanonicalPartRef>>(() => {
+    const index = new Map<string, CanonicalPartRef>();
+    for (const part of [
+      ...builderGpus, ...builderCpus, ...builderMotherboards, ...builderRam,
+      ...builderStorage, ...builderPsus, ...builderCases, ...builderCoolers,
+    ] as { id: string; name: string; price_usd?: number }[]) {
+      index.set(part.id, {
+        id: part.id,
+        name: part.name,
+        // An editorial estimate, kept under a name that says so. It never
+        // becomes a retailer price and never reaches the retailer subtotal.
+        ...(typeof part.price_usd === 'number' ? { estimatedPrice: part.price_usd } : {}),
+      });
     }
-    return new Set(
-      [
-        ...builderGpus, ...builderCpus, ...builderMotherboards, ...builderRam,
-        ...builderStorage, ...builderPsus, ...builderCases, ...builderCoolers,
-      ].map((part) => part.id),
-    );
+    return index;
   }, [
-    affiliateCatalog, builderGpus, builderCpus, builderMotherboards, builderRam,
+    builderGpus, builderCpus, builderMotherboards, builderRam,
     builderStorage, builderPsus, builderCases, builderCoolers,
   ]);
+
+  const retailIds = useMemo<ReadonlySet<string>>(
+    () =>
+      affiliateCatalog.status === 'ok'
+        ? new Set(affiliateCatalog.catalog.parts.map((part) => part.id))
+        : new Set<string>(),
+    [affiliateCatalog],
+  );
+
+  /**
+   * The recommendations a shopper arrived with and has not yet replaced.
+   *
+   * Nothing here matches a model to a listing. One model has several distinct
+   * SKUs at different prices, and choosing one on the shopper's behalf would
+   * invent a purchase decision — see importedBuild.ts.
+   */
+  const imported = useMemo(
+    () => importedRecommendations(build, retailIds, canonicalCoreById),
+    [build, retailIds, canonicalCoreById],
+  );
+
+  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (affiliateCatalog.status === 'loading') return null;
+    // Exact listings AND recognised models, so the counter and the summary
+    // describe the same set — including a build that arrived from elsewhere.
+    // An id in neither is still rejected and counts for nothing.
+    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalCoreById);
+    return new Set(canonicalCoreById.keys());
+  }, [affiliateCatalog, retailIds, canonicalCoreById]);
 
   const coreChosen = coreBuildCount(build, knownPartIds);
   const coreLabel = coreBuildLabel(build, knownPartIds);
@@ -496,6 +542,7 @@ export default function Builder() {
             }}
             processedImages={processedImages}
             categoryRequest={categoryRequest}
+            imported={imported}
           />
         ) : affiliateCatalog.status === 'loading' ? (
           /* STILL LOADING — NOT A FAILURE (issue #104). This branch used to

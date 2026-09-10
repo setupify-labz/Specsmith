@@ -12,6 +12,12 @@ import {
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
 import RetailEstimateAction from './RetailEstimateAction';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import {
+  CHOOSE_LISTING_LABEL,
+  IMPORTED_BADGE,
+  IMPORTED_PRICE_NOTE,
+  type ImportedRecommendation,
+} from '../../lib/retail/importedBuild';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
@@ -31,6 +37,13 @@ interface Props {
   estimate?: { canEstimate: boolean; onEstimate: () => void };
   /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
   processedImages?: Map<string, ProductImageEntry> | null;
+  /**
+   * Canonical models carried in from a guide, the quiz, a shared link or a
+   * saved build, which the shopper has not yet replaced with a listing.
+   */
+  imported?: readonly ImportedRecommendation[];
+  /** Opens the category a recommendation belongs to, so a listing can be chosen. */
+  onChooseListing?: (category: string) => void;
 }
 
 /**
@@ -55,10 +68,17 @@ export default function RetailBuildSummary({
   onRemove,
   estimate,
   processedImages,
+  imported = [],
+  onChooseListing,
 }: Props) {
   const parts = selectedParts.map((entry) => entry.part);
+  // IMPORTED MODELS ARE NOT PASSED IN HERE, and that is the point. The subtotal
+  // is computed from exact listings only, so an editorial estimate cannot reach
+  // a figure headed by retailer prices — no filtering afterwards, no flag to
+  // forget: the number is built from a list an estimate never enters.
   const summary = summarizeBuildPrices(parts, now);
   const excludedIds = new Set(summary.excluded.map((item) => item.partId));
+  const chosenCount = selectedParts.length + imported.length;
 
   return (
     <aside
@@ -75,18 +95,30 @@ export default function RetailBuildSummary({
         className="flex w-full items-center justify-between gap-2 px-4 py-3"
       >
         <span className="text-sm font-semibold" style={{ color: 'var(--ff-text)' }}>
-          Your build ({selectedParts.length})
+          Your build ({chosenCount})
         </span>
         {collapsed ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronUp size={16} aria-hidden="true" />}
       </button>
 
       {!collapsed && (
         <div className="flex flex-col gap-3 border-t px-4 py-3" style={{ borderColor: 'var(--ff-border)' }}>
-          {selectedParts.length === 0 ? (
+          {imported.length > 0 && (
+            <ul className="flex flex-col gap-3" data-testid="imported-recommendations">
+              {imported.map((recommendation) => (
+                <ImportedItem
+                  key={recommendation.category}
+                  recommendation={recommendation}
+                  onChooseListing={onChooseListing}
+                />
+              ))}
+            </ul>
+          )}
+
+          {chosenCount === 0 ? (
             <p className="py-4 text-center text-sm" style={{ color: 'var(--ff-text-2)' }}>
               Nothing selected yet. Choose a category and add a product.
             </p>
-          ) : (
+          ) : selectedParts.length === 0 ? null : (
             <ul className="flex flex-col gap-3">
               {selectedParts.map(({ category, part }) => {
                 const view = priceView(part, now);
@@ -187,6 +219,87 @@ export default function RetailBuildSummary({
         </div>
       )}
     </aside>
+  );
+}
+
+/**
+ * A model carried in from elsewhere on the site, shown as a recommendation.
+ *
+ * WHAT IT MUST NOT LOOK LIKE. Not a purchase. It carries no image — there is no
+ * listing to photograph — no retailer link, no availability, and no price that
+ * could be mistaken for one a shopper can pay today. What it does carry is the
+ * model's name, an estimate labelled as an estimate, and the one control that
+ * turns it into a real decision.
+ *
+ * The estimate is shown at all rather than hidden because it is what made the
+ * guide recommend this part, and dropping it would leave the shopper unable to
+ * tell a £120 recommendation from a £900 one. It is shown STRUCK THROUGH of
+ * nothing and beside its own sentence instead: `IMPORTED_PRICE_NOTE` travels
+ * with the number wherever it appears.
+ */
+function ImportedItem({
+  recommendation,
+  onChooseListing,
+}: {
+  recommendation: ImportedRecommendation;
+  onChooseListing?: (category: string) => void;
+}) {
+  const { category, name, estimatedPrice } = recommendation;
+  return (
+    <li
+      className="flex flex-col gap-1.5 rounded-lg p-2.5"
+      data-testid={`imported-item-${category}`}
+      data-category={category}
+      style={{ border: '1px dashed var(--ff-border)', background: 'var(--ff-surface)' }}
+    >
+      <div className="flex items-center gap-2">
+        <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--ff-text-3)' }}>
+          {CATEGORY_LABELS[category as RetailPartCategory]}
+        </p>
+        <span
+          data-testid={`imported-badge-${category}`}
+          className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ background: 'var(--ff-card-hover)', color: 'var(--ff-text-2)' }}
+        >
+          {IMPORTED_BADGE}
+        </span>
+      </div>
+
+      <p
+        className="text-xs leading-snug"
+        style={{ color: 'var(--ff-text)' }}
+        title={name}
+        data-testid={`imported-title-${category}`}
+      >
+        {shortenTitle(name, 44)}
+      </p>
+
+      {typeof estimatedPrice === 'number' ? (
+        <p className="text-[11px]" style={{ color: 'var(--ff-text-2)' }} data-testid={`imported-price-${category}`}>
+          {/* USD explicitly: the field behind this is `price_usd`, an
+              editorial figure in dollars, and it must not silently inherit
+              whatever currency a retailer listing happened to use. */}
+          <span style={{ color: 'var(--ff-text-3)' }}>Estimated</span> {formatAmount(estimatedPrice, 'USD')}
+          {' — '}
+          {IMPORTED_PRICE_NOTE}
+        </p>
+      ) : (
+        <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid={`imported-price-${category}`}>
+          No estimate recorded for this model.
+        </p>
+      )}
+
+      <button
+        type="button"
+        data-testid={`choose-listing-${category}`}
+        onClick={() => onChooseListing?.(category)}
+        disabled={onChooseListing === undefined}
+        className="ff-accent-control mt-0.5 inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
+        style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
+      >
+        {CHOOSE_LISTING_LABEL}
+      </button>
+    </li>
   );
 }
 

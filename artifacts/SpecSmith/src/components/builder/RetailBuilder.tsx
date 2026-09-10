@@ -8,6 +8,7 @@ import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import type { ImportedRecommendation } from '../../lib/retail/importedBuild';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -30,6 +31,8 @@ interface Props {
    * unchanged on the second click and quietly do nothing.
    */
   categoryRequest?: { category: RetailPartCategory; token: number } | null;
+  /** Canonical models imported from elsewhere and not yet replaced by a listing. */
+  imported?: readonly ImportedRecommendation[];
 }
 
 /**
@@ -50,6 +53,7 @@ export default function RetailBuilder({
   estimate,
   processedImages,
   categoryRequest,
+  imported,
 }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   // Opening a category from outside is the same act as clicking it in the
@@ -112,6 +116,20 @@ export default function RetailBuilder({
       onRemove={(category) => onSelect(category, null)}
       estimate={estimate}
       processedImages={processedImages}
+      imported={imported}
+      // Choosing a listing for a recommendation is the same act as opening that
+      // category from anywhere else, so it goes through the same path — the
+      // rail switches, and #102's browsing-state reset happens as it always does.
+      //
+      // THE DRAWER HAS TO CLOSE. On a phone the summary is a sheet ACROSS the
+      // catalogue, so switching the category underneath it and leaving it open
+      // shows the shopper the same drawer they just tapped in — the action
+      // appears to do nothing. Closing it is what makes "choose current
+      // listing" mean anything on the width where most of them will tap it.
+      onChooseListing={(category) => {
+        setActive(category as RetailPartCategory);
+        setMobileSummaryOpen(false);
+      }}
     />
   );
 
@@ -207,6 +225,7 @@ export default function RetailBuilder({
             <button
               type="button"
               aria-label="Close build summary"
+              data-testid="close-build-summary"
               className="absolute inset-0"
               onClick={() => setMobileSummaryOpen(false)}
             />
@@ -225,7 +244,10 @@ export default function RetailBuilder({
             style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
           >
             <ShoppingCart size={16} aria-hidden="true" />
-            View build ({selectedParts.length})
+            {/* The same number the summary shows, and the same number the
+                header counts: exact listings plus recommendations not yet
+                replaced. Three places describing one build must not disagree. */}
+            View build ({selectedParts.length + (imported?.length ?? 0)})
           </button>
         </div>
       </div>
