@@ -570,6 +570,83 @@ async function chooseFirstProduct(page) {
   await page.waitForSelector('[data-testid="retail-product-card"][data-selected="true"]', { timeout: 15_000 });
 }
 
+/**
+ * The review matrix: 375, 1440 and 1920 in BOTH themes, on the exact head.
+ *
+ * WHAT THE REVIEW ASKED TO SEE, AND WHY EACH PART IS MEASURED RATHER THAN
+ * EYEBALLED. Three claims have to survive every one of the six combinations:
+ * the FPS control sits inside "Your build" and not loose on the page; nothing
+ * overflows sideways; and the frame a product photograph is composited on
+ * follows the theme instead of being baked in. A screenshot shows all three to
+ * a person and proves none of them, so each is read off the live page here and
+ * lands in the report beside the picture.
+ *
+ * The image-frame colour is read from the CARD's own frame after the cascade
+ * has resolved every variable — the point of --ff-photo-bg is that a cut-out
+ * shows it THROUGH the picture, so a frame that quietly inherited some other
+ * colour is exactly the defect worth catching, and a token file cannot catch
+ * it.
+ */
+const REVIEW_WIDTHS = [375, 1440, 1920];
+
+async function captureReviewMatrix(context, report) {
+  const matrix = {};
+  for (const theme of ['dark', 'light']) {
+    for (const width of REVIEW_WIDTHS) {
+      const page = await open(context, { width, height: width < 500 ? 844 : 1000 });
+      if (theme === 'light') {
+        await page.getByRole('button', { name: /toggle theme/i }).first().click();
+        await page.waitForTimeout(600);
+      }
+      await settleImages(page, `review ${theme} ${width}`);
+      const key = `${theme}-${width}`;
+      await shot(page, `review-${key}`);
+
+      matrix[key] = await page.evaluate(() => {
+        const doc = document.documentElement;
+        const frame = document.querySelector('[data-testid="open-details-image"]');
+        const nested = [...document.querySelectorAll('*')].filter((element) => {
+          if (element === doc || element === document.body) return false;
+          const overflow = getComputedStyle(element).overflowY;
+          return (
+            (overflow === 'auto' || overflow === 'scroll') &&
+            element.scrollHeight > element.clientHeight + 1
+          );
+        }).length;
+        const summary = document.querySelector('[data-testid="build-summary"]');
+        const estimate = document.querySelector('[data-testid="summary-estimate"]');
+        return {
+          horizontalOverflowPx: Math.max(0, doc.scrollWidth - doc.clientWidth),
+          nestedScrollers: nested,
+          // Inside the summary, not merely present on the page: containment is
+          // the claim, and an element that drifted out of the aside would still
+          // be found by a document-wide query.
+          estimateInsideSummary: Boolean(summary && estimate && summary.contains(estimate)),
+          estimateCount: document.querySelectorAll('[data-testid="summary-estimate"]').length,
+          photoFrameBackground: frame ? getComputedStyle(frame).backgroundColor : null,
+          // The image rate is measured elsewhere; this is the count the picture
+          // shows, so a matrix shot of an empty grid cannot pass unnoticed.
+          cards: document.querySelectorAll('[data-testid="retail-product-card"]').length,
+        };
+      });
+
+      // The build summary with a product in it, at the two widths where the
+      // summary is laid out differently: a phone drawer and a desktop column.
+      if (width === 375 || width === 1440) {
+        await chooseFirstProduct(page);
+        if (width === 375) await page.locator('[data-testid="view-build"]').click();
+        await page.waitForTimeout(700);
+        const summary = page.locator('[data-testid="build-summary"]').first();
+        await summary.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(300);
+        await summary.screenshot({ path: path.join(OUT_DIR, `${LABEL}-review-${key}-build.png`) });
+      }
+      await page.close();
+    }
+  }
+  report.reviewMatrix = matrix;
+}
+
 async function captureAccentControls(context, report) {
   const results = {};
   for (const theme of ['dark', 'light']) {
@@ -645,7 +722,14 @@ async function captureAccentControls(context, report) {
   report.accentControls = results;
 }
 
-const browser = await chromium.launch();
+// PLAYWRIGHT_LAUNCH_EXECUTABLE lets a sandbox with a preinstalled Chromium at a
+// different pinned version validate this script before a runner spends a cycle
+// on it. Unset in CI, where the workflow installs the browser Playwright wants.
+const browser = await chromium.launch(
+  process.env.PLAYWRIGHT_LAUNCH_EXECUTABLE
+    ? { executablePath: process.env.PLAYWRIGHT_LAUNCH_EXECUTABLE }
+    : {},
+);
 const context = await browser.newContext({ deviceScaleFactor: 2 });
 const report = {
   label: LABEL,
@@ -838,6 +922,9 @@ if (LABEL === 'after') {
 
 // The filled accent controls, in both themes.
 if (LABEL === 'after') await captureAccentControls(context, report);
+
+// The review matrix: 375 / 1440 / 1920, both themes, on this exact head.
+if (LABEL === 'after') await captureReviewMatrix(context, report);
 
 // The header, across a range of widths rather than the three the screenshots
 // happen to use — the tablet defect lived between two of them.
