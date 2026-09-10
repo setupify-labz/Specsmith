@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
@@ -14,13 +14,20 @@ import cpuData from '../data/cpus.json';
 import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import peripheralData from '../data/peripherals.json';
-import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import BuilderSkeleton from '../components/builder/BuilderSkeleton';
+import {
+  CORE_BUILD_TOTAL,
+  coreBuildCount,
+  coreBuildLabel,
+  coreCategoryAction,
+  nextMissingCoreCategory,
+} from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
@@ -199,6 +206,76 @@ export default function Builder() {
   };
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
 
+  /**
+   * The ids the builder currently on screen can actually show.
+   *
+   * Counted from the SELECTION rather than from what the estimator can
+   * resolve — but a slot only counts if something can go in it. A saved SKU
+   * that has dropped out of the catalogue is skipped by the build summary,
+   * so counting it here would say "8 of 8" over a summary listing seven:
+   * the same contradiction, arriving from the other side.
+   *
+   * Which ids are showable depends on which builder is up. The retail
+   * builder draws from the catalogue; the canonical fallback draws from the
+   * reference parts. While the catalogue is still loading the answer is not
+   * known yet — and there is no summary on screen to contradict — so the
+   * shopper's own selections stand until it is.
+   */
+  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
+    if (affiliateCatalog.status === 'loading') return null;
+    if (affiliateCatalog.status === 'ok') {
+      return new Set(affiliateCatalog.catalog.parts.map((part) => part.id));
+    }
+    return new Set(
+      [
+        ...builderGpus, ...builderCpus, ...builderMotherboards, ...builderRam,
+        ...builderStorage, ...builderPsus, ...builderCases, ...builderCoolers,
+      ].map((part) => part.id),
+    );
+  }, [
+    affiliateCatalog, builderGpus, builderCpus, builderMotherboards, builderRam,
+    builderStorage, builderPsus, builderCases, builderCoolers,
+  ]);
+
+  const coreChosen = coreBuildCount(build, knownPartIds);
+  const coreLabel = coreBuildLabel(build, knownPartIds);
+  const nextCoreCategory = nextMissingCoreCategory(build, knownPartIds);
+
+  /**
+   * Sends the shopper to a category, and says so out loud.
+   *
+   * The retail builder owns which category is open, so this asks for one by
+   * bumping a token rather than by reaching in: the same category can be
+   * requested twice in a row and still register. The canonical fallback has no
+   * category rail, so there the request is honoured by scrolling to the
+   * builder region instead of silently doing nothing.
+   */
+  const [categoryRequest, setCategoryRequest] = useState<{ category: RetailPartCategory; token: number } | null>(null);
+  const builderRegionRef = useRef<HTMLDivElement | null>(null);
+  const handleChooseCategory = (category: RetailPartCategory) => {
+    setCategoryRequest((current) => ({ category, token: (current?.token ?? 0) + 1 }));
+  };
+
+  /**
+   * Brings the requested category into view.
+   *
+   * ONLY the retail builder is handled here. The canonical fallback's selector
+   * scrolls to itself once it has opened — see PartSelector — because opening
+   * changes the page height, and a scroll aimed from outside while the panel is
+   * still collapsed targets an offset that ceases to exist and is abandoned by
+   * the browser. The component that changes size is the one that can say when
+   * it has finished changing.
+   */
+  useEffect(() => {
+    if (!categoryRequest) return;
+    if (builderRegionRef.current?.querySelector('[data-part-section]')) return;
+    builderRegionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [categoryRequest]);
+
+  /** Opens the fallback's selector for a category when it is the one requested. */
+  const openSignalFor = (category: RetailPartCategory) =>
+    categoryRequest?.category === category ? categoryRequest.token : undefined;
+
   const gpuSectionRef = useRef<HTMLDivElement>(null);
   const cpuSectionRef = useRef<HTMLDivElement>(null);
   const fpsSectionRef = useRef<HTMLDivElement>(null);
@@ -335,26 +412,66 @@ export default function Builder() {
           </h1>
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
 
-          {corePartsList.length === 0 && (
+          {coreChosen === 0 && (
             <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
               style={{ color: 'var(--ff-accent-text)' }}>
               <Sparkles size={12} /> Not sure where to start? Take the 2-question PC Build Quiz →
             </Link>
           )}
 
-          <div className="flex items-center gap-3 max-w-xs">
-            <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--ff-border)' }}>
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${(corePartsList.length / 8) * 100}%` }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-              />
+          {/* HOW MUCH OF A COMPUTER IS CHOSEN — and nothing else.
+              This counted resolved canonical parts, which meant it counted
+              only listings whose specs are verified. One core category is
+              verified in the published catalogue, so choosing a CPU and a
+              motherboard moved it not at all: the summary said three parts and
+              this said one. It now counts the eight core selections
+              themselves. Whether a part's specs are verified, and whether the
+              build is compatible, are different questions with their own
+              places on this page, and both stay fail-closed. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex items-center gap-3" style={{ minWidth: '16rem', maxWidth: '20rem', flex: '1 1 16rem' }}>
+              <div
+                className="flex-1 h-1.5 rounded-full overflow-hidden"
+                style={{ backgroundColor: 'var(--ff-border)' }}
+                role="progressbar"
+                aria-valuenow={coreChosen}
+                aria-valuemin={0}
+                aria-valuemax={CORE_BUILD_TOTAL}
+                aria-label={coreLabel}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(coreChosen / CORE_BUILD_TOTAL) * 100}%` }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+              </div>
+              {/* The label is the accessible name of the bar beside it, so a
+                  screen reader is not told the same number twice. */}
+              <span
+                aria-hidden="true"
+                data-testid="core-progress"
+                className="text-xs font-semibold whitespace-nowrap"
+                style={{ color: 'var(--ff-text-2)' }}
+              >
+                {coreLabel}
+              </span>
             </div>
-            <span className="text-xs font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text-2)' }}>
-              {corePartsList.length} of 8 selected
-            </span>
+
+            {nextCoreCategory !== null && (
+              <button
+                type="button"
+                data-testid="next-core-part"
+                data-category={nextCoreCategory}
+                onClick={() => handleChooseCategory(nextCoreCategory)}
+                className="ff-accent-control inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
+                style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+              >
+                {coreCategoryAction(nextCoreCategory)}
+                <ArrowRight size={12} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </motion.div>
 
@@ -362,6 +479,7 @@ export default function Builder() {
           <CompatibilityBanner warnings={warnings} passed={compat.passed} />
         </div>
 
+        <div ref={builderRegionRef}>
         {affiliateCatalog.status === 'ok' ? (
           /* THE SHOPPING INTERFACE. Fed exclusively from the 500-part retailer
              catalogue: exact SKUs, each with its own image, price, tracked link
@@ -377,6 +495,7 @@ export default function Builder() {
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
             processedImages={processedImages}
+            categoryRequest={categoryRequest}
           />
         ) : affiliateCatalog.status === 'loading' ? (
           /* STILL LOADING — NOT A FAILURE (issue #104). This branch used to
@@ -401,7 +520,7 @@ export default function Builder() {
               {/* GPU */}
               <div ref={gpuSectionRef}>
                 <PartSelector
-                  category="gpu" label="GPU — Graphics Card" defaultOpen
+                  openSignal={openSignalFor('gpu')} category="gpu" label="GPU — Graphics Card" defaultOpen
                   parts={builderGpus}
                   selectedId={build.gpu}
                   recommendedIds={recommendedIds}
@@ -420,7 +539,7 @@ export default function Builder() {
               {/* CPU */}
               <div ref={cpuSectionRef}>
                 <PartSelector
-                  category="cpu" label="CPU — Processor"
+                  openSignal={openSignalFor('cpu')} category="cpu" label="CPU — Processor"
                   parts={builderCpus}
                   selectedId={build.cpu}
                   recommendedIds={recommendedIds}
@@ -436,32 +555,32 @@ export default function Builder() {
                   }}
                 />
               </div>
-              <PartSelector category="motherboard" label="Motherboard"
+              <PartSelector openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
                 parts={builderMotherboards} selectedId={build.motherboard}
                 onSelect={id => selectPart('motherboard', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
               />
-              <PartSelector category="ram" label="RAM — Memory"
+              <PartSelector openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
                 parts={builderRam} selectedId={build.ram}
                 onSelect={id => selectPart('ram', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
               />
-              <PartSelector category="storage" label="Storage"
+              <PartSelector openSignal={openSignalFor('storage')} category="storage" label="Storage"
                 parts={builderStorage} selectedId={build.storage}
                 onSelect={id => selectPart('storage', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
               />
-              <PartSelector category="psu" label="PSU — Power Supply"
+              <PartSelector openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
                 parts={builderPsus} selectedId={build.psu}
                 onSelect={id => selectPart('psu', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
               />
-              <PartSelector category="case" label="Case"
+              <PartSelector openSignal={openSignalFor('case')} category="case" label="Case"
                 parts={builderCases} selectedId={build.case}
                 onSelect={id => selectPart('case', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
               />
-              <PartSelector category="cooler" label="CPU Cooler"
+              <PartSelector openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
                 parts={builderCoolers} selectedId={build.cooler}
                 onSelect={id => selectPart('cooler', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
@@ -571,6 +690,7 @@ export default function Builder() {
           </div>
           </>
         )}
+        </div>
 
         {/* FPS Estimator */}
         <div ref={fpsSectionRef}>
