@@ -45,7 +45,7 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly nine workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly eight workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
@@ -53,7 +53,6 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-accepted-offers.yml',
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
-      'capture-ui-screenshots.yml',
       'content-e2e-offline.yml',
       'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
@@ -68,11 +67,12 @@ describe('the validation workflow exists and is wired to the right events', () =
     // This has been relaxed once, for a screenshot capture that pushed images
     // to a dead-end branch, and that turned out to be unnecessary: a run
     // ARTIFACT carries images off a runner without any write permission at
-    // all. capture-ui-screenshots.yml is back on this branch, temporarily,
-    // to photograph the builder where the retailer image CDN is reachable —
-    // and it holds `contents: read`, so this list still takes exactly one
-    // entry. It is not to be widened again, and the capture workflow is
-    // deleted before this branch merges.
+    // all. That capture workflow was temporary evidence-gathering, held
+    // `contents: read` for its whole second life, and has been deleted now
+    // that the screenshots are taken — so this list is back to a single
+    // name. There is no evidence-gathering need that justifies a second
+    // writer, so this expectation takes exactly one entry and is not to be
+    // widened again.
     const writers = all.filter((name) =>
       fs
         .readFileSync(path.join(dir, name), 'utf-8')
