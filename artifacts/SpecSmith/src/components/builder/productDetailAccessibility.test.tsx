@@ -138,9 +138,27 @@ describe('Escape and the backdrop still close it', () => {
 
   it('closes when the backdrop is clicked', () => {
     const onClose = vi.fn();
-    openFromTrigger(onClose);
-    fireEvent.click(screen.getByLabelText('Close product details', { selector: 'button.absolute' }));
+    const { view } = openFromTrigger(onClose);
+    const backdrop = view.container.querySelector('[aria-hidden="true"].absolute');
+    expect(backdrop, 'the backdrop is present').not.toBeNull();
+    fireEvent.click(backdrop!);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the backdrop to a pointer only — never to the keyboard or a screen reader', () => {
+    // It used to be a full-window <button> labelled "Close product details",
+    // which put a second, invisible copy of the close control in the tab ring
+    // and announced it twice. Click-outside is a pointer affordance; the
+    // advertised ways out are the visible button and Escape.
+    const { view } = openFromTrigger();
+    const backdrop = view.container.querySelector('[aria-hidden="true"].absolute');
+    expect(backdrop).not.toBeNull();
+    expect(backdrop!.tagName).toBe('DIV');
+    expect(backdrop!.hasAttribute('tabindex')).toBe(false);
+    // Exactly one thing named "Close product details", and it is the visible
+    // button in the header.
+    expect(screen.getAllByLabelText('Close product details')).toHaveLength(1);
+    expect(screen.getByTestId('product-detail-close')).toBeDefined();
   });
 });
 

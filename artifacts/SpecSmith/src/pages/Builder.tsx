@@ -365,6 +365,7 @@ export default function Builder() {
              cannot appear as products — they stay behind the scenes powering
              the FPS estimate and compatibility check above. */
           <RetailBuilder
+            estimate={{ canEstimate, onEstimate: handleEstimateFps }}
             parts={affiliateCatalog.catalog.parts}
             selection={build}
             onSelect={(category, id) => {

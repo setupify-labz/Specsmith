@@ -16,6 +16,8 @@ interface Props {
   onSelect: (category: RetailPartCategory, id: string | null) => void;
   /** Injected so freshness is deterministic in tests. */
   now?: number;
+  /** Passed to the summary, which renders the FPS action inside the build. */
+  estimate?: { canEstimate: boolean; onEstimate: () => void };
 }
 
 /**
@@ -28,7 +30,7 @@ interface Props {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now }: Props) {
+export default function RetailBuilder({ parts, selection, onSelect, now, estimate }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -79,6 +81,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
       collapsed={summaryCollapsed}
       onToggleCollapsed={() => setSummaryCollapsed((value) => !value)}
       onRemove={(category) => onSelect(category, null)}
+      estimate={estimate}
     />
   );
 
@@ -126,7 +129,27 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
         {/* Centre catalogue. */}
         <div className="min-w-0 flex-1">
+          {/* Remounting on category change is what resets browsing state
+              (issue #102): a shopper's graphics-card search, brand and price
+              filters, sort, open filter panel and "Load more" page all belong
+              to the category they were chosen in, and must not follow them to
+              the next one. `key` clears all of it in the same render the new
+              category first appears, so no stale "0 of 55 products" is ever
+              painted; an effect-based reset would flash it first, and would
+              have to remember to clear each future piece of state by hand.
+              The build itself lives in `selection`, above this component, and
+              is deliberately untouched by any of this.
+
+              THE WHITE BUILD TOGGLE IS THE SAME PROBLEM. Switching the
+              collection on changes which products exist, so a search for
+              "3050", a brand chip, a price range, a "Load more" page and an
+              open product detail can all be left pointing at listings the view
+              no longer contains — the same stale "0 of 21 products" #102 was
+              about. It belongs in the key for the same reason the category
+              does. The selected parts survive, because they live in
+              `selection` and a remount here cannot reach them. */}
           <RetailCatalog
+            key={`${active}:${whiteOnly ? 'white' : 'all'}`}
             category={active}
             whiteOnly={whiteOnly}
             parts={byCategory.get(active) ?? []}

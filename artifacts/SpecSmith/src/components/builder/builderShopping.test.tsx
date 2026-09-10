@@ -157,12 +157,21 @@ describe('the product detail view', () => {
   const openDetail = (part: AffiliatePart, selected = false) =>
     render(<ProductDetailDrawer part={part} now={FRESH_NOW} selected={selected} onClose={vi.fn()} onToggle={vi.fn()} />);
 
-  it('opens from the card image, the title and a View details control', () => {
+  it('opens from exactly two triggers: the image and a View details control', () => {
+    // Two, deliberately. The title was a third button doing the same thing,
+    // which made every card three tab stops to one destination.
     renderBuilder();
     const card = screen.getAllByTestId('retail-product-card')[0];
     expect(within(card).getByTestId('open-details-image')).toBeDefined();
-    expect(within(card).getByTestId('open-details-title')).toBeDefined();
+    expect(within(card).queryByTestId('open-details-title')).toBeNull();
     fireEvent.click(within(card).getByTestId('view-details'));
+    expect(screen.getByTestId('product-detail')).toBeDefined();
+  });
+
+  it('opens from the image too', () => {
+    renderBuilder();
+    const card = screen.getAllByTestId('retail-product-card')[0];
+    fireEvent.click(within(card).getByTestId('open-details-image'));
     expect(screen.getByTestId('product-detail')).toBeDefined();
   });
 

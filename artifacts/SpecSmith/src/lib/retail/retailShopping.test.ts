@@ -152,12 +152,25 @@ describe('search, filters and sorting', () => {
   const gpus = groupByCategory(catalog.parts).get('gpu') ?? [];
 
   it('matches every search term against the title in any order', () => {
-    const results = filterAndSort(gpus, { ...EMPTY_FILTERS, search: 'rtx 5090' });
+    // Terms come from a listing actually present in today's nightly-refreshed
+    // catalogue, not a hardcoded model name — the 500-SKU grid is regenerated
+    // daily from live retailer data, so any specific model (e.g. "RTX 5090")
+    // can be absent on a given day without that being a bug. Picking two
+    // words out of a real listing's own title keeps this test exercising the
+    // same "any order" matching behavior without depending on which models
+    // happen to be in stock.
+    const sample = gpus[0];
+    expect(sample).toBeDefined();
+    const [firstWord, secondWord] = sample.name.toLowerCase().split(/\s+/);
+    expect(firstWord).toBeTruthy();
+    expect(secondWord).toBeTruthy();
+
+    const results = filterAndSort(gpus, { ...EMPTY_FILTERS, search: `${secondWord} ${firstWord}` });
     expect(results.length).toBeGreaterThan(0);
     for (const part of results) {
       const name = part.name.toLowerCase();
-      expect(name).toContain('rtx');
-      expect(name).toContain('5090');
+      expect(name).toContain(firstWord);
+      expect(name).toContain(secondWord);
     }
   });
 

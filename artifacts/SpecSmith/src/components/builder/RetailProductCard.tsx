@@ -119,19 +119,19 @@ export default function RetailProductCard({ part, selected, now, onToggle, onOpe
       <div className="flex flex-1 flex-col gap-2 p-3">
         {/* The shortened title is what is shown; the complete merchant title is
             the accessible name, so nothing is withheld from a screen reader. */}
-        <h3 className="text-sm font-medium leading-snug" style={{ color: 'var(--ff-text)' }}>
-          <button
-            type="button"
-            onClick={() => onOpenDetails?.(part.id)}
-            disabled={onOpenDetails === undefined}
-            title={part.name}
-            aria-label={part.name}
-            data-testid="open-details-title"
-            className="ff-accent-control text-left disabled:cursor-default"
-            style={{ color: 'inherit' }}
-          >
-            {shortTitle}
-          </button>
+        {/* TWO TRIGGERS, NOT THREE. The image is the intuitive one — a
+            product photograph is the thing people click — and "View details"
+            is the explicit one. The title used to be a third button, which
+            gave every card three tab stops that all did the same thing; a
+            keyboard user crossing a 24-card grid met 72 stops to reach the
+            same 24 destinations. It is a heading again. */}
+        <h3
+          className="text-sm font-medium leading-snug"
+          style={{ color: 'var(--ff-text)' }}
+          title={part.name}
+          aria-label={part.name}
+        >
+          {shortTitle}
         </h3>
 
         <div className="mt-auto flex flex-col gap-1">

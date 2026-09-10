@@ -79,6 +79,22 @@ class FakeChild extends EventEmitter implements ChildProcessLike {
   }
 }
 
+// Real mkdtempSync hands back a directory unique to that one call, which is
+// exactly what stops two captures from ever sharing a csv path (see
+// presentmonRunner.ts: csvPath is `${outputDir}/presentmon-${pid}-${Date.now()}.csv`,
+// and Date.now()'s millisecond resolution alone is not enough — two calls a
+// single test makes back to back, e.g. the "missing column" tests below that
+// call run(h) twice against the same harness, can land in the same
+// millisecond). A fake that always returns the SAME directory string
+// reintroduces exactly the collision mkdtempSync exists to prevent: the
+// second call's csvPath collides with a file the first call already "wrote"
+// into this fake's shared `files` map, and the run fails with "Refusing to
+// overwrite an existing file" instead of reaching whatever the test actually
+// meant to exercise. This is issue #93's reproduced presentmonRunner
+// flakiness. A monotonic counter guarantees uniqueness across every call
+// this fake ever makes, not just within one test.
+let fakeTempDirSequence = 0;
+
 function fakeFs(files: Record<string, string>) {
   const removed: string[] = [];
   const made: string[] = [];
@@ -89,7 +105,8 @@ function fakeFs(files: Record<string, string>) {
     statSync: (p: string) => ({ size: Buffer.byteLength(files[p] ?? ''), isFile: () => true }),
     readFileSync: ((p: string) => files[p] ?? '') as never,
     mkdtempSync: (prefix: string) => {
-      const dir = `${prefix}TEST`;
+      fakeTempDirSequence += 1;
+      const dir = `${prefix}TEST-${fakeTempDirSequence}`;
       made.push(dir);
       return dir;
     },

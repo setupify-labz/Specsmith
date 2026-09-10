@@ -339,7 +339,7 @@ export default function Compare() {
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
                 {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
-                {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Avg FPS: {avgFpsA}</div>}
+                {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsA}</div>}
                 {costPerFpsA !== null && (
                   <div className="text-secondary-custom text-xs mt-1">${costPerFpsA}/avg FPS</div>
                 )}
@@ -358,7 +358,7 @@ export default function Compare() {
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
                 {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
-                {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Avg FPS: {avgFpsB}</div>}
+                {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsB}</div>}
                 {costPerFpsB !== null && (
                   <div className="text-secondary-custom text-xs mt-1">${costPerFpsB}/avg FPS</div>
                 )}

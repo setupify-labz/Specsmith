@@ -11,6 +11,7 @@ import {
   summarizeBuildPrices,
 } from '../../lib/retail/partPricing';
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import RetailEstimateAction from './RetailEstimateAction';
 
 interface Props {
   selectedParts: { category: RetailPartCategory; part: AffiliatePart }[];
@@ -18,6 +19,15 @@ interface Props {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onRemove: (category: RetailPartCategory) => void;
+  /**
+   * The FPS estimate, rendered inside the build it describes.
+   *
+   * It lives here rather than at page level so it sits with the parts it
+   * estimates from, in BOTH places this summary appears: the desktop sticky
+   * column and the mobile drawer. Optional so the summary can still be
+   * rendered on its own in a test.
+   */
+  estimate?: { canEstimate: boolean; onEstimate: () => void };
 }
 
 /**
@@ -34,7 +44,7 @@ interface Props {
  * Those describe a part; these describe a listing, and mixing them would put
  * an editorial number in a column headed by real ones.
  */
-export default function RetailBuildSummary({ selectedParts, now, collapsed, onToggleCollapsed, onRemove }: Props) {
+export default function RetailBuildSummary({ selectedParts, now, collapsed, onToggleCollapsed, onRemove, estimate }: Props) {
   const parts = selectedParts.map((entry) => entry.part);
   const summary = summarizeBuildPrices(parts, now);
   const excludedIds = new Set(summary.excluded.map((item) => item.partId));
@@ -151,6 +161,12 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
                         .join(', ')}. Check the retailer for those.`}
                 </span>
               </p>
+            )}
+
+            {estimate !== undefined && (
+              <div data-testid="summary-estimate">
+                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
+              </div>
             )}
 
             <p className="mt-2 text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="summary-availability">

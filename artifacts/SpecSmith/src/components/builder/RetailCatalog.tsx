@@ -60,9 +60,9 @@ export default function RetailCatalog({ category, whiteOnly = false, parts, sele
   return (
     <section aria-labelledby="catalog-heading" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 id="catalog-heading" className="text-xl font-semibold" style={{ color: 'var(--ff-text)' }}>
+        <h2 id="catalog-heading" className="text-xl font-semibold" style={{ color: 'var(--ff-text)' }}>
           {CATEGORY_LABELS[category]}
-        </h1>
+        </h2>
         <p className="text-sm" style={{ color: 'var(--ff-text-2)' }} data-testid="result-count">
           {results.length === parts.length
             ? `${results.length} products`

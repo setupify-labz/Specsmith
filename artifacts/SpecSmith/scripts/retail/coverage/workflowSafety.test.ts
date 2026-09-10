@@ -45,14 +45,16 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly six workflows, with every credential-bearing workflow accounted for', () => {
+  it('is one of exactly eight workflows, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
     expect(all).toEqual([
       'audit-accepted-offers.yml',
+      'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
-      'capture-ui-screenshots.yml',
+      'content-e2e-offline.yml',
+      'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
@@ -62,11 +64,11 @@ describe('the validation workflow exists and is wired to the right events', () =
     // refresh. Every other one stays read-only, so the write permission is
     // confined to a single reviewable file rather than spreading quietly.
     //
-    // This has been relaxed once, for a screenshot capture that pushed images
-    // to a dead-end branch, and that turned out to be unnecessary: a run
-    // ARTIFACT carries images off a runner without any write permission at
-    // all. The capture workflow now holds `contents: read` and this list is
-    // back to a single name. There is no evidence-gathering need that
+    // This has been relaxed once, for a temporary screenshot capture that
+    // pushed images to a dead-end branch, and that turned out to be
+    // unnecessary: a run ARTIFACT carries images off a runner without any
+    // write permission at all. That workflow has since been deleted and this
+    // list is back to a single name. There is no evidence-gathering need that
     // justifies a second writer, so this expectation takes exactly one entry
     // and is not to be widened again.
     const writers = all.filter((name) =>
@@ -79,21 +81,6 @@ describe('the validation workflow exists and is wired to the right events', () =
     );
     expect(writers).toEqual(['refresh-retail-prices.yml']);
 
-    const screenshots = fs
-      .readFileSync(path.join(dir, 'capture-ui-screenshots.yml'), 'utf-8')
-      .split('\n')
-      .filter((line) => !/^\s*#/.test(line))
-      .join('\n');
-    expect(screenshots).not.toContain('secrets.');
-    expect(screenshots).not.toMatch(/^\s*(pull_request|pull_request_target|schedule|workflow_run):/m);
-    // Read-only, and with no channel that could write anyway.
-    expect(screenshots).toContain('contents: read');
-    expect(screenshots).not.toContain('contents: write');
-    expect(screenshots).not.toMatch(/git push/);
-    expect(screenshots).not.toContain('github.token');
-    // The images still have to leave the runner; an artifact is how.
-    expect(screenshots).toContain('actions/upload-artifact');
-    expect(screenshots).toMatch(/push:\s*\n\s*branches:\s*\n\s*- claude\/builder-wide-desktop-white-build/);
     // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
     // Comment lines are stripped here too — that file's header explains at
@@ -105,6 +92,38 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(other).not.toContain('secrets.');
+
+    // The retailer-link audit is a THIRD credential-free tool, alongside the
+    // snapshot validation above — see auditRetailerLinksWorkflowSafety.test.ts
+    // for its full shape.
+    const linkAudit = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'audit-retailer-links.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(linkAudit).not.toContain('secrets.');
+
+    // The content-automator offline end-to-end pipeline is a FOURTH
+    // credential-free tool, alongside the two above — see
+    // scripts/content-automator/contentE2eOfflineWorkflowSafety.test.ts for
+    // its full shape.
+    const contentE2eOffline = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'content-e2e-offline.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(contentE2eOffline).not.toContain('secrets.');
+
+    // The measured-process tests CI evidence gate is a FIFTH credential-free
+    // tool, alongside the three above (issue #93 / PR #94): typecheck,
+    // vitest and a production build against files already committed, no
+    // network call beyond installing dependencies.
+    const measuredTestsCi = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'measured-tests-ci.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(measuredTestsCi).not.toContain('secrets.');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can

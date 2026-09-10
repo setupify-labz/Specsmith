@@ -167,7 +167,14 @@ export default function ProductDetailDrawer({ part, now, onClose, onToggle, sele
       style={{ background: 'rgba(0,0,0,0.6)' }}
       data-testid="product-detail-backdrop"
     >
-      <button type="button" aria-label="Close product details" className="absolute inset-0" onClick={onClose} />
+      {/* Click-outside closing, and nothing else.
+          This was a <button> spanning the whole backdrop, which made it a tab
+          stop and announced a second "Close product details" to a screen
+          reader — two controls for one job, one of them invisible and the
+          size of the window. A plain div keeps the click, `aria-hidden` keeps
+          it out of the accessibility tree, and the visible close button in
+          the header remains the one advertised way out alongside Escape. */}
+      <div aria-hidden="true" className="absolute inset-0" onClick={onClose} />
       <div
         ref={dialogRef}
         role="dialog"

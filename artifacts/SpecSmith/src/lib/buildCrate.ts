@@ -54,12 +54,48 @@ function rarityFromPercentile(p: number): CrateRarity {
  * feel as a loot crate. Also reports where in the pack (by rank percentile)
  * the pulled item landed, so each individual part can carry its own rarity
  * badge — not just the finished build. */
+/**
+ * Injectable randomness for the crate rolls.
+ *
+ * Production behaviour is unchanged: the default IS Math.random, so a normal
+ * pull is as random as it ever was. A caller that needs the same crate twice —
+ * a deterministic video capture, or a test — swaps in a seeded generator and
+ * every roll below becomes reproducible, while still running the real crate
+ * logic against the real part pools rather than a mocked result.
+ *
+ * Deliberately module-scoped and opt-in rather than threaded through every
+ * roll signature: that keeps the change to two call sites and leaves the
+ * public API of the crate untouched.
+ */
+let rng: () => number = Math.random;
+
+export function setCrateRng(next: (() => number) | null): void {
+  rng = next ?? Math.random;
+}
+
+/**
+ * mulberry32 — a small, fast, well-distributed seeded PRNG.
+ *
+ * Chosen over hand-rolled `sin(seed)` tricks because those have visible
+ * artifacts that would bias which parts a crate tends to pull.
+ */
+export function seededRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function pickWeighted<T>(items: T[], rankKey: (t: T) => number): { item: T; percentile: number } {
   const sorted = [...items].sort((a, b) => rankKey(a) - rankKey(b));
   const n = sorted.length;
   const weights = sorted.map((_, i) => n - i);
   const total = weights.reduce((s, w) => s + w, 0);
-  let r = Math.random() * total;
+  let r = rng() * total;
   for (let i = 0; i < n; i++) {
     r -= weights[i];
     if (r <= 0) return { item: sorted[i], percentile: n > 1 ? i / (n - 1) : 0 };
@@ -87,7 +123,7 @@ export const CRATE_CATEGORY_ORDER: { key: 'motherboard' | 'cpu' | 'ram' | 'gpu' 
  * and a motherboard on that socket in one pull, since the motherboard is
  * what tells you which platform you landed on. */
 export function rollMotherboard(): RolledPart<CrateMotherboard> & { socket: string } {
-  const socket = SOCKETS[Math.floor(Math.random() * SOCKETS.length)];
+  const socket = SOCKETS[Math.floor(rng() * SOCKETS.length)];
   const pool = motherboards.filter(m => m.socket === socket);
   const { item, percentile } = pickWeighted(pool, m => m.price_usd);
   return { part: item, rarity: rarityFromPercentile(percentile), socket };

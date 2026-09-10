@@ -210,14 +210,26 @@ describe('the White build can still complete a PC', () => {
   });
 
   it('still shows an honest absence where a visible category has no white product', () => {
-    // Motherboards, RAM, keyboards and mice have zero stated-white listings in
-    // the current catalogue. Those must stay empty — that is a real absence,
-    // and the fix for CPUs must not paper over it.
-    const empty = ['motherboard', 'ram', 'keyboard', 'mouse'];
-    for (const category of empty) {
-      expect(countIn(parts, category), `${category} should exist`).toBeGreaterThan(0);
-      expect(countIn(inView, category), category).toBe(0);
+    // DERIVED, NOT LISTED. This used to name motherboard, ram, keyboard and
+    // mouse, and a catalogue refresh broke it the moment a genuine white RAM
+    // kit appeared — "Built-in Panel, White, for AMD EXPO", correctly
+    // matched. The property is not "these four are empty"; it is that a
+    // visible category shows exactly its stated-white listings and nothing
+    // invented, so a category with none stays empty. That survives a refresh.
+    const visible = [...new Set(parts.map((part) => part.category))].filter(
+      (category) => !isColorNeutralCategory(category),
+    );
+    const emptied: string[] = [];
+    for (const category of visible) {
+      const stated = parts.filter(
+        (part) => part.category === category && classifyWhiteFinish(part.name).white,
+      ).length;
+      expect(countIn(inView, category), category).toBe(stated);
+      if (stated === 0) emptied.push(category);
     }
+    // And the honest-absence path is still exercised by real data, rather
+    // than being trivially satisfied by a catalogue where everything matches.
+    expect(emptied.length, 'some visible category has no stated-white listing').toBeGreaterThan(0);
   });
 
   it('keeps the white filter itself unchanged for counting purposes', () => {
