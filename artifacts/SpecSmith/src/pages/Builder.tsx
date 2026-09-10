@@ -20,7 +20,6 @@ import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
-import RetailEstimateAction from '../components/builder/RetailEstimateAction';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -327,7 +326,7 @@ export default function Builder() {
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(builderFaqJsonLd()) }} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="ff-builder-shell px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
             PC <span className="gradient-text">Builder</span>
@@ -368,6 +367,7 @@ export default function Builder() {
              cannot appear as products — they stay behind the scenes powering
              the FPS estimate and compatibility check above. */
           <RetailBuilder
+            estimate={{ canEstimate, onEstimate: handleEstimateFps }}
             parts={affiliateCatalog.catalog.parts}
             selection={build}
             onSelect={(category, id) => {
@@ -556,10 +556,6 @@ export default function Builder() {
           </div>
 
           </div>
-        )}
-
-        {affiliateCatalog.status === 'ok' && (
-          <RetailEstimateAction canEstimate={canEstimate} onEstimate={handleEstimateFps} />
         )}
 
         {/* FPS Estimator */}

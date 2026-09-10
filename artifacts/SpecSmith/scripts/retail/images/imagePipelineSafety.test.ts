@@ -114,8 +114,29 @@ describe('the colour a cut-out is composited against is pinned', () => {
     expect(light).toMatch(/--ff-photo-bg:\s*#FFFFFF/i);
   });
 
-  it('is what the product image frame actually uses', () => {
-    const card = read(path.join('src', 'components', 'builder', 'RetailProductCard.tsx'));
-    expect(card).toContain("background: 'var(--ff-photo-bg)'");
+  it('is what every place a product is pictured actually uses', () => {
+    // This used to require the inline style `background: 'var(--ff-photo-bg)'`
+    // in the card. That style carried a note saying whichever of #107 and #108
+    // landed second should move it onto a shared `.retail-photo-frame` class —
+    // #108 landed second, and the drawer and the build summary now composite
+    // against the same colour, which an inline style cannot express. The rule
+    // is unchanged and now covers three files instead of one: the class owns
+    // the colour, and no component sets it itself.
+    const css = read(path.join('src', 'index.css'));
+    const declarations = css.match(/\.retail-photo-frame\s*\{[^}]*\}/g) ?? [];
+    expect(declarations).toHaveLength(1);
+    expect(declarations[0]).toContain('var(--ff-photo-bg)');
+
+    for (const file of ['RetailProductCard.tsx', 'ProductDetailDrawer.tsx', 'RetailBuildSummary.tsx']) {
+      const source = read(path.join('src', 'components', 'builder', file));
+      expect(source, file).toContain('retail-photo-frame');
+      // Comment lines are stripped before the negative check: a file that
+      // EXPLAINS the token in prose must neither satisfy nor fail this.
+      const code = source
+        .split('\n')
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join('\n');
+      expect(code, `${file} sets the photo background inline`).not.toContain('--ff-photo-bg');
+    }
   });
 });

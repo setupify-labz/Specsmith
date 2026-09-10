@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 //
 // The card actually loading the right picture — the gap that blocked PR #108.
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
@@ -102,10 +105,41 @@ describe('a local file that will not load costs the cut-out, never the picture',
 });
 
 describe('the frame the cut-out is composited on', () => {
-  it('uses the photo-background token, not the general surface colour', () => {
+  // WHY THIS CHANGED SHAPE. It used to read the frame's inline style for
+  // `--ff-photo-bg`. PR #108 wrote that style with a note saying whichever of
+  // #107 and #108 landed second should move it onto a shared
+  // `.retail-photo-frame` class — #108 landed second, and the drawer and the
+  // build summary now composite against the same colour. An inline style
+  // cannot be shared, so asserting one would have pinned the very thing that
+  // had to change. The property is stronger stated as sharing: one class, one
+  // declaration, and no component quietly setting the colour itself.
+  it('carries the shared photo-frame class rather than its own colour', () => {
     renderCard(manifest());
-    const frame = screen.getByTestId('product-image-frame');
-    expect(frame.getAttribute('style')).toContain('--ff-photo-bg');
+    const frame = screen.getByTestId('open-details-image');
+    expect(frame.className).toContain('retail-photo-frame');
+    expect(frame.getAttribute('style') ?? '').not.toContain('--ff-photo-bg');
+  });
+
+  it('is the same class the drawer and the build summary use', () => {
+    const source = (name: string) =>
+      fs.readFileSync(path.join(__dirname, name), 'utf-8');
+    for (const file of ['ProductDetailDrawer.tsx', 'RetailBuildSummary.tsx', 'RetailProductCard.tsx']) {
+      expect(source(file), file).toContain('retail-photo-frame');
+      // Comments are stripped first: a file explaining the token in prose must
+      // not be able to satisfy this, nor to fail it.
+      const code = source(file)
+        .split('\n')
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join('\n');
+      expect(code, `${file} sets the photo background inline`).not.toContain('--ff-photo-bg');
+    }
+  });
+
+  it('is declared once, against the token, in the stylesheet', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', '..', 'index.css'), 'utf-8');
+    const declarations = css.match(/\.retail-photo-frame\s*\{[^}]*\}/g) ?? [];
+    expect(declarations).toHaveLength(1);
+    expect(declarations[0]).toContain('var(--ff-photo-bg)');
   });
 });
 

@@ -64,12 +64,15 @@ describe('the validation workflow exists and is wired to the right events', () =
     // refresh. Every other one stays read-only, so the write permission is
     // confined to a single reviewable file rather than spreading quietly.
     //
-    // A second writer existed for a while: a screenshot capture that pushed
-    // images to a dead-end branch so a redesign could be reviewed from an
-    // environment where the retailer's image CDN is reachable. It was
-    // temporary and has been removed, and this list is back to one name. Its
-    // capture script is kept — see scripts/ui — but nothing in CI runs it, so
-    // no workflow holds write access on its behalf.
+    // This has been relaxed once, for a screenshot capture that pushed images
+    // to a dead-end branch, and that turned out to be unnecessary: a run
+    // ARTIFACT carries images off a runner without any write permission at
+    // all. That capture workflow was temporary evidence-gathering, held
+    // `contents: read` for its whole second life, and has been deleted now
+    // that the screenshots are taken — so this list is back to a single
+    // name. There is no evidence-gathering need that justifies a second
+    // writer, so this expectation takes exactly one entry and is not to be
+    // widened again.
     const writers = all.filter((name) =>
       fs
         .readFileSync(path.join(dir, name), 'utf-8')
@@ -79,6 +82,7 @@ describe('the validation workflow exists and is wired to the right events', () =
         .includes('contents: write'),
     );
     expect(writers).toEqual(['refresh-retail-prices.yml']);
+
     // The snapshot workflow is credential-free by construction; that is asserted in
     // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
     // Comment lines are stripped here too — that file's header explains at
