@@ -571,6 +571,38 @@ async function chooseFirstProduct(page) {
 }
 
 /**
+ * Puts the page in a KNOWN theme, rather than assuming which one it started in.
+ *
+ * THE BUG THIS FIXES, WHICH THE RUN CAUGHT ITSELF. The theme is a TOGGLE over
+ * state persisted in localStorage, and every page here shares one browser
+ * context — so a pass that clicks "toggle theme" to get light gets dark
+ * instead whenever an earlier pass left light behind. Six review widths
+ * clicking blind produced three "light" shots of which two were dark, and the
+ * cross-theme frame-colour check reported the light theme as two different
+ * colours. Every one of those screenshots would have been mislabelled.
+ *
+ * So: read the theme, click only if it is wrong, then read it again and refuse
+ * to continue if it is still wrong. A capture that cannot reach the theme it
+ * claims must fail loudly rather than photograph the other one.
+ */
+const themeOf = (page) =>
+  page.evaluate(() =>
+    document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
+  );
+
+async function ensureTheme(page, wanted) {
+  if ((await themeOf(page)) !== wanted) {
+    await page.getByRole('button', { name: /toggle theme/i }).first().click();
+    await page.waitForTimeout(600);
+  }
+  const settled = await themeOf(page);
+  if (settled !== wanted) {
+    throw new Error(`could not reach the ${wanted} theme: the page is ${settled}`);
+  }
+  return settled;
+}
+
+/**
  * The review matrix: 375, 1440 and 1920 in BOTH themes, on the exact head.
  *
  * WHAT THE REVIEW ASKED TO SEE, AND WHY EACH PART IS MEASURED RATHER THAN
@@ -594,10 +626,7 @@ async function captureReviewMatrix(context, report) {
   for (const theme of ['dark', 'light']) {
     for (const width of REVIEW_WIDTHS) {
       const page = await open(context, { width, height: width < 500 ? 844 : 1000 });
-      if (theme === 'light') {
-        await page.getByRole('button', { name: /toggle theme/i }).first().click();
-        await page.waitForTimeout(600);
-      }
+      const themeObserved = await ensureTheme(page, theme);
       await settleImages(page, `review ${theme} ${width}`);
       const key = `${theme}-${width}`;
       await shot(page, `review-${key}`);
@@ -629,6 +658,9 @@ async function captureReviewMatrix(context, report) {
           cards: document.querySelectorAll('[data-testid="retail-product-card"]').length,
         };
       });
+      // Recorded, not assumed. The label on a screenshot is a claim about which
+      // theme it shows, and this is the evidence for it.
+      matrix[key].themeObserved = themeObserved;
 
       // The build summary with a product in it, at the two widths where the
       // summary is laid out differently: a phone drawer and a desktop column.
@@ -665,10 +697,10 @@ async function captureAccentControls(context, report) {
   const results = {};
   for (const theme of ['dark', 'light']) {
     const page = await open(context, { width: 390, height: 844 });
-    if (theme === 'light') {
-      await page.getByRole('button', { name: /toggle theme/i }).first().click();
-      await page.waitForTimeout(600);
-    }
+    // Same blind-toggle bug as the review matrix: this pass shares the context
+    // and the persisted theme, so its two passes could photograph one theme
+    // twice and label them differently.
+    await ensureTheme(page, theme);
     await settleImages(page, 'accent controls');
 
     // Two products chosen, so "View build (2)" and a selected card both exist.

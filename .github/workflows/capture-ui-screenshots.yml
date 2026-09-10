@@ -308,6 +308,9 @@ jobs:
               if (m.estimateCount !== 1) failures.push(`review ${key}: ${m.estimateCount} FPS controls, expected exactly 1`);
               if (m.cards === 0) failures.push(`review ${key}: no product cards on the page`);
               const [theme] = key.split("-");
+              if (m.themeObserved !== theme) {
+                failures.push(`review ${key}: photographed in the ${m.themeObserved} theme, not ${theme}`);
+              }
               (frameByTheme[theme] ??= new Set()).add(m.photoFrameBackground);
             }
             if (Object.keys(report.reviewMatrix ?? {}).length === 0) {
