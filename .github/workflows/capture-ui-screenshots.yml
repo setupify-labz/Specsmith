@@ -302,6 +302,9 @@ jobs:
               if (m.horizontalOverflowPx > 0) failures.push(`review ${key}: page scrolls sideways`);
               if (m.nestedScrollers > 0) failures.push(`review ${key}: nested scroller`);
               if (!m.estimateInsideSummary) failures.push(`review ${key}: FPS control is not inside the build summary`);
+              if (m.estimateInsideVisibleSummary === false) {
+                failures.push(`review ${key}: FPS control is not inside the summary a person actually sees`);
+              }
               if (m.estimateCount !== 1) failures.push(`review ${key}: ${m.estimateCount} FPS controls, expected exactly 1`);
               if (m.cards === 0) failures.push(`review ${key}: no product cards on the page`);
               const [theme] = key.split("-");

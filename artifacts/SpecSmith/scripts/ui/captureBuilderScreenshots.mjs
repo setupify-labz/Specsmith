@@ -632,14 +632,28 @@ async function captureReviewMatrix(context, report) {
 
       // The build summary with a product in it, at the two widths where the
       // summary is laid out differently: a phone drawer and a desktop column.
+      //
+      // `:visible` IS LOAD-BEARING. The same summary is rendered twice — the
+      // desktop sticky column and the mobile drawer — and which one a person
+      // sees is decided by CSS, not by which exists. Addressing it by test id
+      // alone takes the desktop copy, which at 375 is hidden, and a run spent
+      // thirty seconds waiting for an invisible element to hold still.
       if (width === 375 || width === 1440) {
         await chooseFirstProduct(page);
         if (width === 375) await page.locator('[data-testid="view-build"]').click();
         await page.waitForTimeout(700);
-        const summary = page.locator('[data-testid="build-summary"]').first();
+        const summary = page.locator('[data-testid="build-summary"]:visible').first();
         await summary.scrollIntoViewIfNeeded();
         await page.waitForTimeout(300);
         await summary.screenshot({ path: path.join(OUT_DIR, `${LABEL}-review-${key}-build.png`) });
+        // The FPS control has to be inside the summary a person is ACTUALLY
+        // looking at, which on a phone is the drawer copy. Measured here
+        // rather than trusted, because this is the one moment the visible
+        // summary and the drawer are the same element.
+        matrix[key].estimateInsideVisibleSummary = await summary
+          .locator('[data-testid="summary-estimate"]')
+          .count()
+          .then((n) => n === 1);
       }
       await page.close();
     }
