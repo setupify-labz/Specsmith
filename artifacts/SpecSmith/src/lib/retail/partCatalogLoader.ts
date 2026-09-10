@@ -6,10 +6,32 @@ import {
 } from './partCatalog';
 import { detectIdentityConflict, type IdentityConflict } from './identityConflict';
 
+/**
+ * What the browser currently knows about the retailer catalogue.
+ *
+ * `loading` IS NOT A COSMETIC ADDITION — it is the defect in issue #104. The
+ * view began at `absent`, which is also what a confirmed failure returns, so
+ * the page could not tell "the fetch has not answered yet" from "there is no
+ * catalogue". Every visit therefore rendered the legacy canonical builder for
+ * as long as the request took and then swapped it for the retail one, which
+ * looks like two different builders fighting over the page.
+ *
+ * `loadAffiliatePartCatalog` never returns `loading`: it resolves to what it
+ * found. Loading is the state BEFORE it has answered, which is why it belongs
+ * to the caller holding the promise rather than to the function.
+ */
 export type AffiliateCatalogView =
   | { status: 'ok'; catalog: AffiliatePartCatalog; quarantined?: Array<{ partId: string; reason: IdentityConflict }> }
+  /** The request is in flight and nothing is known yet. Not a failure. */
+  | { status: 'loading' }
   | { status: 'absent' }
   | { status: 'invalid'; problem: AffiliateCatalogProblem };
+
+/** The confirmed failures — everything that is neither loading nor usable. */
+export type AffiliateCatalogFailureView = Extract<AffiliateCatalogView, { status: 'absent' | 'invalid' }>;
+
+export const isCatalogFailure = (view: AffiliateCatalogView): view is AffiliateCatalogFailureView =>
+  view.status === 'absent' || view.status === 'invalid';
 
 export interface LoadAffiliateCatalogOptions {
   fetch?: typeof globalThis.fetch;

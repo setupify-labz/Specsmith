@@ -20,6 +20,8 @@ import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
+import BuilderSkeleton from '../components/builder/BuilderSkeleton';
+import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -87,7 +89,7 @@ export default function Builder() {
   useSeo(getRouteMeta('/builder'));
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
-  const affiliateCatalog = useAffiliatePartCatalog();
+  const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
   const processedImages = useProductImageManifest();
 
   const retailByCategory = useMemo(() => {
@@ -376,12 +378,23 @@ export default function Builder() {
             }}
             processedImages={processedImages}
           />
+        ) : affiliateCatalog.status === 'loading' ? (
+          /* STILL LOADING — NOT A FAILURE (issue #104). This branch used to
+             not exist, and loading fell through to the canonical fallback
+             below, so every ordinary visit painted the legacy builder and then
+             replaced it. The skeleton holds the retail layout's shape until
+             the real thing arrives, and claims nothing about any product. */
+          <BuilderSkeleton />
         ) : (
-          /* No catalogue: fall back to the canonical parts so the builder still
-             works offline or before the first refresh. These carry editorial
-             estimates, which is why they are labelled as such and never mixed
-             with retailer pricing. */
-          <div data-testid="canonical-fallback">
+          /* A CONFIRMED FAILURE, and only that. The fetch answered and there
+             was no usable catalogue — the request failed, the file is missing,
+             or what came back did not parse. Fall back to the canonical parts
+             so the builder still works offline, and say so with a way to try
+             again. These carry editorial estimates, which is why they are
+             labelled as such and never mixed with retailer pricing. */
+          <>
+            <CatalogFailureNotice view={affiliateCatalog} onRetry={retryCatalog} />
+            <div data-testid="canonical-fallback">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Part selectors */}
             <div className="lg:col-span-2 space-y-3">
@@ -556,6 +569,7 @@ export default function Builder() {
           </div>
 
           </div>
+          </>
         )}
 
         {/* FPS Estimator */}

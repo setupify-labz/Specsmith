@@ -92,6 +92,10 @@
      The .retail-photo-frame class below owns this background; nothing should
      set it inline. */
   --ff-photo-bg: #13131A;
+  /* The loading skeleton's block colour. Its own token so it can sit between
+     the card and its border in each theme without borrowing a colour that
+     means something else. */
+  --ff-skeleton:  #24242F;
   --ff-card:      #1C1C26;
   --ff-card-hover:#222230;
   --ff-border:    rgba(255,255,255,0.08);
@@ -183,6 +187,7 @@
   --ff-bg:        #F4F4FA;
   --ff-surface:   #FFFFFF;
   --ff-photo-bg: #FFFFFF;
+  --ff-skeleton:  #E4E4EF;
   --ff-card:      #FFFFFF;
   --ff-card-hover:#F0F0FA;
   --ff-border:    rgba(0,0,20,0.1);
@@ -397,6 +402,34 @@
   width: 100%;
   max-width: clamp(80rem, 94vw, 1760px);
   margin-inline: auto;
+}
+
+/* THE LOADING SKELETON'S ONLY VISUAL PRIMITIVE.
+   A neutral block that claims nothing. The pulse is deliberately slight and
+   slow — issue #104 excludes an animation-heavy placeholder, and a shimmer
+   sweeping across a screenful of boxes reads as activity the page is not
+   actually doing.
+
+   The reduced-motion rule is stated here rather than left to the global
+   `animation-duration: 0.01ms` override, because that override makes an
+   animation finish instantly rather than not run: a pulse would settle on
+   whichever keyframe it landed on. Here the animation is removed outright and
+   the bar simply sits at its resting colour. */
+.retail-skeleton-bar {
+  background: var(--ff-skeleton);
+  animation: retail-skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes retail-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retail-skeleton-bar {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* WHAT A PRODUCT PHOTOGRAPH IS COMPOSITED AGAINST.
