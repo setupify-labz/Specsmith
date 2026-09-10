@@ -6,6 +6,7 @@ import { groupByCategory } from '../../lib/retail/retailShopping';
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -15,6 +16,8 @@ interface Props {
   onSelect: (category: RetailPartCategory, id: string | null) => void;
   /** Injected so freshness is deterministic in tests. */
   now?: number;
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -27,7 +30,7 @@ interface Props {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now }: Props) {
+export default function RetailBuilder({ parts, selection, onSelect, now, processedImages }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
@@ -102,6 +105,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
             now={clock}
+            processedImages={processedImages}
             onToggle={(id) => onSelect(active, selection[active] === id ? null : id)}
           />
         </div>

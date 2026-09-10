@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, ExternalLink, ImageOff, Plus } from 'lucide-react';
 
 import type { AffiliatePart } from '../../lib/retail/partCatalog';
@@ -11,12 +11,20 @@ import {
 } from '../../lib/retail/partPricing';
 import { imageZoom } from '../../lib/retail/imageFraming';
 import { UNVERIFIED_NOTICE, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import { chooseProductImage, type ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   part: AffiliatePart;
   selected: boolean;
   now: number;
   onToggle: (id: string) => void;
+  /**
+   * Approved local cut-outs, indexed by part id.
+   *
+   * Absent means every card loads the merchant's own image, which is the
+   * behaviour this component had before cut-outs existed.
+   */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -32,8 +40,24 @@ interface Props {
  * separate controls, because an invisible overlay covering the whole card
  * makes the destination of a click unguessable and swallows the link.
  */
-export default function RetailProductCard({ part, selected, now, onToggle }: Props) {
+export default function RetailProductCard({ part, selected, now, onToggle, processedImages }: Props) {
   const [imageFailed, setImageFailed] = useState(false);
+  const choice = chooseProductImage(part, processedImages);
+
+  // Which URL this card is currently trying. It starts at the resolver's
+  // choice and falls back to the merchant's own image if a local cut-out will
+  // not load — a missing or corrupt file must cost the shopper the cut-out,
+  // never the picture.
+  const [src, setSrc] = useState(choice.src);
+  useEffect(() => {
+    setSrc(choice.src);
+    setImageFailed(false);
+  }, [choice.src]);
+
+  const handleImageError = () => {
+    if (src !== part.imageUrl) setSrc(part.imageUrl);
+    else setImageFailed(true);
+  };
   const zoom = imageZoom(part.imageContentRatio);
   const view = priceView(part, now);
   const confidence = confidenceOf(part);
@@ -64,8 +88,14 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           together; from `md` up — where cards sit two to a row and there is
           room — it goes back to 4:3. `object-contain` holds in both. */}
       <div
+        data-testid="product-image-frame"
         className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
-        style={{ background: 'var(--ff-surface)' }}
+        // A cut-out product shows this colour THROUGH it, so it is its own
+        // token rather than the general surface colour: #13131A dark, white
+        // light. PR #107 introduces the same token and moves this onto a
+        // `.retail-photo-frame` class; whichever of the two lands second should
+        // drop this inline style, since both resolve to --ff-photo-bg.
+        style={{ background: 'var(--ff-photo-bg)' }}
       >
         {imageFailed ? (
           // A broken image loses the picture, never the product: the card keeps
@@ -80,11 +110,12 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           </div>
         ) : (
           <img
-            src={part.imageUrl}
+            src={src}
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setImageFailed(true)}
+            data-image-source={src === part.imageUrl ? 'merchant' : 'processed'}
+            onError={handleImageError}
             className="object-contain p-3"
             style={{
               // Normally 100% — the image is contained in the frame and that
