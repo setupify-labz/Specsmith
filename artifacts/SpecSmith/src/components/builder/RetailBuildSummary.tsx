@@ -12,6 +12,7 @@ import {
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
 import RetailEstimateAction from './RetailEstimateAction';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import { PRICES_UPDATED } from '../../lib/prices';
 import {
   CHOOSE_LISTING_LABEL,
   IMPORTED_BADGE,
@@ -280,6 +281,12 @@ function ImportedItem({
               editorial figure in dollars, and it must not silently inherit
               whatever currency a retailer listing happened to use. */}
           <span style={{ color: 'var(--ff-text-3)' }}>Estimated</span> {formatAmount(estimatedPrice, 'USD')}
+          {/* WHEN the estimate is from, next to the number itself. An editorial
+              figure with no date reads as current, which is the one thing it is
+              not; a retailer listing beside it carries a checked-at timestamp,
+              and this is the equivalent honesty for a figure that has none. */}
+          {' · updated '}
+          <span data-testid={`imported-updated-${category}`}>{PRICES_UPDATED}</span>
           {' — '}
           {IMPORTED_PRICE_NOTE}
         </p>
@@ -292,6 +299,13 @@ function ImportedItem({
       <button
         type="button"
         data-testid={`choose-listing-${category}`}
+        // EVERY ONE OF THESE SAYS WHICH CATEGORY IT IS FOR. A build carried in
+        // from a guide shows up to twelve of these buttons at once, and a
+        // screen-reader user moving between them heard "Choose current
+        // listing" twelve times with nothing to tell them apart. The visible
+        // text stays short because the label beside it is already on screen;
+        // the accessible name has to carry what the eye gets from position.
+        aria-label={`${CHOOSE_LISTING_LABEL} for ${CATEGORY_LABELS[category as RetailPartCategory]}`}
         onClick={() => onChooseListing?.(category)}
         disabled={onChooseListing === undefined}
         className="ff-accent-control mt-0.5 inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"

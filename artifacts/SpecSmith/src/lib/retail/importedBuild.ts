@@ -27,7 +27,19 @@
  *             invented id must not become a part.
  */
 
-import { CORE_BUILD_CATEGORIES, type CoreBuildCategory, type CoreSelection } from './coreBuild';
+import { RETAIL_PART_CATEGORIES, type RetailPartCategory } from './partCatalog';
+
+/**
+ * A selection across ALL TWELVE categories, not just the core eight.
+ *
+ * Peripherals arrive through exactly the same links a core part does — a
+ * Build Crate roll hands over a monitor and a headset alongside the GPU — so a
+ * recommendation module that stopped at the core eight would drop them on the
+ * floor in precisely the way this whole change set exists to stop.
+ */
+export type BuilderSelection = {
+  readonly [K in RetailPartCategory]?: string | null;
+};
 
 /** The canonical model behind an imported choice. Deliberately a small shape. */
 export interface CanonicalPartRef {
@@ -47,7 +59,7 @@ export interface CanonicalPartRef {
 export type SlotOrigin = 'retail' | 'imported' | 'unknown';
 
 export interface ImportedRecommendation {
-  category: CoreBuildCategory;
+  category: RetailPartCategory;
   canonicalId: string;
   name: string;
   estimatedPrice?: number;
@@ -75,7 +87,13 @@ export function slotOrigin(
 }
 
 /**
- * The imported recommendations in a selection, in assembly order.
+ * The imported recommendations in a selection, across all twelve categories.
+ *
+ * ALL TWELVE, DELIBERATELY. The progress bar counts the eight parts that make
+ * a computer and is unchanged — a monitor does not make the machine more
+ * complete. But the build a shopper carries in is whatever they were given,
+ * peripherals included, and a recommendation dropped because it is "only" a
+ * headset is still a part that vanished on arrival.
  *
  * A category holding an exact retailer SKU produces nothing here — that is how
  * a recommendation is REPLACED rather than accumulated: the moment the shopper
@@ -83,12 +101,12 @@ export function slotOrigin(
  * to clean up.
  */
 export function importedRecommendations(
-  selection: CoreSelection,
+  selection: BuilderSelection,
   retailIds: ReadonlySet<string>,
   canonicalById: ReadonlyMap<string, CanonicalPartRef>,
 ): ImportedRecommendation[] {
   const recommendations: ImportedRecommendation[] = [];
-  for (const category of CORE_BUILD_CATEGORIES) {
+  for (const category of RETAIL_PART_CATEGORIES) {
     const id = selection[category];
     if (slotOrigin(id, retailIds, canonicalById) !== 'imported') continue;
     const canonical = canonicalById.get(id as string);

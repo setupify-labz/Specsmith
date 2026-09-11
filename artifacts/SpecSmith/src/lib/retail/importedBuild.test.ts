@@ -114,3 +114,48 @@ describe('the words shown to a shopper', () => {
     }
   });
 });
+
+describe('peripherals are recommendations too', () => {
+  // They arrive through exactly the same links a core part does — a Build
+  // Crate roll hands over a monitor and a headset alongside the GPU — and one
+  // dropped because it is "only" a peripheral is still a part that vanished.
+  const peripherals = new Map<string, CanonicalPartRef>([
+    ['mon-1', { id: 'mon-1', name: '27in 1440p', estimatedPrice: 249 }],
+    ['kb-1', { id: 'kb-1', name: 'Tenkeyless board', estimatedPrice: 89 }],
+    ['mouse-1', { id: 'mouse-1', name: 'Lightweight mouse' }],
+    ['hs-1', { id: 'hs-1', name: 'Closed-back headset', estimatedPrice: 99 }],
+  ]);
+
+  it('recognises all four', () => {
+    const found = importedRecommendations(
+      { monitor: 'mon-1', keyboard: 'kb-1', mouse: 'mouse-1', headset: 'hs-1' },
+      new Set(),
+      peripherals,
+    );
+    expect(found.map((r) => r.category)).toEqual(['monitor', 'keyboard', 'mouse', 'headset']);
+  });
+
+  it('covers all twelve categories in one build', () => {
+    const everything = new Map<string, CanonicalPartRef>([...canonical, ...peripherals]);
+    const selection: Record<string, string> = {
+      gpu: 'rx6600', cpu: 'r5-5600', motherboard: 'b550tom',
+      monitor: 'mon-1', keyboard: 'kb-1', mouse: 'mouse-1', headset: 'hs-1',
+    };
+    const found = importedRecommendations(selection, new Set(), everything);
+    expect(found).toHaveLength(7);
+    // Category order is the catalogue's own, so core parts still come first.
+    expect(found.map((r) => r.category)).toEqual([
+      'gpu', 'cpu', 'motherboard', 'monitor', 'keyboard', 'mouse', 'headset',
+    ]);
+  });
+
+  it('is replaced by an exact peripheral SKU like any other slot', () => {
+    const retailMonitor = new Set(['retail-monitor-1']);
+    const found = importedRecommendations(
+      { monitor: 'retail-monitor-1', keyboard: 'kb-1' },
+      retailMonitor,
+      peripherals,
+    );
+    expect(found.map((r) => r.category)).toEqual(['keyboard']);
+  });
+});

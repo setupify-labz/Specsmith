@@ -234,11 +234,27 @@ export default function Builder() {
    * ids, and the retail builder recognises only exact SKUs — so Budget Beast
    * arrived as eight ids and displayed as nothing at all.
    */
-  const canonicalCoreById = useMemo<ReadonlyMap<string, CanonicalPartRef>>(() => {
+  /**
+   * Every canonical model the site knows, by id — ALL TWELVE CATEGORIES.
+   *
+   * This is what makes an imported build legible. Guides, the quiz, Build
+   * Crate, shared links and saved builds all hand `/builder` canonical model
+   * ids, and the retail builder recognises only exact SKUs — so Budget Beast
+   * arrived as eight ids and displayed as nothing at all.
+   *
+   * PERIPHERALS ARE IN HERE TOO. They arrive through exactly the same links a
+   * core part does, and a monitor dropped because it is "only" a peripheral is
+   * still a part that vanished on arrival. What stays core-only is the
+   * PROGRESS BAR, which counts the eight parts that make a computer — a
+   * headset does not make the machine more complete, and the eight-slot rule
+   * that PR #111 settled is not reopened here.
+   */
+  const canonicalById = useMemo<ReadonlyMap<string, CanonicalPartRef>>(() => {
     const index = new Map<string, CanonicalPartRef>();
     for (const part of [
       ...builderGpus, ...builderCpus, ...builderMotherboards, ...builderRam,
       ...builderStorage, ...builderPsus, ...builderCases, ...builderCoolers,
+      ...builderMonitors, ...builderKeyboards, ...builderMice, ...builderHeadsets,
     ] as { id: string; name: string; price_usd?: number }[]) {
       index.set(part.id, {
         id: part.id,
@@ -252,6 +268,7 @@ export default function Builder() {
   }, [
     builderGpus, builderCpus, builderMotherboards, builderRam,
     builderStorage, builderPsus, builderCases, builderCoolers,
+    builderMonitors, builderKeyboards, builderMice, builderHeadsets,
   ]);
 
   const retailIds = useMemo<ReadonlySet<string>>(
@@ -270,8 +287,8 @@ export default function Builder() {
    * invent a purchase decision — see importedBuild.ts.
    */
   const imported = useMemo(
-    () => importedRecommendations(build, retailIds, canonicalCoreById),
-    [build, retailIds, canonicalCoreById],
+    () => importedRecommendations(build, retailIds, canonicalById),
+    [build, retailIds, canonicalById],
   );
 
   const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
@@ -279,9 +296,9 @@ export default function Builder() {
     // Exact listings AND recognised models, so the counter and the summary
     // describe the same set — including a build that arrived from elsewhere.
     // An id in neither is still rejected and counts for nothing.
-    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalCoreById);
-    return new Set(canonicalCoreById.keys());
-  }, [affiliateCatalog, retailIds, canonicalCoreById]);
+    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalById);
+    return new Set(canonicalById.keys());
+  }, [affiliateCatalog, retailIds, canonicalById]);
 
   const coreChosen = coreBuildCount(build, knownPartIds);
   const coreLabel = coreBuildLabel(build, knownPartIds);
