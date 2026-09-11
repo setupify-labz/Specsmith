@@ -114,7 +114,7 @@ export default function PrebuiltDetail() {
     },
     {
       title: 'Can I swap parts in this build?',
-      content: 'Yes — click "Customize in Builder" to load this exact build into the full Builder tool, where you can swap any component and see the compatibility checks and FPS estimates update live.',
+      content: 'Yes — click "Use this plan in Builder" to load these recommended models so you can choose current retailer listings and customize the build. The Builder shows compatibility checks and FPS estimates as you go.',
     },
   ];
 
@@ -236,7 +236,12 @@ export default function PrebuiltDetail() {
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
                   style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
                 >
-                  <Zap size={15} /> Customize in Builder <ChevronRight size={14} />
+                  {/* NOT "this exact build". The button hands the Builder
+                      canonical MODEL ids, and the Builder shows them as a plan
+                      of recommendations until the shopper picks actual
+                      listings. Calling that an exact build promised a
+                      purchasable cart and delivered a planning list. */}
+                  <Zap size={15} /> Use this plan in Builder <ChevronRight size={14} />
                 </button>
               </div>
 

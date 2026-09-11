@@ -15,8 +15,10 @@ import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import { PRICES_UPDATED } from '../../lib/prices';
 import {
   CHOOSE_LISTING_LABEL,
-  IMPORTED_BADGE,
-  IMPORTED_PRICE_NOTE,
+  ESTIMATED_PREFIX,
+  IMPORTED_PLAN_HEADING,
+  IMPORTED_PLAN_NOTICE,
+  chooseListingLabel,
   type ImportedRecommendation,
 } from '../../lib/retail/importedBuild';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
@@ -61,6 +63,25 @@ interface Props {
  * Those describe a part; these describe a listing, and mixing them would put
  * an editorial number in a column headed by real ones.
  */
+/**
+ * How tall the planned-part list may grow.
+ *
+ * Eight compact rows fit inside this, so an ordinary guide plan never produces
+ * a scrolling region at all. Twelve scroll within it — one deliberate box,
+ * which is what keeps the FPS action on screen at 1366x768 instead of 1,835px
+ * down the document.
+ *
+ * Measured, not guessed, and sized to the common case rather than rounded up:
+ * a two-line row is 34px, so the eight parts of a guide plan come to 272px and
+ * fit exactly, with the dividers. Anything beyond eight scrolls.
+ *
+ * The 24px this saves over a rounder 300 is not fussiness. A twelve-part plan
+ * with one listing already chosen puts the FPS action's bottom edge within a
+ * few pixels of a 768px viewport, and a cap chosen for neatness rather than
+ * for the row height is what pushes it over.
+ */
+const PLAN_ROWS_MAX_HEIGHT_PX = 276;
+
 export default function RetailBuildSummary({
   selectedParts,
   now,
@@ -102,17 +123,42 @@ export default function RetailBuildSummary({
       </button>
 
       {!collapsed && (
-        <div className="flex flex-col gap-3 border-t px-4 py-3" style={{ borderColor: 'var(--ff-border)' }}>
+        <div className="flex flex-col gap-2 border-t px-4 py-2.5" style={{ borderColor: 'var(--ff-border)' }}>
           {imported.length > 0 && (
-            <ul className="flex flex-col gap-3" data-testid="imported-recommendations">
-              {imported.map((recommendation) => (
-                <ImportedItem
-                  key={recommendation.category}
-                  recommendation={recommendation}
-                  onChooseListing={onChooseListing}
-                />
-              ))}
-            </ul>
+            <section aria-label={IMPORTED_PLAN_HEADING} data-testid="imported-plan">
+              {/* SAID ONCE. This is the copy that used to be repeated inside
+                  every card. As one notice it is read once by eye and announced
+                  once by a screen reader, instead of eight or twelve times. */}
+              <p
+                data-testid="imported-plan-notice"
+                className="mb-1.5 rounded-lg px-2 py-1 text-[11px] leading-tight"
+                style={{
+                  background: 'var(--ff-surface)',
+                  border: '1px dashed var(--ff-border)',
+                  color: 'var(--ff-text-2)',
+                }}
+              >
+                {IMPORTED_PLAN_NOTICE}
+              </p>
+
+              {/* BOUNDED ON PURPOSE. Capped at roughly eight rows: at eight or
+                  fewer nothing scrolls and no nested region exists, and a
+                  twelve-part plan scrolls inside this one deliberate box
+                  rather than pushing the FPS action off the screen. */}
+              <ul
+                data-testid="planned-rows"
+                className="divide-y overflow-y-auto"
+                style={{ maxHeight: `${PLAN_ROWS_MAX_HEIGHT_PX}px`, borderColor: 'var(--ff-border)' }}
+              >
+                {imported.map((recommendation) => (
+                  <PlannedRow
+                    key={recommendation.category}
+                    recommendation={recommendation}
+                    onChooseListing={onChooseListing}
+                  />
+                ))}
+              </ul>
+            </section>
           )}
 
           {chosenCount === 0 ? (
@@ -178,8 +224,31 @@ export default function RetailBuildSummary({
             </ul>
           )}
 
-          <div className="border-t pt-3" style={{ borderColor: 'var(--ff-border)' }}>
-            <div className="flex items-baseline justify-between gap-2">
+          <div className="border-t pt-2" style={{ borderColor: 'var(--ff-border)' }}>
+            {/* THE FPS ACTION COMES BEFORE THE MONEY DETAILS, on purpose.
+                It used to sit after the subtotal, the exclusions note and the
+                availability footnote, so every one of those pushed it further
+                down — and once a shopper replaced one planned part with a real
+                listing, those details returned and took the action back off
+                the screen at 1366x768. Ordering it first costs nothing: the
+                subtotal is a figure to read, the estimate is a thing to do,
+                and the one you came for should not be last. It is still inside
+                "Your build", and nothing else gained a scrolling region. */}
+            {estimate !== undefined && (
+              <div data-testid="summary-estimate">
+                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
+              </div>
+            )}
+
+            {/* THE RETAILER SUBTOTAL IS ABOUT RETAILER LISTINGS. With none
+                chosen there is nothing to total, and a row reading
+                "Known-price subtotal —" beside a footnote about retailer
+                availability is a hundred pixels of the sidebar saying nothing
+                — pixels that were pushing the FPS action off the screen. It
+                returns the moment a listing does, and it has never included an
+                editorial estimate. */}
+            {selectedParts.length > 0 && (
+            <div className="flex items-baseline justify-between gap-2" data-testid="retailer-subtotal">
               <span className="text-xs" style={{ color: 'var(--ff-text-2)' }} data-testid="subtotal-label">
                 {subtotalLabel(summary)}
               </span>
@@ -187,6 +256,7 @@ export default function RetailBuildSummary({
                 {summary.currency === null ? '—' : formatAmount(summary.knownTotal, summary.currency)}
               </span>
             </div>
+            )}
 
             {/* When the figure is partial, say so and say which items are out. */}
             {!summary.complete && selectedParts.length > 0 && (
@@ -207,15 +277,11 @@ export default function RetailBuildSummary({
               </p>
             )}
 
-            {estimate !== undefined && (
-              <div data-testid="summary-estimate">
-                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
-              </div>
+            {selectedParts.length > 0 && (
+              <p className="mt-2 text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="summary-availability">
+                {AVAILABILITY_UNKNOWN_LABEL} for every item. Prices come from the retailer feed and the merchant page is the source of truth.
+              </p>
             )}
-
-            <p className="mt-2 text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="summary-availability">
-              {AVAILABILITY_UNKNOWN_LABEL} for every item. Prices come from the retailer feed and the merchant page is the source of truth.
-            </p>
           </div>
         </div>
       )}
@@ -224,21 +290,23 @@ export default function RetailBuildSummary({
 }
 
 /**
- * A model carried in from elsewhere on the site, shown as a recommendation.
+ * One planned part: a compact row, not a card.
  *
- * WHAT IT MUST NOT LOOK LIKE. Not a purchase. It carries no image — there is no
- * listing to photograph — no retailer link, no availability, and no price that
- * could be mistaken for one a shopper can pay today. What it does carry is the
- * model's name, an estimate labelled as an estimate, and the one control that
- * turns it into a real decision.
+ * WHAT IT REPLACED, AND WHY. Every recommendation used to be a card carrying
+ * the full warning, a large badge and a large button. At eight parts that was
+ * 1,413 characters of identical copy, a summary 1,788px tall, and the FPS
+ * action 1,835px down the document — measured on the real Build Guide flow at
+ * 1363x936. The fix for "an imported build shows nothing" had become "an
+ * imported build shows nothing else".
  *
- * The estimate is shown at all rather than hidden because it is what made the
- * guide recommend this part, and dropping it would leave the shopper unable to
- * tell a £120 recommendation from a £900 one. It is shown STRUCK THROUGH of
- * nothing and beside its own sentence instead: `IMPORTED_PRICE_NOTE` travels
- * with the number wherever it appears.
+ * A row carries only what differs between rows: which category, which model,
+ * what it was estimated at and when. The three sentences that are the same for
+ * every row live once, in the notice above the list.
+ *
+ * IT STILL CLAIMS NOTHING. No image, no retailer link, no availability — there
+ * is no listing to have any of those, and that has not changed.
  */
-function ImportedItem({
+function PlannedRow({
   recommendation,
   onChooseListing,
 }: {
@@ -246,69 +314,64 @@ function ImportedItem({
   onChooseListing?: (category: string) => void;
 }) {
   const { category, name, estimatedPrice } = recommendation;
+  const categoryLabel = CATEGORY_LABELS[category as RetailPartCategory];
   return (
     <li
-      className="flex flex-col gap-1.5 rounded-lg p-2.5"
-      data-testid={`imported-item-${category}`}
+      className="flex items-center gap-2 py-1"
+      data-testid={`planned-row-${category}`}
       data-category={category}
-      style={{ border: '1px dashed var(--ff-border)', background: 'var(--ff-surface)' }}
     >
-      <div className="flex items-center gap-2">
-        <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--ff-text-3)' }}>
-          {CATEGORY_LABELS[category as RetailPartCategory]}
+      <div className="min-w-0 flex-1">
+        {/* TWO LINES, NOT THREE. Category and model share a line: at eight rows
+            the third line cost 128px of a sidebar that has to hold the FPS
+            action too. The category still reads first, which is how a shopper
+            scans a parts list. */}
+        <p className="flex items-baseline gap-1.5 truncate text-xs leading-tight">
+          <span
+            className="shrink-0 text-[10px] uppercase tracking-wide"
+            style={{ color: 'var(--ff-text-3)' }}
+            data-testid={`planned-category-${category}`}
+          >
+            {categoryLabel}
+          </span>
+          {/* THE COMPLETE NAME, TRUNCATED BY CSS ONLY.
+              `shortenTitle` cut the string itself, so the shortened text was
+              what reached the DOM and therefore what a screen reader announced
+              — "Corsair Vengeance LPX 16GB DDR4-3…" is not a model anyone can
+              search for or buy. `truncate` clips the same text visually while
+              leaving it whole for assistive technology, copy-and-paste and the
+              tooltip, and it adapts to the column instead of guessing at a
+              character count that is wrong at 320px and wasteful at 1440px. */}
+          <span
+            className="truncate"
+            style={{ color: 'var(--ff-text)' }}
+            title={name}
+            data-testid={`planned-name-${category}`}
+          >
+            {name}
+          </span>
         </p>
-        <span
-          data-testid={`imported-badge-${category}`}
-          className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
-          style={{ background: 'var(--ff-card-hover)', color: 'var(--ff-text-2)' }}
+        {/* The estimate keeps its word and its date on the row, because a bare
+            number beside a retailer price is exactly the confusion the notice
+            above is trying to prevent. */}
+        <p
+          className="text-[10px] leading-none"
+          style={{ color: 'var(--ff-text-3)' }}
+          data-testid={`planned-price-${category}`}
         >
-          {IMPORTED_BADGE}
-        </span>
+          {typeof estimatedPrice === 'number'
+            ? `${ESTIMATED_PREFIX} ${formatAmount(estimatedPrice, 'USD')} · ${PRICES_UPDATED}`
+            : 'No estimate recorded'}
+        </p>
       </div>
-
-      <p
-        className="text-xs leading-snug"
-        style={{ color: 'var(--ff-text)' }}
-        title={name}
-        data-testid={`imported-title-${category}`}
-      >
-        {shortenTitle(name, 44)}
-      </p>
-
-      {typeof estimatedPrice === 'number' ? (
-        <p className="text-[11px]" style={{ color: 'var(--ff-text-2)' }} data-testid={`imported-price-${category}`}>
-          {/* USD explicitly: the field behind this is `price_usd`, an
-              editorial figure in dollars, and it must not silently inherit
-              whatever currency a retailer listing happened to use. */}
-          <span style={{ color: 'var(--ff-text-3)' }}>Estimated</span> {formatAmount(estimatedPrice, 'USD')}
-          {/* WHEN the estimate is from, next to the number itself. An editorial
-              figure with no date reads as current, which is the one thing it is
-              not; a retailer listing beside it carries a checked-at timestamp,
-              and this is the equivalent honesty for a figure that has none. */}
-          {' · updated '}
-          <span data-testid={`imported-updated-${category}`}>{PRICES_UPDATED}</span>
-          {' — '}
-          {IMPORTED_PRICE_NOTE}
-        </p>
-      ) : (
-        <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid={`imported-price-${category}`}>
-          No estimate recorded for this model.
-        </p>
-      )}
 
       <button
         type="button"
         data-testid={`choose-listing-${category}`}
-        // EVERY ONE OF THESE SAYS WHICH CATEGORY IT IS FOR. A build carried in
-        // from a guide shows up to twelve of these buttons at once, and a
-        // screen-reader user moving between them heard "Choose current
-        // listing" twelve times with nothing to tell them apart. The visible
-        // text stays short because the label beside it is already on screen;
-        // the accessible name has to carry what the eye gets from position.
-        aria-label={`${CHOOSE_LISTING_LABEL} for ${CATEGORY_LABELS[category as RetailPartCategory]}`}
+        aria-label={chooseListingLabel(categoryLabel)}
         onClick={() => onChooseListing?.(category)}
         disabled={onChooseListing === undefined}
-        className="ff-accent-control mt-0.5 inline-flex w-fit items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
+        className="ff-accent-control shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold"
         style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
       >
         {CHOOSE_LISTING_LABEL}

@@ -66,7 +66,10 @@ const openAt = async (path: string) => {
 
 const counter = () => screen.getByTestId('core-progress').textContent ?? '';
 const summaryCount = () => screen.getByTestId('view-build').textContent ?? '';
-const recommendations = () => document.querySelectorAll('[data-testid^="imported-item-"]');
+// The compact planned-part rows. These were oversized cards until the plan was
+// made compact; the assertions below are about BEHAVIOUR and survived that
+// change unaltered — only what they point at moved.
+const recommendations = () => document.querySelectorAll('[data-testid^="planned-row-"]');
 
 const queryFor = (build: Record<string, string>) =>
   Object.entries(build).map(([k, v]) => `${k}=${v}`).join('&');
@@ -80,15 +83,19 @@ describe('a Build Guide prebuilt — Budget Beast', () => {
     expect(summaryCount()).toContain('(8)');
   }, 30000);
 
-  it('labels each one as an imported recommendation', async () => {
+  it('labels the whole plan once, rather than badging every row', async () => {
+    // This asserted a badge inside each of eight cards. The badge is gone on
+    // purpose: eight identical labels were part of the 1,413 characters of
+    // repeated copy. The property it was protecting — a shopper is told these
+    // are recommendations, not listings — is now carried by one notice.
     await openAt(`/builder?${queryFor(budget.parts)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(8));
 
+    const notices = document.querySelectorAll('[data-testid="imported-plan-notice"]');
+    expect(notices.length).toBeGreaterThanOrEqual(1);
+    expect(notices[0].textContent).toMatch(/recommended model/i);
     for (const category of CORE) {
-      const item = screen.getByTestId(`imported-item-${category}`);
-      expect(within(item).getByTestId(`imported-badge-${category}`).textContent).toBe(
-        'Imported recommendation',
-      );
+      expect(screen.getByTestId(`planned-row-${category}`)).toBeTruthy();
     }
   }, 30000);
 
@@ -96,7 +103,7 @@ describe('a Build Guide prebuilt — Budget Beast', () => {
     await openAt(`/builder?${queryFor(budget.parts)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(8));
     // Not a retailer listing that happens to look similar — the model itself.
-    expect(screen.getByTestId('imported-title-gpu').textContent).toMatch(/6600/i);
+    expect(screen.getByTestId('planned-name-gpu').textContent).toMatch(/6600/i);
   }, 30000);
 });
 
@@ -105,9 +112,13 @@ describe('an imported estimate is never a retailer price', () => {
     await openAt(`/builder?${queryFor(budget.parts)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(8));
 
-    const price = screen.getByTestId('imported-price-gpu').textContent ?? '';
+    // The row keeps the word "Estimated" and the date; the sentence explaining
+    // what that means is in the shared notice, said once.
+    const price = screen.getByTestId('planned-price-gpu').textContent ?? '';
     expect(price).toMatch(/estimated/i);
-    expect(price).toMatch(/not a current retailer listing/i);
+    expect(price).toContain(PRICES_UPDATED);
+    const notice = document.querySelector('[data-testid="imported-plan-notice"]')?.textContent ?? '';
+    expect(notice).toMatch(/not live retailer prices/i);
   }, 30000);
 
   it('keeps them out of the retailer subtotal entirely', async () => {
@@ -129,7 +140,7 @@ describe('an imported estimate is never a retailer price', () => {
     await openAt(`/builder?${queryFor(budget.parts)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(8));
 
-    const item = screen.getByTestId('imported-item-gpu');
+    const item = screen.getByTestId('planned-row-gpu');
     expect(item.querySelectorAll('a[href]')).toHaveLength(0);
     expect(item.querySelectorAll('img')).toHaveLength(0);
     expect(item.textContent).not.toMatch(/in stock|availability/i);
@@ -157,7 +168,7 @@ describe('choosing a current listing', () => {
     fireEvent.click(card!.querySelector('[data-testid="add-to-build"]')!);
 
     // The GPU slot is now an exact SKU; the other seven are untouched.
-    await waitFor(() => expect(screen.queryByTestId('imported-item-gpu')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('planned-row-gpu')).toBeNull());
     expect(recommendations()).toHaveLength(7);
     expect(screen.getByTestId('summary-item-gpu')).toBeTruthy();
     // And the totals still agree — one listing plus seven recommendations.
@@ -281,7 +292,7 @@ describe('peripherals are imported too', () => {
 
     await waitFor(() => expect(recommendations()).toHaveLength(4));
     for (const category of Object.keys(PERIPHERALS)) {
-      expect(screen.getByTestId(`imported-item-${category}`)).toBeTruthy();
+      expect(screen.getByTestId(`planned-row-${category}`)).toBeTruthy();
     }
   }, 30000);
 
@@ -345,7 +356,7 @@ describe('peripherals are imported too', () => {
     });
     fireEvent.click(card.querySelector('[data-testid="add-to-build"]')!);
 
-    await waitFor(() => expect(screen.queryByTestId('imported-item-monitor')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('planned-row-monitor')).toBeNull());
     expect(recommendations()).toHaveLength(11);
     expect(screen.getByTestId('summary-item-monitor')).toBeTruthy();
     // Twelve parts still, and the core progress is untouched by a peripheral.
@@ -362,16 +373,16 @@ describe('the estimate carries its date', () => {
     await openAt(`/builder?${queryFor(fullTwelve)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(12));
 
-    const price = screen.getByTestId('imported-price-gpu');
+    const price = screen.getByTestId('planned-price-gpu');
     expect(price.textContent).toContain(PRICES_UPDATED);
-    expect(price.textContent).toMatch(/updated/i);
+    expect(price.textContent).toMatch(/estimated/i);
   }, 30000);
 
   it('carries it on every priced recommendation, not just the first', async () => {
     await openAt(`/builder?${queryFor(fullTwelve)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(12));
 
-    const priced = [...document.querySelectorAll('[data-testid^="imported-price-"]')].filter(
+    const priced = [...document.querySelectorAll('[data-testid^="planned-price-"]')].filter(
       (node) => /Estimated\s*\$/.test(node.textContent ?? ''),
     );
     expect(priced.length).toBeGreaterThan(1);
@@ -389,9 +400,9 @@ describe('twelve buttons that look identical', () => {
     await waitFor(() => expect(recommendations()).toHaveLength(12));
 
     const monitor = screen.getAllByTestId('choose-listing-monitor')[0];
-    expect(monitor.getAttribute('aria-label')).toBe('Choose current listing for Monitor');
+    expect(monitor.getAttribute('aria-label')).toBe('Choose listing for Monitor');
     const gpu = screen.getAllByTestId('choose-listing-gpu')[0];
-    expect(gpu.getAttribute('aria-label')).toBe('Choose current listing for Graphics card');
+    expect(gpu.getAttribute('aria-label')).toBe('Choose listing for Graphics card');
   }, 30000);
 
   it('gives no two of them the same accessible name', async () => {

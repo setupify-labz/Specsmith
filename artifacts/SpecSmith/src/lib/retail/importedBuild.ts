@@ -139,12 +139,38 @@ export function recognisedPartIds(
   return recognised;
 }
 
-/** Shown wherever an imported recommendation's price appears. Never omitted. */
-export const IMPORTED_PRICE_NOTE =
-  'Estimated price for this model, not a current retailer listing.';
+/**
+ * The whole explanation, said ONCE above the plan.
+ *
+ * WHY IT MOVED. It used to be repeated inside every recommendation, which at
+ * eight parts meant 1,413 characters of identical warning, a summary 1,788px
+ * tall, and the FPS action 1,835px down the page where nobody saw it. Three
+ * sentences a shopper reads once do not become truer for being printed eight
+ * times; they become a wall the shopper scrolls past.
+ *
+ * All three facts survive verbatim — these are recommended MODELS, an exact
+ * listing has to be chosen before buying, and the figures are dated planning
+ * estimates rather than live prices. Only the repetition is gone.
+ */
+export const IMPORTED_PLAN_NOTICE =
+  'Recommended models, not listings. Choose a current retailer listing in each category before buying. Prices are dated planning estimates, not live retailer prices.';
 
-/** The label on an imported slot. One string, so it cannot drift between views. */
-export const IMPORTED_BADGE = 'Imported recommendation';
+/** The heading above the planned parts. */
+export const IMPORTED_PLAN_HEADING = 'Planned parts';
+
+/** Per-row prefix on an estimate, so the number is never bare. */
+export const ESTIMATED_PREFIX = 'Estimated';
 
 /** The action that turns a recommendation into a real purchase decision. */
-export const CHOOSE_LISTING_LABEL = 'Choose current listing';
+export const CHOOSE_LISTING_LABEL = 'Choose listing';
+
+/**
+ * The accessible name for one row's action.
+ *
+ * Twelve buttons reading "Choose listing" are twelve identical announcements;
+ * the category is what tells them apart, and a screen-reader user has nothing
+ * else to go on.
+ */
+export function chooseListingLabel(categoryLabel: string): string {
+  return `${CHOOSE_LISTING_LABEL} for ${categoryLabel}`;
+}

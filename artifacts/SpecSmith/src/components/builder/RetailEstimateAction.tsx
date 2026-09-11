@@ -5,16 +5,20 @@ interface Props {
 
 export default function RetailEstimateAction({ canEstimate, onEstimate }: Props) {
   return (
-    <section aria-label="Build performance" className="my-6 rounded-xl border border-subtle p-4">
-      <h2 className="text-lg font-bold mb-2">Estimate your gaming performance</h2>
-      <p id="retail-estimate-help" className="text-sm text-secondary-custom mb-3">
+    /* TIGHTER, WORD FOR WORD THE SAME. This block sat inside a sidebar that a
+       guide plan had already filled, and its padding put the button below the
+       fold at 1366x768. Nothing is removed — the explanation a shopper needs in
+       order to understand a withheld estimate is exactly as long as it was. */
+    <section aria-label="Build performance" className="my-3 rounded-xl border border-subtle p-3">
+      <h2 className="text-base font-bold mb-1.5">Estimate your gaming performance</h2>
+      <p id="retail-estimate-help" className="text-xs leading-snug text-secondary-custom mb-2.5">
         {canEstimate
           ? 'Your selected GPU and CPU have supported specifications. Compare estimated FPS across games, resolutions, and presets.'
           : 'Select a GPU and CPU with verified mappings to the estimator. Some retailer products are not supported yet; we will not guess their performance.'}
       </p>
       <button type="button" disabled={!canEstimate} onClick={onEstimate}
         aria-describedby="retail-estimate-help"
-        className="rounded-lg px-5 py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        className="rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}>
         Estimate FPS
       </button>
