@@ -9,7 +9,7 @@
 // request silently does nothing. Two cases hit it in ordinary use: the GPU
 // selector, which is `defaultOpen`, and any category asked for twice running.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 
 import PartSelector from './PartSelector';
 
@@ -42,6 +42,26 @@ const renderSelector = (props: Record<string, unknown> = {}) =>
   );
 
 const section = () => document.querySelector('[data-part-section="cpu"]')!;
+/**
+ * Wait until the request has stopped scrolling, and answer how many it did.
+ *
+ * WHY A COUNT CANNOT BE ASSERTED DIRECTLY. The request re-asserts itself each
+ * frame until the selector is on screen. jsdom has no layout, so
+ * `getBoundingClientRect()` is all zeros, "on screen" is never true, and every
+ * request runs to its frame bound — one click produces around twenty-six
+ * scrolls here, not one. Sampling that count mid-flight is a race: it reads 1
+ * only if the assertion wins against the next frame, which depends on how
+ * loaded the machine is. What these tests actually mean is "a scroll sequence
+ * started" or "none did", so that is what they ask.
+ */
+const quiesce = async (): Promise<number> => {
+  let previous = -1;
+  while (previous !== scrolled.length) {
+    previous = scrolled.length;
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  }
+  return scrolled.length;
+};
 /** An open selector renders its parts list; a closed one renders only its header. */
 const isOpen = (root: Element) => root.querySelectorAll('button').length > 1;
 
@@ -66,8 +86,9 @@ describe('a selector that is already open', () => {
       />,
     );
 
-    await waitFor(() => expect(scrolled).toHaveLength(1));
-    expect(scrolled[0]).toBe(section());
+    expect(await quiesce()).toBeGreaterThan(0);
+    // Every scroll in the sequence aimed at this selector and no other.
+    expect(new Set(scrolled)).toEqual(new Set([section()]));
     expect(isOpen(section())).toBe(true);
   });
 });
@@ -91,21 +112,24 @@ describe('the same category requested twice', () => {
     expect(isOpen(section())).toBe(false);
 
     rerenderWith(view, 1);
-    await waitFor(() => expect(scrolled).toHaveLength(1));
+    const afterFirst = await quiesce();
+    expect(afterFirst).toBeGreaterThan(0);
     expect(isOpen(section())).toBe(true);
 
     // Second click on the same action. The selector is open by now, which is
-    // exactly the state the old code could not scroll from.
+    // exactly the state the old code could not scroll from: it scrolled not at
+    // all, so the test is that a NEW sequence starts, not how long it runs.
     rerenderWith(view, 2);
-    await waitFor(() => expect(scrolled).toHaveLength(2));
-    expect(scrolled[1]).toBe(section());
+    expect(await quiesce()).toBeGreaterThan(afterFirst);
+    expect(scrolled[scrolled.length - 1]).toBe(section());
   });
 
   it('does not scroll again when nothing was requested', async () => {
     // An unrelated re-render — a price refresh, a parent state change — must
     // not move the page under the shopper.
     const view = renderSelector({ openSignal: 1 });
-    await waitFor(() => expect(scrolled).toHaveLength(1));
+    const afterRequest = await quiesce();
+    expect(afterRequest).toBeGreaterThan(0);
 
     view.rerender(
       <PartSelector
@@ -118,8 +142,9 @@ describe('the same category requested twice', () => {
         openSignal={1}
       />,
     );
-    await Promise.resolve();
-    expect(scrolled).toHaveLength(1);
+    // Nothing new may start. Waited out properly rather than sampled, so a
+    // late frame cannot slip past the assertion.
+    expect(await quiesce()).toBe(afterRequest);
   });
 
   it('never scrolls when no request is made at all', async () => {
