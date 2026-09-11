@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   CHOOSE_LISTING_LABEL,
-  IMPORTED_BADGE,
-  IMPORTED_PRICE_NOTE,
+  IMPORTED_PLAN_NOTICE,
+  chooseListingLabel,
   importedRecommendations,
   recognisedPartIds,
   slotOrigin,
@@ -100,15 +100,28 @@ describe('what the counter counts', () => {
 });
 
 describe('the words shown to a shopper', () => {
-  it('say estimate, and say it is not a retailer price', () => {
-    expect(IMPORTED_PRICE_NOTE.toLowerCase()).toContain('estimated');
-    expect(IMPORTED_PRICE_NOTE.toLowerCase()).toContain('not a current retailer');
-    expect(IMPORTED_BADGE).toBe('Imported recommendation');
-    expect(CHOOSE_LISTING_LABEL).toBe('Choose current listing');
+  it('carry all three facts in ONE notice', () => {
+    // These were three sentences repeated inside every card — 1,413 characters
+    // at eight parts. Said once, they still have to say everything.
+    const notice = IMPORTED_PLAN_NOTICE.toLowerCase();
+    expect(notice).toContain('recommended model');
+    expect(notice).toContain('before buying');
+    expect(notice).toContain('estimate');
+    expect(notice).toContain('not live retailer prices');
   });
 
-  it('never claim availability or a live price', () => {
-    for (const copy of [IMPORTED_PRICE_NOTE, IMPORTED_BADGE, CHOOSE_LISTING_LABEL]) {
+  it('keeps the notice short enough to be read rather than skipped', () => {
+    expect(IMPORTED_PLAN_NOTICE.length).toBeLessThan(220);
+  });
+
+  it('names the category in each action, so twelve are not identical', () => {
+    expect(CHOOSE_LISTING_LABEL).toBe('Choose listing');
+    expect(chooseListingLabel('Monitor')).toBe('Choose listing for Monitor');
+    expect(chooseListingLabel('Graphics card')).toBe('Choose listing for Graphics card');
+  });
+
+  it('never claims availability or a live price', () => {
+    for (const copy of [IMPORTED_PLAN_NOTICE, CHOOSE_LISTING_LABEL]) {
       expect(copy.toLowerCase()).not.toContain('in stock');
       expect(copy.toLowerCase()).not.toMatch(/\bcurrent price\b/);
     }

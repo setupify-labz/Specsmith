@@ -67,6 +67,38 @@ export default function RetailBuilder({
   }, [requestToken, requestedCategory]);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+
+  /**
+   * Where focus goes after a planned row sends the shopper to a category.
+   *
+   * On a phone the sheet closes, which DESTROYS the button that was focused —
+   * focus falls back to the document body, and a keyboard or screen-reader
+   * user is dropped at the top of the page with no idea the category changed.
+   * Moving it onto the now-active category control says where they landed and
+   * leaves them next to the products they were sent to.
+   */
+  const [focusAfterChoose, setFocusAfterChoose] = useState<RetailPartCategory | null>(null);
+  useEffect(() => {
+    if (!focusAfterChoose) return;
+    // After the commit that closed the sheet, so the target exists and the
+    // element that had focus is already gone.
+    const frame = requestAnimationFrame(() => {
+      const candidates = [
+        `[data-testid="category-chip-${focusAfterChoose}"]`,
+        `[data-testid="category-rail-${focusAfterChoose}"]`,
+      ].flatMap((selector) => [...document.querySelectorAll<HTMLElement>(selector)]);
+      // Prefer one that is actually on screen — the chip row on a phone, the
+      // rail on a desktop. A layout-free environment reports every element as
+      // unrendered, so falling back to the first match keeps this working
+      // there rather than silently focusing nothing.
+      const visible = candidates.find(
+        (element) => element.offsetParent !== null || element.getClientRects().length > 0,
+      );
+      (visible ?? candidates[0])?.focus();
+      setFocusAfterChoose(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAfterChoose]);
   const clock = now ?? Date.now();
 
   // THE WHITE COLLECTION IS A FILTER, NOT A CATEGORY. The twelve categories
@@ -129,6 +161,7 @@ export default function RetailBuilder({
       onChooseListing={(category) => {
         setActive(category as RetailPartCategory);
         setMobileSummaryOpen(false);
+        setFocusAfterChoose(category as RetailPartCategory);
       }}
     />
   );
