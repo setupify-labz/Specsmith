@@ -71,10 +71,16 @@ interface Props {
  * which is what keeps the FPS action on screen at 1366x768 instead of 1,835px
  * down the document.
  *
- * Measured, not guessed: a two-line row is ~34px, so eight come to ~272px and
- * sit inside this cap with room to spare.
+ * Measured, not guessed, and sized to the common case rather than rounded up:
+ * a two-line row is 34px, so the eight parts of a guide plan come to 272px and
+ * fit exactly, with the dividers. Anything beyond eight scrolls.
+ *
+ * The 24px this saves over a rounder 300 is not fussiness. A twelve-part plan
+ * with one listing already chosen puts the FPS action's bottom edge within a
+ * few pixels of a 768px viewport, and a cap chosen for neatness rather than
+ * for the row height is what pushes it over.
  */
-const PLAN_ROWS_MAX_HEIGHT_PX = 300;
+const PLAN_ROWS_MAX_HEIGHT_PX = 276;
 
 export default function RetailBuildSummary({
   selectedParts,
@@ -125,7 +131,7 @@ export default function RetailBuildSummary({
                   once by a screen reader, instead of eight or twelve times. */}
               <p
                 data-testid="imported-plan-notice"
-                className="mb-1.5 rounded-lg px-2 py-1.5 text-[11px] leading-snug"
+                className="mb-1.5 rounded-lg px-2 py-1 text-[11px] leading-tight"
                 style={{
                   background: 'var(--ff-surface)',
                   border: '1px dashed var(--ff-border)',
@@ -219,6 +225,21 @@ export default function RetailBuildSummary({
           )}
 
           <div className="border-t pt-2" style={{ borderColor: 'var(--ff-border)' }}>
+            {/* THE FPS ACTION COMES BEFORE THE MONEY DETAILS, on purpose.
+                It used to sit after the subtotal, the exclusions note and the
+                availability footnote, so every one of those pushed it further
+                down — and once a shopper replaced one planned part with a real
+                listing, those details returned and took the action back off
+                the screen at 1366x768. Ordering it first costs nothing: the
+                subtotal is a figure to read, the estimate is a thing to do,
+                and the one you came for should not be last. It is still inside
+                "Your build", and nothing else gained a scrolling region. */}
+            {estimate !== undefined && (
+              <div data-testid="summary-estimate">
+                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
+              </div>
+            )}
+
             {/* THE RETAILER SUBTOTAL IS ABOUT RETAILER LISTINGS. With none
                 chosen there is nothing to total, and a row reading
                 "Known-price subtotal —" beside a footnote about retailer
@@ -254,12 +275,6 @@ export default function RetailBuildSummary({
                         .join(', ')}. Check the retailer for those.`}
                 </span>
               </p>
-            )}
-
-            {estimate !== undefined && (
-              <div data-testid="summary-estimate">
-                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
-              </div>
             )}
 
             {selectedParts.length > 0 && (
@@ -319,13 +334,21 @@ function PlannedRow({
           >
             {categoryLabel}
           </span>
+          {/* THE COMPLETE NAME, TRUNCATED BY CSS ONLY.
+              `shortenTitle` cut the string itself, so the shortened text was
+              what reached the DOM and therefore what a screen reader announced
+              — "Corsair Vengeance LPX 16GB DDR4-3…" is not a model anyone can
+              search for or buy. `truncate` clips the same text visually while
+              leaving it whole for assistive technology, copy-and-paste and the
+              tooltip, and it adapts to the column instead of guessing at a
+              character count that is wrong at 320px and wasteful at 1440px. */}
           <span
             className="truncate"
             style={{ color: 'var(--ff-text)' }}
             title={name}
             data-testid={`planned-name-${category}`}
           >
-            {shortenTitle(name, 28)}
+            {name}
           </span>
         </p>
         {/* The estimate keeps its word and its date on the row, because a bare

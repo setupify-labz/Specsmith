@@ -312,3 +312,112 @@ describe('the retailer subtotal appears only when there is retailer money', () =
     expect(amount).not.toBe('—');
   }, 30000);
 });
+
+// ---------------------------------------------------------------------------
+// Review blockers.
+// ---------------------------------------------------------------------------
+
+/** A real catalogue model whose name is longer than the old 28-char cut. */
+const LONG_RAM_ID = 'cdt32ddr5';
+const LONG_RAM_NAME = 'Corsair Dominator Titanium 32GB DDR5-7200';
+
+describe('a planned model keeps its whole name', () => {
+  it('puts the complete name in the DOM, not a shortened string', async () => {
+    // `shortenTitle(name, 28)` cut the STRING, so the shortened text was what
+    // reached the DOM and therefore what a screen reader announced:
+    // "Corsair Dominator Titanium 32…" is not a model anyone can search for or
+    // buy. CSS clips it visually and leaves it whole underneath.
+    expect(LONG_RAM_NAME.length).toBeGreaterThan(28);
+    await openAt(`/builder?${queryFor({ ...budget.parts, ram: LONG_RAM_ID })}`);
+    await waitFor(() => expect(rows()).toHaveLength(8));
+
+    const name = within(summary()).getByTestId('planned-name-ram');
+    expect(name.textContent).toBe(LONG_RAM_NAME);
+    expect(name.textContent).not.toMatch(/…|\.\.\./);
+  }, 30000);
+
+  it('offers the complete name to assistive technology at 320px', async () => {
+    // Width is a CSS concern; the accessible name must not depend on it. What
+    // this pins is that nothing in the component trims the string by size.
+    await openAt(`/builder?${queryFor({ ...budget.parts, ram: LONG_RAM_ID })}`);
+    await waitFor(() => expect(rows()).toHaveLength(8));
+
+    const name = within(summary()).getByTestId('planned-name-ram');
+    // The accessible name of the row's text node is its own content.
+    expect(name.textContent).toBe(LONG_RAM_NAME);
+    // And the tooltip carries it too, for a pointer user who sees the clip.
+    expect(name.getAttribute('title')).toBe(LONG_RAM_NAME);
+    // Clipping is CSS, so the visual truncation cannot eat the text.
+    expect(name.className).toContain('truncate');
+  }, 30000);
+
+  it('offers the complete name at 375px too', async () => {
+    await openAt(`/builder?${queryFor({ ...budget.parts, ram: LONG_RAM_ID })}`);
+    await waitFor(() => expect(rows()).toHaveLength(8));
+
+    // Both summary copies — the desktop column and the mobile sheet — carry the
+    // whole name, so a phone user is not given a different, shorter answer.
+    const named = [...document.querySelectorAll('[data-testid="planned-name-ram"]')];
+    expect(named.length).toBeGreaterThan(0);
+    for (const node of named) {
+      expect(node.textContent).toBe(LONG_RAM_NAME);
+    }
+  }, 30000);
+});
+
+describe('the FPS action is reachable, not merely present', () => {
+  const order = () => {
+    const nodes = [...summary().querySelectorAll('[data-testid]')];
+    const index = (id: string) => nodes.findIndex((n) => n.getAttribute('data-testid') === id);
+    return {
+      notice: index('imported-plan-notice'),
+      rows: index('planned-rows'),
+      estimate: index('summary-estimate'),
+      subtotal: index('retailer-subtotal'),
+      availability: index('summary-availability'),
+    };
+  };
+
+  it('comes after the plan and BEFORE the money details', async () => {
+    // Containment is not reachability. The action used to sit after the
+    // subtotal, the exclusions note and the availability footnote, so each of
+    // those pushed it further down — and they all return the moment a real
+    // listing is chosen.
+    await openAt(`/builder?${queryFor({ ...budget.parts, ...PERIPHERALS })}`);
+    await waitFor(() => expect(rows()).toHaveLength(12));
+
+    const gpu = onScreen('gpu');
+    fireEvent.click(
+      document.querySelector(`[data-part-id="${gpu.id}"]`)!.querySelector('[data-testid="add-to-build"]')!,
+    );
+    await waitFor(() => expect(rows()).toHaveLength(11));
+
+    const seen = order();
+    expect(seen.notice).toBeGreaterThanOrEqual(0);
+    expect(seen.rows).toBeGreaterThan(seen.notice);
+    expect(seen.estimate).toBeGreaterThan(seen.rows);
+    // The details that return with a real listing now come AFTER it.
+    expect(seen.subtotal).toBeGreaterThan(seen.estimate);
+    expect(seen.availability).toBeGreaterThan(seen.estimate);
+  }, 30000);
+
+  it('keeps every part of the build column in one scrolling region, not several', async () => {
+    // A twelve-part plan is allowed ONE bounded list. Adding a second scroller
+    // to rescue the FPS action would trade one usability defect for another.
+    await openAt(`/builder?${queryFor({ ...budget.parts, ...PERIPHERALS })}`);
+    await waitFor(() => expect(rows()).toHaveLength(12));
+
+    const scrollers = [...summary().querySelectorAll('[class*="overflow-y-auto"], [class*="overflow-auto"]')];
+    expect(scrollers).toHaveLength(1);
+    expect(scrollers[0].getAttribute('data-testid')).toBe('planned-rows');
+  }, 30000);
+
+  it('is still inside the build, and still the only one', async () => {
+    await openAt(`/builder?${queryFor(budget.parts)}`);
+    await waitFor(() => expect(rows()).toHaveLength(8));
+
+    const estimate = within(summary()).getByTestId('summary-estimate');
+    expect(summary().contains(estimate)).toBe(true);
+    expect(summary().querySelectorAll('[data-testid="summary-estimate"]')).toHaveLength(1);
+  }, 30000);
+});
