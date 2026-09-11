@@ -42,26 +42,37 @@ const renderSelector = (props: Record<string, unknown> = {}) =>
   );
 
 const section = () => document.querySelector('[data-part-section="cpu"]')!;
+
 /**
- * Wait until the request has stopped scrolling, and answer how many it did.
+ * Take the animation frames under control, and run them on demand.
  *
- * WHY A COUNT CANNOT BE ASSERTED DIRECTLY. The request re-asserts itself each
- * frame until the selector is on screen. jsdom has no layout, so
- * `getBoundingClientRect()` is all zeros, "on screen" is never true, and every
- * request runs to its frame bound — one click produces around twenty-six
- * scrolls here, not one. Sampling that count mid-flight is a race: it reads 1
- * only if the assertion wins against the next frame, which depends on how
- * loaded the machine is. What these tests actually mean is "a scroll sequence
- * started" or "none did", so that is what they ask.
+ * WHY EVERY SCROLL COUNT HERE NEEDS THIS. The request re-asserts itself each
+ * frame until the selector is on screen. jsdom has no layout, so the element
+ * always reports a zero-size box and it never is: left to the real clock the
+ * loop keeps firing and the count grows with however long the machine takes.
+ * Asserting a fixed number against that is a test that passes alone and fails
+ * in a full suite — which is exactly what one of them did.
+ *
+ * Draining to exhaustion instead means a count is taken when the sequence has
+ * finished, so what is compared is whether a NEW sequence started.
  */
-const quiesce = async (): Promise<number> => {
-  let previous = -1;
-  while (previous !== scrolled.length) {
-    previous = scrolled.length;
-    await new Promise((resolve) => setTimeout(resolve, 60));
-  }
-  return scrolled.length;
-};
+function controlledFrames() {
+  const frames: FrameRequestCallback[] = [];
+  vi.stubGlobal('requestAnimationFrame', ((cb: FrameRequestCallback) => {
+    frames.push(cb);
+    return frames.length;
+  }) as unknown as typeof requestAnimationFrame);
+  vi.stubGlobal('cancelAnimationFrame', (() => {}) as unknown as typeof cancelAnimationFrame);
+  return () => {
+    let ran = 0;
+    while (frames.length > 0 && ran < 200) {
+      frames.shift()!(0);
+      ran += 1;
+    }
+  };
+}
+
+afterEach(() => vi.unstubAllGlobals());
 /** An open selector renders its parts list; a closed one renders only its header. */
 const isOpen = (root: Element) => root.querySelectorAll('button').length > 1;
 
@@ -70,6 +81,7 @@ describe('a selector that is already open', () => {
     // The GPU selector on the real page is `defaultOpen`, so "choose a
     // graphics card" always lands on this path. Under the old code it opened
     // nothing, changed no state, and scrolled nowhere.
+    const drain = controlledFrames();
     const view = renderSelector({ defaultOpen: true, openSignal: undefined });
     expect(isOpen(section())).toBe(true);
 
@@ -86,7 +98,8 @@ describe('a selector that is already open', () => {
       />,
     );
 
-    expect(await quiesce()).toBeGreaterThan(0);
+    drain();
+    expect(scrolled.length).toBeGreaterThan(0);
     // Every scroll in the sequence aimed at this selector and no other.
     expect(new Set(scrolled)).toEqual(new Set([section()]));
     expect(isOpen(section())).toBe(true);
@@ -108,27 +121,40 @@ describe('the same category requested twice', () => {
         />,
       );
 
+    const drain = controlledFrames();
     const view = renderSelector();
     expect(isOpen(section())).toBe(false);
 
     rerenderWith(view, 1);
-    const afterFirst = await quiesce();
+    drain();
+    const afterFirst = scrolled.length;
     expect(afterFirst).toBeGreaterThan(0);
     expect(isOpen(section())).toBe(true);
 
     // Second click on the same action. The selector is open by now, which is
-    // exactly the state the old code could not scroll from: it scrolled not at
-    // all, so the test is that a NEW sequence starts, not how long it runs.
+    // exactly the state the old code could not scroll from.
     rerenderWith(view, 2);
-    expect(await quiesce()).toBeGreaterThan(afterFirst);
+    drain();
+    // A NEW sequence started — which is the property, since the old code
+    // scrolled not at all from an already-open selector.
+    expect(scrolled.length).toBeGreaterThan(afterFirst);
     expect(scrolled[scrolled.length - 1]).toBe(section());
   });
 
   it('does not scroll again when nothing was requested', async () => {
     // An unrelated re-render — a price refresh, a parent state change — must
     // not move the page under the shopper.
+    //
+    // FRAMES ARE DRIVEN BY HAND HERE, and that is not fussiness. The request
+    // re-asserts itself until the selector is on screen, and in jsdom every
+    // element reports a zero-size box, so it never is: left to the real clock
+    // the loop keeps firing and the count grows with however long the machine
+    // takes. Asserting a fixed number against that is a test that passes alone
+    // and fails in a full suite — which is exactly what it did.
+    const drain = controlledFrames();
     const view = renderSelector({ openSignal: 1 });
-    const afterRequest = await quiesce();
+    drain();
+    const afterRequest = scrolled.length;
     expect(afterRequest).toBeGreaterThan(0);
 
     view.rerender(
@@ -142,9 +168,11 @@ describe('the same category requested twice', () => {
         openSignal={1}
       />,
     );
-    // Nothing new may start. Waited out properly rather than sampled, so a
-    // late frame cannot slip past the assertion.
-    expect(await quiesce()).toBe(afterRequest);
+    drain();
+
+    // The token did not change, so the effect did not re-run and nothing new
+    // was scheduled or scrolled.
+    expect(scrolled).toHaveLength(afterRequest);
   });
 
   it('never scrolls when no request is made at all', async () => {

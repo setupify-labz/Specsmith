@@ -8,6 +8,7 @@ import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import type { ImportedRecommendation } from '../../lib/retail/importedBuild';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -30,6 +31,8 @@ interface Props {
    * unchanged on the second click and quietly do nothing.
    */
   categoryRequest?: { category: RetailPartCategory; token: number } | null;
+  /** Canonical models imported from elsewhere and not yet replaced by a listing. */
+  imported?: readonly ImportedRecommendation[];
 }
 
 /**
@@ -50,6 +53,7 @@ export default function RetailBuilder({
   estimate,
   processedImages,
   categoryRequest,
+  imported,
 }: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   // Opening a category from outside is the same act as clicking it in the
@@ -63,6 +67,38 @@ export default function RetailBuilder({
   }, [requestToken, requestedCategory]);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+
+  /**
+   * Where focus goes after a planned row sends the shopper to a category.
+   *
+   * On a phone the sheet closes, which DESTROYS the button that was focused —
+   * focus falls back to the document body, and a keyboard or screen-reader
+   * user is dropped at the top of the page with no idea the category changed.
+   * Moving it onto the now-active category control says where they landed and
+   * leaves them next to the products they were sent to.
+   */
+  const [focusAfterChoose, setFocusAfterChoose] = useState<RetailPartCategory | null>(null);
+  useEffect(() => {
+    if (!focusAfterChoose) return;
+    // After the commit that closed the sheet, so the target exists and the
+    // element that had focus is already gone.
+    const frame = requestAnimationFrame(() => {
+      const candidates = [
+        `[data-testid="category-chip-${focusAfterChoose}"]`,
+        `[data-testid="category-rail-${focusAfterChoose}"]`,
+      ].flatMap((selector) => [...document.querySelectorAll<HTMLElement>(selector)]);
+      // Prefer one that is actually on screen — the chip row on a phone, the
+      // rail on a desktop. A layout-free environment reports every element as
+      // unrendered, so falling back to the first match keeps this working
+      // there rather than silently focusing nothing.
+      const visible = candidates.find(
+        (element) => element.offsetParent !== null || element.getClientRects().length > 0,
+      );
+      (visible ?? candidates[0])?.focus();
+      setFocusAfterChoose(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAfterChoose]);
   const clock = now ?? Date.now();
 
   // THE WHITE COLLECTION IS A FILTER, NOT A CATEGORY. The twelve categories
@@ -112,6 +148,21 @@ export default function RetailBuilder({
       onRemove={(category) => onSelect(category, null)}
       estimate={estimate}
       processedImages={processedImages}
+      imported={imported}
+      // Choosing a listing for a recommendation is the same act as opening that
+      // category from anywhere else, so it goes through the same path — the
+      // rail switches, and #102's browsing-state reset happens as it always does.
+      //
+      // THE DRAWER HAS TO CLOSE. On a phone the summary is a sheet ACROSS the
+      // catalogue, so switching the category underneath it and leaving it open
+      // shows the shopper the same drawer they just tapped in — the action
+      // appears to do nothing. Closing it is what makes "choose current
+      // listing" mean anything on the width where most of them will tap it.
+      onChooseListing={(category) => {
+        setActive(category as RetailPartCategory);
+        setMobileSummaryOpen(false);
+        setFocusAfterChoose(category as RetailPartCategory);
+      }}
     />
   );
 
@@ -225,6 +276,7 @@ export default function RetailBuilder({
             <button
               type="button"
               aria-label="Close build summary"
+              data-testid="close-build-summary"
               className="absolute inset-0"
               onClick={() => setMobileSummaryOpen(false)}
             />
@@ -243,7 +295,10 @@ export default function RetailBuilder({
             style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
           >
             <ShoppingCart size={16} aria-hidden="true" />
-            View build ({selectedParts.length})
+            {/* The same number the summary shows, and the same number the
+                header counts: exact listings plus recommendations not yet
+                replaced. Three places describing one build must not disagree. */}
+            View build ({selectedParts.length + (imported?.length ?? 0)})
           </button>
         </div>
       </div>
