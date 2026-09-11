@@ -102,8 +102,14 @@ async function selectProduct(category: 'gpu' | 'cpu', part: { id: string; name: 
   fireEvent.click(within(card).getByRole('button', { name: /add to build/i }));
 }
 
+/**
+ * The estimate control, found where it actually lives: inside the build
+ * summary. `main` moved it there — review item 7 asked for the estimator to
+ * sit with the build, and the summary renders the action itself rather than
+ * the page placing a panel beneath it.
+ */
 const estimateButton = () =>
-  screen.getByRole('button', { name: /estimate fps/i }) as HTMLButtonElement;
+  within(screen.getByTestId('summary-estimate')).getByRole('button') as HTMLButtonElement;
 
 describe('the generator-admitted CPU passes the Builder\'s own gate', () => {
   it('enables the estimator and produces an Estimated result, without touching canEstimate', async () => {
@@ -123,9 +129,8 @@ describe('the generator-admitted CPU passes the Builder\'s own gate', () => {
     expect(document.body.textContent).toContain('supported specifications');
 
     fireEvent.click(estimateButton());
-    await waitFor(() =>
-      expect(within(screen.getByTestId('builder-estimator')).getByText(/Estimated — not measured/)).toBeTruthy(),
-    );
+    // Labelled as an estimate, in the estimator's own words, not the test's.
+    await waitFor(() => expect(screen.getByText(/Estimated — not measured/)).toBeTruthy());
   }, 30000);
 
   it('leaves the estimator disabled for an unsupported CPU', async () => {
@@ -142,20 +147,24 @@ describe('the generator-admitted CPU passes the Builder\'s own gate', () => {
   }, 30000);
 });
 
-describe('the estimator sits with the build summary, exactly once', () => {
-  it('renders one estimator, in the in-flow slot beneath the summary on narrow layouts', async () => {
+describe('the estimator sits with the build summary', () => {
+  // Review item 7. `main` satisfies this by rendering the action INSIDE the
+  // summary rather than placing a separate panel underneath it, so that is
+  // what is checked here — the requirement, not the mechanism this branch
+  // originally proposed for it.
+  it('renders the estimate action inside the build summary, once', async () => {
     stubCatalog(regeneratedCatalog());
     renderBuilder();
     await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
 
-    expect(screen.getAllByTestId('builder-estimator')).toHaveLength(1);
-    expect(screen.getByTestId('estimator-slot-mobile')).toBeTruthy();
-    expect(screen.queryByTestId('estimator-slot-desktop')).toBeNull();
-    // It belongs to the shopping interface, not the page footer.
-    expect(screen.getByTestId('retail-builder').contains(screen.getByTestId('builder-estimator'))).toBe(true);
+    const actions = screen.getAllByTestId('summary-estimate');
+    expect(actions).toHaveLength(1);
+    // Inside the build, and inside the shopping interface — not the page footer.
+    expect(screen.getByTestId('build-summary').contains(actions[0])).toBe(true);
+    expect(screen.getByTestId('retail-builder').contains(actions[0])).toBe(true);
   }, 30000);
 
-  it('moves into the desktop column beneath the summary, still exactly once', async () => {
+  it('keeps it with the build on a wide desktop too', async () => {
     vi.stubGlobal('matchMedia', ((query: string) => ({
       matches: query.includes('1280'),
       media: query,
@@ -166,8 +175,8 @@ describe('the estimator sits with the build summary, exactly once', () => {
     renderBuilder();
     await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
 
-    await waitFor(() => expect(screen.getByTestId('estimator-slot-desktop')).toBeTruthy());
-    expect(screen.queryByTestId('estimator-slot-mobile')).toBeNull();
-    expect(screen.getAllByTestId('builder-estimator')).toHaveLength(1);
+    const actions = screen.getAllByTestId('summary-estimate');
+    expect(actions).toHaveLength(1);
+    expect(screen.getByTestId('build-summary').contains(actions[0])).toBe(true);
   }, 30000);
 });
