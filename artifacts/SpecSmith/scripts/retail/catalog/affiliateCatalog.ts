@@ -141,6 +141,8 @@ export function admitAffiliatePart(
       // reason to download five thousand candidate images to publish five
       // hundred. See attachImageContentRatios.
       imageContentRatio: null,
+      // Measured together with the ratio, from the same fetched bytes.
+      imageSha256: null,
     },
   };
 }
@@ -217,6 +219,7 @@ export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | nul
     canonicalPartId: offer.canonicalGpuId,
     specsVerified: true,
     imageContentRatio: null,
+    imageSha256: null,
   };
 }
 
@@ -241,6 +244,9 @@ export async function attachImageContentRatios(
   concurrency = 8,
 ): Promise<{ parts: AffiliatePart[]; measured: number; problems: Record<string, number> }> {
   const results = new Array<number | null>(parts.length).fill(null);
+  // The hash of the bytes each ratio was measured from, so the published part
+  // records WHICH version of the photograph it describes.
+  const hashes = new Array<string | null>(parts.length).fill(null);
   const problems: Record<string, number> = {};
   let next = 0;
 
@@ -252,6 +258,7 @@ export async function attachImageContentRatios(
       const outcome = await measure(parts[index].imageUrl);
       if (outcome.ok) {
         results[index] = outcome.contentRatio;
+        hashes[index] = outcome.sha256 ?? null;
       } else {
         problems[outcome.problem] = (problems[outcome.problem] ?? 0) + 1;
       }
@@ -261,7 +268,11 @@ export async function attachImageContentRatios(
   await Promise.all(Array.from({ length: Math.max(1, concurrency) }, worker));
 
   return {
-    parts: parts.map((part, index) => ({ ...part, imageContentRatio: results[index] })),
+    parts: parts.map((part, index) => ({
+      ...part,
+      imageContentRatio: results[index],
+      imageSha256: hashes[index],
+    })),
     measured: results.filter((value) => value !== null).length,
     problems,
   };

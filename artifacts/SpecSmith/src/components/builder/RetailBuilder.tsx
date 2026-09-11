@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
 import { groupByCategory } from '../../lib/retail/retailShopping';
+import { WHITE_COLLECTION_NOTE, whiteBuildParts, whiteParts } from '../../lib/retail/whiteBuild';
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -15,39 +17,10 @@ interface Props {
   onSelect: (category: RetailPartCategory, id: string | null) => void;
   /** Injected so freshness is deterministic in tests. */
   now?: number;
-  /**
-   * The FPS estimator, rendered directly beneath the build summary.
-   *
-   * Passed in rather than built here so this component stays a shopping
-   * interface: it decides WHERE the estimator sits, never what it contains.
-   */
-  estimator?: ReactNode;
-}
-
-/** The `xl:` breakpoint, where the summary becomes a right-hand column. */
-const WIDE_LAYOUT_QUERY = '(min-width: 1280px)';
-
-/**
- * Whether the summary is currently a right-hand column.
- *
- * Used to render the estimator in exactly ONE place. Rendering it in both
- * positions and hiding one with CSS would mount two estimators, doing the work
- * twice and putting a second copy in the accessibility tree.
- *
- * Starts false so the server-rendered and first-paint markup is the mobile
- * arrangement, which is also the correct answer when matchMedia is unavailable.
- */
-function useWideLayout(): boolean {
-  const [wide, setWide] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia(WIDE_LAYOUT_QUERY);
-    const sync = () => setWide(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
-  return wide;
+  /** Passed to the summary, which renders the FPS action inside the build. */
+  estimate?: { canEstimate: boolean; onEstimate: () => void };
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -60,14 +33,32 @@ function useWideLayout(): boolean {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now, estimator }: Props) {
+export default function RetailBuilder({
+  parts,
+  selection,
+  onSelect,
+  now,
+  estimate,
+  processedImages,
+}: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const clock = now ?? Date.now();
-  const wideLayout = useWideLayout();
 
-  const byCategory = useMemo(() => groupByCategory(parts), [parts]);
+  // THE WHITE COLLECTION IS A FILTER, NOT A CATEGORY. The twelve categories
+  // stay exactly as they are; switching it on narrows each one to the listings
+  // whose own merchant title states a white finish. Every SKU keeps its price,
+  // its image and its link, because it is the same SKU.
+  const [whiteOnly, setWhiteOnly] = useState(false);
+  // whiteBuildParts, not whiteParts: the colour filter applies to the parts a
+  // finished build shows, and leaves the ones it hides — a CPU under a cooler,
+  // an SSD inside the case — with their ordinary compatible options. Filtering
+  // those to nothing made the collection unable to complete a PC without
+  // making it any whiter.
+  const visibleParts = useMemo(() => (whiteOnly ? whiteBuildParts(parts) : [...parts]), [parts, whiteOnly]);
+
+  const byCategory = useMemo(() => groupByCategory(visibleParts), [visibleParts]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);
 
   const counts = useMemo(() => {
@@ -75,6 +66,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
     for (const [category, list] of byCategory) result[category] = list.length;
     return result;
   }, [byCategory]);
+
+  const whiteTotal = useMemo(() => whiteParts(parts).length, [parts]);
 
   const selectedParts = useMemo(
     () =>
@@ -98,6 +91,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
       collapsed={summaryCollapsed}
       onToggleCollapsed={() => setSummaryCollapsed((value) => !value)}
       onRemove={(category) => onSelect(category, null)}
+      estimate={estimate}
+      processedImages={processedImages}
     />
   );
 
@@ -105,25 +100,39 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
 
   return (
     <div data-testid="retail-builder">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setWhiteOnly((on) => !on)}
+          aria-pressed={whiteOnly}
+          data-testid="white-build-toggle"
+          className="ff-accent-control flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold"
+          style={{
+            background: whiteOnly ? 'var(--ff-accent-solid)' : 'var(--ff-card)',
+            color: whiteOnly ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
+            border: `1px solid ${whiteOnly ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
+          }}
+        >
+          <Sparkles size={15} aria-hidden="true" />
+          White build
+          <span style={{ opacity: 0.8 }}>{whiteTotal}</span>
+        </button>
+        {whiteOnly && (
+          <p className="text-[11px] leading-snug" style={{ color: 'var(--ff-text-3)', maxWidth: '52ch' }} data-testid="white-build-note">
+            {WHITE_COLLECTION_NOTE}
+          </p>
+        )}
+      </div>
+
       {/* Mobile category controls. */}
       <div className="mb-4 lg:hidden">
         <CategoryChips {...navProps} />
       </div>
 
-      {/* Narrow layouts have no build summary in the page flow — it is the
-          sticky control at the bottom, opening over the page. So the estimator
-          goes here, at the top of the builder: reachable without scrolling past
-          a screen of products, which was the whole complaint. On wide layouts
-          this slot is empty and the estimator sits under the summary column. */}
-      {!wideLayout && estimator ? (
-        <div className="mb-6" data-testid="estimator-slot-mobile">
-          {estimator}
-        </div>
-      ) : null}
-
       <div className="flex gap-6">
         {/* Left rail — desktop only. */}
-        <div className="hidden w-56 shrink-0 lg:block">
+        {/* 224px, widening to 240px on a large desktop — the review's 220-250 band. */}
+        <div className="hidden w-56 shrink-0 lg:block 2xl:w-60">
           <div className="sticky top-20">
             <CategoryRail {...navProps} />
           </div>
@@ -140,26 +149,33 @@ export default function RetailBuilder({ parts, selection, onSelect, now, estimat
               painted; an effect-based reset would flash it first, and would
               have to remember to clear each future piece of state by hand.
               The build itself lives in `selection`, above this component, and
-              is deliberately untouched by any of this. */}
+              is deliberately untouched by any of this.
+
+              THE WHITE BUILD TOGGLE IS THE SAME PROBLEM. Switching the
+              collection on changes which products exist, so a search for
+              "3050", a brand chip, a price range, a "Load more" page and an
+              open product detail can all be left pointing at listings the view
+              no longer contains — the same stale "0 of 21 products" #102 was
+              about. It belongs in the key for the same reason the category
+              does. The selected parts survive, because they live in
+              `selection` and a remount here cannot reach them. */}
           <RetailCatalog
-            key={active}
+            key={`${active}:${whiteOnly ? 'white' : 'all'}`}
             category={active}
+            whiteOnly={whiteOnly}
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
             now={clock}
+            processedImages={processedImages}
             onToggle={(id) => onSelect(active, selection[active] === id ? null : id)}
           />
         </div>
 
-        {/* Right summary — desktop only, sticky rather than independently scrolling.
-            The estimator sits directly under it: it is the thing a shopper wants
-            the moment the build looks right, so it belongs beside the build, not
-            at the bottom of the page. */}
-        <div className="hidden w-72 shrink-0 xl:block">
-          <div className="sticky top-20 space-y-4">
-            {summary}
-            {wideLayout && estimator ? <div data-testid="estimator-slot-desktop">{estimator}</div> : null}
-          </div>
+        {/* Right summary — desktop only, sticky rather than independently scrolling. */}
+        {/* 320px, widening to 360px — the review's 320-380 band. It was 288px,
+            which cropped the longer merchant titles in the summary. */}
+        <div className="hidden w-80 shrink-0 xl:block 2xl:w-[360px]">
+          <div className="sticky top-20">{summary}</div>
         </div>
       </div>
 

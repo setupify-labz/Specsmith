@@ -18,8 +18,10 @@ import { ChevronDown, Monitor as MonitorIcon, Sparkles } from 'lucide-react';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import { useProductImageManifest } from '../hooks/useProductImageManifest';
 import RetailBuilder from '../components/builder/RetailBuilder';
-import RetailEstimateAction from '../components/builder/RetailEstimateAction';
+import BuilderSkeleton from '../components/builder/BuilderSkeleton';
+import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 
 type Resolution = '1080p' | '1440p' | '4k';
@@ -87,7 +89,8 @@ export default function Builder() {
   useSeo(getRouteMeta('/builder'));
   const [searchParams] = useSearchParams();
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
-  const affiliateCatalog = useAffiliatePartCatalog();
+  const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
+  const processedImages = useProductImageManifest();
 
   const retailByCategory = useMemo(() => {
     const grouped = new Map<RetailPartCategory, AffiliatePart[]>();
@@ -322,41 +325,10 @@ export default function Builder() {
     }
   };
 
-  /**
-   * The estimator panel: the action, and the results it produces.
-   *
-   * Built once and placed once. On the retail path it is handed to
-   * RetailBuilder, which renders it directly beneath the build summary; on the
-   * canonical-fallback path it stays in its original position below the grid.
-   * Exactly one of those two renders it, so there is never a second panel.
-   */
-  const estimatorPanel = (
-    <div ref={fpsSectionRef} data-testid="builder-estimator">
-      <RetailEstimateAction canEstimate={canEstimate} onEstimate={handleEstimateFps} />
-      <AnimatePresence>
-        {showFps && selectedGpu && selectedCpu && (
-          <FpsEstimator
-            gpu={selectedGpu} cpu={selectedCpu} games={games}
-            resolution={fpsResolution} preset={fpsPreset}
-            onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showFps && selectedGpu && selectedCpu && (
-          <VerifiedBenchmarkPanel
-            gpuId={selectedGpu.id} gpuName={selectedGpu.name}
-            cpuId={selectedCpu.id} cpuName={selectedCpu.name}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
   return (
     <div className="min-h-screen pt-24 pb-20" style={{ backgroundColor: 'var(--ff-bg)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(builderFaqJsonLd()) }} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="ff-builder-shell px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
             PC <span className="gradient-text">Builder</span>
@@ -397,20 +369,32 @@ export default function Builder() {
              cannot appear as products — they stay behind the scenes powering
              the FPS estimate and compatibility check above. */
           <RetailBuilder
+            estimate={{ canEstimate, onEstimate: handleEstimateFps }}
             parts={affiliateCatalog.catalog.parts}
             selection={build}
             onSelect={(category, id) => {
               selectPart(category as keyof BuildState, id);
               if (category === 'gpu' || category === 'cpu') setShowFps(false);
             }}
-            estimator={estimatorPanel}
+            processedImages={processedImages}
           />
+        ) : affiliateCatalog.status === 'loading' ? (
+          /* STILL LOADING — NOT A FAILURE (issue #104). This branch used to
+             not exist, and loading fell through to the canonical fallback
+             below, so every ordinary visit painted the legacy builder and then
+             replaced it. The skeleton holds the retail layout's shape until
+             the real thing arrives, and claims nothing about any product. */
+          <BuilderSkeleton />
         ) : (
-          /* No catalogue: fall back to the canonical parts so the builder still
-             works offline or before the first refresh. These carry editorial
-             estimates, which is why they are labelled as such and never mixed
-             with retailer pricing. */
-          <div data-testid="canonical-fallback">
+          /* A CONFIRMED FAILURE, and only that. The fetch answered and there
+             was no usable catalogue — the request failed, the file is missing,
+             or what came back did not parse. Fall back to the canonical parts
+             so the builder still works offline, and say so with a way to try
+             again. These carry editorial estimates, which is why they are
+             labelled as such and never mixed with retailer pricing. */
+          <>
+            <CatalogFailureNotice view={affiliateCatalog} onRetry={retryCatalog} />
+            <div data-testid="canonical-fallback">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Part selectors */}
             <div className="lg:col-span-2 space-y-3">
@@ -585,11 +569,29 @@ export default function Builder() {
           </div>
 
           </div>
+          </>
         )}
 
-        {/* Canonical-fallback path only. On the retail path this same panel is
-            rendered by RetailBuilder, directly beneath the build summary. */}
-        {affiliateCatalog.status !== 'ok' && estimatorPanel}
+        {/* FPS Estimator */}
+        <div ref={fpsSectionRef}>
+          <AnimatePresence>
+            {showFps && selectedGpu && selectedCpu && (
+              <FpsEstimator
+                gpu={selectedGpu} cpu={selectedCpu} games={games}
+                resolution={fpsResolution} preset={fpsPreset}
+                onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {showFps && selectedGpu && selectedCpu && (
+              <VerifiedBenchmarkPanel
+                gpuId={selectedGpu.id} gpuName={selectedGpu.name}
+                cpuId={selectedCpu.id} cpuName={selectedCpu.name}
+              />
+            )}
+          </AnimatePresence>
+        </div>
 
         <div className="mt-12 space-y-3">
           {builderFaqs.map((f) => (

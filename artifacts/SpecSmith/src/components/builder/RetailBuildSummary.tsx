@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Trash2 } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, ExternalLink, ImageOff, Trash2 } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
 import {
@@ -10,6 +10,9 @@ import {
   summarizeBuildPrices,
 } from '../../lib/retail/partPricing';
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import RetailEstimateAction from './RetailEstimateAction';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
   selectedParts: { category: RetailPartCategory; part: AffiliatePart }[];
@@ -17,6 +20,17 @@ interface Props {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onRemove: (category: RetailPartCategory) => void;
+  /**
+   * The FPS estimate, rendered inside the build it describes.
+   *
+   * It lives here rather than at page level so it sits with the parts it
+   * estimates from, in BOTH places this summary appears: the desktop sticky
+   * column and the mobile drawer. Optional so the summary can still be
+   * rendered on its own in a test.
+   */
+  estimate?: { canEstimate: boolean; onEstimate: () => void };
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -33,7 +47,15 @@ interface Props {
  * Those describe a part; these describe a listing, and mixing them would put
  * an editorial number in a column headed by real ones.
  */
-export default function RetailBuildSummary({ selectedParts, now, collapsed, onToggleCollapsed, onRemove }: Props) {
+export default function RetailBuildSummary({
+  selectedParts,
+  now,
+  collapsed,
+  onToggleCollapsed,
+  onRemove,
+  estimate,
+  processedImages,
+}: Props) {
   const parts = selectedParts.map((entry) => entry.part);
   const summary = summarizeBuildPrices(parts, now);
   const excludedIds = new Set(summary.excluded.map((item) => item.partId));
@@ -70,12 +92,19 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
                 const view = priceView(part, now);
                 return (
                   <li key={category} className="flex gap-2" data-testid={`summary-item-${category}`}>
+                    <SummaryThumbnail part={part} processedImages={processedImages} />
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--ff-text-3)' }}>
                         {CATEGORY_LABELS[category]}
                       </p>
                       {/* The EXACT selected SKU, by its own merchant title. */}
-                      <p className="text-xs leading-snug" style={{ color: 'var(--ff-text)' }} title={part.name}>
+                      <p
+                        className="text-xs leading-snug"
+                        style={{ color: 'var(--ff-text)' }}
+                        title={part.name}
+                        aria-label={part.name}
+                        data-testid={`summary-title-${category}`}
+                      >
                         {shortenTitle(part.name, 44)}
                       </p>
                       {view.status === 'fresh' ? (
@@ -145,6 +174,12 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
               </p>
             )}
 
+            {estimate !== undefined && (
+              <div data-testid="summary-estimate">
+                <RetailEstimateAction canEstimate={estimate.canEstimate} onEstimate={estimate.onEstimate} />
+              </div>
+            )}
+
             <p className="mt-2 text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="summary-availability">
               {AVAILABILITY_UNKNOWN_LABEL} for every item. Prices come from the retailer feed and the merchant page is the source of truth.
             </p>
@@ -152,5 +187,52 @@ export default function RetailBuildSummary({ selectedParts, now, collapsed, onTo
         </div>
       )}
     </aside>
+  );
+}
+
+/**
+ * A 56px picture of the EXACT selected listing.
+ *
+ * THE ONE RULE. `part.imageUrl` and nothing else. A canonical/reference image
+ * would be a picture of the model rather than of the thing in the build, and
+ * on a page whose whole argument is that variants are distinct products,
+ * showing the wrong variant's photograph would undo it.
+ *
+ * A failed image loses the picture and nothing else: the tile keeps its size,
+ * so the row does not reflow, and the title, price and controls beside it are
+ * untouched.
+ */
+function SummaryThumbnail({
+  part,
+  processedImages,
+}: {
+  part: AffiliatePart;
+  processedImages?: Map<string, ProductImageEntry> | null;
+}) {
+  // Same ladder and same backdrop as the card and the drawer. A tile showing
+  // the merchant's photograph beside a card showing its cut-out would read as
+  // two different products.
+  const image = useResolvedProductImage(part, processedImages);
+  return (
+    <div
+      data-testid="summary-thumb"
+      data-part-id={part.id}
+      className="retail-photo-frame flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+      style={{ border: '1px solid var(--ff-border)' }}
+    >
+      {image.failed ? (
+        <ImageOff size={16} aria-hidden="true" data-testid="summary-thumb-fallback" style={{ color: 'var(--ff-text-3)' }} />
+      ) : (
+        <img
+          src={image.src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          data-image-source={image.source}
+          onError={image.onError}
+          className="max-h-full max-w-full object-contain p-1"
+        />
+      )}
+    </div>
   );
 }
