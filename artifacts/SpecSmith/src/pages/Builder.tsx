@@ -27,6 +27,8 @@ import {
   coreBuildLabel,
   coreCategoryAction,
   nextMissingCoreCategory,
+  unavailableCoreCategories,
+  unavailableCoreNotice,
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
@@ -240,6 +242,10 @@ export default function Builder() {
   const coreChosen = coreBuildCount(build, knownPartIds);
   const coreLabel = coreBuildLabel(build, knownPartIds);
   const nextCoreCategory = nextMissingCoreCategory(build, knownPartIds);
+  // A slot the shopper filled that the builder cannot show. It already counts
+  // as missing; this is the sentence explaining why, so the cart being a row
+  // short is not left as a puzzle.
+  const staleNotice = unavailableCoreNotice(unavailableCoreCategories(build, knownPartIds));
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -473,6 +479,18 @@ export default function Builder() {
               </button>
             )}
           </div>
+
+          {/* Why the cart is a row shorter than the draft was. Said plainly,
+              and without guessing at a reason nobody here knows. */}
+          {staleNotice !== null && (
+            <p
+              data-testid="stale-core-parts"
+              className="mt-2 text-xs font-medium"
+              style={{ color: 'var(--ff-amber)' }}
+            >
+              {staleNotice}
+            </p>
+          )}
         </motion.div>
 
         <div className="mb-6">

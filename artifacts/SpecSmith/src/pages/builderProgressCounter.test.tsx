@@ -290,6 +290,42 @@ describe('a saved build', () => {
     const action = await screen.findByTestId('next-core-part');
     expect(action.getAttribute('data-category')).toBe('cooler');
   }, 30000);
+
+  it('says plainly that the saved part is gone', async () => {
+    // Otherwise the cart being a row shorter than the draft is a puzzle.
+    saveBuild({ gpu: onScreen('gpu').id, cpu: 'retail-cpu-that-no-longer-exists' });
+    await openBuilder();
+
+    const notice = await screen.findByTestId('stale-core-parts');
+    expect(notice.textContent).toMatch(/no longer available/i);
+    expect(notice.textContent).toMatch(/processor/i);
+    // It says the catalogue lacks it, not why — nothing else is known.
+    expect(notice.textContent?.toLowerCase()).not.toContain('out of stock');
+  }, 30000);
+
+  it('says nothing about staleness when every saved part is current', async () => {
+    saveBuild({ gpu: first('gpu').id, cpu: first('cpu').id });
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('2 of 8'));
+    expect(screen.queryByTestId('stale-core-parts')).toBeNull();
+  }, 30000);
+
+  it('does not tick the category rail for a stale slot either', async () => {
+    // Three places describe one build — the header, the summary and the
+    // rail's tick. The tick was drawn from the raw selection, so it marked a
+    // slot done that the other two counted as outstanding.
+    const build: Record<string, string> = {};
+    for (const category of CORE) build[category] = first(category).id;
+    build.psu = 'retail-psu-that-no-longer-exists';
+    saveBuild(build);
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('7 of 8'));
+    expect(screen.getByTestId('category-rail-psu').querySelector('svg.lucide-check')).toBeNull();
+    // The seven that ARE current still get their tick.
+    expect(screen.getByTestId('category-rail-gpu').querySelector('svg.lucide-check')).toBeTruthy();
+  }, 30000);
 });
 
 describe('the counter is reachable', () => {

@@ -11,6 +11,8 @@ import {
   coreCategoryAction,
   missingCoreCategories,
   nextMissingCoreCategory,
+  unavailableCoreCategories,
+  unavailableCoreNotice,
 } from './coreBuild';
 
 const parsed = parseAffiliatePartCatalog(catalogData);
@@ -193,6 +195,49 @@ describe('the call to action reads like English', () => {
     for (const category of CORE_BUILD_CATEGORIES) {
       expect(coreCategoryAction(category), category).toMatch(/^Choose /);
       expect(coreCategoryAction(category).trim().split(' ').length, category).toBeGreaterThan(1);
+    }
+  });
+});
+
+describe('telling the shopper a saved part is gone', () => {
+  const held = new Set(['g1', 'm1']);
+
+  it('names only the filled slots the catalogue cannot show', () => {
+    expect(unavailableCoreCategories({ gpu: 'g1', cpu: 'delisted', motherboard: 'm1' }, held))
+      .toEqual(['cpu']);
+  });
+
+  it('does not confuse an empty slot with a missing part', () => {
+    // Seven slots are empty here and exactly one is stale. Only one of those
+    // is a thing that went away.
+    expect(unavailableCoreCategories({ psu: 'delisted' }, held)).toEqual(['psu']);
+    expect(unavailableCoreCategories({}, held)).toEqual([]);
+  });
+
+  it('claims nothing is missing before the catalogue has answered', () => {
+    // "Not known yet" is not evidence of absence, and must not produce a
+    // notice telling the shopper their part is gone.
+    expect(unavailableCoreCategories({ gpu: 'anything' }, null)).toEqual([]);
+    expect(unavailableCoreCategories({ gpu: 'anything' }, undefined)).toEqual([]);
+  });
+
+  it('says nothing when nothing is missing', () => {
+    expect(unavailableCoreNotice([])).toBeNull();
+  });
+
+  it('names the one category to replace', () => {
+    const notice = unavailableCoreNotice(['cpu'])!;
+    expect(notice).toContain('no longer available');
+    expect(notice.toLowerCase()).toContain('replacement');
+    expect(notice.toLowerCase()).toContain('processor');
+  });
+
+  it('names several without inventing a reason for any of them', () => {
+    const notice = unavailableCoreNotice(['cpu', 'psu', 'case'])!;
+    expect(notice).toMatch(/ and /);
+    // All that is actually known is that this catalogue lacks the id.
+    for (const guess of ['discontinued', 'out of stock', 'sold out', 'recalled']) {
+      expect(notice.toLowerCase(), guess).not.toContain(guess);
     }
   });
 });

@@ -115,7 +115,25 @@ export default function RetailBuilder({
     />
   );
 
-  const navProps = { active, counts, selected: selection, onSelect: setActive };
+  /**
+   * The selection as far as THIS CATALOGUE is concerned.
+   *
+   * The rail's tick and the chip's tick both mean "this slot is done", and
+   * both were drawn from the raw selection — so a saved draft naming a
+   * listing that has since dropped out got a tick beside a category the
+   * summary could not fill and the header counted as outstanding. Three
+   * places describing one build must not disagree, so the tick is decided by
+   * the same lookup the summary already uses.
+   */
+  const presentSelection = useMemo(() => {
+    const present: Partial<Record<RetailPartCategory, string | null>> = {};
+    for (const [category, id] of Object.entries(selection) as [RetailPartCategory, string | null][]) {
+      present[category] = id && byId.has(id) ? id : null;
+    }
+    return present;
+  }, [selection, byId]);
+
+  const navProps = { active, counts, selected: presentSelection, onSelect: setActive };
 
   return (
     <div data-testid="retail-builder">

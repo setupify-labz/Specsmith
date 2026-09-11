@@ -133,6 +133,47 @@ export function coreBuildLabel(selection: CoreSelection, known?: KnownPartIds): 
   return `Core build: ${coreBuildCount(selection, known)} of ${CORE_BUILD_TOTAL} parts selected`;
 }
 
+/**
+ * Slots the shopper filled whose part the builder can no longer show.
+ *
+ * Told apart from a slot that was never filled. The two need the same
+ * arithmetic — neither is a completed part — and different words: only one of
+ * them owes the shopper an explanation for why their cart is a row short.
+ *
+ * Empty while the catalogue has not answered, because "not known yet" is not
+ * evidence that anything is missing.
+ */
+export function unavailableCoreCategories(
+  selection: CoreSelection,
+  known?: KnownPartIds,
+): CoreBuildCategory[] {
+  if (known === null || known === undefined) return [];
+  return CORE_BUILD_CATEGORIES.filter((category) => {
+    const id = selection[category];
+    return isChosen(id) && !known.has(id.trim());
+  });
+}
+
+/**
+ * What to tell the shopper about those slots.
+ *
+ * Says the part is gone and what to do about it. It does NOT say the part was
+ * discontinued, recalled or out of stock — all that is actually known is that
+ * the catalogue in front of us does not carry this id, and the rest would be
+ * invention.
+ */
+export function unavailableCoreNotice(categories: readonly CoreBuildCategory[]): string | null {
+  if (categories.length === 0) return null;
+  const named = categories.map((category) => coreCategoryLabel(category).toLowerCase());
+  const list =
+    named.length === 1
+      ? named[0]
+      : `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
+  return named.length === 1
+    ? `A saved part is no longer available — choose a replacement ${list}.`
+    : `Saved parts are no longer available — choose a replacement ${list}.`;
+}
+
 /** What to call a core category on its own, e.g. as a heading. */
 export function coreCategoryLabel(category: CoreBuildCategory): string {
   return CATEGORY_LABELS[category];
