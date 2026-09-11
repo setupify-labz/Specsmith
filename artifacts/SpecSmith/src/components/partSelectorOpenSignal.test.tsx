@@ -104,8 +104,32 @@ describe('the same category requested twice', () => {
   it('does not scroll again when nothing was requested', async () => {
     // An unrelated re-render — a price refresh, a parent state change — must
     // not move the page under the shopper.
+    //
+    // FRAMES ARE DRIVEN BY HAND HERE, and that is not fussiness. The request
+    // re-asserts itself until the selector is on screen, and in jsdom every
+    // element reports a zero-size box, so it never is: left to the real clock
+    // the loop keeps firing and the count grows with however long the machine
+    // takes. Asserting a fixed number against that is a test that passes alone
+    // and fails in a full suite — which is exactly what it did.
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', ((cb: FrameRequestCallback) => {
+      frames.push(cb);
+      return frames.length;
+    }) as unknown as typeof requestAnimationFrame);
+    vi.stubGlobal('cancelAnimationFrame', (() => {}) as unknown as typeof cancelAnimationFrame);
+
+    const drain = () => {
+      let ran = 0;
+      while (frames.length > 0 && ran < 200) {
+        frames.shift()!(0);
+        ran += 1;
+      }
+    };
+
     const view = renderSelector({ openSignal: 1 });
-    await waitFor(() => expect(scrolled).toHaveLength(1));
+    drain();
+    const afterRequest = scrolled.length;
+    expect(afterRequest).toBeGreaterThan(0);
 
     view.rerender(
       <PartSelector
@@ -118,8 +142,13 @@ describe('the same category requested twice', () => {
         openSignal={1}
       />,
     );
-    await Promise.resolve();
-    expect(scrolled).toHaveLength(1);
+    drain();
+
+    // The token did not change, so the effect did not re-run and nothing new
+    // was scheduled or scrolled.
+    expect(scrolled).toHaveLength(afterRequest);
+
+    vi.unstubAllGlobals();
   });
 
   it('never scrolls when no request is made at all', async () => {
