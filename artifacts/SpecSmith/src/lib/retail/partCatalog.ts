@@ -235,8 +235,23 @@ function parsePart(raw: unknown): AffiliatePart | null {
   // rejects the candidate and picks another. So by the time a catalogue is
   // read, every part has one, and a missing price is a corrupt file.
   if (!checkPartPricing({ retailPrice, salePrice, currency }).ok) return null;
+  // Which categories may claim a canonical mapping at all.
+  //
+  // A GPU must carry one: the sweep is per-canonical-card, so a GPU without a
+  // mapping never had a reason to be published. A CPU MAY carry one (#101):
+  // the generator binds a reviewed processor only when the retailer's and the
+  // manufacturer's part numbers agree, and leaves every other processor null.
+  // Both shapes must parse, or a verified CPU would be silently dropped by the
+  // reader after a refresh legitimately produced it.
+  //
+  // Every other category still must not claim one. This stays a whitelist so a
+  // future category cannot start asserting mappings by accident.
   if (category === 'gpu') {
     if (!isText(canonicalPartId) || specsVerified !== true) return null;
+  } else if (category === 'cpu') {
+    const mapped = isText(canonicalPartId) && specsVerified === true;
+    const unmapped = canonicalPartId === null && specsVerified === false;
+    if (!mapped && !unmapped) return null;
   } else if (canonicalPartId !== null || specsVerified !== false) {
     return null;
   }
