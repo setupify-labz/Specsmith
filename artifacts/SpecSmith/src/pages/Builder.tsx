@@ -27,11 +27,14 @@ import {
   type CanonicalPartRef,
 } from '../lib/retail/importedBuild';
 import {
+  CATALOGUE_PENDING,
   CORE_BUILD_TOTAL,
-  coreBuildCount,
-  coreBuildLabel,
+  catalogueComplete,
+  cataloguePartial,
   coreCategoryAction,
-  nextMissingCoreCategory,
+  coreReplacementAction,
+  describeCoreBuild,
+  type CatalogueKnowledge,
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
@@ -291,18 +294,37 @@ export default function Builder() {
     [build, retailIds, canonicalById],
   );
 
-  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
-    if (affiliateCatalog.status === 'loading') return null;
-    // Exact listings AND recognised models, so the counter and the summary
-    // describe the same set — including a build that arrived from elsewhere.
-    // An id in neither is still rejected and counts for nothing.
-    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalById);
-    return new Set(canonicalById.keys());
+  /**
+   * What this page is actually entitled to say about a saved id.
+   *
+   * The three cases are NOT interchangeable, and treating the third as the
+   * second was a defect: on a failed download every saved retailer SKU was
+   * classified as missing, so the page told the shopper both "live listings
+   * could not be loaded" and "your processor is no longer available". The
+   * second sentence is not something a failed HTTP request can establish.
+   *
+   * - loading  → nothing is knowable yet.
+   * - ok       → exact listings AND recognised models, so the counter and the
+   *              summary describe the same set, including a build that
+   *              arrived from elsewhere. An id in neither is genuinely not in
+   *              our catalogue.
+   * - failed   → canonical parts are bundled with the app, so those are still
+   *              knowable and still count. A retailer SKU cannot be checked
+   *              against a catalogue that never arrived, so it is left
+   *              unchecked rather than condemned.
+   */
+  const catalogueKnowledge = useMemo<CatalogueKnowledge>(() => {
+    if (affiliateCatalog.status === 'loading') return CATALOGUE_PENDING;
+    if (affiliateCatalog.status === 'ok') {
+      return catalogueComplete(recognisedPartIds(retailIds, canonicalById));
+    }
+    return cataloguePartial(new Set(canonicalById.keys()));
   }, [affiliateCatalog, retailIds, canonicalById]);
 
-  const coreChosen = coreBuildCount(build, knownPartIds);
-  const coreLabel = coreBuildLabel(build, knownPartIds);
-  const nextCoreCategory = nextMissingCoreCategory(build, knownPartIds);
+  // ONE reading of the build, shared by every surface that describes it — the
+  // counter here, the cart, the desktop rail and the mobile chips. They drifted
+  // apart by being derived three different ways in three different files.
+  const core = describeCoreBuild(build, catalogueKnowledge);
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -475,7 +497,7 @@ export default function Builder() {
           </h1>
           <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
 
-          {coreChosen === 0 && (
+          {core.settled && core.count === 0 && (
             <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
               style={{ color: 'var(--ff-accent-text)' }}>
               <Sparkles size={12} /> Not sure where to start? Take the 2-question PC Build Quiz →
@@ -487,9 +509,15 @@ export default function Builder() {
               only listings whose specs are verified. One core category is
               verified in the published catalogue, so choosing a CPU and a
               motherboard moved it not at all: the summary said three parts and
-              this said one. It now counts the eight core selections
-              themselves. Whether a part's specs are verified, and whether the
-              build is compatible, are different questions with their own
+              this said one.
+
+              It counts the slots the live catalogue can fill by exact id,
+              which is the test the cart applies too. WHILE THE CATALOGUE IS IN
+              FLIGHT it states no number at all: an unchecked draft is not a
+              finished build, and a bar reading "8 of 8" before anything has
+              looked at a single saved id is a guess that happens to be right
+              most days. Whether a part's specs are verified, and whether the
+              build is compatible, remain different questions with their own
               places on this page, and both stay fail-closed. */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="flex items-center gap-3" style={{ minWidth: '16rem', maxWidth: '20rem', flex: '1 1 16rem' }}>
@@ -497,16 +525,23 @@ export default function Builder() {
                 className="flex-1 h-1.5 rounded-full overflow-hidden"
                 style={{ backgroundColor: 'var(--ff-border)' }}
                 role="progressbar"
-                aria-valuenow={coreChosen}
+                // Busy ONLY while something is actually in flight: a bar
+                // marked busy after a failed download announces work that
+                // will never finish. Then it is indeterminate, not loading.
+                {...(core.settled
+                  ? { 'aria-valuenow': core.count }
+                  : catalogueKnowledge.status === 'pending'
+                    ? { 'aria-busy': true }
+                    : {})}
                 aria-valuemin={0}
                 aria-valuemax={CORE_BUILD_TOTAL}
-                aria-label={coreLabel}
+                aria-label={core.label}
               >
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
                   initial={{ width: 0 }}
-                  animate={{ width: `${(coreChosen / CORE_BUILD_TOTAL) * 100}%` }}
+                  animate={{ width: core.settled ? `${(core.count / CORE_BUILD_TOTAL) * 100}%` : '0%' }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                 />
               </div>
@@ -518,24 +553,43 @@ export default function Builder() {
                 className="text-xs font-semibold whitespace-nowrap"
                 style={{ color: 'var(--ff-text-2)' }}
               >
-                {coreLabel}
+                {core.label}
               </span>
             </div>
 
-            {nextCoreCategory !== null && (
+            {/* Never offered from an unchecked draft. Both paths wire the
+                request through to the named selector, so it is safe on each. */}
+            {core.next !== null && (
               <button
                 type="button"
                 data-testid="next-core-part"
-                data-category={nextCoreCategory}
-                onClick={() => handleChooseCategory(nextCoreCategory)}
+                data-category={core.next}
+                data-slot={core.slots[core.next]}
+                onClick={() => handleChooseCategory(core.next!)}
                 className="ff-accent-control inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
                 style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
               >
-                {coreCategoryAction(nextCoreCategory)}
+                {core.slots[core.next] === 'unavailable'
+                  ? coreReplacementAction(core.next)
+                  : coreCategoryAction(core.next)}
                 <ArrowRight size={12} aria-hidden="true" />
               </button>
             )}
           </div>
+
+          {/* ONE sentence for every category that needs replacing, not one
+              per part. Without it the cart is simply a row short and the
+              shopper is left to work out why. */}
+          {core.notice !== null && (
+            <p
+              data-testid="stale-core-parts"
+              role="status"
+              className="mt-2 text-xs font-medium"
+              style={{ color: 'var(--ff-amber)' }}
+            >
+              {core.notice}
+            </p>
+          )}
         </motion.div>
 
         <div className="mb-6">
