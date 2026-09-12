@@ -15,9 +15,15 @@
  * THE NUMBERS DIFFER BY ENOUGH TO MATTER. The canonical record says 290 mm.
  * MSI specifies 302 mm for the Ventus 3X OC, one of the listings this applied
  * to. Twelve millimetres is the margin that decides whether a card fits a
- * case, and an overclocked partner card draws more than the reference board,
- * so the power figure is optimistic in the same direction. A shopper was being
- * told a build fit on the strength of a measurement of a different object.
+ * case. A shopper was being told a build fit on the strength of a measurement
+ * of a different object.
+ *
+ * The power figure is a separate and quieter problem: exact-unit power draw
+ * was never ESTABLISHED for any listing. For this card it happens to agree —
+ * MSI publishes 250 W, and so does the canonical record — but an agreement
+ * found after the fact is not a measurement, and the next partner card need
+ * not agree. The claim here is only that the figure was not established, not
+ * that it was wrong.
  *
  * SO THE TWO ARE SPLIT HERE:
  *
@@ -75,9 +81,15 @@ export function hasVerifiedIdentity(part: Pick<AffiliatePart, 'canonicalPartId'>
  * `hasVerifiedIdentity`: a listing can be a known RTX 5070 and still have no
  * measured length, and conflating the two is the defect this file exists for.
  *
- * The published `specsVerified` flag is read here and nowhere else, so the
- * legacy `true` that older catalogues carry cannot leak into a compatibility
- * decision by some other route.
+ * This is the only retail CONFIDENCE or COMPATIBILITY path that consults the
+ * published `specsVerified` flag, and it does not trust it — so the legacy
+ * `true` that older catalogues carry cannot decide whether a part's specs are
+ * shown as verified, nor reach a compatibility check.
+ *
+ * The flag is still read elsewhere for other purposes: the reader validates
+ * its type, the generator writes it, and `Builder.tsx` sets it on canonical
+ * records to drive the "Not verified" spec rows in the legacy selectors. Those
+ * are display and schema concerns, not judgements about an exact unit.
  */
 export function hasVerifiedUnitSpecs(part: Pick<AffiliatePart, 'specsVerified'>): boolean {
   // No listing today carries measured per-unit specifications. The flag as

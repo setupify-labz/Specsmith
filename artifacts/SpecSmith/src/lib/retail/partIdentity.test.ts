@@ -1,23 +1,32 @@
 /**
  * The 290 mm defect, pinned.
  *
- * MSI specifies 302 mm for the GeForce RTX 5070 12G VENTUS 3X OC. SpecSmith's
- * canonical `rtx5070` record says 290 mm, which is a reasonable editorial
- * figure for a generic RTX 5070 and is not a measurement of that card. Because
- * the catalogue marked the listing `specsVerified: true`, the Builder resolved
- * it to the canonical record and handed 290 mm to the case-clearance check.
+ * A retail GPU listing carried `canonicalPartId: 'rtx5070'` AND
+ * `specsVerified: true`. Only the first was a finding. The model matcher
+ * established which chip the listing contains; nothing measured the board in
+ * the box. The flag made the Builder resolve the listing to the canonical
+ * `rtx5070` record and hand its `length_mm` to the case-clearance check.
  *
- * These tests run the REAL published catalogue, the REAL canonical records and
- * the REAL compatibility checker. They are written to fail against the previous
- * behaviour, and they assert both halves of the split: the clearance claim is
- * gone, and the frame-rate estimate is not.
+ * The figures differ by enough to decide a build: the canonical record says
+ * 290 mm, and MSI publishes 302 mm for the GeForce RTX 5070 12G VENTUS 3X OC,
+ * one of the listings this applied to. Exact-unit POWER was likewise never
+ * established — MSI publishes 250 W for that card, which matches the canonical
+ * figure, and a match is not a measurement.
+ *
+ * EVERYTHING HERE RUNS ON A FIXTURE, not on `public/data/retail-parts.json`.
+ * That file is regenerated from a live feed: its listings rotate, and the
+ * refresh that lands this split will write `specsVerified: false` on every
+ * row. Pinning the behaviour to one SKU in it would test a retailer's
+ * inventory. The fixture builds the listing in BOTH shapes — the legacy
+ * `true` and the `false` a regeneration writes — because neither may reach a
+ * compatibility decision.
+ *
+ * The compatibility checker, the confidence rules and the estimator are the
+ * real ones. Only the data is fixed.
  */
 
 import { describe, expect, it } from 'vitest';
-import catalogJson from '../../../public/data/retail-parts.json';
 import gpusJson from '../../data/gpus.json';
-import cpusJson from '../../data/cpus.json';
-import gamesJson from '../../data/games.json';
 import { parseAffiliatePartCatalog, type AffiliatePart } from './partCatalog';
 import {
   PER_UNIT_SPEC_FIELDS,
@@ -28,149 +37,141 @@ import {
 } from './partIdentity';
 import { canonicalIdFor, confidenceOf, unverifiedNoticeFor, UNVERIFIED_NOTICE } from './retailShopping';
 import { checkCompatibility } from '../compatibility';
-import { estimateFpsForBuild } from '../fps';
+import { estimateFps } from '../fps';
+import {
+  CANONICAL_RTX5070,
+  CASE_295MM,
+  catalogueContaining,
+  rtx5070Listing,
+  unmappedListing,
+} from './__fixtures__/catalogFixture';
 
-const parsed = parseAffiliatePartCatalog(catalogJson);
-if (!parsed.ok) throw new Error(`published catalogue does not parse: ${JSON.stringify(parsed)}`);
-const catalog = parsed.catalog;
+/** Both published shapes of the same listing. The split must hold for each. */
+const SHAPES: ReadonlyArray<readonly [string, AffiliatePart]> = [
+  ['as published today (legacy specsVerified: true)', rtx5070Listing(true)],
+  ['as the next regeneration writes it (specsVerified: false)', rtx5070Listing(false)],
+];
 
-/** MSI's own figure for the Ventus 3X OC, and the editorial figure it was given instead. */
-const MSI_VENTUS_3X_OC_LENGTH_MM = 302;
+const clearanceVerdictsFor = (gpu: Record<string, unknown> | null) => {
+  const result = checkCompatibility({ gpu: gpu as never, case: CASE_295MM as never });
+  return [
+    ...result.passed.filter((label) => /gpu clearance/i.test(label)),
+    ...result.warnings
+      .filter((warning) => warning.id === 'gpu-too-long' || warning.id === 'gpu-tight-fit')
+      .map((warning) => warning.id),
+  ];
+};
 
-const ventus = catalog.parts.find(
-  (part) => part.category === 'gpu' && /ventus 3x/i.test(part.name) && part.canonicalPartId === 'rtx5070',
-);
-
-const gpus = gpusJson as unknown as Array<Record<string, unknown> & { id: string; name: string }>;
-const rtx5070 = gpus.find((gpu) => gpu.id === 'rtx5070');
-
-describe('the MSI Ventus listing no longer borrows the canonical RTX 5070 dimensions', () => {
-  it('the published catalogue still contains the listing and the canonical record it mapped to', () => {
-    expect(ventus, 'no RTX 5070 Ventus 3X listing in the published catalogue').toBeDefined();
-    expect(rtx5070, 'no canonical rtx5070 record').toBeDefined();
+describe('a retail listing no longer borrows the canonical RTX 5070 dimensions', () => {
+  it('the canonical record still carries per-unit fields, so withholding them means something', () => {
+    // The one assertion that reads real repository data. It does NOT pin the
+    // value — an editorial figure may legitimately be revised — only that
+    // there is still a physical figure to withhold. Without this the tests
+    // below could pass against a record that carries nothing.
+    const gpus = gpusJson as unknown as Array<Record<string, unknown> & { id: string }>;
+    const real = gpus.find((gpu) => gpu.id === 'rtx5070');
+    expect(real, 'no canonical rtx5070 record').toBeDefined();
+    expect(typeof real?.length_mm).toBe('number');
+    expect(typeof real?.tdp_watts).toBe('number');
   });
 
-  it('the canonical figure it was given is not the figure MSI publishes', () => {
-    // The premise of the whole file. If the canonical record is ever corrected
-    // to a per-model figure this fails loudly rather than testing nothing.
-    expect(rtx5070?.length_mm).toBe(290);
-    expect(rtx5070?.length_mm).not.toBe(MSI_VENTUS_3X_OC_LENGTH_MM);
+  it('a 295 mm case gets NO clearance verdict for the listing', () => {
+    // 295 mm sits between the canonical 290 and the 302 MSI publishes for the
+    // Ventus 3X OC. Under the old behaviour the checker saw 290 and emitted a
+    // 'gpu-tight-fit' warning — an on-screen claim about clearance derived
+    // from a measurement of a different object.
+    expect(clearanceVerdictsFor(compatibilityView(CANONICAL_RTX5070 as never, 'retail-listing'))).toEqual([]);
   });
 
-  it('a case that fits 290 mm but not 302 mm gets NO clearance verdict for the listing', () => {
-    if (!ventus || !rtx5070) throw new Error('fixture missing');
-
-    // 295 mm sits between the generic figure and the real one. Under the old
-    // behaviour the checker saw 290 and recorded "GPU clearance" as passed —
-    // a card MSI measures at 302 mm would not have gone in.
-    const testCase = {
-      id: 'test-case-295',
-      name: 'Case With 295mm Clearance',
-      gpu_clearance_mm: 295,
-      motherboard_support: ['ATX'],
-      form_factor: 'Mid Tower',
-    };
-
-    const asListing = checkCompatibility({
-      gpu: compatibilityView(rtx5070 as never, 'retail-listing'),
-      case: testCase as never,
-    });
-    const clearanceVerdicts = [
-      ...asListing.passed.filter((label) => /gpu clearance/i.test(label)),
-      ...asListing.warnings.filter((warning) => warning.id === 'gpu-too-long' || warning.id === 'gpu-tight-fit').map((w) => w.id),
-    ];
-    expect(clearanceVerdicts).toEqual([]);
-
-    // And the withholding is specific, not a blanket refusal to check: pick the
-    // canonical MODEL and the same check still runs, because there the figure
-    // describes the thing chosen.
-    const asCanonical = checkCompatibility({
-      gpu: compatibilityView(rtx5070 as never, 'canonical'),
-      case: testCase as never,
-    });
-    expect(
-      asCanonical.passed.some((label) => /gpu clearance/i.test(label))
-        || asCanonical.warnings.some((w) => w.id === 'gpu-too-long' || w.id === 'gpu-tight-fit'),
-      'the canonical selection must still receive a clearance verdict',
-    ).toBe(true);
+  it('but the same case DOES get a verdict for the canonical model', () => {
+    // The withholding is specific, not a blanket refusal to check. Choose the
+    // model and the figure describes the thing chosen, so the check runs.
+    expect(clearanceVerdictsFor(compatibilityView(CANONICAL_RTX5070 as never, 'canonical'))).toEqual(['gpu-tight-fit']);
   });
 
-  it('the power check is withheld for the listing on the same grounds', () => {
-    if (!rtx5070) throw new Error('fixture missing');
-    const view = compatibilityView(rtx5070 as never, 'retail-listing') as Record<string, unknown>;
+  it('every per-unit field is withheld from a listing, power included', () => {
+    const view = compatibilityView(CANONICAL_RTX5070 as never, 'retail-listing') as Record<string, unknown>;
     for (const field of PER_UNIT_SPEC_FIELDS) expect(view[field]).toBeUndefined();
-    expect(withheldSpecFields(rtx5070 as never, 'retail-listing')).toContain('tdp_watts');
+    // Exact-unit power was not established for this listing. That is the whole
+    // claim — not that the card draws more than the canonical figure says.
+    expect(withheldSpecFields(CANONICAL_RTX5070 as never, 'retail-listing')).toContain('tdp_watts');
+    expect(withheldSpecFields(CANONICAL_RTX5070 as never, 'retail-listing')).toContain('length_mm');
   });
 
   it('everything that describes the CHIP survives the withholding', () => {
-    if (!rtx5070) throw new Error('fixture missing');
-    const view = compatibilityView(rtx5070 as never, 'retail-listing') as Record<string, unknown>;
+    const view = compatibilityView(CANONICAL_RTX5070 as never, 'retail-listing') as Record<string, unknown>;
     // Identity, tier and the multiplier are what the estimator and the monitor
     // pairing advice read. Withholding physical dimensions must not cost them.
     expect(view.id).toBe('rtx5070');
-    expect(view.gpu_multiplier).toBe(rtx5070.gpu_multiplier);
-    expect(view.tier).toBe(rtx5070.tier);
+    expect(view.gpu_multiplier).toBe(CANONICAL_RTX5070.gpu_multiplier);
+    expect(view.tier).toBe(CANONICAL_RTX5070.tier);
   });
 });
 
-describe('the RTX 5070 FPS estimate remains available for that same listing', () => {
+describe.each(SHAPES)('the RTX 5070 estimate survives — %s', (_label, listing) => {
   it('the listing still resolves to its canonical model', () => {
-    if (!ventus) throw new Error('fixture missing');
-    // Keyed on identity. This is the assertion that fails if a future change
-    // gates the canonical mapping on a specifications flag again.
-    expect(hasVerifiedIdentity(ventus)).toBe(true);
-    expect(canonicalIdFor(ventus)).toBe('rtx5070');
+    // Keyed on identity. This fails if a future change gates the canonical
+    // mapping on a specifications flag again — in either published shape.
+    expect(hasVerifiedIdentity(listing)).toBe(true);
+    expect(canonicalIdFor(listing)).toBe('rtx5070');
   });
 
-  it('a frame-rate figure is produced for it', () => {
-    if (!ventus || !rtx5070) throw new Error('fixture missing');
-    const cpus = cpusJson as unknown as Array<Record<string, unknown> & { id: string; name: string; cpu_multiplier: number }>;
-    const cpu = cpus[0];
-    const games = gamesJson as unknown as Array<Record<string, unknown> & { id: string; name: string; base_fps: Record<string, Record<string, number>> }>;
-    const game = games[0];
-    const result = estimateFpsForBuild(rtx5070 as never, cpu as never, game as never, '1440p', 'high');
+  it('a frame-rate figure is produced from that mapping', () => {
+    const canonicalId = canonicalIdFor(listing);
+    expect(canonicalId).toBe(CANONICAL_RTX5070.id);
+    const result = estimateFps(CANONICAL_RTX5070.gpu_multiplier, 1.2, 90);
     expect(result.estimated).toBeGreaterThan(0);
   });
 
-  it('but the listing is never described as having verified specifications', () => {
-    if (!ventus) throw new Error('fixture missing');
-    // The published row still carries the legacy conflated flag. It must not
-    // reach a confidence decision through any route.
-    expect(ventus.specsVerified).toBe(true);
-    expect(hasVerifiedUnitSpecs(ventus)).toBe(false);
-    expect(confidenceOf(ventus)).toBe('unverified');
+  it('yet the listing is never described as having verified specifications', () => {
+    // The legacy `true` must not reach a confidence decision by any route.
+    expect(hasVerifiedUnitSpecs(listing)).toBe(false);
+    expect(confidenceOf(listing)).toBe('unverified');
   });
 
-  it('and the notice it shows says which half is estimated and which is unverified', () => {
-    if (!ventus) throw new Error('fixture missing');
-    const notice = unverifiedNoticeFor(ventus);
+  it('and its notice says which half is estimated and which is unverified', () => {
+    const notice = unverifiedNoticeFor(listing);
     expect(notice).not.toBe(UNVERIFIED_NOTICE);
     expect(notice).toMatch(/estimate/i);
     expect(notice).toMatch(/dimensions and power draw are unverified/i);
+  });
+});
 
-    // A listing with no canonical mapping gets the plain notice instead.
-    const unmapped = catalog.parts.find((part) => part.canonicalPartId === null);
-    expect(unmapped).toBeDefined();
-    if (unmapped) expect(unverifiedNoticeFor(unmapped)).toBe(UNVERIFIED_NOTICE);
+describe('a listing with no canonical mapping', () => {
+  it('gets the plain notice and no performance guess', () => {
+    const unmapped = unmappedListing();
+    expect(hasVerifiedIdentity(unmapped)).toBe(false);
+    expect(canonicalIdFor(unmapped)).toBeNull();
+    expect(unverifiedNoticeFor(unmapped)).toBe(UNVERIFIED_NOTICE);
   });
 });
 
 describe('UPC is a supporting identifier, never an identity', () => {
-  it('the reader accepts a listing with no UPC and one with a valid UPC', () => {
-    const base = catalog.parts[0];
-    const withUpc = { ...(base as unknown as Record<string, unknown>), upc: '884588123456' };
-    const withoutUpc = { ...(base as unknown as Record<string, unknown>) };
-    delete withoutUpc.upc;
-    for (const part of [withUpc, withoutUpc]) {
-      const result = parseAffiliatePartCatalog({ ...catalogJson, parts: [part, ...catalogJson.parts.slice(1)] });
-      expect(result.ok, JSON.stringify(result)).toBe(true);
-    }
+  const withUpc = (upc: unknown) => {
+    const listing = { ...(rtx5070Listing(false) as unknown as Record<string, unknown>) };
+    if (upc === undefined) delete listing.upc;
+    else listing.upc = upc;
+    return parseAffiliatePartCatalog(
+      catalogueContaining(listing as unknown as AffiliatePart, unmappedListing()),
+    );
+  };
+
+  it('the reader accepts a listing with a valid UPC', () => {
+    const result = withUpc('884588123456');
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (result.ok) expect(result.catalog.parts[0].upc).toBe('884588123456');
+  });
+
+  it('and one published before the field existed, normalizing it to null', () => {
+    const result = withUpc(undefined);
+    expect(result.ok, JSON.stringify(result)).toBe(true);
+    if (result.ok) expect(result.catalog.parts[0].upc).toBeNull();
   });
 
   it('a malformed UPC is refused rather than published', () => {
-    const bad = { ...(catalog.parts[0] as unknown as Record<string, unknown>), upc: 'N/A' };
-    const result = parseAffiliatePartCatalog({ ...catalogJson, parts: [bad, ...catalogJson.parts.slice(1)] });
-    expect(result.ok).toBe(false);
+    // Merchants put "N/A" in the element. Publishing it would put a string
+    // that is not a UPC into a field a reviewer would check an SKU against.
+    expect(withUpc('N/A').ok).toBe(false);
   });
 
   it('a UPC alone does not establish identity', () => {
