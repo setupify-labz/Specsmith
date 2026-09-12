@@ -158,6 +158,20 @@ describe('the power check at the Builder call site', () => {
     expect(powerVerdictOnScreen()).toEqual({ passedWattage: false, warned: false });
   });
 
+  it('names the skipped checks on screen instead of going quiet', async () => {
+    // THE POINT OF THE WHOLE ROUND. Withholding an answer is only honest if
+    // the shopper is told an answer is missing — an empty panel reads as a
+    // pass, which is the more expensive misreading.
+    // A motherboard and memory are selected too, so real checks DO pass and
+    // the panel turns green-adjacent. That is the dangerous shape: a build
+    // that looks assessed. It must read as partially assessed instead.
+    await openWith(RTX5070_LISTING_ID, `&psu=${SMALL_PSU_ID}&motherboard=x670ecross&ram=kf16ddr5`);
+    expect(document.body.textContent).toMatch(/Checked constraints passed:/);
+    const note = screen.getByTestId('compat-skipped');
+    expect(note.textContent).toMatch(/GPU clearance and PSU capacity were not checked because/);
+    expect(document.body.textContent).toMatch(/only partially checked/i);
+  });
+
   it('but a build with no GPU still gets its power verdict', async () => {
     // POSITIVE CONTROL. The check is withheld for an unknown draw, not
     // disabled: a CPU-and-PSU build is still assessed as it always was.

@@ -15,7 +15,12 @@ describe('compatibility checks with retailer-only catalog entries', () => {
       cooler: unknown as never,
     });
 
-    expect(result).toEqual({ warnings: [], passed: [] });
+    // `skipped` is empty too, and deliberately: a skip is recorded when a
+    // check APPLIES and cannot be answered. Here the case carries no clearance
+    // figure and the PSU no wattage, so there is no question to leave open —
+    // nothing about this build has been asserted at all.
+
+    expect(result).toEqual({ warnings: [], passed: [], skipped: [] });
   });
 
   it('runs a check only when both facts needed for that check are present', () => {
@@ -25,6 +30,6 @@ describe('compatibility checks with retailer-only catalog entries', () => {
       ram: { name: 'Retailer memory' } as never,
     });
 
-    expect(result).toEqual({ warnings: [], passed: [] });
+    expect(result).toEqual({ warnings: [], passed: [], skipped: [] });
   });
 });

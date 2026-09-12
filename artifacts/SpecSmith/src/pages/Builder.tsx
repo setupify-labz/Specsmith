@@ -640,7 +640,7 @@ export default function Builder() {
         </motion.div>
 
         <div className="mb-6">
-          <CompatibilityBanner warnings={warnings} passed={compat.passed} />
+          <CompatibilityBanner warnings={warnings} passed={compat.passed} skipped={compat.skipped} />
         </div>
 
         <div ref={builderRegionRef}>

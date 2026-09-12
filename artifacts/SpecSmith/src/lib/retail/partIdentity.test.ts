@@ -266,6 +266,10 @@ describe('every surface that shows a compatibility panel obeys the same rule', (
       psu: { id: 'p', name: 'P', price_usd: 1, wattage: 450 } as never,
     });
 
+    // ...and it SAYS which questions it left open, rather than presenting a
+    // crate build as a cleared one.
+    expect([...build.compat.skipped.map((check) => check.id)].sort()).toEqual(['gpu-clearance', 'psu-capacity']);
+
     expect(build.compat.passed).not.toContain('GPU clearance');
     expect(build.compat.passed).not.toContain('PSU wattage');
     const ids = build.compat.warnings.map((warning) => warning.id);
