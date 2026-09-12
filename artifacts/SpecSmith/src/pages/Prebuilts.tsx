@@ -8,12 +8,16 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from '../lib/fps';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import {
+  CATALOGUE_PENDING,
+  catalogueReady,
   guideBuildSelection,
   guideSubtotal,
   namedCategories,
   resolveGuideSlots,
   unavailableCategories,
   LISTING_UNAVAILABLE_LABEL,
+  LISTING_UNCHECKED_LABEL,
+  type GuideCatalogue,
 } from '../lib/guides/guideSlots';
 import { builderUrlFor, hasExistingBuild, readDraft } from '../lib/guides/guideHandoff';
 import {
@@ -75,20 +79,22 @@ function getFpsColor(fps: number): string {
   return 'var(--ff-red)';
 }
 
-function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }) {
+function PrebuiltCard({
+  prebuilt,
+  index,
+  catalogue,
+}: {
+  prebuilt: Prebuilt;
+  index: number;
+  /** FETCHED ONCE BY THE PAGE. Each card used to call the catalogue hook
+      itself, so a hub listing five guides started five identical downloads of
+      the same 500-part file and held five copies of it. */
+  catalogue: GuideCatalogue;
+}) {
   const navigate = useNavigate();
   const fpsRows = useFpsPreview(prebuilt);
   const badge = BADGE_STYLES[prebuilt.badge_color] ?? BADGE_STYLES.gray;
   const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length];
-
-  const { view: affiliateCatalog } = useAffiliatePartCatalog();
-  const catalogue = useMemo(
-    () =>
-      affiliateCatalog.status === 'ok'
-        ? new Map<string, AffiliatePart>(affiliateCatalog.catalog.parts.map((part) => [part.id, part]))
-        : new Map<string, AffiliatePart>(),
-    [affiliateCatalog],
-  );
   const clock = Date.now();
   const slots = useMemo(
     () => resolveGuideSlots(prebuilt.id, prebuilt.parts, catalogue),
@@ -98,13 +104,14 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
   const missing = useMemo(() => unavailableCategories(slots), [slots]);
   const loadSelection = useMemo(() => guideBuildSelection(slots), [slots]);
 
-  const [confirmingLoad, setConfirmingLoad] = useState(false);
+  const [pendingLoadHref, setPendingLoadHref] = useState<string | null>(null);
   const handleLoad = () => {
+    const href = builderUrlFor(loadSelection);
     if (hasExistingBuild(readDraft(typeof window === 'undefined' ? undefined : window.localStorage))) {
-      setConfirmingLoad(true);
+      setPendingLoadHref(href);
       return;
     }
-    navigate(builderUrlFor(loadSelection));
+    navigate(href);
   };
 
   return (
@@ -164,6 +171,22 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
       >
         {slots.map((slot) => {
           const label = categoryLabels[slot.category] ?? slot.category;
+          if (slot.status === 'unchecked') {
+            return (
+              <div
+                key={slot.category}
+                data-testid={`guide-slot-${slot.category}`}
+                data-slot-status="unchecked"
+                className="rounded-lg p-3"
+                style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
+              >
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>{label}</div>
+                <div className="text-[11px] font-semibold" aria-busy="true" style={{ color: 'var(--ff-text-2)' }}>
+                  {LISTING_UNCHECKED_LABEL}
+                </div>
+              </div>
+            );
+          }
           if (slot.status !== 'available') {
             return (
               <div
@@ -250,7 +273,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
       </div>
 
       {/* Asked before anything changes; cancelling writes nothing. */}
-      {confirmingLoad && (
+      {pendingLoadHref !== null && (
         <div
           role="alertdialog"
           aria-label="Replace your current build?"
@@ -265,7 +288,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             <button
               type="button"
               data-testid={`guide-load-confirm-yes-${prebuilt.id}`}
-              onClick={() => { setConfirmingLoad(false); navigate(builderUrlFor(loadSelection)); }}
+              onClick={() => { const to = pendingLoadHref; setPendingLoadHref(null); navigate(to); }}
               className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-white"
               style={{ background: 'var(--ff-accent-solid)' }}
             >
@@ -274,7 +297,7 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             <button
               type="button"
               data-testid={`guide-load-confirm-no-${prebuilt.id}`}
-              onClick={() => setConfirmingLoad(false)}
+              onClick={() => setPendingLoadHref(null)}
               className="rounded-md px-3 py-1.5 text-[11px] font-semibold"
               style={{ color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}
             >
@@ -315,6 +338,16 @@ function prebuiltFaqJsonLd() {
 }
 
 export default function Prebuilts() {
+  const { view: affiliateCatalog } = useAffiliatePartCatalog();
+  const catalogue = useMemo<GuideCatalogue>(
+    () =>
+      affiliateCatalog.status === 'ok'
+        ? catalogueReady(
+            new Map<string, AffiliatePart>(affiliateCatalog.catalog.parts.map((part) => [part.id, part])),
+          )
+        : CATALOGUE_PENDING,
+    [affiliateCatalog],
+  );
   useSeo(getRouteMeta('/prebuilts'));
 
   const itemListJsonLd = {
@@ -358,7 +391,7 @@ export default function Prebuilts() {
         {/* Build cards */}
         <div className="space-y-8">
           {prebuilts.map((prebuilt, i) => (
-            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} />
+            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} catalogue={catalogue} />
           ))}
         </div>
 

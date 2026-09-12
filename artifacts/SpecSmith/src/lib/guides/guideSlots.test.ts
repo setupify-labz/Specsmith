@@ -9,18 +9,23 @@ import {
   editorialReviewFor,
 } from './guideBindings';
 import {
+  CATALOGUE_PENDING,
   availableParts,
+  catalogueReady,
   guideBuildSelection,
   guideSubtotal,
   isGuideComplete,
+  isGuidePending,
   namedCategories,
   resolveGuideSlots,
   unavailableCategories,
+  uncheckedCategories,
 } from './guideSlots';
 
 const parsed = parseAffiliatePartCatalog(catalogData);
 if (!parsed.ok) throw new Error(`published catalogue invalid: ${parsed.problem}`);
-const published = new Map(parsed.catalog.parts.map((p) => [p.id, p]));
+const publishedParts = new Map(parsed.catalog.parts.map((p) => [p.id, p]));
+const published = catalogueReady(publishedParts);
 /** A fixed clock inside the freshness window of the published snapshot. */
 const NOW = Date.parse(parsed.catalog.parts[0].fetchedAt) + 60_000;
 
@@ -40,13 +45,13 @@ describe('every binding is reviewed, and says so', () => {
   it('points at a listing that is really in the published catalogue', () => {
     // A binding to an id nobody carries is a typo, not a review.
     for (const b of GUIDE_SLOT_BINDINGS) {
-      expect(published.has(b.neweggPartId), `${b.guideId}/${b.category} -> ${b.neweggPartId}`).toBe(true);
+      expect(publishedParts.has(b.neweggPartId), `${b.guideId}/${b.category} -> ${b.neweggPartId}`).toBe(true);
     }
   });
 
   it('binds to the category it claims', () => {
     for (const b of GUIDE_SLOT_BINDINGS) {
-      expect(published.get(b.neweggPartId)!.category, b.neweggPartId).toBe(b.category);
+      expect(publishedParts.get(b.neweggPartId)!.category, b.neweggPartId).toBe(b.category);
     }
   });
 
@@ -55,7 +60,7 @@ describe('every binding is reviewed, and says so', () => {
     // listing's own title, which is where the reviewer read it.
     for (const b of GUIDE_SLOT_BINDINGS) {
       if (b.manufacturerPartNumber === null) continue;
-      const title = published.get(b.neweggPartId)!.name;
+      const title = publishedParts.get(b.neweggPartId)!.name;
       expect(title, `${b.neweggPartId} should state ${b.manufacturerPartNumber}`)
         .toContain(b.manufacturerPartNumber);
     }
@@ -81,7 +86,7 @@ describe('every binding is reviewed, and says so', () => {
 describe('resolving a guide against the catalogue', () => {
   it('returns the exact listing for a bound, carried slot', () => {
     const binding = GUIDE_SLOT_BINDINGS[0];
-    const states = resolveGuideSlots(binding.guideId, { [binding.category]: 'anything' }, published);
+    const states = resolveGuideSlots(binding.guideId, { [binding.category]: binding.canonicalPartId }, published);
     expect(states).toHaveLength(1);
     expect(states[0].status).toBe('available');
     if (states[0].status !== 'available') throw new Error('unreachable');
@@ -103,8 +108,12 @@ describe('resolving a guide against the catalogue', () => {
     expect(others.length, 'no sibling listings to test against').toBeGreaterThan(0);
     // A catalogue full of that category but missing the bound id resolves to
     // delisted, not to a neighbour.
-    const withoutBound = new Map(others.map((p) => [p.id, p]));
-    const states = resolveGuideSlots(binding.guideId, { [binding.category]: 'x' }, withoutBound);
+    const withoutBound = catalogueReady(new Map(others.map((p) => [p.id, p])));
+    const states = resolveGuideSlots(
+      binding.guideId,
+      { [binding.category]: binding.canonicalPartId },
+      withoutBound,
+    );
     expect(states[0].status).toBe('delisted');
   });
 });
@@ -115,8 +124,9 @@ describe('when a bound SKU disappears after a catalogue refresh', () => {
   // replacement target, and that is the point — the guide must go unavailable
   // rather than quietly re-point at whatever else happens to be on the shelf.
   const binding = GUIDE_SLOT_BINDINGS[0];
-  const afterRefresh = new Map(published);
-  afterRefresh.delete(binding.neweggPartId);
+  const afterRefreshParts = new Map(publishedParts);
+  afterRefreshParts.delete(binding.neweggPartId);
+  const afterRefresh = catalogueReady(afterRefreshParts);
 
   const guideParts = { [binding.category]: binding.canonicalPartId };
 
@@ -186,7 +196,7 @@ describe('what Load into Builder hands over', () => {
     const selection = guideBuildSelection(states);
 
     for (const [category, id] of Object.entries(selection)) {
-      const part = published.get(id);
+      const part = publishedParts.get(id);
       expect(part, `${category} -> ${id} is not a catalogue listing`).toBeTruthy();
       expect(part!.category).toBe(category);
     }
@@ -220,6 +230,97 @@ describe('the coverage this catalogue can actually support', () => {
     ]);
     for (const guideId of guides) {
       expect(editorialReviewFor(guideId).length, `${guideId} is now fully bound`).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('a catalogue that has not answered', () => {
+  // REVIEW BLOCKER. An empty map meant both "the download failed" and "this
+  // listing is gone", so a guide opened during a failed fetch announced that
+  // every one of its products was unavailable — a claim about the world
+  // derived from a claim about our own network.
+  const binding = GUIDE_SLOT_BINDINGS[0];
+  const guideParts = { [binding.category]: binding.canonicalPartId };
+
+  it('leaves the slot unchecked, not unavailable', () => {
+    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING);
+    expect(states[0].status).toBe('unchecked');
+    expect(unavailableCategories(states)).toHaveLength(0);
+    expect(uncheckedCategories(states)).toEqual([binding.category]);
+    expect(isGuidePending(states)).toBe(true);
+  });
+
+  it('claims no subtotal it has not checked', () => {
+    const summary = guideSubtotal(resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING), NOW);
+    expect(summary.countedItems).toBe(0);
+    expect(summary.complete).toBe(false);
+  });
+
+  it('hands the Builder nothing while it cannot see the catalogue', () => {
+    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING);
+    expect(guideBuildSelection(states)).toEqual({});
+  });
+
+  it('is told apart from a listing that really is gone', () => {
+    const gone = catalogueReady(new Map());
+    const delisted = resolveGuideSlots(binding.guideId, guideParts, gone);
+    expect(delisted[0].status).toBe('delisted');
+    expect(unavailableCategories(delisted)).toEqual([binding.category]);
+    expect(isGuidePending(delisted)).toBe(false);
+  });
+});
+
+describe('a binding that no longer matches its guide slot', () => {
+  // REVIEW BLOCKER. The registry is keyed by guide and category, not by
+  // product, so editing a guide's processor without re-reviewing its binding
+  // would leave the old listing resolving under the new heading: the guide
+  // would name one product and sell another.
+  const binding = GUIDE_SLOT_BINDINGS[0];
+
+  it('fails closed rather than showing the bound listing', () => {
+    const states = resolveGuideSlots(
+      binding.guideId,
+      { [binding.category]: 'some-other-canonical-part' },
+      published,
+    );
+    expect(states[0].status).toBe('mismatched');
+    expect(availableParts(states)).toHaveLength(0);
+  });
+
+  it('keeps the mismatched product out of the Builder handoff', () => {
+    const states = resolveGuideSlots(
+      binding.guideId,
+      { [binding.category]: 'some-other-canonical-part' },
+      published,
+    );
+    expect(guideBuildSelection(states)).toEqual({});
+  });
+
+  it('keeps it out of the subtotal', () => {
+    const states = resolveGuideSlots(
+      binding.guideId,
+      { [binding.category]: 'some-other-canonical-part' },
+      published,
+    );
+    expect(guideSubtotal(states, NOW).countedItems).toBe(0);
+    expect(unavailableCategories(states)).toEqual([binding.category]);
+  });
+
+  it('still resolves when the guide names the product the binding reviewed', () => {
+    const states = resolveGuideSlots(
+      binding.guideId,
+      { [binding.category]: binding.canonicalPartId },
+      published,
+    );
+    expect(states[0].status).toBe('available');
+  });
+
+  it('holds for every binding in the registry', () => {
+    for (const b of GUIDE_SLOT_BINDINGS) {
+      const ok = resolveGuideSlots(b.guideId, { [b.category]: b.canonicalPartId }, published);
+      expect(ok[0].status, `${b.guideId}/${b.category}`).toBe('available');
+      const bad = resolveGuideSlots(b.guideId, { [b.category]: `${b.canonicalPartId}-changed` }, published);
+      expect(bad[0].status, `${b.guideId}/${b.category}`).toBe('mismatched');
     }
   });
 });

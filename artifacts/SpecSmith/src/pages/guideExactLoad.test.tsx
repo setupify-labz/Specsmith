@@ -21,6 +21,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import { parseAffiliatePartCatalog } from '../lib/retail/partCatalog';
 import { GUIDE_SLOT_BINDINGS } from '../lib/guides/guideBindings';
+import { CATEGORY_LABELS } from '../lib/retail/retailShopping';
 import Prebuilts from './Prebuilts';
 import PrebuiltDetail from './PrebuiltDetail';
 import Builder from './Builder';
@@ -256,16 +257,29 @@ describe('a refreshed catalogue cannot silently change the product', () => {
   it('turns the slot unavailable rather than binding a different SKU', async () => {
     // The exact condition: the bound listing drops out of the refresh.
     const binding = boundHere[0];
+    // A REFRESH THE WAY ONE ACTUALLY HAPPENS: the merchant rotates the offer,
+    // so the bound id is gone and a different listing stands in its place.
+    // Deleting the row outright is not a usable simulation — the catalogue
+    // schema fixes the part count, so a 499-part file is rejected wholesale
+    // and the page correctly reports "cannot check" rather than "delisted".
     const without = {
       ...published,
-      parts: (published.parts as any[]).filter((p) => p.id !== binding.neweggPartId),
+      parts: (published.parts as any[]).map((p) =>
+        p.id === binding.neweggPartId ? { ...p, id: `${p.id}-rotated` } : p,
+      ),
     };
     stubCatalog(without);
     renderApp(`/prebuilts/${GUIDE}`);
     await screen.findByTestId('guide-components', {}, { timeout: 10000 });
 
-    const slot = await screen.findByTestId(`guide-slot-${binding.category}`);
-    expect(slot.getAttribute('data-slot-status')).toBe('delisted');
+    // Wait for the catalogue to ARRIVE before asserting about it: an
+    // unchecked slot is the pending state, not the answer under test.
+    await waitFor(() =>
+      expect(
+        screen.getByTestId(`guide-slot-${binding.category}`).getAttribute('data-slot-status'),
+      ).toBe('delisted'),
+    );
+    const slot = screen.getByTestId(`guide-slot-${binding.category}`);
     expect(slot.getAttribute('data-part-id')).toBeNull();
     expect(screen.getByTestId(`guide-unavailable-${binding.category}`)).toBeTruthy();
     // And no other listing of that category took its place.
@@ -360,5 +374,166 @@ describe('a merchant image that will not load', () => {
     expect(screen.queryByTestId(`guide-image-${category}`)).toBeNull();
     // The listing is still identified; only the picture is gone.
     expect(screen.getByTestId(`guide-name-${category}`).textContent).toBeTruthy();
+  }, 40000);
+});
+
+describe('the catalogue not answering is not a claim about a product', () => {
+  // REVIEW BLOCKER. A pending or failed fetch used to collapse into an empty
+  // catalogue, so every bound slot resolved as delisted and the guide told the
+  // shopper its products were unavailable — inferred from our own network
+  // rather than from anything about the products.
+  const neverAnswers = () =>
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch);
+
+  const failsWith503 = () =>
+    vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+      String(url).includes('product-images.json')
+        ? ({ ok: false, json: async () => ({}) } as unknown as Response)
+        : ({ ok: false, status: 503, json: async () => { throw new Error('no body'); } } as unknown as Response),
+    ) as unknown as typeof fetch);
+
+  it.each([['still loading', neverAnswers], ['a failed download', failsWith503]])(
+    'says it is checking, not unavailable, during %s',
+    async (_label, stub) => {
+      stub();
+      renderApp(`/prebuilts/${GUIDE}`);
+      await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+      const category = boundHere[0].category;
+      await waitFor(() =>
+        expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-slot-status')).toBe('unchecked'),
+      );
+      expect(screen.getByTestId(`guide-unchecked-${category}`).textContent).toMatch(/checking/i);
+      // And it must NOT say the listing is gone.
+      expect(screen.queryByTestId(`guide-unavailable-${category}`)).toBeNull();
+    },
+    40000,
+  );
+
+  it('does not name an unchecked category as missing in the subtotal note', async () => {
+    neverAnswers();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    const note = screen.queryByTestId('guide-missing-note');
+    if (note) {
+      // Whole labels, not substrings — "cpu" lives inside "cpu cooler", and a
+      // substring check would fail on a note that is perfectly correct.
+      const listed = (note.textContent ?? '')
+        .toLowerCase()
+        .replace(/^[^:]*?listing for /, '')
+        .split(/,| and /)
+        .map((part) => part.replace(/\..*$/, '').trim())
+        .filter(Boolean);
+      for (const binding of boundHere) {
+        const label = CATEGORY_LABELS[binding.category].toLowerCase();
+        expect(listed, `${label} is unchecked, not missing`).not.toContain(label);
+      }
+    }
+  }, 40000);
+
+  it('offers nothing to load while it cannot see the catalogue', async () => {
+    neverAnswers();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+    expect((screen.getByTestId('guide-load') as HTMLButtonElement).disabled).toBe(true);
+  }, 40000);
+});
+
+describe('a slot whose replacement would overwrite a build', () => {
+  // REVIEW BLOCKER. "Choose replacement in Builder" loads this guide, which
+  // replaces whatever the shopper already has. It navigated straight there.
+  it('asks first, and cancelling keeps the existing build', async () => {
+    const existing = { gpu: 'a-build-the-shopper-made' };
+    window.localStorage.setItem('specsmith-builder-draft', JSON.stringify(existing));
+    stubCatalog();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    fireEvent.click(screen.getByTestId('guide-replacement-gpu'));
+
+    const dialog = await screen.findByTestId('guide-load-confirm');
+    expect(dialog.getAttribute('role')).toBe('alertdialog');
+    expect(screen.queryByTestId('retail-builder')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('guide-load-confirm-no'));
+    await waitFor(() => expect(screen.queryByTestId('guide-load-confirm')).toBeNull());
+    expect(window.localStorage.getItem('specsmith-builder-draft')).toBe(JSON.stringify(existing));
+    expect(screen.queryByTestId('retail-builder')).toBeNull();
+  }, 40000);
+
+  it('goes to that category once confirmed', async () => {
+    window.localStorage.setItem('specsmith-builder-draft', JSON.stringify({ gpu: 'anything' }));
+    stubCatalog();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    fireEvent.click(screen.getByTestId('guide-replacement-gpu'));
+    await screen.findByTestId('guide-load-confirm');
+    fireEvent.click(screen.getByTestId('guide-load-confirm-yes'));
+
+    await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
+    await waitFor(() =>
+      expect(screen.getByTestId('category-rail-gpu').getAttribute('data-active')).toBe('true'),
+    );
+  }, 40000);
+
+  it('navigates directly when there is no build to lose', async () => {
+    stubCatalog();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    fireEvent.click(screen.getByTestId('guide-replacement-gpu'));
+    await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
+    expect(screen.queryByTestId('guide-load-confirm')).toBeNull();
+  }, 40000);
+
+  it('is still a real link, so it can be opened in a tab', async () => {
+    stubCatalog();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    const link = screen.getByTestId('guide-replacement-gpu');
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toContain('open=gpu');
+  }, 40000);
+});
+
+describe('the guides hub fetches the catalogue once', () => {
+  // REVIEW BLOCKER. Each card called the catalogue hook itself, so a hub
+  // listing five guides started five identical downloads of the same
+  // 500-part file and kept five copies of it in memory.
+  it('does not download it once per guide card', async () => {
+    stubCatalog();
+    renderApp('/prebuilts');
+    await screen.findAllByTestId(/^guide-parts-/, {}, { timeout: 10000 });
+    await waitFor(() =>
+      expect(document.querySelectorAll('[data-slot-status="available"]').length).toBeGreaterThan(0),
+    );
+
+    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const catalogueCalls = calls.filter(
+      ([url]) => typeof url === 'string' && url.includes('retail-parts.json'),
+    );
+    const cards = document.querySelectorAll('[data-testid^="guide-parts-"]').length;
+    expect(cards).toBeGreaterThan(1);
+    expect(catalogueCalls.length).toBe(1);
+  }, 40000);
+});
+
+describe('a catalogue the loader rejects', () => {
+  it('reports that it could not check, not that the product is gone', async () => {
+    // The schema fixes the part count, so a short file is invalid in full.
+    // That is a fact about our download, not about any product.
+    const short = { ...published, parts: (published.parts as any[]).slice(0, 10) };
+    stubCatalog(short);
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    const category = boundHere[0].category;
+    await waitFor(() =>
+      expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-slot-status')).toBe('unchecked'),
+    );
+    expect(screen.queryByTestId(`guide-unavailable-${category}`)).toBeNull();
   }, 40000);
 });

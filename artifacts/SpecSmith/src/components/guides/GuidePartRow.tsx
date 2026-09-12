@@ -13,6 +13,7 @@ import { CATEGORY_LABELS } from '../../lib/retail/retailShopping';
 import {
   CHOOSE_REPLACEMENT_LABEL,
   LISTING_UNAVAILABLE_LABEL,
+  LISTING_UNCHECKED_LABEL,
   type GuideSlotState,
 } from '../../lib/guides/guideSlots';
 
@@ -20,6 +21,12 @@ interface Props {
   state: GuideSlotState;
   /** Where "Choose replacement in Builder" goes for this slot. */
   replacementHref: string;
+  /**
+   * Called before the replacement link navigates. Returning true means the
+   * caller has taken over — it is asking the shopper something first — and
+   * the navigation is cancelled.
+   */
+  onReplacementIntercept?: () => boolean;
   now: number;
 }
 
@@ -33,8 +40,43 @@ interface Props {
  * unavailable and offers the Builder. There is no third option: no estimate
  * standing in for a price, no similar product, no search box.
  */
-export default function GuidePartRow({ state, replacementHref, now }: Props) {
+export default function GuidePartRow({
+  state,
+  replacementHref,
+  onReplacementIntercept,
+  now,
+}: Props) {
+  // EVERY HOOK RUNS EVERY RENDER. This sat below the unavailable-slot return,
+  // so the component ran a different number of hooks depending on the slot's
+  // status — and a slot changes status the moment the catalogue arrives, which
+  // is exactly when React would find the count had changed. Same defect class
+  // as the not-found crash on the guide page itself.
+  const [imageFailed, setImageFailed] = useState(false);
   const categoryLabel = CATEGORY_LABELS[state.category];
+
+  // Still waiting on the catalogue. Not a claim that anything is missing.
+  if (state.status === 'unchecked') {
+    return (
+      <div
+        data-testid={`guide-slot-${state.category}`}
+        data-slot-status="unchecked"
+        className="rounded-lg p-3"
+        style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
+      >
+        <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>
+          {categoryLabel}
+        </div>
+        <div
+          className="text-xs font-semibold"
+          data-testid={`guide-unchecked-${state.category}`}
+          aria-busy="true"
+          style={{ color: 'var(--ff-text-2)' }}
+        >
+          {LISTING_UNCHECKED_LABEL}
+        </div>
+      </div>
+    );
+  }
 
   if (state.status !== 'available') {
     return (
@@ -58,6 +100,12 @@ export default function GuidePartRow({ state, replacementHref, now }: Props) {
         </div>
         <Link
           to={replacementHref}
+          onClick={(event) => {
+            // Loading a replacement loads this guide, which replaces whatever
+            // build the shopper already has. The page asks first; if it takes
+            // over, this navigation is cancelled.
+            if (onReplacementIntercept?.()) event.preventDefault();
+          }}
           data-testid={`guide-replacement-${state.category}`}
           data-category={state.category}
           aria-label={`${CHOOSE_REPLACEMENT_LABEL} for ${categoryLabel.toLowerCase()}`}
@@ -72,10 +120,6 @@ export default function GuidePartRow({ state, replacementHref, now }: Props) {
 
   const { part, binding } = state;
   const view = priceView(part, now);
-  // A merchant image that fails to load must not dump the alt text into the
-  // layout as a wall of words. The catalogue cards already degrade to a
-  // placeholder; a guide row does the same.
-  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div

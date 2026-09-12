@@ -10,11 +10,15 @@ import { prebuilts, getPrebuiltMeta } from '../lib/prebuilts';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import GuidePartRow from '../components/guides/GuidePartRow';
 import {
+  CATALOGUE_PENDING,
+  catalogueReady,
   guideBuildSelection,
   guideSubtotal,
+  isGuidePending,
   namedCategories,
   resolveGuideSlots,
   unavailableCategories,
+  type GuideCatalogue,
 } from '../lib/guides/guideSlots';
 import { builderUrlFor, hasExistingBuild, readDraft } from '../lib/guides/guideHandoff';
 import { formatAmount, subtotalLabel } from '../lib/retail/partPricing';
@@ -51,11 +55,17 @@ export default function PrebuiltDetail() {
   const navigate = useNavigate();
   const prebuilt = prebuilts.find(p => p.id === slug);
   const { view: affiliateCatalog } = useAffiliatePartCatalog();
-  const catalogue = useMemo(
+  /**
+   * A FAILED OR PENDING FETCH IS NOT A CATALOGUE. Collapsing both into an
+   * empty map made every bound slot resolve as delisted, so a guide opened
+   * during a failed download announced that all of its products were
+   * unavailable — a statement about the world inferred from our own network.
+   */
+  const catalogue = useMemo<GuideCatalogue>(
     () =>
       affiliateCatalog.status === 'ok'
-        ? new Map(affiliateCatalog.catalog.parts.map((part) => [part.id, part]))
-        : new Map<string, never>(),
+        ? catalogueReady(new Map(affiliateCatalog.catalog.parts.map((part) => [part.id, part])))
+        : CATALOGUE_PENDING,
     [affiliateCatalog],
   );
   const clock = Date.now();
@@ -95,7 +105,15 @@ export default function PrebuiltDetail() {
    * the page, so the question is asked before anything changes, and cancelling
    * leaves the draft exactly as it was — this component never writes to it.
    */
-  const [confirmingLoad, setConfirmingLoad] = useState(false);
+  /**
+   * Where a confirmed load should go, or null when nothing is pending.
+   *
+   * Holding the destination rather than a boolean is what lets the SAME
+   * confirmation serve both "Load into Builder" and a slot's "Choose
+   * replacement in Builder" — both replace the shopper's current build, so
+   * both have to ask.
+   */
+  const [pendingLoadHref, setPendingLoadHref] = useState<string | null>(null);
 
   const fpsRows = useMemo(() => {
     if (!prebuilt) return [];
@@ -135,12 +153,22 @@ export default function PrebuiltDetail() {
    * the page, so the question is asked before anything changes, and cancelling
    * leaves the draft exactly as it was — this component never writes to it.
    */
+  const buildInProgress = () =>
+    hasExistingBuild(readDraft(typeof window === 'undefined' ? undefined : window.localStorage));
+
   const handleLoad = () => {
-    if (hasExistingBuild(readDraft(typeof window === 'undefined' ? undefined : window.localStorage))) {
-      setConfirmingLoad(true);
+    if (buildInProgress()) {
+      setPendingLoadHref(loadHref);
       return;
     }
     navigate(loadHref);
+  };
+
+  /** Returns true when the replacement link must not navigate on its own. */
+  const interceptReplacement = (href: string) => () => {
+    if (!buildInProgress()) return false;
+    setPendingLoadHref(href);
+    return true;
   };
 
   const itemListJsonLd = {
@@ -244,6 +272,9 @@ export default function PrebuiltDetail() {
                       state={slot}
                       now={clock}
                       replacementHref={builderUrlFor(loadSelection, slot.category)}
+                      onReplacementIntercept={interceptReplacement(
+                        builderUrlFor(loadSelection, slot.category),
+                      )}
                     />
                   ))}
                 </div>
@@ -311,7 +342,7 @@ export default function PrebuiltDetail() {
                 {/* ASKED BEFORE ANYTHING CHANGES. Cancelling navigates
                     nowhere and writes nothing, so the existing draft survives
                     untouched — this component never writes to storage. */}
-                {confirmingLoad && (
+                {pendingLoadHref !== null && (
                   <div
                     role="alertdialog"
                     aria-label="Replace your current build?"
@@ -326,7 +357,7 @@ export default function PrebuiltDetail() {
                       <button
                         type="button"
                         data-testid="guide-load-confirm-yes"
-                        onClick={() => { setConfirmingLoad(false); navigate(loadHref); }}
+                        onClick={() => { const to = pendingLoadHref; setPendingLoadHref(null); navigate(to); }}
                         className="flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold text-white"
                         style={{ background: 'var(--ff-accent-solid)' }}
                       >
@@ -335,7 +366,7 @@ export default function PrebuiltDetail() {
                       <button
                         type="button"
                         data-testid="guide-load-confirm-no"
-                        onClick={() => setConfirmingLoad(false)}
+                        onClick={() => setPendingLoadHref(null)}
                         className="flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold"
                         style={{ color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}
                       >

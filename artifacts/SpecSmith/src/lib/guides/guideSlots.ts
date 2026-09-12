@@ -1,24 +1,30 @@
 /**
  * What a Build Guide can show for each of its slots, right now.
  *
- * Three outcomes, and they are kept apart because they mean different things
- * to a shopper:
+ * Five outcomes, kept apart because they mean different things:
  *
  * - `available`   — a reviewed binding, and the catalogue still carries that
  *                   exact listing. Show the product, its current price and
  *                   when that price was read.
- * - `delisted`    — a reviewed binding whose listing has dropped out of the
- *                   catalogue. Say the listing is unavailable. Do NOT fall
- *                   back to the editorial estimate, a similar product, or a
- *                   search page; the guide's answer is simply not buyable
- *                   today and pretending otherwise is the whole problem.
- * - `unbound`     — no reviewer has bound this slot, because the catalogue
- *                   carries no listing for the product or because the choice
- *                   needs an editorial decision.
+ * - `unchecked`   — NOTHING HAS BEEN ABLE TO LOOK YET. The catalogue is still
+ *                   arriving, or its download failed. This is not evidence
+ *                   about a product and must never be reported as one.
+ * - `delisted`    — a reviewed binding whose listing has dropped out of a
+ *                   catalogue that DID arrive. Say the listing is
+ *                   unavailable. Do NOT fall back to the editorial estimate,
+ *                   a similar product, or a search page.
+ * - `mismatched`  — a binding exists but names a different canonical product
+ *                   than the guide slot does. Fail closed: someone changed
+ *                   the guide without re-reviewing the binding, and showing
+ *                   the bound listing would put the wrong product under the
+ *                   guide's own heading.
+ * - `unbound`     — no reviewer has bound this slot at all.
  *
- * `delisted` and `unbound` look the same to a shopper and are deliberately
- * different here: one is a guide whose answer sold out, the other is a guide
- * that has no answer yet, and only the second is an editor's job.
+ * WHY `unchecked` IS ITS OWN STATE. An empty catalogue map used to mean both
+ * "the feed failed" and "this listing is gone", so a guide opened during a
+ * failed fetch announced that all eight of its products were unavailable —
+ * a claim about the world derived from a claim about our network. A download
+ * that never arrived cannot testify that a product does not exist.
  */
 
 import type { AffiliatePart, RetailPartCategory } from '../retail/partCatalog';
@@ -39,8 +45,28 @@ export const CHOOSE_REPLACEMENT_LABEL = 'Choose replacement in Builder';
 
 export type GuideSlotState =
   | { readonly status: 'available'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding; readonly part: AffiliatePart }
+  | { readonly status: 'unchecked'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding }
   | { readonly status: 'delisted'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding }
+  | { readonly status: 'mismatched'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding; readonly expectedCanonicalId: string }
   | { readonly status: 'unbound'; readonly category: RetailPartCategory; readonly unbound: GuideSlotUnbound | null };
+
+/**
+ * What the page knows about the catalogue it is resolving against.
+ *
+ * `pending` covers both "still fetching" and "the fetch failed": in neither
+ * case has anything been able to check a listing, and in neither case may the
+ * guide say a product is unavailable.
+ */
+export type GuideCatalogue =
+  | { readonly status: 'pending' }
+  | { readonly status: 'ready'; readonly parts: ReadonlyMap<string, AffiliatePart> };
+
+export const CATALOGUE_PENDING: GuideCatalogue = { status: 'pending' };
+export const catalogueReady = (parts: ReadonlyMap<string, AffiliatePart>): GuideCatalogue =>
+  ({ status: 'ready', parts });
+
+/** Shown while the catalogue has not answered. Never a claim about a product. */
+export const LISTING_UNCHECKED_LABEL = 'Checking current listing…';
 
 /**
  * Read one guide's slots against the catalogue on screen.
@@ -52,7 +78,7 @@ export type GuideSlotState =
 export function resolveGuideSlots(
   guideId: string,
   guideParts: Readonly<Record<string, string>>,
-  catalogue: ReadonlyMap<string, AffiliatePart>,
+  catalogue: GuideCatalogue,
 ): readonly GuideSlotState[] {
   const states: GuideSlotState[] = [];
   for (const category of Object.keys(guideParts) as RetailPartCategory[]) {
@@ -61,10 +87,37 @@ export function resolveGuideSlots(
       states.push({ status: 'unbound', category, unbound: unboundFor(guideId, category) });
       continue;
     }
-    const part = catalogue.get(binding.neweggPartId);
+
+    // FAIL CLOSED WHEN THE GUIDE MOVED UNDER THE BINDING. The registry is
+    // keyed by guide and category, not by product, so editing a guide's
+    // processor without re-reviewing its binding would leave the old
+    // listing resolving happily under the new heading — the guide would name
+    // one product and sell another. A mismatch is refused, not reconciled.
+    const expectedCanonicalId = guideParts[category];
+    if (binding.canonicalPartId !== expectedCanonicalId) {
+      states.push({ status: 'mismatched', category, binding, expectedCanonicalId });
+      continue;
+    }
+
+    if (catalogue.status === 'pending') {
+      states.push({ status: 'unchecked', category, binding });
+      continue;
+    }
+
+    const part = catalogue.parts.get(binding.neweggPartId);
     states.push(part ? { status: 'available', category, binding, part } : { status: 'delisted', category, binding });
   }
   return states;
+}
+
+/** Slots nothing has been able to check yet, in slot order. */
+export function uncheckedCategories(states: readonly GuideSlotState[]): readonly RetailPartCategory[] {
+  return states.flatMap((s) => (s.status === 'unchecked' ? [s.category] : []));
+}
+
+/** True while any slot is still waiting on the catalogue. */
+export function isGuidePending(states: readonly GuideSlotState[]): boolean {
+  return states.some((s) => s.status === 'unchecked');
 }
 
 /** The available listings, in slot order. */
@@ -72,9 +125,16 @@ export function availableParts(states: readonly GuideSlotState[]): readonly Affi
   return states.flatMap((s) => (s.status === 'available' ? [s.part] : []));
 }
 
-/** Categories a shopper cannot buy from this guide today, in slot order. */
+/**
+ * Categories a shopper cannot buy from this guide today, in slot order.
+ *
+ * An `unchecked` slot is NOT here. Nothing has looked at it, so calling it
+ * unavailable would state as fact something no request has established.
+ */
 export function unavailableCategories(states: readonly GuideSlotState[]): readonly RetailPartCategory[] {
-  return states.flatMap((s) => (s.status === 'available' ? [] : [s.category]));
+  return states.flatMap((s) =>
+    s.status === 'available' || s.status === 'unchecked' ? [] : [s.category],
+  );
 }
 
 /**
