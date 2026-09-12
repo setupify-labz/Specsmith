@@ -30,6 +30,7 @@
 // unverified. The mapping is never guessed.
 
 import type { AffiliatePart, RetailPartCategory } from './partCatalog';
+import { hasVerifiedIdentity, hasVerifiedUnitSpecs } from './partIdentity';
 
 /** How the navigation is grouped. Order is the order shown. */
 export interface CategoryGroup {
@@ -192,21 +193,47 @@ export function shortenTitle(name: string, maxLength = 68): string {
 }
 
 /**
- * How confident the builder may be about a SKU's performance and fit.
+ * How confident the builder may be about THIS EXACT PRODUCT's specifications.
  *
- * 'verified' means the catalogue linked this listing to a canonical part whose
- * specifications SpecSmith already holds. 'unverified' means it did not, which
- * is a normal outcome for a keyboard or a case — it is stated on the card
- * rather than papered over, and never guessed from the title.
+ * 'verified' would mean the physical unit in the box has been measured — its
+ * length, its power draw. 'unverified' means it has not.
+ *
+ * This deliberately does NOT ask whether the listing maps to a canonical
+ * model. It used to, and that was the defect: a listing matched to `rtx5070`
+ * was called 'verified', and the Builder then fed the generic model's 290 mm
+ * length to a case-clearance check for a card MSI specifies at 302 mm. Knowing
+ * which chip a listing contains is not a measurement of the board it ships on.
+ * See src/lib/retail/partIdentity.ts.
  */
 export type SpecConfidence = 'verified' | 'unverified';
 
 export const confidenceOf = (part: AffiliatePart): SpecConfidence =>
-  part.specsVerified && part.canonicalPartId !== null ? 'verified' : 'unverified';
+  hasVerifiedUnitSpecs(part) ? 'verified' : 'unverified';
 
-/** The canonical part a SKU maps to, or null. Used for estimates, never for display as a product. */
+/**
+ * The canonical model a SKU is KNOWN TO BE, or null.
+ *
+ * Keyed on identity, which the model matcher established, so a retail listing
+ * keeps its clearly-labelled FPS estimate: the estimator models a chip, and
+ * the chip is the thing that was identified. It is not a licence to read
+ * dimensions or power off the canonical record — `compatibilityView` withholds
+ * those — and the canonical id is never displayed as a product of its own.
+ */
 export const canonicalIdFor = (part: AffiliatePart): string | null =>
-  confidenceOf(part) === 'verified' ? part.canonicalPartId : null;
+  hasVerifiedIdentity(part) ? part.canonicalPartId : null;
 
 export const UNVERIFIED_NOTICE =
   'Performance and compatibility are unverified for this exact product.';
+
+/**
+ * For a listing whose model IS known but whose physical unit is not measured.
+ *
+ * Says both halves plainly rather than picking one: the estimate is offered
+ * and labelled as an estimate for the model, and the fit is not claimed.
+ */
+export const ESTIMATED_FROM_MODEL_NOTICE =
+  'Frame-rate figures are estimates for this listing\'s model. This exact card\'s dimensions and power draw are unverified, so fit and power are not checked against them.';
+
+/** The honest notice for a part: which of the two applies depends on identity. */
+export const unverifiedNoticeFor = (part: AffiliatePart): string =>
+  canonicalIdFor(part) !== null ? ESTIMATED_FROM_MODEL_NOTICE : UNVERIFIED_NOTICE;

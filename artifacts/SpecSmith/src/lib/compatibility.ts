@@ -11,10 +11,69 @@ export interface CompatibilityWarning {
   confidence: 'certain' | 'likely';
 }
 
+/**
+ * A check that COULD NOT RUN, and what was missing.
+ *
+ * Distinct from a check that ran and passed, and from one that was never
+ * relevant because the part is not selected yet. This is the third state: the
+ * parts are chosen, the question applies, and the fact needed to answer it is
+ * not established — so the build is PARTIALLY checked and must never be
+ * presented as fully compatible.
+ *
+ * Recorded rather than silently omitted because silence is indistinguishable
+ * from a pass on screen, and that is the misreading with the highest cost: a
+ * shopper buys a card that does not fit, or a power supply that cannot carry
+ * the build.
+ */
+export interface SkippedCheck {
+  /** Stable id, e.g. 'gpu-clearance'. */
+  id: string;
+  /** What was not checked, as a noun phrase: 'GPU clearance'. */
+  label: string;
+  /** What was missing, as a noun phrase: 'exact card dimensions'. */
+  because: string;
+}
+
 export interface CompatibilityResult {
   warnings: CompatibilityWarning[];
   /** Names of the checks that ran and passed, for the all-clear banner */
   passed: string[];
+  /** Checks that applied but could not run, with the fact each one lacked. */
+  skipped: SkippedCheck[];
+}
+
+/**
+ * One sentence naming every check that could not run, and why.
+ *
+ * Returns null when nothing was skipped, so a caller can render an unqualified
+ * all-clear only in the case where that is actually true.
+ */
+/**
+ * Reading order for the sentence.
+ *
+ * Not the order the checks happen to sit in above. Where a card physically
+ * goes is the question people ask first, and tying the sentence to the
+ * function's layout means moving a block silently rewrites what shoppers read.
+ * Ids absent from this list keep their relative order, after the listed ones.
+ */
+const SKIPPED_CHECK_ORDER: readonly string[] = ['gpu-clearance', 'psu-capacity'];
+
+export function describeSkippedChecks(skipped: readonly SkippedCheck[]): string | null {
+  if (skipped.length === 0) return null;
+  const rank = (check: SkippedCheck) => {
+    const index = SKIPPED_CHECK_ORDER.indexOf(check.id);
+    return index === -1 ? SKIPPED_CHECK_ORDER.length : index;
+  };
+  skipped = [...skipped].sort((a, b) => rank(a) - rank(b));
+  const join = (items: string[]) =>
+    items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+  const labels = join(skipped.map((check) => check.label));
+  // Deduplicated: two checks blocked by the same missing fact should say it
+  // once. "…because exact card dimensions and exact card dimensions…" reads
+  // like a bug, and is one.
+  const reasons = join([...new Set(skipped.map((check) => check.because))]);
+  const verb = skipped.length === 1 ? 'was' : 'were';
+  return `${labels} ${verb} not checked because ${reasons} ${reasons.includes(' and ') ? 'are' : 'is'} unavailable.`;
 }
 
 export function checkCompatibility(parts: {
@@ -28,6 +87,7 @@ export function checkCompatibility(parts: {
 }): CompatibilityResult {
   const warnings: CompatibilityWarning[] = [];
   const passed: string[] = [];
+  const skipped: SkippedCheck[] = [];
 
   // CPU socket vs motherboard socket
   if (parts.cpu && parts.motherboard && typeof parts.cpu.socket === 'string' && typeof parts.motherboard.socket === 'string') {
@@ -96,8 +156,29 @@ export function checkCompatibility(parts: {
     }
   }
 
-  // PSU wattage check
-  if (parts.psu && typeof parts.psu.wattage === 'number' &&
+  // PSU wattage check.
+  //
+  // FAILS CLOSED ON AN UNKNOWN DRAW. The `?? 0` below is only correct for a
+  // part that is ABSENT — no GPU selected, no GPU watts. For a part that is
+  // SELECTED but whose power draw is not established, zero is not a
+  // conservative default, it is the least conservative one available: it
+  // understates the requirement by the largest single number in the build and
+  // turns a 1000 W card-and-chip pairing into a comfortable pass on a 450 W
+  // unit. So when any selected part's draw is unknown the check does not run
+  // at all, and the build gets no power verdict rather than a reassuring one.
+  const powerDrawUnknown =
+    (parts.gpu != null && typeof parts.gpu.tdp_watts !== 'number') ||
+    (parts.cpu != null && typeof parts.cpu.tdp_watts !== 'number');
+  if (parts.psu && typeof parts.psu.wattage === 'number' && powerDrawUnknown) {
+    // SAYS SO, rather than going quiet. A power supply is selected and the
+    // question plainly applies; the build simply cannot be assessed for it.
+    skipped.push({
+      id: 'psu-capacity',
+      label: 'PSU capacity',
+      because: 'exact power draw for the selected parts',
+    });
+  }
+  if (parts.psu && typeof parts.psu.wattage === 'number' && !powerDrawUnknown &&
       (typeof parts.gpu?.tdp_watts === 'number' || typeof parts.cpu?.tdp_watts === 'number')) {
     const gpuTdp = typeof parts.gpu?.tdp_watts === 'number' ? parts.gpu.tdp_watts : 0;
     const cpuTdp = typeof parts.cpu?.tdp_watts === 'number' ? parts.cpu.tdp_watts : 0;
@@ -143,6 +224,16 @@ export function checkCompatibility(parts: {
 
   // GPU length vs case clearance — lengths vary by card model, so this is a
   // 'likely' check based on typical models of each GPU.
+  if (parts.gpu && typeof parts.case?.gpu_clearance_mm === 'number' && typeof parts.gpu.length_mm !== 'number') {
+    // A card and a case are both chosen, so "will it fit" is a live question.
+    // It has no answer here: the canonical record describes a chip, not the
+    // board in the box. See src/lib/retail/partIdentity.ts.
+    skipped.push({
+      id: 'gpu-clearance',
+      label: 'GPU clearance',
+      because: 'exact card dimensions',
+    });
+  }
   if (typeof parts.gpu?.length_mm === 'number' && typeof parts.case?.gpu_clearance_mm === 'number') {
     const len = parts.gpu.length_mm;
     const max = parts.case.gpu_clearance_mm;
@@ -213,5 +304,5 @@ export function checkCompatibility(parts: {
     }
   }
 
-  return { warnings, passed };
+  return { warnings, passed, skipped };
 }
