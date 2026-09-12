@@ -13,7 +13,13 @@ export default function RetailEstimateAction({ canEstimate, onEstimate }: Props)
       <h2 className="text-base font-bold mb-1.5">Estimate your gaming performance</h2>
       <p id="retail-estimate-help" className="text-xs leading-snug text-secondary-custom mb-2.5">
         {canEstimate
-          ? 'Your selected GPU and CPU have supported specifications. Compare estimated FPS across games, resolutions, and presets.'
+          /* SAYS WHAT IS ACTUALLY KNOWN. This read "have supported
+             specifications", which is a claim about the products selected —
+             and for a retailer listing nothing has measured them. What the
+             estimator has is a mapping from each selection to a model it
+             supports, which is enough for an estimate and is not a
+             specification. */
+          ? 'Both selections map to models the estimator supports. Compare estimated FPS across games, resolutions, and presets — estimated for the model, not measured from these exact products.'
           : 'Select a GPU and CPU with verified mappings to the estimator. Some retailer products are not supported yet; we will not guess their performance.'}
       </p>
       <button type="button" disabled={!canEstimate} onClick={onEstimate}

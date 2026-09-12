@@ -107,19 +107,30 @@ describe('multiple retailer variants of one model stay separate', () => {
 });
 
 describe('unverified products are kept and marked, never invented', () => {
-  it('a SKU without a verified canonical mapping resolves to null', () => {
-    const unverified = catalog.parts.find((part) => !part.specsVerified);
-    expect(unverified).toBeDefined();
-    if (!unverified) return;
-    expect(confidenceOf(unverified)).toBe('unverified');
-    expect(canonicalIdFor(unverified)).toBeNull();
+  it('a SKU without a canonical mapping resolves to null', () => {
+    const unmapped = catalog.parts.find((part) => part.canonicalPartId === null);
+    expect(unmapped).toBeDefined();
+    if (!unmapped) return;
+    expect(confidenceOf(unmapped)).toBe('unverified');
+    expect(canonicalIdFor(unmapped)).toBeNull();
   });
 
-  it('GPU listings carry a verified mapping, peripherals generally do not', () => {
+  it('GPU listings carry a canonical mapping, peripherals generally do not', () => {
+    // IDENTITY, which is what the model matcher establishes. This assertion
+    // used to read `confidenceOf(part) === 'verified'`, and that was the
+    // conflation: being a known RTX 5070 is not a measurement of the board in
+    // the box. See partIdentity.ts.
     const gpus = catalog.parts.filter((part) => part.category === 'gpu');
-    expect(gpus.every((part) => confidenceOf(part) === 'verified')).toBe(true);
+    expect(gpus.every((part) => canonicalIdFor(part) !== null)).toBe(true);
     const keyboards = catalog.parts.filter((part) => part.category === 'keyboard');
-    expect(keyboards.every((part) => confidenceOf(part) === 'unverified')).toBe(true);
+    expect(keyboards.every((part) => canonicalIdFor(part) === null)).toBe(true);
+  });
+
+  it('no listing claims verified specifications for the exact unit it sells', () => {
+    // Nothing in the catalogue has been measured. When a real per-unit
+    // measurement arrives this fails, which is the point at which the notice
+    // copy and `hasVerifiedUnitSpecs` both need revisiting.
+    expect(catalog.parts.every((part) => confidenceOf(part) === 'unverified')).toBe(true);
   });
 });
 

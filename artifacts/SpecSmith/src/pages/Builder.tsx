@@ -19,6 +19,11 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
+import {
+  compatibilityView,
+  hasVerifiedIdentity,
+  type SelectionOrigin,
+} from '../lib/retail/partIdentity';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import BuilderSkeleton from '../components/builder/BuilderSkeleton';
 import {
@@ -164,15 +169,34 @@ export default function Builder() {
     return map;
   }, [affiliateCatalog]);
 
-  const resolveCanonical = <T extends { id: string }>(list: T[], id: string | null): T | null => {
-    if (!id) return null;
-    // A legacy saved build names a canonical id directly.
+  /**
+   * The canonical part behind a selection, and WHERE the selection came from.
+   *
+   * The origin is the point. A canonical id names a model, and the model's
+   * figures describe it. A retail listing names one box on a shelf, and the
+   * model's figures do not describe that box — its length and power draw
+   * depend on which board partner built it.
+   *
+   * Keyed on `canonicalPartId` rather than on `specsVerified`: the mapping is
+   * an identity finding from the model matcher, and gating it on a
+   * specifications flag conflated the two questions this split exists to
+   * separate.
+   */
+  const resolveWithOrigin = <T extends { id: string }>(
+    list: T[],
+    id: string | null,
+  ): { part: T | null; origin: SelectionOrigin } => {
+    if (!id) return { part: null, origin: 'canonical' };
     const direct = list.find((part) => part.id === id);
-    if (direct) return direct;
+    if (direct) return { part: direct, origin: 'canonical' };
     const sku = retailById.get(id);
-    const canonicalId = sku && sku.specsVerified ? sku.canonicalPartId : null;
-    return canonicalId ? list.find((part) => part.id === canonicalId) ?? null : null;
+    const canonicalId = sku && hasVerifiedIdentity(sku) ? sku.canonicalPartId : null;
+    const part = canonicalId ? list.find((entry) => entry.id === canonicalId) ?? null : null;
+    return { part, origin: 'retail-listing' };
   };
+
+  const resolveCanonical = <T extends { id: string }>(list: T[], id: string | null): T | null =>
+    resolveWithOrigin(list, id).part;
 
   // Parse initial state from URL params (from prebuilts "Load into Builder" or share link)
   const initialBuild = useMemo(() => {
@@ -377,6 +401,10 @@ export default function Builder() {
   const selectedPsu = resolveCanonical(builderPsus, build.psu);
   const selectedCase = resolveCanonical(builderCases, build.case);
   const selectedCooler = resolveCanonical(builderCoolers, build.cooler);
+  // Only the GPU carries per-unit figures the checker uses today (length and
+  // power). The origin is tracked here so the withholding is visible at the
+  // call site rather than buried in the view helper.
+  const gpuOrigin = resolveWithOrigin(builderGpus, build.gpu).origin;
   const selectedMonitor = resolveCanonical(builderMonitors, build.monitor);
   const selectedKeyboard = resolveCanonical(builderKeyboards, build.keyboard);
   const selectedMouse = resolveCanonical(builderMice, build.mouse);
@@ -384,7 +412,13 @@ export default function Builder() {
 
   const compat = useMemo(() => {
     const result = checkCompatibility({
-      gpu: selectedGpu, cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam,
+      // GENERIC MODEL FIGURES MAY NOT DECIDE AN EXACT LISTING'S FIT. For a
+      // retail SKU the canonical record's length and TDP are withheld, so the
+      // clearance and power checks do not run rather than running on a
+      // measurement of a different object. The FPS estimator below still gets
+      // the full canonical part, because it models the chip.
+      gpu: compatibilityView(selectedGpu, gpuOrigin),
+      cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam,
       psu: selectedPsu, case: selectedCase, cooler: selectedCooler,
     });
     // Monitor pairing warnings
@@ -417,7 +451,11 @@ export default function Builder() {
       }
     }
     return result;
-  }, [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
+    // `gpuOrigin` is a dependency in its own right. Switching from the canonical
+    // rtx5070 to a retail listing OF an rtx5070 leaves `selectedGpu` at the same
+    // object, so an identity-based dep list would keep the canonical result —
+    // and go on reporting a clearance verdict that must no longer be made.
+  }, [selectedGpu, gpuOrigin, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
   const warnings = compat.warnings;
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 

@@ -33,10 +33,17 @@ const catalog = {
   ),
 };
 
+/**
+ * The fixture omits `upc`, which catalogues published before it existed do
+ * too. The reader normalizes the absent field to null rather than refusing the
+ * file, so the expectation carries the null the parts come back with.
+ */
+const normalized = { ...catalog, parts: catalog.parts.map((part) => ({ ...part, upc: null })) };
+
 describe('affiliate catalog loader', () => {
   it('returns ok only after browser-side validation', async () => {
     const view = await loadAffiliatePartCatalog({ fetch: async () => new Response(JSON.stringify(catalog), { status: 200 }) });
-    expect(view).toEqual({ status: 'ok', catalog });
+    expect(view).toEqual({ status: 'ok', catalog: normalized });
   });
 
   it('reads a file written before image framing was measured', async () => {
