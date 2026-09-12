@@ -65,8 +65,12 @@ const games = gamesData as Game[];
 
 const builderFaqs = [
   {
-    title: 'How accurate are the FPS estimates for my exact build?',
-    content: 'They use the same transparent tier-based algorithm explained on the About page, applied to whatever specific GPU/CPU/game/resolution/preset combination you\'ve picked here — not a generic average. Estimates are a planning guide, not a guarantee; real-world results vary by driver version, game patch, and background load. For a real, cited benchmark instead of an estimate, check Verified Benchmarks below the estimator — coverage is still small, so it won\'t have every combination yet.',
+    title: 'How does the PC build FPS calculator work?',
+    content: 'It maps the selected GPU and CPU to SpecSmith\'s supported hardware models, then estimates FPS for the game, resolution, and quality preset you choose. The result is a planning estimate, not a measurement of the exact products in your cart. Drivers, game patches, cooling, memory, and background software can change real performance. Where SpecSmith has a cited measured benchmark for the selected configuration, it is shown separately as a verified benchmark.',
+  },
+  {
+    title: 'Can I test a PC build before buying it?',
+    content: 'You can evaluate a planned build before buying by checking supported compatibility rules, reviewing its known-price subtotal, and estimating game performance. This is not a remote benchmark or stress test of hardware you already own, and it cannot guarantee that every exact product fits. Confirm unverified dimensions, connectors, BIOS support, and current availability with the manufacturers and retailers before ordering.',
   },
   {
     title: 'Can I add a part that isn\'t in the list?',
@@ -78,7 +82,7 @@ const builderFaqs = [
   },
   {
     title: 'What do the compatibility warnings actually mean?',
-    content: 'Each one explains the specific reason for the conflict, a suggested fix, and how confident we are — "certain" for hard incompatibilities (like a socket mismatch) versus "likely" for things that depend on factors we can\'t fully verify (like exact case clearance). They\'re not just a red flag — click into one to see the reasoning.',
+    content: 'Each warning explains the rule that triggered it, a suggested fix, and its confidence. A certain warning comes from the structured specifications available to that check; a likely warning depends on incomplete or model-level information. Compatibility coverage is not exhaustive, so no warning is a promise that every unmentioned detail is compatible. Confirm exact dimensions, connectors, and BIOS support before ordering.',
   },
 ];
 
@@ -493,9 +497,14 @@ export default function Builder() {
       <div className="ff-builder-shell px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
-            PC <span className="gradient-text">Builder</span>
+            PC Build <span className="gradient-text">Calculator</span>
           </h1>
-          <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
+          <p className="text-sm sm:text-base max-w-3xl mb-2 leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+            Choose PC parts, total current listing prices, check supported compatibility rules, and estimate gaming FPS across 20 games at 1080p, 1440p, or 4K.
+          </p>
+          <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+            Free to use · No account required · Estimates are clearly separated from measured benchmarks
+          </p>
 
           {core.settled && core.count === 0 && (
             <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
@@ -831,14 +840,43 @@ export default function Builder() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-12 space-y-3">
+        <section className="mt-12" aria-labelledby="calculator-checks-heading">
+          <h2 id="calculator-checks-heading" className="text-xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
+            What this PC build calculator checks
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Parts and known prices</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Build around eight core component categories. Current retailer price observations are totaled when available and fresh; missing or stale prices are excluded instead of replaced with an invented current price.
+              </p>
+            </div>
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Supported compatibility rules</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Check supported socket, memory, form-factor, power, and clearance rules when the required specifications exist. Coverage is not exhaustive, so confirm every exact product's specifications before ordering.
+              </p>
+            </div>
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Estimated game FPS</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Compare estimated performance across 20 games, three resolutions, and four quality presets for supported GPU and CPU models. Estimates are planning guidance—not results measured from your computer.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 space-y-3" aria-labelledby="builder-faq-heading">
+          <h2 id="builder-faq-heading" className="text-xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
+            PC build calculator questions
+          </h2>
           {builderFaqs.map((f) => (
             <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
-              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h3>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
             </div>
           ))}
-        </div>
+        </section>
       </div>
     </div>
   );
