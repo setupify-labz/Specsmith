@@ -4,6 +4,7 @@ import componentData from '../data/components.json';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild, type BuildFpsGpu, type BuildFpsCpu } from './fps';
 import { checkCompatibility, type CompatibilityResult } from './compatibility';
+import { compatibilityView } from './retail/partIdentity';
 
 interface Part { id: string; name: string; price_usd: number; brand?: string; [key: string]: unknown; }
 export interface CrateGpu extends Part, BuildFpsGpu { tier: number; tdp_watts: number; length_mm?: number; }
@@ -263,7 +264,15 @@ export function finalizeCrateBuild(parts: {
     + storage.price_usd + psu.price_usd + gpuCase.price_usd + cooler.price_usd;
   const avgFps = averageFpsForBuild(gpu, cpu);
   const rarity = getOverallRarity(gpu.tier, cpu.tier);
-  const compat = checkCompatibility({ gpu, cpu, motherboard, ram, psu, case: gpuCase, cooler });
+  // THE SAME RULE AS THE BUILDER. A crate pulls canonical records, and a
+  // canonical GPU record describes a chip: its length is a typical figure for
+  // the model, not a measurement of a board. Routing it through the same view
+  // keeps the crate's compatibility panel from making an exact-fit claim the
+  // Builder refuses to make on identical data. See retail/partIdentity.ts.
+  const compat = checkCompatibility({
+    gpu: compatibilityView(gpu as unknown as Record<string, unknown>, 'canonical') as typeof gpu,
+    cpu, motherboard, ram, psu, case: gpuCase, cooler,
+  });
 
   return {
     gpu, cpu, motherboard, ram, storage, psu, case: gpuCase, cooler,

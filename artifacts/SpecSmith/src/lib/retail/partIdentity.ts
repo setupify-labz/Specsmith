@@ -31,21 +31,43 @@
  *   matcher, and enough to offer an FPS estimate, which is labelled estimated
  *   wherever it appears.
  * - EXACT-UNIT SPECIFICATIONS — the length, the power draw, the dimensions of
- *   the thing that ships. Not established for any listing today, so the checks
- *   that need them are withheld rather than answered from the model record.
+ *   the thing that ships. Not established anywhere today, so the checks that
+ *   need them are withheld rather than answered from a model record.
  *
- * Withholding is the fail-closed direction: a clearance check that does not
- * run produces no claim, while one fed a generic number produces a confident
- * wrong one.
+ * AND THE SECOND HALF IS NOT A RETAIL PROBLEM. The first version of this file
+ * withheld per-unit figures from retail listings and let a CANONICAL selection
+ * keep them, on the reasoning that the model's figures describe the model. But
+ * `rtx5070` is not a board. It is a chip, and the record's 290 mm is an
+ * editorial figure for a typical card — the same figure, from the same place,
+ * that was wrong for the Ventus. A shopper who picks the generic model is told
+ * "GPU clearance: passed" on exactly as little evidence as one who picks a
+ * listing. So the gate is EVIDENCE, not where the selection came from:
+ *
+ *   per-unit figures reach a compatibility check only when the record carries
+ *   SOURCED unit specifications — a specifically identified board, with the
+ *   provenance of the measurement — AND the shopper selected that record
+ *   itself, since a listing merely mapped to it need not be that same board.
+ *
+ * No record satisfies that today, so no build produces a GPU clearance or
+ * GPU-power verdict. Withholding is the fail-closed direction: a check that
+ * does not run produces no claim, while one fed a generic number produces a
+ * confident wrong one.
  */
 
 import type { AffiliatePart } from './partCatalog';
 
-/** Where a selected id came from, which decides what may be said about it. */
+/**
+ * Where a selected id came from.
+ *
+ * No longer sufficient on its own to permit a per-unit claim — see
+ * `compatibilityView` — but still necessary: sourced specifications describe
+ * the board the record names, and a listing mapped to that record is not
+ * proof it is that board.
+ */
 export type SelectionOrigin =
-  /** The shopper picked a canonical model. Model specs describe it correctly. */
+  /** The shopper picked this record itself. */
   | 'canonical'
-  /** The shopper picked an exact retailer listing. Model specs do not. */
+  /** The shopper picked an exact retailer listing that maps to this record. */
   | 'retail-listing';
 
 /**
@@ -101,21 +123,51 @@ export function hasVerifiedUnitSpecs(part: Pick<AffiliatePart, 'specsVerified'>)
 }
 
 /**
+ * The field a record uses to declare that its per-unit figures are sourced.
+ *
+ * A non-empty string naming WHERE the measurement came from — a manufacturer
+ * specification page for a specific board, say. The field's presence is the
+ * record's claim to describe one identified physical product rather than a
+ * model in general; its content is what a reviewer checks.
+ *
+ * No record in `src/data/gpus.json` carries it. That is the accurate state of
+ * the data, not an oversight: those records describe chips.
+ */
+export const UNIT_SPECS_SOURCE_FIELD = 'unit_specs_source';
+
+/**
+ * Whether a record's per-unit figures come with provenance.
+ *
+ * The question is NOT "is this a canonical record" — that was the mistake this
+ * gate replaces. A canonical record for a chip carries a typical length for
+ * the model, which is exactly the kind of figure that produced a wrong
+ * clearance verdict. Only a record that identifies a specific board AND says
+ * where its dimensions came from may drive an exact-fit claim.
+ */
+export function hasSourcedUnitSpecs(part: Record<string, unknown> | null): boolean {
+  if (part === null) return false;
+  const source = part[UNIT_SPECS_SOURCE_FIELD];
+  return typeof source === 'string' && source.trim() !== '';
+}
+
+/**
  * The part as the compatibility checker may see it.
  *
- * For a canonical selection this is the record unchanged: the shopper chose a
- * model, and the model's figures describe that model. For a retail listing the
- * per-unit fields are dropped, because the canonical record is not a
- * measurement of the boxed product. Every check in `compatibility.ts` guards
- * on `typeof … === 'number'`, so a dropped field means that check does not run
- * and nothing is asserted about it.
+ * Per-unit fields survive only when the record's figures are sourced AND the
+ * shopper picked that record itself. Otherwise they are dropped. Every check
+ * in `compatibility.ts` guards on `typeof … === 'number'`, so a dropped field
+ * means that check does not run and nothing is asserted about it.
+ *
+ * Today no record is sourced, so this drops the per-unit fields for every
+ * selection — generic model and retailer listing alike. That is the point: an
+ * exact-fit claim needs an exact measurement, and there isn't one yet.
  */
 export function compatibilityView<T extends Record<string, unknown>>(
   part: T | null,
   origin: SelectionOrigin,
 ): T | null {
   if (part === null) return null;
-  if (origin === 'canonical') return part;
+  if (origin === 'canonical' && hasSourcedUnitSpecs(part)) return part;
   const withheld = { ...part } as Record<string, unknown>;
   for (const field of PER_UNIT_SPEC_FIELDS) delete withheld[field];
   return withheld as T;
@@ -126,6 +178,7 @@ export function withheldSpecFields<T extends Record<string, unknown>>(
   part: T | null,
   origin: SelectionOrigin,
 ): readonly string[] {
-  if (part === null || origin === 'canonical') return [];
+  if (part === null) return [];
+  if (origin === 'canonical' && hasSourcedUnitSpecs(part)) return [];
   return PER_UNIT_SPEC_FIELDS.filter((field) => typeof part[field] === 'number');
 }

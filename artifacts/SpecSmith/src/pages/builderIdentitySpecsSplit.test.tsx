@@ -10,7 +10,13 @@
 //
 // So these tests drive the real page through a real entry point and read what
 // a shopper would see. Delete the `compatibilityView(...)` call from
-// Builder.tsx and the first test goes red.
+// Builder.tsx and both clearance tests go red.
+//
+// BOTH selections are covered, because the rule is not about retail. A generic
+// `rtx5070` record is a chip, and its 290 mm is a typical figure for the
+// model — the same figure that was wrong for the Ventus. Picking the model
+// from a menu does not turn it into a measurement, so neither selection may
+// produce a clearance verdict.
 //
 // The listing is a FIXTURE. `public/data/retail-parts.json` is regenerated
 // from a live feed, so any particular SKU in it may be gone next week, and the
@@ -79,9 +85,12 @@ afterEach(() => {
   cleanup();
 });
 
-const openWith = async (gpuId: string) => {
+/** A canonical PSU far too small for a 5070-class build once a draw is known. */
+const SMALL_PSU_ID = 'crm750';
+
+const openWith = async (gpuId: string, extra = '') => {
   render(
-    <MemoryRouter initialEntries={[`/builder?gpu=${gpuId}&cpu=r7-7800x3d&case=${TEST_CASE_ID}`]}>
+    <MemoryRouter initialEntries={[`/builder?gpu=${gpuId}&cpu=r7-7800x3d&case=${TEST_CASE_ID}${extra}`]}>
       <ToastProvider>
         <AuthProvider>
           <Builder />
@@ -105,26 +114,64 @@ const clearanceVerdictOnScreen = () => {
   };
 };
 
+const NO_VERDICT = { tightWarning: false, tooLongWarning: false, passedClearance: false };
+
 describe('the case-clearance check at the Builder call site', () => {
   it('makes NO clearance claim when the GPU is an exact retailer listing', async () => {
     await openWith(RTX5070_LISTING_ID);
     // The listing is an RTX 5070 — that much was established — but nothing
     // measured the board it ships on, and the canonical record's length
     // describes a different object. No verdict is the honest answer.
-    expect(clearanceVerdictOnScreen()).toEqual({
-      tightWarning: false,
-      tooLongWarning: false,
-      passedClearance: false,
-    });
+    expect(clearanceVerdictOnScreen()).toEqual(NO_VERDICT);
   });
 
-  it('still makes one when the shopper picks the canonical model', async () => {
-    await openWith('rtx5070');
-    // Same case, same page, different origin. The figure describes the model
-    // that was chosen, so the check runs — and on this case it warns. That
-    // warning is exactly what the listing above must not inherit.
+  it('makes none for the generic canonical model either', async () => {
+    // A 295 mm case against a record that says 290 mm. The old page emitted a
+    // visible "GPU fit will be tight" warning here, on a figure describing a
+    // typical RTX 5070 rather than any board a shopper can buy. Choosing the
+    // model from a menu is not evidence about a physical card.
     expect(TIGHT_CLEARANCE_MM).toBe(295);
-    expect(clearanceVerdictOnScreen().tightWarning).toBe(true);
+    await openWith('rtx5070');
+    expect(clearanceVerdictOnScreen()).toEqual(NO_VERDICT);
+  });
+});
+
+describe('the power check at the Builder call site', () => {
+  const powerVerdictOnScreen = () => {
+    const text = document.body.textContent ?? '';
+    return {
+      passedWattage: /Checked constraints passed:[^.]*PSU wattage/i.test(text),
+      warned: /Power supply is too weak|Power headroom is tight/i.test(text),
+    };
+  };
+
+  it('makes no power claim when the selected GPU has no established draw', async () => {
+    // A withheld draw must not be read as a zero-watt card. A PSU IS selected
+    // here, so the check would run if it could — and 750 W looks ample once
+    // the GPU is silently counted as drawing nothing.
+    await openWith(RTX5070_LISTING_ID, `&psu=${SMALL_PSU_ID}`);
+    expect(powerVerdictOnScreen()).toEqual({ passedWattage: false, warned: false });
+  });
+
+  it('and none for the generic canonical model either', async () => {
+    await openWith('rtx5070', `&psu=${SMALL_PSU_ID}`);
+    expect(powerVerdictOnScreen()).toEqual({ passedWattage: false, warned: false });
+  });
+
+  it('but a build with no GPU still gets its power verdict', async () => {
+    // POSITIVE CONTROL. The check is withheld for an unknown draw, not
+    // disabled: a CPU-and-PSU build is still assessed as it always was.
+    render(
+      <MemoryRouter initialEntries={[`/builder?cpu=r7-7800x3d&psu=${SMALL_PSU_ID}`]}>
+        <ToastProvider>
+          <AuthProvider>
+            <Builder />
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
+    expect(powerVerdictOnScreen().passedWattage).toBe(true);
   });
 });
 

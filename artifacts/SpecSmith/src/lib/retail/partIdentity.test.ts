@@ -21,6 +21,14 @@
  * `true` and the `false` a regeneration writes — because neither may reach a
  * compatibility decision.
  *
+ * AND THE SAME RULE BINDS THE CANONICAL RECORD. `rtx5070` is a chip, not a
+ * board: its 290 mm is a typical figure for the model, from the same place and
+ * worth exactly as much as it was for the listing. So a generic record may not
+ * claim an exact fit either. The gate is sourced evidence, not origin, and
+ * these tests prove a generic model produces no clearance verdict — while a
+ * fixture board that DOES carry sourced dimensions still does, so the gate
+ * cannot be mistaken for a permanent shut-off.
+ *
  * The compatibility checker, the confidence rules and the estimator are the
  * real ones. Only the data is fixed.
  */
@@ -30,7 +38,9 @@ import gpusJson from '../../data/gpus.json';
 import { parseAffiliatePartCatalog, type AffiliatePart } from './partCatalog';
 import {
   PER_UNIT_SPEC_FIELDS,
+  UNIT_SPECS_SOURCE_FIELD,
   compatibilityView,
+  hasSourcedUnitSpecs,
   hasVerifiedIdentity,
   hasVerifiedUnitSpecs,
   withheldSpecFields,
@@ -41,6 +51,7 @@ import { estimateFps } from '../fps';
 import {
   CANONICAL_RTX5070,
   CASE_295MM,
+  SOURCED_BOARD_RTX5070,
   catalogueContaining,
   rtx5070Listing,
   unmappedListing,
@@ -62,40 +73,66 @@ const clearanceVerdictsFor = (gpu: Record<string, unknown> | null) => {
   ];
 };
 
-describe('a retail listing no longer borrows the canonical RTX 5070 dimensions', () => {
-  it('the canonical record still carries per-unit fields, so withholding them means something', () => {
-    // The one assertion that reads real repository data. It does NOT pin the
-    // value — an editorial figure may legitimately be revised — only that
-    // there is still a physical figure to withhold. Without this the tests
-    // below could pass against a record that carries nothing.
+describe('an exact-fit claim needs an exact measurement, whatever was selected', () => {
+  it('no canonical GPU record in the repository declares sourced unit specifications', () => {
+    // The premise. These records describe chips: a length on one of them is a
+    // typical figure for the model, not a measurement of a board. If a record
+    // ever gains real provenance this fails, and the tests below need the
+    // sourced case re-pointed at it rather than at a fixture.
     const gpus = gpusJson as unknown as Array<Record<string, unknown> & { id: string }>;
+    expect(gpus.some((gpu) => hasSourcedUnitSpecs(gpu))).toBe(false);
+
+    // ...and they do still carry the unsourced figures, so withholding them is
+    // not a no-op.
     const real = gpus.find((gpu) => gpu.id === 'rtx5070');
     expect(real, 'no canonical rtx5070 record').toBeDefined();
     expect(typeof real?.length_mm).toBe('number');
     expect(typeof real?.tdp_watts).toBe('number');
   });
 
-  it('a 295 mm case gets NO clearance verdict for the listing', () => {
-    // 295 mm sits between the canonical 290 and the 302 MSI publishes for the
-    // Ventus 3X OC. Under the old behaviour the checker saw 290 and emitted a
-    // 'gpu-tight-fit' warning — an on-screen claim about clearance derived
-    // from a measurement of a different object.
+  it('a GENERIC canonical model gets no clearance verdict, even when picked directly', () => {
+    // THE CLAIM THIS FILE EXISTS FOR, second half. 295 mm sits between the
+    // canonical 290 and the 302 MSI publishes for the Ventus 3X OC. The old
+    // behaviour emitted a 'gpu-tight-fit' warning here — an on-screen
+    // statement about clearance derived from a figure for a typical card.
+    // Picking `rtx5070` from a menu does not make that figure a measurement.
+    expect(clearanceVerdictsFor(compatibilityView(CANONICAL_RTX5070 as never, 'canonical'))).toEqual([]);
+  });
+
+  it('nor does a retail listing of that same model', () => {
     expect(clearanceVerdictsFor(compatibilityView(CANONICAL_RTX5070 as never, 'retail-listing'))).toEqual([]);
   });
 
-  it('but the same case DOES get a verdict for the canonical model', () => {
-    // The withholding is specific, not a blanket refusal to check. Choose the
-    // model and the figure describes the thing chosen, so the check runs.
-    expect(clearanceVerdictsFor(compatibilityView(CANONICAL_RTX5070 as never, 'canonical'))).toEqual(['gpu-tight-fit']);
+  it('a specifically identified board WITH sourced dimensions does get one', () => {
+    // The gate is evidence, not a permanent shut-off. Given provenance for one
+    // physical board, the check runs and warns — which is the behaviour the
+    // generic record was borrowing without the evidence.
+    expect(hasSourcedUnitSpecs(SOURCED_BOARD_RTX5070 as never)).toBe(true);
+    expect(clearanceVerdictsFor(compatibilityView(SOURCED_BOARD_RTX5070 as never, 'canonical')))
+      .toEqual(['gpu-tight-fit']);
   });
 
-  it('every per-unit field is withheld from a listing, power included', () => {
-    const view = compatibilityView(CANONICAL_RTX5070 as never, 'retail-listing') as Record<string, unknown>;
-    for (const field of PER_UNIT_SPEC_FIELDS) expect(view[field]).toBeUndefined();
-    // Exact-unit power was not established for this listing. That is the whole
-    // claim — not that the card draws more than the canonical figure says.
-    expect(withheldSpecFields(CANONICAL_RTX5070 as never, 'retail-listing')).toContain('tdp_watts');
-    expect(withheldSpecFields(CANONICAL_RTX5070 as never, 'retail-listing')).toContain('length_mm');
+  it('but not when it was reached through a retailer listing', () => {
+    // Sourced dimensions describe the board the record names. A listing merely
+    // MAPPED to that record need not be that board, so the second gate holds.
+    expect(clearanceVerdictsFor(compatibilityView(SOURCED_BOARD_RTX5070 as never, 'retail-listing')))
+      .toEqual([]);
+  });
+
+  it('an empty or missing source string does not unlock anything', () => {
+    // Provenance is the content of the field, so a blank one is no provenance.
+    const blank = { ...SOURCED_BOARD_RTX5070, [UNIT_SPECS_SOURCE_FIELD]: '   ' };
+    expect(hasSourcedUnitSpecs(blank as never)).toBe(false);
+    expect(clearanceVerdictsFor(compatibilityView(blank as never, 'canonical'))).toEqual([]);
+  });
+
+  it('every per-unit field is withheld from an unsourced record, power included', () => {
+    for (const origin of ['canonical', 'retail-listing'] as const) {
+      const view = compatibilityView(CANONICAL_RTX5070 as never, origin) as Record<string, unknown>;
+      for (const field of PER_UNIT_SPEC_FIELDS) expect(view[field]).toBeUndefined();
+      expect(withheldSpecFields(CANONICAL_RTX5070 as never, origin)).toContain('tdp_watts');
+      expect(withheldSpecFields(CANONICAL_RTX5070 as never, origin)).toContain('length_mm');
+    }
   });
 
   it('everything that describes the CHIP survives the withholding', () => {
@@ -105,6 +142,32 @@ describe('a retail listing no longer borrows the canonical RTX 5070 dimensions',
     expect(view.id).toBe('rtx5070');
     expect(view.gpu_multiplier).toBe(CANONICAL_RTX5070.gpu_multiplier);
     expect(view.tier).toBe(CANONICAL_RTX5070.tier);
+  });
+});
+
+describe('an unknown power draw does not become a zero-watt GPU', () => {
+  it('a build whose GPU draw was withheld gets NO power verdict', () => {
+    // The withholding uncovered this. `checkCompatibility` defaulted a missing
+    // draw to 0 W, which is right for a part that is absent and catastrophic
+    // for one that is selected: a 1000 W pairing passes on a 450 W unit.
+    const result = checkCompatibility({
+      gpu: compatibilityView(CANONICAL_RTX5070 as never, 'canonical'),
+      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', tdp_watts: 105 } as never,
+      psu: { id: 'fixture-psu', name: 'Fixture 450W', wattage: 450 } as never,
+    });
+    expect(result.passed).not.toContain('PSU wattage');
+    expect(result.warnings.map((warning) => warning.id)).not.toContain('psu-tight');
+    expect(result.warnings.map((warning) => warning.id)).not.toContain('psu-insufficient');
+  });
+
+  it('and one with no GPU at all still gets the check it always had', () => {
+    // The zero default stays correct for an ABSENT part. A CPU-only build is
+    // still told its power supply is too small.
+    const result = checkCompatibility({
+      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', tdp_watts: 105 } as never,
+      psu: { id: 'fixture-psu', name: 'Fixture 150W', wattage: 150 } as never,
+    });
+    expect(result.warnings.map((warning) => warning.id)).toContain('psu-insufficient');
   });
 });
 
@@ -178,5 +241,36 @@ describe('UPC is a supporting identifier, never an identity', () => {
     const upcOnly = { canonicalPartId: null, upc: '884588123456' } as unknown as AffiliatePart;
     expect(hasVerifiedIdentity(upcOnly)).toBe(false);
     expect(canonicalIdFor(upcOnly)).toBeNull();
+  });
+});
+
+describe('every surface that shows a compatibility panel obeys the same rule', () => {
+  it('Build Crate makes no exact-fit claim from the canonical records it pulls', async () => {
+    // A crate hands `finalizeCrateBuild` canonical records straight from
+    // gpus.json, and its result is rendered as a compatibility panel. The
+    // Builder refusing a claim on that data while the crate makes it would be
+    // the same defect on a different page.
+    const { finalizeCrateBuild } = await import('../buildCrate');
+    const gpus = gpusJson as unknown as Array<Record<string, unknown> & { id: string }>;
+    const gpu = gpus.find((entry) => entry.id === 'rtx5070');
+    expect(gpu, 'no canonical rtx5070 record').toBeDefined();
+
+    const build = finalizeCrateBuild({
+      gpu: gpu as never,
+      cpu: { id: 'c', name: 'C', price_usd: 1, tier: 5, tdp_watts: 105, cpu_multiplier: 1, socket: 'AM5', supported_ram: ['DDR5'] } as never,
+      motherboard: { id: 'm', name: 'M', price_usd: 1, socket: 'AM5', supported_ram: ['DDR5'], form_factor: 'ATX' } as never,
+      ram: { id: 'r', name: 'R', price_usd: 1, type: 'DDR5' } as never,
+      storage: { id: 's', name: 'S', price_usd: 1 } as never,
+      case: { ...CASE_295MM, price_usd: 1 } as never,
+      cooler: { id: 'cl', name: 'CL', price_usd: 1, max_tdp_watts: 250, type: 'AIO' } as never,
+      psu: { id: 'p', name: 'P', price_usd: 1, wattage: 450 } as never,
+    });
+
+    expect(build.compat.passed).not.toContain('GPU clearance');
+    expect(build.compat.passed).not.toContain('PSU wattage');
+    const ids = build.compat.warnings.map((warning) => warning.id);
+    for (const id of ['gpu-too-long', 'gpu-tight-fit', 'psu-tight', 'psu-insufficient']) {
+      expect(ids).not.toContain(id);
+    }
   });
 });

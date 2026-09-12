@@ -96,8 +96,20 @@ export function checkCompatibility(parts: {
     }
   }
 
-  // PSU wattage check
-  if (parts.psu && typeof parts.psu.wattage === 'number' &&
+  // PSU wattage check.
+  //
+  // FAILS CLOSED ON AN UNKNOWN DRAW. The `?? 0` below is only correct for a
+  // part that is ABSENT — no GPU selected, no GPU watts. For a part that is
+  // SELECTED but whose power draw is not established, zero is not a
+  // conservative default, it is the least conservative one available: it
+  // understates the requirement by the largest single number in the build and
+  // turns a 1000 W card-and-chip pairing into a comfortable pass on a 450 W
+  // unit. So when any selected part's draw is unknown the check does not run
+  // at all, and the build gets no power verdict rather than a reassuring one.
+  const powerDrawUnknown =
+    (parts.gpu != null && typeof parts.gpu.tdp_watts !== 'number') ||
+    (parts.cpu != null && typeof parts.cpu.tdp_watts !== 'number');
+  if (parts.psu && typeof parts.psu.wattage === 'number' && !powerDrawUnknown &&
       (typeof parts.gpu?.tdp_watts === 'number' || typeof parts.cpu?.tdp_watts === 'number')) {
     const gpuTdp = typeof parts.gpu?.tdp_watts === 'number' ? parts.gpu.tdp_watts : 0;
     const cpuTdp = typeof parts.cpu?.tdp_watts === 'number' ? parts.cpu.tdp_watts : 0;

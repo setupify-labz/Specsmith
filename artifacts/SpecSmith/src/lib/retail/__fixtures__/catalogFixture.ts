@@ -55,6 +55,23 @@ export const CANONICAL_RTX5070 = {
   vram_gb: 12,
 } as const;
 
+/**
+ * The same card as a SPECIFICALLY IDENTIFIED BOARD with sourced dimensions.
+ *
+ * Nothing in `src/data/gpus.json` looks like this — the canonical records
+ * describe chips. It exists so the tests can show what actually unlocks an
+ * exact-fit claim, and so the gate cannot be mistaken for a blanket disable
+ * that would silently stay off once real measurements arrive.
+ *
+ * The source string is a FIXTURE, not a citation. No figure here is published.
+ */
+export const SOURCED_BOARD_RTX5070 = {
+  ...CANONICAL_RTX5070,
+  id: 'fixture-sourced-board-rtx5070',
+  name: 'Fixture Partner RTX 5070 (specific board)',
+  unit_specs_source: 'fixture://manufacturer-spec-sheet',
+} as const;
+
 /** A case that fits the canonical figure and would not fit a 302 mm card. */
 export const CASE_295MM = {
   id: 'fixture-case-295',
