@@ -26,6 +26,7 @@ import {
   recognisedPartIds,
   type CanonicalPartRef,
 } from '../lib/retail/importedBuild';
+import { openCategoryFrom } from '../lib/retail/guidePlanHandoff';
 import {
   CATALOGUE_PENDING,
   CORE_BUILD_TOTAL,
@@ -335,7 +336,19 @@ export default function Builder() {
    * category rail, so there the request is honoured by scrolling to the
    * builder region instead of silently doing nothing.
    */
-  const [categoryRequest, setCategoryRequest] = useState<{ category: RetailPartCategory; token: number } | null>(null);
+  /**
+   * A build guide can ask for a category to be open on arrival.
+   *
+   * Read once, from the URL the guide's "Choose current listing" row built.
+   * The plan itself travels in the ordinary part params, so the shopper keeps
+   * their whole build and simply lands on the category they clicked.
+   */
+  const [categoryRequest, setCategoryRequest] = useState<{ category: RetailPartCategory; token: number } | null>(
+    () => {
+      const asked = openCategoryFrom(searchParams);
+      return asked ? { category: asked, token: 1 } : null;
+    },
+  );
   const builderRegionRef = useRef<HTMLDivElement | null>(null);
   const handleChooseCategory = (category: RetailPartCategory) => {
     setCategoryRequest((current) => ({ category, token: (current?.token ?? 0) + 1 }));
