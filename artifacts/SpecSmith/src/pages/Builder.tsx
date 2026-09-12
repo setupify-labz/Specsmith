@@ -27,10 +27,14 @@ import {
   type CanonicalPartRef,
 } from '../lib/retail/importedBuild';
 import {
+  CATALOGUE_PENDING,
   CORE_BUILD_TOTAL,
+  catalogueComplete,
+  cataloguePartial,
   coreCategoryAction,
   coreReplacementAction,
   describeCoreBuild,
+  type CatalogueKnowledge,
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
@@ -290,19 +294,37 @@ export default function Builder() {
     [build, retailIds, canonicalById],
   );
 
-  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
-    if (affiliateCatalog.status === 'loading') return null;
-    // Exact listings AND recognised models, so the counter and the summary
-    // describe the same set — including a build that arrived from elsewhere.
-    // An id in neither is still rejected and counts for nothing.
-    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalById);
-    return new Set(canonicalById.keys());
+  /**
+   * What this page is actually entitled to say about a saved id.
+   *
+   * The three cases are NOT interchangeable, and treating the third as the
+   * second was a defect: on a failed download every saved retailer SKU was
+   * classified as missing, so the page told the shopper both "live listings
+   * could not be loaded" and "your processor is no longer available". The
+   * second sentence is not something a failed HTTP request can establish.
+   *
+   * - loading  → nothing is knowable yet.
+   * - ok       → exact listings AND recognised models, so the counter and the
+   *              summary describe the same set, including a build that
+   *              arrived from elsewhere. An id in neither is genuinely not in
+   *              our catalogue.
+   * - failed   → canonical parts are bundled with the app, so those are still
+   *              knowable and still count. A retailer SKU cannot be checked
+   *              against a catalogue that never arrived, so it is left
+   *              unchecked rather than condemned.
+   */
+  const catalogueKnowledge = useMemo<CatalogueKnowledge>(() => {
+    if (affiliateCatalog.status === 'loading') return CATALOGUE_PENDING;
+    if (affiliateCatalog.status === 'ok') {
+      return catalogueComplete(recognisedPartIds(retailIds, canonicalById));
+    }
+    return cataloguePartial(new Set(canonicalById.keys()));
   }, [affiliateCatalog, retailIds, canonicalById]);
 
   // ONE reading of the build, shared by every surface that describes it — the
   // counter here, the cart, the desktop rail and the mobile chips. They drifted
   // apart by being derived three different ways in three different files.
-  const core = describeCoreBuild(build, knownPartIds);
+  const core = describeCoreBuild(build, catalogueKnowledge);
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -503,9 +525,14 @@ export default function Builder() {
                 className="flex-1 h-1.5 rounded-full overflow-hidden"
                 style={{ backgroundColor: 'var(--ff-border)' }}
                 role="progressbar"
+                // Busy ONLY while something is actually in flight: a bar
+                // marked busy after a failed download announces work that
+                // will never finish. Then it is indeterminate, not loading.
                 {...(core.settled
                   ? { 'aria-valuenow': core.count }
-                  : { 'aria-busy': true })}
+                  : catalogueKnowledge.status === 'pending'
+                    ? { 'aria-busy': true }
+                    : {})}
                 aria-valuemin={0}
                 aria-valuemax={CORE_BUILD_TOTAL}
                 aria-label={core.label}

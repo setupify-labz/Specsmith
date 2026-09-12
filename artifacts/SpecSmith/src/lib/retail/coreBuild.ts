@@ -64,72 +64,108 @@ const isChosen = (id: string | null | undefined): id is string =>
   typeof id === 'string' && id.trim() !== '';
 
 /**
- * The ids the builder on screen can actually show, or null when it does not
- * know yet.
+ * What the page knows about which parts it can show.
  *
- * WHY THIS EXISTS — the second half of the same bug. Counting every id the
- * draft holds looks right until a saved SKU drops out of the catalogue: the
- * header then says "8 of 8" while the build summary lists seven, because the
- * summary skips a selection it cannot render. That is the identical
- * contradiction this change set exists to remove, arriving from the other
- * direction.
+ * A SET OF IDS IS NOT ENOUGH, and that gap was a real defect. Absence from a
+ * set means "this id is not in the catalogue" only when a catalogue actually
+ * arrived. When the download failed there is no catalogue to be absent from,
+ * and reading the empty-handedness as "your part is gone" told the shopper
+ * two contradictory things at once: that live listings could not be loaded,
+ * and that a specific product no longer exists. A failed request proves
+ * nothing whatsoever about a product.
  *
- * So a slot counts when the builder could put something in it, matched by
- * exact id. `null` means the catalogue has not answered yet.
+ * So the knowledge carries its own confidence:
+ *
+ * - `pending` — nothing has answered. Every filled slot is unknown.
+ * - `complete` — the catalogue arrived. Absence from `ids` is a fact about
+ *   the catalogue, and a slot missing from it can be reported as such.
+ * - `partial` — only locally-held parts are knowable, because the catalogue
+ *   request failed. Presence still counts; ABSENCE PROVES NOTHING and leaves
+ *   the slot unknown rather than missing.
  */
-export type KnownPartIds = ReadonlySet<string> | null | undefined;
+export type CatalogueKnowledge =
+  | { readonly status: 'pending' }
+  | { readonly status: 'complete'; readonly ids: ReadonlySet<string> }
+  | { readonly status: 'partial'; readonly ids: ReadonlySet<string> };
+
+export const CATALOGUE_PENDING: CatalogueKnowledge = { status: 'pending' };
+
+/** The catalogue answered in full: absence from these ids is meaningful. */
+export const catalogueComplete = (ids: ReadonlySet<string>): CatalogueKnowledge =>
+  ({ status: 'complete', ids });
+
+/** Only these ids are knowable; anything else is unchecked, not missing. */
+export const cataloguePartial = (ids: ReadonlySet<string>): CatalogueKnowledge =>
+  ({ status: 'partial', ids });
 
 /*
- * THE CATALOGUE ARGUMENT IS REQUIRED, NOT OPTIONAL, on every function below
+ * THE KNOWLEDGE ARGUMENT IS REQUIRED, NOT OPTIONAL, on every function below
  * that decides whether a slot is filled. It used to default to `undefined`,
  * which meant "count without checking anything" — the exact behaviour this
- * file has now been corrected for twice. A caller that has no catalogue must
- * say so by passing `null` and handle the unsettled answer, rather than
- * getting a confident number by leaving an argument off.
+ * file has now been corrected for twice. A caller with no catalogue must say
+ * so by passing `CATALOGUE_PENDING` and handle the unsettled answer, rather
+ * than getting a confident number by leaving an argument off.
  */
 
 /**
  * What one slot in the build is, once the catalogue has been consulted.
  *
- * THREE STATES, NOT TWO, and the third is the point. A slot that is empty, a
- * slot whose saved listing has gone away, and a slot nobody has been able to
- * check yet are three different situations. They share one piece of
- * arithmetic — none of them is a completed part — and nothing else:
+ * FOUR STATES, AND THE LAST TWO ARE THE POINT. A slot that is empty, a slot
+ * whose id our catalogue does not carry, and a slot nobody has been able to
+ * check are three different situations. They share one piece of arithmetic —
+ * none of them is a completed part — and nothing else:
  *
  * - `empty` is silent. Nothing was ever there.
- * - `unavailable` owes the shopper a sentence. They chose something, and it
- *   is not in the cart, and they deserve to know why.
- * - `unknown` may not be reported AT ALL — not as done, not as missing. The
- *   honest answer while the catalogue is in flight is that we do not know,
- *   and a count or a tick or a "choose a processor" is a claim we cannot back.
+ * - `unavailable` owes the shopper a sentence. They chose something, a
+ *   catalogue arrived, and that catalogue does not carry the id — so it is
+ *   not in the cart and they deserve to know why. It means "not in OUR
+ *   catalogue", never "does not exist".
+ * - `unknown` may not be reported AT ALL — not as done, not as missing.
+ *   Either the catalogue is still in flight, or the request failed and there
+ *   is nothing to have been absent from. A count, a tick or a "choose a
+ *   processor" is a claim we cannot back.
  *
  * Collapsing `unknown` into "present" is what let the header read 8 of 8
  * before anything had validated a single saved id. Collapsing it into
- * "missing" would be worse: it tells a shopper their parts are gone while the
- * page is still loading them.
+ * `unavailable` is worse: on a failed download it tells the shopper their
+ * part is gone in the same breath as telling them nothing could be loaded.
  */
 export type CoreSlotState = 'empty' | 'present' | 'unavailable' | 'unknown';
 
-/** What the catalogue says about one slot. */
-export function coreSlotState(id: string | null | undefined, known: KnownPartIds): CoreSlotState {
+/**
+ * What the catalogue says about one slot.
+ *
+ * MATCHED BY EXACT ID, with no trimming. It used to compare `id.trim()`,
+ * which the cart, the rail, the chips and the imported-model resolver do not
+ * — they all look the raw string up. So a draft holding `" rx6600 "` counted
+ * in the header and then vanished from the cart, which is precisely the
+ * disagreement this file exists to prevent. A malformed id is rejected in the
+ * same breath by all four, or it is a bug again.
+ *
+ * Whitespace still decides whether a slot is FILLED — `"   "` is nobody's
+ * part — but it never decides whether a filled slot matches.
+ */
+export function coreSlotState(id: string | null | undefined, known: CatalogueKnowledge): CoreSlotState {
   if (!isChosen(id)) return 'empty';
-  if (known === null || known === undefined) return 'unknown';
-  return known.has(id.trim()) ? 'present' : 'unavailable';
+  if (known.status === 'pending') return 'unknown';
+  if (known.ids.has(id)) return 'present';
+  // A catalogue that never arrived cannot testify that a part is missing.
+  return known.status === 'complete' ? 'unavailable' : 'unknown';
 }
 
-const isPresent = (id: string | null | undefined, known: KnownPartIds): id is string =>
+const isPresent = (id: string | null | undefined, known: CatalogueKnowledge): id is string =>
   coreSlotState(id, known) === 'present';
 
 /** Which core categories hold a part the builder can show. */
 export function chosenCoreCategories(
   selection: CoreSelection,
-  known: KnownPartIds,
+  known: CatalogueKnowledge,
 ): CoreBuildCategory[] {
   return CORE_BUILD_CATEGORIES.filter((category) => isPresent(selection[category], known));
 }
 
 /** How many of the eight are chosen. Never more than eight, never negative. */
-export function coreBuildCount(selection: CoreSelection, known: KnownPartIds): number {
+export function coreBuildCount(selection: CoreSelection, known: CatalogueKnowledge): number {
   return chosenCoreCategories(selection, known).length;
 }
 
@@ -141,7 +177,7 @@ export function coreBuildCount(selection: CoreSelection, known: KnownPartIds): n
  */
 export function missingCoreCategories(
   selection: CoreSelection,
-  known: KnownPartIds,
+  known: CatalogueKnowledge,
 ): CoreBuildCategory[] {
   return CORE_BUILD_CATEGORIES.filter((category) => !isPresent(selection[category], known));
 }
@@ -155,18 +191,28 @@ export function missingCoreCategories(
  */
 export function nextMissingCoreCategory(
   selection: CoreSelection,
-  known: KnownPartIds,
+  known: CatalogueKnowledge,
 ): CoreBuildCategory | null {
   return missingCoreCategories(selection, known)[0] ?? null;
 }
 
 /** The counter's label. One string, so the two numbers cannot be written apart. */
-export function coreBuildLabel(selection: CoreSelection, known: KnownPartIds): string {
+export function coreBuildLabel(selection: CoreSelection, known: CatalogueKnowledge): string {
   return `Core build: ${coreBuildCount(selection, known)} of ${CORE_BUILD_TOTAL} parts selected`;
 }
 
 /** The label shown while saved ids are still being checked. */
 export const CORE_BUILD_CHECKING_LABEL = 'Checking your saved parts…';
+
+/**
+ * The label when the catalogue request failed and saved ids cannot be checked.
+ *
+ * Deliberately different from the loading one. "Checking…" over a page that
+ * has stopped checking, and will not resume on its own, is a spinner that
+ * lies. The reason and the retry live in the catalogue-failure notice below;
+ * this only has to stop claiming a number it cannot stand behind.
+ */
+export const CORE_BUILD_UNCHECKED_LABEL = 'Some saved parts could not be checked';
 
 /**
  * Slots the shopper filled that the catalogue cannot show.
@@ -177,7 +223,7 @@ export const CORE_BUILD_CHECKING_LABEL = 'Checking your saved parts…';
  */
 export function unavailableCoreCategories(
   selection: CoreSelection,
-  known: KnownPartIds,
+  known: CatalogueKnowledge,
 ): CoreBuildCategory[] {
   return CORE_BUILD_CATEGORIES.filter(
     (category) => coreSlotState(selection[category], known) === 'unavailable',
@@ -189,9 +235,16 @@ export function unavailableCoreCategories(
  *
  * One sentence rather than one per part: a shopper whose draft has aged out
  * of three categories should read a single line, not a stack of three
- * identical warnings. It says the part is gone and what to do about it, and
- * NOT why — discontinued, recalled, out of stock are all invention. The only
- * fact in hand is that this catalogue does not carry the id.
+ * identical warnings.
+ *
+ * "NO LONGER AVAILABLE" WAS TOO STRONG, and it is the kind of overreach this
+ * project exists to avoid. SpecSmith carries a few hundred listings, not the
+ * whole of Newegg. A saved id absent from today's catalogue may have been
+ * delisted — or may be sitting on the retailer's site right now, in stock, at
+ * a price we simply are not carrying. The honest claim is about OUR
+ * catalogue, which is the only thing we looked at, so that is what is said,
+ * plus the fact that the part may still exist at the retailer. Declaring it
+ * gone would send a shopper off to replace something they already own.
  */
 export function unavailableCoreNotice(categories: readonly CoreBuildCategory[]): string | null {
   if (categories.length === 0) return null;
@@ -201,8 +254,8 @@ export function unavailableCoreNotice(categories: readonly CoreBuildCategory[]):
       ? named[0]
       : `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
   return named.length === 1
-    ? `A saved part is no longer available — choose a replacement ${list}.`
-    : `Saved parts are no longer available — choose a replacement ${list}.`;
+    ? `A saved part is not present in the current SpecSmith catalogue — choose a replacement ${list}. It may still be listed at the retailer.`
+    : `Some saved parts are not present in the current SpecSmith catalogue — choose a replacement ${list}. They may still be listed at the retailer.`;
 }
 
 export interface CoreBuildStatus {
@@ -219,6 +272,13 @@ export interface CoreBuildStatus {
    * untruth.
    */
   readonly settled: boolean;
+  /**
+   * Filled slots nothing has been able to check, in build order.
+   *
+   * Not missing — unverified. Either the catalogue has not answered yet, or
+   * the request failed and there is nothing to have been absent from.
+   */
+  readonly unchecked: readonly CoreBuildCategory[];
   /** Filled slots the catalogue cannot show, in build order. */
   readonly unavailable: readonly CoreBuildCategory[];
   /** The one sentence about those slots, or null when there are none. */
@@ -237,21 +297,21 @@ export interface CoreBuildStatus {
  * computed three different ways in three different files. That drift IS the
  * bug this file keeps being edited for.
  */
-export function describeCoreBuild(selection: CoreSelection, known: KnownPartIds): CoreBuildStatus {
+export function describeCoreBuild(selection: CoreSelection, known: CatalogueKnowledge): CoreBuildStatus {
   const slots = {} as Record<CoreBuildCategory, CoreSlotState>;
   let count = 0;
-  let anyUnknown = false;
   const unavailable: CoreBuildCategory[] = [];
+  const unchecked: CoreBuildCategory[] = [];
 
   for (const category of CORE_BUILD_CATEGORIES) {
     const state = coreSlotState(selection[category], known);
     slots[category] = state;
     if (state === 'present') count += 1;
     else if (state === 'unavailable') unavailable.push(category);
-    else if (state === 'unknown') anyUnknown = true;
+    else if (state === 'unknown') unchecked.push(category);
   }
 
-  const settled = !anyUnknown;
+  const settled = unchecked.length === 0;
   // Nothing is offered as "next" until every slot has an answer. Suggesting a
   // part on the strength of an unchecked selection is the same mistake as
   // counting one, one step further along.
@@ -259,14 +319,20 @@ export function describeCoreBuild(selection: CoreSelection, known: KnownPartIds)
     ? CORE_BUILD_CATEGORIES.find((category) => slots[category] !== 'present') ?? null
     : null;
 
+  // An unsettled build states no number, and says which of the two reasons
+  // applies: still arriving, or arrived broken and not coming back.
+  const unsettledLabel =
+    known.status === 'pending' ? CORE_BUILD_CHECKING_LABEL : CORE_BUILD_UNCHECKED_LABEL;
+
   return {
     slots,
     count,
     settled,
     unavailable,
+    unchecked,
     notice: unavailableCoreNotice(unavailable),
     next,
-    label: settled ? coreBuildLabel(selection, known) : CORE_BUILD_CHECKING_LABEL,
+    label: settled ? coreBuildLabel(selection, known) : unsettledLabel,
   };
 }
 

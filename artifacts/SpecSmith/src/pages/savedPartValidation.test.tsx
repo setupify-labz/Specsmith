@@ -15,6 +15,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import { MemoryRouter } from 'react-router-dom';
 
 import publishedCatalog from '../../public/data/retail-parts.json';
+import canonicalGpus from '../data/gpus.json';
 import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import Builder from './Builder';
@@ -49,6 +50,26 @@ function stubCatalog() {
  */
 function stubNeverAnswers() {
   vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch);
+}
+
+/** The catalogue request answers, and answers 503. */
+function stubCatalogFails() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (String(url).includes('product-images.json')) {
+        return { ok: false, json: async () => ({}) } as unknown as Response;
+      }
+      return {
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => {
+          throw new Error('no body');
+        },
+      } as unknown as Response;
+    }) as unknown as typeof fetch,
+  );
 }
 
 const saveBuild = (build: Record<string, string>) =>
@@ -236,7 +257,7 @@ describe('the shopper gets one clear notice, not a pile', () => {
 
     const notices = await screen.findAllByTestId('stale-core-parts');
     expect(notices).toHaveLength(1);
-    expect(notices[0].textContent).toMatch(/no longer available/i);
+    expect(notices[0].textContent).toMatch(/not present in the current SpecSmith catalogue/i);
     expect(notices[0].textContent).toMatch(/processor/i);
   }, 30000);
 
@@ -252,7 +273,8 @@ describe('the shopper gets one clear notice, not a pile', () => {
       expect(text, category).toContain(category);
     }
     // One sentence about it, not three.
-    expect(notices[0].textContent!.match(/no longer available/gi)).toHaveLength(1);
+    expect(notices[0].textContent!.match(/not present in the current SpecSmith catalogue/gi))
+      .toHaveLength(1);
   }, 30000);
 
   it('invents no reason for the part being gone', async () => {
@@ -298,5 +320,116 @@ describe('validation is not a claim about verification or compatibility', () => 
     const estimate = screen.getByTestId('summary-estimate');
     const button = within(estimate).getByRole('button') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
+  }, 30000);
+});
+
+describe('when the catalogue request fails', () => {
+  // A FAILED DOWNLOAD PROVES NOTHING ABOUT A PRODUCT. Classifying saved
+  // retailer SKUs as missing here showed the shopper two things at once:
+  // "live retailer listings could not be loaded", and "your processor is no
+  // longer available". Only the first is something we actually established.
+  const savedSku = () => first('cpu').id;
+
+  it('shows the catalogue-failure message, as it always did', async () => {
+    saveBuild({ cpu: savedSku() });
+    stubCatalogFails();
+    renderBuilder();
+
+    const notice = await screen.findByTestId('catalog-failure-notice', {}, { timeout: 10000 });
+    expect(notice.textContent).toMatch(/could not be loaded/i);
+  }, 30000);
+
+  it('does not also claim the saved retailer SKU is missing', async () => {
+    saveBuild({ cpu: savedSku() });
+    stubCatalogFails();
+    renderBuilder();
+
+    await screen.findByTestId('catalog-failure-notice', {}, { timeout: 10000 });
+    expect(screen.queryByTestId('stale-core-parts')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/not present in the current SpecSmith catalogue/i);
+    expect(document.body.textContent).not.toMatch(/no longer available/i);
+  }, 30000);
+
+  it('withholds the completion claim for the unverified slot', async () => {
+    saveBuild({ cpu: savedSku() });
+    stubCatalogFails();
+    renderBuilder();
+
+    await screen.findByTestId('catalog-failure-notice', {}, { timeout: 10000 });
+    expect(counter()).toBe('Some saved parts could not be checked');
+    expect(counter()).not.toMatch(/\d/);
+    expect(progressBar().hasAttribute('aria-valuenow')).toBe(false);
+    expect(screen.queryByTestId('next-core-part')).toBeNull();
+  }, 30000);
+
+  it('does not mark the bar busy, because nothing is still loading', async () => {
+    // A spinner that never resolves is its own small lie.
+    saveBuild({ cpu: savedSku() });
+    stubCatalogFails();
+    renderBuilder();
+
+    await screen.findByTestId('catalog-failure-notice', {}, { timeout: 10000 });
+    expect(progressBar().hasAttribute('aria-busy')).toBe(false);
+  }, 30000);
+
+  it('still counts a canonical part, which ships with the app', async () => {
+    // The offline fallback can show these, so they are genuinely known and
+    // the counter is entitled to state a number.
+    const gpu = (canonicalGpus as { id: string }[])[0];
+    saveBuild({ gpu: gpu.id });
+    stubCatalogFails();
+    renderBuilder();
+
+    await screen.findByTestId('catalog-failure-notice', {}, { timeout: 10000 });
+    await waitFor(() => expect(counter()).toContain('1 of 8'));
+    expect(screen.queryByTestId('stale-core-parts')).toBeNull();
+  }, 30000);
+});
+
+describe('an id is matched exactly, in every surface', () => {
+  // coreSlotState used to compare `id.trim()` while the cart, the rail, the
+  // chips and the imported-model resolver all look the raw string up. So a
+  // draft holding `" rx6600 "` counted in the header and vanished from the
+  // cart — the disagreement this whole change set exists to remove.
+  const padded = (id: string) => ` ${id} `;
+
+  it('does not let a whitespace-wrapped canonical id count in the header', async () => {
+    const gpu = (canonicalGpus as { id: string }[])[0];
+    saveBuild({ gpu: padded(gpu.id) });
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('0 of 8'));
+    expect(counter()).not.toContain('1 of 8');
+  }, 30000);
+
+  it('rejects it in the cart, the rail and the chips too', async () => {
+    const gpu = (canonicalGpus as { id: string }[])[0];
+    saveBuild({ gpu: padded(gpu.id) });
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('0 of 8'));
+    expect(cartCount()).toContain('(0)');
+    expect(railTicked('gpu'), 'the rail ticked a padded id').toBe(false);
+    expect(chipTicked('gpu'), 'the chip ticked a padded id').toBe(false);
+  }, 30000);
+
+  it('rejects a whitespace-wrapped retailer SKU the same way', async () => {
+    saveBuild({ cpu: padded(first('cpu').id) });
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('0 of 8'));
+    expect(cartCount()).toContain('(0)');
+    expect(railTicked('cpu')).toBe(false);
+    expect(chipTicked('cpu')).toBe(false);
+  }, 30000);
+
+  it('accepts the very same id once it is not padded', async () => {
+    // Proves the rejection is about the whitespace and nothing else.
+    saveBuild({ gpu: first('gpu').id });
+    await openBuilder();
+
+    await waitFor(() => expect(counter()).toContain('1 of 8'));
+    expect(cartCount()).toContain('(1)');
+    expect(railTicked('gpu')).toBe(true);
   }, 30000);
 });
