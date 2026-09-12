@@ -15,7 +15,6 @@ import {
   guidePlanUrl,
   isShoppableCategory,
 } from '../lib/retail/guidePlanHandoff';
-import type { RetailPartCategory } from '../lib/retail/partCatalog';
 import { useSeo } from '../hooks/useSeo';
 import { SITE_URL } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
@@ -88,17 +87,6 @@ export default function PrebuiltDetail() {
   const badge = BADGE_STYLES[prebuilt.badge_color] ?? BADGE_STYLES.gray;
 
   const handleLoad = () => navigate(guidePlanUrl(prebuilt.parts));
-
-  /**
-   * Takes the WHOLE plan to the Builder and opens the clicked category.
-   *
-   * Not just the one part: a shopper picking a power supply still wants the
-   * rest of the build they were reading about. Nothing is selected on
-   * arrival — the plan names models, and which SKU of that model to buy is
-   * the shopper's decision, not ours to guess.
-   */
-  const handleChooseListing = (category: RetailPartCategory) =>
-    navigate(guidePlanUrl(prebuilt.parts, category));
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -199,19 +187,21 @@ export default function PrebuiltDetail() {
                           {ESTIMATED_PREFIX} ${price.toLocaleString()}
                           <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}> · {PRICES_UPDATED}</span>
                         </div>
+                        {/* A LINK, NOT A BUTTON. It navigates, so middle-click
+                            and ctrl-click must open a tab, "copy link address"
+                            must work, and a screen reader must hear a link. */}
                         {isShoppableCategory(cat) && (
-                          <button
-                            type="button"
+                          <Link
+                            to={guidePlanUrl(prebuilt.parts, cat)}
                             data-testid={`guide-choose-${cat}`}
                             data-category={cat}
-                            onClick={() => handleChooseListing(cat)}
                             aria-label={chooseCurrentListingLabel(cat, name)}
                             className="ff-accent-control inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-semibold"
                             style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
                           >
                             {CHOOSE_CURRENT_LISTING_LABEL}
                             <ChevronRight size={10} aria-hidden="true" />
-                          </button>
+                          </Link>
                         )}
                       </div>
                     );

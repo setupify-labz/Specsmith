@@ -17,7 +17,6 @@ import {
   guidePlanUrl,
   isShoppableCategory,
 } from '../lib/retail/guidePlanHandoff';
-import type { RetailPartCategory } from '../lib/retail/partCatalog';
 import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
@@ -73,17 +72,6 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
   const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length];
 
   const handleLoad = () => navigate(guidePlanUrl(prebuilt.parts));
-
-  /**
-   * Takes the WHOLE plan to the Builder and opens the clicked category.
-   *
-   * Not just the one part: a shopper picking a power supply still wants the
-   * rest of the build they were reading about. Nothing is selected on
-   * arrival — the plan names models, and choosing which SKU of that model to
-   * buy is the shopper's decision, not ours to guess.
-   */
-  const handleChooseListing = (category: RetailPartCategory) =>
-    navigate(guidePlanUrl(prebuilt.parts, category));
 
   return (
     <motion.div
@@ -160,20 +148,25 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
                 {ESTIMATED_PREFIX} ${price.toLocaleString()}
                 <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}> · {PRICES_UPDATED}</span>
               </div>
-              {/* ONE action, and it goes where the facts are. */}
+              {/* ONE action, and it goes where the facts are.
+                  A LINK, NOT A BUTTON. It navigates, so it has to be an
+                  anchor: middle-click and ctrl-click open it in a new tab,
+                  "copy link address" works, the status bar shows where it
+                  goes, and a screen reader announces a link rather than a
+                  button that mysteriously changes the page. A button calling
+                  navigate() takes all of that away for no gain. */}
               {isShoppableCategory(cat) && (
-                <button
-                  type="button"
+                <Link
+                  to={guidePlanUrl(prebuilt.parts, cat)}
                   data-testid={`guide-choose-${cat}`}
                   data-category={cat}
-                  onClick={() => handleChooseListing(cat)}
                   aria-label={chooseCurrentListingLabel(cat, name, prebuilt.name)}
                   className="ff-accent-control inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-semibold"
                   style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
                 >
                   {CHOOSE_CURRENT_LISTING_LABEL}
                   <ChevronRight size={10} aria-hidden="true" />
-                </button>
+                </Link>
               )}
             </div>
           );

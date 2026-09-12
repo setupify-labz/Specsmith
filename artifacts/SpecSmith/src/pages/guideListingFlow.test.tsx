@@ -21,7 +21,7 @@ import { ToastProvider } from '../context/ToastContext';
 import { prebuilts, getPartName } from '../lib/prebuilts';
 import { CATEGORY_LABELS } from '../lib/retail/retailShopping';
 import { PRICES_UPDATED } from '../lib/prices';
-import { isShoppableCategory } from '../lib/retail/guidePlanHandoff';
+import { guidePlanUrl, isShoppableCategory } from '../lib/retail/guidePlanHandoff';
 import Prebuilts from './Prebuilts';
 import PrebuiltDetail from './PrebuiltDetail';
 import Builder from './Builder';
@@ -170,6 +170,39 @@ describe.each(GUIDE_ROUTES)('%s offers one action per row, named for its row', (
     );
     expect(new Set(names).size).toBe(names.length);
     for (const name of names) expect(name).toMatch(/^Choose current listing for /);
+  });
+
+  it('is an anchor to the Builder, not a button that navigates', () => {
+    // A control that changes the page must be a link. As a <button> calling
+    // navigate(), middle-click and ctrl-click do nothing, "copy link address"
+    // is absent, the status bar shows no destination, and a screen reader
+    // announces a button that mysteriously moves the shopper elsewhere.
+    renderApp(route);
+    for (const category of shoppable) {
+      const action = within(planRows()).getByTestId(`guide-choose-${category}`);
+      expect(action.tagName, category).toBe('A');
+      expect(action.getAttribute('href'), category).toBeTruthy();
+      // Real href, so the browser can offer it as a destination.
+      expect(action.getAttribute('href')!, category).toMatch(/^\/builder\?/);
+      expect(action.hasAttribute('disabled'), category).toBe(false);
+    }
+  });
+
+  it('points each anchor at the whole plan and its own category', () => {
+    renderApp(route);
+    for (const category of shoppable) {
+      const href = within(planRows())
+        .getByTestId(`guide-choose-${category}`)
+        .getAttribute('href')!;
+      expect(href, category).toBe(guidePlanUrl(plan.parts, category));
+
+      const params = new URLSearchParams(href.slice(href.indexOf('?') + 1));
+      expect(params.get('open'), category).toBe(category);
+      // Every planned part is in the URL, not only the clicked one.
+      for (const [planned, id] of Object.entries(plan.parts)) {
+        expect(params.get(planned), `${category} -> ${planned}`).toBe(id);
+      }
+    }
   });
 
   it('names the category and the exact model in each one', () => {
