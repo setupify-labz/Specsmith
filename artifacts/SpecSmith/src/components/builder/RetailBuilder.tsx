@@ -166,7 +166,34 @@ export default function RetailBuilder({
     />
   );
 
-  const navProps = { active, counts, selected: selection, onSelect: setActive };
+  /**
+   * The selection as far as THIS CATALOGUE is concerned.
+   *
+   * The rail's tick and the chip's tick both mean "this slot is done". Both
+   * were drawn from the raw selection, so a saved draft naming a listing that
+   * has since dropped out got a tick beside a category the cart could not
+   * fill and the header counted as outstanding — the same build described
+   * four ways, and two of them wrong.
+   *
+   * A category is ticked when the cart can show something for it: an exact
+   * listing, or a model imported from elsewhere that is still waiting for the
+   * shopper to pick a SKU. Both appear in "View build", so both tick.
+   */
+  const importedCategories = useMemo(
+    () => new Set((imported ?? []).map((recommendation) => recommendation.category)),
+    [imported],
+  );
+
+  const presentSelection = useMemo(() => {
+    const present: Partial<Record<RetailPartCategory, string | null>> = {};
+    for (const [category, id] of Object.entries(selection) as [RetailPartCategory, string | null][]) {
+      const shown = (id !== null && byId.has(id)) || importedCategories.has(category);
+      present[category] = shown ? id : null;
+    }
+    return present;
+  }, [selection, byId, importedCategories]);
+
+  const navProps = { active, counts, selected: presentSelection, onSelect: setActive };
 
   return (
     <div data-testid="retail-builder">
