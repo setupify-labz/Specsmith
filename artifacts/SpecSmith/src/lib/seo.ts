@@ -33,9 +33,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/builder',
-    title: 'PC Builder + FPS Estimator | SpecSmith',
+    title: 'PC Build Calculator & FPS Estimator | SpecSmith',
     description:
-      'Pick your GPU, CPU, motherboard, RAM, storage, PSU, case, and cooler. Get instant compatibility checks and estimated FPS in 20 games at 1080p, 1440p, and 4K.',
+      'Build a gaming PC, check supported part compatibility, total current listing prices, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/prebuilts',
