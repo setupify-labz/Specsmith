@@ -50,8 +50,10 @@ describe('every core-selector page still calls the gated fallback-link builders 
     ['pages', 'BestMotherboardPage.tsx'],
     ['pages', 'BudgetPartPage.tsx'],
     ['pages', 'ComponentGuidePage.tsx'],
-    ['pages', 'Prebuilts.tsx'],
-    ['pages', 'PrebuiltDetail.tsx'],
+    // Prebuilts.tsx and PrebuiltDetail.tsx are deliberately ABSENT. They no
+    // longer build a retailer link of any kind — see the block below, which
+    // holds them to that instead. Leaving them here would have asserted the
+    // opposite of what they are now required to do.
     ['pages', 'SharedBuild.tsx'],
     ['pages', 'UseCaseBuildPage.tsx'],
     ['components', 'QuizFlow.tsx'],
@@ -101,5 +103,30 @@ describe('the core-selector journey (Builder.tsx -> PartCard/BuildSummary) still
     expect(source).toMatch(/affiliateUrl:\s*selected\w+\.affiliateUrl/);
     expect(source).not.toContain('retail-parts.json');
     expect(source).not.toMatch(/AFFILIATE_PART_CATALOG_URL/);
+  });
+});
+
+// THE BUILD GUIDES ARE THE EXCEPTION, AND MUST STAY ONE.
+//
+// Every page in the list above still hands a shopper a retailer SEARCH when
+// it has no exact listing, and the audit models that. The two build-guide
+// pages used to do the same, under labels that read "Buy on Amazon" and "Buy
+// on Newegg" — a promise a search results page cannot keep. They now offer a
+// single action into the Builder's catalogue, where a category holds exact
+// SKUs with observed prices, images, timestamps and tracked direct links.
+//
+// This guard is the mirror image of the one above: if a search link ever
+// reappears on a guide page, the audit's page list would silently stop
+// covering a surface that builds one.
+describe('the build guides build no retailer link at all', () => {
+  it.each([['Prebuilts.tsx'], ['PrebuiltDetail.tsx']])('%s', (file) => {
+    const source = fs.readFileSync(path.join(pagesDir, file), 'utf-8');
+    // No link builders, and no hand-rolled retailer URL either.
+    expect(source).not.toMatch(/\bgetAffiliateUrl\b/);
+    expect(source).not.toMatch(/\bgetNeweggUrl\b/);
+    expect(source).not.toMatch(/https?:\/\/(www\.)?(amazon|newegg)\.com/);
+    // And never the Associates tag for the account that was never approved.
+    expect(source).not.toContain('AMAZON_AFFILIATE_TAG');
+    expect(source).not.toContain('specsmithpc-20');
   });
 });
