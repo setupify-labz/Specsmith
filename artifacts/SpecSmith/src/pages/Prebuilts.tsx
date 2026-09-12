@@ -1,15 +1,39 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Zap, ExternalLink } from 'lucide-react';
+import { ChevronRight, Zap } from 'lucide-react';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
-import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, type Prebuilt } from '../lib/prebuilts';
+import { estimateFpsForBuild } from '../lib/fps';
+import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
+import {
+  CATALOGUE_FAILED,
+  CATALOGUE_LOADING,
+  RETRY_LISTINGS_LABEL,
+  catalogueReady,
+  guideBuildSelection,
+  guideSubtotal,
+  namedCategories,
+  resolveGuideSlots,
+  unavailableCategories,
+  LISTING_UNAVAILABLE_LABEL,
+  LISTINGS_UNCHECKABLE_LABEL,
+  LISTING_CHECKING_LABEL,
+  type GuideCatalogue,
+} from '../lib/guides/guideSlots';
+import { builderUrlFor, hasExistingBuild, readDraft } from '../lib/guides/guideHandoff';
+import {
+  STALE_PRICE_LABEL,
+  formatAmount,
+  formatCheckedAt,
+  priceView,
+  subtotalLabel,
+} from '../lib/retail/partPricing';
+import type { AffiliatePart } from '../lib/retail/partCatalog';
+import { prebuilts, categoryLabels, type Prebuilt } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
-import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
@@ -45,10 +69,6 @@ function useFpsPreview(prebuilt: Prebuilt) {
   }, [prebuilt]);
 }
 
-function useTotalPrice(prebuilt: Prebuilt): number {
-  return useMemo(() => getPrebuiltTotal(prebuilt), [prebuilt]);
-}
-
 function getFpsColor(fps: number): string {
   if (fps >= 144) return 'var(--ff-accent-text)';
   if (fps >= 90)  return 'var(--ff-cyan)';
@@ -57,17 +77,39 @@ function getFpsColor(fps: number): string {
   return 'var(--ff-red)';
 }
 
-function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }) {
+function PrebuiltCard({
+  prebuilt,
+  index,
+  catalogue,
+}: {
+  prebuilt: Prebuilt;
+  index: number;
+  /** FETCHED ONCE BY THE PAGE. Each card used to call the catalogue hook
+      itself, so a hub listing five guides started five identical downloads of
+      the same 500-part file and held five copies of it. */
+  catalogue: GuideCatalogue;
+}) {
   const navigate = useNavigate();
   const fpsRows = useFpsPreview(prebuilt);
-  const totalPrice = useTotalPrice(prebuilt);
   const badge = BADGE_STYLES[prebuilt.badge_color] ?? BADGE_STYLES.gray;
   const accentColor = ACCENT_COLORS[index % ACCENT_COLORS.length];
+  const clock = Date.now();
+  const slots = useMemo(
+    () => resolveGuideSlots(prebuilt.id, prebuilt.parts, catalogue),
+    [prebuilt, catalogue],
+  );
+  const subtotal = useMemo(() => guideSubtotal(slots, clock), [slots, clock]);
+  const missing = useMemo(() => unavailableCategories(slots), [slots]);
+  const loadSelection = useMemo(() => guideBuildSelection(slots), [slots]);
 
+  const [pendingLoadHref, setPendingLoadHref] = useState<string | null>(null);
   const handleLoad = () => {
-    const params = new URLSearchParams();
-    Object.entries(prebuilt.parts).forEach(([k, v]) => params.set(k, v));
-    navigate(`/builder?${params.toString()}`);
+    const href = builderUrlFor(loadSelection);
+    if (hasExistingBuild(readDraft(typeof window === 'undefined' ? undefined : window.localStorage))) {
+      setPendingLoadHref(href);
+      return;
+    }
+    navigate(href);
   };
 
   return (
@@ -103,52 +145,93 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             <p className="text-sm max-w-xl" style={{ color: 'var(--ff-text-2)' }}>{prebuilt.description}</p>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="text-3xl font-black gradient-text">${totalPrice.toLocaleString()}</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--ff-text-2)' }}>Estimated total</div>
+            {/* Summed from the exact listings below and nothing else. */}
+            <div className="text-3xl font-black gradient-text" data-testid="guide-subtotal">
+              {subtotal.currency === null ? '—' : formatAmount(subtotal.knownTotal, subtotal.currency)}
+            </div>
+            <div className="text-xs mt-0.5" data-testid="guide-subtotal-label" style={{ color: 'var(--ff-text-2)' }}>
+              {subtotalLabel(subtotal)} · {subtotal.countedItems} of {slots.length} priced
+            </div>
+            {missing.length > 0 && (
+              <div className="text-[11px] mt-0.5" data-testid="guide-missing-note" style={{ color: 'var(--ff-amber)' }}>
+                No listing for {namedCategories(missing)}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Parts grid */}
-      <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ borderBottom: '1px solid var(--ff-border)' }}>
-        {Object.entries(prebuilt.parts).map(([cat, id]) => {
-          const name = getPartName(cat, id);
-          const price = getPartPrice(cat, id);
+      {/* Parts grid — exact listings only, or an honest gap. */}
+      <div
+        data-testid={`guide-parts-${prebuilt.id}`}
+        className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3"
+        style={{ borderBottom: '1px solid var(--ff-border)' }}
+      >
+        {slots.map((slot) => {
+          const label = categoryLabels[slot.category] ?? slot.category;
+          if (slot.status === 'unchecked') {
+            return (
+              <div
+                key={slot.category}
+                data-testid={`guide-slot-${slot.category}`}
+                data-slot-status="unchecked"
+                data-unchecked-reason={slot.reason}
+                className="rounded-lg p-3"
+                style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
+              >
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>{label}</div>
+                <div
+                  className="text-[11px] font-semibold"
+                  {...(slot.reason === 'loading' ? { 'aria-busy': true } : {})}
+                  style={{ color: slot.reason === 'loading' ? 'var(--ff-text-2)' : 'var(--ff-amber)' }}
+                >
+                  {slot.reason === 'loading' ? LISTING_CHECKING_LABEL : LISTINGS_UNCHECKABLE_LABEL}
+                </div>
+              </div>
+            );
+          }
+          if (slot.status !== 'available') {
+            return (
+              <div
+                key={slot.category}
+                data-testid={`guide-slot-${slot.category}`}
+                data-slot-status={slot.status}
+                className="rounded-lg p-3"
+                style={{ backgroundColor: 'var(--ff-card)', border: '1px dashed var(--ff-border)' }}
+              >
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>{label}</div>
+                <div className="text-[11px] font-semibold" style={{ color: 'var(--ff-amber)' }}>
+                  {LISTING_UNAVAILABLE_LABEL}
+                </div>
+              </div>
+            );
+          }
+          const view = priceView(slot.part, clock);
           return (
             <div
-              key={cat}
+              key={slot.category}
+              data-testid={`guide-slot-${slot.category}`}
+              data-slot-status="available"
+              data-part-id={slot.part.id}
               className="rounded-lg p-3"
               style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
             >
-              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>
-                {categoryLabels[cat]}
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>{label}</div>
+              <div className="text-xs font-medium leading-tight mb-1.5" style={{ color: 'var(--ff-text)' }}>
+                {slot.part.name}
               </div>
-              <div className="text-xs font-medium leading-tight mb-1.5" style={{ color: 'var(--ff-text)' }}>{name}</div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent-text)' }}>${price}</span>
-                <div className="flex items-center gap-1.5">
-                  <a
-                    href={getAffiliateUrl(getPartSearchQuery(cat, id))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Buy on Amazon"
-                    className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                    style={{ color: 'var(--ff-accent-text)' }}
-                  >
-                    Amazon <ExternalLink size={9} />
-                  </a>
-                  <a
-                    href={getNeweggUrl(getPartSearchQuery(cat, id))}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Buy on Newegg"
-                    className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                    style={{ color: 'var(--ff-newegg)' }}
-                  >
-                    Newegg <ExternalLink size={9} />
-                  </a>
-                </div>
-              </div>
+              {view.status === 'fresh' ? (
+                <>
+                  <div className="text-xs font-bold" style={{ color: 'var(--ff-text)' }}>
+                    {formatAmount(view.displayAmount, view.currency)}
+                  </div>
+                  <div className="text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
+                    {formatCheckedAt(view.checkedAt)}
+                  </div>
+                </>
+              ) : (
+                <div className="text-[10px] font-semibold" style={{ color: 'var(--ff-text-2)' }}>{STALE_PRICE_LABEL}</div>
+              )}
             </div>
           );
         })}
@@ -179,8 +262,11 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
             <ChevronRight size={14} />
           </Link>
           <button
+            type="button"
             onClick={handleLoad}
-            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 hover:scale-105"
+            data-testid={`guide-load-${prebuilt.id}`}
+            disabled={Object.keys(loadSelection).length === 0}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
             style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}
           >
             <Zap size={16} />
@@ -188,6 +274,41 @@ function PrebuiltCard({ prebuilt, index }: { prebuilt: Prebuilt; index: number }
           </button>
         </div>
       </div>
+
+      {/* Asked before anything changes; cancelling writes nothing. */}
+      {pendingLoadHref !== null && (
+        <div
+          role="alertdialog"
+          aria-label="Replace your current build?"
+          data-testid={`guide-load-confirm-${prebuilt.id}`}
+          className="mx-6 mb-6 rounded-lg p-3"
+          style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-amber)' }}
+        >
+          <p className="text-xs mb-2" style={{ color: 'var(--ff-text)' }}>
+            You already have a build in progress. Loading this guide replaces it.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-testid={`guide-load-confirm-yes-${prebuilt.id}`}
+              onClick={() => { const to = pendingLoadHref; setPendingLoadHref(null); navigate(to); }}
+              className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-white"
+              style={{ background: 'var(--ff-accent-solid)' }}
+            >
+              Replace my build
+            </button>
+            <button
+              type="button"
+              data-testid={`guide-load-confirm-no-${prebuilt.id}`}
+              onClick={() => setPendingLoadHref(null)}
+              className="rounded-md px-3 py-1.5 text-[11px] font-semibold"
+              style={{ color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}
+            >
+              Keep my build
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -220,6 +341,18 @@ function prebuiltFaqJsonLd() {
 }
 
 export default function Prebuilts() {
+  const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
+  const catalogue = useMemo<GuideCatalogue>(
+    () =>
+      affiliateCatalog.status === 'ok'
+        ? catalogueReady(
+            new Map<string, AffiliatePart>(affiliateCatalog.catalog.parts.map((part) => [part.id, part])),
+          )
+        : affiliateCatalog.status === 'loading'
+          ? CATALOGUE_LOADING
+          : CATALOGUE_FAILED,
+    [affiliateCatalog],
+  );
   useSeo(getRouteMeta('/prebuilts'));
 
   const itemListJsonLd = {
@@ -257,13 +390,46 @@ export default function Prebuilts() {
           className="mb-8 rounded-xl px-4 py-3 text-xs text-center"
           style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
         >
-          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are estimates based on typical US street pricing — last updated {PRICES_UPDATED}.
+          {/* The price half of this used to read "Prices are estimates based on
+              typical US street pricing — last updated <date>". This page no
+              longer shows an editorial price anywhere: every figure on it is a
+              current Newegg listing, stamped with the moment it was read. A
+              disclaimer for prices that are not here explains nothing and
+              undersells the ones that are. */}
+          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are the current Newegg listing for each exact product, shown with the time each was checked.
         </motion.div>
+
+        {catalogue.status === 'failed' && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            data-testid="guide-listings-unavailable"
+            role="status"
+            className="mb-8 flex flex-wrap items-center justify-center gap-3 rounded-xl px-4 py-3 text-xs"
+            style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-amber)' }}
+          >
+            <span className="font-semibold" style={{ color: 'var(--ff-amber)' }}>
+              {LISTINGS_UNCHECKABLE_LABEL}
+            </span>
+            <span style={{ color: 'var(--ff-text-2)' }}>
+              Current prices and availability could not be loaded. Nothing below is a claim that a
+              product is gone.
+            </span>
+            <button
+              type="button"
+              data-testid="guide-listings-retry"
+              onClick={retryCatalog}
+              className="ff-accent-control rounded-md px-2.5 py-1.5 font-semibold"
+              style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+            >
+              {RETRY_LISTINGS_LABEL}
+            </button>
+          </motion.div>
+        )}
 
         {/* Build cards */}
         <div className="space-y-8">
           {prebuilts.map((prebuilt, i) => (
-            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} />
+            <PrebuiltCard key={prebuilt.id} prebuilt={prebuilt} index={i} catalogue={catalogue} />
           ))}
         </div>
 
