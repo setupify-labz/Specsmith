@@ -9,13 +9,18 @@ import {
   editorialReviewFor,
 } from './guideBindings';
 import {
-  CATALOGUE_PENDING,
+  CATALOGUE_FAILED,
+  CATALOGUE_LOADING,
+  LISTINGS_UNCHECKABLE_LABEL,
+  LISTING_CHECKING_LABEL,
+  RETRY_LISTINGS_LABEL,
   availableParts,
   catalogueReady,
   guideBuildSelection,
   guideSubtotal,
   isGuideComplete,
   isGuidePending,
+  isGuideUncheckable,
   namedCategories,
   resolveGuideSlots,
   unavailableCategories,
@@ -243,7 +248,7 @@ describe('a catalogue that has not answered', () => {
   const guideParts = { [binding.category]: binding.canonicalPartId };
 
   it('leaves the slot unchecked, not unavailable', () => {
-    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING);
+    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_LOADING);
     expect(states[0].status).toBe('unchecked');
     expect(unavailableCategories(states)).toHaveLength(0);
     expect(uncheckedCategories(states)).toEqual([binding.category]);
@@ -251,13 +256,13 @@ describe('a catalogue that has not answered', () => {
   });
 
   it('claims no subtotal it has not checked', () => {
-    const summary = guideSubtotal(resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING), NOW);
+    const summary = guideSubtotal(resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_LOADING), NOW);
     expect(summary.countedItems).toBe(0);
     expect(summary.complete).toBe(false);
   });
 
   it('hands the Builder nothing while it cannot see the catalogue', () => {
-    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_PENDING);
+    const states = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_LOADING);
     expect(guideBuildSelection(states)).toEqual({});
   });
 
@@ -321,6 +326,112 @@ describe('a binding that no longer matches its guide slot', () => {
       expect(ok[0].status, `${b.guideId}/${b.category}`).toBe('available');
       const bad = resolveGuideSlots(b.guideId, { [b.category]: `${b.canonicalPartId}-changed` }, published);
       expect(bad[0].status, `${b.guideId}/${b.category}`).toBe('mismatched');
+    }
+  });
+});
+
+describe('loading and failing are different answers', () => {
+  // REVIEW BLOCKER. Both used to be one "pending" state, so a page whose
+  // request had already failed kept saying "Checking current listing…" — a
+  // spinner for an answer that was never coming, with no way to ask again.
+  const binding = GUIDE_SLOT_BINDINGS[0];
+  const guideParts = { [binding.category]: binding.canonicalPartId };
+  const slotOf = (catalogue: Parameters<typeof resolveGuideSlots>[2]) =>
+    resolveGuideSlots(binding.guideId, guideParts, catalogue)[0];
+
+  it('marks a still-arriving catalogue as loading', () => {
+    const slot = slotOf(CATALOGUE_LOADING);
+    expect(slot.status).toBe('unchecked');
+    if (slot.status !== 'unchecked') throw new Error('unreachable');
+    expect(slot.reason).toBe('loading');
+  });
+
+  it('marks a failed request as failed, not as still arriving', () => {
+    const slot = slotOf(CATALOGUE_FAILED);
+    expect(slot.status).toBe('unchecked');
+    if (slot.status !== 'unchecked') throw new Error('unreachable');
+    expect(slot.reason).toBe('failed');
+  });
+
+  it('tells the page which of the two it is', () => {
+    const loading = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_LOADING);
+    const failed = resolveGuideSlots(binding.guideId, guideParts, CATALOGUE_FAILED);
+    expect(isGuidePending(loading)).toBe(true);
+    expect(isGuideUncheckable(loading)).toBe(false);
+    expect(isGuidePending(failed)).toBe(true);
+    expect(isGuideUncheckable(failed)).toBe(true);
+  });
+
+  it('says neither is a product being unavailable', () => {
+    for (const catalogue of [CATALOGUE_LOADING, CATALOGUE_FAILED]) {
+      const states = resolveGuideSlots(binding.guideId, guideParts, catalogue);
+      expect(unavailableCategories(states)).toHaveLength(0);
+      expect(guideBuildSelection(states)).toEqual({});
+      expect(guideSubtotal(states, NOW).countedItems).toBe(0);
+    }
+  });
+
+  it('gives the two states different words', () => {
+    expect(LISTING_CHECKING_LABEL).toMatch(/checking/i);
+    expect(LISTINGS_UNCHECKABLE_LABEL).toBe('Unable to check current listings');
+    expect(LISTINGS_UNCHECKABLE_LABEL).not.toMatch(/checking/i);
+    expect(RETRY_LISTINGS_LABEL.trim().length).toBeGreaterThan(0);
+  });
+});
+
+describe('a selection rationale claims only what was checked', () => {
+  // Every listing in the catalogue publishes specsVerified: false, so a
+  // rationale has no verified specifications to reason from. One of these said
+  // a processor matched "the board and cooler this guide pairs it with" — a
+  // fit nobody checked, against parts with no bound listing at all — and
+  // another repeated the merchant's "high-airflow" as if it were a finding.
+  const claimsCompatibility = [
+    /\bcompatible\b/i,
+    /\bmatch(es|ing)? the (board|cooler|motherboard|case|memory)\b/i,
+    /\bfits\b/i,
+    /\bpairs? (well|perfectly)\b/i,
+    /\bwill work with\b/i,
+  ];
+  const claimsValue = [
+    /\bbest\b/i,
+    /\bgreat value\b/i,
+    /\bexcellent\b/i,
+    /\bfastest\b/i,
+    /\boutperforms?\b/i,
+    /\bideal\b/i,
+    /\bbetter than\b/i,
+  ];
+
+  it('asserts no compatibility', () => {
+    for (const b of GUIDE_SLOT_BINDINGS) {
+      for (const pattern of claimsCompatibility) {
+        expect(b.why, `${b.guideId}/${b.category} claims compatibility: ${pattern}`)
+          .not.toMatch(pattern);
+      }
+    }
+  });
+
+  it('asserts no performance or value ranking', () => {
+    for (const b of GUIDE_SLOT_BINDINGS) {
+      for (const pattern of claimsValue) {
+        expect(b.why, `${b.guideId}/${b.category} claims value: ${pattern}`).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it('rests on something a reader can check', () => {
+    // The model, an ordering code, the packaging, or what was rejected.
+    for (const b of GUIDE_SLOT_BINDINGS) {
+      expect(b.why, `${b.guideId}/${b.category}`).toMatch(/names|ordering code|OEM|part number|rejected/i);
+    }
+  });
+
+  it('attributes a merchant description rather than adopting it', () => {
+    // "high-airflow" comes from the listing title. Saying so is fine; saying
+    // it as our own finding is not.
+    for (const b of GUIDE_SLOT_BINDINGS) {
+      if (!/high-airflow/i.test(b.why)) continue;
+      expect(b.why, `${b.guideId}/${b.category}`).toMatch(/merchant's description|its title|not a measurement/i);
     }
   });
 });

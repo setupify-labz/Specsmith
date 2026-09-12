@@ -37,7 +37,8 @@ const binding = GUIDE_SLOT_BINDINGS[0];
 const part = parsed.catalog.parts.find((p) => p.id === binding.neweggPartId)!;
 const NOW = Date.parse(part.fetchedAt) + 60_000;
 
-const unchecked: GuideSlotState = { status: 'unchecked', category: binding.category, binding };
+const unchecked: GuideSlotState = { status: 'unchecked', category: binding.category, binding, reason: 'loading' };
+const uncheckable: GuideSlotState = { status: 'unchecked', category: binding.category, binding, reason: 'failed' };
 const available: GuideSlotState = { status: 'available', category: binding.category, binding, part };
 const delisted: GuideSlotState = { status: 'delisted', category: binding.category, binding };
 const mismatched: GuideSlotState = {
@@ -123,7 +124,7 @@ describe('a row whose slot changes status', () => {
   it('survives every status in turn, in one mounted component', () => {
     // Walked rather than sampled: a hook added below any one of these returns
     // breaks on the step that crosses it.
-    walk([unchecked, available, delisted, mismatched, unbound, available]);
+    walk([unchecked, uncheckable, available, delisted, mismatched, unbound, available]);
     expect(screen.getByTestId(`guide-name-${binding.category}`).textContent).toBe(part.name);
   });
 });

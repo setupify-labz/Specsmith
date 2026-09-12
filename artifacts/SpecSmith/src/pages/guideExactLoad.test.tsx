@@ -393,7 +393,7 @@ describe('the catalogue not answering is not a claim about a product', () => {
     ) as unknown as typeof fetch);
 
   it.each([['still loading', neverAnswers], ['a failed download', failsWith503]])(
-    'says it is checking, not unavailable, during %s',
+    'never says the listing is gone during %s',
     async (_label, stub) => {
       stub();
       renderApp(`/prebuilts/${GUIDE}`);
@@ -403,12 +403,83 @@ describe('the catalogue not answering is not a claim about a product', () => {
       await waitFor(() =>
         expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-slot-status')).toBe('unchecked'),
       );
-      expect(screen.getByTestId(`guide-unchecked-${category}`).textContent).toMatch(/checking/i);
-      // And it must NOT say the listing is gone.
       expect(screen.queryByTestId(`guide-unavailable-${category}`)).toBeNull();
     },
     40000,
   );
+
+  it('says it is CHECKING only while an answer is still coming', async () => {
+    neverAnswers();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    const category = boundHere[0].category;
+    await waitFor(() =>
+      expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-unchecked-reason')).toBe('loading'),
+    );
+    expect(screen.getByTestId(`guide-unchecked-${category}`).textContent).toMatch(/checking/i);
+    // Nothing has failed, so nothing offers a retry.
+    expect(screen.queryByTestId('guide-listings-unavailable')).toBeNull();
+  }, 40000);
+
+  it('stops saying "checking" once the request has failed', async () => {
+    // REVIEW BLOCKER. A spinner for an answer that is not coming, with no way
+    // to ask again, is the worst of both states.
+    failsWith503();
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-components', {}, { timeout: 10000 });
+
+    const category = boundHere[0].category;
+    await waitFor(() =>
+      expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-unchecked-reason')).toBe('failed'),
+    );
+    expect(screen.getByTestId(`guide-unchecked-${category}`).textContent).not.toMatch(/checking/i);
+    expect(screen.getByTestId(`guide-unchecked-${category}`).textContent)
+      .toMatch(/unable to check current listings/i);
+  }, 40000);
+
+  it('offers a real retry that actually re-requests the catalogue', async () => {
+    failsWith503();
+    renderApp(`/prebuilts/${GUIDE}`);
+    const notice = await screen.findByTestId('guide-listings-unavailable', {}, { timeout: 10000 });
+    expect(notice.textContent).toMatch(/unable to check current listings/i);
+
+    const before = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .filter(([url]) => typeof url === 'string' && url.includes('retail-parts.json')).length;
+
+    fireEvent.click(screen.getByTestId('guide-listings-retry'));
+
+    await waitFor(() => {
+      const after = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
+        .filter(([url]) => typeof url === 'string' && url.includes('retail-parts.json')).length;
+      expect(after).toBeGreaterThan(before);
+    });
+  }, 40000);
+
+  it('recovers when the retry succeeds', async () => {
+    // The retry has to be able to end the failed state, or it is decoration.
+    let attempt = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).includes('product-images.json')) {
+        return { ok: false, json: async () => ({}) } as unknown as Response;
+      }
+      attempt += 1;
+      if (attempt === 1) {
+        return { ok: false, status: 503, json: async () => { throw new Error('no body'); } } as unknown as Response;
+      }
+      return { ok: true, json: async () => published } as unknown as Response;
+    }) as unknown as typeof fetch);
+
+    renderApp(`/prebuilts/${GUIDE}`);
+    await screen.findByTestId('guide-listings-unavailable', {}, { timeout: 10000 });
+    fireEvent.click(screen.getByTestId('guide-listings-retry'));
+
+    const category = boundHere[0].category;
+    await waitFor(() =>
+      expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-slot-status')).toBe('available'),
+    );
+    expect(screen.queryByTestId('guide-listings-unavailable')).toBeNull();
+  }, 40000);
 
   it('does not name an unchecked category as missing in the subtotal note', async () => {
     neverAnswers();
@@ -535,5 +606,38 @@ describe('a catalogue the loader rejects', () => {
       expect(screen.getByTestId(`guide-slot-${category}`).getAttribute('data-slot-status')).toBe('unchecked'),
     );
     expect(screen.queryByTestId(`guide-unavailable-${category}`)).toBeNull();
+  }, 40000);
+});
+
+describe('the hub no longer carries an editorial price disclaimer', () => {
+  it('does not warn about estimated prices it no longer shows', async () => {
+    stubCatalog();
+    renderApp('/prebuilts');
+    await screen.findAllByTestId(/^guide-parts-/, {}, { timeout: 10000 });
+
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/prices are estimates/i);
+    expect(text).not.toMatch(/typical US street pricing/i);
+    expect(text).not.toMatch(/Estimated \$/);
+  }, 40000);
+
+  it('describes where its prices actually come from', async () => {
+    stubCatalog();
+    renderApp('/prebuilts');
+    await screen.findAllByTestId(/^guide-parts-/, {}, { timeout: 10000 });
+    expect(document.body.textContent).toMatch(/current Newegg listing/i);
+  }, 40000);
+
+  it('offers the same retry on the hub when the catalogue fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+      String(url).includes('product-images.json')
+        ? ({ ok: false, json: async () => ({}) } as unknown as Response)
+        : ({ ok: false, status: 503, json: async () => { throw new Error('no body'); } } as unknown as Response),
+    ) as unknown as typeof fetch);
+
+    renderApp('/prebuilts');
+    const notice = await screen.findByTestId('guide-listings-unavailable', {}, { timeout: 10000 });
+    expect(notice.textContent).toMatch(/unable to check current listings/i);
+    expect(screen.getByTestId('guide-listings-retry')).toBeTruthy();
   }, 40000);
 });

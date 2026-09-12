@@ -8,7 +8,9 @@ import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from '../lib/fps';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import {
-  CATALOGUE_PENDING,
+  CATALOGUE_FAILED,
+  CATALOGUE_LOADING,
+  RETRY_LISTINGS_LABEL,
   catalogueReady,
   guideBuildSelection,
   guideSubtotal,
@@ -16,7 +18,8 @@ import {
   resolveGuideSlots,
   unavailableCategories,
   LISTING_UNAVAILABLE_LABEL,
-  LISTING_UNCHECKED_LABEL,
+  LISTINGS_UNCHECKABLE_LABEL,
+  LISTING_CHECKING_LABEL,
   type GuideCatalogue,
 } from '../lib/guides/guideSlots';
 import { builderUrlFor, hasExistingBuild, readDraft } from '../lib/guides/guideHandoff';
@@ -28,10 +31,9 @@ import {
   subtotalLabel,
 } from '../lib/retail/partPricing';
 import type { AffiliatePart } from '../lib/retail/partCatalog';
-import { prebuilts, getPrebuiltTotal, categoryLabels, type Prebuilt } from '../lib/prebuilts';
+import { prebuilts, categoryLabels, type Prebuilt } from '../lib/prebuilts';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
-import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
 interface GPU { id: string; name: string; price_usd: number; gpu_multiplier: number; [key: string]: unknown; }
@@ -65,10 +67,6 @@ function useFpsPreview(prebuilt: Prebuilt) {
       return { game: game.name, fps };
     }).filter(Boolean) as { game: string; fps: number }[];
   }, [prebuilt]);
-}
-
-function useTotalPrice(prebuilt: Prebuilt): number {
-  return useMemo(() => getPrebuiltTotal(prebuilt), [prebuilt]);
 }
 
 function getFpsColor(fps: number): string {
@@ -177,12 +175,17 @@ function PrebuiltCard({
                 key={slot.category}
                 data-testid={`guide-slot-${slot.category}`}
                 data-slot-status="unchecked"
+                data-unchecked-reason={slot.reason}
                 className="rounded-lg p-3"
                 style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
               >
                 <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>{label}</div>
-                <div className="text-[11px] font-semibold" aria-busy="true" style={{ color: 'var(--ff-text-2)' }}>
-                  {LISTING_UNCHECKED_LABEL}
+                <div
+                  className="text-[11px] font-semibold"
+                  {...(slot.reason === 'loading' ? { 'aria-busy': true } : {})}
+                  style={{ color: slot.reason === 'loading' ? 'var(--ff-text-2)' : 'var(--ff-amber)' }}
+                >
+                  {slot.reason === 'loading' ? LISTING_CHECKING_LABEL : LISTINGS_UNCHECKABLE_LABEL}
                 </div>
               </div>
             );
@@ -338,14 +341,16 @@ function prebuiltFaqJsonLd() {
 }
 
 export default function Prebuilts() {
-  const { view: affiliateCatalog } = useAffiliatePartCatalog();
+  const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
   const catalogue = useMemo<GuideCatalogue>(
     () =>
       affiliateCatalog.status === 'ok'
         ? catalogueReady(
             new Map<string, AffiliatePart>(affiliateCatalog.catalog.parts.map((part) => [part.id, part])),
           )
-        : CATALOGUE_PENDING,
+        : affiliateCatalog.status === 'loading'
+          ? CATALOGUE_LOADING
+          : CATALOGUE_FAILED,
     [affiliateCatalog],
   );
   useSeo(getRouteMeta('/prebuilts'));
@@ -385,8 +390,41 @@ export default function Prebuilts() {
           className="mb-8 rounded-xl px-4 py-3 text-xs text-center"
           style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)', color: 'var(--ff-text-2)' }}
         >
-          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are estimates based on typical US street pricing — last updated {PRICES_UPDATED}.
+          {/* The price half of this used to read "Prices are estimates based on
+              typical US street pricing — last updated <date>". This page no
+              longer shows an editorial price anywhere: every figure on it is a
+              current Newegg listing, stamped with the moment it was read. A
+              disclaimer for prices that are not here explains nothing and
+              undersells the ones that are. */}
+          FPS estimates use native resolution with no upscaling (DLSS/FSR/XeSS). Real-world figures with upscaling are significantly higher. Prices are the current Newegg listing for each exact product, shown with the time each was checked.
         </motion.div>
+
+        {catalogue.status === 'failed' && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            data-testid="guide-listings-unavailable"
+            role="status"
+            className="mb-8 flex flex-wrap items-center justify-center gap-3 rounded-xl px-4 py-3 text-xs"
+            style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-amber)' }}
+          >
+            <span className="font-semibold" style={{ color: 'var(--ff-amber)' }}>
+              {LISTINGS_UNCHECKABLE_LABEL}
+            </span>
+            <span style={{ color: 'var(--ff-text-2)' }}>
+              Current prices and availability could not be loaded. Nothing below is a claim that a
+              product is gone.
+            </span>
+            <button
+              type="button"
+              data-testid="guide-listings-retry"
+              onClick={retryCatalog}
+              className="ff-accent-control rounded-md px-2.5 py-1.5 font-semibold"
+              style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+            >
+              {RETRY_LISTINGS_LABEL}
+            </button>
+          </motion.div>
+        )}
 
         {/* Build cards */}
         <div className="space-y-8">

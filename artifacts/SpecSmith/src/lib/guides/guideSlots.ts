@@ -45,7 +45,13 @@ export const CHOOSE_REPLACEMENT_LABEL = 'Choose replacement in Builder';
 
 export type GuideSlotState =
   | { readonly status: 'available'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding; readonly part: AffiliatePart }
-  | { readonly status: 'unchecked'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding }
+  | {
+      readonly status: 'unchecked';
+      readonly category: RetailPartCategory;
+      readonly binding: GuideSlotBinding;
+      /** Whether an answer is still coming, or has already failed to come. */
+      readonly reason: 'loading' | 'failed';
+    }
   | { readonly status: 'delisted'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding }
   | { readonly status: 'mismatched'; readonly category: RetailPartCategory; readonly binding: GuideSlotBinding; readonly expectedCanonicalId: string }
   | { readonly status: 'unbound'; readonly category: RetailPartCategory; readonly unbound: GuideSlotUnbound | null };
@@ -53,20 +59,31 @@ export type GuideSlotState =
 /**
  * What the page knows about the catalogue it is resolving against.
  *
- * `pending` covers both "still fetching" and "the fetch failed": in neither
- * case has anything been able to check a listing, and in neither case may the
- * guide say a product is unavailable.
+ * THREE STATES, NOT TWO. `loading` and `failed` agree on the one thing that
+ * matters for integrity — neither can say a product is unavailable — and on
+ * nothing else. A page that shows "Checking current listing…" after the
+ * request has already failed is a spinner that never stops: the shopper waits
+ * for an answer that is not coming, and is never offered the one action that
+ * could produce it. A failure has to say so, and say what to do.
  */
 export type GuideCatalogue =
-  | { readonly status: 'pending' }
+  | { readonly status: 'loading' }
+  | { readonly status: 'failed' }
   | { readonly status: 'ready'; readonly parts: ReadonlyMap<string, AffiliatePart> };
 
-export const CATALOGUE_PENDING: GuideCatalogue = { status: 'pending' };
+export const CATALOGUE_LOADING: GuideCatalogue = { status: 'loading' };
+export const CATALOGUE_FAILED: GuideCatalogue = { status: 'failed' };
 export const catalogueReady = (parts: ReadonlyMap<string, AffiliatePart>): GuideCatalogue =>
   ({ status: 'ready', parts });
 
-/** Shown while the catalogue has not answered. Never a claim about a product. */
-export const LISTING_UNCHECKED_LABEL = 'Checking current listing…';
+/** Shown while the catalogue is genuinely still on its way. */
+export const LISTING_CHECKING_LABEL = 'Checking current listing…';
+
+/** Shown when the request answered and there is no catalogue to check against. */
+export const LISTINGS_UNCHECKABLE_LABEL = 'Unable to check current listings';
+
+/** The action that can actually change that. */
+export const RETRY_LISTINGS_LABEL = 'Try again';
 
 /**
  * Read one guide's slots against the catalogue on screen.
@@ -99,8 +116,8 @@ export function resolveGuideSlots(
       continue;
     }
 
-    if (catalogue.status === 'pending') {
-      states.push({ status: 'unchecked', category, binding });
+    if (catalogue.status !== 'ready') {
+      states.push({ status: 'unchecked', category, binding, reason: catalogue.status });
       continue;
     }
 
@@ -118,6 +135,11 @@ export function uncheckedCategories(states: readonly GuideSlotState[]): readonly
 /** True while any slot is still waiting on the catalogue. */
 export function isGuidePending(states: readonly GuideSlotState[]): boolean {
   return states.some((s) => s.status === 'unchecked');
+}
+
+/** True when the catalogue answered and there is nothing to check against. */
+export function isGuideUncheckable(states: readonly GuideSlotState[]): boolean {
+  return states.some((s) => s.status === 'unchecked' && s.reason === 'failed');
 }
 
 /** The available listings, in slot order. */

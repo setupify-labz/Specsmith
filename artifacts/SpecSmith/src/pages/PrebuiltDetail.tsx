@@ -10,7 +10,10 @@ import { prebuilts, getPrebuiltMeta } from '../lib/prebuilts';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import GuidePartRow from '../components/guides/GuidePartRow';
 import {
-  CATALOGUE_PENDING,
+  CATALOGUE_FAILED,
+  CATALOGUE_LOADING,
+  LISTINGS_UNCHECKABLE_LABEL,
+  RETRY_LISTINGS_LABEL,
   catalogueReady,
   guideBuildSelection,
   guideSubtotal,
@@ -54,7 +57,7 @@ export default function PrebuiltDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const prebuilt = prebuilts.find(p => p.id === slug);
-  const { view: affiliateCatalog } = useAffiliatePartCatalog();
+  const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
   /**
    * A FAILED OR PENDING FETCH IS NOT A CATALOGUE. Collapsing both into an
    * empty map made every bound slot resolve as delisted, so a guide opened
@@ -65,7 +68,9 @@ export default function PrebuiltDetail() {
     () =>
       affiliateCatalog.status === 'ok'
         ? catalogueReady(new Map(affiliateCatalog.catalog.parts.map((part) => [part.id, part])))
-        : CATALOGUE_PENDING,
+        : affiliateCatalog.status === 'loading'
+          ? CATALOGUE_LOADING
+          : CATALOGUE_FAILED,
     [affiliateCatalog],
   );
   const clock = Date.now();
@@ -254,6 +259,35 @@ export default function PrebuiltDetail() {
             <div className="lg:col-span-2 space-y-4">
               <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <h2 className="font-bold mb-4" style={{ color: 'var(--ff-text)' }}>Components</h2>
+                {/* A FAILURE SAYS SO, AND OFFERS THE ONE ACTION THAT HELPS.
+                    Without this the slots read "Checking current listing…"
+                    forever: the shopper waits for an answer that is not
+                    coming and is never given a way to ask again. */}
+                {catalogue.status === 'failed' && (
+                  <div
+                    data-testid="guide-listings-unavailable"
+                    role="status"
+                    className="mb-3 flex flex-wrap items-center gap-3 rounded-lg p-3"
+                    style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-amber)' }}
+                  >
+                    <span className="text-xs font-semibold" style={{ color: 'var(--ff-amber)' }}>
+                      {LISTINGS_UNCHECKABLE_LABEL}
+                    </span>
+                    <span className="text-[11px]" style={{ color: 'var(--ff-text-2)' }}>
+                      Current prices and availability could not be loaded. Nothing below is a
+                      claim that a product is gone.
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="guide-listings-retry"
+                      onClick={retryCatalog}
+                      className="ff-accent-control rounded-md px-2.5 py-1.5 text-[11px] font-semibold"
+                      style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+                    >
+                      {RETRY_LISTINGS_LABEL}
+                    </button>
+                  </div>
+                )}
                 {missing.length > 0 && (
                   <p
                     className="mb-3 text-xs font-medium"

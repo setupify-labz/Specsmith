@@ -13,7 +13,8 @@ import { CATEGORY_LABELS } from '../../lib/retail/retailShopping';
 import {
   CHOOSE_REPLACEMENT_LABEL,
   LISTING_UNAVAILABLE_LABEL,
-  LISTING_UNCHECKED_LABEL,
+  LISTINGS_UNCHECKABLE_LABEL,
+  LISTING_CHECKING_LABEL,
   type GuideSlotState,
 } from '../../lib/guides/guideSlots';
 
@@ -54,12 +55,16 @@ export default function GuidePartRow({
   const [imageFailed, setImageFailed] = useState(false);
   const categoryLabel = CATEGORY_LABELS[state.category];
 
-  // Still waiting on the catalogue. Not a claim that anything is missing.
+  // Nothing has been able to look yet. Not a claim that anything is missing —
+  // and the two reasons read differently, because "checking" over a request
+  // that already failed is a spinner that never stops.
   if (state.status === 'unchecked') {
+    const stillComing = state.reason === 'loading';
     return (
       <div
         data-testid={`guide-slot-${state.category}`}
         data-slot-status="unchecked"
+        data-unchecked-reason={state.reason}
         className="rounded-lg p-3"
         style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}
       >
@@ -69,10 +74,10 @@ export default function GuidePartRow({
         <div
           className="text-xs font-semibold"
           data-testid={`guide-unchecked-${state.category}`}
-          aria-busy="true"
-          style={{ color: 'var(--ff-text-2)' }}
+          {...(stillComing ? { 'aria-busy': true } : {})}
+          style={{ color: stillComing ? 'var(--ff-text-2)' : 'var(--ff-amber)' }}
         >
-          {LISTING_UNCHECKED_LABEL}
+          {stillComing ? LISTING_CHECKING_LABEL : LISTINGS_UNCHECKABLE_LABEL}
         </div>
       </div>
     );

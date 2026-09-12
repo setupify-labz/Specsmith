@@ -52,7 +52,17 @@ export interface GuideSlotBinding {
   readonly neweggPartId: string;
   /** ISO date this binding was reviewed by a person. */
   readonly reviewedOn: string;
-  /** Why this exact component belongs in this guide. Factual, and short. */
+  /**
+   * Why this exact listing was bound. Checkable facts only.
+   *
+   * IT MAY NOT CLAIM COMPATIBILITY OR VALUE. Every listing in the catalogue
+   * publishes `specsVerified: false`, so nothing here has verified
+   * specifications to reason from: saying a processor "matches the board this
+   * guide pairs it with" asserts a fit nobody checked, and repeating a
+   * merchant's "high-airflow" as a reason passes marketing copy off as
+   * evidence. What a reviewer can honestly say is what the listing states —
+   * the model, the ordering code, the packaging — and what was rejected.
+   */
   readonly why: string;
 }
 
@@ -102,7 +112,9 @@ export const GUIDE_SLOT_BINDINGS: readonly GuideSlotBinding[] = [
     reviewedOn: REVIEWED,
     why:
       'The listing names the Ryzen 7 7700X and states the boxed ordering code ' +
-      '100-100000591WOF. Socket AM5, 105 W, matching the board and cooler this guide pairs it with.',
+      '100-100000591WOF, which is the retail boxed part rather than a tray unit. ' +
+      'No compatibility claim is made here: this listing publishes unverified ' +
+      'specifications, and the board and cooler this guide names have no bound listing to check against.',
   },
   {
     guideId: '4k-monster',
@@ -115,8 +127,8 @@ export const GUIDE_SLOT_BINDINGS: readonly GuideSlotBinding[] = [
     reviewedOn: REVIEWED,
     why:
       'The listing names the Ryzen 9 7950X3D and states ordering code 100-100000908WOZ. ' +
-      'It is an OEM tray part, so it ships without retail packaging — stated here rather ' +
-      'than left for the shopper to discover at the basket.',
+      'Its title marks it OEM, which is repeated here rather than left for the shopper to ' +
+      'find at the basket; what an OEM listing includes is the retailer\'s to state, not ours.',
   },
   {
     guideId: 'ultimate-rig',
@@ -129,7 +141,7 @@ export const GUIDE_SLOT_BINDINGS: readonly GuideSlotBinding[] = [
     reviewedOn: REVIEWED,
     why:
       'The same reviewed listing as the 4K Monster guide, which names this processor too. ' +
-      'It is an OEM tray part and ships without retail packaging.',
+      'Its title marks it OEM.',
   },
   {
     guideId: '4k-monster',
@@ -141,8 +153,9 @@ export const GUIDE_SLOT_BINDINGS: readonly GuideSlotBinding[] = [
     neweggPartId: 'newegg-case-n82e16811352143',
     reviewedOn: REVIEWED,
     why:
-      'The listing names the Fractal Design Torrent in black, the high-airflow mid tower ' +
-      'this guide selects. The feed states no part number for it, so none is recorded.',
+      'The listing names the Fractal Design Torrent in black, the case this guide selects. ' +
+      '(Its title also calls it high-airflow; that is the merchant\'s description, not a ' +
+      'measurement we hold.) The feed states no part number for it, so none is recorded.',
   },
 ];
 
