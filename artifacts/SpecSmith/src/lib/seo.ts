@@ -95,9 +95,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-calculator-cpu',
-    title: 'CPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'CPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current CPU is worth used, what it costs to trade up to a faster chip after resale, and the real FPS gain.',
+      'Compare your current CPU with the closest faster CPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results, live prices or buying advice.',
   },
   {
     path: '/crate',
@@ -127,9 +127,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade',
-    title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'GPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse GPU comparison pages for every GPU we track — price-independent modelled FPS comparisons using a fixed reference CPU, clearly labelled as estimates.',
   },
   {
     path: '/parts-guides',
@@ -145,9 +145,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-cpu',
-    title: 'CPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'CPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every CPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse CPU comparison pages for every CPU we track — price-independent modelled FPS comparisons using a fixed reference GPU, clearly labelled as estimates.',
   },
   {
     path: '/best-gpu-budget',
