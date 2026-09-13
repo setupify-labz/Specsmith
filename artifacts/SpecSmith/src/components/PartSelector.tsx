@@ -215,7 +215,12 @@ export default function PartSelector({
         <div className="flex items-center gap-3 flex-shrink-0">
           {selectedPart && showShopping && (
             <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>
-              {selectedPart.price_usd === undefined ? 'Retailer price' : `$${selectedPart.price_usd.toLocaleString()}`}
+              {/* price_usd is SpecSmith's own catalogue estimate, not a retailer
+                  observation, so it carries the same Est. qualifier PartCard
+                  and Compare already use. It read as a bare "$669" here, which
+                  is the one place on Compare a dollar figure claimed to be
+                  something it is not. */}
+              {selectedPart.price_usd === undefined ? 'Retailer price' : `Est. $${selectedPart.price_usd.toLocaleString()}`}
             </span>
           )}
           {open

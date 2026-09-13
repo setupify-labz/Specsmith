@@ -88,7 +88,7 @@ export default function PartCard({
         style={{ zIndex: 0 }}
         onClick={() => onSelect(id)}
         aria-pressed={selected}
-        aria-label={`${name}${price_usd === undefined ? '' : `, $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
+        aria-label={`${name}${price_usd === undefined ? '' : `, estimated $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
       />
 
       <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
@@ -168,7 +168,10 @@ export default function PartCard({
             or value evidence on a performance-comparison surface. */}
         {showShopping && <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
-            {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
+            {/* Catalogue estimate, not a retailer observation — qualified in the
+                visible text and in the accessible name above, so a screen
+                reader hears the same caveat a sighted viewer reads. */}
+            {price_usd === undefined ? 'Price at retailer' : `Est. $${price_usd.toLocaleString()}`}
           </span>
           <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
             {!affiliateUrl && (

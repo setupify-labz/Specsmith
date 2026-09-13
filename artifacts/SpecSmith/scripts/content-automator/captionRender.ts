@@ -138,7 +138,21 @@ export function wrapCaption(text: string, maxChars = 28): string {
 }
 
 export function buildAssDocument(state: CaptionRenderState): string {
-  const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: SpecSmith,Arial,72,&H00FFFFFF,&H00FFFFFF,&HC0000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,0,2,90,90,290,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+  // CAPTIONS SIT ON REAL EVIDENCE, SO THEY ARE DRAWN AS AN OVERLAY.
+  //
+  // BorderStyle 3 with a padded, mostly-opaque dark box (OutlineColour is the
+  // box colour in this mode) rather than BorderStyle 1's outline-only text.
+  // The beats now frame real Compare content — a per-game FPS table, a bar
+  // chart, a verdict tally — and white outlined text printed straight onto a
+  // table of numbers reads as if it were part of the table. A backing band
+  // makes it unmistakably an overlay, keeps the text legible at phone size
+  // against both the light chart bars and the dark page, and does not rely on
+  // colour alone to separate caption from evidence.
+  //
+  // MarginV 290 keeps the band in the lower third, below the region focusOn()
+  // frames (the anchor lands at ~34% of frame height), so the primary evidence
+  // of each beat stays above the caption rather than behind it.
+  const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: SpecSmith,Arial,72,&H00FFFFFF,&H00FFFFFF,&H300C0F16,&H80000000,-1,0,0,0,100,100,0,0,3,16,0,2,90,90,290,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const events = state.cues.map((cue) =>
     `Dialogue: 0,${assTime(cue.startSecond)},${assTime(cue.endSecond)},SpecSmith,,0,0,0,,${wrapCaption(cue.text)}`,
   );
