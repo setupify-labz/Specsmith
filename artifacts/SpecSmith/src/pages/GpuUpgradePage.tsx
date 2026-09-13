@@ -2,7 +2,14 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, ChevronRight, Zap, Cpu, Sliders, Layers } from 'lucide-react';
 import { getUpgradePage, getUpgradeIntro, getRelatedUpgradePages, getUpgradePageMeta } from '../lib/upgradePages';
-import { getUpgradeGpu, getUpgradeComparisons, averageFps, UPGRADE_REFERENCE_CPU } from '../lib/upgradeCalculator';
+import {
+  getUpgradeGpu,
+  getUpgradeComparisons,
+  getClosestUpgradeComparisons,
+  averageFps,
+  UPGRADE_COMPARISON_PREVIEW_LIMIT,
+  UPGRADE_REFERENCE_CPU,
+} from '../lib/upgradeCalculator';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
 
@@ -23,12 +30,12 @@ import PageGlow from '../components/PageGlow';
  * CPU, not a benchmark of anything. Presented beside a verdict they read as
  * measurement.
  *
- * So the page now COMPARES and does not conclude. It lists every tracked card
- * whose modelled average beats this one, ordered by modelled difference, with
- * every figure labelled as an estimate at the point it appears, and it links
- * each row into Builder so the reader can put the card in a real build. There
- * is no recommendation left for a price change to move — which is the property
- * the regression suite actually tests.
+ * So the page now COMPARES and does not conclude. It previews the closest
+ * modelled steps above the selected card, with every figure labelled as an
+ * estimate at the point it appears, and links each row into Builder. The
+ * complete set is used only to state the range and count; dumping as many as
+ * 56 rows into one guide would be hard to scan and would make the programmatic
+ * pages repeat almost the entire GPU catalogue.
  */
 export default function GpuUpgradePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -60,14 +67,15 @@ export default function GpuUpgradePage() {
 
   const avgFpsCurrent = averageFps(gpu);
   const comparisons = getUpgradeComparisons(gpu.id);
+  const visibleComparisons = getClosestUpgradeComparisons(gpu.id);
   const intro = getUpgradeIntro(gpu);
   const related = getRelatedUpgradePages(page);
 
   const ESTIMATE_BASIS =
-    `SpecSmith's model produces these figures from each card's performance tier against one fixed reference CPU, the ${UPGRADE_REFERENCE_CPU.name}, averaged over 20 games at 1440p High. They are estimates, not benchmark results, and SpecSmith has measured none of these pairings.`;
+    `SpecSmith's model produces these figures from each card's internal GPU performance factor against one fixed reference CPU, the ${UPGRADE_REFERENCE_CPU.name}, averaged over 20 games at 1440p High. They are estimates, not benchmark results, and SpecSmith has measured none of these pairings.`;
 
   const SELECTION_BASIS =
-    `This table lists every GPU SpecSmith tracks whose modelled average is higher than the ${gpu.name}'s, ordered by modelled difference. Nothing is filtered by price or excluded on the reader's behalf.`;
+    `This preview shows up to ${UPGRADE_COMPARISON_PREVIEW_LIMIT} of the closest GPUs whose modelled average is higher than the ${gpu.name}'s, ordered from the smallest modelled difference upward. It is not a recommendation, and price does not affect which cards appear.`;
 
   const NO_PRICES =
     'SpecSmith does not show prices, resale values or cost-per-frame figures on this page. The prices it holds are editorial and are not checked against the live market, so any purchase advice built on them would be more confident than the data allows. Check current prices at a retailer before buying anything.';
@@ -77,7 +85,7 @@ export default function GpuUpgradePage() {
       title: `Which GPUs are faster than ${gpu.name} in SpecSmith's model?`,
       content: comparisons.length === 0
         ? `None. No GPU SpecSmith tracks produces a higher modelled average than the ${gpu.name}.`
-        : `${comparisons.length} of the ${57} GPUs SpecSmith tracks produce a higher modelled average. The largest modelled difference is the ${comparisons[0].gpu.name}, about ${comparisons[0].fpsDiffPct >= 0 ? '+' : ''}${comparisons[0].fpsDiffPct}% against the ${gpu.name}. ${SELECTION_BASIS}`,
+        : `${comparisons.length} tracked GPUs produce a higher modelled average. The modelled range runs from about +${comparisons[comparisons.length - 1].fpsDiffPct}% to about +${comparisons[0].fpsDiffPct}% against the ${gpu.name}. ${SELECTION_BASIS}`,
     },
     { title: 'Where do these FPS figures come from?', content: ESTIMATE_BASIS },
     { title: 'Why are there no prices or upgrade recommendations here?', content: NO_PRICES },
@@ -109,7 +117,7 @@ export default function GpuUpgradePage() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <h1 className="text-3xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
-            GPUs Compared With the <span className="gradient-text">{gpu.name}</span>
+            GPU Upgrade Comparisons for the <span className="gradient-text">{gpu.name}</span>
           </h1>
           <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
             {intro}
@@ -139,7 +147,7 @@ export default function GpuUpgradePage() {
           </div>
         </div>
 
-        <h2 className="text-xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>Modelled Comparison</h2>
+        <h2 className="text-xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>Closest Modelled Steps Above</h2>
         <p data-testid="selection-basis" className="text-xs mb-1.5" style={{ color: 'var(--ff-text-3)' }}>{SELECTION_BASIS}</p>
         <p data-testid="estimate-basis" className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>{ESTIMATE_BASIS}</p>
 
@@ -151,7 +159,7 @@ export default function GpuUpgradePage() {
           </div>
         ) : (
           <div className="space-y-2 mb-4">
-            {comparisons.map((c, i) => (
+            {visibleComparisons.map((c, i) => (
               <motion.div
                 key={c.gpu.id}
                 data-testid="comparison-row"
@@ -178,6 +186,7 @@ export default function GpuUpgradePage() {
                   {/* Loads the card being COMPARED, never the one being replaced. */}
                   <Link to={`/builder?gpu=${c.gpu.id}`}
                     data-testid={`compare-in-builder-${c.gpu.id}`}
+                    aria-label={`Open ${c.gpu.name} in Builder`}
                     className="text-xs font-semibold flex items-center gap-1 whitespace-nowrap transition-opacity hover:opacity-80"
                     style={{ color: 'var(--ff-accent-text)' }}>
                     Open in Builder <ArrowRight size={12} />

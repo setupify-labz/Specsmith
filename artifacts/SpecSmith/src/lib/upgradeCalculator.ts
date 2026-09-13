@@ -108,6 +108,29 @@ export function getUpgradeComparisons(currentId: string): UpgradeComparison[] {
     .sort((a, b) => b.fpsDiffPct - a.fpsDiffPct || a.gpu.name.localeCompare(b.gpu.name));
 }
 
+/**
+ * A compact, price-independent preview for the upgrade-guide page.
+ *
+ * Rendering the complete comparison set produced as many as 56 near-identical
+ * rows on each low-end GPU page. That is difficult to scan and makes the
+ * programmatic pages repeat almost the entire GPU catalogue. The preview keeps
+ * the closest modelled steps above the selected card, ordered from the
+ * smallest difference upward. It is a navigation aid, not a recommendation.
+ */
+export const UPGRADE_COMPARISON_PREVIEW_LIMIT = 8;
+
+export function getClosestUpgradeComparisons(
+  currentId: string,
+  limit = UPGRADE_COMPARISON_PREVIEW_LIMIT,
+): UpgradeComparison[] {
+  if (!Number.isInteger(limit) || limit <= 0) return [];
+
+  return getUpgradeComparisons(currentId)
+    .slice()
+    .sort((a, b) => a.fpsDiffPct - b.fpsDiffPct || a.gpu.name.localeCompare(b.gpu.name))
+    .slice(0, limit);
+}
+
 export type UpgradeVerdict = 'strong' | 'moderate' | 'marginal';
 
 export interface UpgradeCandidate {

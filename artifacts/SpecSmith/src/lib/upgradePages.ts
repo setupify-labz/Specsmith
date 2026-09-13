@@ -110,10 +110,10 @@ export function getUpgradePageMeta(page: UpgradePage): RouteMeta {
   const name = gpu?.name ?? page.gpuId;
   return {
     path: `/upgrade/${page.slug}`,
-    title: `${name} Upgrade Guide | SpecSmith`,
+    title: `${name} Upgrade Comparisons | SpecSmith`,
     // Describes what the page contains. The previous copy promised a resale
     // value and a net cost, both of which the page no longer computes.
-    description: `Every GPU SpecSmith models as faster than the ${name}, ordered by estimated FPS difference across 20 games at 1440p High. Model estimates, not benchmark results.`,
+    description: `Compare the closest GPUs SpecSmith models above the ${name} across 20 games at 1440p High. Model estimates, not benchmark results or buying advice.`,
   };
 }
 

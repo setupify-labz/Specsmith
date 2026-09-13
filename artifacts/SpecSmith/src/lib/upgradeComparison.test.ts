@@ -17,7 +17,13 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import gpuData from '../data/gpus.json';
-import { getUpgradeComparisons, getUpgradeGpu, averageFps } from './upgradeCalculator';
+import {
+  getUpgradeComparisons,
+  getClosestUpgradeComparisons,
+  getUpgradeGpu,
+  averageFps,
+  UPGRADE_COMPARISON_PREVIEW_LIMIT,
+} from './upgradeCalculator';
 import { UPGRADE_PAGES, getUpgradeIntro, getUpgradePageMeta } from './upgradePages';
 
 /** Low-, mid- and high-end, plus the top of the stack. */
@@ -34,7 +40,10 @@ describe('price cannot alter what the page shows', () => {
     // rewritten underneath and the output is required not to move. If any
     // price ever re-enters selection, ordering or membership, this fails.
     const before = Object.fromEntries(
-      REPRESENTATIVE.map((id) => [id, getUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`)]),
+      REPRESENTATIVE.map((id) => [id, {
+        all: getUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`),
+        preview: getClosestUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`),
+      }]),
     );
 
     vi.resetModules();
@@ -48,11 +57,14 @@ describe('price cannot alter what the page shows', () => {
     }));
     const reloaded = await import('./upgradeCalculator');
     const after = Object.fromEntries(
-      REPRESENTATIVE.map((id) => [id, reloaded.getUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`)]),
+      REPRESENTATIVE.map((id) => [id, {
+        all: reloaded.getUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`),
+        preview: reloaded.getClosestUpgradeComparisons(id).map((c) => `${c.gpu.id}:${c.fpsDiffPct}`),
+      }]),
     );
 
     expect(after).toEqual(before);
-    for (const id of REPRESENTATIVE) expect(before[id].length).toBeGreaterThan(0);
+    for (const id of REPRESENTATIVE) expect(before[id].preview.length).toBeGreaterThan(0);
   });
 
   it('and the intro sentence is unchanged by it too', async () => {
@@ -107,6 +119,25 @@ describe('the comparison is complete and ordered by modelled difference', () => 
 
   it('an unknown GPU id yields nothing rather than throwing', () => {
     expect(getUpgradeComparisons('not-a-gpu')).toEqual([]);
+  });
+});
+
+describe('the rendered preview is compact and transparent', () => {
+  it.each(REPRESENTATIVE)('%s shows the closest modelled steps, never more than the declared limit', (id) => {
+    const all = getUpgradeComparisons(id);
+    const preview = getClosestUpgradeComparisons(id);
+    const expected = [...all]
+      .sort((a, b) => a.fpsDiffPct - b.fpsDiffPct || a.gpu.name.localeCompare(b.gpu.name))
+      .slice(0, UPGRADE_COMPARISON_PREVIEW_LIMIT);
+
+    expect(preview).toEqual(expected);
+    expect(preview.length).toBeLessThanOrEqual(UPGRADE_COMPARISON_PREVIEW_LIMIT);
+  });
+
+  it('rejects invalid limits rather than producing a surprising slice', () => {
+    expect(getClosestUpgradeComparisons('rx6600', 0)).toEqual([]);
+    expect(getClosestUpgradeComparisons('rx6600', -1)).toEqual([]);
+    expect(getClosestUpgradeComparisons('rx6600', 1.5)).toEqual([]);
   });
 });
 

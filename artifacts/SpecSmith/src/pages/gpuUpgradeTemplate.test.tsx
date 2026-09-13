@@ -14,7 +14,11 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import GpuUpgradePage from './GpuUpgradePage';
-import { getUpgradeComparisons } from '../lib/upgradeCalculator';
+import {
+  getClosestUpgradeComparisons,
+  getUpgradeComparisons,
+  UPGRADE_COMPARISON_PREVIEW_LIMIT,
+} from '../lib/upgradeCalculator';
 
 /** slug → gpu id, spanning the range of the catalogue. */
 const PAGES: ReadonlyArray<readonly [string, string, string]> = [
@@ -97,12 +101,14 @@ describe.each(PAGES)('/upgrade/%s (%s)', (slug, gpuId, _band) => {
     }
   });
 
-  it('states how the list was built, without claiming a price-free selection it does not make elsewhere', () => {
+  it('states exactly how the compact preview was built', () => {
     open(slug);
     const basis = screen.getByTestId('selection-basis').textContent ?? '';
-    expect(basis).toMatch(/every GPU SpecSmith tracks/i);
-    expect(basis).toMatch(/ordered by modelled difference/i);
-    expect(basis).toMatch(/nothing is filtered by price/i);
+    expect(basis).toMatch(new RegExp(`up to ${UPGRADE_COMPARISON_PREVIEW_LIMIT}`));
+    expect(basis).toMatch(/closest GPUs/i);
+    expect(basis).toMatch(/smallest modelled difference upward/i);
+    expect(basis).toMatch(/price does not affect/i);
+    expect(basis).toMatch(/not a recommendation/i);
   });
 
   it('keeps a self-referential canonical and its own URL', () => {
@@ -114,20 +120,23 @@ describe.each(PAGES)('/upgrade/%s (%s)', (slug, gpuId, _band) => {
   it('opens the COMPARED card in Builder, never the card being replaced', () => {
     open(slug);
     const links = Array.from(container.querySelectorAll('a[href^="/builder"]'));
-    const comparisons = getUpgradeComparisons(gpuId);
+    const comparisons = getClosestUpgradeComparisons(gpuId);
     expect(links).toHaveLength(comparisons.length);
     for (const link of links) {
       const href = link.getAttribute('href') ?? '';
       expect(href).not.toBe(`/builder?gpu=${gpuId}`);
       const target = href.replace('/builder?gpu=', '');
       expect(comparisons.some((c) => c.gpu.id === target), `${href} is not a compared card`).toBe(true);
+      const compared = comparisons.find((c) => c.gpu.id === target)!;
+      expect(link.getAttribute('aria-label')).toBe(`Open ${compared.gpu.name} in Builder`);
     }
   });
 
-  it('lists every compared card, in the order the library returned', () => {
+  it('renders only the compact preview, in closest-first order', () => {
     open(slug);
     const rendered = screen.queryAllByTestId('comparison-row').map((row) => row.getAttribute('data-gpu-id'));
-    expect(rendered).toEqual(getUpgradeComparisons(gpuId).map((c) => c.gpu.id));
+    expect(rendered).toEqual(getClosestUpgradeComparisons(gpuId).map((c) => c.gpu.id));
+    expect(rendered.length).toBeLessThanOrEqual(UPGRADE_COMPARISON_PREVIEW_LIMIT);
   });
 
   it('puts nothing in the FAQ schema that is not visible on the page', () => {
@@ -159,6 +168,20 @@ describe.each(PAGES)('/upgrade/%s (%s)', (slug, gpuId, _band) => {
       }
       expect(answer).not.toMatch(/\$\s?\d/);
     }
+  });
+});
+
+describe('copy follows the dataset and the estimator implementation', () => {
+  it('does not freeze the total dataset size into reader-facing copy', () => {
+    const text = open('rx-6600');
+    expect(text).not.toMatch(/of the \d+ GPUs SpecSmith tracks/i);
+  });
+
+  it('does not claim the estimator uses the catalogue tier', () => {
+    open('rx-6600');
+    const basis = screen.getByTestId('estimate-basis').textContent ?? '';
+    expect(basis).toMatch(/internal GPU performance factor/i);
+    expect(basis).not.toMatch(/performance tier/i);
   });
 });
 
