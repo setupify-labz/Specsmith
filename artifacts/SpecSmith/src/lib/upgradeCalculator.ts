@@ -44,8 +44,36 @@ export function estimateResaleValue(price: number): number {
   return Math.round((price * 0.65) / 5) * 5;
 }
 
+/**
+ * The CPU every FPS figure on the upgrade pages is modelled against.
+ *
+ * Exported because it is a LOAD-BEARING ASSUMPTION, not an implementation
+ * detail. Someone shopping an upgrade for a budget card is unlikely to own a
+ * 9800X3D, and the gain they actually see depends on the chip beside it. A
+ * page that quotes these numbers without naming the CPU behind them is quoting
+ * a best case as if it were the case.
+ */
+export const UPGRADE_REFERENCE_CPU = referenceCpu as { id: string; name: string; cpu_multiplier: number };
+
 export function averageFps(gpu: UpgradeGpu, resolution = '1440p', preset = 'high'): number {
-  const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, referenceCpu, g, resolution, preset).estimated, 0);
+  return averageFpsWithCpu(gpu, referenceCpu, resolution, preset);
+}
+
+/**
+ * The same 20-game average against a DIFFERENT CPU.
+ *
+ * Same estimator, same games, same resolution and preset — only the chip
+ * changes, so the two figures are comparable and the difference between them
+ * is attributable to the CPU alone. Still an estimate, and labelled as one
+ * wherever it is shown.
+ */
+export function averageFpsWithCpu(
+  gpu: UpgradeGpu,
+  cpu: { cpu_multiplier: number; name: string; [key: string]: unknown },
+  resolution = '1440p',
+  preset = 'high',
+): number {
+  const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, cpu, g, resolution, preset).estimated, 0);
   return Math.round(total / games.length);
 }
 
