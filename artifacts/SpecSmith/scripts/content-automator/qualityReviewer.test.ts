@@ -95,6 +95,13 @@ function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): Re
         kind: "price",
         verification: "verified",
         evidenceRefs: ["builder-state:build-1"],
+        // Builder prices come from observed Newegg listings, so this is a real
+        // retailer observation — and therefore has to name the merchant and
+        // the moment, which is exactly what the gate now requires before the
+        // word "current" is allowed anywhere near it.
+        priceProvenance: "verified-retailer-observation",
+        priceSource: "Newegg",
+        priceObservedAt: "2026-09-13T12:00:00.000Z",
       },
       {
         text: "The upgrade option is compatible with the selected build.",
@@ -128,6 +135,88 @@ describe("automated quality reviewer", () => {
     expect(result.publishable).toBe(true);
     expect(result.overallScore).toBeGreaterThanOrEqual(8.5);
     expect(result.issues.filter((issue) => issue.severity !== "warning")).toHaveLength(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Monetary provenance. SpecSmith renders several kinds of number that all
+  // look like "$1,691" on screen — an observed Newegg listing, a
+  // source-reported MSRP, and the catalogue's own editorial estimate — and a
+  // viewer deciding what to buy is entitled to know which one they are seeing.
+  // Every rule below fails CLOSED, so each test names the blocker it expects
+  // rather than only asserting "not publishable".
+  // -------------------------------------------------------------------------
+  const priceClaim = (over: Record<string, unknown> = {}) => cleanObservation({
+    claims: [{
+      text: "The GPU costs $1,691.",
+      kind: "price" as const,
+      verification: "verified" as const,
+      evidenceRefs: ["catalog:gpu-1"],
+      displayLabel: "Estimated component cost",
+      priceProvenance: "internal-editorial-estimate" as const,
+      ...over,
+    }],
+  });
+
+  it("blocks a monetary claim that does not say what kind of number it is", () => {
+    const result = reviewRenderedVideo(request, priceClaim({ priceProvenance: undefined }));
+    expect(result.publishable).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "price-provenance-missing")).toBe(true);
+  });
+
+  it("blocks a monetary figure whose provenance could not be established", () => {
+    const result = reviewRenderedVideo(request, priceClaim({ priceProvenance: "unknown" }));
+    expect(result.publishable).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "price-provenance-unestablished")).toBe(true);
+  });
+
+  it("blocks an internal catalogue price shown without an estimate qualifier", () => {
+    const result = reviewRenderedVideo(request, priceClaim({ displayLabel: "Component cost" }));
+    expect(result.publishable).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "editorial-price-unlabeled")).toBe(true);
+  });
+
+  it("blocks an editorial estimate dressed up as a live retailer price", () => {
+    const result = reviewRenderedVideo(request, priceClaim({ displayLabel: "Live retailer price" }));
+    expect(result.publishable).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "price-described-as-live-without-observation")).toBe(true);
+  });
+
+  it("blocks a retailer observation that names no merchant and no observation time", () => {
+    const result = reviewRenderedVideo(request, priceClaim({
+      priceProvenance: "verified-retailer-observation",
+      displayLabel: "Current retailer price",
+    }));
+    expect(result.publishable).toBe(false);
+    expect(result.issues.some((issue) => issue.code === "retailer-price-without-source-or-time")).toBe(true);
+  });
+
+  it("accepts a retailer observation that names both", () => {
+    const result = reviewRenderedVideo(request, priceClaim({
+      priceProvenance: "verified-retailer-observation",
+      displayLabel: "Current retailer price",
+      priceSource: "Newegg",
+      priceObservedAt: "2026-09-13T12:00:00.000Z",
+    }));
+    expect(result.issues.some((issue) => issue.code.startsWith("price-") || issue.code.startsWith("retailer-price"))).toBe(false);
+  });
+
+  it("blocks an unlabeled MSRP and an unlabeled fixture value", () => {
+    const msrp = reviewRenderedVideo(request, priceClaim({ priceProvenance: "source-reported-msrp" }));
+    expect(msrp.issues.some((issue) => issue.code === "msrp-unlabeled")).toBe(true);
+
+    const fixture = reviewRenderedVideo(request, priceClaim({ priceProvenance: "test-fixture" }));
+    expect(fixture.issues.some((issue) => issue.code === "fixture-price-unlabeled")).toBe(true);
+  });
+
+  // The rule governs the on-screen qualifier, not reviewer prose. An earlier
+  // version of this check also scanned `text`, which flagged this repository's
+  // own evidence file for the sentence "not live or verified current retailer
+  // prices" — punishing an accurate disclaimer and rewarding saying nothing.
+  it("does not punish prose that disclaims live pricing in words", () => {
+    const result = reviewRenderedVideo(request, priceClaim({
+      text: "These are catalogue estimates — not live or verified current retailer prices.",
+    }));
+    expect(result.issues.some((issue) => issue.code === "price-described-as-live-without-observation")).toBe(false);
   });
 
   it("holds uncertain factual claims instead of guessing or auto-publishing", () => {

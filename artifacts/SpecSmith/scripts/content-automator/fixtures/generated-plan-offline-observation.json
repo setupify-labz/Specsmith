@@ -63,7 +63,8 @@
           "live-compare-page-capture:price_usd",
           "live-compare-page-capture:est-gpu-cpu-label"
         ],
-        "displayLabel": "Estimated component cost"
+        "displayLabel": "Estimated component cost",
+        "priceProvenance": "internal-editorial-estimate"
       },
       {
         "text": "The real Compare page state (both cards, prices, Est. Avg FPS, per-game bars) is shown live across the commitment, evidence, reversal, payoff, and CTA beats.",

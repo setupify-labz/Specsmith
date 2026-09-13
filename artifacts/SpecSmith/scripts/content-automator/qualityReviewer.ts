@@ -57,12 +57,63 @@ export interface QualityReviewRequest {
   hardBlockers: string[];
 }
 
+/**
+ * Where a monetary figure on screen actually came from. A CLOSED SET, because
+ * the difference between these is the difference between a true and a false
+ * statement to a viewer deciding what to buy.
+ *
+ *  - "verified-retailer-observation": a real listing observed at a real
+ *    merchant at a recorded time. The ONLY category that may be described with
+ *    words like real, live, current, or retailer. Requires priceSource and
+ *    priceObservedAt, because a retailer price with no merchant and no
+ *    timestamp is not an observation, it is a number.
+ *  - "source-reported-msrp": a manufacturer or source-reported list price.
+ *    Real, but not what anyone is charging today.
+ *  - "internal-editorial-estimate": SpecSmith's own catalogue figure
+ *    (gpus.json / cpus.json price_usd). Must be labeled as an estimate.
+ *  - "test-fixture": an offline fixture value. Must be unmistakably labeled a
+ *    fixture and must never reach production-facing content.
+ *  - "unknown": provenance could not be established. Fails closed — an
+ *    unattributable monetary claim is removed or relabeled, never shipped.
+ */
+export type PriceProvenance =
+  | "verified-retailer-observation"
+  | "source-reported-msrp"
+  | "internal-editorial-estimate"
+  | "test-fixture"
+  | "unknown";
+
+/** Every price provenance category, for exhaustive validation and tests. */
+export const PRICE_PROVENANCES: readonly PriceProvenance[] = [
+  "verified-retailer-observation",
+  "source-reported-msrp",
+  "internal-editorial-estimate",
+  "test-fixture",
+  "unknown",
+];
+
+/**
+ * Words that assert a figure is what a shop is charging right now. Permitted
+ * only on a verified-retailer-observation. Matched on word boundaries so
+ * "Est." and ordinary prose are unaffected.
+ */
+const LIVE_PRICE_WORDS = ["real", "live", "current", "actual", "today", "retailer", "retail price", "street price"];
+
 export interface ObservedClaim {
   text: string;
   kind: ClaimKind;
   verification: "verified" | "unverified" | "contradicted";
   evidenceRefs: string[];
   displayLabel?: string;
+  /**
+   * Required on every kind: "price" claim. Absent is not "probably fine" —
+   * checkClaims below treats a missing provenance as a critical blocker.
+   */
+  priceProvenance?: PriceProvenance;
+  /** Merchant the figure was observed at. Required for a verified observation. */
+  priceSource?: string;
+  /** ISO-8601 time the figure was observed. Required for a verified observation. */
+  priceObservedAt?: string;
 }
 
 export interface ObservedUiShot {
@@ -215,6 +266,16 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 /**
+ * Whole-word match, so "Est." never trips the "actual"/"real" wording check
+ * and a word inside a longer word ("really", "currently" is deliberate) is
+ * matched only where it stands alone or begins a phrase.
+ */
+function matchesWord(haystack: string, word: string): boolean {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`, "i").test(haystack);
+}
+
+/**
  * Structurally validates a parsed evidence JSON file before it is trusted.
  * Fails closed on anything malformed rather than letting a broken record
  * silently pass through as `undefined` fields.
@@ -329,6 +390,131 @@ function addIssue(issues: ReviewIssue[], issue: ReviewIssue): void {
   issues.push(issue);
 }
 
+/**
+ * A monetary figure on screen must say what kind of number it is.
+ *
+ * SpecSmith shows several kinds and they are not interchangeable: a Newegg
+ * listing observed at a moment in time, a manufacturer's list price, and the
+ * catalogue's own editorial estimate all render as "$1,691". A viewer deciding
+ * what to buy is entitled to know which one they are looking at, so every
+ * price claim carries a provenance category and each category has to be
+ * labeled in a way that is true of it. Everything here fails CLOSED: a claim
+ * that cannot establish its provenance is a blocker, never a default.
+ */
+function checkPriceClaim(claim: ObservedClaim, observation: RenderedVideoObservation, issues: ReviewIssue[]): void {
+  const taskIds = [...observation.failedTaskIds];
+  const provenance = claim.priceProvenance;
+
+  if (provenance === undefined) {
+    addIssue(issues, {
+      code: "price-provenance-missing",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `A monetary claim carries no priceProvenance, so what kind of number it is cannot be established: ${claim.text}`,
+      taskIds,
+    });
+    return;
+  }
+  if (!PRICE_PROVENANCES.includes(provenance)) {
+    addIssue(issues, {
+      code: "price-provenance-unknown-category",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `A monetary claim declares an unrecognized priceProvenance "${provenance}": ${claim.text}`,
+      taskIds,
+    });
+    return;
+  }
+
+  const label = (claim.displayLabel ?? "").toLowerCase();
+  const text = claim.text.toLowerCase();
+  const saysEstimate = label.includes("estimate") || label.includes("est.") || label.includes("est ");
+  const saysFixture = label.includes("fixture") || text.includes("fixture");
+
+  if (provenance === "unknown") {
+    addIssue(issues, {
+      code: "price-provenance-unestablished",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `A monetary figure with unknown provenance may not be shown — relabel it honestly or remove the claim: ${claim.text}`,
+      taskIds,
+    });
+  }
+
+  if (provenance === "verified-retailer-observation") {
+    // A retailer price with no merchant and no observation time is not an
+    // observation. Both are required before the live-price wording below is
+    // allowed, and before the claim can be called verified at all.
+    if (!isNonEmptyString(claim.priceSource) || !isNonEmptyString(claim.priceObservedAt)) {
+      addIssue(issues, {
+        code: "retailer-price-without-source-or-time",
+        severity: "critical",
+        dimension: "factual-accuracy",
+        message: `A claim presented as a verified retailer observation is missing its source and/or observation time: ${claim.text}`,
+        taskIds,
+      });
+    }
+    if (claim.verification !== "verified" || claim.evidenceRefs.length === 0) {
+      addIssue(issues, {
+        code: "retailer-price-without-evidence",
+        severity: "critical",
+        dimension: "factual-accuracy",
+        message: `A verified retailer price requires verification and an evidence reference: ${claim.text}`,
+        taskIds,
+      });
+    }
+  } else {
+    // Only a real observation may be described as what a shop charges now.
+    //
+    // Matched against the DISPLAY LABEL alone, deliberately. displayLabel is
+    // the qualifier a viewer actually reads next to the number; `text` is
+    // reviewer prose about the claim, and honest prose routinely has to use
+    // these very words to disclaim them — this repository's own evidence file
+    // says a figure is "not live or verified current retailer prices", which
+    // is exactly the sentence this rule exists to encourage. Scanning it would
+    // punish the disclaimer and reward saying nothing, so the rule governs
+    // what is shown, not what is written about it.
+    const offending = LIVE_PRICE_WORDS.filter((word) => matchesWord(label, word));
+    if (offending.length > 0) {
+      addIssue(issues, {
+        code: "price-described-as-live-without-observation",
+        severity: "critical",
+        dimension: "factual-accuracy",
+        message: `A ${provenance} price is described with live-retailer wording (${offending.join(", ")}), which its provenance does not support: ${claim.text}`,
+        taskIds,
+      });
+    }
+  }
+
+  if (provenance === "internal-editorial-estimate" && !saysEstimate) {
+    addIssue(issues, {
+      code: "editorial-price-unlabeled",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `An internal catalogue price appeared without an explicit estimate qualifier: ${claim.text}`,
+      taskIds,
+    });
+  }
+  if (provenance === "source-reported-msrp" && !(label.includes("msrp") || label.includes("list price") || text.includes("msrp"))) {
+    addIssue(issues, {
+      code: "msrp-unlabeled",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `A source-reported MSRP appeared without an MSRP or list-price qualifier: ${claim.text}`,
+      taskIds,
+    });
+  }
+  if (provenance === "test-fixture" && !saysFixture) {
+    addIssue(issues, {
+      code: "fixture-price-unlabeled",
+      severity: "critical",
+      dimension: "factual-accuracy",
+      message: `A test-fixture monetary value appeared without being identified as a fixture: ${claim.text}`,
+      taskIds,
+    });
+  }
+}
+
 function checkClaims(request: QualityReviewRequest, observation: RenderedVideoObservation, issues: ReviewIssue[]): void {
   for (const claim of observation.claims) {
     if (claim.verification === "contradicted") {
@@ -376,6 +562,7 @@ function checkClaims(request: QualityReviewRequest, observation: RenderedVideoOb
         taskIds: [...observation.failedTaskIds],
       });
     }
+    if (claim.kind === "price") checkPriceClaim(claim, observation, issues);
     if (claim.kind === "measured-fps" && (claim.verification !== "verified" || claim.evidenceRefs.length === 0)) {
       addIssue(issues, {
         code: "measured-fps-without-evidence",
