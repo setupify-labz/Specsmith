@@ -10,6 +10,7 @@ import {
   CPU_UPGRADE_COMPARISON_PREVIEW_LIMIT,
   CPU_UPGRADE_REFERENCE_GPU,
 } from '../lib/cpuUpgradeCalculator';
+import { getRouteMeta } from '../lib/seo';
 
 beforeAll(() => {
   class NoopObserver {
@@ -74,5 +75,21 @@ describe('/upgrade-calculator-cpu evidence boundaries', () => {
     expect(screen.getByText('1440p High settings.')).toBeTruthy();
     expect(screen.getByTestId('comparison-limit').textContent).toMatch(/not measured benchmarks/i);
     expect(screen.getByText(/A model estimate, not a benchmark of your PC/i)).toBeTruthy();
+  });
+
+  it('uses comparison metadata rather than resale, trade-up or real-FPS promises', () => {
+    const meta = getRouteMeta('/upgrade-calculator-cpu');
+    expect(meta.title).toBe('CPU Upgrade Comparison Calculator | SpecSmith');
+    expect(meta.description).toMatch(/estimates/i);
+    expect(meta.description).not.toMatch(/resale|worth used|real fps|trade.up/i);
+  });
+
+  it('keeps the GPU and CPU upgrade index metadata aligned with their comparison-only pages', () => {
+    for (const path of ['/upgrade', '/upgrade-cpu']) {
+      const meta = getRouteMeta(path);
+      expect(meta.title).toMatch(/Upgrade Comparisons/);
+      expect(meta.description).toMatch(/price-independent|modelled/i);
+      expect(meta.description).not.toMatch(/resale|net cost|real upgrade/i);
+    }
   });
 });
