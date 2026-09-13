@@ -21,7 +21,7 @@ import PageGlow from '../components/PageGlow';
  * "Best value", estimated what the reader's card was worth used, and told them
  * whether upgrading was worth it. Every one of those rests on two numbers that
  * cannot carry them: the prices in `gpus.json` are editorial and undated
- * against the live market, and `estimateResaleValue` is a flat 65% of one.
+ * against the live market, and the old resale estimate was a flat 65% of one.
  * Multiplying two soft figures produces a hard-looking one, and the page then
  * spent it on a purchase recommendation.
  *

@@ -77,10 +77,10 @@ export function getUpgradePage(slug: string): UpgradePage | undefined {
  * Intro paragraph — derived from the same computed figures the page shows.
  *
  * It used to open "The best upgrade in our data is the X", where X was
- * `getUpgradeCandidates(id, 1)[0]` — the CHEAPEST card one tier up, which for
- * an RX 6600 is a +3% step the page's own badge called marginal. It named a
- * best, it named it on price, and it was wrong on both counts. The page makes
- * no recommendation now, so neither does its first sentence.
+ * the cheapest card one tier up, which for an RX 6600 is a +3% step the page's
+ * own badge called marginal. It named a best, it named it on price, and it was
+ * wrong on both counts. The old price-based selector no longer exists. The
+ * page makes no recommendation now, so neither does its first sentence.
  */
 export function getUpgradeIntro(gpu: UpgradeGpu): string {
   const comparisons = getUpgradeComparisons(gpu.id);

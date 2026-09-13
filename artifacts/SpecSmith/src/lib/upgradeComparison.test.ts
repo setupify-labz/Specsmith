@@ -6,13 +6,10 @@
  * own card, and a verdict on whether upgrading was worth it. All of it rested
  * on editorial prices and a flat 65% resale assumption.
  *
- * An intermediate revision removed the visible money but kept the defect:
- * `getUpgradeCandidates` selects the CHEAPEST card in each tier BEFORE
- * anything sorts by modelled gain, so price still decided which cards a reader
- * saw — while the page said selection was on modelled gain alone. That is the
- * failure these tests are built around, so the important one does not check
- * wording at all: it changes every price in the dataset and asserts the page's
- * output is byte-identical.
+ * An intermediate revision removed the visible money but kept price-based
+ * membership in the old candidate selector. That selector is now gone. The
+ * load-bearing test still changes every price in the dataset and requires the
+ * comparison output to remain byte-identical.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';

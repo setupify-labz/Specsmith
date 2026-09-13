@@ -57,6 +57,9 @@ interface PartSelectorProps {
    * would quietly do nothing after the shopper collapses the panel again.
    */
   openSignal?: number;
+  /** Hide prices, value sorting, badges and retailer links when this selector
+   * is choosing a comparison subject rather than a product to shop for. */
+  showShopping?: boolean;
 }
 
 /**
@@ -70,7 +73,7 @@ const SCROLL_ATTEMPT_FRAMES = 30;
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, recommendedIds = [], openSignal,
+  defaultOpen = false, recommendedIds = [], openSignal, showShopping = true,
 }: PartSelectorProps) {
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -133,9 +136,9 @@ export default function PartSelector({
 
   const filtered = useMemo(() => {
     let result = parts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    if (sort === 'price') result.sort((a, b) => (a.price_usd ?? Number.POSITIVE_INFINITY) - (b.price_usd ?? Number.POSITIVE_INFINITY));
+    if (showShopping && sort === 'price') result.sort((a, b) => (a.price_usd ?? Number.POSITIVE_INFINITY) - (b.price_usd ?? Number.POSITIVE_INFINITY));
     else if (sort === 'performance') result.sort((a, b) => (b.benchmark_score ?? b.tier ?? 0) - (a.benchmark_score ?? a.tier ?? 0));
-    else if (sort === 'value') result.sort((a, b) => {
+    else if (showShopping && sort === 'value') result.sort((a, b) => {
       const aValue = a.price_usd && a.price_usd > 0 ? (a.benchmark_score ?? a.tier ?? 0) / a.price_usd : -1;
       const bValue = b.price_usd && b.price_usd > 0 ? (b.benchmark_score ?? b.tier ?? 0) / b.price_usd : -1;
       return bValue - aValue;
@@ -148,12 +151,12 @@ export default function PartSelector({
       ];
     }
     return result;
-  }, [parts, search, sort, recommendedIds]);
+  }, [parts, search, sort, recommendedIds, showShopping]);
 
   // "Best Value" (highest benchmark-score/price ratio) and "Best Performance"
   // (highest raw benchmark score) — one of each per category, GPU/CPU only.
   const { bestValueId, bestPerformanceId } = useMemo(() => {
-    if (category !== 'gpu' && category !== 'cpu') return { bestValueId: null, bestPerformanceId: null };
+    if (!showShopping || (category !== 'gpu' && category !== 'cpu')) return { bestValueId: null, bestPerformanceId: null };
     const withScores = parts.filter((p): p is Part & { benchmark_score: number; price_usd: number } =>
       typeof p.benchmark_score === 'number' && typeof p.price_usd === 'number' && p.price_usd > 0,
     );
@@ -165,7 +168,7 @@ export default function PartSelector({
       p.benchmark_score > best.benchmark_score ? p : best
     );
     return { bestValueId: bestValue.id, bestPerformanceId: bestPerformance.id };
-  }, [parts, category]);
+  }, [parts, category, showShopping]);
 
   const selectedPart = parts.find(p => p.id === selectedId);
   const Icon = CATEGORY_ICONS[category] ?? Box;
@@ -210,7 +213,7 @@ export default function PartSelector({
           </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {selectedPart && (
+          {selectedPart && showShopping && (
             <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>
               {selectedPart.price_usd === undefined ? 'Retailer price' : `$${selectedPart.price_usd.toLocaleString()}`}
             </span>
@@ -248,7 +251,7 @@ export default function PartSelector({
                     }}
                   />
                 </div>
-                <div className="relative w-full sm:w-[132px] sm:flex-shrink-0">
+                {showShopping && <div className="relative w-full sm:w-[132px] sm:flex-shrink-0">
                   <select
                     aria-label="Sort parts by"
                     value={sort}
@@ -270,11 +273,11 @@ export default function PartSelector({
                     className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
                     style={{ color: 'var(--ff-text-3)' }}
                   />
-                </div>
+                </div>}
               </div>
 
               {/* Parts grid */}
-              {filtered.some(part => Boolean(part.affiliateUrl)) && (
+              {showShopping && filtered.some(part => Boolean(part.affiliateUrl)) && (
                 <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
                   Affiliate disclosure: SpecSmith may earn a commission from purchases made through marked retailer links. Your price is not increased.
                 </p>
@@ -290,7 +293,7 @@ export default function PartSelector({
                       name={part.name}
                       image={part.image}
                       searchQuery={buildPartQuery(part.name, part.brand as string | undefined, category)}
-                      price_usd={part.price_usd}
+                      price_usd={showShopping ? part.price_usd : undefined}
                       affiliateUrl={part.affiliateUrl}
                       selected={part.id === selectedId}
                       sponsored={part.sponsored}
@@ -302,6 +305,7 @@ export default function PartSelector({
                       }
                       specs={getSpecs(part)}
                       tier={part.tier}
+                      showShopping={showShopping}
                       onSelect={(id) => onSelect(id === selectedId ? null : id)}
                     />
                   ))
