@@ -89,9 +89,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-calculator',
-    title: 'GPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'GPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current GPU is worth used, what it costs to trade up to a faster card after resale, and the real FPS gain.',
+      'Compare your current GPU with the closest faster GPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results or buying advice.',
   },
   {
     path: '/upgrade-calculator-cpu',
