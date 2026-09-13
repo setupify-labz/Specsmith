@@ -49,6 +49,82 @@ export function averageCpuFps(cpu: UpgradeCpu, resolution = '1440p', preset = 'h
   return Math.round(total / games.length);
 }
 
+/**
+ * The CPU whose figures the estimator is conditional on.
+ *
+ * Exported because it is a LOAD-BEARING ASSUMPTION the pages state, not an
+ * implementation detail — and read from here rather than written into prose so
+ * the chip named on screen cannot drift from the chip the model used.
+ */
+export const CPU_UPGRADE_REFERENCE_GPU = referenceGpu as { id: string; name: string; [key: string]: unknown };
+
+/**
+ * Every tracked CPU that this one's modelled average does not reach.
+ *
+ * PRICE TOUCHES NOTHING HERE. `getCpuUpgradeCandidates` below keeps the
+ * CHEAPEST chip in each tier before anything else happens, so an editorial
+ * price in `cpus.json` silently decides which chips a reader is shown. That is
+ * the same defect the GPU template carried, fixed the same way in #119: a page
+ * presenting a performance comparison must not have its membership chosen by a
+ * price, least of all one that is never checked against the live market.
+ *
+ * Returns the COMPLETE set — no per-tier filter, no cap — ordered by modelled
+ * difference. The page previews the closest few; the full set is what the
+ * count and range disclosures are computed from.
+ */
+export interface CpuUpgradeComparison {
+  cpu: UpgradeCpu;
+  /** Modelled 20-game average for the chip being compared against. */
+  avgFpsCurrent: number;
+  /** Modelled 20-game average for this chip. */
+  avgFpsNew: number;
+  /** Modelled difference, as a percentage of the current chip's average. */
+  fpsDiffPct: number;
+}
+
+export function getCpuUpgradeComparisons(currentId: string): CpuUpgradeComparison[] {
+  const current = getUpgradeCpu(currentId);
+  if (!current) return [];
+  const avgFpsCurrent = averageCpuFps(current);
+
+  return cpus
+    .filter((cpu) => cpu.id !== current.id)
+    .map((cpu) => {
+      const avgFpsNew = averageCpuFps(cpu);
+      return {
+        cpu,
+        avgFpsCurrent,
+        avgFpsNew,
+        fpsDiffPct: Math.round(((avgFpsNew - avgFpsCurrent) / avgFpsCurrent) * 100),
+      };
+    })
+    // Tier is a catalogue grouping, not evidence that one chip is faster. The
+    // modelled average is what this page compares, so it is what filters.
+    .filter((row) => row.avgFpsNew > row.avgFpsCurrent && row.fpsDiffPct > 0)
+    .sort((a, b) => b.fpsDiffPct - a.fpsDiffPct || a.cpu.name.localeCompare(b.cpu.name));
+}
+
+/**
+ * How many rows a guide previews.
+ *
+ * Same limit and same reasoning as the GPU template: the complete set runs to
+ * dozens of rows for a low-end chip, which is hard to scan and would make 51
+ * programmatic pages repeat most of the CPU catalogue at each other.
+ */
+export const CPU_UPGRADE_COMPARISON_PREVIEW_LIMIT = 8;
+
+export function getClosestCpuUpgradeComparisons(
+  currentId: string,
+  limit = CPU_UPGRADE_COMPARISON_PREVIEW_LIMIT,
+): CpuUpgradeComparison[] {
+  if (!Number.isInteger(limit) || limit <= 0) return [];
+
+  return getCpuUpgradeComparisons(currentId)
+    .slice()
+    .sort((a, b) => a.fpsDiffPct - b.fpsDiffPct || a.cpu.name.localeCompare(b.cpu.name))
+    .slice(0, limit);
+}
+
 export type UpgradeVerdict = 'strong' | 'moderate' | 'marginal';
 
 export interface CpuUpgradeCandidate {
