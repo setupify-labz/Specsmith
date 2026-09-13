@@ -32,16 +32,29 @@
 # recorded, once, in the committed
 # scripts/content-automator/fixtures/generated-plan-offline-observation.json —
 # fail-closed by design (see that file and qualityReviewer.ts's
-# matchRenderToRecordedEvidence). Every UI beat here is a static capture (no
-# interactive sequence step), but ffmpeg's own encode/mux is still not
-# guaranteed byte-identical across runs of identical inputs (container
-# timestamps, encoder scheduling) — confirmed empirically (two separate local
-# renders of the same commit produced two distinct sha256 hashes with
-# visually/audibly identical content). A CI runner is yet another machine, so this step's
-# most likely outcome is the pipeline correctly stopping at that evidence gate
-# rather than reaching "Done" — that is the fix working as designed, not a
-# regression, and it is NOT the same as the pipeline crashing for some other
-# reason.
+# matchRenderToRecordedEvidence).
+#
+# WHAT IS AND IS NOT REPRODUCIBLE — CORRECTED. An earlier version of this
+# header said ffmpeg's encode/mux is inherently not byte-identical across runs
+# of identical inputs, citing two local renders of one commit that produced two
+# hashes. That was at least partly a MISDIAGNOSIS. The real cause was the
+# deterministic-ui-render capture racing a Recharts animation (see
+# uiRender/capture.ts's settle condition): the "identical inputs" were not
+# identical, because the screenshots feeding ffmpeg differed between runs.
+# With that fixed, four consecutive renders on one machine at one commit
+# produced the byte-identical master, each with the same per-beat capture
+# hashes. Same-environment reproducibility now holds.
+#
+# CROSS-MACHINE byte equality is a different claim and remains UNPROVEN — in
+# fact a previous run of this workflow disproved it: the runner produced a
+# different sha256 at a different file size from the local artifact of the same
+# commit, a size difference rather than only container timestamps, most likely a
+# different font stack and Chromium build rendering different pixels. So this
+# step's most likely outcome on a runner is still the pipeline correctly
+# stopping at the evidence gate rather than reaching "Done" — that is the gate
+# working as designed, not a regression, and it is NOT the same as the pipeline
+# crashing for some other reason. What changed is the reason: it is
+# environmental difference, not ffmpeg being inherently nondeterministic.
 #
 # Independently, even when the sha256 does match, the quality gate also
 # fails closed on audio (qualityReviewer.ts's audio-not-genuinely-reviewed
@@ -218,7 +231,7 @@ jobs:
             exit 0
           fi
           if grep -q "Evidence check: NO MATCH" "${RUNNER_TEMP}/e2e/pipeline.log"; then
-            echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — see this workflow file's header for why the render is not byte-reproducible across machines. This is the fail-closed gate working, not a regression."
+            echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — the render is byte-stable within one environment but cross-machine byte equality is unproven; see this workflow file's header. This is the fail-closed gate working, not a regression."
             exit 0
           fi
           if grep -q "audio-not-genuinely-reviewed" "${RUNNER_TEMP}/e2e/pipeline.log"; then
