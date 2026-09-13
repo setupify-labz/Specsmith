@@ -1,6 +1,9 @@
 name: Verify pull request
 
 on:
+  push:
+    branches:
+      - chatgpt/cpu-calculator-integrity
   pull_request:
     branches:
       - main
@@ -20,7 +23,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Check out the exact pull-request head
+      - name: Check out the exact selected head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
