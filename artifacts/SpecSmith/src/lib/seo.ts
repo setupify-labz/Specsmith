@@ -33,9 +33,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/builder',
-    title: 'PC Builder + FPS Estimator | SpecSmith',
+    title: 'PC Build Calculator & FPS Estimator | SpecSmith',
     description:
-      'Pick your GPU, CPU, motherboard, RAM, storage, PSU, case, and cooler. Get instant compatibility checks and estimated FPS in 20 games at 1080p, 1440p, and 4K.',
+      'Build a gaming PC, check supported part compatibility, total current listing prices, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/prebuilts',
@@ -47,7 +47,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/compare',
     title: 'Compare PC Builds Side-by-Side | SpecSmith',
     description:
-      'Compare two PC builds head-to-head with FPS and price charts. See exactly which configuration gives you more performance per dollar before you buy.',
+      'Compare two GPU + CPU combinations across 20 games with clearly labelled SpecSmith FPS estimates. Adjust resolution and quality without live-price or purchase recommendations.',
   },
   {
     path: '/about',
@@ -89,15 +89,15 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-calculator',
-    title: 'GPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'GPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current GPU is worth used, what it costs to trade up to a faster card after resale, and the real FPS gain.',
+      'Compare your current GPU with the closest faster GPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results or buying advice.',
   },
   {
     path: '/upgrade-calculator-cpu',
-    title: 'CPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'CPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current CPU is worth used, what it costs to trade up to a faster chip after resale, and the real FPS gain.',
+      'Compare your current CPU with the closest faster CPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results, live prices or buying advice.',
   },
   {
     path: '/crate',
@@ -127,9 +127,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade',
-    title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'GPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse GPU comparison pages for every GPU we track — price-independent modelled FPS comparisons using a fixed reference CPU, clearly labelled as estimates.',
   },
   {
     path: '/parts-guides',
@@ -145,9 +145,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-cpu',
-    title: 'CPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'CPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every CPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse CPU comparison pages for every CPU we track — price-independent modelled FPS comparisons using a fixed reference GPU, clearly labelled as estimates.',
   },
   {
     path: '/best-gpu-budget',
@@ -326,7 +326,6 @@ export interface BreadcrumbItem {
   path: string;
 }
 
-// :slug detail pages get their listing page as the middle breadcrumb.
 const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/vs/', parent: { name: 'GPU & CPU Comparisons', path: '/vs' } },
   { prefix: '/best-gpu/', parent: { name: 'Best GPU by Game', path: '/best-gpu' } },
@@ -341,7 +340,6 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/quiz/', parent: { name: 'PC Build Quiz', path: '/quiz' } },
 ];
 
-// Standalone guide/index pages that hang off the Parts Guides hub.
 const PARTS_GUIDES_PAGES = new Set([
   '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',

@@ -16,6 +16,7 @@ interface PartCardProps {
   badge?: 'best-value' | 'best-performance';
   specs: { label: string; value: string }[];
   tier?: number;
+  showShopping?: boolean;
   onSelect: (id: string) => void;
 }
 
@@ -54,7 +55,8 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price_usd, affiliateUrl, selected, sponsored, recommended, badge, specs, tier, onSelect
+  id, name, image, searchQuery, price_usd, affiliateUrl, selected, sponsored, recommended, badge, specs, tier,
+  showShopping = true, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
   const amazonLink = getAmazonLink(query);
@@ -164,8 +166,10 @@ export default function PartCard({
           ))}
         </div>
 
-        {/* Price + retailer links */}
-        <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
+        {/* Price + Buy. Comparison-only selectors deliberately omit this
+            entire block: an editorial price must not quietly become shopping
+            or value evidence on a performance-comparison surface. */}
+        {showShopping && <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <span
             className="text-lg font-bold"
             style={{ color: 'var(--ff-text)' }}
@@ -193,7 +197,7 @@ export default function PartCard({
               pillBorder="1px solid rgba(255,158,27,0.3)"
             />
           </div>
-        </div>
+        </div>}
       </div>
     </motion.div>
   );

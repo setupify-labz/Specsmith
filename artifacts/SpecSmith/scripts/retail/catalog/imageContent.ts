@@ -9,6 +9,7 @@
 // and the measurement needs nothing more than the picture.
 
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 
 import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
@@ -30,7 +31,20 @@ export type ImageMeasurementProblem =
   | 'off-centre';
 
 export type ImageMeasurement =
-  | { ok: true; contentRatio: number }
+  | {
+      ok: true;
+      contentRatio: number;
+      /**
+       * SHA-256 of the exact image bytes that were measured.
+       *
+       * Recorded so a consumer can tell whether the picture at a URL is still
+       * the picture it saw. A merchant can replace the bytes behind an
+       * unchanged URL at any time, so the URL alone identifies a location, not
+       * a version. Absent when the ratio was computed from an already-decoded
+       * raster rather than from fetched bytes.
+       */
+      sha256?: string;
+    }
   | { ok: false; problem: ImageMeasurementProblem };
 
 /** Pixels within this distance of the corner colour count as background. */
@@ -188,5 +202,8 @@ export async function measureImageAtUrl(url: string, fetchImpl: typeof fetch = f
   }
   const decoded = decode(bytes, url);
   if (typeof decoded === 'string') return { ok: false, problem: decoded };
-  return measureContentRatio(decoded);
+  const measured = measureContentRatio(decoded);
+  // The bytes are already in hand; hashing them here is what lets the site
+  // detect that a merchant swapped the photograph behind the same URL.
+  return measured.ok ? { ...measured, sha256: createHash('sha256').update(bytes).digest('hex') } : measured;
 }
