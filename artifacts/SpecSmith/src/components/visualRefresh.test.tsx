@@ -7,7 +7,9 @@ import type { AffiliatePart } from '../lib/retail/partCatalog';
 import GuideProductImage, { guideGpuExample } from './GuideProductImage';
 import Prebuilts from '../pages/Prebuilts';
 
-vi.mock('../hooks/useAffiliatePartCatalog', () => ({ useAffiliatePartCatalog: () => ({ status: 'absent' }) }));
+vi.mock('../hooks/useAffiliatePartCatalog', () => ({
+  useAffiliatePartCatalog: () => ({ view: { status: 'absent' }, retry: vi.fn() }),
+}));
 vi.mock('../hooks/useSeo', () => ({ useSeo: () => {} }));
 beforeEach(() => vi.stubGlobal('IntersectionObserver', class {
   observe() {} unobserve() {} disconnect() {}
@@ -18,7 +20,7 @@ const part = catalog.parts.find(p => p.category === 'gpu') as AffiliatePart;
 describe('guide product photography', () => {
   it('requires the verified canonical identity, never a similar name', () => {
     expect(guideGpuExample([part], part.canonicalPartId!)).toBe(part);
-    expect(guideGpuExample([{ ...part, specsVerified: false }], part.canonicalPartId!)).toBeUndefined();
+    expect(guideGpuExample([{ ...part, canonicalPartId: null }], part.canonicalPartId!)).toBeUndefined();
     expect(guideGpuExample([{ ...part, canonicalPartId: 'wrong' }], part.canonicalPartId!)).toBeUndefined();
     expect(guideGpuExample([{ ...part, category: 'cpu' }], part.canonicalPartId!)).toBeUndefined();
     expect(guideGpuExample([], 'unavailable')).toBeUndefined();

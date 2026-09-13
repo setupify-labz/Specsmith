@@ -13,15 +13,16 @@ Implements #106 for founder review, not deployment. Homepage, Build Guides overv
 
 ## Verification
 
-- TypeScript: passed.
-- Focused tests: 34/34, including the original 30 retailer builder tests and four visual-refresh behavior tests.
-- Full suite: 2034 passed, 17 failed (2051 total). Failures are in scripts/measured/cancellation.test.ts; output includes EPERM creating tsx local pipes and pnpm refusing ignored esbuild build scripts. No tests or dependency policy weakened. Not a clean full-suite result; independent CI remains required.
+- Integrated `main` at `9374e55` and retained its newer product-image resolver, detail drawer, loading states, and model-identity versus exact-unit-specification boundary.
+- TypeScript: passed after updating the guide-photo selector to the current verified-identity contract.
+- Focused tests: 38/38 across the visual refresh, Builder shopping, and product-image integration suites.
+- Full suite in this sandbox: 2,657 passed and 17 failed (2,674 total). All 17 failures are the existing `scripts/measured/cancellation.test.ts` subprocess cases; `tsx` cannot create its IPC pipe here (`listen EPERM`). The remaining 150 files / 2,643 tests pass when that environment-dependent file is excluded. No test or dependency policy was weakened.
 - Production Vite build and prerender: passed, 374 sitemap URLs.
-- Desktop homepage checked in both themes; guide overview and native disclosure checked; retailer cards inspected with original catalogue photographs.
-- Mobile evidence uses real app documents inside 375px and 320px development-only iframes, not a physical-device emulation. Homepage and builder captured; complete mobile/light-theme matrix remains a review gate. A small 4px homepage scroll-width discrepancy was observed at the narrow frame and is not certified as resolved.
-- Preview dev mode logged a hydration mismatch at the existing Navbar boundary; production hydration has not been certified by this pass.
+- The two `.retail-photo-frame` declarations created by the main integration were reduced to one shared declaration, preserving the theme-aware photo surface everywhere.
+- The screenshots below document the prior `adc2722` visual review, not the current integrated head. A fresh exact-head browser capture is still required: Playwright's Chromium download timed out repeatedly in this environment.
+- Complete mobile/light-theme, horizontal-overflow, and production-hydration QA therefore remain release gates. The previously observed 4px narrow-frame discrepancy is not certified as resolved.
 
-## Screenshots
+## Prior-head screenshots (`adc2722`)
 
 ![Homepage dark](specsmith-home-final.jpg)
 ![Homepage light](specsmith-home-light-final.jpg)
@@ -32,4 +33,4 @@ Implements #106 for founder review, not deployment. Homepage, Build Guides overv
 
 ## Release gates
 
-This is a draft visual review, not a finished site-wide overhaul. Aaron reviews the design first; independent technical review and remaining viewport/production checks must pass before merge. Main advanced only through a catalogue refresh while this branch was prepared; integrate and verify the latest catalogue before release. Rollback is a normal revert of this UI change; no data or schema migration.
+This is a draft visual review, not a finished site-wide overhaul. Aaron reviews the design first; independent technical review, fresh exact-head screenshots, and the remaining viewport/production checks must pass before merge. Rollback is a normal revert of this UI change; no data or schema migration.

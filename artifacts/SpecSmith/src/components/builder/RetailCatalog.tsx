@@ -11,14 +11,21 @@ import {
   type CatalogFilters,
   type ProductSort,
 } from '../../lib/retail/retailShopping';
+import { WHITE_EMPTY_MESSAGE, isColorNeutralCategory } from '../../lib/retail/whiteBuild';
+import ProductDetailDrawer from './ProductDetailDrawer';
 import RetailProductCard from './RetailProductCard';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
 
 interface Props {
   category: RetailPartCategory;
+  /** True when the White build collection is on, which changes the empty state. */
+  whiteOnly?: boolean;
   parts: readonly AffiliatePart[];
   selectedId: string | null;
   now: number;
   onToggle: (id: string) => void;
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -32,14 +39,24 @@ interface Props {
  * accordion inside the page, which meant three scrollbars competing for the
  * same wheel gesture.
  */
-export default function RetailCatalog({ category, parts, selectedId, now, onToggle }: Props) {
+export default function RetailCatalog({
+  category,
+  whiteOnly = false,
+  parts,
+  selectedId,
+  now,
+  onToggle,
+  processedImages,
+}: Props) {
   const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
   const [visible, setVisible] = useState(PRODUCT_BATCH_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const brands = useMemo(() => brandsIn(parts), [parts]);
   const results = useMemo(() => filterAndSort(parts, filters), [parts, filters]);
   const shown = results.slice(0, visible);
+  const detailPart = detailId === null ? undefined : parts.find((part) => part.id === detailId);
 
   // Any change to what is being filtered starts the batching over, so "Load
   // more" never reveals products from a previous query.
@@ -171,13 +188,28 @@ export default function RetailCatalog({ category, parts, selectedId, now, onTogg
       )}
 
       {results.length === 0 ? (
+        // Two different emptinesses. "Your filters match nothing" is the user's
+        // doing; "no listing here states a white finish" is ours, and saying so
+        // is better than padding the collection with guesses.
+        //
+        // The white message is only ever right for a category the collection
+        // actually filters. A colour-neutral one is never narrowed by finish,
+        // so an empty result there is the user's filters and blaming it on
+        // missing white stock would be a false explanation.
         <p className="py-10 text-center text-sm" style={{ color: 'var(--ff-text-2)' }} data-testid="catalog-empty">
-          No products match these filters.
+          {whiteOnly && parts.length === 0 && !isColorNeutralCategory(category)
+            ? WHITE_EMPTY_MESSAGE
+            : 'No products match these filters.'}
         </p>
       ) : (
         <>
-          {/* Two columns on desktop, one on mobile. */}
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2" data-testid="product-grid">
+          {/* One column on a phone, two from md, three on a large desktop.
+              NOT FOUR. At the shell's 1760px ceiling the centre column is about
+              1050px wide, so a fourth card would be roughly 250px — under the
+              300px the review set as the floor for a card that still reads.
+              Columns are added rather than cards enlarged: the card's own type
+              and image frame are unchanged at every width. */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3" data-testid="product-grid">
             {shown.map((part) => (
               <RetailProductCard
                 key={part.id}
@@ -185,6 +217,8 @@ export default function RetailCatalog({ category, parts, selectedId, now, onTogg
                 selected={part.id === selectedId}
                 now={now}
                 onToggle={onToggle}
+                onOpenDetails={setDetailId}
+                processedImages={processedImages}
               />
             ))}
           </div>
@@ -201,6 +235,17 @@ export default function RetailCatalog({ category, parts, selectedId, now, onTogg
             </button>
           )}
         </>
+      )}
+
+      {detailPart !== undefined && (
+        <ProductDetailDrawer
+          part={detailPart}
+          now={now}
+          selected={detailPart.id === selectedId}
+          onClose={() => setDetailId(null)}
+          onToggle={onToggle}
+          processedImages={processedImages}
+        />
       )}
 
       <p className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-text-3)' }}>

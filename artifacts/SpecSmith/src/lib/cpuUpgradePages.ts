@@ -1,4 +1,4 @@
-import { getUpgradeCpu, getCpuUpgradeCandidates, estimateCpuResaleValue, averageCpuFps, type UpgradeCpu } from './cpuUpgradeCalculator';
+import { getUpgradeCpu, getCpuUpgradeComparisons, averageCpuFps, type UpgradeCpu } from './cpuUpgradeCalculator';
 import type { RouteMeta } from './seo';
 
 export interface CpuUpgradePage {
@@ -69,15 +69,23 @@ export function getCpuUpgradePage(slug: string): CpuUpgradePage | undefined {
 
 /** Intro paragraph — entirely derived from the same computed numbers the
  * page's stat cards show, never a hand-written claim about a specific chip. */
+/**
+ * Intro paragraph — derived from the same figures the page shows.
+ *
+ * It used to open "The best upgrade in our data is the X", where X was
+ * `getCpuUpgradeCandidates(id, 1)[0]` — the CHEAPEST chip one tier up. It
+ * named a best, it named it on an editorial price, and it quoted a resale
+ * figure that is a flat percentage of another editorial price. The page makes
+ * no recommendation now, so neither does its first sentence.
+ */
 export function getCpuUpgradeIntro(cpu: UpgradeCpu): string {
-  const resale = estimateCpuResaleValue(cpu.price_usd);
-  const candidates = getCpuUpgradeCandidates(cpu.id, 1);
-  if (candidates.length === 0) {
-    return `The ${cpu.name} is the fastest CPU we track — there's nothing meaningfully faster to upgrade to right now. If you ever do sell it, expect roughly $${resale.toLocaleString()} on the used market.`;
+  const comparisons = getCpuUpgradeComparisons(cpu.id);
+  if (comparisons.length === 0) {
+    return `No CPU SpecSmith tracks produces a higher modelled average than the ${cpu.name}. The figures below are model estimates, not benchmark results.`;
   }
-  const top = candidates[0];
-  const verdictPhrase = top.verdict === 'strong' ? 'a big jump' : top.verdict === 'moderate' ? 'a solid step up' : 'a modest gain';
-  return `If you're running a ${cpu.name}, it's currently worth an estimated $${resale.toLocaleString()} used. The best upgrade in our data is the ${top.cpu.name} — ${verdictPhrase} at about ${top.fpsGainPct >= 0 ? '+' : ''}${top.fpsGainPct}% average estimated FPS (paired with a high-end GPU so the model can better isolate the CPU's effect) for a net cost of roughly $${top.netCost.toLocaleString()} after reselling your old chip.`;
+  const top = comparisons[0];
+  const closest = comparisons[comparisons.length - 1];
+  return `SpecSmith models ${comparisons.length} tracked CPU${comparisons.length === 1 ? '' : 's'} as faster than the ${cpu.name}, from about +${closest.fpsDiffPct}% up to about +${top.fpsDiffPct}% average FPS when each is paired with the same reference GPU. Those are estimates from SpecSmith's model rather than benchmark results, and this page carries no prices — check a retailer for current pricing before buying anything.`;
 }
 
 /** Other upgrade pages to cross-link — nearby tiers first. */
@@ -98,8 +106,11 @@ export function getCpuUpgradePageMeta(page: CpuUpgradePage): RouteMeta {
   const name = cpu?.name ?? page.cpuId;
   return {
     path: `/upgrade-cpu/${page.slug}`,
-    title: `${name} Upgrade Guide | SpecSmith`,
-    description: `Thinking about upgrading from a ${name}? See its resale value, upgrade options ranked by FPS gain, and the net cost after trading up.`,
+    // "Comparisons", not "Guide": the page compares and does not advise.
+    title: `${name} Upgrade Comparisons | SpecSmith`,
+    // The previous copy promised a resale value and a net cost the page no
+    // longer computes.
+    description: `Every CPU SpecSmith models as faster than the ${name}, ordered by estimated FPS difference across 20 games at 1440p High. Model estimates, not benchmark results.`,
   };
 }
 

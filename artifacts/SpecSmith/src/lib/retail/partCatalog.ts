@@ -128,6 +128,29 @@ export interface AffiliatePart {
    * card treats null as "frame it exactly as it arrived".
    */
   imageContentRatio: number | null;
+  /**
+   * SHA-256 of the image bytes at `imageUrl` when the catalogue was built.
+   *
+   * Null on older files, and on any part whose picture could not be measured.
+   * A URL identifies a location; this identifies the version behind it, which
+   * is what lets a locally-processed copy be matched to the exact photograph
+   * it was made from.
+   */
+  imageSha256: string | null;
+  /**
+   * The manufacturer UPC the feed supplies in `<upccode>`, or null.
+   *
+   * A SUPPORTING IDENTIFIER, NEVER THE IDENTITY. The feed reads it off the
+   * merchant's record, so it corroborates a listing rather than establishing
+   * it: a wrong or recycled code would otherwise silently re-point a guide at
+   * a different product. Identity remains the listing id, with the canonical
+   * mapping decided by the model matcher; this is here so a reviewer binding a
+   * guide slot has a second thing to check, and so a future manufacturer
+   * lookup has somewhere to start.
+   *
+   * Null on older files and on any listing the feed gives no code for.
+   */
+  upc: string | null;
 }
 
 /** Why a listing's pricing was refused. A closed set, so a test can name each case. */
@@ -217,7 +240,7 @@ const isCategory = (value: unknown): value is RetailPartCategory =>
 
 function parsePart(raw: unknown): AffiliatePart | null {
   if (!isObject(raw)) return null;
-  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified, imageContentRatio } = raw;
+  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified, imageContentRatio, imageSha256, upc } = raw;
   if (!isText(id) || !/^newegg-[a-z]+-[a-z0-9-]+$/.test(id)) return null;
   if (!isCategory(category) || merchant !== 'Newegg' || !isText(name)) return null;
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
@@ -227,7 +250,15 @@ function parsePart(raw: unknown): AffiliatePart | null {
   // read, every part has one, and a missing price is a corrupt file.
   if (!checkPartPricing({ retailPrice, salePrice, currency }).ok) return null;
   if (category === 'gpu') {
-    if (!isText(canonicalPartId) || specsVerified !== true) return null;
+    // IDENTITY IS REQUIRED; MEASURED SPECIFICATIONS ARE NOT CLAIMED. A GPU
+    // listing must carry the canonical mapping the model matcher established,
+    // because that is what an FPS estimate rests on. `specsVerified` is
+    // accepted either way: it used to be forced true here and was read as
+    // "this exact card was measured", which no listing supports. Nothing
+    // downstream uses it for a compatibility decision any more — see
+    // partIdentity.ts — so an older file carrying `true` is safe to load and a
+    // newly generated one carrying `false` is equally valid.
+    if (!isText(canonicalPartId) || typeof specsVerified !== 'boolean') return null;
   } else if (canonicalPartId !== null || specsVerified !== false) {
     return null;
   }
@@ -235,6 +266,16 @@ function parsePart(raw: unknown): AffiliatePart | null {
   // thing to a card, so an older file missing the field reads as null rather
   // than being rejected. A present value must be a real fraction.
   if (imageContentRatio !== undefined && imageContentRatio !== null && !isContentRatio(imageContentRatio)) return null;
+  // Optional, so existing published files still parse. A present value must be
+  // a real hash rather than any truthy string.
+  // A UPC is 8-14 digits when present. A malformed one is refused rather than
+  // stored, so a reviewer never checks a binding against a mangled code.
+  if (upc !== undefined && upc !== null && !(typeof upc === 'string' && /^[0-9]{8,14}$/.test(upc))) {
+    return null;
+  }
+  if (imageSha256 !== undefined && imageSha256 !== null && !(typeof imageSha256 === 'string' && /^[0-9a-f]{64}$/.test(imageSha256))) {
+    return null;
+  }
   return {
     id,
     category,
@@ -250,6 +291,8 @@ function parsePart(raw: unknown): AffiliatePart | null {
     canonicalPartId: canonicalPartId as string | null,
     specsVerified,
     imageContentRatio: (imageContentRatio ?? null) as number | null,
+    imageSha256: (imageSha256 ?? null) as string | null,
+    upc: (upc ?? null) as string | null,
   };
 }
 

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Cpu } from 'lucide-react';
 import type { AffiliatePart } from '../lib/retail/partCatalog';
+import { hasVerifiedIdentity } from '../lib/retail/partIdentity';
 
 /** A model-level guide does not specify a board-partner SKU. Never borrow
  * a photograph without saying which retailer variant it actually depicts. */
 export function guideGpuExample(parts: AffiliatePart[], canonicalId: string) {
-  return parts.find(part => part.category === 'gpu' && part.specsVerified === true
+  return parts.find(part => part.category === 'gpu' && hasVerifiedIdentity(part)
     && part.canonicalPartId === canonicalId);
 }
 

@@ -231,7 +231,7 @@ function prebuiltFaqJsonLd() {
 
 export default function Prebuilts() {
   useSeo(getRouteMeta('/prebuilts'));
-  const retail = useAffiliatePartCatalog();
+  const { view: retail } = useAffiliatePartCatalog();
   const retailParts = retail.status === 'ok' ? retail.catalog.parts : [];
 
   const itemListJsonLd = {
