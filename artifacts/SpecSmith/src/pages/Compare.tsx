@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Share2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
@@ -160,6 +161,9 @@ const DEFAULT_CPU_B = 'r7-7800x3d';
 export default function Compare() {
   useSeo(getRouteMeta('/compare'));
   const { showToast } = useToast();
+  // Recharts animates its bars from a JS timer, which index.css's
+  // prefers-reduced-motion rules cannot reach — see the hook's own comment.
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [searchParams] = useSearchParams();
   const initGpu = (param: string, fallback: string, altIndex: number) => {
     const fromUrl = searchParams.get(param);
@@ -338,10 +342,10 @@ export default function Compare() {
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
-                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
+                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. GPU+CPU: ${costA.toLocaleString()}</div>}
                 {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsA}</div>}
                 {costPerFpsA !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsA}/avg FPS</div>
+                  <div className="text-secondary-custom text-xs mt-1">Est. ${costPerFpsA}/avg FPS</div>
                 )}
                 {betterValue === 'A' && (
                   <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
@@ -357,10 +361,10 @@ export default function Compare() {
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
-                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
+                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. GPU+CPU: ${costB.toLocaleString()}</div>}
                 {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsB}</div>}
                 {costPerFpsB !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsB}/avg FPS</div>
+                  <div className="text-secondary-custom text-xs mt-1">Est. ${costPerFpsB}/avg FPS</div>
                 )}
                 {betterValue === 'B' && (
                   <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
@@ -401,10 +405,10 @@ export default function Compare() {
                     <Legend
                       wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: 'var(--ff-text-2)' }}
                     />
-                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]} isAnimationActive={!prefersReducedMotion}>
                       <LabelList dataKey="Build A" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
-                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]} isAnimationActive={!prefersReducedMotion}>
                       <LabelList dataKey="Build B" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
                   </BarChart>

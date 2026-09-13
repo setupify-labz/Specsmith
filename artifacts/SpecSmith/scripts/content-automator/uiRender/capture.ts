@@ -4,8 +4,9 @@
 // ----------------------------------------
 // Waiting a fixed number of seconds and hoping is how flaky captures happen.
 // Every wait here is a real condition: the network idles, the expected state
-// text appears in the DOM, document.fonts.ready resolves, and two consecutive
-// animation frames report no layout movement. The one exception is the tiny
+// text appears in the DOM, document.fonts.ready resolves, and a signature of
+// every laid-out element's position and size stops changing across several
+// consecutive animation frames. The one exception is the tiny
 // per-step settle in a sequence, where the whole point is to sample the UI at
 // chosen moments during an animation.
 //
@@ -157,20 +158,75 @@ export async function openAndSettle(
   // Real condition #2: fonts are loaded, so no reflow after capture.
   await page.evaluate("document.fonts.ready");
 
-  // Real condition #3: layout has stopped moving. Two consecutive animation
-  // frames reporting an identical body height beats any fixed delay.
-  await page.waitForFunction(
-    `new Promise(function (resolve) {
-       var first = document.body.getBoundingClientRect().height;
-       requestAnimationFrame(function () {
-         requestAnimationFrame(function () {
-           resolve(document.body.getBoundingClientRect().height === first);
-         });
-       });
-     })`,
-    undefined,
-    { timeout: options.timeoutMs },
-  );
+  // Real condition #3: layout has stopped moving.
+  //
+  // This used to compare document.body's HEIGHT across two animation frames,
+  // which is far too weak a signal and let a genuinely non-deterministic
+  // capture through. SpecSmith's Compare page draws its per-game FPS bars with
+  // Recharts, which animates bar geometry from its own JS timer and mounts the
+  // numeric <LabelList> values only once that animation completes. None of
+  // that is a CSS animation or transition, so neither FREEZE_ANIMATIONS_CSS
+  // nor Playwright's own `animations: "disabled"` stops it — and because the
+  // bars grow HORIZONTALLY, body height never changes while it happens. The
+  // old check therefore reported "settled" on the first frame after load.
+  //
+  // Measured against a real running build (see PR #92's evidence): at the
+  // moment the old check passed, the chart had 40 rendered elements and bars
+  // at ~114px; 200ms later it had 80 elements — the value labels — and bars at
+  // ~121px, reaching a stable state only around 420ms. Whether a screenshot
+  // landed before or after that was pure timing, so five beats requesting the
+  // BYTE-IDENTICAL capture spec produced two different images: three settled,
+  // two caught mid-animation with shortened bars and no value labels.
+  //
+  // The fix keeps the "condition, never a sleep" rule and only strengthens
+  // what is measured: a signature over every laid-out element's rounded
+  // position and size, plus the element count, so both moving geometry and
+  // late-appearing nodes register. It is sampled across several animation
+  // frames and must be identical in all of them; a page still animating fails
+  // the predicate and Playwright polls again until it stops or the timeout
+  // fires loudly. Rounding to whole pixels tolerates sub-pixel jitter.
+  const layoutSignature = `(function () {
+    var all = document.body.getElementsByTagName('*');
+    var parts = [all.length];
+    for (var i = 0; i < all.length; i++) {
+      var r = all[i].getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      parts.push(Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height));
+    }
+    return parts.join(',');
+  })()`;
+  try {
+    await page.waitForFunction(
+      // Six frames (~100ms at 60Hz) rather than two: the tail of an easing
+      // curve can round to the same pixel for a frame or two while the
+      // animation is still running, and a two-frame window would call that
+      // settled.
+      `new Promise(function (resolve) {
+         var samples = [];
+         var remaining = 6;
+         function tick() {
+           samples.push(${layoutSignature});
+           remaining -= 1;
+           if (remaining === 0) {
+             for (var i = 1; i < samples.length; i++) {
+               if (samples[i] !== samples[0]) { resolve(false); return; }
+             }
+             resolve(true);
+             return;
+           }
+           requestAnimationFrame(tick);
+         }
+         requestAnimationFrame(tick);
+       })`,
+      undefined,
+      { timeout: options.timeoutMs },
+    );
+  } catch {
+    throw new UiCaptureError(
+      "layout-never-settled",
+      `Layout at ${url} was still moving after ${options.timeoutMs}ms, so any screenshot would be a mid-animation race. Refusing to capture.`,
+    );
+  }
 
   if (consoleErrors.length) {
     throw new UiCaptureError("page-error", `Page raised errors at ${url}: ${consoleErrors.slice(0, 3).join(" | ")}`);

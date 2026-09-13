@@ -79,4 +79,21 @@ describe("script storyboard", () => {
       expect(script.beats.every((beat) => beat.endSecond > beat.startSecond)).toBe(true);
     }
   });
+
+  // Regression coverage for PR #92's independent review: the evidence beat's
+  // on-screen text used to claim "REAL PRICES", but the prices this beat's
+  // visual direction actually shows (SpecSmith's own gpus.json/cpus.json
+  // price_usd, rendered on Compare.tsx as "Est. GPU+CPU: $...") are editorial
+  // catalog estimates, not verified current retailer observations. Every
+  // generated script must never make that claim.
+  it("never claims a price shown on screen is REAL — only specs and rules are verified, prices are estimates", () => {
+    const contentPackage = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
+    const result = buildScriptStoryboardPackage(idea, contentPackage);
+
+    for (const script of result.scripts) {
+      for (const beat of script.beats) {
+        expect(beat.onScreenText).not.toMatch(/real\s+price/i);
+      }
+    }
+  });
 });

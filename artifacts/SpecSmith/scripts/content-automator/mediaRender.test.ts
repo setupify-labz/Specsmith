@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildAssDocument, parseCaptionRenderState } from "./captionRender.ts";
+import { buildAssDocument, parseCaptionRenderState, wrapCaption } from "./captionRender.ts";
 import { parseMotionCompositorState } from "./motionCompositor.ts";
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
 import { buildProductionPlanPackage } from "./productionPlan.ts";
-import type { ContentIdea, ProductionTask } from "./types.ts";
+import { COMPARE_RTX4080S_RTX4080_IDEA } from "./fixtures/compareRtx4080sRtx4080Idea.ts";
+import type { ProductionTask } from "./types.ts";
 
 const captionState = {
   durationSeconds: 6,
@@ -55,6 +56,35 @@ describe("caption render state", () => {
   });
 });
 
+describe("caption wrapping", () => {
+  it("never produces more than two lines, and no line exceeds maxChars", () => {
+    // Regression test for a defect found by actually exercising the real
+    // generated plan for issue #89: the hook beat's onScreenText is the
+    // idea's full title (COMPARE_RTX4080S_RTX4080_IDEA.title, 78 chars) —
+    // longer than any caption previously rendered through this pipeline —
+    // and the old wrapCaption collapsed overflow into one unwrapped line
+    // that rendered wider than the 1080px safe area (confirmed by direct
+    // frame inspection: it ran off both screen edges).
+    const wrapped = wrapCaption(COMPARE_RTX4080S_RTX4080_IDEA.title, 28);
+    const lines = wrapped.split("\\N");
+    expect(lines.length).toBeLessThanOrEqual(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(28);
+  });
+
+  it("keeps the first wrapped line intact and truncates overflow with an ellipsis", () => {
+    const wrapped = wrapCaption("Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080", 28);
+    const [first, second] = wrapped.split("\\N");
+    expect(first).toBe("Pick the GPU before");
+    expect(second.length).toBeLessThanOrEqual(28);
+    expect(second.endsWith("…")).toBe(true);
+  });
+
+  it("still wraps normally when everything fits in two lines", () => {
+    expect(wrapCaption("RTX 4080 SUPER VS RTX 4080", 28)).toBe("RTX 4080 SUPER VS RTX 4080");
+    expect(wrapCaption("ESTIMATED FPS. SEE THE FULL RESULT.", 28)).toBe("ESTIMATED FPS. SEE THE FULL\\NRESULT.");
+  });
+});
+
 describe("motion compositor state", () => {
   it("accepts one explicit contiguous visual timeline", () => {
     expect(parseMotionCompositorState(compositorState)).toEqual(compositorState);
@@ -76,40 +106,7 @@ describe("motion compositor state", () => {
   });
 });
 
-const idea: ContentIdea = {
-  id: "compare-rtx4080s-rtx4080",
-  format: "comparison",
-  title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
-  angle: "Use Compare as the evidence and reveal.",
-  targetAudience: "PC builders",
-  requiredFacts: ["comparison state"],
-  subjectIds: ["rtx4080s", "rtx4080"],
-  productConnection: {
-    feature: "compare",
-    route: "/compare",
-    userProblem: "Buyers cannot tell which near-name GPU is the better choice.",
-    whySpecSmith: "SpecSmith Compare holds the rest of the build constant.",
-    continuationAction: "Open Compare and change the cards.",
-    sitePayoff: "The viewer can continue the exact comparison.",
-  },
-  creativeDNA: {
-    conceptName: "Blind Compare",
-    visualWorld: "real SpecSmith comparison",
-    narrativeEngine: "blind choice -> evidence -> reveal",
-    openingImage: "Two anonymous cards",
-    patternInterrupt: "Names hidden",
-    retentionBeats: ["1", "2", "3", "4", "5"],
-    payoff: "Reveal the winner",
-    audioDirection: "Tight",
-    originalityConstraint: "Compare is essential",
-    antiSlopRules: ["a", "b", "c", "d", "e", "f"],
-  },
-  scores: {
-    curiosity: 9, usefulness: 9, visualPotential: 9, purchaseIntent: 8, novelty: 8,
-    originality: 9, retentionPotential: 9, shareability: 8, productFit: 10, siteContinuation: 10, total: 9,
-  },
-};
+const idea = COMPARE_RTX4080S_RTX4080_IDEA;
 
 describe("planner media timing integration", () => {
   it("carries caption cues and the storyboard visual timeline into structured task state", () => {

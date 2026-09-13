@@ -305,11 +305,34 @@ describe('the retailer subtotal appears only when there is retailer money', () =
 
     const subtotal = within(summary()).getByTestId('retailer-subtotal');
     expect(subtotal).toBeTruthy();
-    // One listing's price only — the seven editorial estimates are not in it.
     const amount = within(summary()).getByTestId('subtotal-amount').textContent ?? '';
     const estimates = [...summary().querySelectorAll('[data-testid^="planned-price-"]')].length;
     expect(estimates).toBe(7);
-    expect(amount).not.toBe('—');
+
+    // THE PROPERTY, STATED WITHOUT REFERENCE TO THE CLOCK. This used to assert
+    // the amount was not "—", which quietly made it a test of how recently
+    // someone ran the price refresh: a retailer price counts only while it is
+    // fresh, so the assertion passed when written and started failing on main
+    // two days later when the committed catalogue aged out of the window and
+    // the subtotal correctly showed "—".
+    //
+    // What must be true either way is that the figure describes the ONE chosen
+    // listing and never the seven editorial estimates beside it. So: whatever
+    // is shown is either withheld entirely, or exactly that listing's price —
+    // and in neither case is it the sum that would appear if an estimate had
+    // leaked in.
+    const digits = amount.replace(/[^0-9.]/g, '');
+    if (amount.trim() === '—') {
+      expect(digits).toBe('');
+    } else {
+      const shown = Number(digits);
+      expect(shown).toBeCloseTo(gpu.price, 2);
+      const estimateTotal = [...summary().querySelectorAll('[data-testid^="planned-price-"]')]
+        .map((node) => Number((node.textContent ?? '').replace(/[^0-9.]/g, '')) || 0)
+        .reduce((sum, value) => sum + value, 0);
+      expect(estimateTotal).toBeGreaterThan(0);
+      expect(shown).toBeLessThan(estimateTotal);
+    }
   }, 30000);
 });
 

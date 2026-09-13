@@ -17,38 +17,37 @@ pnpm --dir artifacts/SpecSmith build
 npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
 
 # 3. Run the full offline pipeline: real idea -> real content package/script
-#    /storyboard/production-plan CONTRACT (built from the real generated
-#    storyboard, but only used to shape the quality-review request — it is
-#    NOT what gets rendered; see below) -> one real 1080x1920 MP4 from a
-#    separate, already-proven, hand-authored render timeline (real
-#    Playwright capture of the live Compare page, offline espeak-ng
-#    narration, real burned-in .ass captions, real ffmpeg compose) -> an
-#    evidence-bound quality-review verdict (the render's actual sha256 must
-#    match a committed, previously-inspected evidence record, or the run
-#    stops before publishing) -> a rights-approved asset bundle -> a
-#    tracked, draft-only Metricool-ready publishing request -> a durable
-#    ledger that stops at qc-passed (never "scheduled" — nothing here calls
-#    Metricool) and fails closed on a duplicate publish. Nothing is posted
-#    anywhere. Wiring the actual generated storyboard through to a real
-#    render remains separate, tracked future work — this proves the chain of
-#    custody from a real render onward, not full automatic
-#    idea->storyboard->render automation.
+#    /storyboard -> the REAL generated six-beat production plan -> that
+#    EXACT plan rendered, beat for beat, with no hand-authored substitute
+#    timeline (real Playwright capture of the live Compare page for 5 of the
+#    6 beats, a plainly labeled offline fixture card for the hook beat,
+#    offline espeak-ng narration, offline silence for music-sfx, real
+#    burned-in .ass captions, real ffmpeg compose) -> an evidence-bound
+#    quality-review verdict (the render's actual sha256 must match a
+#    committed, previously-inspected evidence record, or the run stops
+#    before publishing) -> a rights-approved asset bundle -> a tracked,
+#    draft-only Metricool-ready publishing request -> a durable ledger that
+#    stops at qc-passed (never "scheduled" — nothing here calls Metricool)
+#    and fails closed on a duplicate publish. Nothing is posted anywhere.
 SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
   pnpm --dir artifacts/SpecSmith exec tsx scripts/content-automator/endToEndOfflinePipeline.ts
 ```
 
-Just the render, without the rights/publishing wiring:
+Just the render of the actual generated plan, without the rights/publishing wiring:
 
 ```bash
 SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
-  pnpm --dir artifacts/SpecSmith content:render:mp4-smoke:offline
+  pnpm --dir artifacts/SpecSmith content:render:generated-plan:offline
 ```
+
+There is also `content:render:mp4-smoke:offline` (`offlineCompositorSmoke.ts`), a smaller, separate smoke test that renders a fixed 3-visual/8-second timeline against the same real Compare page — useful as a faster sanity check of the UI-capture/caption/compose adapters on their own, independent of the generated storyboard.
 
 **Why "offline"**: this pipeline's real narration provider (`elevenLabsTts.ts`) needs a paid API key, and spending one is deliberately out of scope without explicit approval. `localFixtureTts.ts` supplies an offline stand-in instead — local `espeak-ng` narration, clearly labeled `isFixture: true` / `isPaidProvider: false` in its own artifact metadata so nothing downstream can mistake it for a production render. Swap in the real adapter (see the sections below) once ElevenLabs credentials and approval to spend them are available; nothing else in the pipeline has to change to do that, because both implement the exact same `RenderAdapter` contract. Everything else in the offline render — the visual evidence, the captions, the compose step — is the same real, non-fixture code the paid path uses.
 
 **Remaining external steps before this can post anything for real:**
 - ElevenLabs (or another approved TTS/voice provider) credentials + explicit approval to spend them, to replace the offline narration fixture with production-quality voice.
-- A real video-generation provider (Gemini Veo is wired in `geminiVeoVideo.ts`) if a beat's hook needs generated motion rather than a real SpecSmith UI capture or the abstract placeholder card.
+- A real video-generation provider (Gemini Veo is wired in `geminiVeoVideo.ts`, ElevenLabs Veo in `elevenLabsVideo.ts`) to replace `localFixtureVideo.ts`'s labeled offline fixture card with actual generated motion for the hook beat.
+- A real music/SFX provider or a rights-cleared in-repository asset to replace `localFixtureMusic.ts`'s digital silence.
 - TikTok/YouTube/Instagram trend-source credentials (see the "Multi-platform audio trend sources" section below) if trending-audio selection is wanted; a missing source safely falls back to original/licensed SpecSmith audio.
 - A real Metricool account/connection and somewhere to actually host a finished master at an `https://` URL Metricool can fetch — `buildMetricoolPublishingRequest` only ever builds a `draft: true` request object locally; nothing in this repository calls Metricool's API.
 - A human decision on whether/how to wire any of this into CI. The stack this was ported from included three GitHub Actions workflows referencing those paid-provider secrets; they were deliberately **not** ported here because two of them auto-trigger on `pull_request: branches: [main]` and this repo has a dedicated tripwire test (`scripts/retail/coverage/workflowSafety.test.ts`) that locks the exact roster of workflow files specifically to force a human to review any new credential-bearing one before it's added.
@@ -174,6 +173,8 @@ Platform-cleared sounds are marked `platform-publish`, which means they should b
 
 `rendering.ts` provides the executable rendering layer. It includes an adapter registry keyed by production capability, strict render-order/dependency validation, artifact passing, retry support, video-to-image fallback where allowed, fail-closed behavior for missing required renderers, final composed-artifact tracking, and a full dry-run registry.
 
+`offlineGeneratedPlanRender.ts` wires the REAL generated production plan (`buildProductionPlanPackage()`'s own output — not a hand-authored substitute) through every real/offline adapter: `deterministicUiRenderAdapter.ts` (real), `localFixtureVideo.ts` (offline fixture card for the hook beat's video-generation task), `localFixtureTts.ts` (offline narration), `localFixtureMusic.ts` (offline silence for the always-present music-sfx task), `captionRender.ts` (real), and `motionCompositor.ts` (real).
+
 Run the logical renderer validation after generating a batch:
 
 ```bash
@@ -251,6 +252,7 @@ Built now:
 - executable rendering orchestrator
 - retries, dependencies, fallback handling, artifact propagation
 - full rendering dry run across all platform variants
+- the ACTUAL generated six-beat production plan rendered end to end offline (`offlineGeneratedPlanRender.ts`), including offline fixtures for the two capabilities that previously had none (`localFixtureVideo.ts`, `localFixtureMusic.ts`)
 - automated AI-review contracts and repair decisions
 - performance learner
 - tests, typecheck/build checks, and CI workflow

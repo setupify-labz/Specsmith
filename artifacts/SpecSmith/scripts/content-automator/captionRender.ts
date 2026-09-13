@@ -86,7 +86,25 @@ function assTime(seconds: number): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-function wrapCaption(text: string, maxChars = 28): string {
+/**
+ * Wraps caption text to at most two `\N`-joined lines, each within
+ * `maxChars`.
+ *
+ * Bug found by actually exercising this against a real onScreenText value
+ * longer than any caption previously rendered through this pipeline (issue
+ * #89's hook beat uses the idea's full title): when a caption needed MORE
+ * than two wrapped lines, the old fallback collapsed every line after the
+ * first back into ONE unwrapped line by joining them with spaces instead of
+ * `\N` — silently discarding the maxChars limit for that line and letting it
+ * render far wider than the 1080px safe area (confirmed by direct
+ * inspection: the collapsed line ran off both the left and right edges of
+ * the frame). The two-line limit itself is intentional ("short-form
+ * captions should not become a paragraph"); losing the width limit while
+ * enforcing it was the defect. This now truncates the overflow remainder to
+ * `maxChars` (with an ellipsis) instead, so no caption line can ever exceed
+ * the width every other line already respects.
+ */
+export function wrapCaption(text: string, maxChars = 28): string {
   const cleaned = text
     .replace(/\\/g, "/")
     .replace(/[{}]/g, "")
@@ -109,7 +127,14 @@ function wrapCaption(text: string, maxChars = 28): string {
   if (line) lines.push(line);
   // Short-form captions should not become a paragraph. Two lines keeps the UI visible.
   if (lines.length <= 2) return lines.join("\\N");
-  return `${lines[0]}\\N${lines.slice(1).join(" ")}`;
+  // More than two wrapped lines: keep line one, and fold everything after
+  // it back into line two — but truncated to maxChars, same as every other
+  // line, rather than left unwrapped and free to overflow the safe area.
+  const remainder = lines.slice(1).join(" ");
+  const secondLine = remainder.length > maxChars
+    ? `${remainder.slice(0, maxChars - 1).trimEnd()}…`
+    : remainder;
+  return `${lines[0]}\\N${secondLine}`;
 }
 
 export function buildAssDocument(state: CaptionRenderState): string {
