@@ -1,19 +1,42 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, ChevronRight, DollarSign, Zap, Cpu, Sliders } from 'lucide-react';
+import { ArrowRight, ChevronRight, Zap, Cpu, Sliders, Layers } from 'lucide-react';
 import { getUpgradePage, getUpgradeIntro, getRelatedUpgradePages, getUpgradePageMeta } from '../lib/upgradePages';
-import { getUpgradeGpu, getUpgradeCandidates, getBestValueCandidate, estimateResaleValue, averageFps, type UpgradeVerdict } from '../lib/upgradeCalculator';
+import {
+  getUpgradeGpu,
+  getUpgradeComparisons,
+  getClosestUpgradeComparisons,
+  averageFps,
+  UPGRADE_COMPARISON_PREVIEW_LIMIT,
+  UPGRADE_REFERENCE_CPU,
+} from '../lib/upgradeCalculator';
 import { useSeo } from '../hooks/useSeo';
-import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
 
-const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: string; border: string }> = {
-  strong:   { label: 'Strong upgrade',   bg: 'rgba(0,230,118,0.12)', color: 'var(--ff-green)', border: 'rgba(0,230,118,0.3)' },
-  moderate: { label: 'Moderate upgrade', bg: 'rgba(0,212,255,0.12)', color: 'var(--ff-cyan)', border: 'rgba(0,212,255,0.3)' },
-  marginal: { label: 'Marginal gain',    bg: 'rgba(255,179,0,0.12)', color: 'var(--ff-amber)', border: 'rgba(255,179,0,0.3)' },
-};
-const BEST_VALUE_STYLE = { label: 'Best value', bg: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: 'rgba(255,215,0,0.35)' };
-
+/**
+ * The GPU upgrade guide template — all 57 pages.
+ *
+ * WHAT THIS PAGE USED TO DO, AND WHY IT STOPPED. It recommended. It named a
+ * "best upgrade", ranked cards by net cost and cost per frame, badged one
+ * "Best value", estimated what the reader's card was worth used, and told them
+ * whether upgrading was worth it. Every one of those rests on two numbers that
+ * cannot carry them: the prices in `gpus.json` are editorial and undated
+ * against the live market, and `estimateResaleValue` is a flat 65% of one.
+ * Multiplying two soft figures produces a hard-looking one, and the page then
+ * spent it on a purchase recommendation.
+ *
+ * The FPS figures have a different problem. They are real model output, but
+ * they are model output: a tier and a multiplier against one fixed reference
+ * CPU, not a benchmark of anything. Presented beside a verdict they read as
+ * measurement.
+ *
+ * So the page now COMPARES and does not conclude. It previews the closest
+ * modelled steps above the selected card, with every figure labelled as an
+ * estimate at the point it appears, and links each row into Builder. The
+ * complete set is used only to state the range and count; dumping as many as
+ * 56 rows into one guide would be hard to scan and would make the programmatic
+ * pages repeat almost the entire GPU catalogue.
+ */
 export default function GpuUpgradePage() {
   const { slug } = useParams<{ slug: string }>();
   const page = slug ? getUpgradePage(slug) : undefined;
@@ -42,41 +65,33 @@ export default function GpuUpgradePage() {
     );
   }
 
-  const resale = estimateResaleValue(gpu.price_usd);
   const avgFpsCurrent = averageFps(gpu);
-  const candidates = getUpgradeCandidates(gpu.id);
+  const comparisons = getUpgradeComparisons(gpu.id);
+  const visibleComparisons = getClosestUpgradeComparisons(gpu.id);
   const intro = getUpgradeIntro(gpu);
   const related = getRelatedUpgradePages(page);
-  const bestValue = getBestValueCandidate(candidates);
 
-  const bestGain = candidates.length > 0
-    ? candidates.reduce((best, c) => c.fpsGainPct > best.fpsGainPct ? c : best, candidates[0])
-    : undefined;
+  const ESTIMATE_BASIS =
+    `SpecSmith's model produces these figures from each card's internal GPU performance factor against one fixed reference CPU, the ${UPGRADE_REFERENCE_CPU.name}, averaged over 20 games at 1440p High. They are estimates, not benchmark results, and SpecSmith has measured none of these pairings.`;
+
+  const SELECTION_BASIS =
+    `This preview shows up to ${UPGRADE_COMPARISON_PREVIEW_LIMIT} of the closest GPUs whose modelled average is higher than the ${gpu.name}'s, ordered from the smallest modelled difference upward. It is not a recommendation, and price does not affect which cards appear.`;
+
+  const NO_PRICES =
+    'SpecSmith does not show prices, resale values or cost-per-frame figures on this page. The prices it holds are editorial and are not checked against the live market, so any purchase advice built on them would be more confident than the data allows. Check current prices at a retailer before buying anything.';
 
   const faqs = [
     {
-      title: `What should I upgrade my ${gpu.name} to?`,
-      content: candidates.length === 0
-        ? `The ${gpu.name} is already the top tier we track — there's nothing meaningfully faster in our dataset to recommend.`
-        : `The most direct next step up is the ${candidates[0].gpu.name}, roughly a ${candidates[0].fpsGainPct >= 0 ? '+' : ''}${candidates[0].fpsGainPct}% FPS gain for an estimated net cost of $${candidates[0].netCost.toLocaleString()} after reselling your ${gpu.name}. ${candidates.length} tracked upgrade option${candidates.length === 1 ? '' : 's'} total — see the full list above.`,
+      title: `Which GPUs are faster than ${gpu.name} in SpecSmith's model?`,
+      content: comparisons.length === 0
+        ? `None. No GPU SpecSmith tracks produces a higher modelled average than the ${gpu.name}.`
+        : `${comparisons.length} tracked GPUs produce a higher modelled average. The modelled range runs from about +${comparisons[comparisons.length - 1].fpsDiffPct}% to about +${comparisons[0].fpsDiffPct}% against the ${gpu.name}. ${SELECTION_BASIS}`,
     },
+    { title: 'Where do these FPS figures come from?', content: ESTIMATE_BASIS },
+    { title: 'Why are there no prices or upgrade recommendations here?', content: NO_PRICES },
     {
-      title: `How much is my ${gpu.name} worth used?`,
-      content: `Roughly $${resale.toLocaleString()}, a rough resale estimate based on typical used-market depreciation — not a live marketplace quote. Actual resale value depends on condition, local demand, and where you sell.`,
-    },
-    {
-      title: 'What does "Net Cost" mean on this page?',
-      content: `Net cost is the new card's price minus your ${gpu.name}'s estimated resale value — the real out-of-pocket cost of the upgrade if you sell your old card. It doesn't include shipping, marketplace fees, or sales tax.`,
-    },
-    {
-      title: 'Is upgrading worth it right now?',
-      content: bestGain === undefined
-        ? `There's no faster card in our dataset than the ${gpu.name}, so there's nothing to gain by upgrading right now.`
-        : bestGain.fpsGainPct >= 30
-        ? `The biggest jump available is the ${bestGain.gpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a strong upgrade if the net cost fits your budget. Prices last updated ${PRICES_UPDATED}.`
-        : bestGain.fpsGainPct >= 15
-        ? `The biggest jump available is the ${bestGain.gpu.name} at roughly +${bestGain.fpsGainPct}% FPS — a moderate, noticeable gain rather than a dramatic one. Prices last updated ${PRICES_UPDATED}.`
-        : `Even the biggest jump available, the ${bestGain.gpu.name}, only gains roughly +${bestGain.fpsGainPct}% FPS — a marginal difference. It's probably worth waiting for a bigger generational leap before upgrading. Prices last updated ${PRICES_UPDATED}.`,
+      title: `How do I check one of these cards against my own build?`,
+      content: `Each row opens that card in SpecSmith's Builder, where you can add your own CPU, motherboard, case and power supply. The Builder states which compatibility checks it could not run, rather than implying a build is verified when it is not.`,
     },
   ];
 
@@ -102,120 +117,101 @@ export default function GpuUpgradePage() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <h1 className="text-3xl sm:text-5xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
-            What Should You Upgrade Your <span className="gradient-text">{gpu.name}</span> To?
+            GPU Upgrade Comparisons for the <span className="gradient-text">{gpu.name}</span>
           </h1>
           <p className="text-base max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
             {intro}
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
+        {/* Two figures, both labelled where they are shown. The resale tile that
+            used to sit beside them was a flat 65% of an editorial price. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
           <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
-              <DollarSign size={13} /> Estimated Resale Value
+              <Zap size={13} /> Estimated Average FPS
             </div>
-            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${resale.toLocaleString()}</div>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Rough estimate, not a quote.</p>
+            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }} data-testid="current-avg-fps">{avgFpsCurrent}</div>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>
+              Modelled across 20 games at 1440p High — an estimate, not a benchmark.
+            </p>
           </div>
           <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
-              <Zap size={13} /> Average FPS
+              <Layers size={13} /> Faster in SpecSmith's Model
             </div>
-            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>{avgFpsCurrent}</div>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Across 20 games at 1440p High.</p>
-          </div>
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-            <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
-              <Cpu size={13} /> Tier
-            </div>
-            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>{gpu.tier}/10</div>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>${gpu.price_usd.toLocaleString()} new.</p>
+            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }} data-testid="comparison-count">{comparisons.length}</div>
+            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>
+              Tracked GPUs with a higher modelled average.
+            </p>
           </div>
         </div>
 
-        <h2 className="text-xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>Upgrade Options</h2>
+        <h2 className="text-xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>Closest Modelled Steps Above</h2>
+        <p data-testid="selection-basis" className="text-xs mb-1.5" style={{ color: 'var(--ff-text-3)' }}>{SELECTION_BASIS}</p>
+        <p data-testid="estimate-basis" className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>{ESTIMATE_BASIS}</p>
 
-        {candidates.length === 0 ? (
+        {comparisons.length === 0 ? (
           <div className="rounded-2xl p-6 text-center mb-10" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <p className="text-sm" style={{ color: 'var(--ff-text-2)' }}>
-              The {gpu.name} is already the top tier we track — there's nothing meaningfully faster in our dataset.
+              No GPU SpecSmith tracks produces a higher modelled average than the {gpu.name}.
             </p>
           </div>
         ) : (
-          <div className="space-y-3 mb-10">
-            {candidates.map((c, i) => {
-              const style = VERDICT_STYLE[c.verdict];
-              return (
-                <motion.div
-                  key={c.gpu.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.04 }}
-                  className="rounded-2xl p-5"
-                  style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold" style={{ color: 'var(--ff-text)' }}>{c.gpu.name}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}` }}>
-                        {style.label}
-                      </span>
-                      {bestValue?.gpu.id === c.gpu.id && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: BEST_VALUE_STYLE.bg, color: BEST_VALUE_STYLE.color, border: `1px solid ${BEST_VALUE_STYLE.border}` }}>
-                          {BEST_VALUE_STYLE.label}
-                        </span>
-                      )}
-                    </div>
-                    <Link to={`/builder?gpu=${c.gpu.id}`}
-                      className="text-xs font-semibold flex items-center gap-1 transition-opacity hover:opacity-80"
-                      style={{ color: 'var(--ff-accent-text)' }}>
-                      Build with this <ArrowRight size={12} />
-                    </Link>
+          <div className="space-y-2 mb-4">
+            {visibleComparisons.map((c, i) => (
+              <motion.div
+                key={c.gpu.id}
+                data-testid="comparison-row"
+                data-gpu-id={c.gpu.id}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: Math.min(i, 8) * 0.02 }}
+                className="rounded-xl p-4 flex flex-wrap items-center justify-between gap-3"
+                style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}
+              >
+                <span className="font-bold min-w-0" style={{ color: 'var(--ff-text)' }}>{c.gpu.name}</span>
+                <div className="flex items-center gap-5 ml-auto">
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Estimated difference</p>
+                    <p className="text-base font-black" style={{ color: 'var(--ff-green)' }}>
+                      +{c.fpsDiffPct}%
+                    </p>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Net Cost*</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>${c.netCost.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>FPS Gain</p>
-                      <p className="text-lg font-black" style={{ color: c.fpsGainPct >= 0 ? 'var(--ff-green)' : 'var(--ff-red)' }}>
-                        {c.fpsGainPct >= 0 ? '+' : ''}{c.fpsGainPct}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>New Average</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>{c.avgFpsNew} FPS</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Cost / FPS**</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
-                        {c.costPerFps !== null ? `$${c.costPerFps}` : '—'}
-                      </p>
-                    </div>
+                  <div className="text-right">
+                    <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Estimated average</p>
+                    <p className="text-base font-black" style={{ color: 'var(--ff-text)' }}>{c.avgFpsNew} FPS</p>
                   </div>
-                </motion.div>
-              );
-            })}
-            <p className="text-[10px] text-center pt-2" style={{ color: 'var(--ff-text-3)' }}>
-              *Net cost = new card's price minus your {gpu.name}'s estimated resale value. **Cost/FPS = net cost divided by the average FPS gained — lower is a better value, not shown when there's no positive FPS gain to divide by.
-            </p>
+                  {/* Loads the card being COMPARED, never the one being replaced. */}
+                  <Link to={`/builder?gpu=${c.gpu.id}`}
+                    data-testid={`compare-in-builder-${c.gpu.id}`}
+                    aria-label={`Open ${c.gpu.name} in Builder`}
+                    className="text-xs font-semibold flex items-center gap-1 whitespace-nowrap transition-opacity hover:opacity-80"
+                    style={{ color: 'var(--ff-accent-text)' }}>
+                    Open in Builder <ArrowRight size={12} />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
 
+        <p data-testid="no-prices-note" className="text-xs leading-relaxed rounded-xl p-3 mb-10"
+          style={{ color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-card)' }}>
+          {NO_PRICES}
+        </p>
+
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
-          <Link to={`/builder?gpu=${gpu.id}`}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, var(--ff-accent), var(--ff-cyan))' }}>
-            <Cpu size={15} /> Build Around the {gpu.name}
-          </Link>
           <Link to="/upgrade-calculator"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
             style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
-            <Sliders size={15} /> Try a Different GPU <ChevronRight size={14} />
+            <Sliders size={15} /> Compare a Different GPU <ChevronRight size={14} />
+          </Link>
+          <Link to="/gpu-tier-list"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+            style={{ border: '1px solid var(--ff-border)', color: 'var(--ff-text)' }}>
+            <Cpu size={15} /> GPU Tier List <ChevronRight size={14} />
           </Link>
         </div>
 
