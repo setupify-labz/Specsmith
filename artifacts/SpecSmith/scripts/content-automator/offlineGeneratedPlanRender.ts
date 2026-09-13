@@ -29,7 +29,8 @@
 // Every stage above is a real render adapter implementing rendering.ts's
 // RenderAdapter contract; nothing here is a dry-run placeholder.
 
-import { mkdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -90,6 +91,49 @@ export function buildOfflineGeneratedPlanRegistry(options: {
 }
 
 /**
+ * A capability called `deterministic-ui-render` has to actually be
+ * deterministic: two tasks that request the BYTE-IDENTICAL capture spec must
+ * produce the byte-identical image.
+ *
+ * This is checked rather than assumed because it silently failed once. The
+ * generated six-beat plan points five of its beats at the same Compare state,
+ * and a render of it produced two different images — three beats settled,
+ * two caught mid-animation with shortened bars and no value labels, because
+ * Recharts animates from a JS timer that the capture's freeze CSS could not
+ * reach (see uiRender/capture.ts's condition #3 and Compare.tsx's
+ * isAnimationActive). Nothing failed; the video just quietly contained two
+ * different versions of one screen. The same shape of bug in any future
+ * animated surface would be just as invisible, so it fails the render now.
+ *
+ * Grouped by the adapter's own reported stateId, so this compares specs the
+ * adapter itself considers identical rather than a guess made from filenames.
+ */
+async function assertIdenticalStatesRenderedIdentically(result: PlatformRenderResult): Promise<void> {
+  const byState = new Map<string, { taskId: string; path: string; sha256: string }[]>();
+  for (const task of result.taskResults) {
+    for (const artifact of task.artifacts) {
+      const stateId = artifact.metadata?.stateId;
+      if (typeof stateId !== "string" || !artifact.uri.startsWith("file://") || artifact.mimeType !== "image/png") continue;
+      const path = fileURLToPath(artifact.uri);
+      const sha256 = createHash("sha256").update(await readFile(path)).digest("hex");
+      const group = byState.get(stateId) ?? [];
+      group.push({ taskId: task.taskId, path, sha256 });
+      byState.set(stateId, group);
+    }
+  }
+
+  for (const [stateId, captures] of byState) {
+    const distinct = new Set(captures.map((c) => c.sha256));
+    if (distinct.size > 1) {
+      const detail = captures.map((c) => `${c.taskId} -> ${c.sha256.slice(0, 12)}`).join(", ");
+      throw new Error(
+        `deterministic-ui-render is not deterministic: ${captures.length} tasks requested state "${stateId}" and produced ${distinct.size} different images (${detail}). The capture is racing an animation on that surface — refusing to build a video out of two different versions of the same screen.`,
+      );
+    }
+  }
+}
+
+/**
  * Renders an ALREADY-BUILT production plan package — the same object a
  * caller may also use to build a quality-review contract — so the contract
  * and the render are guaranteed to describe the same plan, not two separate
@@ -127,6 +171,8 @@ export async function renderGeneratedProductionPlan(
   if (final.mimeType !== "video/mp4" || final.uri.startsWith("dry-run://")) {
     throw new Error(`Compositor returned ${final.mimeType} at ${final.uri}, not a real MP4.`);
   }
+  await assertIdenticalStatesRenderedIdentically(result);
+
   console.log("Real generated-plan offline render succeeded.");
   console.log(`Output: ${final.uri}`);
   console.log(`Metadata: ${JSON.stringify(final.metadata)}`);

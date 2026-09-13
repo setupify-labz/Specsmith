@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Share2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
@@ -160,6 +161,9 @@ const DEFAULT_CPU_B = 'r7-7800x3d';
 export default function Compare() {
   useSeo(getRouteMeta('/compare'));
   const { showToast } = useToast();
+  // Recharts animates its bars from a JS timer, which index.css's
+  // prefers-reduced-motion rules cannot reach — see the hook's own comment.
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [searchParams] = useSearchParams();
   const initGpu = (param: string, fallback: string, altIndex: number) => {
     const fromUrl = searchParams.get(param);
@@ -401,10 +405,10 @@ export default function Compare() {
                     <Legend
                       wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: 'var(--ff-text-2)' }}
                     />
-                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]} isAnimationActive={!prefersReducedMotion}>
                       <LabelList dataKey="Build A" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
-                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]} isAnimationActive={!prefersReducedMotion}>
                       <LabelList dataKey="Build B" position="right" fontSize={10} fill="var(--ff-text-2)" />
                     </Bar>
                   </BarChart>
