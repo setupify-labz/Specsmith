@@ -338,10 +338,10 @@ export default function Compare() {
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
-                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
+                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. GPU+CPU: ${costA.toLocaleString()}</div>}
                 {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsA}</div>}
                 {costPerFpsA !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsA}/avg FPS</div>
+                  <div className="text-secondary-custom text-xs mt-1">Est. ${costPerFpsA}/avg FPS</div>
                 )}
                 {betterValue === 'A' && (
                   <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
@@ -357,10 +357,10 @@ export default function Compare() {
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
-                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
+                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. GPU+CPU: ${costB.toLocaleString()}</div>}
                 {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsB}</div>}
                 {costPerFpsB !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsB}/avg FPS</div>
+                  <div className="text-secondary-custom text-xs mt-1">Est. ${costPerFpsB}/avg FPS</div>
                 )}
                 {betterValue === 'B' && (
                   <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"

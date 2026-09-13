@@ -71,6 +71,21 @@ export interface ObservedUiShot {
   taskId?: string;
 }
 
+/**
+ * How audioClarityScore below was actually produced.
+ *
+ * "listened-full" is the only method that can certify intelligibility,
+ * pronunciation, synchronization with the visuals, or truncation — a human
+ * or Claude genuinely played the exact SHA-256-bound master start to finish.
+ * "signal-analysis-only" means only mechanical signal statistics (e.g.
+ * ffmpeg silencedetect/volumedetect) were checked: those prove the audio
+ * track is present and at a healthy level, not that anyone could understand
+ * it. "not-reviewed" means no audio assessment happened at all. Only
+ * "listened-full" may back a passing audio-quality verdict — see the
+ * fail-closed check in reviewRenderedVideo.
+ */
+export type AudioReviewMethod = "listened-full" | "signal-analysis-only" | "not-reviewed";
+
 export interface RenderedVideoObservation {
   packageId: string;
   platform: VideoPlatform;
@@ -84,6 +99,7 @@ export interface RenderedVideoObservation {
   captionsLegibilityScore: number;
   captionSafeAreaRatio: number;
   audioClarityScore: number;
+  audioReviewMethod: AudioReviewMethod;
   visualCoherenceScore: number;
   pacingScore: number;
   specSmithRelevanceScore: number;
@@ -456,6 +472,16 @@ export function reviewRenderedVideo(
     });
   }
 
+  if (observation.audioReviewMethod !== "listened-full") {
+    addIssue(issues, {
+      code: "audio-not-genuinely-reviewed",
+      severity: "error",
+      dimension: "audio-quality",
+      message: `audioClarityScore is not backed by a genuine end-to-end listen (audioReviewMethod: ${observation.audioReviewMethod}). Signal statistics alone cannot certify intelligibility, pronunciation, synchronization, or truncation — a passing audio verdict requires someone to have actually listened to these exact bytes.`,
+      taskIds: [],
+    });
+  }
+
   if (observation.visualCoherenceScore < 8) {
     addIssue(issues, {
       code: "visual-coherence",
@@ -549,7 +575,7 @@ export function reviewRenderedVideo(
   );
 
   const hasCritical = issues.some((issue) => issue.severity === "critical");
-  const hasUncertainFacts = issues.some((issue) => issue.code === "unverified-claim" || issue.code === "missing-claim-evidence" || issue.code === "missing-required-facts" || issue.code === "review-input-mismatch");
+  const hasUncertainFacts = issues.some((issue) => issue.code === "unverified-claim" || issue.code === "missing-claim-evidence" || issue.code === "missing-required-facts" || issue.code === "review-input-mismatch" || issue.code === "audio-not-genuinely-reviewed");
   const errorIssues = issues.filter((issue) => issue.severity === "error");
   const targetedTaskIds = [...new Set(issues.flatMap((issue) => issue.taskIds).filter(Boolean))];
   const canTargetRepair = errorIssues.length > 0 && errorIssues.every((issue) => issue.taskIds.length > 0);

@@ -53,7 +53,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       purpose: "evidence",
       narration: `Now use the verified SpecSmith inputs. The decision has to follow the real data, not the obvious-looking answer.`,
       visualDirection: `Reveal one verified input through the real ${idea.productConnection.feature} workflow. Every number shown must map to a required fact.`,
-      onScreenText: "REAL SPECS • REAL PRICES • REAL RULES",
+      onScreenText: "REAL SPECS • EST. PRICES • REAL RULES",
       factDependencies: factSlice(idea.requiredFacts, 1),
     },
     {

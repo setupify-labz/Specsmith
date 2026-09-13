@@ -1,6 +1,6 @@
 # Manual, credential-free CI evidence gate for the content-automator's real
 # offline end-to-end path (scripts/content-automator/endToEndOfflinePipeline.ts,
-# issue #82 / PR #83).
+# issue #82 / PR #83 / issue #89's actual-generated-plan wiring).
 #
 # NOTHING HERE TOUCHES A CREDENTIAL
 # ----------------------------------
@@ -30,21 +30,34 @@
 # endToEndOfflinePipeline.ts's quality-review gate (section 3) only trusts a
 # render's scores if this run's actual rendered sha256 matches the sha256
 # recorded, once, in the committed
-# scripts/content-automator/fixtures/mp4-smoke-offline-observation.json —
+# scripts/content-automator/fixtures/generated-plan-offline-observation.json —
 # fail-closed by design (see that file and qualityReviewer.ts's
-# matchRenderToRecordedEvidence). offlineCompositorSmoke.ts's UI-capture
-# sequence step drives real, timing-sensitive browser interactions, so the
-# exact rendered bytes are not guaranteed to reproduce across machines/runs
-# even though the underlying application STATE is deterministic — confirmed
-# empirically (four separate local renders of the same commit produced four
-# distinct sha256 hashes). A CI runner is yet another machine, so this step's
+# matchRenderToRecordedEvidence). Every UI beat here is a static capture (no
+# interactive sequence step), but ffmpeg's own encode/mux is still not
+# guaranteed byte-identical across runs of identical inputs (container
+# timestamps, encoder scheduling) — confirmed empirically (two separate local
+# renders of the same commit produced two distinct sha256 hashes with
+# visually/audibly identical content). A CI runner is yet another machine, so this step's
 # most likely outcome is the pipeline correctly stopping at that evidence gate
 # rather than reaching "Done" — that is the fix working as designed, not a
 # regression, and it is NOT the same as the pipeline crashing for some other
-# reason. This step therefore captures the exit code and the full log: an
-# exit code of 0, or a nonzero exit whose log shows the specific, expected
-# "Evidence check: NO MATCH" stop, both pass the step; any other nonzero exit
-# fails it.
+# reason.
+#
+# Independently, even when the sha256 does match, the quality gate also
+# fails closed on audio (qualityReviewer.ts's audio-not-genuinely-reviewed
+# check): a passing verdict requires the recorded observation's
+# audioReviewMethod to be "listened-full", and the committed evidence file
+# honestly records "signal-analysis-only" (ffmpeg silence/volume stats, not
+# a real listen — no CI runner or agent environment this script has ever run
+# in can actually listen). So this run's other most likely outcome is
+# stopping at the same throw with decision=hold-for-human-review, logged as
+# `error:audio-not-genuinely-reviewed` in the Issues line — also the fix
+# working as designed, not a regression.
+#
+# This step therefore captures the exit code and the full log: an exit code
+# of 0, or a nonzero exit whose log shows one of these two specific, expected
+# stops ("Evidence check: NO MATCH" or `audio-not-genuinely-reviewed`), both
+# pass the step; any other nonzero exit fails it.
 #
 # WHAT THE UPLOADED ARTIFACT CONTAINS
 # -------------------------------------
@@ -62,9 +75,18 @@ on:
   push:
     branches:
       - claude/intelligent-bohr-naord4
+      - claude/intelligent-bohr-srl3f9
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
+      # The "Run the full test suite" step below runs pnpm exec vitest run
+      # with no path filter of its own — it exercises scripts/measured/
+      # (and everything else in the repo) regardless, so a change there can
+      # flip this check red or green exactly like a content-automator change
+      # can. Missing this path meant a push touching only scripts/measured/
+      # never re-ran this workflow at all — found when porting #94's fix for
+      # issue #93's flake into this branch didn't retrigger CI.
+      - 'artifacts/SpecSmith/scripts/measured/**'
       - 'artifacts/SpecSmith/src/**'
       - 'artifacts/SpecSmith/public/data/**'
   workflow_dispatch:
@@ -199,15 +221,24 @@ jobs:
             echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — see this workflow file's header for why the render is not byte-reproducible across machines. This is the fail-closed gate working, not a regression."
             exit 0
           fi
-          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch — treating this as a real failure."
+          if grep -q "audio-not-genuinely-reviewed" "${RUNNER_TEMP}/e2e/pipeline.log"; then
+            echo "Pipeline stopped at the audio-review gate (hold-for-human-review): EXPECTED — see this workflow file's header. The committed evidence honestly records audioReviewMethod: signal-analysis-only, and no environment this script runs in can genuinely listen, so the gate correctly refuses to certify audio clarity from signal statistics alone. This is the fail-closed gate working, not a regression."
+            exit 0
+          fi
+          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch or audio-review gate — treating this as a real failure."
           exit "${code}"
 
       - name: Extract two frames from the rendered MP4, if one was produced
         if: always()
         run: |
           set -euo pipefail
-          mp4="artifacts/SpecSmith/render-output/mp4-smoke-offline/mp4-smoke-offline-youtube-shorts-mp4-smoke-offline-compose.mp4"
-          if [ -f "${mp4}" ]; then
+          # offlineGeneratedPlanRender.ts always writes into this fixed
+          # directory, but its filename embeds the content package's
+          # timestamp-based id (see contentPackage.ts's campaignId), so it
+          # cannot be hardcoded the way offlineCompositorSmoke.ts's fixed
+          # OFFLINE_SMOKE_PACKAGE_ID output name could be.
+          mp4="$(find artifacts/SpecSmith/render-output/generated-plan-offline -maxdepth 1 -name '*.mp4' -print -quit || true)"
+          if [ -n "${mp4}" ] && [ -f "${mp4}" ]; then
             ffmpeg -y -ss 0.3 -i "${mp4}" -frames:v 1 -update 1 -q:v 2 "${RUNNER_TEMP}/e2e/frame-opening.png"
             ffmpeg -y -ss 6.9 -i "${mp4}" -frames:v 1 -update 1 -q:v 2 "${RUNNER_TEMP}/e2e/frame-later.png"
             cp "${mp4}" "${RUNNER_TEMP}/e2e/rendered-master.mp4"
