@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Check, ExternalLink } from 'lucide-react';
-import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { Check } from 'lucide-react';
+import { getAmazonLink, getNeweggLink } from '../lib/retailerLinkState';
+import RetailerLinkCta from './RetailerLinkCta';
 
 interface PartCardProps {
   id: string;
@@ -56,6 +57,8 @@ export default function PartCard({
   id, name, image, searchQuery, price_usd, affiliateUrl, selected, sponsored, recommended, badge, specs, tier, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
+  const amazonLink = getAmazonLink(query);
+  const neweggLink = getNeweggLink(query, affiliateUrl);
   return (
     <motion.div
       layout
@@ -86,7 +89,7 @@ export default function PartCard({
         style={{ zIndex: 0 }}
         onClick={() => onSelect(id)}
         aria-pressed={selected}
-        aria-label={`${name}${price_usd === undefined ? '' : `, $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
+        aria-label={`${name}${price_usd === undefined ? '' : ', estimated $' + price_usd.toLocaleString()}${selected ? ', selected' : ''}`}
       />
 
       <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
@@ -161,33 +164,34 @@ export default function PartCard({
           ))}
         </div>
 
-        {/* Price + Buy */}
+        {/* Price + retailer links */}
         <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
-            {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
+          <span
+            className="text-lg font-bold"
+            style={{ color: 'var(--ff-text)' }}
+            title={price_usd === undefined ? undefined : 'Estimated catalog price — verify the current price at the retailer'}
+          >
+            {price_usd === undefined ? 'Price at retailer' : 'Est. $' + price_usd.toLocaleString()}
           </span>
-          <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
-            {!affiliateUrl && (
-              <a
-                href={getAffiliateUrl(query)}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-                className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-                style={{ color: 'var(--ff-accent-text)', backgroundColor: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.3)' }}
-              >
-                Amazon <ExternalLink size={10} />
-              </a>
-            )}
-            <a
-              href={affiliateUrl ?? getNeweggUrl(query)}
-              target="_blank"
-              rel={affiliateUrl ? 'noopener noreferrer sponsored' : 'noopener noreferrer'}
-              aria-label={affiliateUrl ? `View ${name} at Newegg (affiliate link)` : `Search Newegg for ${name}`}
-              className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md transition-opacity hover:opacity-80"
-              style={{ color: 'var(--ff-newegg)', backgroundColor: 'rgba(255,158,27,0.10)', border: '1px solid rgba(255,158,27,0.3)' }}
-            >
-              {affiliateUrl ? 'View at Newegg' : 'Newegg'} <ExternalLink size={10} />
-            </a>
+          <div className="flex flex-wrap items-center justify-end gap-1.5" style={{ pointerEvents: 'auto' }}>
+            <RetailerLinkCta
+              retailer="Amazon"
+              partName={name}
+              link={amazonLink}
+              variant="pill"
+              accentColor="var(--ff-accent-text)"
+              pillBackground="rgba(108,99,255,0.12)"
+              pillBorder="1px solid rgba(108,99,255,0.3)"
+            />
+            <RetailerLinkCta
+              retailer="Newegg"
+              partName={name}
+              link={neweggLink}
+              variant="pill"
+              accentColor="var(--ff-newegg)"
+              pillBackground="rgba(255,158,27,0.10)"
+              pillBorder="1px solid rgba(255,158,27,0.3)"
+            />
           </div>
         </div>
       </div>

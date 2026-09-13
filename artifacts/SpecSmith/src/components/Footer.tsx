@@ -88,7 +88,7 @@ export default function Footer() {
           <div>
             <h2 className="font-semibold text-sm mb-3" style={{ color: 'var(--ff-text)' }}>Disclosure</h2>
             <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--ff-text-2)' }}>
-              As an Amazon Associate, SpecSmith earns from qualifying purchases.
+              Retailer links may open search results. Confirm the exact model, current price, and availability before buying.
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
               FPS estimates are based on benchmark data and should be used as a guide only. Actual performance varies by driver version, game patch, and system configuration.

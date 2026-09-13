@@ -71,26 +71,34 @@ describe('every core-selector page still calls the gated fallback-link builders 
 });
 
 // PartCard.tsx and BuildSummary.tsx take a DIFFERENT shape than the pages
-// above: they accept an optional `affiliateUrl` prop and prefer it when
-// present (`affiliateUrl ?? getNeweggUrl(...)`) — the same conditional
-// `src/components/affiliateParts.test.ts` already locks down for PartCard.
-// That conditional is exactly why this audit's "always fallback-search"
-// finding depends on Builder.tsx never actually HAVING a real affiliateUrl to
-// pass — proven by the "canonical part catalogs never carry an affiliateUrl"
-// block above. If any of these three files changed, that finding — which the
-// PR for issue #85 explicitly claims covers PartCard.tsx and BuildSummary.tsx
-// — would go stale silently without this guard.
+// above: they accept an optional `affiliateUrl` prop and route it through
+// `getNeweggLink` (src/lib/retailerLinkState.ts), which classifies it. Per
+// #88's round-2 independent review, `getNeweggLink` never returns `exact`
+// in this component tier at all today — even a well-shaped tracked URL
+// fails closed to `fallback-search`, since neither component has an
+// independently-verified part-to-item-id binding to check it against — so
+// both retailer CTAs always render, unconditionally. `getAmazonLink`/
+// `getNeweggLink` are `src/components/affiliateParts.test.ts`'s concern to
+// lock down in detail; this guard only needs to know that BOTH components
+// still route a truthy `affiliateUrl` into that classifier rather than
+// re-deriving a link some other way. That routing is exactly why this
+// audit's "always fallback-search" finding depends on Builder.tsx never
+// actually HAVING a real affiliateUrl to pass — proven by the "canonical
+// part catalogs never carry an affiliateUrl" block above. If any of these
+// three files changed, that finding — which the PR for issue #85 explicitly
+// claims covers PartCard.tsx and BuildSummary.tsx — would go stale silently
+// without this guard.
 describe('the core-selector journey (Builder.tsx -> PartCard/BuildSummary) still cannot supply a real affiliateUrl', () => {
-  it('PartCard.tsx keeps its affiliateUrl-first conditional for both retailers', () => {
+  it('PartCard.tsx routes affiliateUrl through the shared, fail-closed link classifier for both retailers', () => {
     const source = fs.readFileSync(path.join(componentsDir, 'PartCard.tsx'), 'utf-8');
-    expect(source).toContain('!affiliateUrl &&');
-    expect(source).toContain('href={affiliateUrl ?? getNeweggUrl(query)}');
+    expect(source).toContain("from '../lib/retailerLinkState'");
+    expect(source).toContain('getNeweggLink(query, affiliateUrl)');
   });
 
-  it('BuildSummary.tsx keeps its affiliateUrl-first conditional for both retailers', () => {
+  it('BuildSummary.tsx routes affiliateUrl through the shared, fail-closed link classifier for both retailers', () => {
     const source = fs.readFileSync(path.join(componentsDir, 'BuildSummary.tsx'), 'utf-8');
-    expect(source).toContain('!p.affiliateUrl &&');
-    expect(source).toMatch(/href=\{p\.affiliateUrl \?\? getNeweggUrl\(/);
+    expect(source).toContain("from '../lib/retailerLinkState'");
+    expect(source).toContain('getNeweggLink(query, p.affiliateUrl)');
   });
 
   it("Builder.tsx reads affiliateUrl straight off the canonical part object, with no other source merged in", () => {
