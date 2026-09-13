@@ -45,7 +45,7 @@ const mappingFor = (name: string) => `${name}: \${{ secrets.${name} }}`;
 const RETIRED_SECRET = 'RAKUTEN_API_KEY';
 
 describe('the validation workflow exists and is wired to the right events', () => {
-  it('is one of exactly eight workflows, with every credential-bearing workflow accounted for', () => {
+  it('inventories every workflow, with every credential-bearing workflow accounted for', () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
     const dir = path.join(repoRoot, '.github', 'workflows');
     const all = fs.readdirSync(dir).sort();
@@ -58,21 +58,12 @@ describe('the validation workflow exists and is wired to the right events', () =
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
+      'verify-pr.yml',
     ]);
 
     // EXACTLY ONE workflow may write to the repository, and it is the price
     // refresh. Every other one stays read-only, so the write permission is
     // confined to a single reviewable file rather than spreading quietly.
-    //
-    // This has been relaxed once, for a screenshot capture that pushed images
-    // to a dead-end branch, and that turned out to be unnecessary: a run
-    // ARTIFACT carries images off a runner without any write permission at
-    // all. That capture workflow was temporary evidence-gathering, held
-    // `contents: read` for its whole second life, and has been deleted now
-    // that the screenshots are taken — so this list is back to a single
-    // name. There is no evidence-gathering need that justifies a second
-    // writer, so this expectation takes exactly one entry and is not to be
-    // widened again.
     const writers = all.filter((name) =>
       fs
         .readFileSync(path.join(dir, name), 'utf-8')
@@ -83,11 +74,6 @@ describe('the validation workflow exists and is wired to the right events', () =
     );
     expect(writers).toEqual(['refresh-retail-prices.yml']);
 
-    // The snapshot workflow is credential-free by construction; that is asserted in
-    // full from its own side, in snapshot/snapshotWorkflowSafety.test.ts.
-    // Comment lines are stripped here too — that file's header explains at
-    // length what it does NOT reference, and prose must not fail a check any
-    // more than it may satisfy one.
     const other = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'validate-retail-snapshot.yml'), 'utf-8')
       .split('\n')
@@ -95,9 +81,6 @@ describe('the validation workflow exists and is wired to the right events', () =
       .join('\n');
     expect(other).not.toContain('secrets.');
 
-    // The retailer-link audit is a THIRD credential-free tool, alongside the
-    // snapshot validation above — see auditRetailerLinksWorkflowSafety.test.ts
-    // for its full shape.
     const linkAudit = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'audit-retailer-links.yml'), 'utf-8')
       .split('\n')
@@ -105,10 +88,6 @@ describe('the validation workflow exists and is wired to the right events', () =
       .join('\n');
     expect(linkAudit).not.toContain('secrets.');
 
-    // The content-automator offline end-to-end pipeline is a FOURTH
-    // credential-free tool, alongside the two above — see
-    // scripts/content-automator/contentE2eOfflineWorkflowSafety.test.ts for
-    // its full shape.
     const contentE2eOffline = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'content-e2e-offline.yml'), 'utf-8')
       .split('\n')
@@ -116,16 +95,27 @@ describe('the validation workflow exists and is wired to the right events', () =
       .join('\n');
     expect(contentE2eOffline).not.toContain('secrets.');
 
-    // The measured-process tests CI evidence gate is a FIFTH credential-free
-    // tool, alongside the three above (issue #93 / PR #94): typecheck,
-    // vitest and a production build against files already committed, no
-    // network call beyond installing dependencies.
     const measuredTestsCi = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'measured-tests-ci.yml'), 'utf-8')
       .split('\n')
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(measuredTestsCi).not.toContain('secrets.');
+
+    // The generic PR gate is deliberately credential-free. It may run on a
+    // pull_request because it cannot read repository secrets, cannot write the
+    // repository, and checkout never persists a credential.
+    const verifyPr = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'verify-pr.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(verifyPr).not.toContain('secrets.');
+    expect(verifyPr).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(verifyPr).not.toContain('contents: write');
+    expect(verifyPr).toContain('persist-credentials: false');
+    expect(verifyPr).toMatch(/^\s*pull_request:/m);
+    expect(verifyPr).not.toMatch(/^\s*pull_request_target:/m);
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can
@@ -151,17 +141,12 @@ describe('the validation workflow exists and is wired to the right events', () =
   });
 
   it('the live sweep no longer runs on every change under scripts/retail', () => {
-    // It used to. A change to the snapshot writer — which makes no API call at
-    // all — spent a full 57-GPU sweep to prove nothing about itself.
     expect(body).not.toContain("'artifacts/SpecSmith/scripts/retail/**'");
     expect(body).not.toContain("'artifacts/SpecSmith/src/lib/retail/**'");
     expect(body).not.toContain("'artifacts/SpecSmith/scripts/retail/snapshot/**'");
   });
 
   it('still runs on the code the sweep actually exercises', () => {
-    // Narrowing must not have gone one step too far: these two directories are
-    // the adapter and the coverage tool, and a change to either is exactly
-    // what a live run exists to validate.
     expect(body).toContain("'artifacts/SpecSmith/scripts/retail/rakuten/**'");
     expect(body).toContain("'artifacts/SpecSmith/scripts/retail/coverage/**'");
     expect(body).toContain("'.github/workflows/validate-rakuten-gpu-coverage.yml'");
@@ -170,7 +155,6 @@ describe('the validation workflow exists and is wired to the right events', () =
   it('triggers on push to the implementation branch', () => {
     expect(body).toMatch(/on:\s*\n\s*push:/);
     expect(body).toContain('claude/rakuten-newegg-adapter-97h85y');
-    // Which paths, exactly, is asserted by the two tests above.
   });
 
   it('offers workflow_dispatch for manual reruns', () => {
@@ -208,18 +192,12 @@ describe('the workflow holds the least authority it can', () => {
   });
 
   it('pins every action to a full commit SHA, with the tag it came from in a comment', () => {
-    // A tag is a pointer its owner can move. This job hands three long-lived
-    // credentials to whatever these actions are on the day it runs, so "v4"
-    // is not good enough: each is pinned to the 40-character commit that
-    // actually ran, and the tag survives only as a comment for readers.
     const uses = [...yaml.matchAll(/^\s*uses:\s*(\S+)(.*)$/gm)];
     expect(uses.length).toBeGreaterThan(0);
     for (const [, ref, rest] of uses) {
       expect(ref, ref).toMatch(/^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/);
-      // The version comment is what makes the pin reviewable and upgradable.
       expect(rest.trim(), ref).toMatch(/^#\s*v\d/);
     }
-    // No floating ref survives anywhere, comments included.
     expect(yaml).not.toMatch(/uses:\s*\S+@(v\d|main|master|latest)\b/);
   });
 });
@@ -227,14 +205,9 @@ describe('the workflow holds the least authority it can', () => {
 describe('credentials are confined and never become arguments', () => {
   it('references exactly the three credential secrets, each only as a step-scoped env value', () => {
     const references = [...body.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1]);
-    // ONE step needs them: the one that mints a token and sweeps. There is no
-    // preflight — a second step existing only to test presence would double the
-    // number of places a long-lived credential is expanded, to prove something
-    // the minter already fails on with `missing-credentials`.
     expect(new Set(references)).toEqual(new Set(CREDENTIAL_SECRETS));
     expect(references.length).toBe(CREDENTIAL_SECRETS.length);
 
-    // Every interpolation is an env assignment whose key matches its secret.
     for (const line of body.split('\n')) {
       if (!line.includes('${{ secrets.')) continue;
       const name = /secrets\.([A-Z_]+)/.exec(line)![1];
@@ -244,27 +217,20 @@ describe('credentials are confined and never become arguments', () => {
   });
 
   it('no longer uses the temporary RAKUTEN_API_KEY secret', () => {
-    // Left in place in GitHub, simply unused here.
     expect(body).not.toContain(RETIRED_SECRET);
     expect(yaml).not.toContain(`secrets.${RETIRED_SECRET}`);
   });
 
   it('the access token is produced, never stored as a secret', () => {
-    // RAKUTEN_API_ACCESS_TOKEN is minted at run time; it must never appear as
-    // a `secrets.` reference, which would mean a human is pasting one again.
     expect(body).not.toContain(`secrets.${ENV_VAR}`);
     expect(body).toContain('request-access-token.ts');
   });
 
   it('there is no separate credential preflight step', () => {
-    // Retired deliberately: the token minter already fails with the closed
-    // `missing-credentials` category naming the empty VARIABLES, so a preflight
-    // bought nothing and cost a second step holding all three secrets.
     expect(body).not.toContain('Confirm the API credentials are available');
     for (const name of CREDENTIAL_SECRETS) {
       expect(body, name).not.toContain(`if [ -z "\${${name}:-}" ]`);
     }
-    // The three secrets appear in exactly one step's env block, contiguously.
     const lines = body.split('\n');
     const at = lines.flatMap((l, i) => (l.includes('${{ secrets.') ? [i] : []));
     expect(at).toHaveLength(CREDENTIAL_SECRETS.length);
@@ -272,8 +238,6 @@ describe('credentials are confined and never become arguments', () => {
   });
 
   it('a credential is never expanded into a command, a flag or a URL', () => {
-    // With the preflight gone there is no permitted expansion at all: the three
-    // credentials are set as env vars and read by the minter, never by shell.
     const expansions = body
       .split('\n')
       .filter((l) => !l.includes('${{ secrets.'))
@@ -287,15 +251,11 @@ describe('credentials are confined and never become arguments', () => {
       body.indexOf('Mint an access token and run the full GPU coverage sweep'),
       body.indexOf('Validate gates and publish the report'),
     );
-    // Never exported to later steps: $GITHUB_ENV would hand it to the step
-    // that writes a job summary.
     expect(sweep).not.toContain('GITHUB_ENV');
-    // Written under the runner's temp, owner-only, and removed twice over.
     expect(sweep).toContain('umask 077');
     expect(sweep).toContain('${RUNNER_TEMP}/rakuten-access-token');
     expect(sweep).toContain("trap 'rm -f \"${token_file}\"' EXIT");
     expect(sweep).toContain('rm -f "${token_file}"');
-    // The token reaches the sweep as an exported variable, not an argument.
     expect(sweep).toContain('export RAKUTEN_API_ACCESS_TOKEN');
   });
 
@@ -327,8 +287,6 @@ describe('the workflow runs the whole sweep and cannot appear green when it fail
   });
 
   it('feeds the sweep exit code into the gate assertion', () => {
-    // Captured rather than allowed to end the job, so the report still
-    // explains WHY — then asserted, so it cannot be swallowed.
     expect(body).toContain('exit_code=');
     expect(body).toContain('--sweep-exit');
     expect(body).toContain("steps.sweep.outputs.exit_code || '1'");
@@ -358,12 +316,7 @@ describe('the workflow writes nothing into the repository', () => {
   });
 
   it('reads the toolchain from the repository instead of inventing versions', () => {
-    // pnpm/action-setup with no `version` reads packageManager from
-    // package.json, so CI and local installs cannot drift.
     expect(body).toMatch(/uses: pnpm\/action-setup@[0-9a-f]{40}\b/);
-    // No bare `version:` key anywhere — that key belongs to action-setup, and
-    // pinning it there is exactly the drift this avoids. (`node-version:` is a
-    // different key and is allowed.)
     expect(/^\s*version:/m.test(body), 'pnpm version must come from packageManager').toBe(false);
     expect(body).toContain('--frozen-lockfile');
     const pkg = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf-8'));
