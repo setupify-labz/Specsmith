@@ -1,16 +1,26 @@
 /**
- * The reference upgrade guide, pinned.
+ * The reference upgrade guide, pinned — and the claims it may not make.
  *
- * Two kinds of assertion live here. The first is about REACH: this change was
- * scoped to one URL out of fifty-seven, and the component is shared, so the
- * test that matters most is that every other slug is untouched. The second is
- * about HONESTY: every figure derived rather than written, every estimate
- * labelled, and no recommendation the page's own badges call marginal.
+ * Two kinds of assertion. The first is about REACH: this change was scoped to
+ * one URL out of fifty-seven and the component is shared, so the test that
+ * matters most is that every other slug is untouched.
+ *
+ * The second is about EVIDENCE BOUNDARIES. Review cut the first version of
+ * this page back for claiming more than the data supports, and each boundary
+ * is easy to drift back across, so each one is a test:
+ *
+ *   - no recommendation derived from price, resale or cost-per-FPS;
+ *   - no claim that the shortlist is every option;
+ *   - the 15% line described as SpecSmith's own, never as perception;
+ *   - no CPU-comparison bottleneck finding;
+ *   - no categorical power claim and no PSU verdict;
+ *   - the displayed rationale matching the selection algorithm exactly.
  */
 
 import { describe, expect, it } from 'vitest';
 import { UPGRADE_PAGES, getUpgradePageMeta } from './upgradePages';
-import { getUpgradeCandidates, getUpgradeGpu } from './upgradeCalculator';
+import { UPGRADE_REFERENCE_CPU, getUpgradeCandidates, getUpgradeGpu } from './upgradeCalculator';
+import type { UpgradeCandidate } from './upgradeCalculator';
 import {
   MEANINGFUL_GAIN_PCT,
   article,
@@ -22,6 +32,20 @@ import {
 
 const detail = getUpgradeGuideDetail('rx-6600', 'rx6600');
 
+/** Everything this module hands the page as prose, in one string. */
+const allProse = () => {
+  if (!detail) throw new Error('no detail');
+  return [
+    detail.intro,
+    detail.verdict.headline,
+    detail.verdict.body,
+    detail.shortlistNote,
+    detail.estimatorNote,
+    detail.power?.caveat ?? '',
+    ...detail.paths.map((p) => p.rationale),
+  ].join(' ');
+};
+
 describe('the reference build reaches exactly one page', () => {
   it('rx-6600 has one', () => {
     expect(hasUpgradeGuideDetail('rx-6600')).toBe(true);
@@ -29,8 +53,6 @@ describe('the reference build reaches exactly one page', () => {
   });
 
   it('and every other upgrade page does not', () => {
-    // THE SCOPE ASSERTION. All 57 guides render from one component; this is
-    // what stops a change to the reference build reaching the other 56.
     const others = UPGRADE_PAGES.filter((page) => page.slug !== 'rx-6600');
     expect(others.length).toBeGreaterThan(50);
     for (const page of others) {
@@ -45,68 +67,194 @@ describe('the reference build reaches exactly one page', () => {
 });
 
 describe('the page keeps its self-referential canonical metadata', () => {
-  it('the meta path is still the page\'s own URL, with no override', () => {
+  it("the meta path is still the page's own URL, with no override", () => {
     const page = UPGRADE_PAGES.find((p) => p.slug === 'rx-6600')!;
     const meta = getUpgradePageMeta(page);
     expect(meta.path).toBe('/upgrade/rx-6600');
-    // A canonicalOverride would point this page at another URL. The upgrade
-    // guides must each be their own canonical.
     expect(meta.canonicalOverride).toBeUndefined();
     expect(meta.noindex).toBeFalsy();
   });
 });
 
-describe('the recommendations never include a gain the page calls marginal', () => {
-  it('every path clears the threshold the badges use', () => {
+describe('no recommendation rests on a price', () => {
+  it('says nothing about net cost, resale value or cost per frame', () => {
+    // `gpus.json` prices are editorial and `estimateResaleValue` is a flat 65%
+    // of one. Net cost and cost-per-FPS compound the two into a figure that
+    // looks precise and is not, so the page states none of them.
+    const prose = allProse().toLowerCase();
+    for (const forbidden of ['net cost', 'resale', 'cost per fps', 'cost/fps', 'per estimated fps', 'out of pocket', 'trade-in']) {
+      expect(prose, `prose still mentions "${forbidden}"`).not.toContain(forbidden);
+    }
+    expect(prose).not.toMatch(/\$\s?\d/);
+  });
+
+  it('and ranks purely on modelled gain, so price cannot reorder the shortlist', () => {
     if (!detail) throw new Error('no detail');
-    expect(detail.paths.length).toBeGreaterThan(0);
-    for (const path of detail.paths) {
-      expect(path.candidate.fpsGainPct).toBeGreaterThanOrEqual(MEANINGFUL_GAIN_PCT);
+    const gains = detail.paths.map((p) => p.candidate.fpsGainPct);
+    expect(gains).toEqual([...gains].sort((a, b) => a - b));
+  });
+
+  it('follows gain even when price would order the shortlist differently', () => {
+    // THE ASSERTION THAT ACTUALLY PINS THE AXIS. On the real RX 6600 data,
+    // price order and gain order happen to agree, so a sort keyed on net cost
+    // produces the same three cards and every other test here passes. These
+    // candidates are built so the two orders DISAGREE: the biggest gain is the
+    // cheapest card. Anything that reintroduces a price key fails here.
+    const make = (id: string, fpsGainPct: number, netCost: number): UpgradeCandidate => ({
+      gpu: { id, name: id.toUpperCase(), price_usd: netCost, tier: 9, gpu_multiplier: 1 },
+      netCost,
+      avgFpsCurrent: 100,
+      avgFpsNew: 100 + fpsGainPct,
+      fpsGainPct,
+      verdict: 'strong',
+      costPerFps: Math.round(netCost / fpsGainPct),
+    });
+    const inverted = [
+      make('expensive-small', 16, 900),
+      make('middling', 40, 500),
+      make('cheap-huge', 80, 100),
+    ];
+    const paths = pickUpgradePaths(inverted);
+    expect(paths.map((p) => p.band)).toEqual(['smallest', 'middle', 'largest']);
+    expect(paths.map((p) => p.candidate.gpu.id)).toEqual(['expensive-small', 'middling', 'cheap-huge']);
+    // Cost order would have put the cheapest card first and the dearest last.
+    expect(paths[0].candidate.netCost).toBeGreaterThan(paths[2].candidate.netCost);
+  });
+});
+
+describe('the shortlist is never described as complete', () => {
+  it('states how the shortlist was built, and that it omits cards', () => {
+    if (!detail) throw new Error('no detail');
+    // `getUpgradeCandidates` keeps the CHEAPEST card per tier above the
+    // current one, drops any that do not beat it on the modelled average, and
+    // returns at most six. An earlier draft called that "every option we can
+    // model", which it is not.
+    expect(detail.shortlistNote).toMatch(/not every card/i);
+    expect(detail.shortlistNote).toMatch(/each tier/i);
+    expect(detail.shortlistNote).toMatch(/at most six/i);
+    expect(detail.shortlistNote).toMatch(/may still be worth considering/i);
+  });
+
+  it('and no prose claims completeness', () => {
+    const prose = allProse().toLowerCase();
+    for (const forbidden of ['every option', 'all options', 'complete list', 'exhaustive']) {
+      expect(prose, `prose still claims "${forbidden}"`).not.toContain(forbidden);
+    }
+    // Matched as an AFFIRMATIVE claim rather than a substring: the honest
+    // disclaimer contains "not every card that would be faster", and a bare
+    // substring ban would fail on the very sentence that fixes the problem.
+    for (const claim of [/\b(ranks|compares|covers|lists|includes)\s+every\b/, /(?<!not )\bevery card that\b/]) {
+      expect(prose, `prose still claims completeness: ${claim}`).not.toMatch(claim);
     }
   });
+});
 
-  it('the cheapest card one tier up is NOT recommended when it barely gains', () => {
-    // THE DEFECT THIS PAGE EXISTED WITH. `getUpgradeIntro` calls the cheapest
-    // next-tier card "the best upgrade in our data" — for the RX 6600 that is
-    // an RX 6600 XT at about +3%, which the page's own badge calls a marginal
-    // gain. The first recommendation a reader saw was the one not worth money.
+describe('the 15% line is SpecSmith’s own, not a claim about perception', () => {
+  it('names it as a comparison threshold wherever it appears', () => {
     if (!detail) throw new Error('no detail');
-    const candidates = getUpgradeCandidates('rx6600');
-    const cheapestNextTier = candidates[0];
-    expect(cheapestNextTier.fpsGainPct).toBeLessThan(MEANINGFUL_GAIN_PCT);
-    expect(detail.paths.map((p) => p.candidate.gpu.id)).not.toContain(cheapestNextTier.gpu.id);
-    // ...and it is not silently dropped either: it is named as not worth it.
-    expect(detail.notWorthIt.map((c) => c.gpu.id)).toContain(cheapestNextTier.gpu.id);
+    expect(detail.verdict.body).toMatch(/comparison threshold/i);
+    const marginal = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct < MEANINGFUL_GAIN_PCT);
+    const verdict = buildVerdict(getUpgradeGpu('rx6600')!, [], marginal);
+    expect(verdict.headline).toMatch(/comparison threshold/i);
   });
 
-  it('the high-end pick is not just the most expensive card in the dataset', () => {
-    // Unbounded, "largest gain" picks the RTX 4090: roughly ten times the net
-    // cost of the mid-range pick, at several times the cost per FPS. A
-    // recommendation has to be defensible on value, not only on magnitude.
+  it('never claims a player would or would not notice a difference', () => {
+    const prose = allProse().toLowerCase();
+    for (const forbidden of ['would notice', 'you would not notice', 'noticeable', 'feel faster', 'changes how games feel', 'perceptible', 'not worth paying']) {
+      expect(prose, `prose still claims "${forbidden}"`).not.toContain(forbidden);
+    }
+  });
+});
+
+describe('no bottleneck finding is offered', () => {
+  it('names the reference CPU as an assumption and stops there', () => {
     if (!detail) throw new Error('no detail');
-    const highEnd = detail.paths.find((p) => p.band === 'high-end');
-    const midrange = detail.paths.find((p) => p.band === 'midrange');
-    if (!highEnd || !midrange) throw new Error('bands missing');
-    expect(highEnd.candidate.costPerFps).not.toBeNull();
-    expect(midrange.candidate.costPerFps).not.toBeNull();
-    expect(highEnd.candidate.costPerFps!).toBeLessThanOrEqual(midrange.candidate.costPerFps! * 2);
+    expect(detail.estimatorNote).toContain(UPGRADE_REFERENCE_CPU.name);
+    expect(detail.estimatorNote).toMatch(/model output, not benchmark results/i);
+    expect(detail.estimatorNote).toMatch(/a different CPU would produce different figures/i);
   });
 
-  it('a card is never recommended twice under two bands', () => {
+  it('offers no second-CPU comparison and no bottleneck language', () => {
+    const prose = allProse().toLowerCase();
+    for (const forbidden of ['bottleneck', 'hold it back', 'holds it back', 'ryzen 5 3600', 'slower chip', 'falls from']) {
+      expect(prose, `prose still says "${forbidden}"`).not.toContain(forbidden);
+    }
+    expect(detail).toBeDefined();
+    expect((detail as unknown as Record<string, unknown>).cpu).toBeUndefined();
+  });
+});
+
+describe('board power is reported, never ruled on', () => {
+  it('gives the figures’ provenance and refuses the verdict', () => {
+    if (!detail?.power) throw new Error('no power notes');
+    expect(detail.power.caveat).toMatch(/not measurements of any specific card/i);
+    expect(detail.power.caveat).toMatch(/does not assess whether a given power supply is sufficient/i);
+    expect(detail.power.caveat).toMatch(/check the exact model/i);
+  });
+
+  it('makes no categorical claim about behaviour under load', () => {
+    // An earlier draft asserted that power spikes exceed the rated figure:
+    // true of some cards, measured by SpecSmith for none of them, and stated
+    // as though it held universally.
+    const caveat = (detail?.power?.caveat ?? '').toLowerCase();
+    for (const forbidden of ['spike', 'exceed the rated', 'will draw', 'always', 'guaranteed', 'will fit']) {
+      expect(caveat, `caveat still claims "${forbidden}"`).not.toContain(forbidden);
+    }
+    // Same care as above. The caveat's job is to say SpecSmith does NOT assess
+    // sufficiency, so the ban is on the affirmative verdict, not the word.
+    expect(caveat).not.toMatch(/(your|the|this)\s+(power supply|psu)\s+(is|will be|should be)\s+(sufficient|fine|enough|adequate)/);
+  });
+
+  it('reports the dataset’s own numbers and arithmetic on them', () => {
+    if (!detail?.power) throw new Error('no power notes');
+    const gpu = getUpgradeGpu('rx6600')!;
+    expect(detail.power.current.typicalWatts).toBe(gpu.tdp_watts);
+    for (const note of detail.power.upgrades) {
+      const source = getUpgradeGpu(note.gpu.id)!;
+      expect(note.typicalWatts).toBe(source.tdp_watts);
+      expect(note.deltaWatts).toBe(note.typicalWatts - detail.power.current.typicalWatts);
+    }
+  });
+});
+
+describe('every displayed rationale matches the algorithm that chose it', () => {
+  it('the largest band really is the largest modelled gain on the shortlist', () => {
+    if (!detail) throw new Error('no detail');
+    // THE CONTRADICTION THIS REPLACES. The previous build labelled a card
+    // "largest estimated gain, whatever it costs" while a hidden
+    // cost-per-FPS ceiling excluded the biggest one. A label that disagrees
+    // with its own selection rule is worse than no label.
+    const largest = detail.paths.find((p) => p.band === 'largest');
+    if (!largest) throw new Error('no largest band');
+    const qualifying = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct >= MEANINGFUL_GAIN_PCT);
+    const maxGain = Math.max(...qualifying.map((c) => c.fpsGainPct));
+    expect(largest.candidate.fpsGainPct).toBe(maxGain);
+    expect(largest.rationale).toMatch(/largest modelled gain/i);
+    expect(largest.rationale.toLowerCase()).not.toContain('whatever it costs');
+  });
+
+  it('the smallest band really is the smallest that reaches the threshold', () => {
+    if (!detail) throw new Error('no detail');
+    const smallest = detail.paths.find((p) => p.band === 'smallest')!;
+    const qualifying = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct >= MEANINGFUL_GAIN_PCT);
+    expect(smallest.candidate.fpsGainPct).toBe(Math.min(...qualifying.map((c) => c.fpsGainPct)));
+  });
+
+  it('no band is filled twice, and a short list yields fewer bands', () => {
     if (!detail) throw new Error('no detail');
     const ids = detail.paths.map((p) => p.candidate.gpu.id);
     expect(new Set(ids).size).toBe(ids.length);
+
+    const two = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct >= MEANINGFUL_GAIN_PCT).slice(0, 2);
+    expect(pickUpgradePaths(two).map((p) => p.band)).toEqual(['smallest', 'largest']);
+    const one = two.slice(0, 1);
+    expect(pickUpgradePaths(one).map((p) => p.band)).toEqual(['smallest']);
   });
 
-  it('recommends nothing at all when nothing clears the threshold', () => {
-    // Fail closed rather than filling three bands for their own sake.
-    const marginalOnly = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct < MEANINGFUL_GAIN_PCT);
-    expect(marginalOnly.length).toBeGreaterThan(0);
-    expect(pickUpgradePaths(marginalOnly)).toEqual([]);
-
-    const gpu = getUpgradeGpu('rx6600')!;
-    const verdict = buildVerdict(gpu, [], marginalOnly);
-    expect(verdict.headline).toMatch(/not yet/i);
+  it('recommends nothing when nothing reaches the threshold', () => {
+    const below = getUpgradeCandidates('rx6600').filter((c) => c.fpsGainPct < MEANINGFUL_GAIN_PCT);
+    expect(below.length).toBeGreaterThan(0);
+    expect(pickUpgradePaths(below)).toEqual([]);
   });
 
   it('says so plainly when there is nothing faster at all', () => {
@@ -117,67 +265,22 @@ describe('the recommendations never include a gain the page calls marginal', () 
 });
 
 describe('nothing is invented', () => {
-  it('every recommended figure matches the calculator it came from', () => {
+  it('every shortlisted figure matches the calculator it came from', () => {
     if (!detail) throw new Error('no detail');
     const candidates = getUpgradeCandidates('rx6600');
     for (const path of detail.paths) {
       const source = candidates.find((c) => c.gpu.id === path.candidate.gpu.id);
       expect(source, `${path.candidate.gpu.id} is not a tracked candidate`).toBeDefined();
-      // Field for field. `getUpgradeCandidates` builds fresh objects per call,
-      // so identity is not available; what matters is that not one figure was
-      // rewritten, rounded or "adjusted" between the calculator and the page.
       expect(path.candidate).toStrictEqual(source);
     }
   });
 
-  it('power figures are the dataset\'s, and the deltas are arithmetic on them', () => {
-    if (!detail) throw new Error('no detail');
-    const gpu = getUpgradeGpu('rx6600')!;
-    expect(detail.power.current.typicalWatts).toBe(gpu.tdp_watts);
-    for (const note of detail.power.upgrades) {
-      const source = getUpgradeGpu(note.gpu.id)!;
-      expect(note.typicalWatts).toBe(source.tdp_watts);
-      expect(note.deltaWatts).toBe(note.typicalWatts - detail.power.current.typicalWatts);
-    }
-  });
-
-  it('the CPU comparison changes only the CPU', () => {
-    if (!detail) throw new Error('no detail');
-    // Same card, same games, same resolution and preset — so the difference
-    // is attributable to the chip and nothing else.
-    expect(detail.cpu.fpsWithReferenceCpu).toBeGreaterThan(detail.cpu.fpsWithModestCpu);
-    expect(detail.cpu.referenceCpuName).not.toBe(detail.cpu.modestCpuName);
-    expect(detail.cpu.gpu.id).toBe(detail.paths[0].candidate.gpu.id);
-  });
-
-  it('the power section states no compatibility verdict', () => {
-    if (!detail) throw new Error('no detail');
-    const caveat = detail.power.caveat.toLowerCase();
-    // SpecSmith refuses to turn a generic figure into an exact-fit claim
-    // (src/lib/retail/partIdentity.ts). This page holds the same line: it
-    // hands over the numbers and rules on nothing.
-    expect(caveat).toMatch(/not measurements of a specific card/);
-    expect(caveat).toMatch(/check the exact model/);
-    for (const forbidden of ['your psu is fine', 'will fit', 'is sufficient', 'guaranteed']) {
-      expect(caveat).not.toContain(forbidden);
-    }
-  });
-});
-
-describe('estimates are labelled in the prose the page renders', () => {
-  it('the intro and verdict both say the figures are modelled', () => {
-    if (!detail) throw new Error('no detail');
-    expect(detail.intro).toMatch(/estimates?/i);
-    expect(detail.intro).toMatch(/not benchmark results/i);
-    expect(detail.verdict.body).toMatch(/estimated|modelled/i);
-  });
-
   it('no sentence claims a measured result', () => {
-    if (!detail) throw new Error('no detail');
-    const prose = [detail.intro, detail.verdict.headline, detail.verdict.body, detail.power.caveat].join(' ').toLowerCase();
-    for (const forbidden of ['we measured', 'benchmarked', 'tested at', 'real-world results']) {
+    const prose = allProse().toLowerCase();
+    for (const forbidden of ['we measured', 'benchmarked', 'tested at', 'real-world results', 'in our testing']) {
       expect(prose).not.toContain(forbidden);
     }
+    expect(detail?.intro).toMatch(/estimates, not benchmark results/i);
   });
 });
 

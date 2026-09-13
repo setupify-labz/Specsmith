@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ChevronRight, DollarSign, Zap, Cpu, Sliders, Plug, Gauge, CheckCircle2 } from 'lucide-react';
 import { getUpgradePage, getUpgradeIntro, getRelatedUpgradePages, getUpgradePageMeta } from '../lib/upgradePages';
 import { getUpgradeGpu, getUpgradeCandidates, getBestValueCandidate, estimateResaleValue, averageFps, type UpgradeVerdict } from '../lib/upgradeCalculator';
-import { article, getUpgradeGuideDetail, MEANINGFUL_GAIN_PCT, type UpgradePath } from '../lib/upgradeGuideDetail';
+import { article, getUpgradeGuideDetail, MEANINGFUL_GAIN_PCT, type UpgradeBand } from '../lib/upgradeGuideDetail';
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
@@ -15,11 +15,20 @@ const VERDICT_STYLE: Record<UpgradeVerdict, { label: string; bg: string; color: 
 };
 const BEST_VALUE_STYLE = { label: 'Best value', bg: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: 'rgba(255,215,0,0.35)' };
 
-/** Reader-facing names for the three bands. The band ids stay machine-shaped. */
-const PATH_LABEL: Record<UpgradePath['band'], string> = {
-  budget: 'Budget',
-  midrange: 'Mid-range',
-  'high-end': 'High-end',
+/**
+ * Reader-facing names for the three shortlist positions.
+ *
+ * They name the SELECTION RULE, because that is the only thing that picked
+ * them. The earlier labels were Budget / Mid-range / High-end, which implied a
+ * price judgement the page no longer makes — and the high-end card carried the
+ * rationale "largest estimated gain, whatever it costs" while a hidden
+ * cost-per-FPS ceiling was quietly excluding the most expensive card. A label
+ * that contradicts its own algorithm is worse than no label.
+ */
+const PATH_LABEL: Record<UpgradeBand, string> = {
+  smallest: 'Smallest qualifying step',
+  middle: 'Middle of the shortlist',
+  largest: 'Largest modelled step',
 };
 
 export default function GpuUpgradePage() {
@@ -66,16 +75,27 @@ export default function GpuUpgradePage() {
 
   const detailFaqs = detail
     ? [
-        { title: `Is it worth upgrading from ${article(gpu.name)} ${gpu.name}?`, content: `${detail.verdict.headline}. ${detail.verdict.body}` },
         {
-          title: `Will my power supply handle ${article(gpu.name)} ${gpu.name} upgrade?`,
-          content: `The ${gpu.name} is ${article(String(detail.power.current.typicalWatts))} ${detail.power.current.typicalWatts}W card by typical board power. ${detail.power.upgrades
-            .map((u) => `${u.gpu.name} is ${u.typicalWatts}W, about ${u.deltaWatts}W more`)
-            .join('; ')}. ${detail.power.caveat}`,
+          title: `Is it worth upgrading from ${article(gpu.name)} ${gpu.name}?`,
+          content: `${detail.verdict.headline}. ${detail.verdict.body}`,
+        },
+        ...(detail.power
+          ? [
+              {
+                title: `How much more power do the shortlisted cards draw than ${article(gpu.name)} ${gpu.name}?`,
+                content: `SpecSmith's dataset records the ${gpu.name} at ${detail.power.current.typicalWatts}W of model-typical board power. ${detail.power.upgrades
+                  .map((u) => `${u.gpu.name} is recorded at ${u.typicalWatts}W`)
+                  .join('; ')}. ${detail.power.caveat}`,
+              },
+            ]
+          : []),
+        {
+          title: 'Which cards does this guide compare?',
+          content: detail.shortlistNote,
         },
         {
-          title: `Will my CPU bottleneck ${article(detail.cpu.gpu.name)} ${detail.cpu.gpu.name}?`,
-          content: `It can. Every FPS figure on this page is modelled with a ${detail.cpu.referenceCpuName}. The same ${detail.cpu.gpu.name} estimate falls from ${detail.cpu.fpsWithReferenceCpu} to ${detail.cpu.fpsWithModestCpu} average FPS beside a ${detail.cpu.modestCpuName} — same card, same games, slower chip. Both figures are estimates from SpecSmith's model, not benchmark results.`,
+          title: 'Where do the FPS figures come from?',
+          content: detail.estimatorNote,
         },
       ]
     : [];
@@ -114,7 +134,17 @@ export default function GpuUpgradePage() {
      them would publish two different recommendations on one page and feed both
      to the FAQ schema. On a page with a reference build they are replaced. */
   const SUPERSEDED_FAQ_TITLES = detail
-    ? [`What should I upgrade my ${gpu.name} to?`, 'Is upgrading worth it right now?']
+    ? [
+        `What should I upgrade my ${gpu.name} to?`,
+        'Is upgrading worth it right now?',
+        // Both of these answer questions the reference page no longer poses.
+        // Its prices are editorial and its resale figure is a flat 65% of one,
+        // so a page that has stopped recommending on money must not keep
+        // explaining its money — least of all in the FAQ schema, where the
+        // claim would be made to a crawler after being withdrawn from readers.
+        `How much is my ${gpu.name} worth used?`,
+        'What does "Net Cost" mean on this page?',
+      ]
     : [];
   const allFaqs = [...detailFaqs, ...faqs.filter((f) => !SUPERSEDED_FAQ_TITLES.includes(f.title))];
 
@@ -147,14 +177,19 @@ export default function GpuUpgradePage() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
-          <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-            <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
-              <DollarSign size={13} /> Estimated Resale Value
+        <div className={`grid grid-cols-1 gap-3 mb-10 ${detail ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+          {/* A FLAT 65% OF AN EDITORIAL PRICE. Two soft numbers multiplied
+              into one that looks like a valuation. The reference page drops it
+              rather than dress it with another disclaimer. */}
+          {!detail && (
+            <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+              <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
+                <DollarSign size={13} /> Estimated Resale Value
+              </div>
+              <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${resale.toLocaleString()}</div>
+              <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Rough estimate, not a quote.</p>
             </div>
-            <div className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${resale.toLocaleString()}</div>
-            <p className="text-[10px] mt-1" style={{ color: 'var(--ff-text-3)' }}>Rough estimate, not a quote.</p>
-          </div>
+          )}
           <div className="rounded-2xl p-4" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
             <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: 'var(--ff-text-2)' }}>
               <Zap size={13} /> {detail ? 'Estimated Average FPS' : 'Average FPS'}
@@ -198,10 +233,13 @@ export default function GpuUpgradePage() {
               </div>
             </section>
 
-            <h2 className="text-xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>Three Upgrade Paths</h2>
-            <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
-              Every FPS figure is an estimate from SpecSmith's model across 20 games at 1440p High, not a benchmark
-              result. Prices are editorial estimates last updated {PRICES_UPDATED}, not live retailer prices.
+            <h2 className="text-xl font-black mb-1" style={{ color: 'var(--ff-text)' }}>Where the Shortlist Lands</h2>
+            <p className="text-xs mb-1" style={{ color: 'var(--ff-text-3)' }}>
+              Ranked by modelled FPS gain only. SpecSmith does not rank upgrades by price: the prices it holds are
+              editorial estimates, so a cost-per-frame or trade-in figure built on them would look more precise than it is.
+            </p>
+            <p data-testid="upgrade-shortlist-note" className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+              {detail.shortlistNote}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
               {detail.paths.map((path) => (
@@ -218,14 +256,8 @@ export default function GpuUpgradePage() {
                       <dd className="font-bold" style={{ color: 'var(--ff-green)' }}>+{path.candidate.fpsGainPct}%</dd>
                     </div>
                     <div className="flex justify-between gap-2">
-                      <dt>Net cost (estimated)</dt>
-                      <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>${path.candidate.netCost.toLocaleString()}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt>Per estimated FPS</dt>
-                      <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>
-                        {path.candidate.costPerFps !== null ? `$${path.candidate.costPerFps}` : '—'}
-                      </dd>
+                      <dt>Estimated average</dt>
+                      <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>{path.candidate.avgFpsNew} FPS</dd>
                     </div>
                   </dl>
                   {/* THE ACTION. The page's existing button builds around the
@@ -241,63 +273,58 @@ export default function GpuUpgradePage() {
               ))}
             </div>
 
-            {detail.notWorthIt.length > 0 && (
-              <p data-testid="upgrade-not-worth-it" className="text-xs leading-relaxed rounded-xl p-3 mb-10"
+            {detail.belowThreshold.length > 0 && (
+              <p data-testid="upgrade-below-threshold" className="text-xs leading-relaxed rounded-xl p-3 mb-10"
                 style={{ color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-card)' }}>
-                <strong style={{ color: 'var(--ff-amber)' }}>Not worth paying for:</strong>{' '}
-                {detail.notWorthIt.map((c) => `${c.gpu.name} (about +${c.fpsGainPct}% estimated)`).join(', ')}
-                {' '}— cheaper than the picks above, but the estimated gain is under {MEANINGFUL_GAIN_PCT}%, which is not
-                a difference you would notice while playing. They are listed in full below for completeness.
+                <strong style={{ color: 'var(--ff-amber)' }}>Below SpecSmith's comparison threshold:</strong>{' '}
+                {detail.belowThreshold.map((c) => `${c.gpu.name} (about +${c.fpsGainPct}% estimated)`).join(', ')}
+                {' '}— shortlisted, but under the {MEANINGFUL_GAIN_PCT}% modelled gain SpecSmith uses as its line for
+                naming a card as a step up. That line is a comparison threshold chosen by SpecSmith, not a finding about
+                what a player would perceive. They are listed in full below.
               </p>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
-              <section aria-labelledby="upgrade-power" className="rounded-2xl p-5"
-                style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-                <h2 id="upgrade-power" className="flex items-center gap-1.5 font-black text-sm mb-2" style={{ color: 'var(--ff-text)' }}>
-                  <Plug size={15} aria-hidden="true" /> Will your power supply take it?
-                </h2>
-                <dl className="text-xs space-y-1 mb-2.5" style={{ color: 'var(--ff-text-2)' }}>
-                  <div className="flex justify-between gap-2">
-                    <dt>{detail.power.current.gpu.name} (yours)</dt>
-                    <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>{detail.power.current.typicalWatts}W</dd>
-                  </div>
-                  {detail.power.upgrades.map((note) => (
-                    <div key={note.gpu.id} className="flex justify-between gap-2">
-                      <dt>{note.gpu.name}</dt>
-                      <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>
-                        {note.typicalWatts}W <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}>(+{note.deltaWatts}W)</span>
-                      </dd>
+              {detail.power && (
+                <section aria-labelledby="upgrade-power" className="rounded-2xl p-5"
+                  style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
+                  <h2 id="upgrade-power" className="flex items-center gap-1.5 font-black text-sm mb-2" style={{ color: 'var(--ff-text)' }}>
+                    <Plug size={15} aria-hidden="true" /> Board power on the shortlist
+                  </h2>
+                  <dl className="text-xs space-y-1 mb-2.5" style={{ color: 'var(--ff-text-2)' }}>
+                    <div className="flex justify-between gap-2">
+                      <dt>{detail.power.current.gpu.name} (yours)</dt>
+                      <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>{detail.power.current.typicalWatts}W</dd>
                     </div>
-                  ))}
-                </dl>
-                <p data-testid="upgrade-power-caveat" className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-amber)' }}>
-                  {detail.power.caveat}
-                </p>
-              </section>
+                    {detail.power.upgrades.map((note) => (
+                      <div key={note.gpu.id} className="flex justify-between gap-2">
+                        <dt>{note.gpu.name}</dt>
+                        <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>
+                          {note.typicalWatts}W <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}>(+{note.deltaWatts}W)</span>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {/* The heading asks no question, because the section answers
+                      none. It reports what the dataset holds and stops. */}
+                  <p data-testid="upgrade-power-caveat" className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-amber)' }}>
+                    {detail.power.caveat}
+                  </p>
+                </section>
+              )}
 
-              <section aria-labelledby="upgrade-cpu" className="rounded-2xl p-5"
+              <section aria-labelledby="upgrade-estimator" className="rounded-2xl p-5"
                 style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
-                <h2 id="upgrade-cpu" className="flex items-center gap-1.5 font-black text-sm mb-2" style={{ color: 'var(--ff-text)' }}>
-                  <Gauge size={15} aria-hidden="true" /> Will your CPU hold it back?
+                <h2 id="upgrade-estimator" className="flex items-center gap-1.5 font-black text-sm mb-2" style={{ color: 'var(--ff-text)' }}>
+                  <Gauge size={15} aria-hidden="true" /> Where these figures come from
                 </h2>
-                <p className="text-xs leading-relaxed mb-2.5" style={{ color: 'var(--ff-text-2)' }}>
-                  Every FPS figure on this page assumes a {detail.cpu.referenceCpuName}. Beside a slower chip the same
-                  card produces less, and the gain you actually see shrinks with it.
-                </p>
-                <dl className="text-xs space-y-1 mb-2.5" style={{ color: 'var(--ff-text-2)' }}>
-                  <div className="flex justify-between gap-2">
-                    <dt>{detail.cpu.gpu.name} + {detail.cpu.referenceCpuName}</dt>
-                    <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>{detail.cpu.fpsWithReferenceCpu} FPS</dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt>{detail.cpu.gpu.name} + {detail.cpu.modestCpuName}</dt>
-                    <dd className="font-bold" style={{ color: 'var(--ff-text)' }}>{detail.cpu.fpsWithModestCpu} FPS</dd>
-                  </div>
-                </dl>
-                <p data-testid="upgrade-cpu-caveat" className="text-[11px] leading-relaxed" style={{ color: 'var(--ff-amber)' }}>
-                  Both figures are estimates from the same model across 20 games at 1440p High, not benchmark results.
-                  Pair the upgrade with your own CPU in Builder to see the estimate for your machine.
+                {/* DISCLOSURE, NOT A BOTTLENECK FINDING. An earlier draft put a
+                    Ryzen 5 3600 beside the reference chip to show the gain
+                    shrinking. Read as advice that is a bottleneck claim, and
+                    SpecSmith has measured nothing that would support one. What
+                    is defensible is naming what the estimate is conditional on. */}
+                <p data-testid="upgrade-estimator-note" className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                  {detail.estimatorNote}
                 </p>
               </section>
             </div>
@@ -333,7 +360,11 @@ export default function GpuUpgradePage() {
                         style={{ backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}` }}>
                         {style.label}
                       </span>
-                      {bestValue?.gpu.id === c.gpu.id && (
+                      {/* "Best value" IS a cost-per-FPS recommendation —
+                          getBestValueCandidate picks the lowest one. Withheld
+                          on the reference page for the same reason the column
+                          below it is. */}
+                      {!detail && bestValue?.gpu.id === c.gpu.id && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                           style={{ backgroundColor: BEST_VALUE_STYLE.bg, color: BEST_VALUE_STYLE.color, border: `1px solid ${BEST_VALUE_STYLE.border}` }}>
                           {BEST_VALUE_STYLE.label}
@@ -346,11 +377,13 @@ export default function GpuUpgradePage() {
                       Build with this <ArrowRight size={12} />
                     </Link>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Net Cost*</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>${c.netCost.toLocaleString()}</p>
-                    </div>
+                  <div className={`grid grid-cols-2 gap-3 text-center ${detail ? '' : 'sm:grid-cols-4'}`}>
+                    {!detail && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Net Cost*</p>
+                        <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>${c.netCost.toLocaleString()}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>FPS Gain</p>
                       <p className="text-lg font-black" style={{ color: c.fpsGainPct >= 0 ? 'var(--ff-green)' : 'var(--ff-red)' }}>
@@ -361,18 +394,22 @@ export default function GpuUpgradePage() {
                       <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>New Average</p>
                       <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>{c.avgFpsNew} FPS</p>
                     </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Cost / FPS**</p>
-                      <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
-                        {c.costPerFps !== null ? `$${c.costPerFps}` : '—'}
-                      </p>
-                    </div>
+                    {!detail && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>Cost / FPS**</p>
+                        <p className="text-lg font-black" style={{ color: 'var(--ff-text)' }}>
+                          {c.costPerFps !== null ? `$${c.costPerFps}` : '—'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );
             })}
             <p className="text-[10px] text-center pt-2" style={{ color: 'var(--ff-text-3)' }}>
-              *Net cost = new card's price minus your {gpu.name}'s estimated resale value. **Cost/FPS = net cost divided by the average FPS gained — lower is a better value, not shown when there's no positive FPS gain to divide by.
+              {detail
+                ? `FPS figures are estimates from SpecSmith's model across 20 games at 1440p High, not benchmark results.`
+                : `*Net cost = new card's price minus your ${gpu.name}'s estimated resale value. **Cost/FPS = net cost divided by the average FPS gained — lower is a better value, not shown when there's no positive FPS gain to divide by.`}
             </p>
           </div>
         )}
