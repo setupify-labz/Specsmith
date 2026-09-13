@@ -1,12 +1,20 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronRight, Zap, ExternalLink, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Zap, ArrowLeft } from 'lucide-react';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
-import { estimateFpsForBuild, getAffiliateUrl, getNeweggUrl } from '../lib/fps';
-import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPartSearchQuery, getPrebuiltMeta } from '../lib/prebuilts';
+import { estimateFpsForBuild } from '../lib/fps';
+import { prebuilts, getPartPrice, getPartName, getPrebuiltTotal, categoryLabels, getPrebuiltMeta } from '../lib/prebuilts';
+import { PRICES_UPDATED } from '../lib/prices';
+import { ESTIMATED_PREFIX } from '../lib/retail/importedBuild';
+import {
+  CHOOSE_CURRENT_LISTING_LABEL,
+  chooseCurrentListingLabel,
+  guidePlanUrl,
+  isShoppableCategory,
+} from '../lib/retail/guidePlanHandoff';
 import { useSeo } from '../hooks/useSeo';
 import { SITE_URL } from '../lib/seo';
 import PageGlow from '../components/PageGlow';
@@ -78,11 +86,7 @@ export default function PrebuiltDetail() {
 
   const badge = BADGE_STYLES[prebuilt.badge_color] ?? BADGE_STYLES.gray;
 
-  const handleLoad = () => {
-    const params = new URLSearchParams();
-    Object.entries(prebuilt.parts).forEach(([k, v]) => params.set(k, v));
-    navigate(`/builder?${params.toString()}`);
-  };
+  const handleLoad = () => navigate(guidePlanUrl(prebuilt.parts));
 
   const itemListJsonLd = {
     '@context': 'https://schema.org',
@@ -110,7 +114,7 @@ export default function PrebuiltDetail() {
     },
     {
       title: `How much does the ${prebuilt.name} cost?`,
-      content: `An estimated $${totalPrice.toLocaleString()} total for every component listed above, based on typical US street pricing. That's a planning estimate, not a live cart total — click through to Amazon or Newegg for current prices on each part.`,
+      content: `An estimated $${totalPrice.toLocaleString()} total for every component listed above, based on typical US street pricing last updated ${PRICES_UPDATED}. That's a planning estimate, not a live cart total. Use "Choose current listing" on any part to open it in the Builder, where each retailer listing carries the price observed for that exact SKU and a direct link to it.`,
     },
     {
       title: 'Can I swap parts in this build?',
@@ -166,36 +170,39 @@ export default function PrebuiltDetail() {
                     const name = getPartName(cat, id);
                     const price = getPartPrice(cat, id);
                     return (
-                      <div key={cat} className="rounded-lg p-3" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
+                      <div key={cat} data-testid={`guide-part-${cat}`} className="rounded-lg p-3" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
                         <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'var(--ff-text-3)' }}>
                           {categoryLabels[cat]}
                         </div>
                         <div className="text-xs font-medium leading-tight mb-1.5" style={{ color: 'var(--ff-text)' }}>{name}</div>
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-xs font-semibold" style={{ color: 'var(--ff-accent-text)' }}>${price}</span>
-                          <div className="flex items-center gap-1.5">
-                            <a
-                              href={getAffiliateUrl(getPartSearchQuery(cat, id))}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Buy on Amazon"
-                              className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                              style={{ color: 'var(--ff-accent-text)' }}
-                            >
-                              Amazon <ExternalLink size={9} />
-                            </a>
-                            <a
-                              href={getNeweggUrl(getPartSearchQuery(cat, id))}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Buy on Newegg"
-                              className="flex items-center gap-0.5 text-[10px] font-semibold transition-opacity hover:opacity-80"
-                              style={{ color: 'var(--ff-newegg)' }}
-                            >
-                              Newegg <ExternalLink size={9} />
-                            </a>
-                          </div>
+                        {/* LABELLED WHERE IT IS READ. Our editorial estimate,
+                            which used to sit bare beside a "Buy on Amazon"
+                            link — the one context in which a reader is
+                            entitled to take it for a checkout price. */}
+                        <div
+                          className="text-[11px] font-semibold mb-2"
+                          data-testid={`guide-price-${cat}`}
+                          style={{ color: 'var(--ff-text-2)' }}
+                        >
+                          {ESTIMATED_PREFIX} ${price.toLocaleString()}
+                          <span className="font-normal" style={{ color: 'var(--ff-text-3)' }}> · {PRICES_UPDATED}</span>
                         </div>
+                        {/* A LINK, NOT A BUTTON. It navigates, so middle-click
+                            and ctrl-click must open a tab, "copy link address"
+                            must work, and a screen reader must hear a link. */}
+                        {isShoppableCategory(cat) && (
+                          <Link
+                            to={guidePlanUrl(prebuilt.parts, cat)}
+                            data-testid={`guide-choose-${cat}`}
+                            data-category={cat}
+                            aria-label={chooseCurrentListingLabel(cat, name)}
+                            className="ff-accent-control inline-flex w-full items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-semibold"
+                            style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
+                          >
+                            {CHOOSE_CURRENT_LISTING_LABEL}
+                            <ChevronRight size={10} aria-hidden="true" />
+                          </Link>
+                        )}
                       </div>
                     );
                   })}
@@ -228,8 +235,12 @@ export default function PrebuiltDetail() {
             <div className="space-y-4">
               <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <div className="mb-4">
-                  <p className="text-xs" style={{ color: 'var(--ff-text-2)' }}>Estimated Total</p>
-                  <p className="text-3xl font-black" style={{ color: 'var(--ff-text)' }}>${totalPrice.toLocaleString()}</p>
+                  {/* The date belongs beside the number, not only in an FAQ —
+                      an estimate with no age reads as a live price. */}
+                  <p className="text-xs" data-testid="guide-total-label" style={{ color: 'var(--ff-text-2)' }}>
+                    Estimated total · {PRICES_UPDATED}
+                  </p>
+                  <p className="text-3xl font-black" data-testid="guide-total" style={{ color: 'var(--ff-text)' }}>${totalPrice.toLocaleString()}</p>
                 </div>
                 <button
                   onClick={handleLoad}
