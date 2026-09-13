@@ -1,4 +1,4 @@
-import { getUpgradeGpu, getUpgradeCandidates, estimateResaleValue, averageFps, type UpgradeGpu } from './upgradeCalculator';
+import { getUpgradeGpu, getUpgradeComparisons, averageFps, type UpgradeGpu } from './upgradeCalculator';
 import type { RouteMeta } from './seo';
 
 export interface UpgradePage {
@@ -73,17 +73,22 @@ export function getUpgradePage(slug: string): UpgradePage | undefined {
   return UPGRADE_PAGES.find(p => p.slug === slug);
 }
 
-/** Intro paragraph — entirely derived from the same computed numbers the
- * page's stat cards show, never a hand-written claim about a specific card. */
+/**
+ * Intro paragraph — derived from the same computed figures the page shows.
+ *
+ * It used to open "The best upgrade in our data is the X", where X was
+ * `getUpgradeCandidates(id, 1)[0]` — the CHEAPEST card one tier up, which for
+ * an RX 6600 is a +3% step the page's own badge called marginal. It named a
+ * best, it named it on price, and it was wrong on both counts. The page makes
+ * no recommendation now, so neither does its first sentence.
+ */
 export function getUpgradeIntro(gpu: UpgradeGpu): string {
-  const resale = estimateResaleValue(gpu.price_usd);
-  const candidates = getUpgradeCandidates(gpu.id, 1);
-  if (candidates.length === 0) {
-    return `The ${gpu.name} is the fastest card we track — there's nothing meaningfully faster to upgrade to right now. If you ever do sell it, expect roughly $${resale.toLocaleString()} on the used market.`;
+  const comparisons = getUpgradeComparisons(gpu.id);
+  if (comparisons.length === 0) {
+    return `No GPU SpecSmith tracks produces a higher modelled average than the ${gpu.name}. The figures below are model estimates, not benchmark results.`;
   }
-  const top = candidates[0];
-  const verdictPhrase = top.verdict === 'strong' ? 'a big jump' : top.verdict === 'moderate' ? 'a solid step up' : 'a modest gain';
-  return `If you're running a ${gpu.name}, it's currently worth an estimated $${resale.toLocaleString()} used. The best upgrade in our data is the ${top.gpu.name} — ${verdictPhrase} at about ${top.fpsGainPct >= 0 ? '+' : ''}${top.fpsGainPct}% average FPS for a net cost of roughly $${top.netCost.toLocaleString()} after reselling your old card.`;
+  const top = comparisons[0];
+  return `SpecSmith models ${comparisons.length} tracked GPU${comparisons.length === 1 ? '' : 's'} as faster than the ${gpu.name}, from about +${comparisons[comparisons.length - 1].fpsDiffPct}% up to about +${top.fpsDiffPct}% average FPS. Those are estimates from SpecSmith's model rather than benchmark results, and this page carries no prices — check a retailer for current pricing before buying anything.`;
 }
 
 /** Other upgrade pages to cross-link — nearby tiers first, same as the
@@ -106,7 +111,9 @@ export function getUpgradePageMeta(page: UpgradePage): RouteMeta {
   return {
     path: `/upgrade/${page.slug}`,
     title: `${name} Upgrade Guide | SpecSmith`,
-    description: `Thinking about upgrading from a ${name}? See its resale value, upgrade options ranked by FPS gain, and the net cost after trading up.`,
+    // Describes what the page contains. The previous copy promised a resale
+    // value and a net cost, both of which the page no longer computes.
+    description: `Every GPU SpecSmith models as faster than the ${name}, ordered by estimated FPS difference across 20 games at 1440p High. Model estimates, not benchmark results.`,
   };
 }
 
