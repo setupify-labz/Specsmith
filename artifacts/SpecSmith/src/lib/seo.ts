@@ -47,7 +47,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/compare',
     title: 'Compare PC Builds Side-by-Side | SpecSmith',
     description:
-      'Compare two PC builds head-to-head with FPS and price charts. See exactly which configuration gives you more performance per dollar before you buy.',
+      'Compare two GPU + CPU combinations across 20 games with clearly labelled SpecSmith FPS estimates. Adjust resolution and quality without live-price or purchase recommendations.',
   },
   {
     path: '/about',
@@ -326,7 +326,6 @@ export interface BreadcrumbItem {
   path: string;
 }
 
-// :slug detail pages get their listing page as the middle breadcrumb.
 const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/vs/', parent: { name: 'GPU & CPU Comparisons', path: '/vs' } },
   { prefix: '/best-gpu/', parent: { name: 'Best GPU by Game', path: '/best-gpu' } },
@@ -341,7 +340,6 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/quiz/', parent: { name: 'PC Build Quiz', path: '/quiz' } },
 ];
 
-// Standalone guide/index pages that hang off the Parts Guides hub.
 const PARTS_GUIDES_PAGES = new Set([
   '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',
