@@ -29,6 +29,19 @@ const MEASURE = process.env.MEASURE === '1';
 
 /** The batch the grid shows before "Load more" — the window the audit covers. */
 const PRODUCTS_MEASURED = 24;
+/**
+ * The share of measured images that must have decoded before a measurement is
+ * taken. Deliberately the SAME number the workflow enforces on the result.
+ *
+ * The wait exists so the rate is never computed against a page that has not
+ * finished loading. It was written to require every image, which is stricter
+ * than the bar it protects: at 24 cards the threshold tolerates one missing
+ * image, so a single slow response from the retailer's CDN passed the check
+ * and stalled the wait for its full timeout — thirteen times in one run, on a
+ * different image each time. A wait that fails where the check would pass is
+ * measuring something nobody asked about.
+ */
+const IMAGE_RATE_FLOOR = 0.95;
 
 /** Widths the header is checked at — not only the three the screenshots use. */
 const HEADER_WIDTHS = [768, 834, 900, 960, 1024, 1100, 1279, 1280, 1440];
@@ -41,6 +54,9 @@ const HEADER_SHOT_WIDTHS = [768, 834, 1024];
  * looks small beside its neighbours, whatever the <img> element measures.
  */
 const SMALL_PRODUCT_SPAN = 0.5;
+
+/** The wide-desktop widths the review named, measured for shell and columns. */
+const DESKTOP_WIDTHS = [1280, 1440, 1920, 2048];
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 900 },
@@ -93,26 +109,188 @@ const isRetailBuilder = (page) => page.locator('[data-testid="retail-builder"]')
  * Waits until no <img> in the grid is still in flight, so a card counted as
  * failed has genuinely failed rather than merely not arrived yet.
  */
-async function settleImages(page) {
+/**
+ * Categories whose images never finished settling, by label. Empty is the
+ * expected state; a non-empty list means the measurement below ran against
+ * images that had not loaded, which is exactly what made the lazy-loading
+ * defect look like a CDN problem for two runs.
+ */
+const settleTimeouts = [];
+
+/**
+ * Walks the page to the bottom and back so lazy images actually start loading.
+ *
+ * Product cards carry `loading="lazy"`, so an <img> below the fold is never
+ * requested until it comes near the viewport. The settle check below waits for
+ * every image to have DECODED, which such an image can never do — so it sat
+ * out its full timeout in every category and the measurement then counted the
+ * cards that had never been asked for as missing. The signature was exactly
+ * two per category across all twelve, with zero placeholders: a failed image
+ * swaps in the placeholder, and none had, because nothing had failed.
+ *
+ * Scrolling is what a reader does, and it is what makes this measure the page
+ * rather than the harness. The scroll position is restored afterwards so the
+ * screenshots still frame the top of the grid.
+ */
+async function revealLazyImages(page, limit) {
+  const previous = await page.evaluate(() => window.scrollY);
+  await page.evaluate(async (max) => {
+    const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')].slice(0, max);
+    for (const card of cards) {
+      card.scrollIntoView({ block: 'center' });
+      await pause(30);
+    }
+    await pause(150);
+  }, limit);
+  await page.evaluate((y) => window.scrollTo(0, y), previous);
+  await page.waitForTimeout(150);
+}
+
+async function settleImages(page, label = 'unlabelled') {
+  // WHEN THERE IS NOTHING TO WAIT FOR.
+  //
+  // An earlier version treated "no cards" as "keep waiting", which is right
+  // just after a category change — the old grid is gone and the new one has
+  // not mounted — and wrong everywhere else. It hung the full timeout on the
+  // White build's keyboard category, which has no white listings and correctly
+  // shows the empty state, and on every view that has no catalogue at all.
+  // Three cases, distinguished rather than lumped together:
+  //
+  //   no product grid on the page  -> nothing to settle
+  //   grid showing the empty state -> settled, and legitimately empty
+  //   grid with cards              -> wait for every image to decode
+  const readyPredicate = () => {
+    const grid = document.querySelector('[data-testid="product-grid"]');
+    if (!grid) return true;
+    if (document.querySelector('[data-testid="catalog-empty"]')) return true;
+    return document.querySelectorAll('[data-testid="retail-product-card"]').length > 0;
+  };
+
+  // Let the grid mount before scrolling past it.
+  await page.waitForFunction(readyPredicate, undefined, { timeout: 30_000 }).catch(() => {});
+  await revealLazyImages(page, PRODUCTS_MEASURED);
+
+  let settled = true;
   await page
     .waitForFunction(
-      () => {
-        // Cards first: right after a category change the old grid is gone and
-        // the new one has not mounted, and "no images in flight" would be
-        // trivially true of an empty page.
-        const cards = document.querySelectorAll('[data-testid="retail-product-card"]');
+      ({ max, floor }) => {
+        const grid = document.querySelector('[data-testid="product-grid"]');
+        if (!grid) return true;
+        if (document.querySelector('[data-testid="catalog-empty"]')) return true;
+        const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')];
         if (cards.length === 0) return false;
-        // A card whose image failed swaps the <img> for the placeholder, so an
-        // all-failed grid has no images left to wait for. That is a settled
-        // state, not a reason to sit here until the timeout.
-        const images = [...document.querySelectorAll('[data-testid="product-grid"] img')];
-        return images.every((img) => img.complete);
+        // ONLY the cards that get measured, and every one of those.
+        //
+        // A category grid holds every product in it — eighty GPUs — while the
+        // measurement reads the first `max` cards and nothing else. Requiring
+        // all eighty to decode let one hanging request among the fifty-six
+        // nobody looks at stall this for its whole timeout, which is what
+        // happened: the image rate passed at 100% while the settle reported a
+        // timeout for the same page.
+        //
+        // What counts as decoded stays strict per image. `complete` alone
+        // turns true the instant a response arrives, before the bitmap is
+        // decoded, so a measurement taken then can count a perfectly good
+        // image as missing; naturalWidth means a picture that actually exists.
+        //
+        // What changes is how many have to be there: the same share the run
+        // requires of the result, not all of them. Waiting for every image
+        // while tolerating one missing made a single slow CDN response a build
+        // failure.
+        const images = cards.slice(0, max).flatMap((card) => [...card.querySelectorAll('img')]);
+        if (images.length === 0) return true;
+        const decoded = images.filter((img) => img.complete && img.naturalWidth > 1).length;
+        return decoded / images.length >= floor;
       },
-      undefined,
-      { timeout: 20_000 },
+      { max: PRODUCTS_MEASURED, floor: IMAGE_RATE_FLOOR },
+      { timeout: 30_000 },
     )
-    .catch(() => {});
+    // A swallowed timeout is how the lazy-loading defect stayed invisible for
+    // two runs: the wait quietly gave up and the measurement proceeded against
+    // images that had never loaded. Record it, so a future one is diagnosable
+    // from the report instead of from a 30-second pause in the log.
+    .catch(() => {
+      settled = false;
+    });
+
+  if (!settled) {
+    // WHY it gave up, not just that it did.
+    //
+    // Two guesses at this were right and one was wrong, and the wrong one cost
+    // a full run to disprove because the failure only ever said "timed out".
+    // The page is asked directly what state it was in, so the next diagnosis
+    // is read rather than inferred.
+    const why = await page
+      .evaluate((max) => {
+        const grid = document.querySelector('[data-testid="product-grid"]');
+        const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')];
+        const images = cards.slice(0, max).flatMap((card) => [...card.querySelectorAll('img')]);
+        return {
+          gridPresent: Boolean(grid),
+          emptyState: Boolean(document.querySelector('[data-testid="catalog-empty"]')),
+          cards: cards.length,
+          measuredImages: images.length,
+          decoded: images.filter((img) => img.complete && img.naturalWidth > 1).length,
+          incomplete: images
+            .filter((img) => !(img.complete && img.naturalWidth > 1))
+            .slice(0, 5)
+            .map((img) => ({ complete: img.complete, naturalWidth: img.naturalWidth, src: img.currentSrc || img.src })),
+        };
+      }, PRODUCTS_MEASURED)
+      .catch(() => null);
+    settleTimeouts.push({ label, ...(why ?? { unreadable: true }) });
+  }
   await page.waitForTimeout(500);
+  return settled;
+}
+
+/**
+ * How the builder uses the width it is given.
+ *
+ * The defect: on a 2048px display the catalogue sat in a 1280px column with a
+ * 384px empty margin on each side. So this reads the numbers that describe
+ * that — the shell's rendered width, the margin either side of it, the grid's
+ * computed column count and how wide one card ends up — at every width the
+ * review named, rather than asking the eye to judge a screenshot.
+ */
+async function measureWideDesktop(page) {
+  const results = {};
+  for (const width of DESKTOP_WIDTHS) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.waitForTimeout(400);
+    await settleImages(page, `width ${width}`);
+    results[width] = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const shell = document.querySelector('.ff-builder-shell');
+      const grid = document.querySelector('[data-testid="product-grid"]');
+      const rail = document.querySelector('[data-testid="category-rail"]');
+      const summary = document.querySelector('[data-testid="build-summary"]');
+      const card = document.querySelector('[data-testid="retail-product-card"]');
+      const box = (element) => {
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 ? Math.round(rect.width) : null;
+      };
+      const nested = [...document.querySelectorAll('[data-testid="product-grid"], [data-testid="product-grid"] *')]
+        .filter((element) => {
+          const overflow = getComputedStyle(element).overflowY;
+          return (overflow === 'auto' || overflow === 'scroll') && element.scrollHeight > element.clientHeight + 1;
+        }).length;
+      const shellWidth = box(shell);
+      return {
+        shellPx: shellWidth,
+        marginEachSidePx: shellWidth === null ? null : Math.round((window.innerWidth - shellWidth) / 2),
+        columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length : 0,
+        cardPx: box(card),
+        railPx: box(rail),
+        summaryPx: box(summary),
+        horizontalOverflowPx: Math.max(0, doc.scrollWidth - doc.clientWidth),
+        nestedCatalogScrollers: nested,
+      };
+    });
+  }
+  return results;
 }
 
 /**
@@ -285,7 +463,7 @@ async function revealCards(page) {
     window.scrollTo(0, 0);
     await sleep(120);
   }, PRODUCTS_MEASURED);
-  await settleImages(page);
+  await settleImages(page, 'product spans');
 }
 
 /**
@@ -301,6 +479,7 @@ async function measureCategory(page) {
   return page.evaluate((limit) => {
     const cards = [...document.querySelectorAll('[data-testid="retail-product-card"]')].slice(0, limit);
     let loaded = 0;
+    const missing = [];
     let placeholders = 0;
     let collapsed = 0;
     let stretched = 0;
@@ -312,7 +491,12 @@ async function measureCategory(page) {
       const placeholder = card.querySelector('[data-testid="image-placeholder"]');
       if (placeholder) placeholders += 1;
       if (!img) continue;
-      if (!img.complete || img.naturalWidth <= 1) continue;
+      if (!img.complete || img.naturalWidth <= 1) {
+        // Named, not just counted. A rate below the threshold has to be
+        // diagnosable from the run rather than from a guess.
+        missing.push({ src: img.currentSrc || img.src, complete: img.complete, naturalWidth: img.naturalWidth });
+        continue;
+      }
       loaded += 1;
       const box = img.getBoundingClientRect();
       if (box.width < 40 || box.height < 40) tiny += 1;
@@ -323,7 +507,7 @@ async function measureCategory(page) {
       const fit = getComputedStyle(img).objectFit;
       if (fit !== 'contain' && Math.abs(source - painted) / source > 0.02) stretched += 1;
     }
-    return { cards: cards.length, loaded, placeholders, collapsed, stretched, tiny };
+    return { cards: cards.length, loaded, placeholders, collapsed, stretched, tiny, missing };
   }, PRODUCTS_MEASURED);
 }
 
@@ -375,7 +559,7 @@ async function chooseFirstProduct(page) {
   const card = page.locator('[data-testid="retail-product-card"]').first();
   await card.scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
-  await settleImages(page);
+  await settleImages(page, 'mobile card');
   // "Add to build" TOGGLES, and the build survives a reload — so on a page
   // opened after an earlier pass the first card may already be chosen, and
   // clicking it would remove it. That is what produced a "View build (0)"
@@ -386,15 +570,138 @@ async function chooseFirstProduct(page) {
   await page.waitForSelector('[data-testid="retail-product-card"][data-selected="true"]', { timeout: 15_000 });
 }
 
+/**
+ * Puts the page in a KNOWN theme, rather than assuming which one it started in.
+ *
+ * THE BUG THIS FIXES, WHICH THE RUN CAUGHT ITSELF. The theme is a TOGGLE over
+ * state persisted in localStorage, and every page here shares one browser
+ * context — so a pass that clicks "toggle theme" to get light gets dark
+ * instead whenever an earlier pass left light behind. Six review widths
+ * clicking blind produced three "light" shots of which two were dark, and the
+ * cross-theme frame-colour check reported the light theme as two different
+ * colours. Every one of those screenshots would have been mislabelled.
+ *
+ * So: read the theme, click only if it is wrong, then read it again and refuse
+ * to continue if it is still wrong. A capture that cannot reach the theme it
+ * claims must fail loudly rather than photograph the other one.
+ */
+const themeOf = (page) =>
+  page.evaluate(() =>
+    document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
+  );
+
+async function ensureTheme(page, wanted) {
+  if ((await themeOf(page)) !== wanted) {
+    await page.getByRole('button', { name: /toggle theme/i }).first().click();
+    await page.waitForTimeout(600);
+  }
+  const settled = await themeOf(page);
+  if (settled !== wanted) {
+    throw new Error(`could not reach the ${wanted} theme: the page is ${settled}`);
+  }
+  return settled;
+}
+
+/**
+ * The review matrix: 375, 1440 and 1920 in BOTH themes, on the exact head.
+ *
+ * WHAT THE REVIEW ASKED TO SEE, AND WHY EACH PART IS MEASURED RATHER THAN
+ * EYEBALLED. Three claims have to survive every one of the six combinations:
+ * the FPS control sits inside "Your build" and not loose on the page; nothing
+ * overflows sideways; and the frame a product photograph is composited on
+ * follows the theme instead of being baked in. A screenshot shows all three to
+ * a person and proves none of them, so each is read off the live page here and
+ * lands in the report beside the picture.
+ *
+ * The image-frame colour is read from the CARD's own frame after the cascade
+ * has resolved every variable — the point of --ff-photo-bg is that a cut-out
+ * shows it THROUGH the picture, so a frame that quietly inherited some other
+ * colour is exactly the defect worth catching, and a token file cannot catch
+ * it.
+ */
+const REVIEW_WIDTHS = [375, 1440, 1920];
+
+async function captureReviewMatrix(context, report) {
+  const matrix = {};
+  for (const theme of ['dark', 'light']) {
+    for (const width of REVIEW_WIDTHS) {
+      const page = await open(context, { width, height: width < 500 ? 844 : 1000 });
+      const themeObserved = await ensureTheme(page, theme);
+      await settleImages(page, `review ${theme} ${width}`);
+      const key = `${theme}-${width}`;
+      await shot(page, `review-${key}`);
+
+      matrix[key] = await page.evaluate(() => {
+        const doc = document.documentElement;
+        const frame = document.querySelector('[data-testid="open-details-image"]');
+        const nested = [...document.querySelectorAll('*')].filter((element) => {
+          if (element === doc || element === document.body) return false;
+          const overflow = getComputedStyle(element).overflowY;
+          return (
+            (overflow === 'auto' || overflow === 'scroll') &&
+            element.scrollHeight > element.clientHeight + 1
+          );
+        }).length;
+        const summary = document.querySelector('[data-testid="build-summary"]');
+        const estimate = document.querySelector('[data-testid="summary-estimate"]');
+        return {
+          horizontalOverflowPx: Math.max(0, doc.scrollWidth - doc.clientWidth),
+          nestedScrollers: nested,
+          // Inside the summary, not merely present on the page: containment is
+          // the claim, and an element that drifted out of the aside would still
+          // be found by a document-wide query.
+          estimateInsideSummary: Boolean(summary && estimate && summary.contains(estimate)),
+          estimateCount: document.querySelectorAll('[data-testid="summary-estimate"]').length,
+          photoFrameBackground: frame ? getComputedStyle(frame).backgroundColor : null,
+          // The image rate is measured elsewhere; this is the count the picture
+          // shows, so a matrix shot of an empty grid cannot pass unnoticed.
+          cards: document.querySelectorAll('[data-testid="retail-product-card"]').length,
+        };
+      });
+      // Recorded, not assumed. The label on a screenshot is a claim about which
+      // theme it shows, and this is the evidence for it.
+      matrix[key].themeObserved = themeObserved;
+
+      // The build summary with a product in it, at the two widths where the
+      // summary is laid out differently: a phone drawer and a desktop column.
+      //
+      // `:visible` IS LOAD-BEARING. The same summary is rendered twice — the
+      // desktop sticky column and the mobile drawer — and which one a person
+      // sees is decided by CSS, not by which exists. Addressing it by test id
+      // alone takes the desktop copy, which at 375 is hidden, and a run spent
+      // thirty seconds waiting for an invisible element to hold still.
+      if (width === 375 || width === 1440) {
+        await chooseFirstProduct(page);
+        if (width === 375) await page.locator('[data-testid="view-build"]').click();
+        await page.waitForTimeout(700);
+        const summary = page.locator('[data-testid="build-summary"]:visible').first();
+        await summary.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(300);
+        await summary.screenshot({ path: path.join(OUT_DIR, `${LABEL}-review-${key}-build.png`) });
+        // The FPS control has to be inside the summary a person is ACTUALLY
+        // looking at, which on a phone is the drawer copy. Measured here
+        // rather than trusted, because this is the one moment the visible
+        // summary and the drawer are the same element.
+        matrix[key].estimateInsideVisibleSummary = await summary
+          .locator('[data-testid="summary-estimate"]')
+          .count()
+          .then((n) => n === 1);
+      }
+      await page.close();
+    }
+  }
+  report.reviewMatrix = matrix;
+}
+
 async function captureAccentControls(context, report) {
   const results = {};
   for (const theme of ['dark', 'light']) {
     const page = await open(context, { width: 390, height: 844 });
-    if (theme === 'light') {
-      await page.getByRole('button', { name: /toggle theme/i }).first().click();
-      await page.waitForTimeout(600);
-    }
-    await settleImages(page);
+    // Same blind-toggle bug as the review matrix: this pass shares the context
+    // and the persisted theme, so its two passes could photograph one theme
+    // twice and label them differently.
+    await ensureTheme(page, theme);
+    await settleImages(page, 'accent controls');
 
     // Two products chosen, so "View build (2)" and a selected card both exist.
     await chooseFirstProduct(page);
@@ -461,7 +768,14 @@ async function captureAccentControls(context, report) {
   report.accentControls = results;
 }
 
-const browser = await chromium.launch();
+// PLAYWRIGHT_LAUNCH_EXECUTABLE lets a sandbox with a preinstalled Chromium at a
+// different pinned version validate this script before a runner spends a cycle
+// on it. Unset in CI, where the workflow installs the browser Playwright wants.
+const browser = await chromium.launch(
+  process.env.PLAYWRIGHT_LAUNCH_EXECUTABLE
+    ? { executablePath: process.env.PLAYWRIGHT_LAUNCH_EXECUTABLE }
+    : {},
+);
 const context = await browser.newContext({ deviceScaleFactor: 2 });
 const report = {
   label: LABEL,
@@ -470,6 +784,7 @@ const report = {
   layout: {},
   header: {},
   productSpans: {},
+  whiteBuild: {},
 };
 
 for (const viewport of VIEWPORTS) {
@@ -485,7 +800,7 @@ for (const viewport of VIEWPORTS) {
     continue;
   }
 
-  await settleImages(page);
+  await settleImages(page, viewport.name);
   report.layout[viewport.name] = await measureLayout(page);
 
   await shot(page, `${viewport.name}-grid`);
@@ -532,7 +847,7 @@ for (const viewport of VIEWPORTS) {
   if (await cpu.count()) {
     await cpu.click();
     await page.waitForTimeout(800);
-    await settleImages(page);
+    await settleImages(page, 'cpu rail');
     await page.locator('[data-testid="add-to-build"]:visible').first().click();
     await page.waitForTimeout(400);
   }
@@ -565,7 +880,7 @@ for (const viewport of VIEWPORTS) {
       if ((await rail.count()) === 0) continue;
       await rail.click();
       await page.waitForTimeout(700);
-      await settleImages(page);
+      await settleImages(page, `${category}`);
       await revealCards(page);
       report.categories[category] = await measureCategory(page);
       const spans = await measureRenderedProductSpans(page, context);
@@ -588,8 +903,74 @@ for (const viewport of VIEWPORTS) {
   await page.close();
 }
 
+// The wide-desktop widths, measured and photographed.
+if (LABEL === 'after') {
+  const page = await open(context, { width: 1920, height: 1000 });
+  report.wideDesktop = await measureWideDesktop(page);
+  for (const width of DESKTOP_WIDTHS) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.waitForTimeout(500);
+    await settleImages(page, `width ${width}`);
+    await revealCards(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await shot(page, `desktop-${width}`);
+  }
+
+  // The White build collection, across several categories.
+  //
+  // The list deliberately spans all three cases the collection has to get
+  // right: a visible category with white stock (gpu, case, psu), a visible one
+  // with none (keyboard), which must show the honest empty state, and the
+  // colour-neutral ones (cpu, storage), which must keep their ordinary
+  // options. Filtering those last two to nothing left the collection unable
+  // to finish a PC, so their counts are recorded and checked, not just
+  // photographed.
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await page.waitForTimeout(400);
+  await page.locator('[data-testid="white-build-toggle"]').click();
+  await page.waitForTimeout(600);
+  await settleImages(page, 'white build gpu');
+  await shot(page, 'white-build-gpu');
+  const countCards = () =>
+    page.evaluate(() => document.querySelectorAll('[data-testid="retail-product-card"]').length);
+  report.whiteBuild = { gpu: await countCards() };
+  for (const category of ['case', 'psu', 'keyboard', 'cpu', 'storage']) {
+    await page.locator(`[data-testid="category-rail-${category}"]`).click();
+    await page.waitForTimeout(600);
+    await settleImages(page, `${category}`);
+    report.whiteBuild[category] = await countCards();
+    await shot(page, `white-build-${category}`);
+  }
+  await page.locator('[data-testid="white-build-toggle"]').click();
+  await page.waitForTimeout(400);
+
+  // A populated summary with thumbnails, and the product gallery.
+  await page.locator('[data-testid="category-rail-gpu"]').click();
+  await page.waitForTimeout(600);
+  await chooseFirstProduct(page);
+  await page.locator('[data-testid="category-rail-cpu"]').click();
+  await page.waitForTimeout(700);
+  await chooseFirstProduct(page);
+  await page.locator('[data-testid="build-summary"]').first().screenshot({
+    path: path.join(OUT_DIR, `${LABEL}-summary-thumbnails.png`),
+  });
+  await shot(page, 'desktop-with-build');
+
+  await page.locator('[data-testid="view-details"]').first().click();
+  await page.waitForSelector('[data-testid="product-detail"]');
+  await page.waitForTimeout(700);
+  await page.locator('[data-testid="product-detail"]').screenshot({
+    path: path.join(OUT_DIR, `${LABEL}-product-detail.png`),
+  });
+  await page.keyboard.press('Escape');
+  await page.close();
+}
+
 // The filled accent controls, in both themes.
 if (LABEL === 'after') await captureAccentControls(context, report);
+
+// The review matrix: 375 / 1440 / 1920, both themes, on this exact head.
+if (LABEL === 'after') await captureReviewMatrix(context, report);
 
 // The header, across a range of widths rather than the three the screenshots
 // happen to use — the tablet defect lived between two of them.
@@ -609,6 +990,7 @@ await context.close();
 await browser.close();
 
 if (MEASURE) {
-  fs.writeFileSync(path.join(OUT_DIR, 'image-report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  report.settleTimeouts = settleTimeouts;
+fs.writeFileSync(path.join(OUT_DIR, 'image-report.json'), `${JSON.stringify(report, null, 2)}\n`);
 }
 console.log(JSON.stringify(report, null, 2));

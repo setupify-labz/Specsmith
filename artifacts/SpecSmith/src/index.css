@@ -84,6 +84,18 @@
   /* SpecSmith custom tokens — dark */
   --ff-bg:        #0A0A0F;
   --ff-surface:   #13131A;
+  /* What a product photograph is composited against.
+     Held separately from --ff-surface on purpose: once images carry real
+     transparency, this colour shows THROUGH them, so retuning the general
+     surface colour must not silently tint every product. Dark stays #13131A;
+     light is pure white, which is what merchant studio sweeps are shot on.
+     The .retail-photo-frame class below owns this background; nothing should
+     set it inline. */
+  --ff-photo-bg: #13131A;
+  /* The loading skeleton's block colour. Its own token so it can sit between
+     the card and its border in each theme without borrowing a colour that
+     means something else. */
+  --ff-skeleton:  #24242F;
   --ff-card:      #1C1C26;
   --ff-card-hover:#222230;
   --ff-border:    rgba(255,255,255,0.08);
@@ -174,6 +186,8 @@
   /* SpecSmith custom tokens — light */
   --ff-bg:        #F4F4FA;
   --ff-surface:   #FFFFFF;
+  --ff-photo-bg: #FFFFFF;
+  --ff-skeleton:  #E4E4EF;
   --ff-card:      #FFFFFF;
   --ff-card-hover:#F0F0FA;
   --ff-border:    rgba(0,0,20,0.1);
@@ -377,6 +391,59 @@
    unfilled state: an offset white/dark halo plus the accent, so it reads on
    the purple fill AND on the card behind it. Pointer users never see it —
    :focus-visible only fires for keyboard focus. */
+/* The builder's page shell.
+   max-w-7xl caps at 1280px, which on a 2048px display left the catalogue in a
+   narrow column between two 380px margins. clamp keeps the floor at exactly
+   the old 1280 — so nothing below xl moves, and mobile and tablet are
+   untouched — then grows with the viewport to a 1760px ceiling. The ceiling
+   exists because a line of text and a row of cards both stop being readable
+   before the screen stops getting wider. */
+.ff-builder-shell {
+  width: 100%;
+  max-width: clamp(80rem, 94vw, 1760px);
+  margin-inline: auto;
+}
+
+/* THE LOADING SKELETON'S ONLY VISUAL PRIMITIVE.
+   A neutral block that claims nothing. The pulse is deliberately slight and
+   slow — issue #104 excludes an animation-heavy placeholder, and a shimmer
+   sweeping across a screenful of boxes reads as activity the page is not
+   actually doing.
+
+   The reduced-motion rule is stated here rather than left to the global
+   `animation-duration: 0.01ms` override, because that override makes an
+   animation finish instantly rather than not run: a pulse would settle on
+   whichever keyframe it landed on. Here the animation is removed outright and
+   the bar simply sits at its resting colour. */
+.retail-skeleton-bar {
+  background: var(--ff-skeleton);
+  animation: retail-skeleton-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes retail-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retail-skeleton-bar {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* WHAT A PRODUCT PHOTOGRAPH IS COMPOSITED AGAINST.
+   One declaration, three places: the card's image frame, the detail drawer's
+   frame and its thumbnails, and the build summary's tiles. Once a picture
+   carries real transparency this colour shows THROUGH it, so the three have to
+   agree exactly — the same cut-out sitting on two different greys in two parts
+   of one page reads as two different photographs. Held apart from --ff-surface
+   for the same reason: retuning the general surface colour must not silently
+   tint every product. */
+.retail-photo-frame {
+  background: var(--ff-photo-bg);
+}
+
 .ff-accent-control:focus-visible {
   outline: 2px solid var(--ff-accent-text);
   outline-offset: 2px;

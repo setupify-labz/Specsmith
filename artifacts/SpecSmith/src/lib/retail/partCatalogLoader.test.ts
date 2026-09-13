@@ -28,6 +28,7 @@ const catalog = {
       canonicalPartId: category === 'gpu' ? `gpu-${index}` : null,
       specsVerified: category === 'gpu',
       imageContentRatio: null,
+      imageSha256: null,
     })),
   ),
 };

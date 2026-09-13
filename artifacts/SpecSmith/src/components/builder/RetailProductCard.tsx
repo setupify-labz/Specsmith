@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Check, ExternalLink, ImageOff, Plus } from 'lucide-react';
 
 import type { AffiliatePart } from '../../lib/retail/partCatalog';
@@ -11,12 +10,23 @@ import {
 } from '../../lib/retail/partPricing';
 import { imageZoom } from '../../lib/retail/imageFraming';
 import { UNVERIFIED_NOTICE, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
   part: AffiliatePart;
   selected: boolean;
   now: number;
   onToggle: (id: string) => void;
+  /** Opens the product detail view. The card itself stays a card. */
+  onOpenDetails?: (id: string) => void;
+  /**
+   * Approved local cut-outs, indexed by part id.
+   *
+   * Absent means every card loads the merchant's own image, which is the
+   * behaviour this component had before cut-outs existed.
+   */
+  processedImages?: Map<string, ProductImageEntry> | null;
 }
 
 /**
@@ -32,8 +42,17 @@ interface Props {
  * separate controls, because an invisible overlay covering the whole card
  * makes the destination of a click unguessable and swallows the link.
  */
-export default function RetailProductCard({ part, selected, now, onToggle }: Props) {
-  const [imageFailed, setImageFailed] = useState(false);
+export default function RetailProductCard({
+  part,
+  selected,
+  now,
+  onToggle,
+  onOpenDetails,
+  processedImages,
+}: Props) {
+  // The cut-out/merchant/placeholder ladder, shared with the detail drawer and
+  // the build summary so all three degrade identically.
+  const image = useResolvedProductImage(part, processedImages);
   const zoom = imageZoom(part.imageContentRatio);
   const view = priceView(part, now);
   const confidence = confidenceOf(part);
@@ -63,11 +82,20 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           fixed 240px, so image, title, price and both actions are visible
           together; from `md` up — where cards sit two to a row and there is
           room — it goes back to 4:3. `object-contain` holds in both. */}
-      <div
-        className="relative flex h-[240px] items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
-        style={{ background: 'var(--ff-surface)' }}
+      {/* The frame is BOTH the intuitive detail trigger and the surface a
+          cut-out is composited against. Its colour comes from the shared
+          .retail-photo-frame class rather than an inline style, because the
+          drawer and the build summary have to composite against exactly the
+          same colour — three copies of one declaration is how they drift. */}
+      <button
+        type="button"
+        onClick={() => onOpenDetails?.(part.id)}
+        aria-label={`View details for ${part.name}`}
+        data-testid="open-details-image"
+        disabled={onOpenDetails === undefined}
+        className="retail-photo-frame ff-accent-control relative flex h-[240px] w-full items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
       >
-        {imageFailed ? (
+        {image.failed ? (
           // A broken image loses the picture, never the product: the card keeps
           // its title, price and actions.
           <div
@@ -80,11 +108,12 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
           </div>
         ) : (
           <img
-            src={part.imageUrl}
+            src={image.src}
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setImageFailed(true)}
+            data-image-source={image.source}
+            onError={image.onError}
             className="object-contain p-3"
             style={{
               // Normally 100% — the image is contained in the frame and that
@@ -107,11 +136,17 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             Specs unverified
           </span>
         )}
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
         {/* The shortened title is what is shown; the complete merchant title is
             the accessible name, so nothing is withheld from a screen reader. */}
+        {/* TWO TRIGGERS, NOT THREE. The image is the intuitive one — a
+            product photograph is the thing people click — and "View details"
+            is the explicit one. The title used to be a third button, which
+            gave every card three tab stops that all did the same thing; a
+            keyboard user crossing a 24-card grid met 72 stops to reach the
+            same 24 destinations. It is a heading again. */}
         <h3
           className="text-sm font-medium leading-snug"
           style={{ color: 'var(--ff-text)' }}
@@ -149,6 +184,18 @@ export default function RetailProductCard({ part, selected, now, onToggle }: Pro
             {AVAILABILITY_UNKNOWN_LABEL}
           </p>
         </div>
+
+        {onOpenDetails !== undefined && (
+          <button
+            type="button"
+            onClick={() => onOpenDetails(part.id)}
+            data-testid="view-details"
+            className="ff-accent-control self-start rounded text-[11px] font-medium underline"
+            style={{ color: 'var(--ff-text-2)' }}
+          >
+            View details
+          </button>
+        )}
 
         <div className="flex gap-2 pt-1">
           <button

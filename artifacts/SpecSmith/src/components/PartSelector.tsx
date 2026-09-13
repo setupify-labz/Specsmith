@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown, ChevronUp, Search, Check,
@@ -47,13 +47,87 @@ interface PartSelectorProps {
   getSpecs: (part: Part) => { label: string; value: string }[];
   defaultOpen?: boolean;
   recommendedIds?: string[];
+  /**
+   * Bumped to open this selector from outside — the header's "choose a
+   * processor" action, which has to reach the processor rather than the top
+   * of the page.
+   *
+   * A token rather than a boolean, so the same selector can be asked for
+   * twice running: a `shouldOpen` flag is unchanged on the second click and
+   * would quietly do nothing after the shopper collapses the panel again.
+   */
+  openSignal?: number;
 }
+
+/**
+ * How many frames a scroll request may keep re-asserting itself.
+ *
+ * Generous enough to outlast a panel expanding and the layout settling around
+ * it, small enough that an element which can never come into view stops trying
+ * well inside a second.
+ */
+const SCROLL_ATTEMPT_FRAMES = 30;
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, recommendedIds = [],
+  defaultOpen = false, recommendedIds = [], openSignal,
 }: PartSelectorProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Opens this selector on request, and brings it into view — EVERY time.
+   *
+   * KEYED ON THE TOKEN, NOT ON `open`. This was two effects: one calling
+   * `setOpen(true)`, and one keyed on `open` that did the scrolling. That works
+   * exactly once, from closed. `setOpen(true)` on an already-open selector
+   * changes no state, so React does not re-render, so an effect watching `open`
+   * never runs again — and the request silently did nothing. Two cases hit this
+   * in ordinary use: the GPU selector, which is `defaultOpen`, and any category
+   * asked for twice running. Both are a shopper clicking a button and watching
+   * nothing happen.
+   *
+   * WHY IT RE-ASSERTS RATHER THAN SCROLLING ONCE. `scrollIntoView` computes its
+   * target from the layout at the moment it is called, and this panel is
+   * expanding as it is called — so a single scroll can be aimed at an offset
+   * that stops existing a frame later, and Chromium abandons it. Measured at
+   * 375px: the page moved two pixels and the processor stayed off screen, on
+   * the first request after a page load but not the second, which is the
+   * signature of a race rather than a mistake in the ordering.
+   *
+   * So it does not guess when the layout is final. It watches for the only
+   * thing that matters — is the selector actually on screen? — and re-issues
+   * the scroll until it is, giving up after a bounded number of frames so a
+   * genuinely unreachable element cannot spin forever. Converging on an
+   * observable condition, rather than a delay tuned to one machine.
+   */
+  useEffect(() => {
+    if (openSignal === undefined) return;
+    setOpen(true);
+
+    let frame: number | null = null;
+    let framesLeft = SCROLL_ATTEMPT_FRAMES;
+
+    const settle = () => {
+      frame = null;
+      const element = rootRef.current;
+      if (!element) return;
+      const box = element.getBoundingClientRect();
+      const onScreen = box.top < window.innerHeight && box.bottom > 0;
+      if (onScreen || framesLeft <= 0) return;
+      framesLeft -= 1;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      frame = requestAnimationFrame(settle);
+    };
+
+    frame = requestAnimationFrame(settle);
+    // The pending frame is always cancelled — a selector unmounted, or a newer
+    // request arriving, must not leave a scroll scheduled against a stale
+    // target or a node that is gone.
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [openSignal]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('performance');
 
@@ -98,6 +172,8 @@ export default function PartSelector({
 
   return (
     <div
+      ref={rootRef}
+      data-part-section={category}
       className="rounded-2xl overflow-hidden transition-shadow"
       style={{
         border: `1px solid ${selectedId ? 'var(--ff-accent-30)' : 'var(--ff-border)'}`,

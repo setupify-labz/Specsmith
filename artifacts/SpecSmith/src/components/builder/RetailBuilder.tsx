@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
 import { groupByCategory } from '../../lib/retail/retailShopping';
+import { WHITE_COLLECTION_NOTE, whiteBuildParts, whiteParts } from '../../lib/retail/whiteBuild';
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
+import type { ProductImageEntry } from '../../lib/retail/processedImages';
+import type { ImportedRecommendation } from '../../lib/retail/importedBuild';
 
 interface Props {
   /** The 500-part retailer catalogue. Retail SKUs only — canonical parts never reach here. */
@@ -15,6 +18,21 @@ interface Props {
   onSelect: (category: RetailPartCategory, id: string | null) => void;
   /** Injected so freshness is deterministic in tests. */
   now?: number;
+  /** Passed to the summary, which renders the FPS action inside the build. */
+  estimate?: { canEstimate: boolean; onEstimate: () => void };
+  /** Approved local cut-outs, indexed by part id. Absent means merchant images. */
+  processedImages?: Map<string, ProductImageEntry> | null;
+  /**
+   * A request from outside to open a category — the header's "choose a
+   * motherboard" action.
+   *
+   * Carries a token rather than just a category so the SAME category can be
+   * requested twice running and still register; a bare category prop would be
+   * unchanged on the second click and quietly do nothing.
+   */
+  categoryRequest?: { category: RetailPartCategory; token: number } | null;
+  /** Canonical models imported from elsewhere and not yet replaced by a listing. */
+  imported?: readonly ImportedRecommendation[];
 }
 
 /**
@@ -27,13 +45,75 @@ interface Props {
  * The page scrolls; nothing inside it does. The summary is `position: sticky`,
  * which keeps it in view without creating a second scroll region.
  */
-export default function RetailBuilder({ parts, selection, onSelect, now }: Props) {
+export default function RetailBuilder({
+  parts,
+  selection,
+  onSelect,
+  now,
+  estimate,
+  processedImages,
+  categoryRequest,
+  imported,
+}: Props) {
   const [active, setActive] = useState<RetailPartCategory>('gpu');
+  // Opening a category from outside is the same act as clicking it in the
+  // rail: `active` changes, the catalogue's key changes with it, and #102's
+  // browsing-state reset happens exactly as it does for any other switch.
+  const requestToken = categoryRequest?.token;
+  const requestedCategory = categoryRequest?.category;
+  useEffect(() => {
+    if (requestToken === undefined || requestedCategory === undefined) return;
+    setActive(requestedCategory);
+  }, [requestToken, requestedCategory]);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+
+  /**
+   * Where focus goes after a planned row sends the shopper to a category.
+   *
+   * On a phone the sheet closes, which DESTROYS the button that was focused —
+   * focus falls back to the document body, and a keyboard or screen-reader
+   * user is dropped at the top of the page with no idea the category changed.
+   * Moving it onto the now-active category control says where they landed and
+   * leaves them next to the products they were sent to.
+   */
+  const [focusAfterChoose, setFocusAfterChoose] = useState<RetailPartCategory | null>(null);
+  useEffect(() => {
+    if (!focusAfterChoose) return;
+    // After the commit that closed the sheet, so the target exists and the
+    // element that had focus is already gone.
+    const frame = requestAnimationFrame(() => {
+      const candidates = [
+        `[data-testid="category-chip-${focusAfterChoose}"]`,
+        `[data-testid="category-rail-${focusAfterChoose}"]`,
+      ].flatMap((selector) => [...document.querySelectorAll<HTMLElement>(selector)]);
+      // Prefer one that is actually on screen — the chip row on a phone, the
+      // rail on a desktop. A layout-free environment reports every element as
+      // unrendered, so falling back to the first match keeps this working
+      // there rather than silently focusing nothing.
+      const visible = candidates.find(
+        (element) => element.offsetParent !== null || element.getClientRects().length > 0,
+      );
+      (visible ?? candidates[0])?.focus();
+      setFocusAfterChoose(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAfterChoose]);
   const clock = now ?? Date.now();
 
-  const byCategory = useMemo(() => groupByCategory(parts), [parts]);
+  // THE WHITE COLLECTION IS A FILTER, NOT A CATEGORY. The twelve categories
+  // stay exactly as they are; switching it on narrows each one to the listings
+  // whose own merchant title states a white finish. Every SKU keeps its price,
+  // its image and its link, because it is the same SKU.
+  const [whiteOnly, setWhiteOnly] = useState(false);
+  // whiteBuildParts, not whiteParts: the colour filter applies to the parts a
+  // finished build shows, and leaves the ones it hides — a CPU under a cooler,
+  // an SSD inside the case — with their ordinary compatible options. Filtering
+  // those to nothing made the collection unable to complete a PC without
+  // making it any whiter.
+  const visibleParts = useMemo(() => (whiteOnly ? whiteBuildParts(parts) : [...parts]), [parts, whiteOnly]);
+
+  const byCategory = useMemo(() => groupByCategory(visibleParts), [visibleParts]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);
 
   const counts = useMemo(() => {
@@ -41,6 +121,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
     for (const [category, list] of byCategory) result[category] = list.length;
     return result;
   }, [byCategory]);
+
+  const whiteTotal = useMemo(() => whiteParts(parts).length, [parts]);
 
   const selectedParts = useMemo(
     () =>
@@ -64,6 +146,23 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
       collapsed={summaryCollapsed}
       onToggleCollapsed={() => setSummaryCollapsed((value) => !value)}
       onRemove={(category) => onSelect(category, null)}
+      estimate={estimate}
+      processedImages={processedImages}
+      imported={imported}
+      // Choosing a listing for a recommendation is the same act as opening that
+      // category from anywhere else, so it goes through the same path — the
+      // rail switches, and #102's browsing-state reset happens as it always does.
+      //
+      // THE DRAWER HAS TO CLOSE. On a phone the summary is a sheet ACROSS the
+      // catalogue, so switching the category underneath it and leaving it open
+      // shows the shopper the same drawer they just tapped in — the action
+      // appears to do nothing. Closing it is what makes "choose current
+      // listing" mean anything on the width where most of them will tap it.
+      onChooseListing={(category) => {
+        setActive(category as RetailPartCategory);
+        setMobileSummaryOpen(false);
+        setFocusAfterChoose(category as RetailPartCategory);
+      }}
     />
   );
 
@@ -71,6 +170,30 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
   return (
     <div data-testid="retail-builder">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setWhiteOnly((on) => !on)}
+          aria-pressed={whiteOnly}
+          data-testid="white-build-toggle"
+          className="ff-accent-control flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold"
+          style={{
+            background: whiteOnly ? 'var(--ff-accent-solid)' : 'var(--ff-card)',
+            color: whiteOnly ? 'var(--ff-on-accent)' : 'var(--ff-text-2)',
+            border: `1px solid ${whiteOnly ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
+          }}
+        >
+          <Sparkles size={15} aria-hidden="true" />
+          White build
+          <span style={{ opacity: 0.8 }}>{whiteTotal}</span>
+        </button>
+        {whiteOnly && (
+          <p className="text-[11px] leading-snug" style={{ color: 'var(--ff-text-3)', maxWidth: '52ch' }} data-testid="white-build-note">
+            {WHITE_COLLECTION_NOTE}
+          </p>
+        )}
+      </div>
+
       {/* Mobile category controls. */}
       <div className="mb-4 lg:hidden">
         <CategoryChips {...navProps} />
@@ -78,7 +201,8 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
       <div className="flex gap-6">
         {/* Left rail — desktop only. */}
-        <div className="hidden w-56 shrink-0 lg:block">
+        {/* 224px, widening to 240px on a large desktop — the review's 220-250 band. */}
+        <div className="hidden w-56 shrink-0 lg:block 2xl:w-60">
           <div className="sticky top-20">
             <CategoryRail {...navProps} />
           </div>
@@ -86,17 +210,41 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
 
         {/* Centre catalogue. */}
         <div className="min-w-0 flex-1">
+          {/* Remounting on category change is what resets browsing state
+              (issue #102): a shopper's graphics-card search, brand and price
+              filters, sort, open filter panel and "Load more" page all belong
+              to the category they were chosen in, and must not follow them to
+              the next one. `key` clears all of it in the same render the new
+              category first appears, so no stale "0 of 55 products" is ever
+              painted; an effect-based reset would flash it first, and would
+              have to remember to clear each future piece of state by hand.
+              The build itself lives in `selection`, above this component, and
+              is deliberately untouched by any of this.
+
+              THE WHITE BUILD TOGGLE IS THE SAME PROBLEM. Switching the
+              collection on changes which products exist, so a search for
+              "3050", a brand chip, a price range, a "Load more" page and an
+              open product detail can all be left pointing at listings the view
+              no longer contains — the same stale "0 of 21 products" #102 was
+              about. It belongs in the key for the same reason the category
+              does. The selected parts survive, because they live in
+              `selection` and a remount here cannot reach them. */}
           <RetailCatalog
+            key={`${active}:${whiteOnly ? 'white' : 'all'}`}
             category={active}
+            whiteOnly={whiteOnly}
             parts={byCategory.get(active) ?? []}
             selectedId={selection[active] ?? null}
             now={clock}
+            processedImages={processedImages}
             onToggle={(id) => onSelect(active, selection[active] === id ? null : id)}
           />
         </div>
 
         {/* Right summary — desktop only, sticky rather than independently scrolling. */}
-        <div className="hidden w-72 shrink-0 xl:block">
+        {/* 320px, widening to 360px — the review's 320-380 band. It was 288px,
+            which cropped the longer merchant titles in the summary. */}
+        <div className="hidden w-80 shrink-0 xl:block 2xl:w-[360px]">
           <div className="sticky top-20">{summary}</div>
         </div>
       </div>
@@ -110,6 +258,7 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
             <button
               type="button"
               aria-label="Close build summary"
+              data-testid="close-build-summary"
               className="absolute inset-0"
               onClick={() => setMobileSummaryOpen(false)}
             />
@@ -128,7 +277,10 @@ export default function RetailBuilder({ parts, selection, onSelect, now }: Props
             style={{ background: 'var(--ff-accent-solid)', color: 'var(--ff-on-accent)' }}
           >
             <ShoppingCart size={16} aria-hidden="true" />
-            View build ({selectedParts.length})
+            {/* The same number the summary shows, and the same number the
+                header counts: exact listings plus recommendations not yet
+                replaced. Three places describing one build must not disagree. */}
+            View build ({selectedParts.length + (imported?.length ?? 0)})
           </button>
         </div>
       </div>

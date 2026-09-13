@@ -293,9 +293,14 @@ describe('a card states its price honestly', () => {
   });
 
   it('shows the full merchant title as the accessible name', () => {
+    // The heading holds the shortened title and carries the full merchant
+    // title as its accessible name. It is no longer a button: a third
+    // equivalent tab stop per card bought nothing a keyboard user wanted.
     const long = catalog.parts.find((part) => part.name.length > 80)!;
     cardFor(long, FRESH_NOW);
-    expect(screen.getByRole('heading', { level: 3 }).getAttribute('aria-label')).toBe(long.name);
+    const heading = screen.getByRole('heading', { level: 3 });
+    expect(heading.getAttribute('aria-label')).toBe(long.name);
+    expect(within(heading).queryByRole('button')).toBeNull();
   });
 });
 
