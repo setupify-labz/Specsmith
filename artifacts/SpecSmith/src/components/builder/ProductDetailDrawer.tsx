@@ -5,7 +5,7 @@ import type { AffiliatePart } from '../../lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN_LABEL, STALE_PRICE_LABEL, formatAmount, formatCheckedAt, priceView } from '../../lib/retail/partPricing';
 import { imageAltText, verifiedImages } from '../../lib/retail/productImages';
 import { imageZoom } from '../../lib/retail/imageFraming';
-import { UNVERIFIED_NOTICE, confidenceOf } from '../../lib/retail/retailShopping';
+import { confidenceOf, unverifiedNoticeFor } from '../../lib/retail/retailShopping';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
@@ -344,7 +344,7 @@ export default function ProductDetailDrawer({
           )}
           <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }}>{AVAILABILITY_UNKNOWN_LABEL}</p>
           {confidenceOf(part) === 'unverified' && (
-            <p className="text-[11px]" style={{ color: 'var(--ff-amber)' }}>{UNVERIFIED_NOTICE}</p>
+            <p className="text-[11px]" style={{ color: 'var(--ff-amber)' }}>{unverifiedNoticeFor(part)}</p>
           )}
         </div>
 

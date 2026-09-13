@@ -37,96 +37,101 @@ export function getUpgradeGpu(id: string): UpgradeGpu | undefined {
   return gpus.find(g => g.id === id);
 }
 
-/** Rough street resale value for a used card — no live market data behind
- * this, just a flat percentage of listed price rounded to a clean number.
- * Framed as an estimate everywhere it's shown, same as the FPS numbers. */
-export function estimateResaleValue(price: number): number {
-  return Math.round((price * 0.65) / 5) * 5;
-}
+/**
+ * The CPU every FPS figure on the upgrade pages is modelled against.
+ *
+ * Exported because it is a LOAD-BEARING ASSUMPTION, not an implementation
+ * detail: the guide pages name it, so a reader knows what the estimate is
+ * conditional on. Read from here rather than written into prose, so the chip
+ * the page names cannot drift from the chip the estimator used.
+ */
+export const UPGRADE_REFERENCE_CPU = referenceCpu as { id: string; name: string; cpu_multiplier: number };
 
 export function averageFps(gpu: UpgradeGpu, resolution = '1440p', preset = 'high'): number {
   const total = games.reduce((sum, g) => sum + estimateFpsForBuild(gpu, referenceCpu, g, resolution, preset).estimated, 0);
   return Math.round(total / games.length);
 }
 
-export type UpgradeVerdict = 'strong' | 'moderate' | 'marginal';
-
-export interface UpgradeCandidate {
+/**
+ * Every tracked GPU that this one's modelled average does not reach.
+ *
+ * PRICE TOUCHES NOTHING HERE, and that is the whole point of the function.
+ * An earlier buying calculator kept the cheapest card in each tier, so an
+ * editorial price silently decided what readers saw. A performance comparison
+ * must instead be selected and ordered only by the performance model.
+ *
+ * So this returns the COMPLETE set — no per-tier filter, no limit — ordered by
+ * modelled difference. The list is longer for a low-end card (56 rows from an
+ * RX 6400) and shorter for a fast one, which is the honest shape of the
+ * question. Nothing is selected on the reader's behalf.
+ */
+export interface UpgradeComparison {
   gpu: UpgradeGpu;
-  netCost: number;
+  /** Modelled 20-game average for the card being compared against. */
   avgFpsCurrent: number;
+  /** Modelled 20-game average for this card. */
   avgFpsNew: number;
-  fpsGainPct: number;
-  verdict: UpgradeVerdict;
-  /** Dollars spent per average FPS gained (netCost / FPS gained), rounded.
-   * Null when netCost is 0; non-upgrades are filtered before candidates are
-   * returned, so every returned candidate has a positive modeled FPS gain. */
-  costPerFps: number | null;
+  /** Modelled difference, as a percentage of the current card's average. */
+  fpsDiffPct: number;
 }
 
-/** GPUs worth considering as an upgrade from the given card. Picks the
- * cheapest option in each tier above the current one (one per tier, tier
- * ascending) rather than just the N cheapest overall — the latter tends to
- * cluster every result right at the next tier boundary, which for a budget
- * card means showing six "marginal gain" options and never surfacing the
- * bigger jump that'd actually be worth it.
- *
- * Tier is only a catalog grouping, not proof that one card is faster than
- * another in SpecSmith's modeled game set. Candidates therefore have to beat
- * the current card on the same 20-game 1440p High reference before they can be
- * called an upgrade. Filtering happens before the result limit so an invalid
- * higher-tier card cannot hide a later real upgrade. Net cost accounts for
- * reselling the old card at the flat estimate above. */
-export function getUpgradeCandidates(currentId: string, limit = 6): UpgradeCandidate[] {
+export function getUpgradeComparisons(currentId: string): UpgradeComparison[] {
   const current = getUpgradeGpu(currentId);
   if (!current) return [];
-
-  const resale = estimateResaleValue(current.price_usd);
   const avgFpsCurrent = averageFps(current);
 
-  const cheapestPerTier = new Map<number, UpgradeGpu>();
-  for (const g of gpus) {
-    if (g.tier <= current.tier) continue;
-    const existing = cheapestPerTier.get(g.tier);
-    if (!existing || g.price_usd < existing.price_usd) cheapestPerTier.set(g.tier, g);
-  }
-
-  return [...cheapestPerTier.values()]
-    .sort((a, b) => a.tier - b.tier)
-    .map(gpu => {
+  return gpus
+    .filter((gpu) => gpu.id !== current.id)
+    .map((gpu) => {
       const avgFpsNew = averageFps(gpu);
-      const netCost = Math.max(0, gpu.price_usd - resale);
-      const fpsGainPct = Math.round(((avgFpsNew - avgFpsCurrent) / avgFpsCurrent) * 100);
-      const verdict: UpgradeVerdict = fpsGainPct >= 30 ? 'strong' : fpsGainPct >= 15 ? 'moderate' : 'marginal';
-      const fpsGained = avgFpsNew - avgFpsCurrent;
-      const costPerFps = netCost > 0 && fpsGained > 0 ? Math.round(netCost / fpsGained) : null;
-      return { gpu, netCost, avgFpsCurrent, avgFpsNew, fpsGainPct, verdict, costPerFps };
+      return {
+        gpu,
+        avgFpsCurrent,
+        avgFpsNew,
+        fpsDiffPct: Math.round(((avgFpsNew - avgFpsCurrent) / avgFpsCurrent) * 100),
+      };
     })
-    .filter(candidate => candidate.avgFpsNew > candidate.avgFpsCurrent && candidate.fpsGainPct > 0)
-    .slice(0, limit);
+    // Tier is a catalogue grouping, not evidence that one card is faster. The
+    // modelled average is what this page compares, so it is what filters.
+    .filter((row) => row.avgFpsNew > row.avgFpsCurrent && row.fpsDiffPct > 0)
+    .sort((a, b) => b.fpsDiffPct - a.fpsDiffPct || a.gpu.name.localeCompare(b.gpu.name));
 }
 
-/** The candidate with the lowest $/FPS — the best-value pick, which isn't
- * always the one with the biggest raw FPS gain. Undefined when no
- * candidate has a computable costPerFps (see UpgradeCandidate.costPerFps). */
-export function getBestValueCandidate(candidates: UpgradeCandidate[]): UpgradeCandidate | undefined {
-  return candidates
-    .filter((c): c is UpgradeCandidate & { costPerFps: number } => c.costPerFps !== null)
-    .reduce<UpgradeCandidate | undefined>((best, c) => (!best || c.costPerFps! < best.costPerFps!) ? c : best, undefined);
+/**
+ * A compact, price-independent preview for the upgrade-guide page.
+ *
+ * Rendering the complete comparison set produced as many as 56 near-identical
+ * rows on each low-end GPU page. That is difficult to scan and makes the
+ * programmatic pages repeat almost the entire GPU catalogue. The preview keeps
+ * the closest modelled steps above the selected card, ordered from the
+ * smallest difference upward. It is a navigation aid, not a recommendation.
+ */
+export const UPGRADE_COMPARISON_PREVIEW_LIMIT = 8;
+
+export function getClosestUpgradeComparisons(
+  currentId: string,
+  limit = UPGRADE_COMPARISON_PREVIEW_LIMIT,
+): UpgradeComparison[] {
+  if (!Number.isInteger(limit) || limit <= 0) return [];
+
+  return getUpgradeComparisons(currentId)
+    .slice()
+    .sort((a, b) => a.fpsDiffPct - b.fpsDiffPct || a.gpu.name.localeCompare(b.gpu.name))
+    .slice(0, limit);
 }
 
 export const upgradeCalculatorFaqs = [
   {
-    title: 'How is the resale value calculated?',
-    content: 'It\'s a flat 65% of the card\'s current listed price, rounded to a clean number — a rough estimate to plan around, not a live market quote. Actual used prices vary by condition, region, and demand, so treat it as a starting point, not gospel.',
+    title: 'How are the FPS estimates calculated?',
+    content: `SpecSmith models all 20 tracked games at 1440p High with a fixed ${UPGRADE_REFERENCE_CPU.name} reference CPU. These are model estimates, not measured benchmark results for your exact PC.`,
   },
   {
-    title: 'What counts as a "strong", "moderate", or "marginal" upgrade?',
-    content: 'It\'s based on the average FPS gain across all 20 tracked games at 1440p High: 30%+ is a strong upgrade, 15-29% is moderate, and under 15% is marginal — worth knowing before spending money on a card that won\'t feel meaningfully faster.',
+    title: 'Which GPUs does the calculator show?',
+    content: `It shows up to ${UPGRADE_COMPARISON_PREVIEW_LIMIT} GPUs with the closest higher modelled averages, ordered from the smallest estimated difference upward. Price does not affect which GPUs appear.`,
   },
   {
-    title: 'Why does "Net Cost" matter more than the new card\'s price?',
-    content: 'Net cost subtracts your current card\'s estimated resale value from the new card\'s price — it\'s what the upgrade actually costs you out of pocket if you sell your old GPU, which is usually the number that matters when deciding whether it\'s worth it.',
+    title: 'Does SpecSmith recommend which GPU I should buy?',
+    content: 'No. This calculator compares modelled performance only. It does not use live prices, resale values, your exact CPU, power supply, case clearance, games or settings, so check those facts before choosing a card.',
   },
 ];
 

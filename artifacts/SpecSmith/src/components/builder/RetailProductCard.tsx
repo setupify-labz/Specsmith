@@ -9,7 +9,7 @@ import {
   priceView,
 } from '../../lib/retail/partPricing';
 import { imageZoom } from '../../lib/retail/imageFraming';
-import { UNVERIFIED_NOTICE, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import { confidenceOf, shortenTitle, unverifiedNoticeFor } from '../../lib/retail/retailShopping';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
@@ -131,7 +131,7 @@ export default function RetailProductCard({
           <span
             className="absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium"
             style={{ background: 'var(--ff-surface)', color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}
-            title={UNVERIFIED_NOTICE}
+            title={unverifiedNoticeFor(part)}
           >
             Specs unverified
           </span>

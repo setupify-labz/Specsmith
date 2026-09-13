@@ -19,6 +19,11 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { useAffiliatePartCatalog } from '../hooks/useAffiliatePartCatalog';
 import { useProductImageManifest } from '../hooks/useProductImageManifest';
+import {
+  compatibilityView,
+  hasVerifiedIdentity,
+  type SelectionOrigin,
+} from '../lib/retail/partIdentity';
 import RetailBuilder from '../components/builder/RetailBuilder';
 import BuilderSkeleton from '../components/builder/BuilderSkeleton';
 import {
@@ -27,11 +32,14 @@ import {
   type CanonicalPartRef,
 } from '../lib/retail/importedBuild';
 import {
+  CATALOGUE_PENDING,
   CORE_BUILD_TOTAL,
-  coreBuildCount,
-  coreBuildLabel,
+  catalogueComplete,
+  cataloguePartial,
   coreCategoryAction,
-  nextMissingCoreCategory,
+  coreReplacementAction,
+  describeCoreBuild,
+  type CatalogueKnowledge,
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
@@ -62,8 +70,12 @@ const games = gamesData as Game[];
 
 const builderFaqs = [
   {
-    title: 'How accurate are the FPS estimates for my exact build?',
-    content: 'They use the same transparent tier-based algorithm explained on the About page, applied to whatever specific GPU/CPU/game/resolution/preset combination you\'ve picked here — not a generic average. Estimates are a planning guide, not a guarantee; real-world results vary by driver version, game patch, and background load. For a real, cited benchmark instead of an estimate, check Verified Benchmarks below the estimator — coverage is still small, so it won\'t have every combination yet.',
+    title: 'How does the PC build FPS calculator work?',
+    content: 'It maps the selected GPU and CPU to SpecSmith\'s supported hardware models, then estimates FPS for the game, resolution, and quality preset you choose. The result is a planning estimate, not a measurement of the exact products in your cart. Drivers, game patches, cooling, memory, and background software can change real performance. Where SpecSmith has a cited measured benchmark for the selected configuration, it is shown separately as a verified benchmark.',
+  },
+  {
+    title: 'Can I test a PC build before buying it?',
+    content: 'You can evaluate a planned build before buying by checking supported compatibility rules, reviewing its known-price subtotal, and estimating game performance. This is not a remote benchmark or stress test of hardware you already own, and it cannot guarantee that every exact product fits. Confirm unverified dimensions, connectors, BIOS support, and current availability with the manufacturers and retailers before ordering.',
   },
   {
     title: 'Can I add a part that isn\'t in the list?',
@@ -75,7 +87,7 @@ const builderFaqs = [
   },
   {
     title: 'What do the compatibility warnings actually mean?',
-    content: 'Each one explains the specific reason for the conflict, a suggested fix, and how confident we are — "certain" for hard incompatibilities (like a socket mismatch) versus "likely" for things that depend on factors we can\'t fully verify (like exact case clearance). They\'re not just a red flag — click into one to see the reasoning.',
+    content: 'Each warning explains the rule that triggered it, a suggested fix, and its confidence. A certain warning comes from the structured specifications available to that check; a likely warning depends on incomplete or model-level information. Compatibility coverage is not exhaustive, so no warning is a promise that every unmentioned detail is compatible. Confirm exact dimensions, connectors, and BIOS support before ordering.',
   },
 ];
 
@@ -157,15 +169,34 @@ export default function Builder() {
     return map;
   }, [affiliateCatalog]);
 
-  const resolveCanonical = <T extends { id: string }>(list: T[], id: string | null): T | null => {
-    if (!id) return null;
-    // A legacy saved build names a canonical id directly.
+  /**
+   * The canonical part behind a selection, and WHERE the selection came from.
+   *
+   * The origin is the point. A canonical id names a model, and the model's
+   * figures describe it. A retail listing names one box on a shelf, and the
+   * model's figures do not describe that box — its length and power draw
+   * depend on which board partner built it.
+   *
+   * Keyed on `canonicalPartId` rather than on `specsVerified`: the mapping is
+   * an identity finding from the model matcher, and gating it on a
+   * specifications flag conflated the two questions this split exists to
+   * separate.
+   */
+  const resolveWithOrigin = <T extends { id: string }>(
+    list: T[],
+    id: string | null,
+  ): { part: T | null; origin: SelectionOrigin } => {
+    if (!id) return { part: null, origin: 'canonical' };
     const direct = list.find((part) => part.id === id);
-    if (direct) return direct;
+    if (direct) return { part: direct, origin: 'canonical' };
     const sku = retailById.get(id);
-    const canonicalId = sku && sku.specsVerified ? sku.canonicalPartId : null;
-    return canonicalId ? list.find((part) => part.id === canonicalId) ?? null : null;
+    const canonicalId = sku && hasVerifiedIdentity(sku) ? sku.canonicalPartId : null;
+    const part = canonicalId ? list.find((entry) => entry.id === canonicalId) ?? null : null;
+    return { part, origin: 'retail-listing' };
   };
+
+  const resolveCanonical = <T extends { id: string }>(list: T[], id: string | null): T | null =>
+    resolveWithOrigin(list, id).part;
 
   // Parse initial state from URL params (from prebuilts "Load into Builder" or share link)
   const initialBuild = useMemo(() => {
@@ -291,18 +322,37 @@ export default function Builder() {
     [build, retailIds, canonicalById],
   );
 
-  const knownPartIds = useMemo<ReadonlySet<string> | null>(() => {
-    if (affiliateCatalog.status === 'loading') return null;
-    // Exact listings AND recognised models, so the counter and the summary
-    // describe the same set — including a build that arrived from elsewhere.
-    // An id in neither is still rejected and counts for nothing.
-    if (affiliateCatalog.status === 'ok') return recognisedPartIds(retailIds, canonicalById);
-    return new Set(canonicalById.keys());
+  /**
+   * What this page is actually entitled to say about a saved id.
+   *
+   * The three cases are NOT interchangeable, and treating the third as the
+   * second was a defect: on a failed download every saved retailer SKU was
+   * classified as missing, so the page told the shopper both "live listings
+   * could not be loaded" and "your processor is no longer available". The
+   * second sentence is not something a failed HTTP request can establish.
+   *
+   * - loading  → nothing is knowable yet.
+   * - ok       → exact listings AND recognised models, so the counter and the
+   *              summary describe the same set, including a build that
+   *              arrived from elsewhere. An id in neither is genuinely not in
+   *              our catalogue.
+   * - failed   → canonical parts are bundled with the app, so those are still
+   *              knowable and still count. A retailer SKU cannot be checked
+   *              against a catalogue that never arrived, so it is left
+   *              unchecked rather than condemned.
+   */
+  const catalogueKnowledge = useMemo<CatalogueKnowledge>(() => {
+    if (affiliateCatalog.status === 'loading') return CATALOGUE_PENDING;
+    if (affiliateCatalog.status === 'ok') {
+      return catalogueComplete(recognisedPartIds(retailIds, canonicalById));
+    }
+    return cataloguePartial(new Set(canonicalById.keys()));
   }, [affiliateCatalog, retailIds, canonicalById]);
 
-  const coreChosen = coreBuildCount(build, knownPartIds);
-  const coreLabel = coreBuildLabel(build, knownPartIds);
-  const nextCoreCategory = nextMissingCoreCategory(build, knownPartIds);
+  // ONE reading of the build, shared by every surface that describes it — the
+  // counter here, the cart, the desktop rail and the mobile chips. They drifted
+  // apart by being derived three different ways in three different files.
+  const core = describeCoreBuild(build, catalogueKnowledge);
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -351,6 +401,10 @@ export default function Builder() {
   const selectedPsu = resolveCanonical(builderPsus, build.psu);
   const selectedCase = resolveCanonical(builderCases, build.case);
   const selectedCooler = resolveCanonical(builderCoolers, build.cooler);
+  // Only the GPU carries per-unit figures the checker uses today (length and
+  // power). The origin is tracked here so the withholding is visible at the
+  // call site rather than buried in the view helper.
+  const gpuOrigin = resolveWithOrigin(builderGpus, build.gpu).origin;
   const selectedMonitor = resolveCanonical(builderMonitors, build.monitor);
   const selectedKeyboard = resolveCanonical(builderKeyboards, build.keyboard);
   const selectedMouse = resolveCanonical(builderMice, build.mouse);
@@ -358,7 +412,13 @@ export default function Builder() {
 
   const compat = useMemo(() => {
     const result = checkCompatibility({
-      gpu: selectedGpu, cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam,
+      // GENERIC MODEL FIGURES MAY NOT DECIDE AN EXACT LISTING'S FIT. For a
+      // retail SKU the canonical record's length and TDP are withheld, so the
+      // clearance and power checks do not run rather than running on a
+      // measurement of a different object. The FPS estimator below still gets
+      // the full canonical part, because it models the chip.
+      gpu: compatibilityView(selectedGpu, gpuOrigin),
+      cpu: selectedCpu, motherboard: selectedMb, ram: selectedRam,
       psu: selectedPsu, case: selectedCase, cooler: selectedCooler,
     });
     // Monitor pairing warnings
@@ -391,7 +451,11 @@ export default function Builder() {
       }
     }
     return result;
-  }, [selectedGpu, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
+    // `gpuOrigin` is a dependency in its own right. Switching from the canonical
+    // rtx5070 to a retail listing OF an rtx5070 leaves `selectedGpu` at the same
+    // object, so an identity-based dep list would keep the canonical result —
+    // and go on reporting a clearance verdict that must no longer be made.
+  }, [selectedGpu, gpuOrigin, selectedCpu, selectedMb, selectedRam, selectedPsu, selectedCase, selectedCooler, selectedMonitor]);
   const warnings = compat.warnings;
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
@@ -471,11 +535,16 @@ export default function Builder() {
       <div className="ff-builder-shell px-4 sm:px-6 lg:px-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-black mb-2" style={{ color: 'var(--ff-text)' }}>
-            PC <span className="gradient-text">Builder</span>
+            PC Build <span className="gradient-text">Calculator</span>
           </h1>
-          <p className="text-sm mb-4" style={{ color: 'var(--ff-text-2)' }}>Select your components and estimate FPS across 20 games.</p>
+          <p className="text-sm sm:text-base max-w-3xl mb-2 leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+            Choose PC parts, total current listing prices, check supported compatibility rules, and estimate gaming FPS across 20 games at 1080p, 1440p, or 4K.
+          </p>
+          <p className="text-xs mb-4" style={{ color: 'var(--ff-text-3)' }}>
+            Free to use · No account required · Estimates are clearly separated from measured benchmarks
+          </p>
 
-          {coreChosen === 0 && (
+          {core.settled && core.count === 0 && (
             <Link to="/quiz" className="inline-flex items-center gap-1.5 text-xs font-semibold mb-4 hover:opacity-80"
               style={{ color: 'var(--ff-accent-text)' }}>
               <Sparkles size={12} /> Not sure where to start? Take the 2-question PC Build Quiz →
@@ -487,9 +556,15 @@ export default function Builder() {
               only listings whose specs are verified. One core category is
               verified in the published catalogue, so choosing a CPU and a
               motherboard moved it not at all: the summary said three parts and
-              this said one. It now counts the eight core selections
-              themselves. Whether a part's specs are verified, and whether the
-              build is compatible, are different questions with their own
+              this said one.
+
+              It counts the slots the live catalogue can fill by exact id,
+              which is the test the cart applies too. WHILE THE CATALOGUE IS IN
+              FLIGHT it states no number at all: an unchecked draft is not a
+              finished build, and a bar reading "8 of 8" before anything has
+              looked at a single saved id is a guess that happens to be right
+              most days. Whether a part's specs are verified, and whether the
+              build is compatible, remain different questions with their own
               places on this page, and both stay fail-closed. */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <div className="flex items-center gap-3" style={{ minWidth: '16rem', maxWidth: '20rem', flex: '1 1 16rem' }}>
@@ -497,16 +572,23 @@ export default function Builder() {
                 className="flex-1 h-1.5 rounded-full overflow-hidden"
                 style={{ backgroundColor: 'var(--ff-border)' }}
                 role="progressbar"
-                aria-valuenow={coreChosen}
+                // Busy ONLY while something is actually in flight: a bar
+                // marked busy after a failed download announces work that
+                // will never finish. Then it is indeterminate, not loading.
+                {...(core.settled
+                  ? { 'aria-valuenow': core.count }
+                  : catalogueKnowledge.status === 'pending'
+                    ? { 'aria-busy': true }
+                    : {})}
                 aria-valuemin={0}
                 aria-valuemax={CORE_BUILD_TOTAL}
-                aria-label={coreLabel}
+                aria-label={core.label}
               >
                 <motion.div
                   className="h-full rounded-full"
                   style={{ background: 'linear-gradient(90deg, var(--ff-accent), var(--ff-cyan))' }}
                   initial={{ width: 0 }}
-                  animate={{ width: `${(coreChosen / CORE_BUILD_TOTAL) * 100}%` }}
+                  animate={{ width: core.settled ? `${(core.count / CORE_BUILD_TOTAL) * 100}%` : '0%' }}
                   transition={{ duration: 0.4, ease: 'easeOut' }}
                 />
               </div>
@@ -518,28 +600,47 @@ export default function Builder() {
                 className="text-xs font-semibold whitespace-nowrap"
                 style={{ color: 'var(--ff-text-2)' }}
               >
-                {coreLabel}
+                {core.label}
               </span>
             </div>
 
-            {nextCoreCategory !== null && (
+            {/* Never offered from an unchecked draft. Both paths wire the
+                request through to the named selector, so it is safe on each. */}
+            {core.next !== null && (
               <button
                 type="button"
                 data-testid="next-core-part"
-                data-category={nextCoreCategory}
-                onClick={() => handleChooseCategory(nextCoreCategory)}
+                data-category={core.next}
+                data-slot={core.slots[core.next]}
+                onClick={() => handleChooseCategory(core.next!)}
                 className="ff-accent-control inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold"
                 style={{ color: 'var(--ff-accent-text)', border: '1px solid var(--ff-border)' }}
               >
-                {coreCategoryAction(nextCoreCategory)}
+                {core.slots[core.next] === 'unavailable'
+                  ? coreReplacementAction(core.next)
+                  : coreCategoryAction(core.next)}
                 <ArrowRight size={12} aria-hidden="true" />
               </button>
             )}
           </div>
+
+          {/* ONE sentence for every category that needs replacing, not one
+              per part. Without it the cart is simply a row short and the
+              shopper is left to work out why. */}
+          {core.notice !== null && (
+            <p
+              data-testid="stale-core-parts"
+              role="status"
+              className="mt-2 text-xs font-medium"
+              style={{ color: 'var(--ff-amber)' }}
+            >
+              {core.notice}
+            </p>
+          )}
         </motion.div>
 
         <div className="mb-6">
-          <CompatibilityBanner warnings={warnings} passed={compat.passed} />
+          <CompatibilityBanner warnings={warnings} passed={compat.passed} skipped={compat.skipped} />
         </div>
 
         <div ref={builderRegionRef}>
@@ -777,14 +878,43 @@ export default function Builder() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-12 space-y-3">
+        <section className="mt-12" aria-labelledby="calculator-checks-heading">
+          <h2 id="calculator-checks-heading" className="text-xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
+            What this PC build calculator checks
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Parts and known prices</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Build around eight core component categories. Current retailer price observations are totaled when available and fresh; missing or stale prices are excluded instead of replaced with an invented current price.
+              </p>
+            </div>
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Supported compatibility rules</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Check supported socket, memory, form-factor, power, and clearance rules when the required specifications exist. Coverage is not exhaustive, so confirm every exact product's specifications before ordering.
+              </p>
+            </div>
+            <div className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>Estimated game FPS</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+                Compare estimated performance across 20 games, three resolutions, and four quality presets for supported GPU and CPU models. Estimates are planning guidance—not results measured from your computer.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 space-y-3" aria-labelledby="builder-faq-heading">
+          <h2 id="builder-faq-heading" className="text-xl font-black mb-4" style={{ color: 'var(--ff-text)' }}>
+            PC build calculator questions
+          </h2>
           {builderFaqs.map((f) => (
             <div key={f.title} className="rounded-xl p-4" style={{ border: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-surface)' }}>
-              <h2 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h2>
+              <h3 className="font-bold text-sm mb-1.5" style={{ color: 'var(--ff-text)' }}>{f.title}</h3>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>{f.content}</p>
             </div>
           ))}
-        </div>
+        </section>
       </div>
     </div>
   );

@@ -32,6 +32,24 @@ export const normalizeCatalogName = (name: string): string =>
 const has = (title: string, pattern: RegExp): boolean => pattern.test(title);
 
 /**
+ * The feed's `<upccode>`, kept only when it is actually a UPC.
+ *
+ * A SUPPORTING identifier, never an identity on its own: two listings of the
+ * same card share a UPC, and plenty of listings carry none at all, so nothing
+ * may be resolved from this field alone. It travels so that a later reviewer
+ * confirming an exact SKU has one more thing to check against.
+ *
+ * Merchants put "N/A", a dash, or a padded string in the element. The reader
+ * REFUSES a part whose upc is present but malformed, so anything that is not a
+ * bare 8-14 digit code becomes null here rather than costing the listing its
+ * place in the catalogue.
+ */
+export function readUpc(value: string | null | undefined): string | null {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return /^[0-9]{8,14}$/.test(trimmed) ? trimmed : null;
+}
+
+/**
  * Rakuten's category leaf is necessary but not sufficient: the retailer puts
  * replacement batteries, stands, cables and bundles in the same leaves as the
  * component they relate to. These rules only admit a product that can occupy
@@ -116,7 +134,10 @@ export function admitAffiliatePart(
       salePrice: pricing.salePrice,
       currency: pricing.currency,
       canonicalPartId: null,
+      // Non-GPU listings have no model matcher, so neither identity nor
+      // specifications are established for them.
       specsVerified: false,
+      upc: readUpc(childText(item, 'upccode')),
       // Measured from the pixels later, once the quota is settled: there is no
       // reason to download five thousand candidate images to publish five
       // hundred. See attachImageContentRatios.
@@ -197,7 +218,14 @@ export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | nul
     salePrice: pricing.salePrice,
     currency: pricing.currency,
     canonicalPartId: offer.canonicalGpuId,
-    specsVerified: true,
+    // IDENTITY, not measurement. The matcher established which chip this
+    // listing is, which is what `canonicalPartId` above records and what the
+    // FPS estimator needs. Nothing measured the board that ships in the box —
+    // its length, its power draw — so this flag stays false and the
+    // compatibility checks that would need those figures are withheld rather
+    // than answered from the generic model record. See src/lib/retail/partIdentity.ts.
+    specsVerified: false,
+    upc: readUpc(offer.upc),
     imageContentRatio: null,
     imageSha256: null,
   };

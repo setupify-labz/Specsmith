@@ -378,10 +378,29 @@ describe('when the catalogue has failed', () => {
     });
   }, 30000);
 
-  it('counts only parts the fallback can actually show', async () => {
-    // The fallback draws from the canonical parts, so a retail SKU id saved in
+  it('does not count a retail SKU it has no way to check', async () => {
+    // The fallback draws from the canonical parts, so a retail SKU saved in
     // the draft is not something it can put on screen.
+    //
+    // IT IS ALSO NOT SOMETHING IT CAN RULE OUT. This used to read "1 of 8",
+    // which quietly wrote the processor off on the strength of a download
+    // that failed. A request that never arrived is not evidence about a
+    // product, so the slot is left unchecked and the counter states no
+    // number at all rather than one that has written a part out of the build.
     saveBuild({ gpu: CANONICAL_GPU, cpu: first('cpu').id });
+    await renderFailed();
+
+    await waitFor(() => expect(counter()).toBe('Some saved parts could not be checked'));
+    expect(counter()).not.toMatch(/\d/);
+    // And it does not tell the shopper the processor is gone, on top of
+    // telling them nothing could be loaded.
+    expect(screen.queryByTestId('stale-core-parts')).toBeNull();
+  }, 30000);
+
+  it('still counts a canonical part, which ships with the app', async () => {
+    // These are bundled, so the fallback genuinely knows them and the counter
+    // is entitled to state a number.
+    saveBuild({ gpu: CANONICAL_GPU });
     await renderFailed();
 
     await waitFor(() => expect(counter()).toContain('1 of 8'));
