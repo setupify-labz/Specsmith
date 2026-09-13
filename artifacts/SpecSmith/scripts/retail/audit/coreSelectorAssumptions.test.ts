@@ -50,8 +50,10 @@ describe('every core-selector page still calls the gated fallback-link builders 
     ['pages', 'BestMotherboardPage.tsx'],
     ['pages', 'BudgetPartPage.tsx'],
     ['pages', 'ComponentGuidePage.tsx'],
-    ['pages', 'Prebuilts.tsx'],
-    ['pages', 'PrebuiltDetail.tsx'],
+    // Prebuilts.tsx and PrebuiltDetail.tsx are deliberately ABSENT. A build
+    // guide now carries reviewed EXACT listings, so it builds no fallback
+    // search at all — held to that by the block below instead. Leaving them
+    // here would assert the opposite of what they are required to do.
     ['pages', 'SharedBuild.tsx'],
     ['pages', 'UseCaseBuildPage.tsx'],
     ['components', 'QuizFlow.tsx'],
@@ -101,5 +103,25 @@ describe('the core-selector journey (Builder.tsx -> PartCard/BuildSummary) still
     expect(source).toMatch(/affiliateUrl:\s*selected\w+\.affiliateUrl/);
     expect(source).not.toContain('retail-parts.json');
     expect(source).not.toMatch(/AFFILIATE_PART_CATALOG_URL/);
+  });
+});
+
+// THE BUILD GUIDES ARE THE EXCEPTION, AND MUST STAY ONE.
+//
+// Every page listed above still hands a shopper a retailer SEARCH when it has
+// no exact listing, and `coreSelectorLinkAudit.ts` models that. A build guide
+// does not: a slot either names an exact reviewed listing with its own tracked
+// URL, or says the listing is unavailable and offers the Builder. This guard
+// is the mirror of the one above — if a search link ever reappears on a guide,
+// the audit's page list would silently stop covering a surface that builds one.
+describe('the build guides build no retailer search link at all', () => {
+  it.each([['Prebuilts.tsx'], ['PrebuiltDetail.tsx']])('%s', (file) => {
+    const source = fs.readFileSync(path.join(pagesDir, file), 'utf-8');
+    expect(source).not.toMatch(/\bgetAffiliateUrl\b/);
+    expect(source).not.toMatch(/\bgetNeweggUrl\b/);
+    expect(source).not.toMatch(/https?:\/\/(www\.)?(amazon|newegg)\.com/);
+    // Never the Associates tag for the account that was never approved.
+    expect(source).not.toContain('AMAZON_AFFILIATE_TAG');
+    expect(source).not.toContain('specsmithpc-20');
   });
 });

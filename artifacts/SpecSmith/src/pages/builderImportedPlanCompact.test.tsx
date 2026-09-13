@@ -269,14 +269,20 @@ describe('the mobile build sheet', () => {
 });
 
 describe('the guide no longer promises an exact purchasable build', () => {
-  it('says it loads a plan of recommended models', () => {
+  it('no longer describes itself as a plan of recommended models', () => {
+    // REWRITTEN WITH THE ARCHITECTURE IT DESCRIBED. This used to require the
+    // page to say it loads "recommended models so you can choose current
+    // retailer listings" — honest wording for a button that handed the Builder
+    // canonical MODEL ids and produced a wall of recommendation cards. The
+    // guide now hands over exact listings, so that sentence would be the
+    // over-promise in reverse: it would warn about work the shopper no longer
+    // has to do.
     const source = fs.readFileSync(path.join(here, 'PrebuiltDetail.tsx'), 'utf-8');
-    // The button handed the Builder canonical MODEL ids all along; calling
-    // that "this exact build" promised a purchasable cart and delivered a
-    // planning list.
     expect(source).not.toMatch(/load this exact build/i);
-    expect(source).toContain('Use this plan in Builder');
-    expect(source).toMatch(/recommended models so you can choose current retailer listings/i);
+    expect(source).not.toMatch(/recommended models so you can choose current retailer listings/i);
+    expect(source).toContain('Load into Builder');
+    // And it says what it does instead: ordinary parts, with a real subtotal.
+    expect(source).toMatch(/ordinary selected parts/i);
   });
 });
 
