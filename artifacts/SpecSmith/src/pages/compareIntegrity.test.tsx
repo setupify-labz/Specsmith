@@ -80,7 +80,7 @@ describe('/compare evidence boundaries', () => {
 
   it('uses search metadata that promises modeled comparison, not price/value advice', () => {
     const meta = getRouteMeta('/compare');
-    expect(meta.description).toMatch(/estimated|model/i);
+    expect(meta.description).toMatch(/estimate|model/i);
     expect(meta.description).not.toMatch(/price chart|performance per dollar|before you buy|better value/i);
   });
 });
