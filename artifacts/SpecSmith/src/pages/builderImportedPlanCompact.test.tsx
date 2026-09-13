@@ -321,12 +321,23 @@ describe('the retailer subtotal appears only when there is retailer money', () =
     // is shown is either withheld entirely, or exactly that listing's price —
     // and in neither case is it the sum that would appear if an estimate had
     // leaked in.
+    //
+    // The chosen listing's own figure is salePrice ?? retailPrice — the same
+    // rule retailShopping.ts's effectiveAmount applies. An earlier version of
+    // this assertion read `gpu.price`, a field the catalogue has never had, and
+    // nothing caught it because the branch below only runs while the committed
+    // catalogue is inside its freshness window: for two days the subtotal was
+    // correctly '—', the else was dead, and `undefined` was never compared to
+    // anything. Main's price refresh woke the branch up and it failed as
+    // NaN, which is the bug working as intended, just very late.
     const digits = amount.replace(/[^0-9.]/g, '');
     if (amount.trim() === '—') {
       expect(digits).toBe('');
     } else {
       const shown = Number(digits);
-      expect(shown).toBeCloseTo(gpu.price, 2);
+      const chosen = gpu.salePrice ?? gpu.retailPrice;
+      expect(typeof chosen, 'the chosen listing must expose a numeric price').toBe('number');
+      expect(shown).toBeCloseTo(chosen, 2);
       const estimateTotal = [...summary().querySelectorAll('[data-testid^="planned-price-"]')]
         .map((node) => Number((node.textContent ?? '').replace(/[^0-9.]/g, '')) || 0)
         .reduce((sum, value) => sum + value, 0);
