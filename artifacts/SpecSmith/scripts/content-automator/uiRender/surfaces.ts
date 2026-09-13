@@ -24,6 +24,7 @@ import {
   componentName,
   cpuName,
   gpuName,
+  type UiFraming,
   type UiRenderRequest,
   type UiRenderSurfaceState,
 } from "./uiRenderState.ts";
@@ -96,6 +97,35 @@ function q(params: Record<string, string | undefined>): string {
   return s ? `?${s}` : "";
 }
 
+/**
+ * Real on-page anchors for each framing of the Compare surface.
+ *
+ * Each string is text Compare.tsx actually renders, chosen to be stable and
+ * unambiguous. capture.ts's focusOn() fails loudly when an anchor is not
+ * found, so a renamed heading breaks the render instead of silently producing
+ * the wrong crop.
+ */
+function compareFocusText(framing: UiFraming, sideA: string): string {
+  switch (framing) {
+    // The verdict tally above the cards.
+    case "verdict":
+      return "Build A Wins";
+    // The explanation line directly under the two cards, which is where the
+    // $/avg FPS figures live.
+    case "value":
+      return "$/avg FPS = total GPU+CPU cost";
+    // The per-game bar chart. Anchored on the axis label of the first row.
+    case "chart":
+      return "Cyberpunk 2077";
+    // The share control, the page's own call to action.
+    case "cta":
+      return "Share Comparison";
+    case "matchup":
+    case "default":
+      return sideA;
+  }
+}
+
 export function planSurface(request: UiRenderRequest): SurfacePlan {
   const state: UiRenderSurfaceState = request.state;
 
@@ -117,9 +147,13 @@ export function planSurface(request: UiRenderRequest): SurfacePlan {
         })}`,
         subjectIds: [state.gpuA, state.cpuA, state.gpuB, state.cpuB],
         expectedText: [sideA, sideB],
-        // The composite string is rendered in the results section, so framing
-        // on it lands the crop on the actual comparison.
-        focusText: sideA,
+        // Which region of Compare this beat is about. Every option below is
+        // real text this page already renders, so a different framing moves
+        // the 9:16 window over genuinely different application content rather
+        // than inventing a shot. "default"/"matchup" keep the previous
+        // behaviour: the composite side string sits in the results section, so
+        // framing on it lands the crop on the comparison itself.
+        focusText: compareFocusText(request.framing ?? "default", sideA),
         // Each frame is a DIFFERENT application state: the resolution and
         // quality toggles are real controls that re-run the FPS estimate, so
         // the captured numbers actually change between frames.

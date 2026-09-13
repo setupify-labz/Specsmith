@@ -7,7 +7,7 @@ import type {
   StoryboardBeat,
 } from "./types.ts";
 import { buildRightsSafeVisualPrompt, buildVisualRightsPolicyState } from "./rightsSafeVisuals.ts";
-import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
+import { deriveUiRenderState, framingForBeatPurpose, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
 
 interface UiRenderContext {
   feature: ScriptStoryboardPackage["feature"];
@@ -63,10 +63,15 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
   const tasks: ProductionTask[] = [];
   const visualTaskIds: string[] = [];
 
-  // Derived once per plan: the state depends on the idea's subjects and
-  // feature, not on which beat is being rendered, so every UI beat in a plan
-  // depicts the same verified state.
-  const uiRenderState = deriveUiRenderState(context);
+  // The verified STATE is derived once per plan — same parts, same resolution,
+  // same preset — so every UI beat depicts one consistent, verified comparison
+  // and no beat can quietly show a different set of numbers. What varies per
+  // beat is the FRAMING: which region of that one state the 9:16 crop sits on,
+  // taken from the beat's own purpose. That is what makes the generated
+  // storyboard control the shot list instead of merely describing it, and it
+  // is why five beats no longer resolve to five copies of one screenshot.
+  const uiRenderStateFor = (beat: PlatformScriptStoryboard["beats"][number]) =>
+    deriveUiRenderState({ ...context, framing: framingForBeatPurpose(beat.purpose) });
 
   for (const [index, beat] of script.beats.entries()) {
     // Downgrade only when the SURFACE can never be captured (gallery,
@@ -99,7 +104,7 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
       ...(capability === "video-generation" ? { videoGenerationState: deriveVideoGenerationState(script, beat) } : {}),
-      ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
+      ...(capability === "deterministic-ui-render" && uiRenderStateFor(beat) ? { uiRenderState: uiRenderStateFor(beat) } : {}),
     };
 
     // Structured policy travels beside the provider state. Provider adapters can

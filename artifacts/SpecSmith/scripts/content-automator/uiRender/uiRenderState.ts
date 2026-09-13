@@ -153,9 +153,31 @@ export interface BuildCrateState {
 
 export type UiRenderSurfaceState = CompareState | BuilderState | UpgradeState | BuildCrateState;
 
+/**
+ * Which region of a surface a beat wants in its 9:16 crop.
+ *
+ * A vertical video is a narrow window onto a desktop-width page, so one page
+ * holds several genuinely different shots: the matchup cards, the per-game
+ * chart, the value-per-frame row, the verdict tally, the call to action. A
+ * generated beat says which of those it is about, and the capture frames that
+ * region — real application content either way, never invented data, and never
+ * five identical stills standing in for five different ideas.
+ *
+ * "default" preserves the previous behaviour exactly.
+ */
+export type UiFraming = "default" | "matchup" | "chart" | "value" | "verdict" | "cta";
+
+export const UI_FRAMINGS: readonly UiFraming[] = ["default", "matchup", "chart", "value", "verdict", "cta"];
+
 export interface UiRenderRequest {
   state: UiRenderSurfaceState;
   captureType: UiCaptureType;
+  /**
+   * Region of the surface to frame. Part of the state identity below, so two
+   * beats framing different regions are correctly treated as two different
+   * captures rather than as a determinism violation.
+   */
+  framing?: UiFraming;
   viewport?: UiViewport;
   /** Sequence only: total wall-clock span of the captured frames. */
   durationSeconds?: number;
@@ -252,6 +274,18 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
     throw new UiRenderStateError("malformed", `captureType must be "static" or "sequence", got ${JSON.stringify(captureType)}.`);
   }
 
+  // Fails closed like every other field: an unrecognised framing is a planner
+  // bug, and silently ignoring it would render the default crop while the plan
+  // believed it had asked for a different shot.
+  const framingRaw = raw.framing ?? "default";
+  if (typeof framingRaw !== "string" || !UI_FRAMINGS.includes(framingRaw as UiFraming)) {
+    throw new UiRenderStateError(
+      "unknown-framing",
+      `Unknown framing ${JSON.stringify(framingRaw)}. Supported: ${UI_FRAMINGS.join(", ")}.`,
+    );
+  }
+  const framing = framingRaw as UiFraming;
+
   const viewport = validateViewport((raw.viewport as UiViewport | undefined) ?? VERTICAL_1080x1920);
 
   let durationSeconds: number | undefined;
@@ -329,7 +363,7 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
       throw new UiRenderStateError("unknown-surface", `Unhandled surface ${surface}.`);
   }
 
-  return { state, captureType, viewport, durationSeconds, fps };
+  return { state, captureType, framing, viewport, durationSeconds, fps };
 }
 
 /**
@@ -361,6 +395,10 @@ export function stateIdentifier(request: UiRenderRequest): string {
       break;
   }
   parts.push(request.captureType);
+  // Framing is part of the identity: two beats that frame different regions of
+  // the same page are two different captures, and must not be mistaken for one
+  // state rendered inconsistently.
+  if (request.framing && request.framing !== "default") parts.push(`f:${request.framing}`);
   const v = request.viewport ?? VERTICAL_1080x1920;
   parts.push(`${v.width}x${v.height}@${v.deviceScaleFactor}`);
   return parts.join("_").replace(/[^A-Za-z0-9_.:-]/g, "-");

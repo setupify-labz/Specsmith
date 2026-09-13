@@ -79,17 +79,41 @@ const CARD_HEIGHT = 1920;
 // Deliberately not SpecSmith's own UI palette, so this card never reads as a
 // product screenshot at a glance, even before the baked-in label is read.
 const CARD_BACKGROUND = "0x11141c";
-const TITLE_TEXT = "OFFLINE FIXTURE";
-const SUBTITLE_TEXT = "Not generated video. No paid provider was called.";
+/**
+ * The fixture marker, and why it is SMALL.
+ *
+ * This card stands in for the hook beat's paid generated video, so it is the
+ * first thing a viewer sees. It used to fill the frame with a 68px "OFFLINE
+ * FIXTURE" warning above a line of apology, which meant the opening three
+ * seconds of every render were a developer notice rather than the story — the
+ * hook caption burned in underneath had to compete with it.
+ *
+ * The honesty requirement is that this frame is never mistaken for real
+ * generated video or for SpecSmith UI. That is met without shouting:
+ *
+ *  - the background is deliberately not SpecSmith's palette, so it does not
+ *    read as a product screenshot even before any text is read;
+ *  - a small marker stays baked into the pixels, top-left, in the corner a
+ *    development indicator belongs in — it cannot be cropped away by a caption
+ *    or lost if metadata is stripped;
+ *  - the artifact metadata continues to record isFixture/provider/generated,
+ *    and the evidence file records uiShots[0].presentedAsRealSpecSmithUi:
+ *    false. Those are what the publishing gates read.
+ *
+ * The centre of the frame is left to the storyboard's own hook caption, which
+ * is the actual opening of the video.
+ */
+const MARKER_TEXT = "OFFLINE FIXTURE \u00b7 no paid provider called";
 
 // font=<family> (fontconfig lookup, matching the same approach
 // captionRender.ts's "Arial" already relies on via libass) rather than a
 // hardcoded fontfile path, so this does not depend on one exact font
 // existing at one exact filesystem location on every machine that runs it.
+//
+// Positioned inside the vertical safe area (56px in from the left, 72px down)
+// so platform chrome cannot clip the one honest label on the frame.
 function drawtextFilter(): string {
-  const title = `drawtext=font='DejaVu Sans Bold':text='${TITLE_TEXT}':fontcolor=white:fontsize=68:x=(w-text_w)/2:y=860`;
-  const subtitle = `drawtext=font='DejaVu Sans':text='${SUBTITLE_TEXT}':fontcolor=0xaab0c0:fontsize=32:x=(w-text_w)/2:y=960`;
-  return `${title},${subtitle}`;
+  return `drawtext=font='DejaVu Sans':text='${MARKER_TEXT}':fontcolor=0x8b93a7:fontsize=26:x=56:y=72`;
 }
 
 export function createLocalFixtureVideoAdapter(options: {

@@ -26,7 +26,7 @@
 import gpus from "../../../src/data/gpus.json" with { type: "json" };
 import cpus from "../../../src/data/cpus.json" with { type: "json" };
 import type { SiteFeature } from "../types.ts";
-import { parseUiRenderRequest, type UiRenderRequest } from "./uiRenderState.ts";
+import { parseUiRenderRequest, type UiFraming, type UiRenderRequest } from "./uiRenderState.ts";
 
 interface CatalogEntry {
   id: string;
@@ -118,6 +118,40 @@ export interface DeriveInput {
   subjectIds: readonly string[];
   /** Used only to seed surfaces that have no hardware subject (Build Crate). */
   ideaId: string;
+  /**
+   * Which region of the surface this particular beat is about.
+   *
+   * The verified STATE is the same for every beat in a plan — same parts, same
+   * resolution, same preset, so every beat depicts one consistent, verified
+   * comparison. What varies is where the vertical crop sits on it, which is
+   * how one page yields the several distinct shots a six-beat story needs
+   * without inventing a second state or a second set of numbers.
+   */
+  framing?: UiFraming;
+}
+
+/**
+ * The region each storyboard beat purpose is about.
+ *
+ * Derived from the beat's own purpose, so changing the generated storyboard
+ * changes the rendered shot — the plan controls the video rather than merely
+ * describing it. Any purpose not listed keeps the default crop.
+ */
+export function framingForBeatPurpose(purpose: string): UiFraming {
+  switch (purpose) {
+    case "commitment":
+      return "matchup";
+    case "evidence":
+      return "chart";
+    case "reversal":
+      return "value";
+    case "payoff":
+      return "verdict";
+    case "cta":
+      return "cta";
+    default:
+      return "default";
+  }
 }
 
 /**
@@ -130,7 +164,7 @@ export function deriveUiRenderState(input: DeriveInput): UiRenderRequest | undef
 
   const build = (state: unknown): UiRenderRequest | undefined => {
     try {
-      return parseUiRenderRequest({ state, captureType: "static" });
+      return parseUiRenderRequest({ state, captureType: "static", framing: input.framing ?? "default" });
     } catch {
       // A derived state that does not validate is a planner bug, not something
       // to paper over: drop back to undefined so the beat does not become an
