@@ -1,13 +1,14 @@
-import { useState, useId } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { lazy, Suspense, useState, useId, type MouseEvent } from 'react';
+import { motion, AnimatePresence } from './MotionLite';
 import { Share2, Check, X, QrCode } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { getShareUrl, type ShareView, type SharedCustomPart } from '../lib/sharing';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { hasDismissedEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
 import { useModalA11y } from '../hooks/useModalA11y';
 import EmailCaptureModal from './EmailCaptureModal';
+
+const QRCodeSVG = lazy(() => import('qrcode.react').then(module => ({ default: module.QRCodeSVG })));
 
 interface Props {
   buildState: Record<string, string | null>;
@@ -122,7 +123,7 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
               className="rounded-2xl p-6 shadow-2xl text-center"
               style={{ backgroundColor: 'var(--ff-surface)', maxWidth: 320, width: '100%' }}
-              onClick={e => e.stopPropagation()}
+              onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
               ref={qrModalRef}
               role="dialog"
               aria-modal="true"
@@ -136,7 +137,9 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
                 </button>
               </div>
               <div className="inline-block p-3 bg-white rounded-xl" role="img" aria-label="QR code linking to this build">
-                <QRCodeSVG value={url} size={200} aria-hidden="true" />
+                <Suspense fallback={<div className="h-[200px] w-[200px]" aria-hidden="true" />}>
+                  <QRCodeSVG value={url} size={200} aria-hidden="true" />
+                </Suspense>
               </div>
               <p className="text-xs mt-3" style={{ color: 'var(--ff-text-2)' }}>Scan with your phone to view this build</p>
               <button

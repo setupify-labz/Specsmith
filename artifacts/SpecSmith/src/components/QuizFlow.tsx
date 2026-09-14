@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from './MotionLite';
 import { ChevronRight, ExternalLink, RotateCcw, Sparkles } from 'lucide-react';
 import { QUIZ_USE_CASES, getQuizTiers, getQuizResult } from '../lib/quiz';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';

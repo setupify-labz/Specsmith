@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Share2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LabelList } from 'recharts';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
@@ -84,36 +83,6 @@ function BuildColumn({
         />
       </div>
     </div>
-  );
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: Array<{ color: string; name: string; value: number; payload: { fullGame: string } }>;
-}
-
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const fullGame = payload[0]?.payload?.fullGame ?? '';
-  return (
-    <div className="rounded-xl p-3 shadow-2xl max-w-[220px]" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
-      <p className="text-ff-primary text-xs font-bold mb-2">{fullGame}</p>
-      {payload.map(p => (
-        <div key={p.name} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-secondary-custom">{p.name}:</span>
-          <span className="text-ff-primary font-bold">{p.value} Est. FPS</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function GameAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
-  return (
-    <text x={x} y={y} dy={4} textAnchor="end" fill="var(--ff-text-2)" fontSize={11}>
-      {payload?.value}
-    </text>
   );
 }
 
@@ -205,6 +174,7 @@ export default function Compare() {
   const winsB = chartData.filter(d => d.winner === 'B').length;
   const avgFpsA = getAverageFps(chartData.map(d => d['Build A']));
   const avgFpsB = getAverageFps(chartData.map(d => d['Build B']));
+  const maxChartFps = Math.max(1, ...chartData.flatMap(d => [d['Build A'], d['Build B']]));
 
   const shareComparison = async () => {
     if (!canCompare) return;
@@ -334,35 +304,34 @@ export default function Compare() {
             </div>
 
             <div className="overflow-x-auto">
-              <div style={{ height: Math.max(560, chartData.length * 42), minWidth: 640 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    layout="vertical"
-                    margin={{ top: 0, right: 44, left: 4, bottom: 0 }}
-                    barSize={14}
-                    barGap={4}
-                    barCategoryGap="30%"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--ff-border)" horizontal={false} />
-                    <XAxis type="number" stroke="var(--ff-text-2)" tick={{ fontSize: 11, fill: 'var(--ff-text-2)' }} />
-                    <YAxis
-                      type="category" dataKey="game" width={160}
-                      tick={<GameAxisTick />}
-                      tickLine={false}
-                      stroke="transparent"
-                      interval={0}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(136,136,170,0.08)' }} />
-                    <Legend wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: 'var(--ff-text-2)' }} />
-                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build A" position="right" fontSize={10} fill="var(--ff-text-2)" />
-                    </Bar>
-                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build B" position="right" fontSize={10} fill="var(--ff-text-2)" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="space-y-2" style={{ minWidth: 640 }} aria-hidden="true">
+                {chartData.map(row => (
+                  <div key={row.fullGame} className="grid grid-cols-[160px_1fr] items-center gap-3">
+                    <span className="truncate text-right text-[11px] text-secondary-custom" title={row.fullGame}>
+                      {row.game}
+                    </span>
+                    <div className="space-y-1">
+                      <div className="flex h-3 items-center gap-2">
+                        <div
+                          className="h-3 rounded-r"
+                          style={{ width: `${(row['Build A'] / maxChartFps) * 100}%`, backgroundColor: COLORS.a }}
+                        />
+                        <span className="shrink-0 text-[10px] text-secondary-custom">{row['Build A']}</span>
+                      </div>
+                      <div className="flex h-3 items-center gap-2">
+                        <div
+                          className="h-3 rounded-r"
+                          style={{ width: `${(row['Build B'] / maxChartFps) * 100}%`, backgroundColor: COLORS.b }}
+                        />
+                        <span className="shrink-0 text-[10px] text-secondary-custom">{row['Build B']}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-center gap-5 pt-2 text-xs text-secondary-custom">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS.a }} />Build A</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS.b }} />Build B</span>
+                </div>
               </div>
             </div>
             <p className="sm:hidden text-[10px] text-secondary-custom text-center mt-2">← Scroll the chart to see full bars and values →</p>

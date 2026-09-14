@@ -20,6 +20,8 @@ interface Props {
   onToggle: (id: string) => void;
   /** Opens the product detail view. The card itself stays a card. */
   onOpenDetails?: (id: string) => void;
+  /** The first visible card is a likely LCP candidate and should not be lazy-loaded. */
+  priority?: boolean;
   /**
    * Approved local cut-outs, indexed by part id.
    *
@@ -48,6 +50,7 @@ export default function RetailProductCard({
   now,
   onToggle,
   onOpenDetails,
+  priority = false,
   processedImages,
 }: Props) {
   // The cut-out/merchant/placeholder ladder, shared with the detail drawer and
@@ -110,7 +113,10 @@ export default function RetailProductCard({
           <img
             src={image.src}
             alt=""
-            loading="lazy"
+            width={640}
+            height={480}
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
             decoding="async"
             data-image-source={image.source}
             onError={image.onError}

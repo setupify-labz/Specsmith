@@ -9,3 +9,15 @@
 # HTML pages intentionally stay off this rule so new deploys show up right away.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Catalogue snapshots change independently of the deploy. Keep them fresh,
+# but allow Cloudflare and browsers to reuse a recent response while updating.
+/data/*
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600
+
+# Public artwork filenames are stable within a deploy and change rarely.
+/images/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+/logo-64.webp
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400

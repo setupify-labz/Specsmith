@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Zap, Calculator, Shield, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSeo } from '../hooks/useSeo';

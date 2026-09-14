@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from './MotionLite';
 import { CheckCircle2, ExternalLink, ShieldCheck } from 'lucide-react';
 import { getVerifiedGames, lookupVerifiedFps, type VerifiedFpsQuery } from '../lib/benchmarks/lookup';
 import type { Resolution, Preset, Upscaler } from '../lib/benchmarks/types';

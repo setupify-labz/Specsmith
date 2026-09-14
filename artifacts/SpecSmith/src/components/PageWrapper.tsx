@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from './MotionLite';
 
 export default function PageWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();

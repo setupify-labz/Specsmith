@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '../components/MotionLite';
 import { ArrowRight, BarChart3, Gamepad2, Monitor, Share2 } from 'lucide-react';
 import PartSelector from '../components/PartSelector';
 import PageGlow from '../components/PageGlow';

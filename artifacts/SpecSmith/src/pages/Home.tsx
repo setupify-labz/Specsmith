@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Cpu, Zap, DollarSign, ChevronRight, Monitor, Package, Users, TrendingUp, BookOpen, Trophy, ArrowUpDown, Sparkles } from 'lucide-react';
-import { prebuilts, getPrebuiltTotal } from '../lib/prebuilts';
+import prebuiltHighlights from '../data/homePrebuiltHighlights.json';
 import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
@@ -125,13 +125,6 @@ const exploreLinks = [
     cta: 'Play Now',
   },
 ];
-
-const prebuiltHighlights = prebuilts.map(p => ({
-  id: p.id,
-  name: p.name,
-  tagline: p.tagline,
-  price: getPrebuiltTotal(p),
-}));
 
 export default function Home() {
   useSeo(getRouteMeta('/'));

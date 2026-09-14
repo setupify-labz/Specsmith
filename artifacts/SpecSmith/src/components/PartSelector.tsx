@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from './MotionLite';
 import {
   ChevronDown, ChevronUp, Search, Check,
   Cpu, Gpu, CircuitBoard, MemoryStick, HardDrive, Power, Box, Fan,
@@ -120,6 +120,10 @@ export default function PartSelector({
       if (onScreen || framesLeft <= 0) return;
       framesLeft -= 1;
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // DOM-only test environments have no layout engine and report a zero
+      // rectangle forever. One call proves the request without scheduling 29
+      // pointless animation frames; real browser elements have dimensions.
+      if (box.width === 0 && box.height === 0) return;
       frame = requestAnimationFrame(settle);
     };
 

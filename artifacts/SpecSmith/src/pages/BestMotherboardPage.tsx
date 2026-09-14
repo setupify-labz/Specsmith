@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Cpu, ExternalLink } from 'lucide-react';
 import { getSocketPage, getMotherboardsForSocket, getMotherboardPicks, getSocketPageMeta, SOCKET_PAGES } from '../lib/motherboardPages';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';

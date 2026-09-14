@@ -1,5 +1,5 @@
-import { useState, useId } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useId, type MouseEvent } from 'react';
+import { motion, AnimatePresence } from './MotionLite';
 import { Mail, X } from 'lucide-react';
 import { saveEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
 import { useToast } from '../context/ToastContext';
@@ -49,7 +49,7 @@ export default function EmailCaptureModal({ open, onClose, buildId }: Props) {
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
             style={{ backgroundColor: 'var(--ff-surface)' }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
             ref={modalRef}
             role="dialog"
             aria-modal="true"

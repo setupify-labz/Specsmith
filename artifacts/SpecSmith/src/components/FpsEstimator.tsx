@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo, type MouseEvent } from 'react';
+import { motion } from './MotionLite';
 import FpsGauge from './FpsGauge';
 import { estimateFpsForBuild, getFpsColorClass } from '../lib/fps';
 import type { Resolution, Preset } from '../lib/fps';
@@ -249,10 +249,10 @@ export default function FpsEstimator({ gpu, cpu, games, resolution, preset, onRe
                         borderTop: '1px solid var(--ff-border)',
                         ...(isSelected ? { backgroundColor: 'var(--ff-accent-10)' } : rowStyle),
                       }}
-                      onMouseEnter={e => {
+                      onMouseEnter={(e: MouseEvent<HTMLTableRowElement>) => {
                         if (!isSelected) (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--ff-card)';
                       }}
-                      onMouseLeave={e => {
+                      onMouseLeave={(e: MouseEvent<HTMLTableRowElement>) => {
                         if (!isSelected) {
                           const el = e.currentTarget as HTMLElement;
                           if (fpsTarget !== null) {

@@ -1,24 +1,11 @@
 // @vitest-environment jsdom
 
-import type { ReactNode } from 'react';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Compare from './Compare';
 import { ToastProvider } from '../context/ToastContext';
 import { getRouteMeta } from '../lib/seo';
-
-vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Bar: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  XAxis: () => null,
-  YAxis: () => null,
-  CartesianGrid: () => null,
-  Tooltip: () => null,
-  Legend: () => null,
-  LabelList: () => null,
-}));
 
 beforeAll(() => {
   class NoopObserver {

@@ -1,0 +1,7 @@
+[
+  { "id": "budget-beast", "name": "Budget Beast", "tagline": "Office & Light Gaming", "price": 879 },
+  { "id": "1080p-champion", "name": "1080p Champion", "tagline": "A Starting Point for 1080p Gaming", "price": 1609 },
+  { "id": "1440p-sweetspot", "name": "1440p Sweet Spot", "tagline": "Best Value for 1440p Gaming", "price": 2307 },
+  { "id": "4k-monster", "name": "4K Monster", "tagline": "Serious 4K Gaming", "price": 4022 },
+  { "id": "ultimate-rig", "name": "Ultimate Rig", "tagline": "No Compromises — Creators & Enthusiasts", "price": 6972 }
+]
