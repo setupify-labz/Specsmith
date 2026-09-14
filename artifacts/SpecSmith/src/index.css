@@ -380,6 +380,14 @@
 @layer components {
   .retail-photo-frame {
     background: var(--ff-photo-bg);
+  }
+  /* Large catalogue/guide images sit inside their card by 8px. Keep this
+     geometry off the shared photo surface: thumbnails and drawer previews
+     also use .retail-photo-frame and must not inherit card-level spacing.
+     width:auto is deliberate — a width:100% frame plus inline margins would
+     overflow its card by 16px at every viewport size. */
+  .retail-photo-frame-inset {
+    width: auto;
     border-bottom: 1px solid var(--ff-border);
     margin: 8px 8px 0;
     border-radius: 10px;

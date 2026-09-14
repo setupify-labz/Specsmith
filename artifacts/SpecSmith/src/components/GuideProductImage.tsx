@@ -21,7 +21,7 @@ export default function GuideProductImage({ part, model }: { part?: AffiliatePar
   );
   return (
     <figure className="min-w-0">
-      <div className="retail-photo-frame flex h-44 items-center justify-center overflow-hidden">
+      <div className="retail-photo-frame retail-photo-frame-inset flex h-44 items-center justify-center overflow-hidden">
         {part && !failed ? (
           <img src={part.imageUrl} alt={part.name} loading="lazy" decoding="async"
             onError={() => setFailed(true)} className="h-full w-full object-contain p-4" />

@@ -93,7 +93,7 @@ export default function RetailProductCard({
         aria-label={`View details for ${part.name}`}
         data-testid="open-details-image"
         disabled={onOpenDetails === undefined}
-        className="retail-photo-frame ff-accent-control relative flex h-[240px] w-full items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
+        className="retail-photo-frame retail-photo-frame-inset ff-accent-control relative flex h-[240px] items-center justify-center overflow-hidden md:h-auto md:aspect-[4/3]"
       >
         {image.failed ? (
           // A broken image loses the picture, never the product: the card keeps
