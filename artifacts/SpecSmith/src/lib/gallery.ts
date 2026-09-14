@@ -1,4 +1,4 @@
-import { supabase, type PublicBuildRow } from './supabase';
+import { getSupabase, type PublicBuildRow } from './supabase';
 import { estimateFpsForBuild, type BuildFpsGpu, type BuildFpsCpu } from './fps';
 import { getPartPrice } from './prebuilts';
 import gpuData from '../data/gpus.json';
@@ -26,6 +26,7 @@ export async function publishBuild(
   buildState: Record<string, string | null>,
   creatorName: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await getSupabase();
   if (!supabase) return { ok: false, error: 'Gallery is not set up yet.' };
   const { totalCost, avgFps } = computeBuildStats(buildState);
   const { error } = await supabase.from('public_builds').insert({
@@ -40,6 +41,7 @@ export async function publishBuild(
 }
 
 export async function fetchRecentBuilds(limit = 24): Promise<PublicBuildRow[]> {
+  const supabase = await getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('public_builds')
@@ -51,6 +53,7 @@ export async function fetchRecentBuilds(limit = 24): Promise<PublicBuildRow[]> {
 }
 
 export async function fetchTopBuilds(limit = 5): Promise<PublicBuildRow[]> {
+  const supabase = await getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('public_builds')
@@ -62,6 +65,7 @@ export async function fetchTopBuilds(limit = 5): Promise<PublicBuildRow[]> {
 }
 
 export async function recordBuildView(id: string): Promise<void> {
+  const supabase = await getSupabase();
   if (!supabase) return;
   await supabase.rpc('increment_build_views', { build_id: id });
 }

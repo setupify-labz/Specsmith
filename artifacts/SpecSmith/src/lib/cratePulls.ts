@@ -1,4 +1,4 @@
-import { supabase, type CratePullRow } from './supabase';
+import { getSupabase, type CratePullRow } from './supabase';
 import type { CrateBuild } from './buildCrate';
 
 /** Fire-and-forget: records a finished crate run to the global feed. Never
@@ -6,6 +6,7 @@ import type { CrateBuild } from './buildCrate';
  * supabase.ts) this silently no-ops, same as the rest of the Gallery
  * feature does before its project is set up. */
 export async function recordGlobalPull(build: CrateBuild, pullerName: string): Promise<void> {
+  const supabase = await getSupabase();
   if (!supabase) return;
   try {
     await supabase.from('crate_pulls').insert({
@@ -26,6 +27,7 @@ export async function recordGlobalPull(build: CrateBuild, pullerName: string): P
 /** Recent Epic+ pulls across all visitors, newest first — the "wall of good
  * pulls" that makes the crate feel alive instead of a solo mechanic. */
 export async function fetchRecentTopPulls(limit = 12): Promise<CratePullRow[]> {
+  const supabase = await getSupabase();
   if (!supabase) return [];
   const { data, error } = await supabase
     .from('crate_pulls')

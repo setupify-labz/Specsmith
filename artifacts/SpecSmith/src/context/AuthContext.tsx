@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { supabase, isSupabaseConfigured, setRememberSession, type ProfileRow, type SavedBuildRow } from '../lib/supabase';
+import { getSupabase, isSupabaseConfigured, setRememberSession, type ProfileRow, type SavedBuildRow } from '../lib/supabase';
 import { detectLegacyAccount, clearMigratedLegacyData, type LegacyAccount } from '../lib/authMigration';
 
 // Real accounts: Supabase Auth (email/password) + two RLS-scoped tables
@@ -126,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [legacyAccount, setLegacyAccount] = useState<LegacyAccount | null>(null);
 
   const loadBuilds = useCallback(async (userId: string) => {
+    const supabase = await getSupabase();
     if (!supabase) return;
     const { data } = await supabase
       .from('saved_builds')
@@ -136,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadUser = useCallback(async (userId: string, email: string) => {
+    const supabase = await getSupabase();
     if (!supabase) return;
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (error || !data) {
@@ -151,26 +153,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // ever read here, never assumed still present from a previous render.
     setLegacyAccount(detectLegacyAccount());
 
-    if (!supabase) {
+    if (!isSupabaseConfigured) {
       setLoading(false);
       return;
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await loadUser(session.user.id, session.user.email ?? '');
-      } else {
-        setUser(null);
-        setBuilds([]);
-      }
-      setLoading(false);
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void getSupabase().then((supabase) => {
+      if (!active || !supabase) return;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!active) return;
+        if (session?.user) {
+          await loadUser(session.user.id, session.user.email ?? '');
+        } else {
+          setUser(null);
+          setBuilds([]);
+        }
+        if (active) setLoading(false);
+      });
+      unsubscribe = () => subscription.unsubscribe();
+    }).catch(() => {
+      if (active) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = useCallback(async (email: string, password: string, remember = true): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
     setRememberSession(remember);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -179,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signup = useCallback(async (username: string, email: string, password: string): Promise<SignupResult> => {
+    const supabase = await getSupabase();
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
     // Without an explicit emailRedirectTo, Supabase falls back to the
     // project's configured Site URL (see requestPasswordReset below for the
@@ -200,6 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const supabase = await getSupabase();
     if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
@@ -207,6 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const requestPasswordReset = useCallback(async (email: string): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
     // Without an explicit redirectTo, Supabase falls back to the project's
     // configured Site URL, which may not point at a page that can actually
@@ -218,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const completePasswordReset = useCallback(async (newPassword: string): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase) return { ok: false, error: NOT_CONFIGURED_ERROR };
     // Only reachable with an active session — either a normal login or the
     // temporary one Supabase establishes from the emailed reset link, which
@@ -229,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
     // updateUser() doesn't itself verify the *current* password, so it's
     // checked by re-authenticating with it first.
@@ -240,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const saveBuild = useCallback(async (name: string, notes: string, buildState: Record<string, string | null>): Promise<SaveBuildResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
     if (builds.length >= 20) return { ok: false, error: 'You have reached the 20 build limit. Delete some builds first.' };
     const { data, error } = await supabase.from('saved_builds').insert({
@@ -251,6 +272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, builds.length, loadBuilds]);
 
   const deleteBuild = useCallback(async (id: string): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
     const { error } = await supabase.from('saved_builds').delete().eq('id', id);
     if (error) return { ok: false, error: error.message };
@@ -259,6 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const renameBuild = useCallback(async (id: string, name: string): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
     const { error } = await supabase.from('saved_builds').update({ name }).eq('id', id);
     if (error) return { ok: false, error: error.message };
@@ -267,6 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const shareBuild = useCallback(async (id: string) => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return;
     const build = builds.find(b => b.id === id);
     if (!build) return;
@@ -275,6 +299,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, builds]);
 
   const updateSettings = useCallback(async (data: { username?: string; email?: string; avatar?: string; preferredResolution?: string; preferredPreset?: string }): Promise<UpdateSettingsResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
 
     // Supabase sends a confirmation link to the new address; the email on
@@ -308,6 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, loadUser]);
 
   const deleteAccount = useCallback(async (): Promise<AuthResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, error: NOT_CONFIGURED_ERROR };
     // The client can never delete its own auth.users row directly — that
     // needs the service-role key, which must never reach the browser. This
@@ -323,6 +349,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const isUsernameTaken = useCallback(async (username: string): Promise<boolean> => {
+    const supabase = await getSupabase();
     if (!supabase) return false;
     // Narrow RPC (security definer, see supabase-schema.sql) rather than a
     // public SELECT policy on profiles — returns only a boolean, never
@@ -333,6 +360,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const migrateLegacyBuilds = useCallback(async (): Promise<MigrationResult> => {
+    const supabase = await getSupabase();
     if (!supabase || !user) return { ok: false, migratedCount: 0, remainingCount: 0, error: NOT_CONFIGURED_ERROR };
     const legacy = detectLegacyAccount();
     if (!legacy || legacy.builds.length === 0) {
