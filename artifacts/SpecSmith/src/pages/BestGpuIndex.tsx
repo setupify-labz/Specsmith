@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Gamepad2 } from 'lucide-react';
 import { GAME_PAGES, getPageGame, getGamePageTitle } from '../lib/gamePages';
 import { useSeo } from '../hooks/useSeo';

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from './MotionLite';
 import { Trophy } from 'lucide-react';
 import { fetchRecentTopPulls } from '../lib/cratePulls';
 import { isGalleryEnabled } from '../lib/supabase';

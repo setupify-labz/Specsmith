@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Cpu, ExternalLink } from 'lucide-react';
 import { getSffPicks, getSffPageMeta, sffItemListJsonLd, sffFaqs, sffFaqJsonLd } from '../lib/sffBuilds';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Trophy } from 'lucide-react';
 import { getCpuTiers, cpuTierListFaqs, cpuTierListFaqJsonLd } from '../lib/cpuTierList';
 import { useSeo } from '../hooks/useSeo';

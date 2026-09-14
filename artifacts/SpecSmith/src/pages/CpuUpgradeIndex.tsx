@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, TrendingUp, Sliders } from 'lucide-react';
 import { CPU_UPGRADE_PAGES } from '../lib/cpuUpgradePages';
 import { getUpgradeCpu } from '../lib/cpuUpgradeCalculator';

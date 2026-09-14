@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from './MotionLite';
 import { Check, ExternalLink } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
 

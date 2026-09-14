@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight } from 'lucide-react';
 import QuizFlow from '../components/QuizFlow';
 import { QUIZ_USE_CASES, quizFaqJsonLd } from '../lib/quiz';

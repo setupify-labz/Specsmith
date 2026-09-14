@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from './MotionLite';
 import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { downloadBuildFile, parseBuildFileContent, type ShareView, type SharedCustomPart } from '../lib/sharing';

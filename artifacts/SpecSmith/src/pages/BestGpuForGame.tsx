@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Zap, ChevronRight, Gamepad2, ExternalLink } from 'lucide-react';
 import {
   getGamePage, getPageGame, getGamePicks, getGameGpuRows, getGameIntro,

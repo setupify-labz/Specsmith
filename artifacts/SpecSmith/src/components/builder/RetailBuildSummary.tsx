@@ -416,6 +416,8 @@ function SummaryThumbnail({
         <img
           src={image.src}
           alt=""
+          width={56}
+          height={56}
           loading="lazy"
           decoding="async"
           data-image-source={image.source}

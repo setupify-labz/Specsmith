@@ -26,7 +26,11 @@ beforeEach(() => {
     scrolled.push(this);
   };
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 const renderSelector = (props: Record<string, unknown> = {}) =>
   render(
@@ -175,6 +179,17 @@ describe('cleanup', () => {
     vi.stubGlobal('cancelAnimationFrame', ((id: number) => {
       cancelled.add(id);
     }) as unknown as typeof cancelAnimationFrame);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 10_000,
+      top: 10_000,
+      right: 100,
+      bottom: 10_100,
+      left: 0,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
 
     const view = renderSelector({ openSignal: 1 });
 

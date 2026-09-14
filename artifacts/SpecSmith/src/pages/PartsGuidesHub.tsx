@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import {
   ChevronRight, CircuitBoard, MemoryStick, HardDrive, Zap, Box, Fan,
   Monitor, Keyboard, Mouse, Headphones, TrendingUp, Trophy, DollarSign, Sparkles,

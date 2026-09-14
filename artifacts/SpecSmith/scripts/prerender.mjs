@@ -183,6 +183,7 @@ async function main() {
   console.log(`[prerender] Wrote ${path.relative(root, sitemapFile)} (${sitemapUrlCount} URLs)`);
 
   await fs.rm(ssrOutDir, { recursive: true, force: true });
+  await fs.rm(path.join(publicDir, '.vite'), { recursive: true, force: true });
 }
 
 main().catch((err) => {

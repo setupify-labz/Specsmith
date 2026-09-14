@@ -245,6 +245,8 @@ export default function ProductDetailDrawer({
             <img
               src={current}
               alt={imageAltText(part.name, index, images.length)}
+              width={640}
+              height={480}
               decoding="async"
               data-image-source={current === part.imageUrl ? 'merchant' : 'processed'}
               onError={() => {
@@ -308,7 +310,7 @@ export default function ProductDetailDrawer({
                     border: `1px solid ${thumbIndex === index ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
                   }}
                 >
-                  <img src={url} alt="" className="h-full w-full object-contain p-0.5" />
+                  <img src={url} alt="" width={48} height={48} loading="lazy" decoding="async" className="h-full w-full object-contain p-0.5" />
                 </button>
               ))}
             </div>

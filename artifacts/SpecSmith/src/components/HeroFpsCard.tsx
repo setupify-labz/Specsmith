@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion } from './MotionLite';
 import { Trophy, Zap } from 'lucide-react';
 
 // Real numbers computed from the site's own dataset (RTX 5090 / RTX 5070,

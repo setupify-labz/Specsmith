@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Zap, ExternalLink, ArrowLeft } from 'lucide-react';
 import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';

@@ -1,11 +1,9 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from '../components/MotionLite';
 import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
-import FpsEstimator from '../components/FpsEstimator';
-import VerifiedBenchmarkPanel from '../components/VerifiedBenchmarkPanel';
 import { useBuilder, type BuildState } from '../hooks/useBuilder';
 import { checkCompatibility } from '../lib/compatibility';
 import { decodeBuild } from '../lib/sharing';
@@ -31,6 +29,7 @@ import {
   recognisedPartIds,
   type CanonicalPartRef,
 } from '../lib/retail/importedBuild';
+
 import {
   CATALOGUE_PENDING,
   CORE_BUILD_TOTAL,
@@ -43,6 +42,9 @@ import {
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
+
+const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
+const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -134,7 +136,7 @@ export default function Builder() {
   // which is what produced the "RTX 5090 — $3,979" card. The shopping grid is
   // fed from the affiliate catalogue instead.
   const builderGpus = useMemo<GPU[]>(
-    () => gpus.map((gpu) => ({ ...gpu, image: `/images/gpus/${gpu.id}.png`, specsVerified: true })),
+    () => gpus.map((gpu) => ({ ...gpu, image: `/images/gpus/${gpu.id}.webp`, specsVerified: true })),
     [],
   );
 
@@ -859,23 +861,25 @@ export default function Builder() {
 
         {/* FPS Estimator */}
         <div ref={fpsSectionRef}>
-          <AnimatePresence>
-            {showFps && selectedGpu && selectedCpu && (
-              <FpsEstimator
-                gpu={selectedGpu} cpu={selectedCpu} games={games}
-                resolution={fpsResolution} preset={fpsPreset}
-                onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
-              />
-            )}
-          </AnimatePresence>
-          <AnimatePresence>
-            {showFps && selectedGpu && selectedCpu && (
-              <VerifiedBenchmarkPanel
-                gpuId={selectedGpu.id} gpuName={selectedGpu.name}
-                cpuId={selectedCpu.id} cpuName={selectedCpu.name}
-              />
-            )}
-          </AnimatePresence>
+          <Suspense fallback={<p className="py-8 text-center text-sm text-secondary-custom" aria-live="polite">Loading FPS results — Estimated — not measured.</p>}>
+            <AnimatePresence>
+              {showFps && selectedGpu && selectedCpu && (
+                <FpsEstimator
+                  gpu={selectedGpu} cpu={selectedCpu} games={games}
+                  resolution={fpsResolution} preset={fpsPreset}
+                  onResolutionChange={setFpsResolution} onPresetChange={setFpsPreset}
+                />
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
+              {showFps && selectedGpu && selectedCpu && (
+                <VerifiedBenchmarkPanel
+                  gpuId={selectedGpu.id} gpuName={selectedGpu.name}
+                  cpuId={selectedCpu.id} cpuName={selectedCpu.name}
+                />
+              )}
+            </AnimatePresence>
+          </Suspense>
         </div>
 
         <section className="mt-12" aria-labelledby="calculator-checks-heading">

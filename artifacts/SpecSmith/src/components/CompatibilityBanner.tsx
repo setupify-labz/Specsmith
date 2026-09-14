@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from './MotionLite';
 import { AlertTriangle, XCircle, CheckCircle, Wrench, Info } from 'lucide-react';
 import { describeSkippedChecks, type CompatibilityWarning, type SkippedCheck } from '../lib/compatibility';
 

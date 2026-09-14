@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, CircuitBoard } from 'lucide-react';
 import { SOCKET_PAGES, getMotherboardsForSocket } from '../lib/motherboardPages';
 import { useSeo } from '../hooks/useSeo';

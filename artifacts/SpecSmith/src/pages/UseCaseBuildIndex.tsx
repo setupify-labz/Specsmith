@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Sparkles, Box } from 'lucide-react';
 import { USE_CASES } from '../lib/useCaseBuilds';
 import { useSeo } from '../hooks/useSeo';

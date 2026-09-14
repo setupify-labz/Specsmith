@@ -210,10 +210,11 @@ export default function RetailCatalog({
               Columns are added rather than cards enlarged: the card's own type
               and image frame are unchanged at every width. */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3" data-testid="product-grid">
-            {shown.map((part) => (
+            {shown.map((part, index) => (
               <RetailProductCard
                 key={part.id}
                 part={part}
+                priority={index === 0}
                 selected={part.id === selectedId}
                 now={now}
                 onToggle={onToggle}
