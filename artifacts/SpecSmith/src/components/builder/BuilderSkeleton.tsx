@@ -45,7 +45,7 @@ function CardSkeleton() {
     >
       {/* The same frame the real card uses: 240px on a phone, 4:3 from md up,
           so a loaded photograph lands exactly where the box was. */}
-      <div className="retail-photo-frame h-[240px] rounded-t-xl md:h-auto md:aspect-[4/3]" />
+      <div className="retail-photo-frame retail-photo-frame-inset h-[240px] md:h-auto md:aspect-[4/3]" />
       <div className="flex flex-1 flex-col gap-2 p-3">
         <Bar className="h-4 w-[85%]" />
         <Bar className="h-4 w-[60%]" />

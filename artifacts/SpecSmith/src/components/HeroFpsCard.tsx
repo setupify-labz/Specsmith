@@ -38,26 +38,27 @@ export default function HeroFpsCard() {
   const maxFps = CARD_A.fps;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30, rotate: -2 }}
-      animate={{ opacity: 1, y: 0, rotate: -2 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.3 }}
-      className="relative w-full max-w-sm mx-auto lg:mx-0"
+      className="relative w-full max-w-lg mx-auto"
     >
       <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        className="rounded-2xl p-5 relative"
+        className="rounded-2xl p-6 sm:p-8 relative"
         style={{
           backgroundColor: 'var(--ff-surface)',
           border: '1px solid var(--ff-border)',
           boxShadow: '0 20px 60px -12px rgba(108,99,255,0.35), 0 0 0 1px rgba(255,255,255,0.02)',
         }}
       >
-        <div className="flex items-center justify-between mb-4">
+        <p className="text-xs uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--ff-accent-text)' }}>Before you buy</p>
+        <p className="text-2xl font-bold mb-2" style={{ color: 'var(--ff-text)' }}>Compare the performance.</p>
+        <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--ff-text-2)' }}>An example of estimated results—not a measured benchmark or a retailer quote.</p>
+        <div className="flex items-center justify-between gap-2 mb-4">
           <span className="inline-flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--ff-text-2)' }}>
             <Zap size={13} style={{ color: 'var(--ff-cyan)' }} /> FPS Estimator
           </span>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ color: 'var(--ff-accent-text)', backgroundColor: 'var(--ff-accent-10)' }}>
+          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--ff-accent-text)', backgroundColor: 'var(--ff-accent-10)' }}>
             1440p · High
           </span>
         </div>
@@ -80,16 +81,7 @@ export default function HeroFpsCard() {
         </div>
       </motion.div>
 
-      {/* Floating badge chip */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8, x: -10 }}
-        animate={{ opacity: 1, scale: 1, x: 0, y: [0, 8, 0] }}
-        transition={{ opacity: { duration: 0.5, delay: 1.3 }, scale: { duration: 0.5, delay: 1.3 }, y: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.3 } }}
-        className="absolute -left-6 -bottom-5 hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
-        style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)', color: 'var(--ff-text)', boxShadow: '0 10px 30px -8px rgba(0,0,0,0.4)' }}
-      >
-        <span role="img" aria-hidden="true">✓</span> No account needed
-      </motion.div>
+      <p className="mt-4 text-center text-sm" style={{ color: 'var(--ff-text-2)' }}>Choose parts → review estimates → check the retailer</p>
     </motion.div>
   );
 }
