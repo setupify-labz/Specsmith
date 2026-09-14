@@ -13,7 +13,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   ANALYTICS_RESULT_KIND,
   ANALYTICS_RESULT_VERSION,
+  AnalyticsResultRefusedError,
   analyticsResultTemplate,
+  connectorMetricsFrom,
   ingestConnectorAnalytics,
   parseAnalyticsResult,
   type AnalyticsResultDocument,
@@ -171,17 +173,54 @@ describe("NEGATIVE CONTROLS", () => {
       .rejects.toMatchObject({ code: "impossible-capture-time" });
   });
 
-  it("refuses to let a missing metric become zero", async () => {
-    // The dangerous shape: a connector field that came back empty.
-    expect(() => parseAnalyticsResult(doc({ metrics: { views: 1200, likes: null } })))
-      // null is treated as absent, not as 0 — and absent means no property.
-      .not.toThrow();
-    const parsed = parseAnalyticsResult(doc({ metrics: { views: 1200, likes: null } }));
-    expect("likes" in parsed.metrics).toBe(false);
+  it("rejects every ambiguous representation of a present metric", async () => {
+    // The document is the trusted boundary: a key that is PRESENT must hold a
+    // real value. null is a present key holding nothing — it used to be
+    // accepted and silently dropped, which let the parser quietly do a mapping
+    // job the schema did not describe.
+    for (const bad of [null, "", "n/a", "null", "undefined", "NaN", true, false, {}, [], Number.NaN, -5]) {
+      expect(
+        () => parseAnalyticsResult(doc({ metrics: { views: 1200, likes: bad } })),
+        `metrics.likes = ${JSON.stringify(bad)} must be refused`,
+      ).toThrow(AnalyticsResultRefusedError);
+    }
+  });
 
-    // An explicit non-numeric placeholder is refused rather than coerced.
-    expect(() => parseAnalyticsResult(doc({ metrics: { views: 1200, likes: "" } }))).toThrow(/never substitute 0/i);
-    expect(() => parseAnalyticsResult(doc({ metrics: { views: 1200, likes: "n/a" } }))).toThrow(/never substitute 0/i);
+  it("names the mapping step rather than guessing what the author meant", () => {
+    expect(() => parseAnalyticsResult(doc({ metrics: { views: 1200, likes: null } })))
+      .toThrow(/connectorMetricsFrom/);
+  });
+
+  it("still allows a key to be omitted entirely, because optional means optional", () => {
+    const parsed = parseAnalyticsResult(doc({ metrics: { views: 1200 } }));
+    expect("likes" in parsed.metrics).toBe(false);
+  });
+
+  it("keeps a real numeric zero valid and distinct from unavailable", () => {
+    const parsed = parseAnalyticsResult(doc({ metrics: { views: 1200, likes: 0, comments: "unavailable" } }));
+    expect(parsed.metrics.likes).toBe(0);
+    expect(parsed.metrics.comments).toBe("unavailable");
+  });
+
+  it("normalizes connector nulls and missing fields only in the mapping step", () => {
+    const fromConnector = connectorMetricsFrom({ views: 1200, likes: null, shares: 12 });
+    expect(fromConnector.likes, "a connector null becomes an explicit unavailable").toBe("unavailable");
+    expect(fromConnector.comments, "a field the connector omitted becomes unavailable").toBe("unavailable");
+    expect(fromConnector.shares).toBe(12);
+
+    // And the mapped object is exactly what the strict parser accepts.
+    const parsed = parseAnalyticsResult(doc({ metrics: fromConnector }));
+    expect(parsed.metrics.shares).toBe(12);
+    expect("likes" in parsed.metrics).toBe(true);
+    expect((parsed.metrics as Record<string, unknown>).likes).toBe("unavailable");
+  });
+
+  it("does not rescue a value the mapping step does not understand", () => {
+    // "n/a" is not null; connectorMetricsFrom leaves it alone and the parser
+    // refuses it by name rather than quietly calling it unavailable.
+    const mapped = connectorMetricsFrom({ views: 1200, likes: "n/a" });
+    expect(mapped.likes).toBe("n/a");
+    expect(() => parseAnalyticsResult(doc({ metrics: mapped }))).toThrow(/metrics.likes must be/);
   });
 
   it("keeps an unavailable metric off the record entirely, distinct from zero", async () => {

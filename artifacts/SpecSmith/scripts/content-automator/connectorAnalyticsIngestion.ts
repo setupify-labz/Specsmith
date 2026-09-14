@@ -108,8 +108,23 @@ export class AnalyticsResultRefusedError extends Error {
 
 const WINDOWS: readonly SnapshotWindow[] = ["1h", "6h", "24h", "72h", "7d"];
 
-function metricValue(raw: unknown, name: string): MetricValue | undefined {
-  if (raw === undefined || raw === null) return undefined;
+/**
+ * Validates one optional metric that is PRESENT in the document.
+ *
+ * The document is the trusted boundary, so it admits exactly two
+ * representations of a metric: a non-negative finite number, or the literal
+ * string "unavailable". Nothing else — not null, not "", not "n/a", not
+ * "null", not a boolean.
+ *
+ * This deliberately does NOT normalize. An earlier version accepted null and
+ * quietly dropped it, which meant the parser was doing a mapping job: the
+ * document's own type said `number | "unavailable"` while the parser accepted a
+ * third thing and made it vanish. A reader of the schema could not tell what a
+ * stored document actually contained. Normalizing the connector's nulls is a
+ * real job, but it belongs to connectorMetricsFrom() below, one step earlier,
+ * where the ambiguity is visible and deliberate.
+ */
+function requirePresentMetric(raw: unknown, name: string): MetricValue {
   if (raw === "unavailable") return "unavailable";
   if (typeof raw === "number" && Number.isFinite(raw)) {
     if (raw < 0) throw new AnalyticsResultRefusedError("malformed-document", `metrics.${name} cannot be negative.`);
@@ -117,8 +132,34 @@ function metricValue(raw: unknown, name: string): MetricValue | undefined {
   }
   throw new AnalyticsResultRefusedError(
     "malformed-document",
-    `metrics.${name} must be a number or the string "unavailable"; got ${JSON.stringify(raw)}. Never substitute 0 for a metric the connector did not return.`,
+    `metrics.${name} must be a non-negative number or the string "unavailable"; got ${JSON.stringify(raw)}. `
+    + "Map a connector null or missing field to \"unavailable\" with connectorMetricsFrom() before building the document; "
+    + "never substitute 0 for a metric the connector did not return.",
   );
+}
+
+/**
+ * The connector-to-document mapping step, and the ONLY place a null or missing
+ * field becomes "unavailable".
+ *
+ * A real Metricool connector response will have nulls and absent keys in it.
+ * That is normal, and turning them into an explicit "unavailable" is a genuine
+ * translation — but it has to happen once, in the open, on the way IN, so that
+ * what lands in ANALYTICS_RESULT is unambiguous and the parser can stay strict.
+ *
+ * A present non-numeric, non-null value is left alone rather than rescued: a
+ * field reading "n/a" or "" is something this function does not understand, and
+ * the parser will reject it by name rather than have it silently become
+ * "unavailable" here.
+ */
+export function connectorMetricsFrom(raw: Record<string, unknown>): Record<string, unknown> {
+  const views = raw.views;
+  const mapped: Record<string, unknown> = { views };
+  for (const name of OPTIONAL_METRICS) {
+    const value = raw[name];
+    mapped[name] = value === undefined || value === null ? "unavailable" : value;
+  }
+  return mapped;
 }
 
 /** Structural validation. A malformed document is refused, never coerced. */
@@ -175,8 +216,12 @@ export function parseAnalyticsResult(input: unknown): AnalyticsResultDocument {
 
   const metrics: Record<string, MetricValue | number> = { views };
   for (const name of OPTIONAL_METRICS) {
-    const value = metricValue(m[name], name);
-    if (value !== undefined) metrics[name] = value;
+    // A key that is genuinely absent stays absent — optional means optional.
+    // A key that is PRESENT must be a real value; `null` is a present key
+    // holding nothing, which is precisely the ambiguity this boundary exists
+    // to refuse.
+    if (!(name in m)) continue;
+    metrics[name] = requirePresentMetric(m[name], name);
   }
 
   return {
@@ -453,7 +498,8 @@ export async function analyticsResultTemplate(
       `This window is due at ${snapshotDueAt(published.at, window)}; a reading taken before then is refused.`,
       "Copy numbers exactly as the connector reported them. Do not round, derive, or infer.",
       'A metric the connector did not return is "unavailable". Writing 0 instead states that nobody did that thing, which is a different and false claim.',
-      "Remove any metric line you are unsure about rather than guessing; omitted is treated identically to unavailable.",
+      "Remove any metric line you are unsure about rather than guessing; an omitted key is allowed and means the same as unavailable.",
+      "A key that is present must hold a number or \"unavailable\". null, \"\", \"n/a\" and \"null\" are refused — run the connector response through connectorMetricsFrom() to turn its nulls into \"unavailable\" first.",
     ],
   };
 }
