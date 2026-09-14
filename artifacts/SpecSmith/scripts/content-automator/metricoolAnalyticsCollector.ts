@@ -82,32 +82,16 @@ export interface CollectOptions {
 
 const DEFAULT_BASE_URL = "https://app.metricool.com/api";
 
-/**
- * Turns a durable ledger into a publication this collector may query, or
- * returns undefined.
- *
- * Requires BOTH a `published` event and a provider id recorded by the
- * transport. A creative that is only `scheduled` has nothing to measure yet,
- * and one with no provider id cannot be asked about at all.
- */
-export function knownPublicationFromLedger(
-  ledger: PublicationLedger,
-  details: { ideaId: string; durationSeconds: number; fingerprint: CreativeFingerprint },
-): KnownPublication | undefined {
-  const published = ledger.events.find((event) => event.status === "published");
-  if (!published) return undefined;
-  const withId = [...ledger.events].reverse().find((event) => event.providerPostId);
-  if (!withId?.providerPostId) return undefined;
-  return {
-    creativeId: ledger.creativeId,
-    platform: ledger.platform,
-    providerPostId: withId.providerPostId,
-    publishedAt: published.at,
-    durationSeconds: details.durationSeconds,
-    ideaId: details.ideaId,
-    fingerprint: details.fingerprint,
-  };
-}
+// knownPublicationFromLedger used to live here, taking ideaId, durationSeconds
+// and the fingerprint as parameters because the ledger did not persist them.
+// That made the caller a second source of truth for how analytics are
+// attributed, and a caller that passed the wrong fingerprint would have
+// mis-attributed real metrics with nothing to catch it.
+//
+// The fingerprint is now recorded once with the ledger's creation event, and
+// analyticsOrchestrator.eligibilityFor() derives all three from that one
+// canonical record. There is deliberately no second way to construct a
+// KnownPublication.
 
 function analyticsRowFrom(raw: string): Record<string, unknown> | undefined {
   let parsed: unknown;

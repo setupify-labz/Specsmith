@@ -18,10 +18,10 @@ import {
 } from "./metricoolClient.ts";
 import {
   collectDueAnalytics,
-  knownPublicationFromLedger,
   runLearningFromStoredSnapshots,
   type KnownPublication,
 } from "./metricoolAnalyticsCollector.ts";
+import { eligibilityFor } from "./analyticsOrchestrator.ts";
 import {
   advanceStoredPublicationLedger,
   createStoredPublicationLedger,
@@ -397,15 +397,15 @@ describe("analytics are collected only for real, ledgered publications", () => {
   it("derives a known publication from a ledger that actually published", async () => {
     const root = await publishedLedgerRoot();
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
-    const publication = knownPublicationFromLedger(ledger!, { ideaId: "idea-1", durationSeconds: 20, fingerprint: fingerprint() });
-    expect(publication?.providerPostId).toBe("post-123");
+    const publication = await eligibilityFor(root, ledger!);
+    expect(publication).toMatchObject({ providerPostId: "post-123" });
   });
 
   it("returns nothing for a ledger that is only scheduled, so it is never queried", async () => {
     const root = await ledgeredRoot();
     await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "scheduled", providerPostId: "post-123" });
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
-    expect(knownPublicationFromLedger(ledger!, { ideaId: "idea-1", durationSeconds: 20, fingerprint: fingerprint() })).toBeUndefined();
+    expect(await eligibilityFor(root, ledger!)).toMatchObject({ reason: "not-published" });
   });
 
   it("captures the due window and stores it immutably", async () => {

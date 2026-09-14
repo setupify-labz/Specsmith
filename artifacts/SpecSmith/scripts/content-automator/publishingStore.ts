@@ -21,6 +21,24 @@ interface StoredPublicationEvent {
   packageId: string;
   platform: VideoPlatform;
   event: PublicationEvent;
+  /**
+   * The creative fingerprint, written once with the creation event.
+   *
+   * WHY IT LIVES HERE AND NOWHERE ELSE. Analytics attribution needs the
+   * fingerprint, the ideaId and the target duration, and every one of those is
+   * already inside the fingerprint that createStoredPublicationLedger is
+   * handed. Before this it was dropped on the floor, so downstream code had to
+   * ask a caller to supply it again — a second source of truth that could
+   * disagree with the creative actually published.
+   *
+   * Recorded on the CREATION event only: the fingerprint describes what was
+   * made, so it is a fact about the creative, not about a later transition.
+   * Optional in the type because ledgers written before this change do not
+   * have it; loadStoredCreativeFingerprint returns null for those rather than
+   * reconstructing one, and the collector skips the creative with a named
+   * reason instead of inventing an attribution.
+   */
+  fingerprint?: CreativeFingerprint;
 }
 
 function storageKey(value: string): string {
@@ -99,6 +117,7 @@ export async function createStoredPublicationLedger(
     packageId: ledger.packageId,
     platform: ledger.platform,
     event: ledger.events[0],
+    fingerprint,
   } satisfies StoredPublicationEvent);
   if (!created) {
     throw new Error(`A durable publication ledger already exists for ${fingerprint.creativeId}; refusing a duplicate run.`);
@@ -230,4 +249,28 @@ export async function loadStoredAnalyticsSnapshots(
     throw new Error(`Analytics store ${creativeId} contains a snapshot for another creative.`);
   }
   return snapshots.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt));
+}
+
+/**
+ * The fingerprint recorded when this creative's ledger was created.
+ *
+ * Returns null when the ledger does not exist, or when it predates fingerprint
+ * persistence. Null means "SpecSmith does not know", and every caller must
+ * treat it that way — there is nothing here that reconstructs a plausible
+ * fingerprint from other fields.
+ */
+export async function loadStoredCreativeFingerprint(
+  root: string,
+  creativeId: string,
+): Promise<CreativeFingerprint | null> {
+  const path = eventPath(ledgerDirectory(root, creativeId), 0);
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") return null;
+    throw error;
+  }
+  const stored = parseStoredEvent(raw, path);
+  return stored.fingerprint ?? null;
 }
