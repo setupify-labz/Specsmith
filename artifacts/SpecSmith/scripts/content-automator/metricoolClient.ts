@@ -1,42 +1,42 @@
-// The production Metricool transport: the one place SpecSmith actually sends a
-// scheduling request to a third party.
+// OPTIONAL FUTURE ADAPTER: direct Metricool REST.
 //
-// SERVER ONLY, AND STRUCTURALLY SO
-// --------------------------------
-// This module reads API credentials. It must never be reachable from bundled
-// browser code, so it refuses to load in an environment that has a `window` —
-// a build that accidentally pulls it into the client fails at import rather
-// than shipping a token to every visitor. Credentials are read from the
-// process environment, are never written to a returned object, never
-// interpolated into an error message, and never logged.
+// NOT THE ACTIVE PUBLICATION PATH. The founder's current Metricool plan does
+// not expose REST API access, so nothing in this repository can use this
+// module today and `metricoolRestAvailability()` reports it unavailable unless
+// REST credentials are present in the environment. The active route is
+// readyToPublishHandoff.ts, which produces a manifest a human releases through
+// the ChatGPT/Metricool connector.
 //
-// WHAT THIS MODULE IS NOT
-// -----------------------
-// It does not build the request, decide the schedule, compute a fingerprint,
-// evaluate rights, or run quality review. Those are publishing.ts,
-// creativeFingerprint.ts, assetRights.ts and qualityReviewer.ts, and this
-// module deliberately takes their output as a finished, already-approved
-// package rather than re-deriving any of it. The one thing it re-checks is the
-// media digest, for the reason below.
+// It is kept, isolated and tested, because the plan may change and because the
+// wire format is worth preserving while it is fresh. It is deliberately inert:
+// no workflow references it, no script invokes it, and it cannot act without
+// credentials that do not currently exist.
 //
-// WHY THE DIGEST IS CHECKED AGAIN HERE
-// ------------------------------------
-// assertPublishGate already binds the reviewed digest to the rights-approved
-// master when the REQUEST is built. Between that moment and this one the file
-// on disk can change: a re-render writes the same path, a cache is repopulated,
-// a sync clobbers it. Publishing is the irreversible step, so the bytes are
-// re-hashed immediately before the call and compared against both the request
-// and the rights registry. A mismatch is not repaired — it throws.
-
-import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+// WHAT MOVED OUT OF THIS FILE
+// ---------------------------
+// The integrity guarantees — SHA-256 re-verification, rights-approved master
+// binding, duplicate refusal, gate checks — used to live here, which made them
+// REST-shaped. They are transport-independent properties of the content and
+// the ledger, so they now live in publicationIntegrity.ts and BOTH routes call
+// the same implementation. This file is now only the wire: credentials, the
+// HTTP call, response parsing, and recording what the provider returned.
+//
+// SERVER ONLY. It reads API credentials, so it refuses to load in an
+// environment with a `window`; a build that pulls it toward the browser fails
+// at import rather than shipping a token. Credentials come from the process
+// environment, are never returned in a result, and are never logged.
 
 import {
-  assertNotAlreadyPublished,
-  type MetricoolPublishingRequest,
-  type PublicationLedger,
-} from "./publishing.ts";
+  assertPublicationGatesPassed,
+  PublicationIntegrityError,
+  verifyApprovedMedia,
+  type ApprovedPublicationPackage,
+} from "./publicationIntegrity.ts";
+import type { PublicationLedger } from "./publishing.ts";
+
+// Re-exported so existing importers of the REST adapter keep one import site
+// for the package shape. The type itself is owned by publicationIntegrity.ts.
+export type { ApprovedPublicationPackage };
 import {
   advanceStoredPublicationLedger,
   loadStoredPublicationLedger,
@@ -50,15 +50,16 @@ if (typeof globalThis !== "undefined" && "window" in globalThis) {
 }
 
 /** Every way a publication attempt can be refused. A closed set, so a test can name each one. */
+/**
+ * REST-specific failures. Integrity failures keep their own codes and are
+ * raised as PublicationIntegrityError by publicationIntegrity.ts, so a caller
+ * can tell "the content is not fit to publish" from "the wire did not work".
+ */
 export type MetricoolFailureCode =
+  | "rest-unavailable"
   | "missing-credentials"
-  | "media-missing"
-  | "media-mismatch"
-  | "already-published"
-  | "unsupported-platform-state"
   | "auth-failed"
   | "malformed-response"
-  | "scheduling-ambiguous"
   | "transport-failed";
 
 export class MetricoolPublishError extends Error {
@@ -102,18 +103,6 @@ export function metricoolCredentialsFromEnv(env: NodeJS.ProcessEnv = process.env
  */
 export type MetricoolPublishMode = "draft" | "scheduled-live";
 
-/**
- * The finished, already-approved unit of work.
- *
- * `request` is publishing.ts's output, unmodified. `mediaPath` is the local
- * file whose bytes are about to be published; `approvedMasterSha256` is the
- * digest the rights registry holds for that master. All three must agree.
- */
-export interface ApprovedPublicationPackage {
-  readonly request: MetricoolPublishingRequest;
-  readonly mediaPath: string;
-  readonly approvedMasterSha256: string;
-}
 
 /** The minimal HTTP surface this module needs, injected so tests never touch the network. */
 export interface MetricoolTransport {
@@ -145,83 +134,6 @@ export interface PublishResult {
 }
 
 const DEFAULT_BASE_URL = "https://app.metricool.com/api";
-
-/** Platforms this transport can schedule. A platform outside this set fails closed. */
-const SCHEDULABLE: Record<VideoPlatform, true> = {
-  "youtube-shorts": true,
-  tiktok: true,
-  "instagram-reels": true,
-};
-
-async function sha256OfFile(path: string): Promise<string> {
-  const hash = createHash("sha256");
-  await new Promise<void>((resolve, reject) => {
-    const stream = createReadStream(path);
-    stream.on("data", (chunk) => hash.update(chunk));
-    stream.on("error", reject);
-    stream.on("end", () => resolve());
-  });
-  return hash.digest("hex");
-}
-
-/**
- * Re-hashes the bytes about to be published and refuses anything but an exact
- * three-way match: the file on disk, the digest the request was built around,
- * and the digest the rights registry approved.
- */
-async function verifyMediaDigest(pkg: ApprovedPublicationPackage): Promise<string> {
-  let size: number;
-  try {
-    size = (await stat(pkg.mediaPath)).size;
-  } catch {
-    throw new MetricoolPublishError("media-missing", `Final media is not readable at ${pkg.mediaPath}.`);
-  }
-  if (size === 0) {
-    throw new MetricoolPublishError("media-missing", `Final media at ${pkg.mediaPath} is empty.`);
-  }
-
-  const requested = pkg.request.finalMediaSha256.trim().toLowerCase();
-  const approved = pkg.approvedMasterSha256.trim().toLowerCase();
-  for (const [name, value] of [["request.finalMediaSha256", requested], ["approvedMasterSha256", approved]] as const) {
-    if (!/^[a-f0-9]{64}$/.test(value)) {
-      throw new MetricoolPublishError("media-mismatch", `${name} must be a 64-character SHA-256 hex digest.`);
-    }
-  }
-  if (requested !== approved) {
-    throw new MetricoolPublishError(
-      "media-mismatch",
-      `The request was built for ${requested} but the rights registry approved ${approved}. Clearance does not transfer across renders.`,
-    );
-  }
-
-  const actual = await sha256OfFile(pkg.mediaPath);
-  if (actual !== approved) {
-    throw new MetricoolPublishError(
-      "media-mismatch",
-      `The bytes at ${pkg.mediaPath} hash to ${actual}, not the rights-approved ${approved}. The file changed after approval; refusing to publish it.`,
-    );
-  }
-  return actual;
-}
-
-/**
- * Idempotency, checked against the durable ledger rather than in-memory state.
- *
- * Two distinct refusals: a creative already carrying a `published` event, and
- * one already carrying a `scheduled` event that holds a provider id — the
- * latter is a post already sitting in Metricool, and scheduling it again would
- * create a duplicate the ledger could not express.
- */
-function assertNotAlreadyScheduled(ledger: PublicationLedger, platform: VideoPlatform): void {
-  assertNotAlreadyPublished([ledger], ledger.creativeId);
-  const scheduled = ledger.events.find((event: PublicationLedger["events"][number]) => event.status === "scheduled" && event.providerPostId);
-  if (scheduled) {
-    throw new MetricoolPublishError(
-      "already-published",
-      `Creative ${ledger.creativeId} already has ${platform} post ${scheduled.providerPostId} scheduled at ${scheduled.at}; refusing a duplicate.`,
-    );
-  }
-}
 
 /** Reads the provider identifiers out of a response, or refuses the response. */
 function parseProviderIds(raw: string): { providerPostId: string; providerUuid?: string; providerUrl?: string } {
@@ -257,6 +169,33 @@ function parseProviderIds(raw: string): { providerPostId: string; providerUuid?:
   };
 }
 
+export interface MetricoolRestAvailability {
+  readonly available: boolean;
+  readonly reason: string;
+}
+
+/**
+ * Whether direct Metricool REST can be used at all.
+ *
+ * The founder's current plan does not include REST API access, so on that plan
+ * this always reports unavailable and publishApprovedPackage refuses before
+ * touching anything. Availability is decided solely by whether REST
+ * credentials exist: there is no override flag, and no code path treats
+ * "unavailable" as a soft warning to continue past.
+ */
+export function metricoolRestAvailability(
+  credentials: MetricoolCredentials | undefined = metricoolCredentialsFromEnv(),
+): MetricoolRestAvailability {
+  if (!credentials?.userToken?.trim() || !credentials?.userId?.trim()) {
+    return {
+      available: false,
+      reason:
+        "Metricool REST is unavailable: no REST credentials are configured. The current Metricool plan does not expose REST API access, so the active route is the READY_TO_PUBLISH handoff manifest (readyToPublishHandoff.ts).",
+    };
+  }
+  return { available: true, reason: "Metricool REST credentials are configured." };
+}
+
 /**
  * Schedules one already-approved publication and records the provider's
  * identifiers in the durable ledger.
@@ -271,48 +210,40 @@ export async function publishApprovedPackage(
   const mode: MetricoolPublishMode = options.mode ?? "draft";
   const { request } = pkg;
 
-  if (!SCHEDULABLE[request.platform]) {
-    throw new MetricoolPublishError("unsupported-platform-state", `Platform ${request.platform} cannot be scheduled by this transport.`);
+  // Availability first. On the current Metricool plan this is where every call
+  // stops, which is the intended state: REST is a future adapter, not a route
+  // anything falls back to.
+  const availability = metricoolRestAvailability(options.credentials);
+  if (!availability.available) {
+    throw new MetricoolPublishError("rest-unavailable", availability.reason);
   }
   if (!options.credentials?.userToken || !options.credentials?.userId) {
     throw new MetricoolPublishError("missing-credentials", "Metricool credentials are not configured in this environment.");
   }
-  if (!request.media.length) {
-    throw new MetricoolPublishError("media-missing", `Request ${request.requestId} carries no media URL.`);
-  }
-  if (!request.date || !request.timezone) {
-    throw new MetricoolPublishError("scheduling-ambiguous", `Request ${request.requestId} has no unambiguous local date/timezone pair.`);
-  }
-  // publishing.ts already rejects nonexistent and ambiguous wall-clock times
-  // when the request is built. This re-asserts the invariant the transport
-  // depends on rather than trusting a hand-assembled request object.
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(request.date)) {
-    throw new MetricoolPublishError("scheduling-ambiguous", `Request ${request.requestId} date must be local YYYY-MM-DDTHH:mm:ss.`);
-  }
-  // "draft" must never queue a live post. If a caller hands in a request whose
-  // own draft flag disagrees with the requested mode, that is a contradiction,
-  // not something to silently resolve in either direction.
+
+  // "draft" must never queue a live post. A request whose own draft flag
+  // disagrees with the requested mode is a contradiction, not something to
+  // silently resolve in either direction. REST-specific, because only this
+  // route has a mode.
   if (mode === "draft" && request.draft !== true) {
     throw new MetricoolPublishError(
-      "unsupported-platform-state",
+      "unsupported-platform-state" as MetricoolFailureCode,
       `Request ${request.requestId} has draft=false but the publish mode is "draft". Refusing to guess which was intended.`,
     );
   }
 
   const ledger = await loadStoredPublicationLedger(options.storeRoot, request.creativeId);
   if (!ledger) {
-    throw new MetricoolPublishError(
+    throw new PublicationIntegrityError(
       "unsupported-platform-state",
-      `No durable publication ledger exists for ${request.creativeId}; a publication must be ledgered before it can be scheduled.`,
+      `No durable publication ledger exists for ${request.creativeId}; a publication must be ledgered before it can be released.`,
     );
   }
-  if (ledger.platform !== request.platform) {
-    throw new MetricoolPublishError("unsupported-platform-state", `Ledger ${request.creativeId} is ${ledger.platform}, not ${request.platform}.`);
-  }
-  assertNotAlreadyScheduled(ledger, request.platform);
 
-  // The last thing before the irreversible step.
-  const verifiedSha256 = await verifyMediaDigest(pkg);
+  // Every content and ledger guarantee, shared with the handoff route so the
+  // two can never drift apart.
+  assertPublicationGatesPassed(pkg, ledger);
+  const verifiedSha256 = await verifyApprovedMedia(pkg);
 
   const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const url = `${baseUrl}/v2/scheduler/posts?blogId=${encodeURIComponent(request.blog_id)}&userId=${encodeURIComponent(options.credentials.userId)}`;

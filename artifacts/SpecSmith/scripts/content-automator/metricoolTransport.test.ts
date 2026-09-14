@@ -329,14 +329,17 @@ describe("it fails closed on every bad response", () => {
     expect(transport.calls).toHaveLength(0);
   });
 
-  it("refuses without credentials", async () => {
+  // Without REST credentials the adapter is UNAVAILABLE, which is the state on
+  // the founder's current Metricool plan — a stronger and more accurate refusal
+  // than "credentials missing", and the first thing checked.
+  it("refuses as unavailable when no REST credentials exist", async () => {
     const root = await ledgeredRoot();
     const media = await writeMedia(root, "real-bytes");
     const transport = fakeTransport([OK]);
     await expect(publishApprovedPackage(
       { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
       { storeRoot: root, credentials: { userToken: "", userId: "" }, transport },
-    )).rejects.toMatchObject({ code: "missing-credentials" });
+    )).rejects.toMatchObject({ code: "rest-unavailable" });
     expect(transport.calls).toHaveLength(0);
   });
 });
