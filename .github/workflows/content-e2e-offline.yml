@@ -62,6 +62,12 @@ on:
   push:
     branches:
       - claude/intelligent-bohr-naord4
+      # The learning-loop wiring branch. Same reason as the one above, and
+      # stated in this file's own header: workflow_dispatch cannot be
+      # triggered via the API for a workflow file that is not on the default
+      # branch, so a branch-scoped push is what actually produces pre-merge
+      # evidence. Removed when that branch merges.
+      - claude/rakuten-newegg-adapter-97h85y
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
