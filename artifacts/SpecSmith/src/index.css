@@ -140,12 +140,18 @@
   --ff-accent-10:  rgba(108,99,255,0.1);
   --ff-grid:       rgba(255,255,255,0.04);
   --ff-transition: 200ms ease;
+  /* Photographs retain their original pixels. One neutral studio frame
+     prevents transparent assets from changing appearance between themes. */
+  --ff-photo-bg: #13131A;
+  --ff-retailer-fill: #FF9E1B;
+  --ff-on-retailer: #17110A;
 }
 
 /* ═══════════════════════════════════════
    SPECSMITH DESIGN SYSTEM — LIGHT
    ═══════════════════════════════════════ */
 [data-theme="light"] {
+  --ff-photo-bg: #FFFFFF;
   --background: 0 0% 96%;
   --foreground: 240 40% 5%;
   --border: 240 10% 85%;
@@ -355,6 +361,30 @@
 }
 
 @layer components {
+  .retail-photo-frame {
+    background: var(--ff-photo-bg);
+  }
+  /* Large catalogue/guide images sit inside their card by 8px. Keep this
+     geometry off the shared photo surface: thumbnails and drawer previews
+     also use .retail-photo-frame and must not inherit card-level spacing.
+     width:auto is deliberate — a width:100% frame plus inline margins would
+     overflow its card by 16px at every viewport size. */
+  .retail-photo-frame-inset {
+    width: auto;
+    border-bottom: 1px solid var(--ff-border);
+    margin: 8px 8px 0;
+    border-radius: 10px;
+  }
+  .visual-refresh a:focus-visible,
+  .visual-refresh button:focus-visible,
+  .visual-refresh summary:focus-visible {
+    outline: 2px solid var(--ff-accent-text);
+    outline-offset: 4px;
+  }
+  .visual-refresh .primary-action {
+    background: var(--ff-accent-solid);
+    color: var(--ff-on-accent);
+  }
   .ff-input {
     height: 44px;
     padding: 0 1rem;
@@ -413,18 +443,6 @@
     animation: none;
     opacity: 1;
   }
-}
-
-/* WHAT A PRODUCT PHOTOGRAPH IS COMPOSITED AGAINST.
-   One declaration, three places: the card's image frame, the detail drawer's
-   frame and its thumbnails, and the build summary's tiles. Once a picture
-   carries real transparency this colour shows THROUGH it, so the three have to
-   agree exactly — the same cut-out sitting on two different greys in two parts
-   of one page reads as two different photographs. Held apart from --ff-surface
-   for the same reason: retuning the general surface colour must not silently
-   tint every product. */
-.retail-photo-frame {
-  background: var(--ff-photo-bg);
 }
 
 .ff-accent-control:focus-visible {
