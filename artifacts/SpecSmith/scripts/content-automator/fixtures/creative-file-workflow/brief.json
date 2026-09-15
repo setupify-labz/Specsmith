@@ -5,6 +5,19 @@
   "platform": "youtube-shorts",
   "productDestination": "/compare",
   "captureStateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2",
+  "captureSurface": "compare",
+  "captureType": "static",
+  "captureRenders": [
+    "one estimated FPS value per build per game, as a bar",
+    "a modelled game-leads tally per build",
+    "an estimated average FPS per build",
+    "the part names selected for each build",
+    "the evidence note about model estimates and editorial prices"
+  ],
+  "captureDoesNotShow": [
+    "the model's estimate range (min–max) (src/pages/Compare.tsx renders bars from single values; FpsGauge (which shows a range) is used only by FpsEstimator.)",
+    "any price (src/pages/Compare.tsx mounts PartSelector with showShopping={false}, which hides prices.)"
+  ],
   "renderRequest": {
     "captureType": "static",
     "state": {
@@ -24,6 +37,16 @@
       "state": "known",
       "requiredWording": [
         "model estimates"
+      ],
+      "attribution": null
+    },
+    {
+      "claimId": "SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal",
+      "proposition": "At SpecSmith's editorial catalog prices the two CPU-and-GPU pairs on this comparison come to the same parts subtotal.",
+      "state": "known",
+      "requiredWording": [
+        "editorial CPU-and-GPU parts subtotal",
+        "not a complete build and not a live retail price"
       ],
       "attribution": null
     }
@@ -82,5 +105,5 @@
     "Passing every check makes a batch ready for human review. It does not approve it, render it, or permit publishing."
   ],
   "syntheticResearch": true,
-  "briefHash": "b36976e4fb8399c19837e39cc914e5d43822e702699979be0ed5e6c5a2ea5188"
+  "briefHash": "7db1a289ccedb7f7688e1482e760c3c0cb61fe626d2cb5394a470e573d4e9765"
 }

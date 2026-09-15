@@ -126,7 +126,8 @@
             "type": "array",
             "items": {
               "enum": [
-                "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+                "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit",
+                "SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal"
               ]
             },
             "$comment": "At least one beat must carry an approved claimId. No other id is accepted."

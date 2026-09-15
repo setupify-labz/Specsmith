@@ -36,6 +36,7 @@ import { join } from "node:path";
 
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
 import { assessDivergence } from "./divergence.ts";
+import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
 import { stateIdentifier, parseUiRenderRequest } from "../../uiRender/uiRenderState.ts";
 import {
   AUDIENCE_EXPERIENCES,
@@ -85,6 +86,13 @@ export interface ExportedBrief {
   readonly productDestination: string;
   /** The exact capture identifier every product visual must name. */
   readonly captureStateIdentifier: string;
+  /** The surface that capture comes from, and whether it moves. */
+  readonly captureSurface: string;
+  readonly captureType: CaptureType;
+  /** What the capture will actually put on screen. */
+  readonly captureRenders: readonly string[];
+  /** What it will NOT, so the copy cannot point at something absent. */
+  readonly captureDoesNotShow: readonly string[];
   readonly renderRequest: unknown;
   /**
    * Only claims the research layer has actually approved for creative use.
@@ -141,6 +149,12 @@ export function buildCreativeBrief(
     platform: input.platform,
     productDestination: input.productDestination,
     captureStateIdentifier: stateIdentifier(renderRequest),
+    captureSurface: renderRequest.state.surface,
+    captureType: renderRequest.captureType,
+    captureRenders: SURFACE_CONTENT[renderRequest.state.surface]?.renders ?? [],
+    captureDoesNotShow: (SURFACE_CONTENT[renderRequest.state.surface]?.absent ?? []).map(
+      (entry) => `${entry.element} (${entry.verifiedAt})`,
+    ),
     renderRequest: input.renderRequest,
     approvedClaims: approved.map((claim) => ({
       claimId: claim.claimId,
@@ -300,9 +314,29 @@ export function authoringGuide(brief: ExportedBrief): string {
   lines.push("");
   lines.push("## The one capture state");
   lines.push("");
-  lines.push(`Every visual must be a \`real-product-capture\` of \`compare\` at exactly:`);
+  lines.push(`Every visual must be a \`real-product-capture\` of \`${brief.captureSurface}\` at exactly:`);
   lines.push("");
   lines.push(`    ${brief.captureStateIdentifier}`);
+  lines.push("");
+  lines.push(`Capture type: \`${brief.captureType}\`.`);
+  if (brief.captureType === "static") {
+    lines.push("");
+    lines.push("This is a **single frame**. Do not write copy that promises the picture changes.");
+  }
+  if (brief.captureRenders.length > 0) {
+    lines.push("");
+    lines.push("### What this capture will show");
+    lines.push("");
+    for (const item of brief.captureRenders) lines.push(`- ${item}`);
+  }
+  if (brief.captureDoesNotShow.length > 0) {
+    lines.push("");
+    lines.push("### What it will NOT show");
+    lines.push("");
+    lines.push("Do not tell the viewer to look at any of these on this page. They are not there.");
+    lines.push("");
+    for (const item of brief.captureDoesNotShow) lines.push(`- ${item}`);
+  }
   lines.push("");
   lines.push("## Constraints");
   lines.push("");
@@ -654,8 +688,21 @@ export interface RevisionFeedback {
 /** What the brief requires, so feedback can name the specific mismatch. */
 export interface FeedbackExpectations {
   readonly approvedClaimIds: readonly string[];
+  /**
+   * Required wording per approved claim.
+   *
+   * MASTER #2's contract enforces `requiredWording` only for two specific
+   * requirement shapes ("Estimated FPS" and the live-price caveat); any other
+   * required wording is carried but never checked. This workflow enforces the
+   * general rule — a beat that binds a claim must carry that claim's required
+   * wording — rather than modifying the audited gate to do it.
+   */
+  readonly requiredWordingByClaimId: Readonly<Record<string, readonly string[]>>;
   readonly captureStateIdentifier: string;
   readonly productDestination: string;
+  /** The surface and capture type the mission's render request declares. */
+  readonly surface: string;
+  readonly captureType: CaptureType;
 }
 
 function actionFor(code: string, detail: string): string {
@@ -701,6 +748,41 @@ export function buildRevisionFeedback(
       if (finding.routing === "machine-applicable") advisory.push(action);
       else required.push(action);
     }
+    // A beat that binds a claim must carry the wording that makes the claim
+    // true. Dropping "not a complete build and not a live retail price" from a
+    // statement about identical prices does not make the statement shorter, it
+    // makes it false.
+    proposal.concept.beats.forEach((beat, index) => {
+      const spoken = `${beat.narration} ${beat.onScreenText}`;
+      for (const claimId of beat.factDependencies) {
+        for (const wording of expectations.requiredWordingByClaimId[claimId] ?? []) {
+          if (spoken.includes(wording)) continue;
+          required.push(
+            `Required wording missing at beat-${index + 1}: claim "${claimId}" may only be stated with the wording ` +
+              `"${wording}", which makes it true. Add it verbatim, or stop binding this beat to that claim.`,
+          );
+        }
+      }
+    });
+
+    // Does the copy promise what the renderer will actually put on screen?
+    // The evidence gate cannot answer this: "watch the range appear" is not a
+    // factual claim about hardware, it is a promise about the picture.
+    for (const finding of checkRenderDeliverability({
+      conceptId: proposal.concept.conceptId,
+      surface: expectations.surface,
+      captureType: expectations.captureType,
+      lines: proposal.concept.beats.flatMap((beat, index) => [
+        { location: `beat-${index + 1}.narration`, text: beat.narration },
+        { location: `beat-${index + 1}.onScreenText`, text: beat.onScreenText },
+      ]),
+    })) {
+      required.push(
+        `Renderer deliverability [${finding.code}] at ${finding.location}: ${finding.detail} ` +
+          `Offending text: "${finding.evidence}"`,
+      );
+    }
+
     for (const finding of proposal.evidenceFindings) {
       // Location and the offending text are the whole point of this line. An
       // author who is told only "asserts an unsupported claim" has to guess
@@ -903,13 +985,34 @@ export interface PacketInput {
   readonly status: string;
   readonly result: PacketProposals;
   readonly batchHash: string | null;
+  /**
+   * The feedback produced for this attempt, when there was one.
+   *
+   * Readiness is derived from the findings, NOT from the upstream generation
+   * status alone. Checks that live in this workflow — renderer deliverability,
+   * set-level divergence, mission blockers — do not feed the proposal pass's
+   * own `contractEligible`, so a batch with outstanding findings would
+   * otherwise be reported as ready because an earlier layer had nothing to say
+   * about them.
+   */
+  readonly feedback: RevisionFeedback | null;
 }
 
 export function buildReviewPacket(input: PacketInput): CreativeReviewPacket {
+  const outstanding =
+    input.feedback === null
+      ? 0
+      : input.feedback.setFindings.length +
+        input.feedback.concepts.reduce(
+          (total, concept) => total + concept.required.length + concept.missionBlockers.length,
+          0,
+        );
+
   const machineChecksPassed =
     input.status === "awaiting-human-review" &&
     input.result.proposals.length > 0 &&
-    input.result.proposals.every((proposal) => proposal.contractEligible);
+    input.result.proposals.every((proposal) => proposal.contractEligible) &&
+    outstanding === 0;
 
   const notes = [
     "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value, factual completeness or readability.",

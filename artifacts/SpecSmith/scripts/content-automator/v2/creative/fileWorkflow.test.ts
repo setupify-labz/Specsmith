@@ -177,12 +177,12 @@ function validBatch(): unknown[] {
     }),
     concept("t-watch", "spectator", "continuum-then-falsification", "I can spot a gap too small for its own estimate.", {
       hook: {
-        narration: "Watch what happens to the difference on this page when the range around it is drawn in.",
-        onScreenText: "Watch the difference",
+        narration: "These bars are different lengths. That is not the same as a difference the model can stand behind.",
+        onScreenText: "Different bars, same conclusion",
       },
       close: {
-        narration: "A visible gap is not the same as a supported difference. Look for the range around the number.",
-        onScreenText: "Look for the range",
+        narration: "A longer bar is not evidence that one side is faster. Ask how wide each number is.",
+        onScreenText: "Ask how wide the number is",
       },
     }),
   ];
@@ -469,3 +469,58 @@ describe("the authoring loop", () => {
   });
 });
 
+describe("readiness accounts for checks the proposal pass does not know about", () => {
+  it("refuses to call a batch ready while this workflow still has findings", async () => {
+    // The proposal pass has no opinion about renderer deliverability, so on its
+    // own it reports these treatments as accepted. Readiness must not inherit
+    // that verdict while findings are outstanding.
+    const batch = validBatch().map((entry) => {
+      const record = entry as Record<string, unknown>;
+      const beats = (record.beats as Record<string, unknown>[]).map((beat, index) =>
+        index === 0 ? { ...beat, narration: "Watch what happens to the bars on this page." } : beat,
+      );
+      return { ...record, beats };
+    });
+    writeBatch(1, batch);
+    const result = await runCreativeFileWorkflow(directory, mission());
+
+    expect(result.status).toBe("awaiting-human-review");
+    expect(result.workflowStatus).toBe("revision-required");
+    expect(result.packet.machineChecksPassed).toBe(false);
+    expect(result.packet.humanReviewReady).toBe(false);
+    expect(result.feedback[0].concepts.flatMap((entry) => entry.required).join(" ")).toMatch(
+      /promises-motion-from-a-still/,
+    );
+  });
+
+  it("says plainly that the upstream status did not account for these checks", async () => {
+    const batch = validBatch().map((entry) => {
+      const record = entry as Record<string, unknown>;
+      const beats = (record.beats as Record<string, unknown>[]).map((beat, index) =>
+        index === 0 ? { ...beat, narration: "Watch what happens to the bars on this page." } : beat,
+      );
+      return { ...record, beats };
+    });
+    writeBatch(1, batch);
+    const result = await runCreativeFileWorkflow(directory, mission());
+    expect(result.workflowReason).toMatch(/does not account for this workflow's own checks/);
+  });
+
+  it("reports ready only when nothing at all is outstanding", async () => {
+    writeBatch(1, validBatch());
+    const result = await runCreativeFileWorkflow(directory, mission());
+    expect(result.workflowStatus).toBe("ready-for-human-review");
+    expect(result.packet.machineChecksPassed).toBe(true);
+    expect(result.packet.approved).toBe(false);
+  });
+
+  it("tells the author what the capture will and will not show", async () => {
+    const result = await runCreativeFileWorkflow(directory, mission(), { exportOnly: true });
+    expect(result.brief.captureType).toBe("static");
+    expect(result.brief.captureDoesNotShow.join(" ")).toMatch(/estimate range/);
+    expect(result.brief.captureDoesNotShow.join(" ")).toMatch(/any price/);
+    const guide = readFileSync(join(directory, WORKFLOW_PATHS.authoring), "utf8");
+    expect(guide).toMatch(/single frame/);
+    expect(guide).toMatch(/What it will NOT show/);
+  });
+});

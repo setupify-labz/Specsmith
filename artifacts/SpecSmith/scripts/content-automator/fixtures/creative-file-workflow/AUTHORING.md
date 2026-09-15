@@ -17,6 +17,8 @@ This is a local, file-based workflow. Nothing here calls a provider, spends mone
 
 - `SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit` (known): On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own estimates, so the model does not separate them on frame rate.
   - required wording, verbatim: "model estimates"
+- `SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal` (known): At SpecSmith's editorial catalog prices the two CPU-and-GPU pairs on this comparison come to the same parts subtotal.
+  - required wording, verbatim: "editorial CPU-and-GPU parts subtotal", "not a complete build and not a live retail price"
 
 ## What research refused
 
@@ -34,6 +36,25 @@ Every beat showing the product capture must carry these verbatim in `disclosureT
 Every visual must be a `real-product-capture` of `compare` at exactly:
 
     compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2
+
+Capture type: `static`.
+
+This is a **single frame**. Do not write copy that promises the picture changes.
+
+### What this capture will show
+
+- one estimated FPS value per build per game, as a bar
+- a modelled game-leads tally per build
+- an estimated average FPS per build
+- the part names selected for each build
+- the evidence note about model estimates and editorial prices
+
+### What it will NOT show
+
+Do not tell the viewer to look at any of these on this page. They are not there.
+
+- the model's estimate range (min–max) (src/pages/Compare.tsx renders bars from single values; FpsGauge (which shows a range) is used only by FpsEstimator.)
+- any price (src/pages/Compare.tsx mounts PartSelector with showShopping={false}, which hides prices.)
 
 ## Constraints
 

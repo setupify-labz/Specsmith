@@ -1,8 +1,8 @@
 {
   "version": "creative-file-workflow-v1",
   "missionId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
-  "briefHash": "b36976e4fb8399c19837e39cc914e5d43822e702699979be0ed5e6c5a2ea5188",
-  "attempt": 2,
+  "briefHash": "7db1a289ccedb7f7688e1482e760c3c0cb61fe626d2cb5394a470e573d4e9765",
+  "attempt": 3,
   "generatorName": "local-file-authored-batch",
   "status": "awaiting-human-review",
   "machineChecksPassed": true,
@@ -22,7 +22,7 @@
     "claude-batch-three-checks",
     "claude-batch-vanishing-gap"
   ],
-  "batchHash": "af21c1e6c4ffaf5ed67dd476d700279e8a1b3a3e7ff188a327bc0b8a63b55c1d",
+  "batchHash": "1eeb4125ce3f199386f1cf15875215ee4a8e72b8f49b8d2af7061d70800e6902",
   "notes": [
     "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value, factual completeness or readability.",
     "Authorship by a model is not evidence. These concepts passed the same gates a provider's output would.",

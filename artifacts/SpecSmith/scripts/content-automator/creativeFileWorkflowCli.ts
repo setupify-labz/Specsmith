@@ -54,6 +54,25 @@ export const DEMO_RESEARCH: ResearchCreativeContract = {
       requiredWording: ["model estimates"],
       supportingSnapshotIds: ["SYNTHETIC_ENGINEERING_FIXTURE-snapshot"],
     },
+    {
+      // The price identity is real and checkable: rtx5060ti $564 + i3-13100f $90
+      // and rtx4060ti $469 + r5-9600x $185 both come to $654 in the shipped
+      // catalog. What it is NOT is a complete build or a live retail quote, and
+      // the Compare page does not display prices at all.
+      //
+      // The qualifier is carried as requiredWording rather than left to the
+      // author, so a script that states the price identity without saying what
+      // kind of price it is fails the gate instead of relying on goodwill.
+      claimId: "SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal",
+      proposition:
+        "At SpecSmith's editorial catalog prices the two CPU-and-GPU pairs on this comparison come to the same parts subtotal.",
+      state: "known",
+      requiredWording: [
+        "editorial CPU-and-GPU parts subtotal",
+        "not a complete build and not a live retail price",
+      ],
+      supportingSnapshotIds: ["SYNTHETIC_ENGINEERING_FIXTURE-snapshot"],
+    },
   ],
   unsafeClaims: [
     {
@@ -117,8 +136,9 @@ async function main(): Promise<void> {
   console.log(`Brief hash: ${result.brief.briefHash}`);
   console.log(`Approved claims available to the author: ${result.brief.approvedClaims.length}`);
   console.log("");
-  console.log(`Status: ${result.status}`);
-  console.log(result.reason);
+  console.log(`Workflow status: ${result.workflowStatus}`);
+  console.log(result.workflowReason);
+  console.log(`(proposal pass reported: ${result.status})`);
 
   for (const entry of result.feedback) {
     console.log("");

@@ -26,8 +26,18 @@ import {
 
 export interface FileWorkflowResult {
   readonly brief: ExportedBrief;
+  /** The generation pass's own status, reported unchanged. */
   readonly status: string;
   readonly reason: string;
+  /**
+   * This workflow's conclusion, which is what a reader should act on.
+   *
+   * The upstream status answers "did the proposal pass accept these?". It does
+   * not know about the checks that live here, so on its own it can say a batch
+   * passed while this workflow still has blocking findings.
+   */
+  readonly workflowStatus: "brief-exported" | "ready-for-human-review" | "revision-required" | "blocked";
+  readonly workflowReason: string;
   readonly attempts: number;
   readonly feedback: readonly RevisionFeedback[];
   readonly packet: CreativeReviewPacket;
@@ -56,12 +66,15 @@ export async function runCreativeFileWorkflow(
       status: "brief-exported",
       result: { proposals: [] },
       batchHash: null,
+      feedback: null,
     });
     written.push(writeReviewPacket(directory, packet));
     return {
       brief: exported.brief,
       status: "brief-exported",
       reason: "The brief was exported. Author three concept files, then run the workflow again.",
+      workflowStatus: "brief-exported",
+      workflowReason: "The brief was exported. Author three concept files, then run the workflow again.",
       attempts: 0,
       feedback: [],
       packet,
@@ -84,8 +97,13 @@ export async function runCreativeFileWorkflow(
   if (attempts > 0) {
     const entry = buildRevisionFeedback(attempts, exported.brief.briefHash, pass.status, pass.reason, pass.result, {
       approvedClaimIds: exported.brief.approvedClaims.map((claim) => claim.claimId),
+      requiredWordingByClaimId: Object.fromEntries(
+        exported.brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording]),
+      ),
       captureStateIdentifier: exported.brief.captureStateIdentifier,
       productDestination: exported.brief.productDestination,
+      surface: exported.brief.captureSurface,
+      captureType: exported.brief.captureType,
     });
     feedback.push(entry);
     written.push(...writeRevisionFeedback(directory, entry));
@@ -109,8 +127,32 @@ export async function runCreativeFileWorkflow(
     status: pass.status,
     result: pass.result,
     batchHash,
+    feedback: feedback[0] ?? null,
   });
   written.push(writeReviewPacket(directory, packet));
 
-  return { brief: exported.brief, status: pass.status, reason: pass.reason, attempts, feedback, packet, written };
+  const workflowStatus: FileWorkflowResult["workflowStatus"] = packet.machineChecksPassed
+    ? "ready-for-human-review"
+    : attempts === 0 || pass.status === "blocked-evidence" || pass.status === "blocked-generator"
+      ? "blocked"
+      : "revision-required";
+
+  const workflowReason =
+    workflowStatus === "ready-for-human-review"
+      ? "Every machine check in this workflow passed for every treatment. Ready for human review, and NOT approved."
+      : workflowStatus === "blocked"
+        ? pass.reason
+        : `${feedback[0]?.nextStep ?? "Revise the batch."} The upstream proposal pass reported "${pass.status}", which does not account for this workflow's own checks.`;
+
+  return {
+    brief: exported.brief,
+    status: pass.status,
+    reason: pass.reason,
+    workflowStatus,
+    workflowReason,
+    attempts,
+    feedback,
+    packet,
+    written,
+  };
 }

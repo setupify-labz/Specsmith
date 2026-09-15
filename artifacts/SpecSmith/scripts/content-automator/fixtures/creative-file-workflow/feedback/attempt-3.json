@@ -1,0 +1,32 @@
+{
+  "version": "creative-file-workflow-v1",
+  "attempt": 3,
+  "briefHash": "7db1a289ccedb7f7688e1482e760c3c0cb61fe626d2cb5394a470e573d4e9765",
+  "status": "awaiting-human-review",
+  "reason": "Three generator-authored treatments passed machine checks; no creative score, rendered-media approval or publishing permission is inferred.",
+  "concepts": [
+    {
+      "conceptId": "claude-batch-commit-first",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": []
+    },
+    {
+      "conceptId": "claude-batch-three-checks",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": []
+    },
+    {
+      "conceptId": "claude-batch-vanishing-gap",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": []
+    }
+  ],
+  "setFindings": [],
+  "nextStep": "All three treatments passed the machine checks. This batch is ready for human review. It is NOT approved."
+}
