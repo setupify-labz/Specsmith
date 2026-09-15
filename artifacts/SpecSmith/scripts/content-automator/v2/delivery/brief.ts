@@ -1,15 +1,28 @@
 // MASTER #4 — PLATFORM_CREATIVE_BRIEF (sections 14, 16, 21, 22, 43).
 //
 // Platform adaptation may package a mission differently, but it may not invent
-// a capability when the platform snapshot says unknown.
+// a capability when the platform snapshot says unknown. Any platform-specific
+// difference carries the exact fact(s) that authorized it.
 
 import type { ContentMission } from "../strategy/contentMission.ts";
 import type { SafeClaim } from "../research/creativeContract.ts";
 import type { AudienceProfile } from "../audience/model.ts";
 import type { AudienceHypothesis } from "../audience/hypotheses.ts";
-import { statusIsUsable, type PlatformId, type PlatformSnapshot, type PlatformTag } from "../platform/model.ts";
+import { statusIsUsable, type Capability, type PlatformFact, type PlatformId, type PlatformSnapshot, type PlatformTag } from "../platform/model.ts";
+import { usableFacts } from "../platform/ingestion.ts";
 import type { AudiencePlatformFit } from "./fit.ts";
 import { assertTruthPreserved, type InvariantFinding, type TruthInvariant } from "./invariants.ts";
+
+export type AdaptationDimension = "metadata.title" | "metadata.description" | "execution.cta" | "execution.duration";
+
+export interface PlatformAdaptationEvidence {
+  readonly dimension: AdaptationDimension;
+  readonly factId: string;
+  readonly platform: PlatformId;
+  readonly claim: string;
+  readonly source: string;
+  readonly capturedAt: string;
+}
 
 export interface PlatformMetadata {
   readonly title: string | null;
@@ -69,6 +82,8 @@ export interface PlatformCreativeBrief {
   readonly execution: PlatformExecutionGuidance;
   readonly hookConstraints: readonly string[];
   readonly metadata: PlatformMetadata;
+  /** Exact usable platform facts that caused platform-specific output choices. */
+  readonly adaptationEvidence: readonly PlatformAdaptationEvidence[];
   readonly uncertainty: BriefUncertainty;
   readonly provenance: { readonly synthetic: boolean; readonly producedBy: string; readonly producedAt: string };
 }
@@ -96,8 +111,39 @@ export interface BriefInput {
   readonly producedBy: string;
 }
 
-function capabilityIsUsable<T>(status: PlatformSnapshot["capability"]["media"]["orientation"]["status"], value: T | null): value is T {
-  return value !== null && statusIsUsable(status) && status !== "hypothesis";
+function evidencedFact<T>(
+  capability: Capability<T>,
+  snapshot: PlatformSnapshot,
+  now: Date,
+): PlatformFact | null {
+  if (capability.value === null || capability.factId === null) return null;
+  if (!statusIsUsable(capability.status) || capability.status === "hypothesis") return null;
+  const fact = usableFacts(snapshot, now).find((candidate) => candidate.factId === capability.factId);
+  if (fact === undefined || fact.platform !== snapshot.platform) return null;
+  return fact;
+}
+
+function evidencedValue<T>(
+  capability: Capability<T>,
+  snapshot: PlatformSnapshot,
+  now: Date,
+): T | null {
+  return evidencedFact(capability, snapshot, now) === null ? null : capability.value;
+}
+
+function evidenceEntry(
+  dimension: AdaptationDimension,
+  fact: PlatformFact | null,
+): PlatformAdaptationEvidence | null {
+  if (fact === null) return null;
+  return {
+    dimension,
+    factId: fact.factId,
+    platform: fact.platform,
+    claim: fact.claim,
+    source: fact.source,
+    capturedAt: fact.capturedAt,
+  };
 }
 
 export function buildPlatformBrief(input: BriefInput): PlatformCreativeBrief {
@@ -110,6 +156,8 @@ export function buildPlatformBrief(input: BriefInput): PlatformCreativeBrief {
   }
 
   const metadata = buildMetadata(input);
+  const execution = buildExecution(input);
+  const adaptationEvidence = buildAdaptationEvidence(input);
   const metadataFindings = assertTruthPreserved(invariant, [
     { location: `${fit.platform}:metadata.title`, text: metadata.title ?? "" },
     { location: `${fit.platform}:metadata.description`, text: metadata.description },
@@ -148,9 +196,10 @@ export function buildPlatformBrief(input: BriefInput): PlatformCreativeBrief {
     explanationDepth: fit.explanationDepth,
     terminologyGuidance: fit.terminologyPolicy,
     trustRequirements: (profile.trustRequirements.value ?? []).map(String),
-    execution: buildExecution(input),
+    execution,
     hookConstraints: fit.hookConstraints,
     metadata,
+    adaptationEvidence,
     uncertainty: {
       audienceHypotheses: input.hypotheses.map((h) => ({ id: h.hypothesisId, proposition: h.proposition, status: h.status })),
       platformHypotheses: snapshot.facts.filter((fact) => fact.status === "hypothesis").map((fact) => `${fact.factId}: ${fact.claim}`),
@@ -167,9 +216,9 @@ export function buildPlatformBrief(input: BriefInput): PlatformCreativeBrief {
 }
 
 function buildExecution(input: BriefInput): PlatformExecutionGuidance {
-  const { fit, snapshot, invariant } = input;
+  const { fit, snapshot, invariant, now } = input;
   const maxCapability = snapshot.capability.media.maxDurationSeconds;
-  const maxDuration = capabilityIsUsable(maxCapability.status, maxCapability.value) ? maxCapability.value : null;
+  const maxDuration = evidencedValue(maxCapability, snapshot, now);
   const minimumUseful = Math.max(8, Math.ceil(fit.pacing.timeToFirstUsefulInformationSeconds * 4));
   const durationRange: readonly [number, number] | null =
     maxDuration !== null && maxDuration >= minimumUseful ? [minimumUseful, maxDuration] : null;
@@ -188,8 +237,8 @@ function buildExecution(input: BriefInput): PlatformExecutionGuidance {
     targetDurationSecondsRange: durationRange,
     targetDurationBasis:
       maxDuration === null
-        ? "No verified platform maximum is established, so no platform-derived duration range is asserted. Pacing remains a creative hypothesis, not a platform fact."
-        : `The upper bound is the established ${maxDuration}s platform maximum in this snapshot. It is a constraint, not a performance optimum.`,
+        ? "No source-bound platform maximum is established, so no platform-derived duration range is asserted. Pacing remains a creative hypothesis, not a platform fact."
+        : `The upper bound is the source-bound ${maxDuration}s platform maximum in this snapshot. It is a constraint, not a performance optimum.`,
     visualHierarchy: [
       fit.visualDensityGuidance,
       "The claim under discussion is the primary element in every beat that states it.",
@@ -210,13 +259,8 @@ function buildExecution(input: BriefInput): PlatformExecutionGuidance {
 }
 
 function buildMetadata(input: BriefInput): PlatformMetadata {
-  const { mission, invariant, snapshot, fit } = input;
-  const titleCapability = snapshot.capability.text.titleMaxChars;
-  const descriptionCapability = snapshot.capability.text.descriptionMaxChars;
-
-  const titleMax = capabilityIsUsable(titleCapability.status, titleCapability.value) ? titleCapability.value : null;
-  // Unknown title capability must not be turned into either "has a title" or
-  // "has no title". The transport-independent brief simply omits it.
+  const { mission, invariant, snapshot, fit, now } = input;
+  const titleMax = evidencedValue(snapshot.capability.text.titleMaxChars, snapshot, now);
   const title = titleMax === null ? null : truncateAtWord(mission.centralQuestion, titleMax);
 
   const parts: string[] = [mission.viewerShouldUnderstand];
@@ -227,10 +271,7 @@ function buildMetadata(input: BriefInput): PlatformMetadata {
     parts.push(`${mission.ctaIntent} ${mission.productRoute}`);
   }
   const rawDescription = parts.join(" ");
-  const descriptionMax = capabilityIsUsable(descriptionCapability.status, descriptionCapability.value)
-    ? descriptionCapability.value
-    : null;
-  // Do not silently replace an unknown platform limit with a magic 2200.
+  const descriptionMax = evidencedValue(snapshot.capability.text.descriptionMaxChars, snapshot, now);
   const description = descriptionMax === null ? rawDescription : truncateAtWord(rawDescription, descriptionMax);
 
   return {
@@ -241,6 +282,19 @@ function buildMetadata(input: BriefInput): PlatformMetadata {
     creativeId: input.creativeId,
     experimentId: input.experimentId ?? null,
   };
+}
+
+function buildAdaptationEvidence(input: BriefInput): readonly PlatformAdaptationEvidence[] {
+  const { snapshot, now } = input;
+  const entries: (PlatformAdaptationEvidence | null)[] = [
+    evidenceEntry("metadata.title", evidencedFact(snapshot.capability.text.titleMaxChars, snapshot, now)),
+    evidenceEntry("metadata.description", evidencedFact(snapshot.capability.text.descriptionMaxChars, snapshot, now)),
+    evidenceEntry("execution.duration", evidencedFact(snapshot.capability.media.maxDurationSeconds, snapshot, now)),
+    evidenceEntry("execution.cta", evidencedFact(snapshot.capability.interaction.outboundLinkInDescription, snapshot, now)),
+    evidenceEntry("execution.cta", evidencedFact(snapshot.capability.interaction.profileLinkAvailable, snapshot, now)),
+  ];
+  return entries.filter((entry): entry is PlatformAdaptationEvidence => entry !== null)
+    .sort((a, b) => `${a.dimension}:${a.factId}`.localeCompare(`${b.dimension}:${b.factId}`));
 }
 
 export const TAG_CAP_BASIS =
@@ -291,8 +345,9 @@ export function formatPlatformBrief(brief: PlatformCreativeBrief): string {
   if (brief.requiredWording.length > 0) lines.push(`    required wording: ${brief.requiredWording.join(" | ")}`);
   lines.push(`    explanation depth: ${brief.explanationDepth}`);
   const range = brief.execution.targetDurationSecondsRange;
-  lines.push(`    duration: ${range === null ? "no verified platform-derived range" : `${range[0]}-${range[1]}s range`}`);
+  lines.push(`    duration: ${range === null ? "no source-bound platform-derived range" : `${range[0]}-${range[1]}s range`}`);
   lines.push(`    cta: ${brief.execution.ctaTreatment.include ? brief.execution.ctaTreatment.treatment : "none — " + brief.execution.ctaTreatment.reason}`);
+  lines.push(`    platform adaptation evidence: ${brief.adaptationEvidence.length}`);
   lines.push(`    tags: ${brief.metadata.tags.map((tag) => `${tag.tag}(${tag.kind})`).join(" ")}`);
   lines.push(`    accessibility: ${brief.execution.accessibility.length} non-negotiable requirement(s)`);
   if (brief.uncertainty.staleInputs.length > 0) lines.push(`    stale inputs: ${brief.uncertainty.staleInputs.length}`);
