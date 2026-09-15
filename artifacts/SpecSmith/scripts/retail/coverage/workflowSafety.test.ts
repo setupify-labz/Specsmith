@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
@@ -128,6 +129,24 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(audit).toContain('secrets.');
     expect(audit).toContain('workflow_dispatch:');
     expect(audit).not.toMatch(/^\s*(push|pull_request|schedule):/m);
+
+    // The ElevenLabs voice sample is the only workflow that spends a paid
+    // provider's credits, so its shape is the safety mechanism: manual
+    // dispatch only, no automatic trigger of any kind, read-only, and a typed
+    // confirmation before anything is generated.
+    const voiceSample = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'elevenlabs-voice-sample.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(voiceSample).toContain('secrets.ELEVENLABS_API_KEY');
+    expect(voiceSample).toContain('workflow_dispatch:');
+    expect(voiceSample).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|repository_dispatch):/m);
+    expect(voiceSample).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(voiceSample).not.toContain('contents: write');
+    // A typed confirmation, checked in the job itself, so a stray dispatch
+    // cannot spend credits.
+    expect(voiceSample).toContain("inputs.confirm != 'generate'");
 
     const catalog = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'build-retail-affiliate-catalog.yml'), 'utf-8')

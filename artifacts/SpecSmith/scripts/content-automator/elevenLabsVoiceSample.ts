@@ -1,0 +1,279 @@
+#!/usr/bin/env tsx
+/**
+ * One short ElevenLabs voice sample, for human approval.
+ *
+ * WHAT THIS IS FOR
+ *
+ * The rendered narration currently comes from the local espeak-ng fixture,
+ * which sounds robotic. Before any real narration is commissioned, a human has
+ * to hear the candidate voice. This produces exactly one short sample and
+ * stops.
+ *
+ * WHAT THIS WILL NOT DO
+ *
+ * - It will NOT fall back to the espeak fixture. If ElevenLabs generation
+ *   fails for any reason, this exits non-zero with the reason. A fixture voice
+ *   silently standing in for a paid provider would make the sample a lie about
+ *   what the provider sounds like.
+ * - It will NOT spend beyond the included allowance. It reads the subscription
+ *   first, refuses if the request would exceed the remaining included
+ *   characters, and refuses outright if the account is configured to extend
+ *   (top up) past its limit.
+ * - It will NOT print, log or persist the API key.
+ * - It renders no video and publishes nothing.
+ */
+
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { elevenLabsTtsConfigFromEnv, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+export const VOICE_SAMPLE_OUTPUT_DIR = join(here, "..", "..", "render-output", "voice-sample");
+
+/** The requested voice. Falls back only with a loud, recorded label. */
+export const PREFERRED_VOICE_NAME = "Liam";
+
+/**
+ * The sample line.
+ *
+ * Taken verbatim from the authored concept's hook beat, so the sample is judged
+ * on words the narration would actually say. It states no fact, so it carries
+ * no disclosure obligation of its own.
+ *
+ * Length is capped hard below; at ElevenLabs' typical pace this is roughly
+ * seven to eight seconds.
+ */
+export const SAMPLE_TEXT =
+  "Two part lists, one comparison page. Before you read the bars, say out loud which side you expect to come out ahead.";
+
+/** A sample is a sample. Anything longer is a narration job, not an audition. */
+export const MAX_SAMPLE_CHARACTERS = 200;
+
+export class VoiceSampleError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "VoiceSampleError";
+  }
+}
+
+interface SubscriptionInfo {
+  readonly tier: string;
+  readonly characterCount: number;
+  readonly characterLimit: number;
+  readonly remaining: number;
+  readonly canExtend: boolean;
+}
+
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+function apiBase(config: ElevenLabsTtsConfig): string {
+  // Derive the API root from the configured TTS endpoint so a self-hosted or
+  // proxied endpoint stays consistent across both calls.
+  return config.endpoint.replace(/\/v1\/text-to-speech\/?$/, "").replace(/\/$/, "");
+}
+
+export async function readSubscription(config: ElevenLabsTtsConfig, fetchImpl: FetchLike): Promise<SubscriptionInfo> {
+  const response = await fetchImpl(`${apiBase(config)}/v1/user/subscription`, {
+    headers: { "xi-api-key": config.apiKey, Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new VoiceSampleError(
+      `Could not read the ElevenLabs subscription (HTTP ${response.status}). Refusing to generate without knowing the remaining allowance.`,
+    );
+  }
+  const body = (await response.json()) as Record<string, unknown>;
+  const characterCount = Number(body.character_count ?? Number.NaN);
+  const characterLimit = Number(body.character_limit ?? Number.NaN);
+  if (!Number.isFinite(characterCount) || !Number.isFinite(characterLimit)) {
+    throw new VoiceSampleError("The subscription response did not report a usable character count or limit.");
+  }
+  return {
+    tier: String(body.tier ?? "unknown"),
+    characterCount,
+    characterLimit,
+    remaining: characterLimit - characterCount,
+    canExtend: body.can_extend_character_limit === true,
+  };
+}
+
+/**
+ * Refuse anything that could cost money beyond the included allowance.
+ *
+ * Exported so the rule is testable without a network call.
+ */
+export function assertWithinIncludedAllowance(subscription: SubscriptionInfo, characters: number): void {
+  if (characters > MAX_SAMPLE_CHARACTERS) {
+    throw new VoiceSampleError(
+      `Sample text is ${characters} characters; the cap is ${MAX_SAMPLE_CHARACTERS}. This script generates auditions, not narration.`,
+    );
+  }
+  if (subscription.remaining < characters) {
+    throw new VoiceSampleError(
+      `Only ${subscription.remaining} included characters remain and this sample needs ${characters}. ` +
+        "Refusing: this script never tops up, upgrades, or spends past the included allowance.",
+    );
+  }
+  if (subscription.canExtend) {
+    throw new VoiceSampleError(
+      "This account is configured to extend its character limit, which means an overage here would be billed. " +
+        "Refusing until that is turned off, so a sample cannot quietly cost money.",
+    );
+  }
+}
+
+export interface ResolvedVoice {
+  readonly voiceId: string;
+  readonly name: string;
+  /** True when the requested voice was not on the account. */
+  readonly isFallback: boolean;
+}
+
+export async function resolveVoice(
+  config: ElevenLabsTtsConfig,
+  fetchImpl: FetchLike,
+  preferredName = PREFERRED_VOICE_NAME,
+): Promise<ResolvedVoice> {
+  const response = await fetchImpl(`${apiBase(config)}/v1/voices`, {
+    headers: { "xi-api-key": config.apiKey, Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new VoiceSampleError(`Could not list ElevenLabs voices (HTTP ${response.status}).`);
+  }
+  const body = (await response.json()) as { voices?: { voice_id?: string; name?: string }[] };
+  const voices = body.voices ?? [];
+  const match = voices.find((voice) => (voice.name ?? "").trim().toLowerCase() === preferredName.toLowerCase());
+  if (match?.voice_id) {
+    return { voiceId: match.voice_id, name: match.name ?? preferredName, isFallback: false };
+  }
+  // The requested voice is not available. Use the configured default, but say
+  // so loudly — a sample labelled "Liam" that is not Liam is worthless for the
+  // decision it exists to support.
+  const fallback = voices.find((voice) => voice.voice_id === config.voiceId);
+  return {
+    voiceId: config.voiceId,
+    name: fallback?.name ?? `configured default (${config.voiceId})`,
+    isFallback: true,
+  };
+}
+
+export interface VoiceSampleResult {
+  readonly audioPath: string;
+  readonly manifestPath: string;
+  readonly voice: ResolvedVoice;
+  readonly subscription: SubscriptionInfo;
+  readonly bytes: number;
+  readonly characters: number;
+}
+
+export async function generateVoiceSample(options: {
+  readonly outputDir?: string;
+  readonly fetchImpl?: FetchLike;
+  readonly env?: NodeJS.ProcessEnv;
+} = {}): Promise<VoiceSampleResult> {
+  const config = elevenLabsTtsConfigFromEnv(options.env ?? process.env);
+  if (config === undefined) {
+    throw new VoiceSampleError(
+      "ELEVENLABS_API_KEY is not set in this environment. This script never substitutes the espeak fixture for a " +
+        "real provider sample, so there is nothing to generate.",
+    );
+  }
+
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const outputDir = options.outputDir ?? VOICE_SAMPLE_OUTPUT_DIR;
+  const characters = SAMPLE_TEXT.length;
+
+  const subscription = await readSubscription(config, fetchImpl);
+  assertWithinIncludedAllowance(subscription, characters);
+
+  const voice = await resolveVoice(config, fetchImpl);
+
+  const url = new URL(`${apiBase(config)}/v1/text-to-speech/${encodeURIComponent(voice.voiceId)}`);
+  url.searchParams.set("output_format", config.outputFormat);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+  let response: Response;
+  try {
+    response = await fetchImpl(url, {
+      method: "POST",
+      headers: {
+        "xi-api-key": config.apiKey,
+        "Content-Type": "application/json",
+        Accept: "audio/mpeg, audio/*;q=0.9",
+      },
+      body: JSON.stringify({ text: SAMPLE_TEXT, model_id: config.modelId }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new VoiceSampleError(
+      `ElevenLabs generation failed with HTTP ${response.status}${detail ? `: ${detail.slice(0, 300)}` : ""}. ` +
+        "No fixture audio is substituted.",
+    );
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0) {
+    throw new VoiceSampleError("ElevenLabs returned an empty audio body. No fixture audio is substituted.");
+  }
+
+  await mkdir(outputDir, { recursive: true });
+  const audioPath = join(outputDir, "specsmith-voice-sample.mp3");
+  await writeFile(audioPath, bytes);
+
+  // The manifest records what a listener needs to judge the sample. It
+  // deliberately contains no credential and no request headers.
+  const manifest = {
+    generatedBy: "elevenlabs-text-to-speech",
+    isFixture: false,
+    isPaidProvider: true,
+    requestedVoice: PREFERRED_VOICE_NAME,
+    voiceUsed: voice.name,
+    voiceId: voice.voiceId,
+    requestedVoiceAvailable: !voice.isFallback,
+    modelId: config.modelId,
+    outputFormat: config.outputFormat,
+    text: SAMPLE_TEXT,
+    characters,
+    bytes: bytes.byteLength,
+    subscriptionTier: subscription.tier,
+    includedCharactersRemainingBefore: subscription.remaining,
+    spentIncludedCharacters: characters,
+    toppedUp: false,
+    upgraded: false,
+    note:
+      "One approval sample. Not narration for any published video. The local espeak-ng fixture remains the offline " +
+      "test narrator and is labelled isFixture: true in its own artifacts.",
+  };
+  const manifestPath = join(outputDir, "specsmith-voice-sample.json");
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  return { audioPath, manifestPath, voice, subscription, bytes: bytes.byteLength, characters };
+}
+
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
+
+if (isMain) {
+  generateVoiceSample()
+    .then((result) => {
+      console.log("ElevenLabs voice sample generated.");
+      console.log(`  voice requested: ${PREFERRED_VOICE_NAME}`);
+      console.log(`  voice used:      ${result.voice.name}${result.voice.isFallback ? "  <-- REQUESTED VOICE NOT AVAILABLE" : ""}`);
+      console.log(`  characters:      ${result.characters} (included allowance only; no top-up, no upgrade)`);
+      console.log(`  remaining before: ${result.subscription.remaining} on tier ${result.subscription.tier}`);
+      console.log(`  audio:           ${result.audioPath} (${result.bytes} bytes)`);
+      console.log(`  manifest:        ${result.manifestPath}`);
+    })
+    .catch((error: unknown) => {
+      console.error("VOICE SAMPLE FAILED — no fixture audio was substituted:");
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    });
+}

@@ -1,0 +1,87 @@
+# Opt-in ElevenLabs voice sample — MANUAL TRIGGER ONLY.
+#
+# This is the only workflow in this repository that spends a paid provider's
+# credits, so it is deliberately hard to run by accident:
+#
+#   - `workflow_dispatch` only. No push, pull_request, or schedule trigger.
+#   - The operator must type the word `generate` to confirm.
+#   - It generates ONE short sample (capped at 200 characters) and stops.
+#   - The script reads the subscription first and refuses if the sample would
+#     exceed the included allowance, or if the account can extend its limit
+#     (which would turn an overage into a bill).
+#
+# It never renders a video, never publishes, and never falls back to the local
+# espeak fixture: if generation fails, the job fails with the reason.
+name: ElevenLabs voice sample (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "generate" to confirm spending included ElevenLabs credits'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  # One audition at a time. Overlapping runs would spend credits twice for the
+  # same decision.
+  group: elevenlabs-voice-sample
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require explicit confirmation
+        if: inputs.confirm != 'generate'
+        run: |
+          echo "::error::Refusing to run. Re-dispatch with confirm set to exactly: generate"
+          exit 1
+
+      - name: Require the API key to be configured as a secret
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          # Presence check only. The value is never echoed, and GitHub masks it
+          # in logs regardless.
+          if [ -z "${ELEVENLABS_API_KEY}" ]; then
+            echo "::error::ELEVENLABS_API_KEY is not configured for this repository."
+            exit 1
+          fi
+          echo "ELEVENLABS_API_KEY is configured (value not printed)."
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate one voice sample
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          # Optional overrides; all have safe defaults in the adapter.
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+        run: pnpm exec tsx scripts/content-automator/elevenLabsVoiceSample.ts
+
+      - name: Upload the sample for approval
+        uses: actions/upload-artifact@v4
+        with:
+          name: specsmith-voice-sample
+          path: |
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.mp3
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.json
+          if-no-files-found: error
+          retention-days: 14
