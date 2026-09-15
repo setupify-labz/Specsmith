@@ -74,6 +74,24 @@ interface SubscriptionInfo {
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
+/**
+ * Strip anything token-shaped out of provider text before it is logged.
+ *
+ * Error bodies are descriptions, not credentials, but this runs in CI logs and
+ * the cost of being wrong once is a leaked key. Any long opaque run of token
+ * characters is replaced rather than trusted.
+ */
+export function redactTokens(text: string): string {
+  return text.replace(/[A-Za-z0-9_-]{24,}/g, "[redacted]");
+}
+
+/** The provider's own explanation, trimmed and redacted, or "" when absent. */
+async function failureDetail(response: Response): Promise<string> {
+  const body = await response.text().catch(() => "");
+  if (body.trim() === "") return "";
+  return ` Provider said: ${redactTokens(body.slice(0, 400))}`;
+}
+
 function apiBase(config: ElevenLabsTtsConfig): string {
   // Derive the API root from the configured TTS endpoint so a self-hosted or
   // proxied endpoint stays consistent across both calls.
@@ -86,7 +104,8 @@ export async function readSubscription(config: ElevenLabsTtsConfig, fetchImpl: F
   });
   if (!response.ok) {
     throw new VoiceSampleError(
-      `Could not read the ElevenLabs subscription (HTTP ${response.status}). Refusing to generate without knowing the remaining allowance.`,
+      `Could not read the ElevenLabs subscription (HTTP ${response.status}).${await failureDetail(response)} ` +
+        "Refusing to generate without knowing the remaining allowance.",
     );
   }
   const body = (await response.json()) as Record<string, unknown>;
@@ -205,7 +224,7 @@ export async function resolveVoice(
     headers: { "xi-api-key": config.apiKey, Accept: "application/json" },
   });
   if (!response.ok) {
-    throw new VoiceSampleError(`Could not list ElevenLabs voices (HTTP ${response.status}).`);
+    throw new VoiceSampleError(`Could not list ElevenLabs voices (HTTP ${response.status}).${await failureDetail(response)}`);
   }
   const body = (await response.json()) as { voices?: { voice_id?: string; name?: string }[] };
   const voices = body.voices ?? [];

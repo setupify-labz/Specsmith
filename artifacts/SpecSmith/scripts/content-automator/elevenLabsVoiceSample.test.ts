@@ -17,6 +17,7 @@ import {
   PREFERRED_VOICE_NAME,
   resolveVoice,
   SAMPLE_TEXT,
+  redactTokens,
   verifyVoiceSampleAccess,
   VoiceSampleError,
 } from "./elevenLabsVoiceSample.ts";
@@ -450,5 +451,37 @@ describe("verification proves access without generating", () => {
 
   it("refuses to verify without a key", async () => {
     await expect(verifyVoiceSampleAccess({ env: {} as NodeJS.ProcessEnv })).rejects.toThrow(/nothing to verify/);
+  });
+});
+
+describe("provider failures are explained, not swallowed", () => {
+  it("includes the provider's own detail on a subscription failure", async () => {
+    await expect(
+      verifyVoiceSampleAccess({
+        env: ENV,
+        fetchImpl: async () => new Response('{"detail":{"status":"missing_permissions"}}', { status: 400 }),
+      }),
+    ).rejects.toThrow(/missing_permissions/);
+  });
+
+  it("includes the provider's own detail on a voices failure", async () => {
+    await expect(
+      verifyVoiceSampleAccess({
+        env: ENV,
+        fetchImpl: async (input) => {
+          const url = typeof input === "string" ? input : input.toString();
+          if (url.includes("/v1/user/subscription")) return jsonResponse(subscriptionBody());
+          return new Response('{"detail":"voices_read required"}', { status: 403 });
+        },
+      }),
+    ).rejects.toThrow(/voices_read required/);
+  });
+
+  it("redacts anything token-shaped before it reaches a CI log", () => {
+    const leaked = redactTokens('{"detail":"bad key sk_abcdef0123456789abcdef0123456789abcdef"}');
+    expect(leaked).not.toContain("abcdef0123456789");
+    expect(leaked).toContain("[redacted]");
+    // Ordinary words must survive, or the message stops being useful.
+    expect(redactTokens("missing_permissions")).toBe("missing_permissions");
   });
 });
