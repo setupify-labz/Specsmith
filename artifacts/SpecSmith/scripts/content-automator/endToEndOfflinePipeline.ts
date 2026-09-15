@@ -102,6 +102,18 @@ import { parseSignalBundle } from "./v2/strategy/signals.ts";
 import { fixtureNoSignals } from "./v2/strategy/engineeringFixture.ts";
 import { coreDependencies, formatProviderInventory } from "./v2/research/providerInventory.ts";
 import { formatMaster2Ledger } from "./v2/research/completionLedger.ts";
+import { runDeliveryPass, assertZeroCostDelivery, formatDeliveryReport } from "./v2/delivery/deliveryPass.ts";
+import { buildCreativeHandoff, assertCreativeHonoursBrief, formatCreativeCompliance } from "./v2/delivery/closedLoop.ts";
+import { formatPlatformBrief } from "./v2/delivery/brief.ts";
+import { formatPackagePlan } from "./v2/delivery/crossPlatform.ts";
+import { parseAudienceSignalBundle } from "./v2/audience/signals.ts";
+import {
+  fixtureNoAudienceSignals,
+  fixtureChainMission,
+  fixtureChainContract,
+  fixtureChainResearch,
+} from "./v2/delivery/engineeringFixture.ts";
+import { formatMaster4Ledger } from "./v2/delivery/completionLedger.ts";
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -348,6 +360,154 @@ async function main(): Promise<void> {
   } else {
     console.log(`\n${formatContentMission(strategy.leadMission)}`);
   }
+
+  section("1e. Audience + platform intelligence — who is this for, where can it honestly go, and what must never change on the way");
+  // MASTER #4 consumes the mission MASTER #3 authorised. When strategy
+  // authorised nothing — which is the correct outcome on this evidence — the
+  // delivery pass produces no brief and says so, rather than inventing an
+  // audience to justify making something anyway.
+  //
+  // The audience signal bundle is the honest production shape: no search,
+  // community, analytics or feedback collector is connected, so every audience
+  // dimension is either derived from the mission itself or unknown.
+  const delivery = runDeliveryPass({
+    runId: "delivery-pipeline-1",
+    strategyRunId: strategy.result.runId,
+    mission: strategy.leadMission,
+    contract: research.result.contract,
+    research: research.result,
+    audienceSignals: parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: true }),
+    startedAt: generatedAt,
+    now: generatedAt,
+    producedBy: "specsmith-engineering-fixture",
+    creativeId: `${content.packageId}-${PLATFORM}`,
+  });
+  console.log(formatDeliveryReport(delivery));
+
+  let syntheticAudienceRefused = false;
+  try {
+    parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: false });
+  } catch (error) {
+    syntheticAudienceRefused = true;
+    console.log(`\nProduction audience ingestion correctly refused the synthetic bundle: ${(error as Error).message}`);
+  }
+  if (!syntheticAudienceRefused) {
+    throw new Error("Synthetic audience signals were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const deliveryZeroCost = assertZeroCostDelivery(delivery);
+  console.log(`Zero-dollar delivery check: ${deliveryZeroCost.ok ? "ok" : "FAILED"} — ${deliveryZeroCost.reason}`);
+  if (!deliveryZeroCost.ok) {
+    throw new Error(`The MASTER #4 core path requires paid access: ${deliveryZeroCost.reason}`);
+  }
+
+  const blockingDeliveryFindings = delivery.invariantFindings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingDeliveryFindings.length > 0) {
+    throw new Error(
+      `Platform adaptation breached an invariant: ${blockingDeliveryFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`,
+    );
+  }
+
+  if (delivery.briefs.length === 0) {
+    console.log(
+      `\nNo platform brief was produced (${delivery.noOpReason}). That is a successful delivery outcome: ` +
+        "with no mission authorised there is nothing to adapt, and adapting anyway would mean producing content strategy declined to approve.",
+    );
+  } else {
+    console.log("\nPLATFORM CREATIVE BRIEFS");
+    for (const brief of delivery.briefs) {
+      console.log(formatPlatformBrief(brief));
+    }
+    if (delivery.packagePlan !== null) {
+      console.log(`\n${formatPackagePlan(delivery.packagePlan)}`);
+    }
+
+    // The handoff is where MASTER #4's constraints meet MASTER #1's execution.
+    // Running the compliance check against the REAL generated storyboard proves
+    // the boundary is live rather than merely defined.
+    const platformBrief = delivery.briefs.find((brief) => brief.platform === PLATFORM);
+    if (platformBrief !== undefined && delivery.invariant !== null) {
+      const handoff = buildCreativeHandoff(platformBrief, generatedAt);
+      console.log(`\nMASTER #1 handoff ${handoff.handoffId}: ${handoff.nonNegotiable.length} non-negotiable constraint(s).`);
+      const complianceFindings = assertCreativeHonoursBrief(script, platformBrief, delivery.invariant, research.result.contract);
+      console.log(formatCreativeCompliance(complianceFindings));
+    }
+  }
+
+  // The production path above correctly authorises no mission, which means the
+  // brief-producing half of MASTER #4 is never exercised by it. This second
+  // pass runs the SAME code against an explicitly synthetic mission so the full
+  // chain is demonstrated end to end. Nothing it produces can pass a production
+  // ingestion boundary: every provenance field is marked synthetic and the
+  // refusal above proves that boundary is live.
+  console.log(
+    "\n--- Engineering demonstration of the full delivery chain (SYNTHETIC FIXTURE MISSION — not a production decision) ---",
+  );
+  const demoDelivery = runDeliveryPass({
+    runId: "delivery-pipeline-fixture-demo",
+    strategyRunId: strategy.result.runId,
+    mission: fixtureChainMission(),
+    contract: fixtureChainContract(),
+    research: fixtureChainResearch(),
+    audienceSignals: parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: true }),
+    startedAt: generatedAt,
+    now: generatedAt,
+    producedBy: "specsmith-engineering-fixture",
+    creativeId: `${content.packageId}-${PLATFORM}`,
+  });
+  console.log(formatDeliveryReport(demoDelivery));
+
+  const demoBlocking = demoDelivery.invariantFindings.filter((finding) => finding.severity === "hard-fail");
+  if (demoBlocking.length > 0) {
+    throw new Error(
+      `Fixture platform adaptation breached an invariant: ${demoBlocking.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`,
+    );
+  }
+
+  console.log("\nPLATFORM CREATIVE BRIEFS (synthetic fixture)");
+  for (const brief of demoDelivery.briefs) {
+    console.log(formatPlatformBrief(brief));
+  }
+  if (demoDelivery.packagePlan !== null) {
+    console.log(`\n${formatPackagePlan(demoDelivery.packagePlan)}`);
+  }
+
+  const demoBrief = demoDelivery.briefs.find((brief) => brief.platform === PLATFORM);
+  if (demoBrief !== undefined && demoDelivery.invariant !== null) {
+    const handoff = buildCreativeHandoff(demoBrief, generatedAt);
+    console.log(`\nMASTER #1 handoff ${handoff.handoffId}: ${handoff.nonNegotiable.length} non-negotiable constraint(s).`);
+    for (const constraint of handoff.nonNegotiable.slice(0, 6)) {
+      console.log(`  - ${constraint}`);
+    }
+
+    // A deliberately dishonest cut, to prove the boundary is load-bearing
+    // rather than merely declared: it keeps the figure and drops what made it
+    // true. The pipeline fails if this is NOT caught.
+    const dishonestCut: PlatformScriptStoryboard = {
+      ...script,
+      beats: [
+        {
+          startSecond: 0,
+          endSecond: 4,
+          purpose: "hook",
+          narration: "Example GPU-A is 15% faster.",
+          visualDirection: "comparison",
+          onScreenText: "15% faster",
+          factDependencies: ["claim-fps"],
+        },
+      ],
+    };
+    const caught = assertCreativeHonoursBrief(dishonestCut, demoBrief, demoDelivery.invariant, fixtureChainContract());
+    console.log("\nNegative check — a cut that keeps the figure and drops the estimate label:");
+    console.log(formatCreativeCompliance(caught));
+    if (!caught.some((finding) => finding.severity === "hard-fail")) {
+      throw new Error(
+        "A platform cut that dropped the estimator status and configuration was NOT caught. The truth invariant is not load-bearing.",
+      );
+    }
+  }
+
+  console.log(`\n${formatMaster4Ledger()}`);
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
