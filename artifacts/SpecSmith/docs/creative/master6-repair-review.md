@@ -16,8 +16,12 @@ Starting checkpoint: `e81d726301614cfa69f7d3554b3aefb068c5d76e`.
 
 ## Verification and remaining limits
 
-Local v2 suite: 830 tests across 38 files passed. Typecheck passed. Disabling the tested-decision guard and the per-beat disclosure guard individually caused the relevant regression assertion to fail; both were restored and the suite rerun green. Exact-head full CI remains pending at submission.
+Local v2 suite after the generation-loop follow-up: 834 tests across 38 files passed. Typecheck passed. Disabling the tested-decision guard and the per-beat disclosure guard individually caused the relevant regression assertion to fail; both were restored and the suite rerun green. Exact-head full CI remains pending at submission.
 
-This is **not** evidence that MASTER #6 is a maximum-creativity engine. The new proposal pass is deterministic editorial scaffolding, not a generative-model provider or a semantic originality evaluator. It currently supports Compare missions and selects the first grounded claim. Structure checks do not establish entertainment value, originality or retention.
+The first repair's end-to-end run failed at stage 1g: it demanded three scaffolds from the deliberately insufficient research fixture, which approved zero claims. Reproduced locally and corrected: zero approved claims must yield zero proposals, not a fabricated answer. This is distinct from the render-evidence mismatch gate and must not be reported as that gate passing.
+
+The follow-up adds `runCreativeGenerationPass`: caller-supplied generation, at most three critique/revision attempts, timeout/cancellation signal, input/output hashes, explicit gate feedback, and no template substitution when the generator is absent. Generator-authored concepts pass the same evidence, disclosure, exact-state and production-contract checks as scaffolds. Tests use explicitly labeled protocol fixtures, not live model output. The offline pipeline calls the new entry point and reports its honest blocked status without invoking a provider.
+
+This is **not** evidence that MASTER #6 is a maximum-creativity engine. The fallback proposal pass remains deterministic editorial scaffolding; the generator-driven entry point is implemented but no live text backend is configured or called. It currently supports Compare missions. Structure and phrase checks do not establish semantic factual completeness, entertainment value, originality or retention. Choosing/configuring a text backend and testing its fresh outputs remains a real blocker, not an inferred completion.
 
 Generated proposal video rendering, readability review, independent human creative review and media/audio approval remain outstanding. The annotated vertical spec-card capability remains absent, explicitly blocked rather than silently approximated. No provider calls, publishing, scheduling, main-branch merge or MASTER #7 work are authorized by this repair.

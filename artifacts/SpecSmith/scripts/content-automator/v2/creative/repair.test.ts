@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { recordCreativeDecision, retrieveCreativeMemory, type CreativeEvidenceSource } from "./memory.ts";
 import { CreativeMemoryStore } from "./memoryStore.ts";
 import { runCreativeProposalPass, buildCreativeProposalProductionPlan } from "./proposalPass.ts";
+import { runCreativeGenerationPass } from "./generationPass.ts";
 import { assessConcept, CREATIVE_DISCLOSURES, toStoryboardBeats } from "./concept.ts";
 import { PACKAGE_CROSSOVER, AVAILABLE_CAPABILITIES } from "./sectionOnePackages.ts";
 import { runExperimentPass } from "../experiment/experimentPass.ts";
@@ -64,6 +65,50 @@ function mission(memory = [] as ReturnType<typeof record>[], evidenceSource = so
 }
 
 describe("MASTER #6 independent repair", () => {
+  it("does not substitute templates for a missing generator or call a generator without evidence", async () => {
+    const blocked = await runCreativeGenerationPass(mission());
+    expect(blocked.status).toBe("blocked-generator"); expect(blocked.result.selected).toBeNull();
+    let calls = 0;
+    const noEvidence = await runCreativeGenerationPass({ ...mission(), research: { ...research, safeClaims: [] } }, {
+      name: "SYNTHETIC_PROTOCOL_FIXTURE", async generate() { calls++; return []; },
+    });
+    expect(noEvidence.status).toBe("blocked-evidence"); expect(calls).toBe(0);
+  });
+  it("generator output is revised against real gate feedback with recorded lineage", async () => {
+    const concepts = runCreativeProposalPass(mission()).proposals.map((proposal) => proposal.concept);
+    const requests: number[] = [];
+    const result = await runCreativeGenerationPass(mission(), { name: "SYNTHETIC_PROTOCOL_FIXTURE", async generate(request) {
+      requests.push(request.attempt);
+      if (request.attempt === 1) return concepts.map((concept) => ({ ...concept, disclosureTextByBeat: {} }));
+      expect(request.feedback.join(" ")).toContain("undisclosed-estimate");
+      expect(request.previous).toHaveLength(3);
+      return concepts.map((concept) => ({ ...concept, conceptId: `${concept.conceptId}-revised` }));
+    } });
+    expect(requests).toEqual([1, 2]); expect(result.status).toBe("awaiting-human-review");
+    expect(result.history).toHaveLength(2); expect(result.history[0].outputHash).not.toBe(result.history[1].outputHash);
+    expect(result.result.selected!.reviewRequired).toBe(true);
+    const plan = buildCreativeProposalProductionPlan({ packageId: "fixture", ideaId: "fixture", campaignId: "fixture",
+      feature: "compare", route: "/compare", subjectIds: [] }, result.result.selected!);
+    expect(plan.platforms[0].tasks.some((task) => task.capability === "video-generation")).toBe(false);
+  });
+  it("caps invalid revisions, rejects ungrounded bindings and never approves malformed output", async () => {
+    const concepts = runCreativeProposalPass(mission()).proposals.map((proposal) => proposal.concept);
+    let calls = 0;
+    const result = await runCreativeGenerationPass(mission(), { name: "SYNTHETIC_PROTOCOL_FIXTURE", async generate() {
+      calls++; return concepts.map((concept) => ({ ...concept,
+        beats: concept.beats.map((beat) => ({ ...beat, factDependencies: ["fabricated-claim"] })) }));
+    } }, { maxAttempts: 2 });
+    expect(calls).toBe(2); expect(result.status).toBe("blocked-revision"); expect(result.result.selected).toBeNull();
+    const malformed = await runCreativeGenerationPass(mission(), { name: "SYNTHETIC_PROTOCOL_FIXTURE", async generate() { return [null, null, null] as never; } });
+    expect(malformed.status).toBe("blocked-revision"); expect(malformed.result.selected).toBeNull();
+  });
+  it("times out a stalled generator and does not pass a substituted render state", async () => {
+    const stalled = await runCreativeGenerationPass(mission(), { name: "SYNTHETIC_PROTOCOL_FIXTURE", async generate() { return new Promise(() => {}); } }, { maxAttempts: 1, timeoutMs: 5 });
+    expect(stalled.status).toBe("blocked-revision"); expect(stalled.history[0].feedback.join(" ")).toContain("timed out");
+    const concepts = runCreativeProposalPass(mission()).proposals.map((proposal) => ({ ...proposal.concept,
+      visuals: proposal.concept.visuals.map((visual) => visual.kind === "real-product-capture" ? { ...visual, stateIdentifier: "wrong-state" } : visual) }));
+    expect(runCreativeProposalPass({ ...mission(), concepts }).selected).toBeNull();
+  });
   it("cannot attach measured evidence to an untested decision or endorse a losing variant", () => {
     const evidenceSource = source();
     expect(() => recordCreativeDecision({ entryId: "mismatch", conceptId: "fixture", decision: { kind: "visual-mechanism", value: "invented" },

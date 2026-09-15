@@ -144,6 +144,7 @@ import { toStoryboardBeats } from "./v2/creative/concept.ts";
 import { critiqueConceptSet } from "./v2/creative/conceptCritique.ts";
 import { briefLinesFromMemory, recordCreativeDecision, retrieveCreativeMemory } from "./v2/creative/memory.ts";
 import { runCreativeProposalPass, buildCreativeProposalProductionPlan } from "./v2/creative/proposalPass.ts";
+import { runCreativeGenerationPass } from "./v2/creative/generationPass.ts";
 import { deriveUiRenderState } from "./uiRender/planUiRenderState.ts";
 import { CreativeMemoryStore } from "./v2/creative/memoryStore.ts";
 import {
@@ -856,6 +857,11 @@ async function main(): Promise<void> {
         evidenceSources: new Map([[registered.experiment.experimentId, resolvedEvidence]]) }, platform: PLATFORM,
     };
     const freshMission = runCreativeProposalPass(missionInput);
+    const generatorMission = await runCreativeGenerationPass(missionInput);
+    console.log(`Generator-driven mission: ${generatorMission.status}. ${generatorMission.reason}`);
+    if (generatorMission.history.length || generatorMission.result.selected) {
+      throw new Error("The credential-free pipeline must not secretly invoke a text provider or approve templates as generator output.");
+    }
     const memoryInformed = runCreativeProposalPass({ ...missionInput, memory: reloadedMemory });
     console.log(`Resolved experiment candidate → immutable engineering memory → retrieval: ${memoryInformed.retrieved.observations.length} observations; guidance ${!memoryInformed.retrieved.noGuidanceAvailable}`);
     if (!memoryInformed.retrieved.noGuidanceAvailable) throw new Error("Unreplicated source became production guidance.");
@@ -863,8 +869,14 @@ async function main(): Promise<void> {
     for (const proposal of freshMission.proposals) {
       console.log(`  ${proposal.concept.conceptId}: ${proposal.storyboard.beats.length} beats; contract eligible ${proposal.contractEligible}; human review required`);
     }
-    if (freshMission.proposals.length !== 3 || freshMission.retrieved.observations.length !== 0) {
-      throw new Error("Empty-memory mission did not generate three distinct editorial proposals.");
+    if (freshMission.retrieved.observations.length !== 0) {
+      throw new Error("Empty memory unexpectedly supplied creative observations.");
+    }
+    if (!research.result.contract.safeClaims.length) {
+      if (freshMission.proposals.length || freshMission.selected) throw new Error("An evidence-empty mission invented an approved answer.");
+      console.log("Evidence-empty mission correctly produced nothing. This is not a generator failure.");
+    } else if (freshMission.proposals.length !== 3) {
+      throw new Error("Evidence-backed scaffold mission did not generate three editorial proposals.");
     }
     if (freshMission.selected) {
       const proposalPackage = { ...storyboard, scripts: [freshMission.selected.storyboard] };

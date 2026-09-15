@@ -23,6 +23,8 @@ export interface CreativeMissionInput {
   readonly memory: readonly CreativeMemoryEntry[];
   readonly retrieval: RetrievalQuery;
   readonly platform: PlatformScriptStoryboard["platform"];
+  /** Generator-supplied candidates; omission explicitly chooses the old scaffold. */
+  readonly concepts?: readonly CreativeConcept[];
 }
 
 export function runCreativeProposalPass(input: CreativeMissionInput) {
@@ -44,7 +46,7 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     visualIds: [visualId], factDependencies: factual ? [fact.claimId] : [],
   });
   // Each mechanism changes the sequence and viewer task, not just the headline.
-  const plans: CreativeConcept[] = [
+  const plans: readonly CreativeConcept[] = input.concepts ?? [
     {
       conceptId: `${input.missionId}-predict-reveal`, axes: { audienceExperience: "participant", explanatoryStructure: "prediction-then-reveal", visualMechanism: "single-surface-hold" },
       viewerQuestion: input.viewerQuestion, viewerTakeaway: `Check a prediction against the evidence: ${answer}`,
@@ -86,8 +88,16 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
       factualGuardrails: [...input.research.limitations, ...fact.requiredWording] };
     const evidenceFindings = checkScriptAgainstResearchStrict(storyboard, input.research);
     const critique = set.concepts.find((entry) => entry.conceptId === concept.conceptId)!;
+    const allowedClaims = new Set(approved.map((claim) => claim.claimId));
+    const grounded = concept.beats.some((beat) => beat.factDependencies.length > 0) &&
+      concept.beats.every((beat) => beat.factDependencies.every((id) => allowedClaims.has(id)));
+    // This production adapter renders only the exact Compare capture. Declared
+    // illustrations must stay blocked, not be silently replaced with screenshots.
+    const exactCapture = concept.visuals.length > 0 && concept.visuals.every((visual) => visual.kind === "real-product-capture" &&
+      visual.surface === "compare" && visual.stateIdentifier === captureStateIdentifier);
     return { concept, storyboard, critique, evidenceFindings, reviewRequired: true, synthetic: input.researchSynthetic, renderRequest,
-      contractEligible: set.divergent && critique.ready && !evidenceFindings.some((finding) => finding.severity === "hard-fail") };
+      contractEligible: grounded && exactCapture && concept.productDestination === input.productDestination &&
+        set.divergent && critique.ready && !evidenceFindings.some((finding) => finding.severity === "hard-fail") };
   });
   // Only verified, directly applicable guidance affects the choice. Context never
   // becomes a performance recommendation; absent evidence the editorial default is explicit.
