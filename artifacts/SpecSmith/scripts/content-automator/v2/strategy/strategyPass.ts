@@ -9,79 +9,42 @@ import type { ResearchCreativeContract } from "../research/creativeContract.ts";
 import { PRODUCING_ACTIONS, type StrategicOpportunity, type StrategyProvenance } from "./model.ts";
 import { clusterOpportunities, detectOpportunities } from "./opportunity.ts";
 import {
-  assessBalance,
-  assessNovelty,
-  detectCannibalization,
-  detectDuplication,
-  detectSaturation,
-  emptyPortfolioHistory,
-  type PortfolioBalance,
-  type PortfolioHistory,
+  assessBalance, assessNovelty, detectCannibalization, detectDuplication, detectSaturation,
+  emptyPortfolioHistory, type PortfolioBalance, type PortfolioHistory,
 } from "./portfolio.ts";
 import { assessPriority, rankAssessments, type PriorityAssessment } from "./priority.ts";
 import { buildContentMission, type ContentMission, type StrategicAngle } from "./contentMission.ts";
 import { proposeEvidenceBoundAngles } from "./evidenceBoundAngles.ts";
 import {
-  challengeOpportunity,
-  criticBlocks,
-  escalateToResearch,
-  exploreCounterfactuals,
-  researchWorthPursuing,
-  type Challenge,
-  type Counterfactual,
-  type ResearchRequest,
+  challengeOpportunity, criticBlocks, escalateToResearch, exploreCounterfactuals, researchWorthPursuing,
+  type Challenge, type Counterfactual, type ResearchRequest,
 } from "./critic.ts";
 import { HypothesisRegistry, proposeHypothesis, type StrategicHypothesis } from "./hypotheses.ts";
 import { productReadinessFor, type SignalBundle } from "./signals.ts";
 
-export type NoOpReason =
-  | "no-opportunities-detected"
-  | "all-blocked-by-evidence"
-  | "all-blocked-by-product-readiness"
-  | "all-duplicates"
-  | "all-rejected-by-critic"
-  | "synthetic-input-refused";
+export type NoOpReason = "no-opportunities-detected" | "all-blocked-by-evidence" | "all-blocked-by-product-readiness" | "all-duplicates" | "all-rejected-by-critic" | "synthetic-input-refused";
 
 export interface OpportunityDecision {
-  readonly opportunity: StrategicOpportunity;
-  readonly assessment: PriorityAssessment;
-  readonly challenges: readonly Challenge[];
-  readonly counterfactuals: readonly Counterfactual[];
-  readonly anglesConsidered: readonly StrategicAngle[];
-  readonly angleReason: string;
-  readonly mission: ContentMission | null;
-  readonly missionRefusedBecause: string | null;
+  readonly opportunity: StrategicOpportunity; readonly assessment: PriorityAssessment;
+  readonly challenges: readonly Challenge[]; readonly counterfactuals: readonly Counterfactual[];
+  readonly anglesConsidered: readonly StrategicAngle[]; readonly angleReason: string;
+  readonly mission: ContentMission | null; readonly missionRefusedBecause: string | null;
   readonly researchRequest: ResearchRequest | null;
 }
 
 export interface StrategyResult {
-  readonly version: "strategy-result-v1";
-  readonly runId: string;
-  readonly researchId: string;
-  readonly researchStoppingReason: ResearchResult["stoppingReason"];
-  readonly signalBundleId: string;
-  readonly startedAt: string;
-  readonly completedAt: string;
-  readonly decisions: readonly OpportunityDecision[];
-  readonly missions: readonly ContentMission[];
-  readonly clusters: ReturnType<typeof clusterOpportunities>;
-  readonly hypotheses: readonly StrategicHypothesis[];
-  readonly researchRequests: readonly ResearchRequest[];
-  readonly portfolioBalance: PortfolioBalance;
-  readonly noOpReason: NoOpReason | null;
-  readonly containsSyntheticInput: boolean;
-  readonly limitations: readonly string[];
-  readonly resultHash: string;
+  readonly version: "strategy-result-v1"; readonly runId: string; readonly researchId: string;
+  readonly researchStoppingReason: ResearchResult["stoppingReason"]; readonly signalBundleId: string;
+  readonly startedAt: string; readonly completedAt: string; readonly decisions: readonly OpportunityDecision[];
+  readonly missions: readonly ContentMission[]; readonly clusters: ReturnType<typeof clusterOpportunities>;
+  readonly hypotheses: readonly StrategicHypothesis[]; readonly researchRequests: readonly ResearchRequest[];
+  readonly portfolioBalance: PortfolioBalance; readonly noOpReason: NoOpReason | null;
+  readonly containsSyntheticInput: boolean; readonly limitations: readonly string[]; readonly resultHash: string;
 }
 
 export interface StrategyPassInput {
-  readonly runId: string;
-  readonly research: ResearchResult;
-  readonly contract: ResearchCreativeContract;
-  readonly signals: SignalBundle;
-  readonly history?: PortfolioHistory;
-  readonly startedAt: Date;
-  readonly now: Date;
+  readonly runId: string; readonly research: ResearchResult; readonly contract: ResearchCreativeContract;
+  readonly signals: SignalBundle; readonly history?: PortfolioHistory; readonly startedAt: Date; readonly now: Date;
   readonly provenance: StrategyProvenance;
 }
 
@@ -93,21 +56,11 @@ export function runStrategyPass(input: StrategyPassInput): StrategyResult {
 
   const assessments = new Map<string, PriorityAssessment>();
   for (const opportunity of opportunities) {
-    const subjectIds = research.claims
-      .filter((claim) => opportunity.dependsOnClaimIds.includes(claim.claimId))
-      .flatMap((claim) => claim.subjectIds);
+    const subjectIds = research.claims.filter((claim) => opportunity.dependsOnClaimIds.includes(claim.claimId)).flatMap((claim) => claim.subjectIds);
     const duplication = detectDuplication(opportunity, subjectIds, history);
     const saturation = detectSaturation(opportunity.pillar, history, now);
     const angles = proposeEvidenceBoundAngles(opportunity, contract, research);
-    const novelty = assessNovelty(
-      opportunity,
-      {
-        subjectIds,
-        angleId: angles.chosen?.angleId ?? "none",
-        formatClass: angles.chosen?.formatClass ?? "quick-explainer",
-      },
-      history,
-    );
+    const novelty = assessNovelty(opportunity, { subjectIds, angleId: angles.chosen?.angleId ?? "none", formatClass: angles.chosen?.formatClass ?? "quick-explainer" }, history);
     const cannibalization = detectCannibalization(opportunity, subjectIds, history, novelty);
     assessments.set(opportunity.opportunityId, assessPriority({ opportunity, duplication, saturation, novelty, cannibalization, now }));
   }
@@ -122,7 +75,6 @@ export function runStrategyPass(input: StrategyPassInput): StrategyResult {
     const challenges = challengeOpportunity({ opportunity, assessment, contract, siblings });
     const counterfactuals = exploreCounterfactuals(opportunity, assessment);
     const angles = proposeEvidenceBoundAngles(opportunity, contract, research);
-
     const claim = research.claims.find((entry) => opportunity.dependsOnClaimIds.includes(entry.claimId));
     const request = claim ? escalateToResearch(opportunity, contract, claim.kind, claim.proposition) : null;
     if (request && !researchRequests.some((existing) => existing.requestId === request.requestId)) {
@@ -133,7 +85,6 @@ export function runStrategyPass(input: StrategyPassInput): StrategyResult {
     let mission: ContentMission | null = null;
     let refused: string | null = null;
     let hypothesis: StrategicHypothesis | null = null;
-
     if (!PRODUCING_ACTIONS.includes(assessment.action)) {
       refused = `Strategy resolved to ${assessment.action}. ${assessment.explanation}`;
     } else if (criticBlocks(challenges)) {
@@ -149,48 +100,19 @@ export function runStrategyPass(input: StrategyPassInput): StrategyResult {
         falsificationCriteria: `If published and measured, this is wrong if ${opportunity.primaryObjective} shows no movement relative to comparable pieces, or if viewers who see it are no more likely to reach ${opportunity.productSurface ?? "the site"} than those who do not.`,
         measurementRequirement: "Published performance data broken down by creative, which requires at least one real publication and an analytics window.",
         measurementAvailable: false,
-        assumptions: [
-          "The audience problem is real, which is unverified while no community signal is connected.",
-          "The chosen angle communicates the thesis better than the alternatives, which is untested.",
-        ],
-        now,
-        provenance,
+        assumptions: ["The audience problem is real, which is unverified while no community signal is connected.", "The chosen angle communicates the thesis better than the alternatives, which is untested."],
+        now, provenance,
       }));
-
       const product = productReadinessFor(signals, opportunity.productSurface);
       try {
-        mission = buildContentMission({
-          opportunity,
-          assessment,
-          contract,
-          angle: angles.chosen,
-          productRoute: product.route,
-          hypothesisId: hypothesis.hypothesisId,
-          now,
-        });
-      } catch (error) {
-        refused = (error as Error).message;
-      }
+        mission = buildContentMission({ opportunity, assessment, contract, angle: angles.chosen, productRoute: product.route, hypothesisId: hypothesis.hypothesisId, now });
+      } catch (error) { refused = (error as Error).message; }
     }
-
-    decisions.push({
-      opportunity,
-      assessment,
-      challenges,
-      counterfactuals,
-      anglesConsidered: angles.considered,
-      angleReason: angles.reason,
-      mission,
-      missionRefusedBecause: refused,
-      researchRequest: request,
-    });
+    decisions.push({ opportunity, assessment, challenges, counterfactuals, anglesConsidered: angles.considered, angleReason: angles.reason, mission, missionRefusedBecause: refused, researchRequest: request });
   }
 
   const ranked = rankAssessments([...assessments.values()]);
-  const missions = ranked
-    .map((assessment) => decisions.find((decision) => decision.opportunity.opportunityId === assessment.opportunityId)?.mission)
-    .filter((mission): mission is ContentMission => mission !== null && mission !== undefined);
-
+  const missions = ranked.map((assessment) => decisions.find((decision) => decision.opportunity.opportunityId === assessment.opportunityId)?.mission).filter((mission): mission is ContentMission => mission !== null && mission !== undefined);
   const limitations: string[] = [];
   if (containsSyntheticInput) limitations.push("This pass rests on engineering fixture input and is not a production strategy result.");
   if (!history.complete) limitations.push(history.note);
@@ -200,33 +122,15 @@ export function runStrategyPass(input: StrategyPassInput): StrategyResult {
   if (signals.competitors.length === 0) limitations.push("No competitor survey exists; differentiation is unassessed throughout.");
 
   const result: Omit<StrategyResult, "resultHash"> = {
-    version: "strategy-result-v1",
-    runId: input.runId,
-    researchId: research.researchId,
-    researchStoppingReason: research.stoppingReason,
-    signalBundleId: signals.bundleId,
-    startedAt: input.startedAt.toISOString(),
-    completedAt: now.toISOString(),
-    decisions,
-    missions,
-    clusters: clusterOpportunities(opportunities),
-    hypotheses: registry.all(),
-    researchRequests,
-    portfolioBalance: assessBalance(history),
-    noOpReason: missions.length > 0 ? null : deriveNoOpReason(opportunities, [...assessments.values()], decisions, containsSyntheticInput),
-    containsSyntheticInput,
-    limitations,
+    version: "strategy-result-v1", runId: input.runId, researchId: research.researchId, researchStoppingReason: research.stoppingReason,
+    signalBundleId: signals.bundleId, startedAt: input.startedAt.toISOString(), completedAt: now.toISOString(), decisions, missions,
+    clusters: clusterOpportunities(opportunities), hypotheses: registry.all(), researchRequests, portfolioBalance: assessBalance(history),
+    noOpReason: missions.length > 0 ? null : deriveNoOpReason(opportunities, [...assessments.values()], decisions, containsSyntheticInput), containsSyntheticInput, limitations,
   };
-
   return { ...result, resultHash: hashResult(result) };
 }
 
-function deriveNoOpReason(
-  opportunities: readonly StrategicOpportunity[],
-  assessments: readonly PriorityAssessment[],
-  decisions: readonly OpportunityDecision[],
-  synthetic: boolean,
-): NoOpReason {
+function deriveNoOpReason(opportunities: readonly StrategicOpportunity[], assessments: readonly PriorityAssessment[], decisions: readonly OpportunityDecision[], synthetic: boolean): NoOpReason {
   if (synthetic) return "synthetic-input-refused";
   if (opportunities.length === 0) return "no-opportunities-detected";
   const codes = assessments.flatMap((assessment) => assessment.vetoes.map((veto) => veto.code));
@@ -238,60 +142,58 @@ function deriveNoOpReason(
 }
 
 function hashResult(result: Omit<StrategyResult, "resultHash">): string {
-  const material = JSON.stringify({
-    researchId: result.researchId,
-    signalBundleId: result.signalBundleId,
-    decisions: result.decisions.map((decision) => ({
-      opportunityId: decision.opportunity.opportunityId,
-      action: decision.assessment.action,
-      tier: decision.assessment.tier,
-      missionId: decision.mission?.missionId ?? null,
-      challenges: decision.challenges.map((challenge) => challenge.code).sort(),
-    })),
-    noOpReason: result.noOpReason,
-  });
+  const material = JSON.stringify({ researchId: result.researchId, signalBundleId: result.signalBundleId, decisions: result.decisions.map((decision) => ({ opportunityId: decision.opportunity.opportunityId, action: decision.assessment.action, tier: decision.assessment.tier, missionId: decision.mission?.missionId ?? null, challenges: decision.challenges.map((challenge) => challenge.code).sort() })), noOpReason: result.noOpReason });
   return createHash("sha256").update(material).digest("hex").slice(0, 32);
 }
 
 export function assertZeroCostCore(result: StrategyResult): { readonly ok: boolean; readonly reason: string } {
   const paid = result.decisions.filter((decision) => decision.opportunity.resourcePosture === "blocked-without-paid");
-  if (paid.length > 0) {
-    return {
-      ok: false,
-      reason: `${paid.length} opportunity/opportunities require paid access: ${paid.map((decision) => decision.opportunity.opportunityId).join(", ")}.`,
-    };
-  }
+  if (paid.length > 0) return { ok: false, reason: `${paid.length} opportunity/opportunities require paid access: ${paid.map((decision) => decision.opportunity.opportunityId).join(", ")}.` };
   const producedByPaid = result.missions.filter((mission) => mission.resourcePosture === "blocked-without-paid");
   if (producedByPaid.length > 0) return { ok: false, reason: `${producedByPaid.length} authorised mission(s) require paid access.` };
-  return {
-    ok: true,
-    reason: `${result.missions.length} authorised mission(s), none requiring paid access; every producible posture is local-free.`,
-  };
+  return { ok: true, reason: `${result.missions.length} authorised mission(s), none requiring paid access; every producible posture is local-free.` };
 }
 
+// Keep reporting read-only and typed against the canonical strategy models. This
+// intentionally mirrors the original MASTER #3 reporter; the evidence-bound
+// repair changes angle authorization, not report schemas.
 export function formatStrategyReport(result: StrategyResult): string {
   const lines: string[] = [];
-  lines.push(`STRATEGY_RESULT ${result.runId} [${result.resultHash}]`);
-  lines.push(`  research: ${result.researchId} (${result.researchStoppingReason})`);
-  lines.push(`  signals:  ${result.signalBundleId}`);
-  lines.push(`  opportunities: ${result.decisions.length}; missions: ${result.missions.length}`);
+  lines.push(`CONTENT_STRATEGY_REPORT ${result.runId}`);
+  lines.push(`  research pass:   ${result.researchId} (stopped: ${result.researchStoppingReason})`);
+  lines.push(`  signals:         ${result.signalBundleId}`);
+  lines.push(`  opportunities:   ${result.decisions.length}`);
+  lines.push(`  result hash:     ${result.resultHash}`);
+  if (result.containsSyntheticInput) lines.push("  SYNTHETIC:       this pass rests on engineering fixture input and is not production strategy");
   if (result.noOpReason) {
-    lines.push(`  decision: PRODUCE NOTHING — ${result.noOpReason}`);
-    lines.push("  This is a successful strategic outcome, not a pipeline error.");
+    lines.push(""); lines.push(`  DECISION: PRODUCE NOTHING (${result.noOpReason})`); lines.push("  This is a successful strategic outcome, not a failure to find ideas.");
   } else {
-    lines.push(`  decision: ${result.missions.length} mission(s) authorised`);
+    lines.push(""); lines.push(`  DECISION: ${result.missions.length} mission(s) authorised`);
+    for (const mission of result.missions) { lines.push(`    ${mission.missionId}: ${mission.angle.name} — ${mission.primaryObjective}`); lines.push(`      because: ${mission.whyThisDeservesProduction}`); }
   }
-  for (const decision of result.decisions) {
-    lines.push(`\n  ${decision.opportunity.opportunityId}`);
-    lines.push(`    ${decision.assessment.action} / ${decision.assessment.tier}: ${decision.assessment.explanation}`);
-    lines.push(`    angle: ${decision.angleReason}`);
-    if (decision.mission) lines.push(`    mission: ${decision.mission.missionId}`);
-    if (decision.missionRefusedBecause) lines.push(`    refused: ${decision.missionRefusedBecause}`);
-    for (const challenge of decision.challenges) lines.push(`    critic ${challenge.fatal ? "FATAL" : "note"} ${challenge.code}: ${challenge.finding}`);
-    for (const counterfactual of decision.counterfactuals) lines.push(`    if ${counterfactual.change}: ${counterfactual.consequence}`);
-    if (decision.researchRequest) lines.push(`    research needed: ${decision.researchRequest.question}`);
+  const ranked = rankAssessments(result.decisions.map((decision) => decision.assessment));
+  lines.push(""); lines.push("  PER-OPPORTUNITY");
+  for (const assessment of ranked) {
+    const decision = result.decisions.find((entry) => entry.opportunity.opportunityId === assessment.opportunityId)!;
+    lines.push(`    [${assessment.tier}] ${decision.opportunity.problem}`);
+    lines.push(`      pillar ${decision.opportunity.pillar}, objective ${decision.opportunity.primaryObjective}, why-now ${decision.opportunity.whyNow}`);
+    lines.push(`      ${assessment.explanation}`);
+    for (const veto of assessment.vetoes) lines.push(`      VETO ${veto.code}: ${veto.detail}`);
+    for (const reason of assessment.reasonsToAct) lines.push(`      + ${reason}`);
+    for (const reason of assessment.reasonsNotToAct) lines.push(`      - ${reason}`);
+    for (const challenge of decision.challenges) lines.push(`      ${challenge.fatal ? "FATAL" : "challenge"} ${challenge.code}: ${challenge.finding}`);
+    for (const tradeoff of assessment.tradeoffs) lines.push(`      tradeoff: ${tradeoff.strongestUpside} BUT ${tradeoff.majorDownside} -> ${tradeoff.resolution}`);
+    if (decision.missionRefusedBecause) lines.push(`      no mission: ${decision.missionRefusedBecause}`);
   }
-  if (result.portfolioBalance.state === "unknown") lines.push(`\n  portfolio: unknown — ${result.portfolioBalance.reason}`);
+  if (result.researchRequests.length > 0) {
+    lines.push(""); lines.push("  RESEARCH NEEDED");
+    for (const request of result.researchRequests) { lines.push(`    ${request.claim}`); lines.push(`      needs: ${request.requiredSourceQuality}`); lines.push(`      fresh: ${request.freshnessRequirement}`); lines.push(`      obtainable now: ${request.obtainableNow} — ${request.obtainabilityNote}`); }
+  }
+  if (result.hypotheses.length > 0) {
+    lines.push(""); lines.push("  STRATEGIC HYPOTHESES (untested until performance data exists)");
+    for (const hypothesis of result.hypotheses) { lines.push(`    [${hypothesis.status}] ${hypothesis.proposition}`); lines.push(`      falsified if: ${hypothesis.falsificationCriteria}`); }
+  }
+  lines.push(""); lines.push(`  PORTFOLIO: ${result.portfolioBalance.note}`);
   for (const limitation of result.limitations) lines.push(`  limitation: ${limitation}`);
   return lines.join("\n");
 }
