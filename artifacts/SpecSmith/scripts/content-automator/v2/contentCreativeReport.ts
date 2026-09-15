@@ -74,7 +74,7 @@ export interface ContentCreativeReport {
   };
 
   readonly humanGates: readonly HumanGate[];
-  /** True only when every gate above carries a recorded approval. */
+  /** True only when every gate above carries a recorded approval and no known machine fix remains unresolved. */
   readonly publishReady: boolean;
   readonly blockedBy: readonly string[];
 }
@@ -120,6 +120,7 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
 
   const lineage = input.repair?.passes.map((pass) => pass.lineage) ?? [];
   const hardFailures = review.slop.hardFailures.map((finding) => `${finding.code} at ${finding.location}: ${finding.message}`);
+  const unresolvedFixes = review.recommendedFixes;
 
   const blockedBy: string[] = [];
   for (const gate of gates) {
@@ -127,6 +128,9 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
     else if (gate.decision.outcome === "rejected") blockedBy.push(`Human gate rejected: ${gate.gate} (by ${gate.decision.by}).`);
   }
   for (const failure of hardFailures) blockedBy.push(`Blocking content failure: ${failure}`);
+  for (const fix of unresolvedFixes) {
+    blockedBy.push(`Unresolved creative fix: ${fix.dimension} — ${fix.issue}`);
+  }
   if (!input.mediaSha256) blockedBy.push("No rendered media: nothing exists to publish.");
 
   return {
