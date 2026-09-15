@@ -164,7 +164,7 @@ export function critiqueConceptSet(input: CritiqueInput): SetCritique {
     concepts,
     setFindings,
     divergent: divergence.divergent,
-    readyConceptIds: concepts.filter((critique) => critique.ready).map((critique) => critique.conceptId),
+    readyConceptIds: divergence.divergent ? concepts.filter((critique) => critique.ready).map((critique) => critique.conceptId) : [],
     blockedConceptIds: concepts
       .filter((critique) => critique.blockedOnCapability.length > 0 && critique.humanRequired.length === 0)
       .map((critique) => critique.conceptId),

@@ -13,7 +13,7 @@
 // no vertical annotated spec-card surface. A creative system that silently drops
 // its most useful idea because the idea is inconvenient is worse than no system.
 
-import type { CreativeConcept } from "./concept.ts";
+import { CREATIVE_DISCLOSURES, type CreativeConcept } from "./concept.ts";
 import { FPS_ESTIMATE_DISCLOSURE } from "./separability.ts";
 
 /** Disclosure ids referenced by the packages. */
@@ -24,10 +24,14 @@ export const DISCLOSURE_MODEL_RANGE = "disclosure.model-range";
 export const DISCLOSURE_TEXT: Readonly<Record<string, string>> = {
   [DISCLOSURE_FPS_ESTIMATE]: FPS_ESTIMATE_DISCLOSURE,
   [DISCLOSURE_EDITORIAL_PRICE]:
-    "These prices are SpecSmith editorial reference prices, not a live retail quote.",
+    "CPU and GPU only: editorial reference totals, not full-build costs or live retail quotes. Motherboard, RAM and other parts cost extra.",
   [DISCLOSURE_MODEL_RANGE]:
-    "The range shown is the range SpecSmith puts on its own estimate, not measured run-to-run variance.",
+    CREATIVE_DISCLOSURES[DISCLOSURE_MODEL_RANGE],
 };
+
+function disclosuresForBeats(count: number, ids: readonly string[]) {
+  return Object.fromEntries(Array.from({ length: count }, (_, index) => [index, ids.map((id) => DISCLOSURE_TEXT[id])])) as Record<number, string[]>;
+}
 
 /** The capability ids the packages declare they need. */
 export const CAPABILITY_COMPARE_CAPTURE = "render.compare-surface-capture";
@@ -40,6 +44,7 @@ const COMPARE_STATE_HIGH_GPU_BOUND = "compare-rtx5060ti-i3-13100f-rtx4060ti-r5-9
 
 /** PACKAGE 1 — "The Crossover That Isn't". */
 export const PACKAGE_CROSSOVER: CreativeConcept = {
+  disclosureTextByBeat: disclosuresForBeats(6, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE, DISCLOSURE_EDITORIAL_PRICE]),
   conceptId: "m6-crossover-that-isnt",
   axes: {
     audienceExperience: "spectator",
@@ -84,8 +89,8 @@ export const PACKAGE_CROSSOVER: CreativeConcept = {
       purpose: "hook",
       startSecond: 0,
       endSecond: 3,
-      narration: "Same price, same category, and I can show you the exact game where they swap places.",
-      onScreenText: "$654 vs $654",
+      narration: "Two CPU-and-GPU combinations, equal reference totals. Watch their point estimates change across games.",
+      onScreenText: "CPU + GPU only: $654 reference total each",
       visualIds: ["p1-compare-low"],
       factDependencies: ["claim.identical-editorial-price"],
     },
@@ -93,8 +98,8 @@ export const PACKAGE_CROSSOVER: CreativeConcept = {
       purpose: "commitment",
       startSecond: 3,
       endSecond: 7,
-      narration: "Watch the bars as I walk up one number: how much each game leans on the GPU.",
-      onScreenText: "Sorted by GPU dependence",
+      narration: "These games are ordered by the GPU weighting inside SpecSmith's model, not a measured hardware test.",
+      onScreenText: "Ordered by model GPU weighting",
       visualIds: ["p1-compare-low"],
       factDependencies: ["claim.gpu-bound-axis"],
     },
@@ -141,6 +146,7 @@ export const PACKAGE_CROSSOVER: CreativeConcept = {
 
 /** PACKAGE 2 — "Two Numbers That Aren't Estimates". Blocked by design. */
 export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
+  disclosureTextByBeat: disclosuresForBeats(6, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE, DISCLOSURE_EDITORIAL_PRICE]),
   conceptId: "m6-two-numbers-that-arent-estimates",
   axes: {
     audienceExperience: "investigator",
@@ -149,7 +155,7 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
   },
   viewerQuestion: "If the frame rates come out basically the same, what am I actually choosing between?",
   viewerTakeaway:
-    "At this price the real choice is VRAM headroom against a socket with an upgrade path, and both of those numbers are exact rather than estimated.",
+    "These CPU-and-GPU reference totals omit platform costs. Check memory capacity, motherboard compatibility and the total parts list before deciding.",
   productDestination: "/compare?gpuA=rtx5060ti&cpuA=i3-13100f&gpuB=rtx4060ti&cpuB=r5-9600x&res=1440p&preset=high",
   requiredDisclosures: [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_EDITORIAL_PRICE, DISCLOSURE_MODEL_RANGE],
   requiredCapabilities: [
@@ -182,7 +188,7 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
       startSecond: 0,
       endSecond: 4,
       narration: "I am going to throw away the frame-rate chart in eight seconds. Here is what is left.",
-      onScreenText: "Both builds: $654",
+      onScreenText: "CPU + GPU only: $654 reference total each",
       visualIds: ["p2-spec-card"],
       factDependencies: ["claim.identical-editorial-price"],
     },
@@ -200,7 +206,7 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
       startSecond: 10,
       endSecond: 24,
       narration:
-        "Price: identical. Tier: identical. Power: within thirteen watts. Three lines actually differ: sixteen gigabytes of VRAM against eight, DDR4 or DDR5 against DDR5 only, four cores against six.",
+        "The CPU-and-GPU reference totals match, but the complete costs may not. These representative catalog configurations list different graphics memory, memory support and core counts. Check your exact SKU; those specifications are not performance measurements.",
       onScreenText: "16 GB vs 8 GB · DDR4/DDR5 vs DDR5 · 4c8t vs 6c12t",
       visualIds: ["p2-spec-card"],
       factDependencies: ["claim.spec-differences"],
@@ -210,17 +216,17 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
       startSecond: 24,
       endSecond: 33,
       narration:
-        "Eight gigabytes is the number texture settings run into. AM5 is the socket with chips still coming to it. Four cores is the part that ages first.",
-      onScreenText: "Headroom, or a platform",
+        "List the compatible motherboard and RAM for each combination. Then compare the complete cost. These specifications alone do not establish future performance or upgrade support.",
+      onScreenText: "Check compatible motherboard, RAM and full cost",
       visualIds: ["p2-spec-card"],
-      factDependencies: ["claim.vram-headroom", "claim.socket-longevity", "claim.core-count-ageing"],
+      factDependencies: ["claim.reference-total-excludes-platform"],
     },
     {
       purpose: "payoff",
       startSecond: 33,
       endSecond: 40,
-      narration: "Same money, two different bets: headroom now, or a platform later.",
-      onScreenText: "Two different bets",
+      narration: "Equal CPU-and-GPU reference totals are not equal complete builds. Check the missing parts before choosing.",
+      onScreenText: "Equal partial totals ≠ equal full-build costs",
       visualIds: ["p2-spec-card"],
       factDependencies: ["claim.spec-differences"],
     },
@@ -238,6 +244,7 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
 
 /** PACKAGE 3 — "One Question, Then Stop Watching". */
 export const PACKAGE_BRANCH: CreativeConcept = {
+  disclosureTextByBeat: disclosuresForBeats(5, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE]),
   conceptId: "m6-one-question-then-stop",
   axes: {
     audienceExperience: "participant",
@@ -246,7 +253,7 @@ export const PACKAGE_BRANCH: CreativeConcept = {
   },
   viewerQuestion: "I do not know enough to judge this. Which part of it applies to me?",
   viewerTakeaway:
-    "My answer depended on one thing about my own library that I already knew, and I can check it on the compare page in ten seconds.",
+    "Start with my own games, then check estimate ranges, compatible platform parts and the full cost. Game category alone cannot choose the build.",
   productDestination: "/compare?gpuA=rtx5060ti&cpuA=i3-13100f&gpuB=rtx4060ti&cpuB=r5-9600x&res=1440p&preset=high",
   requiredDisclosures: [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE],
   requiredCapabilities: [
@@ -291,8 +298,8 @@ export const PACKAGE_BRANCH: CreativeConcept = {
       purpose: "hook",
       startSecond: 0,
       endSecond: 6,
-      narration: "Do not pick the build. Answer this: in the last month, did you spend more hours in a shooter, or in something with a map screen?",
-      onScreenText: "Shooter, or map screen?",
+      narration: "Which games matter most to you? Pick one to inspect in SpecSmith's estimator.",
+      onScreenText: "Start with your own games",
       visualIds: ["p3-fork"],
       factDependencies: [],
     },
@@ -300,8 +307,8 @@ export const PACKAGE_BRANCH: CreativeConcept = {
       purpose: "commitment",
       startSecond: 6,
       endSecond: 11,
-      narration: "That is the whole decision. Here is why it is the whole decision.",
-      onScreenText: "Pick your half",
+      narration: "This is a starting point, not the whole purchase decision. Compare two example games.",
+      onScreenText: "Two examples—not a buying rule",
       visualIds: ["p3-fork"],
       factDependencies: [],
     },
@@ -320,7 +327,7 @@ export const PACKAGE_BRANCH: CreativeConcept = {
       startSecond: 26,
       endSecond: 34,
       narration:
-        "In both halves the gap is inside SpecSmith's own range. So the frame rate did not decide it. Your library decided which risk you would rather carry: eight gigabytes of VRAM on the right, four cores on the left.",
+        "Both examples have overlapping model ranges. Neither establishes a faster real system. Check compatibility, memory capacity and the complete parts cost before choosing.",
       onScreenText: "Both halves: inside the range",
       visualIds: ["p3-band-both"],
       factDependencies: ["claim.no-game-separates", "claim.spec-differences"],

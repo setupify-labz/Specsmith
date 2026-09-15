@@ -37,6 +37,44 @@ import {
   type EvidenceStrength,
 } from "../experiment/model.ts";
 import type { AudienceExperience, ExplanatoryStructure, VisualMechanism } from "./concept.ts";
+import type { Experiment, ExperimentScope } from "../experiment/model.ts";
+import type { ExperimentResult } from "../experiment/experimentPass.ts";
+import { MANDATORY_GUARDRAIL_IDS } from "../experiment/metrics.ts";
+
+/** Resolved from the experiment store, never supplied as a strength label. */
+export interface CreativeEvidenceSource {
+  readonly experiment: Experiment;
+  readonly result: ExperimentResult;
+  readonly invalidated?: boolean;
+}
+
+export function sameCreativeScope(a: ExperimentScope, b: ExperimentScope): boolean {
+  return a.platform === b.platform && a.audienceProfileId === b.audienceProfileId &&
+    a.audienceWasUnknown === b.audienceWasUnknown && a.audienceDescription === b.audienceDescription &&
+    a.topicFamily === b.topicFamily && a.missionFamily === b.missionFamily && a.objective === b.objective;
+}
+
+function checkedSource(source: CreativeEvidenceSource | undefined, experimentId: string, allowSynthetic: boolean) {
+  if (!source || source.invalidated) throw new CreativeMemoryError("Missing or invalidated experiment evidence.");
+  const { experiment, result } = source;
+  const interpretation = result.interpretation;
+  const candidate = result.learningCandidate;
+  if (experiment.status === "invalidated" || experiment.experimentId !== experimentId || result.experimentId !== experimentId ||
+      result.experimentRevision !== experiment.revision || result.designHash !== experiment.designHash ||
+      result.window !== experiment.observationWindow || !interpretation || !candidate ||
+      interpretation.experimentId !== experimentId || interpretation.designHash !== result.designHash ||
+      interpretation.experimentRevision !== experiment.revision ||
+      candidate.evidenceStrength !== interpretation.evidence.strength ||
+      !sameCreativeScope(candidate.scope, experiment.scope) ||
+      !interpretation.guardrails.allPassed || !MANDATORY_GUARDRAIL_IDS.every((id) => interpretation.guardrails.results.some((guardrail) => guardrail.guardrailId === id && guardrail.passed)) || interpretation.validity.state === "invalid" ||
+      candidate.recommendedMemoryAction === "do-not-store" || !result.resultHash) {
+    throw new CreativeMemoryError("Experiment evidence identity, permission or candidate validation failed.");
+  }
+  if (!allowSynthetic && (experiment.provenance.synthetic || result.synthetic || interpretation.synthetic || candidate.synthetic)) {
+    throw new CreativeMemoryError("Synthetic experiment evidence cannot enter production memory.");
+  }
+  return { experiment, result, interpretation, candidate };
+}
 
 export const CREATIVE_MEMORY_VERSION = "creative-memory-v1";
 
@@ -50,7 +88,20 @@ export type CreativeDecisionKind =
   | "explanatory-structure"
   | "visual-mechanism"
   | "audience-experience"
-  | "disclosure-placement";
+  | "disclosure-placement"
+  | "hook-form";
+
+function decisionSupported(decision: CreativeDecision, experiment: Experiment): boolean {
+  const dimensions: Record<CreativeDecisionKind, readonly string[]> = {
+    "explanatory-structure": ["before-after-structure", "result-first-vs-context-first", "claim-order"],
+    "visual-mechanism": ["first-visual-type", "screen-capture-vs-motion-graphic", "comparison-layout"],
+    "audience-experience": ["question-vs-statement"],
+    "disclosure-placement": [], // required disclosures are not experimental variables
+    "hook-form": ["hook-form"],
+  };
+  return experiment.variants.filter((variant) => !variant.isControl).some((variant) =>
+    variant.differences.some((difference) => dimensions[decision.kind]?.includes(difference.dimension) && difference.variant === decision.value));
+}
 
 export interface CreativeDecision {
   readonly kind: CreativeDecisionKind;
@@ -84,6 +135,10 @@ export interface CreativeMemoryEntry {
   readonly synthetic: boolean;
   /** Free text, for a human reading the ledger later. */
   readonly note: string;
+  readonly evidenceReference?: { readonly experimentId: string; readonly resultId: string; readonly resultHash: string };
+  readonly scope?: ExperimentScope;
+  readonly memoryAction?: string;
+  readonly reusePermitted?: boolean;
 }
 
 export class CreativeMemoryError extends Error {
@@ -102,6 +157,8 @@ export interface RecordInput {
   readonly synthetic: boolean;
   readonly note: string;
   readonly now: Date;
+  readonly evidenceSource?: CreativeEvidenceSource;
+  readonly allowSynthetic?: boolean;
 }
 
 /**
@@ -110,6 +167,7 @@ export interface RecordInput {
  */
 export function recordCreativeDecision(input: RecordInput): CreativeMemoryEntry {
   const { outcome, evidenceStrength } = input;
+  if (input.synthetic && !input.allowSynthetic) throw new CreativeMemoryError("Synthetic memory requires an isolated engineering environment.");
 
   // An unknown outcome cannot support any evidence at all. This is the single
   // most important rule here: it is what stops "we did this and then stopped
@@ -137,16 +195,31 @@ export function recordCreativeDecision(input: RecordInput): CreativeMemoryEntry 
     );
   }
 
+  const source = outcome.state === "measured" ? checkedSource(input.evidenceSource, outcome.experimentId, input.allowSynthetic === true) : undefined;
+  if (source && !decisionSupported(input.decision, source.experiment)) {
+    throw new CreativeMemoryError("Experiment does not test this creative decision and value.");
+  }
+  if (source && (source.interpretation.evidence.strength !== evidenceStrength ||
+      source.result.synthetic !== input.synthetic)) {
+    throw new CreativeMemoryError("Caller-supplied evidence strength or provenance differs from the experiment result.");
+  }
+
   return {
     version: CREATIVE_MEMORY_VERSION,
     entryId: input.entryId,
     recordedAt: input.now.toISOString(),
     conceptId: input.conceptId,
     decision: input.decision,
-    outcome,
+    outcome: source ? { state: "measured", experimentId: source.experiment.experimentId, observation: source.interpretation.whatHappened } : outcome,
     evidenceStrength,
     synthetic: input.synthetic,
     note: input.note,
+    ...(source ? {
+      scope: structuredClone(source.experiment.scope),
+      memoryAction: source.candidate.recommendedMemoryAction,
+      reusePermitted: source.interpretation.primaryComparison.outcome === "variant-higher",
+      evidenceReference: { experimentId: source.result.experimentId, resultId: source.result.resultId, resultHash: source.result.resultHash },
+    } : {}),
   };
 }
 
@@ -162,6 +235,9 @@ export interface RetrievalQuery {
    * false: an engineering fixture must never become creative guidance.
    */
   readonly allowSynthetic: boolean;
+  readonly scope?: ExperimentScope;
+  /** Re-resolve current evidence so withdrawn or superseded results cannot guide. */
+  readonly evidenceSources?: ReadonlyMap<string, CreativeEvidenceSource>;
 }
 
 export interface RetrievedObservation {
@@ -188,7 +264,8 @@ export interface RetrievalResult {
 
 function usageFor(entry: CreativeMemoryEntry): RetrievedObservation["usage"] {
   if (entry.outcome.state === "unknown") return "nothing";
-  if (strengthPermitsReuse(entry.evidenceStrength)) return "guidance";
+  if (entry.outcome.state !== "measured") return "context";
+  if (entry.reusePermitted === true && entry.memoryAction === "store-as-replicated" && strengthPermitsReuse(entry.evidenceStrength)) return "guidance";
   return "context";
 }
 
@@ -226,8 +303,25 @@ export function retrieveCreativeMemory(
 
   const excludedSyntheticCount = query.allowSynthetic ? 0 : matching.filter((entry) => entry.synthetic).length;
   const usable = query.allowSynthetic ? matching : matching.filter((entry) => !entry.synthetic);
-
-  const observations = usable.map((entry) => {
+  const seen = new Set<string>();
+  const verified = usable.filter((entry) => {
+    const key = entry.outcome.state === "measured" ? `${entry.evidenceReference?.experimentId}:${entry.decision.kind}:${entry.decision.value}` : entry.entryId;
+    if (seen.has(key)) return false;
+    if (entry.outcome.state === "measured") {
+      if (!entry.scope || !query.scope || !sameCreativeScope(entry.scope, query.scope) || !entry.evidenceReference) return false;
+      try {
+        const source = checkedSource(query.evidenceSources?.get(entry.outcome.experimentId), entry.outcome.experimentId, query.allowSynthetic);
+        if (!decisionSupported(entry.decision, source.experiment) || entry.reusePermitted !== (source.interpretation.primaryComparison.outcome === "variant-higher")) return false;
+        if (source.result.resultId !== entry.evidenceReference.resultId || source.result.resultHash !== entry.evidenceReference.resultHash ||
+            source.interpretation.evidence.strength !== entry.evidenceStrength || !sameCreativeScope(source.experiment.scope, entry.scope) ||
+            source.interpretation.whatHappened !== entry.outcome.observation || source.result.synthetic !== entry.synthetic ||
+            source.candidate.recommendedMemoryAction !== entry.memoryAction) return false;
+      } catch { return false; }
+    }
+    seen.add(key);
+    return true;
+  });
+  const observations = verified.map((entry) => {
     const usage = usageFor(entry);
     return { entry, usage, phrasing: phrasingFor(entry, usage) };
   });

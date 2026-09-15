@@ -136,14 +136,14 @@ describe("divergence of the section-1 set", () => {
     expect(report.findings.map((finding) => finding.code)).toContain("single-axis-variation");
   });
 
-  it("rejects two concepts that leave the viewer with the same takeaway", () => {
+  it("allows distinct treatments of the same audience takeaway", () => {
     const echo: CreativeConcept = {
       ...PACKAGE_BRANCH,
       conceptId: "m6-branch-echo",
       viewerTakeaway: PACKAGE_CROSSOVER.viewerTakeaway,
     };
     const report = assessDivergence([PACKAGE_CROSSOVER, PACKAGE_SPEC_FORENSICS, echo]);
-    expect(report.findings.map((finding) => finding.code)).toContain("shared-viewer-takeaway");
+    expect(report.divergent).toBe(true);
   });
 
   it("refuses to call a single concept divergent", () => {

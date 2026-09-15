@@ -28,6 +28,7 @@ export type DivergenceCode =
   | "identical-axes"
   | "single-axis-variation"
   | "shared-viewer-takeaway"
+  | "duplicate-treatment"
   | "too-few-concepts";
 
 export interface DivergenceFinding {
@@ -101,20 +102,22 @@ export function assessDivergence(concepts: readonly CreativeConcept[]): Divergen
     });
   }
 
-  // Concepts about one audience problem SHOULD share a core truth. They should
-  // not leave the viewer with the identical takeaway, because then only one of
-  // them needed to exist.
-  const takeaways = new Map<string, string[]>();
+  // A shared answer is expected for controlled creative treatments. Check the
+  // actual beat content instead: changing three self-declared labels must not
+  // make identical scripts look original. This is not a semantic originality test.
+  const treatments = new Map<string, string[]>();
   for (const concept of concepts) {
-    const key = normalizeTakeaway(concept.viewerTakeaway);
-    takeaways.set(key, [...(takeaways.get(key) ?? []), concept.conceptId]);
+    const key = JSON.stringify(concept.beats.map((beat) => [beat.purpose,
+      normalizeTakeaway(beat.narration), normalizeTakeaway(beat.onScreenText),
+      beat.visualIds.map((id) => concept.visuals.find((visual) => visual.visualId === id)?.kind)]));
+    treatments.set(key, [...(treatments.get(key) ?? []), concept.conceptId]);
   }
-  for (const ids of takeaways.values()) {
+  for (const ids of treatments.values()) {
     if (ids.length > 1) {
       findings.push({
-        code: "shared-viewer-takeaway",
+        code: "duplicate-treatment",
         conceptIds: ids,
-        detail: "These concepts leave the viewer with the same takeaway, so only one of them needed to be made.",
+        detail: "These concepts contain the same treatment despite their labels; a distinct answer is not required, but distinct creative execution is.",
       });
     }
   }

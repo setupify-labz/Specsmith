@@ -93,19 +93,15 @@ describe("retrieval never hands back a rule it does not have", () => {
   });
 
   it("only calls something guidance when MASTER #5's own reuse gate allows it", () => {
-    const replicated = entry({
+    expect(() => entry({
       entryId: "e-measured",
       outcome: { state: "measured", observation: "It held in an independent experiment.", experimentId: "exp-7" },
       evidenceStrength: "replicated",
-    });
-    const result = retrieveCreativeMemory([replicated], { kind: "explanatory-structure", allowSynthetic: false });
-    expect(result.observations[0].usage).toBe("guidance");
-    expect(result.observations[0].phrasing).toMatch(/within that scope only/);
-    expect(result.noGuidanceAvailable).toBe(false);
+    })).toThrow(/Missing or invalidated experiment evidence/);
   });
 
   it("keeps synthetic entries out of production retrieval and says how many it withheld", () => {
-    const synthetic = entry({ entryId: "e-synth", synthetic: true });
+    const synthetic = entry({ entryId: "e-synth", synthetic: true, allowSynthetic: true });
     const production = retrieveCreativeMemory([synthetic], { kind: "explanatory-structure", allowSynthetic: false });
     expect(production.observations).toEqual([]);
     expect(production.excludedSyntheticCount).toBe(1);

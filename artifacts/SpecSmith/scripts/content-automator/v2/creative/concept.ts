@@ -26,6 +26,12 @@
 import type { StoryboardBeat } from "../../types.ts";
 import { reviewVisualHonesty, type DeclaredVisual, type VisualHonestyReport } from "./visualHonesty.ts";
 
+export const CREATIVE_DISCLOSURES: Readonly<Record<string, string>> = {
+  "disclosure.fps-estimate": "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+  "disclosure.model-range": "The range shown is a model convention, not measured or calibrated uncertainty.",
+  "disclosure.illustration": "Explanatory illustration, not a hardware measurement or simulation.",
+};
+
 /**
  * What the viewer DOES while watching. Not a demographic, not a persona.
  *
@@ -45,6 +51,8 @@ export const EXPLANATORY_STRUCTURES = [
   "branch-no-ranking",
   /** Straight demonstration with no reversal. */
   "linear-demonstration",
+  "prediction-then-reveal",
+  "question-evidence-boundary",
 ] as const;
 export type ExplanatoryStructure = (typeof EXPLANATORY_STRUCTURES)[number];
 
@@ -101,6 +109,8 @@ export interface CreativeConcept {
   readonly productDestination: string;
   /** Disclosures this concept must carry, by id. */
   readonly requiredDisclosures: readonly string[];
+  /** Disclosure text present on each beat, not merely promised by an ID. */
+  readonly disclosureTextByBeat?: Readonly<Record<number, readonly string[]>>;
 }
 
 export type ConceptDefectCode =
@@ -202,8 +212,14 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
   // A visual that requires an on-screen disclosure is only acceptable if the
   // delivery layer guarantees that disclosure. Deferring it to a trailing
   // frame is exactly the failure mode the brief forbids.
-  for (const visualId of visualHonesty.requiresOnScreenDisclosure) {
-    const covered = concept.requiredDisclosures.some((id) => input.guaranteedDisclosureIds.includes(id));
+  const disclosureVisuals = new Set([...visualHonesty.requiresOnScreenDisclosure,
+    ...concept.visuals.filter((visual) => visual.kind === "real-product-capture" && visual.surface === "compare").map((visual) => visual.visualId)]);
+  for (const visualId of disclosureVisuals) {
+    const visual = concept.visuals.find((entry) => entry.visualId === visualId);
+    const fps = (visual?.kind === "real-product-capture" && visual.surface === "compare") || (visual?.kind === "derived-illustration" && (visual.subject === "fps" || visual.subject === "frame-rate" || visual.subject === "frame-time"));
+    const required = fps ? ["disclosure.fps-estimate", "disclosure.model-range"] : ["disclosure.illustration"];
+    const covered = required.every((id) => concept.requiredDisclosures.includes(id) && input.guaranteedDisclosureIds.includes(id) &&
+      concept.beats.every((beat, index) => !beat.visualIds.includes(visualId) || concept.disclosureTextByBeat?.[index]?.includes(CREATIVE_DISCLOSURES[id])));
     if (!covered) {
       defects.push({
         code: "undisclosed-estimate",
@@ -212,6 +228,10 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
           "disclosure the delivery layer guarantees.",
       });
     }
+  }
+  if (concept.beats.some((beat) => !Number.isFinite(beat.startSecond) || !Number.isFinite(beat.endSecond) || beat.startSecond < 0 || beat.endSecond <= beat.startSecond) ||
+      (concept.beats.length > 0 && concept.beats[0].startSecond !== 0)) {
+    defects.push({ code: "beats-not-contiguous", detail: "Beats must start at zero and have finite, positive durations." });
   }
 
   const blockedBy = concept.requiredCapabilities.filter(
@@ -252,7 +272,7 @@ export function toStoryboardBeats(concept: CreativeConcept): StoryboardBeat[] {
       purpose: beat.purpose,
       narration: beat.narration,
       visualDirection: direction,
-      onScreenText: beat.onScreenText,
+      onScreenText: [beat.onScreenText, ...(concept.disclosureTextByBeat?.[concept.beats.indexOf(beat)] ?? [])].join("\n"),
       factDependencies: [...beat.factDependencies],
     };
   });

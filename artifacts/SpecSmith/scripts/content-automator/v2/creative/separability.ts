@@ -220,7 +220,7 @@ export function surveySeparability<TContext>(
     separableCount,
     inseparableCount,
     undeterminedCount,
-    noPointSeparates: analysed.length > 0 && separableCount === 0,
+    noPointSeparates: analysed.length > 0 && separableCount === 0 && undeterminedCount === 0,
     pointLeaderFlips: leaders.length > 1 && new Set(leaders).size > 1,
   };
 }

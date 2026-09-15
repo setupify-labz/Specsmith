@@ -131,9 +131,10 @@ describe("attack: launder a weak observation into a rule", () => {
       entryId: "e-synth",
       conceptId: "m6-fixture",
       decision: { kind: "explanatory-structure", value: "linear-demonstration" },
-      outcome: { state: "measured", observation: "Fixture result.", experimentId: "exp-fixture" },
-      evidenceStrength: "replicated",
+      outcome: { state: "process", observation: "Synthetic pipeline observation, not performance evidence." },
+      evidenceStrength: "anecdotal",
       synthetic: true,
+      allowSynthetic: true,
       note: "",
       now,
     });

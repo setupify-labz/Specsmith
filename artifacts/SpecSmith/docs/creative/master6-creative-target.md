@@ -1,5 +1,12 @@
 # MASTER #6 — Section 1: Proving the creative target before expanding the architecture
 
+> Historical reference draft, not approved production copy. The $654 figures below
+> cover CPU + GPU editorial reference prices only, not complete builds. Platform
+> costs may differ. The original longevity, core-ageing and game-category buying
+> claims are unsupported and have been removed from `sectionOnePackages.ts`.
+> The ±8% range is a model convention, not calibrated uncertainty or evidence of
+> real-system equivalence. Hand-written reference packages do not prove generation.
+
 Status: creative target proof. No modules built yet. This document exists so that
 implementation is driven by what three real creative packages actually needed, not
 by an architecture diagram.

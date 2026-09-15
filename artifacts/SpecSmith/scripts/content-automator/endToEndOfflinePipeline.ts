@@ -143,6 +143,9 @@ import { reviewVisualHonesty } from "./v2/creative/visualHonesty.ts";
 import { toStoryboardBeats } from "./v2/creative/concept.ts";
 import { critiqueConceptSet } from "./v2/creative/conceptCritique.ts";
 import { briefLinesFromMemory, recordCreativeDecision, retrieveCreativeMemory } from "./v2/creative/memory.ts";
+import { runCreativeProposalPass, buildCreativeProposalProductionPlan } from "./v2/creative/proposalPass.ts";
+import { deriveUiRenderState } from "./uiRender/planUiRenderState.ts";
+import { CreativeMemoryStore } from "./v2/creative/memoryStore.ts";
 import {
   AVAILABLE_CAPABILITIES,
   DISCLOSURE_EDITORIAL_PRICE,
@@ -700,7 +703,10 @@ async function main(): Promise<void> {
   console.log(`\n${formatMaster5Ledger()}`);
 
   section("1g. Creative intelligence — can SpecSmith propose genuinely different packages, and does it refuse the claims its own model cannot support?");
-  // Everything in this stage is REAL. The builds come from the shipped catalog,
+  // The hardware/model outputs are repository-derived estimates, not measured
+  // outcomes. Reference concepts are hand-authored; generated proposals below
+  // use a deterministic editorial scaffold and explicit synthetic research.
+  // The CPU-and-GPU combinations come from the shipped catalog,
   // the frame-rate figures come from the shipped model in src/lib/fps.ts, and
   // the three packages are the ones developed by hand in
   // docs/creative/master6-creative-target.md before any of this was built.
@@ -721,7 +727,7 @@ async function main(): Promise<void> {
     const buildB = { gpu: catalogGpu("rtx4060ti"), cpu: catalogCpu("r5-9600x") };
     const priceA = buildA.gpu.price_usd + buildA.cpu.price_usd;
     const priceB = buildB.gpu.price_usd + buildB.cpu.price_usd;
-    console.log(`Audience problem: two builds at the same SpecSmith editorial reference price.`);
+    console.log(`Audience problem: two CPU-and-GPU combinations with equal editorial reference totals; NOT complete-build prices.`);
     console.log(`  A: ${buildA.gpu.name} + ${buildA.cpu.name} = $${priceA}`);
     console.log(`  B: ${buildB.gpu.name} + ${buildB.cpu.name} = $${priceB}`);
     if (priceA !== priceB) {
@@ -773,9 +779,8 @@ async function main(): Promise<void> {
     if (!critique.divergent) {
       throw new Error("The three packages are no longer genuinely different, so only one of them needed to exist.");
     }
-    if (critique.blockedConceptIds.length === 0) {
-      throw new Error("No package reported a missing capability. The best idea is being silently trimmed to fit the renderer.");
-    }
+    // A missing capability is a reported condition, not a permanent requirement:
+    // adding renderer support must not make this pipeline fail.
 
     // The emitted beats are the pipeline's own beat type, carrying the visual
     // classification forward rather than losing it in prose.
@@ -795,7 +800,7 @@ async function main(): Promise<void> {
         entryId: "m6-e1",
         conceptId: PACKAGE_SPEC_FORENSICS.conceptId,
         decision: { kind: "explanatory-structure", value: "elimination-then-substitution" },
-        outcome: { state: "process", observation: "Its payoff beat depends on forward-looking claims the evidence gate will hedge." },
+        outcome: { state: "process", observation: "The corrected package still requires an unavailable annotated spec-card surface." },
         evidenceStrength: "anecdotal",
         synthetic: false,
         note: "Observed while writing the section-1 packages by hand.",
@@ -821,6 +826,53 @@ async function main(): Promise<void> {
     console.log(`  brief lines produced: ${briefLinesFromMemory(retrieved).length}`);
     if (!retrieved.noGuidanceAvailable) {
       throw new Error("Creative memory produced guidance from a single unreplicated observation.");
+    }
+
+    const engineeringMemory = new CreativeMemoryStore(publishingStoreRoot, true);
+    const resolvedEvidence = { experiment: registered.experiment, result: experimentResult };
+    const memoryInput = {
+      entryId: `SYNTHETIC_ENGINEERING_FIXTURE-${experimentResult.resultId}`,
+      conceptId: "SYNTHETIC_ENGINEERING_FIXTURE-experiment-concept",
+      decision: { kind: "hook-form" as const, value: "result-first" },
+      outcome: { state: "measured" as const, experimentId: experimentResult.experimentId, observation: "Ignored caller wording" },
+      evidenceStrength: experimentResult.interpretation!.evidence.strength,
+      evidenceSource: resolvedEvidence, synthetic: true, note: "Engineering data only; never audience performance evidence.", now: creativeNow,
+    };
+    engineeringMemory.append(memoryInput);
+    engineeringMemory.append(memoryInput); // exact replay is idempotent
+    const reloadedMemory = engineeringMemory.load();
+    if (reloadedMemory.length !== 1) throw new Error("Duplicate source ingestion inflated creative memory.");
+    let productionMemoryRefused = false;
+    try { new CreativeMemoryStore(publishingStoreRoot).append(memoryInput); }
+    catch { productionMemoryRefused = true; }
+    if (!productionMemoryRefused) throw new Error("Production memory accepted synthetic experiment evidence.");
+
+    const missionInput = {
+      missionId: `${content.packageId}-fresh-creative-mission`, viewerQuestion: generatedScript.title,
+      productDestination: content.site.route,
+      renderRequest: deriveUiRenderState({ feature: storyboard.feature, subjectIds: storyboard.subjectIds, ideaId: storyboard.ideaId }),
+      research: research.result.contract, researchSynthetic: research.result.containsSyntheticEvidence, allowSynthetic: true, memory: [],
+      retrieval: { kind: "explanatory-structure" as const, allowSynthetic: true, scope: registered.experiment.scope,
+        evidenceSources: new Map([[registered.experiment.experimentId, resolvedEvidence]]) }, platform: PLATFORM,
+    };
+    const freshMission = runCreativeProposalPass(missionInput);
+    const memoryInformed = runCreativeProposalPass({ ...missionInput, memory: reloadedMemory });
+    console.log(`Resolved experiment candidate → immutable engineering memory → retrieval: ${memoryInformed.retrieved.observations.length} observations; guidance ${!memoryInformed.retrieved.noGuidanceAvailable}`);
+    if (!memoryInformed.retrieved.noGuidanceAvailable) throw new Error("Unreplicated source became production guidance.");
+    console.log(`Fresh mission generated ${freshMission.proposals.length} editorial proposals: ${freshMission.reason}`);
+    for (const proposal of freshMission.proposals) {
+      console.log(`  ${proposal.concept.conceptId}: ${proposal.storyboard.beats.length} beats; contract eligible ${proposal.contractEligible}; human review required`);
+    }
+    if (freshMission.proposals.length !== 3 || freshMission.retrieved.observations.length !== 0) {
+      throw new Error("Empty-memory mission did not generate three distinct editorial proposals.");
+    }
+    if (freshMission.selected) {
+      const proposalPackage = { ...storyboard, scripts: [freshMission.selected.storyboard] };
+      const proposalPlan = buildCreativeProposalProductionPlan(storyboard, freshMission.selected);
+      const proposalReview = buildQualityReviewRequest(content, proposalPackage, proposalPlan, PLATFORM);
+      console.log(`Fresh proposal reached existing production/quality-review contract: ${proposalReview.hardBlockers.length} blockers.`);
+    } else {
+      console.log("All fresh proposals remain blocked by evidence/craft review; none was silently approved.");
     }
 
     console.log("\nNegative check — an illustration that describes itself as a thermal simulation:");
