@@ -25,7 +25,11 @@
     "content:render:mp4-smoke:offline": "tsx scripts/content-automator/offlineCompositorSmoke.ts",
     "content:meshy:ingest": "tsx scripts/content-automator/meshyIngestCli.ts",
     "content:e2e:offline": "tsx scripts/content-automator/endToEndOfflinePipeline.ts",
-    "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts"
+    "content:metricool:live-smoke": "tsx scripts/content-automator/metricoolLiveSmoke.ts",
+    "content:analytics:pass": "tsx scripts/content-automator/analyticsPassCli.ts",
+    "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts",
+    "content:creative:brief": "tsx scripts/content-automator/creativeFileWorkflowCli.ts brief",
+    "content:creative:review": "tsx scripts/content-automator/creativeFileWorkflowCli.ts review"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
