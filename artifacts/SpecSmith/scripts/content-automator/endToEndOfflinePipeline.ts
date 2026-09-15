@@ -95,6 +95,11 @@ import { runResearchClosedLoop, formatEvidenceFindings } from "./v2/research/clo
 import { formatResearchReport } from "./v2/research/researchPass.ts";
 import { ingestResearchEvidence } from "./v2/research/ingestion.ts";
 import { buildFixtureIngestionDocument } from "./v2/research/engineeringFixture.ts";
+import { runStrategyClosedLoop, assertMissionGovernsCreative, formatMissionCompliance } from "./v2/strategy/closedLoop.ts";
+import { formatStrategyReport, assertZeroCostCore } from "./v2/strategy/strategyPass.ts";
+import { formatContentMission } from "./v2/strategy/contentMission.ts";
+import { parseSignalBundle } from "./v2/strategy/signals.ts";
+import { fixtureNoSignals } from "./v2/strategy/engineeringFixture.ts";
 import { coreDependencies, formatProviderInventory } from "./v2/research/providerInventory.ts";
 import { formatMaster2Ledger } from "./v2/research/completionLedger.ts";
 import {
@@ -291,6 +296,57 @@ async function main(): Promise<void> {
   const blockingEvidenceFindings = research.findings.filter((finding) => finding.severity === "hard-fail");
   if (blockingEvidenceFindings.length > 0) {
     throw new Error(`Generated copy makes ${blockingEvidenceFindings.length} claim(s) the research evidence does not support: ${blockingEvidenceFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`);
+  }
+
+  section("1d. Strategy intelligence — should SpecSmith make this at all, and why now?");
+  // Strategy consumes MASTER #2's result; it never re-derives what may be said.
+  // The signal bundle here is the honest production shape: no search data, no
+  // trend collector, no community source and no competitor survey are connected,
+  // so every one of those dimensions reports `unknown` rather than a number.
+  const strategy = runStrategyClosedLoop({
+    runId: "strategy-pipeline-1",
+    research: research.result,
+    contract: research.result.contract,
+    rawSignals: fixtureNoSignals(generatedAt),
+    // The engineering path, exactly as for research. The production refusal is
+    // asserted below rather than assumed.
+    environment: { allowSynthetic: true },
+    startedAt: generatedAt,
+    now: generatedAt,
+    provenance: { synthetic: true, producedBy: "specsmith-engineering-fixture", producedAt: generatedAt.toISOString() },
+  });
+  console.log(formatStrategyReport(strategy.result));
+
+  let syntheticStrategyRefused = false;
+  try {
+    parseSignalBundle(fixtureNoSignals(generatedAt), { allowSynthetic: false });
+  } catch (error) {
+    syntheticStrategyRefused = true;
+    console.log(`\nProduction signal ingestion correctly refused the synthetic bundle: ${(error as Error).message}`);
+  }
+  if (!syntheticStrategyRefused) {
+    throw new Error("Synthetic strategic signals were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const zeroCost = assertZeroCostCore(strategy.result);
+  console.log(`Zero-dollar strategy check: ${zeroCost.ok ? "ok" : "FAILED"} — ${zeroCost.reason}`);
+  if (!zeroCost.ok) {
+    throw new Error(`The MASTER #3 core path requires paid access: ${zeroCost.reason}`);
+  }
+
+  // The mission governs Creative. When strategy authorises nothing — which is
+  // the correct answer on this evidence — that is reported, not worked around.
+  console.log("\nMission compliance of the generated storyboard:");
+  const missionFindings = assertMissionGovernsCreative(script, strategy.leadMission);
+  console.log(formatMissionCompliance(missionFindings));
+  const blockingMissionFindings = missionFindings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingMissionFindings.length > 0) {
+    throw new Error(`Generated copy leaves the mission it was given: ${blockingMissionFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`);
+  }
+  if (strategy.leadMission === null) {
+    console.log(`\nStrategy authorised no mission (${strategy.result.noOpReason}). That is a successful strategic outcome: on this evidence and this product state, the correct decision is to produce nothing.`);
+  } else {
+    console.log(`\n${formatContentMission(strategy.leadMission)}`);
   }
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
