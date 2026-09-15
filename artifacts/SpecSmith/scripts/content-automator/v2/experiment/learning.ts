@@ -84,6 +84,8 @@ export function classifyReplication(
   const base = { originalExperimentId: original.experimentId, replicationExperimentId: candidate.experimentId, agrees };
 
   const sameHypothesis =
+    original.experimentId !== candidate.experimentId &&
+    original.observationWindow === candidate.observationWindow &&
     original.hypothesis.primaryMetricId === candidate.hypothesis.primaryMetricId &&
     normalizedDimensions(original) === normalizedDimensions(candidate);
 
@@ -149,7 +151,7 @@ export function classifyReplication(
 
 function normalizedDimensions(experiment: Experiment): string {
   return [
-    ...new Set(experiment.variants.filter((variant) => !variant.isControl).flatMap((variant) => variant.differences.map((d) => d.dimension))),
+    ...new Set(experiment.variants.filter((variant) => !variant.isControl).flatMap((variant) => variant.differences.map((d) => JSON.stringify([d.dimension, d.control, d.variant])))),
   ]
     .sort()
     .join(",");
@@ -496,6 +498,14 @@ function writeProposition(
     );
   }
 
+  if (interpretation.causal.strength !== "causal-within-scope") {
+    return (
+      `${scopeClause}, the comparison produced "${interpretation.primaryComparison.outcome}" on ` +
+      `${experiment.primaryMetricId} at ${experiment.observationWindow}; this does not establish that ` +
+      `${dimensions || "the tested change"} caused the difference.`
+    );
+  }
+
   if (!interpretation.validity.causalReadingPermitted) {
     return (
       `${scopeClause}, a difference in ${experiment.primaryMetricId} was observed, but multiple dimensions changed so it ` +
@@ -505,7 +515,7 @@ function writeProposition(
 
   const direction = interpretation.primaryComparison.outcome === "variant-higher" ? "raised" : "lowered";
   return (
-    `${scopeClause}, ${dimensions || "the tested change"} ${direction} ${experiment.primaryMetricId} at ` +
+    `${scopeClause}, ${dimensions || "the tested change"} appears to have ${direction} ${experiment.primaryMetricId} at ` +
     `${experiment.observationWindow} — ${interpretation.evidence.strength} evidence.`
   );
 }

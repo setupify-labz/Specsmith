@@ -156,7 +156,7 @@ export function causalPermission(
     };
   }
 
-  if (evidence === "directional" || evidence === "replication-needed") {
+  if (validity !== "clean-controlled" || evidence === "directional" || evidence === "replication-needed") {
     return {
       strength: "directional-within-scope",
       permittedPhrasings: [

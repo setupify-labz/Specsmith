@@ -212,12 +212,27 @@ export function runExperimentPass(input: ExperimentPassInput): ExperimentResult 
     fail("sample-too-small", sample.explanation);
   }
 
+  // Scope extensions are separate findings, not confirmations of this scope.
+  // One experiment can count only once; contradictory replays are excluded.
+  const eligibleReplications = new Map<string, ReplicationRecord>();
+  const disputedReplicationIds = new Set<string>();
+  for (const record of input.replications) {
+    if (record.kind !== "exact" || record.originalExperimentId !== experiment.experimentId ||
+        record.replicationExperimentId === experiment.experimentId) continue;
+    const previous = eligibleReplications.get(record.replicationExperimentId);
+    if (previous !== undefined && previous.agrees !== record.agrees) disputedReplicationIds.add(record.replicationExperimentId);
+    eligibleReplications.set(record.replicationExperimentId, record);
+  }
+  const replications = [...eligibleReplications.values()].filter((record) => !disputedReplicationIds.has(record.replicationExperimentId));
+  const replicationCount = replications.filter((record) => record.agrees).length;
+  const conflictingReplications = replications.filter((record) => !record.agrees).length;
+
   const evidence = assessEvidence({
     validity: validity.state,
     sample,
     outcome: primary.outcome,
-    replicationCount: input.replications.filter((record) => record.agrees).length,
-    conflictingReplications: input.replications.filter((record) => !record.agrees).length,
+    replicationCount,
+    conflictingReplications,
     guardrails,
   });
 
@@ -248,7 +263,7 @@ export function runExperimentPass(input: ExperimentPassInput): ExperimentResult 
     experiment,
     interpretation,
     unitsPerVariant: sample.unitsPerVariant,
-    replicationCount: input.replications.filter((record) => record.agrees).length,
+    replicationCount,
     conflictingCount: input.conflictingExperimentIds.length,
     daysRunning: input.daysRunning,
   });
@@ -274,7 +289,7 @@ export function runExperimentPass(input: ExperimentPassInput): ExperimentResult 
     interpretation,
     supportingExperimentIds: input.supportingExperimentIds,
     conflictingExperimentIds: input.conflictingExperimentIds,
-    replications: input.replications,
+    replications,
     now,
     producedBy: input.producedBy,
   });

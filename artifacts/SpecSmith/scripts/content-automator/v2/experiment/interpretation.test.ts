@@ -11,6 +11,7 @@
 //   - describe a result as being about beginners when nobody observed one
 
 import { describe, expect, it } from "vitest";
+import { runExperimentPass } from "./experimentPass.ts";
 
 import {
   assessValidity,
@@ -803,5 +804,77 @@ describe("guards that need direct exercise", () => {
     expect(assessment.strength).toBe("conflicting");
     expect(assessment.reasons.join(" ")).toMatch(/never averaged into a middle position/);
     expect(assessment.explanation).toMatch(/not a summary that hides it/);
+  });
+});
+
+
+describe("independent audit: full experiment pass evidence boundaries", () => {
+  function evaluate(replications: import("./learning.ts").ReplicationRecord[] = [], change = "registered", minimum = 1) {
+    const definition = fixtureCleanExperiment(NOW);
+    const registered = registerExperiment({ ...definition, minimumEvidence: { ...definition.minimumEvidence, minimumIndependentUnitsPerVariant: minimum } }, NOW);
+    const facts = new Map(fixtureCleanShippedFacts());
+    const treatment = facts.get(FIXTURE_IDS.variantId)!;
+    if (change !== "registered") {
+      const values = { ...treatment.dimensionValues };
+      if (change === "missing") delete values["hook-form"];
+      else values["hook-form"] = change;
+      facts.set(FIXTURE_IDS.variantId, { ...treatment, dimensionValues: values });
+    }
+    return runExperimentPass({
+      experiment: registered.experiment, preregistration: registered.preregistration,
+      assignments: ledger().all(), observations: observations().all, lineage: fixtureLineage(),
+      shippedFacts: facts, guardrailResults: fixtureGuardrailsPassing(), replications,
+      conflictingExperimentIds: [], supportingExperimentIds: [], daysRunning: 2,
+      unresolvedHypotheses: 1, synthetic: true, now: NOW, producedBy: "independent-audit",
+    });
+  }
+  const replication = (kind: import("./learning.ts").ReplicationKind, id = "independent-1", agrees = true): import("./learning.ts").ReplicationRecord => ({
+    originalExperimentId: FIXTURE_IDS.experimentId, replicationExperimentId: id,
+    kind, agrees, extendsScope: kind !== "exact", explanation: "Synthetic audit fixture",
+  });
+
+  it.each(["not-a-replication", "platform", "topic", "audience", "mission-family"] as const)("does not promote %s into confirmation of the original scope", (kind) => {
+    const result = evaluate([replication(kind), replication(kind, "independent-2")]);
+    expect(result.interpretation!.evidence.strength).toBe("replication-needed");
+    expect(result.decision).toBe("replicate");
+    expect(result.learningCandidate!.recommendedMemoryAction).not.toBe("store-as-replicated");
+  });
+  it("does not classify a different window or changed values as the same hypothesis", () => {
+    const original = fixtureCleanExperiment(NOW);
+    const candidate = { ...original, experimentId: "independent-candidate" };
+    expect(classifyReplication(original, { ...candidate, observationWindow: "72h" }, true).kind).toBe("not-a-replication");
+    const variants = candidate.variants.map((variant) => ({ ...variant, differences: variant.differences.map((difference) => ({ ...difference, variant: "different-treatment" })) }));
+    expect(classifyReplication(original, { ...candidate, variants }, true).kind).toBe("not-a-replication");
+    expect(classifyReplication(original, original, true).kind).toBe("not-a-replication");
+  });
+  it("does not permit causal language for a partially controlled replicated result", () => {
+    expect(causalPermission("partially-controlled", "replicated", "variant-higher", evaluateGuardrails(fixtureGuardrailsPassing())).strength).toBe("directional-within-scope");
+  });
+  it("counts duplicate confirmations only once", () => {
+    expect(evaluate([replication("exact"), replication("exact")]).interpretation!.evidence.strength).toBe("replicated");
+  });
+  it("rejects self-confirmation and records targeting another experiment", () => {
+    const other = { ...replication("exact"), originalExperimentId: "other-experiment" };
+    expect(evaluate([replication("exact", FIXTURE_IDS.experimentId), other]).decision).toBe("replicate");
+  });
+  it("does not count contradictory replays as confirmation", () => {
+    expect(evaluate([replication("exact"), replication("exact", "independent-1", false)]).decision).toBe("replicate");
+  });
+  it("retains independent same-scope confirmation", () => {
+    const result = evaluate([replication("exact")]);
+    expect(result.interpretation!.evidence.strength).toBe("replicated");
+    expect(result.decision).toBe("exploit-cautiously");
+    expect(result.learningCandidate!.proposition).toContain("appears to have raised");
+  });
+  it.each(["question-first", "missing", "unregistered-value"])("refuses a controlled reading when shipped change is %s", (change) => {
+    const result = evaluate([replication("exact")], change);
+    expect(result.interpretation!.validity.state).toBe("invalid");
+    expect(result.decision).toBe("invalidated");
+    expect(result.learningCandidate!.recommendedMemoryAction).toBe("do-not-store");
+  });
+  it.each([1, 2])("keeps unreplicated learning descriptive at minimum %s", (minimum) => {
+    const result = evaluate([], "registered", minimum);
+    expect(result.learningCandidate!.proposition).not.toMatch(/\b(raised|lowered|improved)\b/);
+    expect(result.learningCandidate!.proposition).toContain("comparison produced");
   });
 });

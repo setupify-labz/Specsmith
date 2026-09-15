@@ -203,10 +203,17 @@ export function assessValidity(input: {
     });
   }
 
+  let declaredChangeUnverified = false;
+
   // --- 4. Declared differences that did not actually ship -----------------
   for (const difference of declaredDifferences) {
     const controlValue = control.dimensionValues[difference.dimension];
     const variantValue = variant.dimensionValues[difference.dimension];
+    if (controlValue === undefined || variantValue === undefined ||
+        controlValue !== difference.control || variantValue !== difference.variant) {
+      declaredChangeUnverified = true;
+      reasons.push(`The shipped values for "${difference.dimension}" do not verify the registered controlled difference.`);
+    }
     if (controlValue === undefined || variantValue === undefined) continue;
     if (controlValue === variantValue) {
       reasons.push(
@@ -244,7 +251,7 @@ export function assessValidity(input: {
   const serious = confounders.filter((confounder) => confounder.severity === "serious");
 
   let state: ValidityState;
-  if (reasons.some((reason) => reason.includes("identity")) || windows.size > 1) {
+  if (declaredChangeUnverified || reasons.some((reason) => reason.includes("identity")) || windows.size > 1 || input.observations.some((observation) => observation.window !== input.window)) {
     state = "invalid";
   } else if (fatal.length > 0) {
     state = "confounded";
