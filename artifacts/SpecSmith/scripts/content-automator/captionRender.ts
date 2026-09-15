@@ -86,7 +86,23 @@ function assTime(seconds: number): string {
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
 }
 
-function wrapCaption(text: string, maxChars = 28): string {
+/** The maximum characters the burned-in caption renderer puts on one line. */
+export const CAPTION_LINE_MAX_CHARS = 28;
+/** Short-form captions never become a paragraph. */
+export const CAPTION_MAX_LINES = 2;
+
+/**
+ * Wraps exactly as the burned-in renderer does.
+ *
+ * Exported so that anything ASSESSING caption readability measures the lines a
+ * viewer will actually see, rather than a wrapping rule that only exists in the
+ * assessor. Returns the ASS `\\N`-separated form the renderer emits.
+ */
+export function wrapCaptionForRender(text: string, maxChars = CAPTION_LINE_MAX_CHARS): string {
+  return wrapCaption(text, maxChars);
+}
+
+function wrapCaption(text: string, maxChars = CAPTION_LINE_MAX_CHARS): string {
   const cleaned = text
     .replace(/\\/g, "/")
     .replace(/[{}]/g, "")

@@ -163,7 +163,21 @@ export interface UiRenderRequest {
   fps?: number;
 }
 
-const SURFACES: readonly UiRenderSurface[] = ["compare", "builder", "upgrade-gpu", "upgrade-cpu", "build-crate"];
+/**
+ * The surfaces the deterministic renderer can actually capture.
+ *
+ * Exported so that callers which need to know whether a proposed visual is a
+ * real product capture read this list rather than duplicating it and drifting.
+ */
+export const UI_RENDER_SURFACES: readonly UiRenderSurface[] = [
+  "compare",
+  "builder",
+  "upgrade-gpu",
+  "upgrade-cpu",
+  "build-crate",
+];
+
+const SURFACES: readonly UiRenderSurface[] = UI_RENDER_SURFACES;
 const RESOLUTIONS = ["1080p", "1440p", "4k"] as const;
 const PRESETS = ["low", "medium", "high", "ultra"] as const;
 

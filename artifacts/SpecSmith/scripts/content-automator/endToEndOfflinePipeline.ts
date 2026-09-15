@@ -70,7 +70,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
-import { buildProductionPlanPackage } from "./productionPlan.ts";
+import { buildProductionPlanPackage, captionCuesForScript } from "./productionPlan.ts";
 import {
   buildQualityReviewRequest,
   reviewRenderedVideo,
@@ -87,7 +87,76 @@ import {
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type PublishingConfig } from "./publishing.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
-import type { ContentIdea, VideoPlatform } from "./types.ts";
+import type { ContentIdea, PlatformScriptStoryboard, VideoPlatform } from "./types.ts";
+import { reviewCreativeQuality, type CreativeQualityReview } from "./v2/creativeQualityReview.ts";
+import { repairCreative } from "./v2/beatRepair.ts";
+import { buildContentCreativeReport, formatContentCreativeReport } from "./v2/contentCreativeReport.ts";
+import { runResearchClosedLoop, formatEvidenceFindings } from "./v2/research/closedLoop.ts";
+import { formatResearchReport } from "./v2/research/researchPass.ts";
+import { ingestResearchEvidence } from "./v2/research/ingestion.ts";
+import { buildFixtureIngestionDocument } from "./v2/research/engineeringFixture.ts";
+import { runStrategyClosedLoop, assertMissionGovernsCreative, formatMissionCompliance } from "./v2/strategy/closedLoop.ts";
+import { formatStrategyReport, assertZeroCostCore } from "./v2/strategy/strategyPass.ts";
+import { formatContentMission } from "./v2/strategy/contentMission.ts";
+import { parseSignalBundle } from "./v2/strategy/signals.ts";
+import { fixtureNoSignals } from "./v2/strategy/engineeringFixture.ts";
+import { coreDependencies, formatProviderInventory } from "./v2/research/providerInventory.ts";
+import { formatMaster2Ledger } from "./v2/research/completionLedger.ts";
+import { runDeliveryPass, assertZeroCostDelivery, formatDeliveryReport } from "./v2/delivery/deliveryPass.ts";
+import { buildCreativeHandoff, assertCreativeHonoursBrief, formatCreativeCompliance } from "./v2/delivery/closedLoop.ts";
+import { formatPlatformBrief } from "./v2/delivery/brief.ts";
+import { formatPackagePlan } from "./v2/delivery/crossPlatform.ts";
+import { parseAudienceSignalBundle } from "./v2/audience/signals.ts";
+import {
+  fixtureNoAudienceSignals,
+  fixtureChainMission,
+  fixtureChainContract,
+  fixtureChainResearch,
+} from "./v2/delivery/engineeringFixture.ts";
+import { formatMaster4Ledger } from "./v2/delivery/completionLedger.ts";
+import { runExperimentPass, assertZeroCostExperiment, formatExperimentReport } from "./v2/experiment/experimentPass.ts";
+import { registerExperiment } from "./v2/experiment/registry.ts";
+import { AssignmentLedger } from "./v2/experiment/assignment.ts";
+import { buildObservation, ObservationStore } from "./v2/experiment/observation.ts";
+import { formatLearningCandidate } from "./v2/experiment/learning.ts";
+import { formatMaster5Ledger } from "./v2/experiment/completionLedger.ts";
+import {
+  FIXTURE_IDS as EXP_IDS,
+  FIXTURE_PUBLISHED_AT as EXP_PUBLISHED_AT,
+  FIXTURE_SHAS as EXP_SHAS,
+  fixtureCleanExperiment,
+  fixtureCleanShippedFacts,
+  fixtureConfoundedShippedFacts,
+  fixtureControlAnalytics,
+  fixtureGuardrailsFailing,
+  fixtureGuardrailsPassing,
+  fixtureLineage,
+  fixtureVariantAnalytics,
+} from "./v2/experiment/engineeringFixture.ts";
+// MASTER #6 — creative intelligence.
+import { estimateFps } from "../../src/lib/fps.ts";
+import cpus from "../../src/data/cpus.json" with { type: "json" };
+import creativeGames from "../../src/data/games.json" with { type: "json" };
+import gpus from "../../src/data/gpus.json" with { type: "json" };
+import { permittedWording, surveySeparability } from "./v2/creative/separability.ts";
+import { reviewVisualHonesty } from "./v2/creative/visualHonesty.ts";
+import { toStoryboardBeats } from "./v2/creative/concept.ts";
+import { critiqueConceptSet } from "./v2/creative/conceptCritique.ts";
+import { briefLinesFromMemory, recordCreativeDecision, retrieveCreativeMemory } from "./v2/creative/memory.ts";
+import { runCreativeProposalPass, buildCreativeProposalProductionPlan } from "./v2/creative/proposalPass.ts";
+import { runCreativeGenerationPass } from "./v2/creative/generationPass.ts";
+import { deriveUiRenderState } from "./uiRender/planUiRenderState.ts";
+import { CreativeMemoryStore } from "./v2/creative/memoryStore.ts";
+import {
+  AVAILABLE_CAPABILITIES,
+  DISCLOSURE_EDITORIAL_PRICE,
+  DISCLOSURE_FPS_ESTIMATE,
+  DISCLOSURE_MODEL_RANGE,
+  PACKAGE_CROSSOVER,
+  PACKAGE_SPEC_FORENSICS,
+  SECTION_ONE_PACKAGES,
+} from "./v2/creative/sectionOnePackages.ts";
+
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -186,14 +255,655 @@ async function main(): Promise<void> {
 
   section("1. Real idea -> real content package -> real script/storyboard -> real generated production-plan CONTRACT (not rendered through — see header comment)");
   const content = buildContentPackage(idea, generatedAt);
-  const storyboard = buildScriptStoryboardPackage(idea, content);
-  const production = buildProductionPlanPackage(storyboard);
-  const script = storyboard.scripts.find((entry) => entry.platform === PLATFORM);
-  if (!script) throw new Error(`No ${PLATFORM} script in the storyboard.`);
+  const generatedStoryboard = buildScriptStoryboardPackage(idea, content);
+  const generatedScript = generatedStoryboard.scripts.find((entry) => entry.platform === PLATFORM);
+  if (!generatedScript) throw new Error(`No ${PLATFORM} script in the storyboard.`);
   console.log(`Idea: ${idea.id} ("${idea.title}")`);
   console.log(`Content package: ${content.packageId} (campaign ${content.campaignId})`);
-  console.log(`Storyboard for ${PLATFORM}: ${script.beats.length} beats, target ${script.targetDurationSeconds}s`);
+  console.log(`Storyboard for ${PLATFORM}: ${generatedScript.beats.length} beats, target ${generatedScript.targetDurationSeconds}s`);
   console.log(`CTA route: ${content.site.route}`);
+
+  section("1b. Creative Director review and beat-level repair of the GENERATED storyboard (before any production plan is built from it)");
+  // This runs on the real generated storyboard and the real caption cues the
+  // renderer would burn in — not on a sample. Its output is load-bearing: the
+  // production plan below is built from whatever storyboard repair returns, so
+  // an accepted repair genuinely changes what would be produced.
+  const reviewGeneratedScript = (candidate: PlatformScriptStoryboard): CreativeQualityReview =>
+    reviewCreativeQuality({
+      creativeId: `${content.packageId}-${PLATFORM}`,
+      packageId: content.packageId,
+      storyboard: candidate,
+      captionCues: captionCuesForScript(candidate),
+      ctaRoute: content.site.route,
+      // No media and no audio evidence is passed: the only render in this
+      // pipeline is the separate hand-authored timeline in section 2, which is
+      // NOT a render of this storyboard. Attributing those bytes or that
+      // loudness measurement to this creative would be a false binding.
+      mediaSha256: null,
+      now: generatedAt,
+    });
+
+  const initialCreativeReview = reviewGeneratedScript(generatedScript);
+  console.log(`Creative review: productionQuality=${initialCreativeReview.productionQualityScore}/10, confidence=${initialCreativeReview.confidence}`);
+  console.log(`Machine-measured dimensions: ${initialCreativeReview.overall.filter((entry) => entry.score !== null).length}; not machine-assessable: ${initialCreativeReview.overall.filter((entry) => entry.score === null).length}`);
+  console.log(`Anti-slop: ${initialCreativeReview.slop.hardFailures.length} hard failure(s), ${initialCreativeReview.slop.warnings.length} warning(s)`);
+  for (const finding of initialCreativeReview.slop.findings) {
+    console.log(`  ${finding.severity} ${finding.code} @ ${finding.location}: ${JSON.stringify(finding.evidence)}`);
+  }
+  console.log(`Recommended fixes: ${initialCreativeReview.recommendedFixes.length}`);
+
+  const repair = repairCreative({
+    creativeId: `${content.packageId}-${PLATFORM}`,
+    storyboard: generatedScript,
+    review: reviewGeneratedScript,
+    ctaRoute: content.site.route,
+  });
+  console.log(`Repair: ${repair.passes.length} pass(es), stopped because ${repair.stoppedBecause}`);
+  for (const pass of repair.passes) {
+    console.log(`  ${pass.lineage.parentCreativeId} -> ${pass.lineage.revisionId}: beats [${pass.lineage.changedBeats.map((index) => index + 1).join(", ")}] ${pass.lineage.beforeQualityScore} -> ${pass.lineage.afterQualityScore} (${pass.lineage.accepted ? "accepted" : `rejected: ${pass.lineage.rejectionReason}`})`);
+    for (const change of pass.changes) {
+      console.log(`    beat ${change.beatIndex + 1} ${change.field} ${change.transform}: ${JSON.stringify(change.before)} -> ${JSON.stringify(change.after)}`);
+    }
+  }
+  for (const entry of repair.unrepairable) {
+    console.log(`  refused to auto-repair ${entry.fix.dimension}: ${entry.reason}`);
+  }
+
+  // The repaired storyboard — not the original — is what everything downstream
+  // is built from. That is what makes this section a real caller rather than a
+  // report nobody acts on.
+  const script = repair.finalStoryboard;
+  const storyboard = {
+    ...generatedStoryboard,
+    scripts: generatedStoryboard.scripts.map((entry) => (entry.platform === PLATFORM ? script : entry)),
+  };
+  const production = buildProductionPlanPackage(storyboard);
+
+  section("1c. Research intelligence — the evidence gate, run over the REAL generated storyboard using explicitly synthetic fixture evidence");
+  // The evidence is synthetic and says so: this branch has no autonomous web
+  // access, and fabricating plausible research would be worse than having none.
+  // What is being demonstrated is the MACHINERY — that a laptop benchmark
+  // cannot support a desktop claim, that three retellings of one press release
+  // are one source, that a four-day-old listing is not a current price — not
+  // any fact about any product. Production ingestion refuses synthetic records
+  // outright, which is asserted below rather than merely stated.
+  const research = runResearchClosedLoop({ storyboard: script, now: generatedAt });
+  console.log(formatResearchReport(research.result));
+  console.log("Evidence gate against the generated storyboard:");
+  console.log(formatEvidenceFindings(research.findings));
+  if (!research.result.containsSyntheticEvidence) {
+    throw new Error("The research fixture must be marked as synthetic evidence; it is not production research.");
+  }
+  // The production boundary, exercised for real: the same document that the
+  // engineering path accepts must be refused when synthetic data is not allowed.
+  let syntheticRefused = false;
+  try {
+    ingestResearchEvidence(buildFixtureIngestionDocument({ now: generatedAt }), { allowSynthetic: false });
+  } catch (error) {
+    syntheticRefused = true;
+    console.log(`Production ingestion correctly refused the synthetic fixture: ${(error as Error).message}`);
+  }
+  if (!syntheticRefused) {
+    throw new Error("Synthetic research evidence was accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+  // The gate is a real gate: a hard evidence finding against this storyboard
+  // stops the run here, before anything is rendered or published.
+  const blockingEvidenceFindings = research.findings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingEvidenceFindings.length > 0) {
+    throw new Error(`Generated copy makes ${blockingEvidenceFindings.length} claim(s) the research evidence does not support: ${blockingEvidenceFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`);
+  }
+
+  section("1d. Strategy intelligence — should SpecSmith make this at all, and why now?");
+  // Strategy consumes MASTER #2's result; it never re-derives what may be said.
+  // The signal bundle here is the honest production shape: no search data, no
+  // trend collector, no community source and no competitor survey are connected,
+  // so every one of those dimensions reports `unknown` rather than a number.
+  const strategy = runStrategyClosedLoop({
+    runId: "strategy-pipeline-1",
+    research: research.result,
+    contract: research.result.contract,
+    rawSignals: fixtureNoSignals(generatedAt),
+    // The engineering path, exactly as for research. The production refusal is
+    // asserted below rather than assumed.
+    environment: { allowSynthetic: true },
+    startedAt: generatedAt,
+    now: generatedAt,
+    provenance: { synthetic: true, producedBy: "specsmith-engineering-fixture", producedAt: generatedAt.toISOString() },
+  });
+  console.log(formatStrategyReport(strategy.result));
+
+  let syntheticStrategyRefused = false;
+  try {
+    parseSignalBundle(fixtureNoSignals(generatedAt), { allowSynthetic: false });
+  } catch (error) {
+    syntheticStrategyRefused = true;
+    console.log(`\nProduction signal ingestion correctly refused the synthetic bundle: ${(error as Error).message}`);
+  }
+  if (!syntheticStrategyRefused) {
+    throw new Error("Synthetic strategic signals were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const zeroCost = assertZeroCostCore(strategy.result);
+  console.log(`Zero-dollar strategy check: ${zeroCost.ok ? "ok" : "FAILED"} — ${zeroCost.reason}`);
+  if (!zeroCost.ok) {
+    throw new Error(`The MASTER #3 core path requires paid access: ${zeroCost.reason}`);
+  }
+
+  // The mission governs Creative. When strategy authorises nothing — which is
+  // the correct answer on this evidence — that is reported, not worked around.
+  console.log("\nMission compliance of the generated storyboard:");
+  const missionFindings = assertMissionGovernsCreative(script, strategy.leadMission);
+  console.log(formatMissionCompliance(missionFindings));
+  const blockingMissionFindings = missionFindings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingMissionFindings.length > 0) {
+    throw new Error(`Generated copy leaves the mission it was given: ${blockingMissionFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`);
+  }
+  if (strategy.leadMission === null) {
+    console.log(`\nStrategy authorised no mission (${strategy.result.noOpReason}). That is a successful strategic outcome: on this evidence and this product state, the correct decision is to produce nothing.`);
+  } else {
+    console.log(`\n${formatContentMission(strategy.leadMission)}`);
+  }
+
+  section("1e. Audience + platform intelligence — who is this for, where can it honestly go, and what must never change on the way");
+  // MASTER #4 consumes the mission MASTER #3 authorised. When strategy
+  // authorised nothing — which is the correct outcome on this evidence — the
+  // delivery pass produces no brief and says so, rather than inventing an
+  // audience to justify making something anyway.
+  //
+  // The audience signal bundle is the honest production shape: no search,
+  // community, analytics or feedback collector is connected, so every audience
+  // dimension is either derived from the mission itself or unknown.
+  const delivery = runDeliveryPass({
+    runId: "delivery-pipeline-1",
+    strategyRunId: strategy.result.runId,
+    mission: strategy.leadMission,
+    contract: research.result.contract,
+    research: research.result,
+    audienceSignals: parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: true }),
+    startedAt: generatedAt,
+    now: generatedAt,
+    producedBy: "specsmith-engineering-fixture",
+    creativeId: `${content.packageId}-${PLATFORM}`,
+  });
+  console.log(formatDeliveryReport(delivery));
+
+  let syntheticAudienceRefused = false;
+  try {
+    parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: false });
+  } catch (error) {
+    syntheticAudienceRefused = true;
+    console.log(`\nProduction audience ingestion correctly refused the synthetic bundle: ${(error as Error).message}`);
+  }
+  if (!syntheticAudienceRefused) {
+    throw new Error("Synthetic audience signals were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const deliveryZeroCost = assertZeroCostDelivery(delivery);
+  console.log(`Zero-dollar delivery check: ${deliveryZeroCost.ok ? "ok" : "FAILED"} — ${deliveryZeroCost.reason}`);
+  if (!deliveryZeroCost.ok) {
+    throw new Error(`The MASTER #4 core path requires paid access: ${deliveryZeroCost.reason}`);
+  }
+
+  const blockingDeliveryFindings = delivery.invariantFindings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingDeliveryFindings.length > 0) {
+    throw new Error(
+      `Platform adaptation breached an invariant: ${blockingDeliveryFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`,
+    );
+  }
+
+  if (delivery.briefs.length === 0) {
+    console.log(
+      `\nNo platform brief was produced (${delivery.noOpReason}). That is a successful delivery outcome: ` +
+        "with no mission authorised there is nothing to adapt, and adapting anyway would mean producing content strategy declined to approve.",
+    );
+  } else {
+    console.log("\nPLATFORM CREATIVE BRIEFS");
+    for (const brief of delivery.briefs) {
+      console.log(formatPlatformBrief(brief));
+    }
+    if (delivery.packagePlan !== null) {
+      console.log(`\n${formatPackagePlan(delivery.packagePlan)}`);
+    }
+
+    // The handoff is where MASTER #4's constraints meet MASTER #1's execution.
+    // Running the compliance check against the REAL generated storyboard proves
+    // the boundary is live rather than merely defined.
+    const platformBrief = delivery.briefs.find((brief) => brief.platform === PLATFORM);
+    if (platformBrief !== undefined && delivery.invariant !== null) {
+      const handoff = buildCreativeHandoff(platformBrief, generatedAt);
+      console.log(`\nMASTER #1 handoff ${handoff.handoffId}: ${handoff.nonNegotiable.length} non-negotiable constraint(s).`);
+      const complianceFindings = assertCreativeHonoursBrief(script, platformBrief, delivery.invariant, research.result.contract);
+      console.log(formatCreativeCompliance(complianceFindings));
+    }
+  }
+
+  // The production path above correctly authorises no mission, which means the
+  // brief-producing half of MASTER #4 is never exercised by it. This second
+  // pass runs the SAME code against an explicitly synthetic mission so the full
+  // chain is demonstrated end to end. Nothing it produces can pass a production
+  // ingestion boundary: every provenance field is marked synthetic and the
+  // refusal above proves that boundary is live.
+  console.log(
+    "\n--- Engineering demonstration of the full delivery chain (SYNTHETIC FIXTURE MISSION — not a production decision) ---",
+  );
+  const demoDelivery = runDeliveryPass({
+    runId: "delivery-pipeline-fixture-demo",
+    strategyRunId: strategy.result.runId,
+    mission: fixtureChainMission(),
+    contract: fixtureChainContract(),
+    research: fixtureChainResearch(),
+    audienceSignals: parseAudienceSignalBundle(fixtureNoAudienceSignals(generatedAt), { allowSynthetic: true }),
+    startedAt: generatedAt,
+    now: generatedAt,
+    producedBy: "specsmith-engineering-fixture",
+    creativeId: `${content.packageId}-${PLATFORM}`,
+  });
+  console.log(formatDeliveryReport(demoDelivery));
+
+  const demoBlocking = demoDelivery.invariantFindings.filter((finding) => finding.severity === "hard-fail");
+  if (demoBlocking.length > 0) {
+    throw new Error(
+      `Fixture platform adaptation breached an invariant: ${demoBlocking.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`,
+    );
+  }
+
+  console.log("\nPLATFORM CREATIVE BRIEFS (synthetic fixture)");
+  for (const brief of demoDelivery.briefs) {
+    console.log(formatPlatformBrief(brief));
+  }
+  if (demoDelivery.packagePlan !== null) {
+    console.log(`\n${formatPackagePlan(demoDelivery.packagePlan)}`);
+  }
+
+  const demoBrief = demoDelivery.briefs.find((brief) => brief.platform === PLATFORM);
+  if (demoBrief !== undefined && demoDelivery.invariant !== null) {
+    const handoff = buildCreativeHandoff(demoBrief, generatedAt);
+    console.log(`\nMASTER #1 handoff ${handoff.handoffId}: ${handoff.nonNegotiable.length} non-negotiable constraint(s).`);
+    for (const constraint of handoff.nonNegotiable.slice(0, 6)) {
+      console.log(`  - ${constraint}`);
+    }
+
+    // A deliberately dishonest cut, to prove the boundary is load-bearing
+    // rather than merely declared: it keeps the figure and drops what made it
+    // true. The pipeline fails if this is NOT caught.
+    const dishonestCut: PlatformScriptStoryboard = {
+      ...script,
+      beats: [
+        {
+          startSecond: 0,
+          endSecond: 4,
+          purpose: "hook",
+          narration: "Example GPU-A is 15% faster.",
+          visualDirection: "comparison",
+          onScreenText: "15% faster",
+          factDependencies: ["claim-fps"],
+        },
+      ],
+    };
+    const caught = assertCreativeHonoursBrief(dishonestCut, demoBrief, demoDelivery.invariant, fixtureChainContract());
+    console.log("\nNegative check — a cut that keeps the figure and drops the estimate label:");
+    console.log(formatCreativeCompliance(caught));
+    if (!caught.some((finding) => finding.severity === "hard-fail")) {
+      throw new Error(
+        "A platform cut that dropped the estimator status and configuration was NOT caught. The truth invariant is not load-bearing.",
+      );
+    }
+  }
+
+  console.log(`\n${formatMaster4Ledger()}`);
+
+  section("1f. Experiment + performance intelligence — what are we testing, is the comparison valid, and what may we actually conclude?");
+  // Everything in this stage is SYNTHETIC. No real analytics exist in this
+  // repository, and none are invented: the figures below describe a graphics
+  // card that does not exist, and the production refusal is asserted rather
+  // than assumed.
+  const experimentNow = generatedAt;
+  const registered = registerExperiment(fixtureCleanExperiment(experimentNow), experimentNow);
+
+  const assignments = new AssignmentLedger();
+  const assignedAt = new Date(Date.parse(EXP_PUBLISHED_AT) - 86_400_000);
+  assignments.bind({
+    experimentId: EXP_IDS.experimentId, experimentRevision: 1, variantId: EXP_IDS.controlVariantId,
+    creativeId: EXP_IDS.controlCreativeId, creativeLineageId: EXP_IDS.controlLineageId,
+    platform: "youtube-shorts", packageId: EXP_IDS.packageId, approvedMediaSha256: EXP_SHAS.control,
+    providerPostId: EXP_IDS.controlPostId, publishedAt: EXP_PUBLISHED_AT, now: assignedAt,
+  });
+  assignments.bind({
+    experimentId: EXP_IDS.experimentId, experimentRevision: 1, variantId: EXP_IDS.variantId,
+    creativeId: EXP_IDS.variantCreativeId, creativeLineageId: EXP_IDS.variantLineageId,
+    platform: "youtube-shorts", packageId: EXP_IDS.packageId, approvedMediaSha256: EXP_SHAS.variant,
+    providerPostId: EXP_IDS.variantPostId, publishedAt: EXP_PUBLISHED_AT, now: assignedAt,
+  });
+
+  const observationStore = new ObservationStore();
+  for (const [creativeId, analytics] of [
+    [EXP_IDS.controlCreativeId, fixtureControlAnalytics()],
+    [EXP_IDS.variantCreativeId, fixtureVariantAnalytics()],
+  ] as const) {
+    observationStore.record(
+      buildObservation({
+        analytics,
+        assignment: assignments.forCreative(creativeId)!,
+        expectedWindow: "24h",
+        synthetic: true,
+        environment: { allowSynthetic: true },
+        now: experimentNow,
+        producedBy: "specsmith-engineering-fixture",
+      }),
+    );
+  }
+
+  // Production must refuse the same synthetic observation.
+  let syntheticAnalyticsRefused = false;
+  try {
+    buildObservation({
+      analytics: fixtureControlAnalytics(),
+      assignment: assignments.forCreative(EXP_IDS.controlCreativeId)!,
+      expectedWindow: "24h",
+      synthetic: true,
+      environment: { allowSynthetic: false },
+      now: experimentNow,
+      producedBy: "specsmith-engineering-fixture",
+    });
+  } catch (error) {
+    syntheticAnalyticsRefused = true;
+    console.log(`Production performance ingestion correctly refused the synthetic analytics: ${(error as Error).message}`);
+  }
+  if (!syntheticAnalyticsRefused) {
+    throw new Error("Synthetic analytics were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const experimentResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureCleanShippedFacts(),
+    guardrailResults: fixtureGuardrailsPassing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log(`\n${formatExperimentReport(experimentResult, registered.experiment)}`);
+
+  if (experimentResult.learningCandidate !== null) {
+    console.log("\nLEARNING CANDIDATE (proposal only — MASTER #6 decides what becomes memory):");
+    console.log(formatLearningCandidate(experimentResult.learningCandidate));
+  }
+
+  const experimentZeroCost = assertZeroCostExperiment(experimentResult);
+  console.log(`\nZero-dollar experiment check: ${experimentZeroCost.ok ? "ok" : "FAILED"} — ${experimentZeroCost.reason}`);
+  if (!experimentZeroCost.ok) {
+    throw new Error(`The MASTER #5 core path requires paid access: ${experimentZeroCost.reason}`);
+  }
+
+  // Negative check 1: a confounded comparison must NOT be reported as a
+  // hook-form result, however real its numbers are.
+  const confoundedResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureConfoundedShippedFacts(),
+    guardrailResults: fixtureGuardrailsPassing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log("\nNegative check — the same numbers with five dimensions changed instead of one:");
+  console.log(`  validity: ${confoundedResult.interpretation?.validity.state}`);
+  console.log(`  causal language permitted: ${confoundedResult.interpretation?.causal.strength}`);
+  if (confoundedResult.interpretation?.validity.state !== "confounded") {
+    throw new Error("A five-variable comparison was not classified as confounded; the confounding detector is not load-bearing.");
+  }
+  if (confoundedResult.interpretation.validity.causalReadingPermitted) {
+    throw new Error("A confounded comparison permitted a causal reading; the causal gate is not load-bearing.");
+  }
+
+  // Negative check 2: a variant that wins by dropping a required caveat must
+  // never become a learning candidate.
+  const guardrailFailedResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureCleanShippedFacts(),
+    guardrailResults: fixtureGuardrailsFailing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log("\nNegative check — the winning variant dropped the required 'estimated' label:");
+  console.log(`  decision: ${guardrailFailedResult.decision}`);
+  console.log(`  memory action: ${guardrailFailedResult.learningCandidate?.recommendedMemoryAction}`);
+  if (guardrailFailedResult.decision !== "blocked-by-guardrail") {
+    throw new Error("A guardrail failure did not block the decision; integrity is not overriding performance.");
+  }
+  if (guardrailFailedResult.learningCandidate?.recommendedMemoryAction !== "do-not-store") {
+    throw new Error("A guardrail-failing variant produced a storable learning candidate; performance is eroding integrity.");
+  }
+
+  console.log(`\n${formatMaster5Ledger()}`);
+
+  section("1g. Creative intelligence — can SpecSmith propose genuinely different packages, and does it refuse the claims its own model cannot support?");
+  // The hardware/model outputs are repository-derived estimates, not measured
+  // outcomes. Reference concepts are hand-authored; generated proposals below
+  // use a deterministic editorial scaffold and explicit synthetic research.
+  // The CPU-and-GPU combinations come from the shipped catalog,
+  // the frame-rate figures come from the shipped model in src/lib/fps.ts, and
+  // the three packages are the ones developed by hand in
+  // docs/creative/master6-creative-target.md before any of this was built.
+  {
+    const creativeNow = generatedAt;
+    const catalogGpu = (id: string) => {
+      const found = (gpus as { id: string; name: string; price_usd: number; gpu_multiplier: number }[]).find((entry) => entry.id === id);
+      if (!found) throw new Error(`Catalog drift: gpu ${id} is gone, so the creative demonstration no longer rests on real data.`);
+      return found;
+    };
+    const catalogCpu = (id: string) => {
+      const found = (cpus as { id: string; name: string; price_usd: number; cpu_multiplier: number }[]).find((entry) => entry.id === id);
+      if (!found) throw new Error(`Catalog drift: cpu ${id} is gone, so the creative demonstration no longer rests on real data.`);
+      return found;
+    };
+
+    const buildA = { gpu: catalogGpu("rtx5060ti"), cpu: catalogCpu("i3-13100f") };
+    const buildB = { gpu: catalogGpu("rtx4060ti"), cpu: catalogCpu("r5-9600x") };
+    const priceA = buildA.gpu.price_usd + buildA.cpu.price_usd;
+    const priceB = buildB.gpu.price_usd + buildB.cpu.price_usd;
+    console.log(`Audience problem: two CPU-and-GPU combinations with equal editorial reference totals; NOT complete-build prices.`);
+    console.log(`  A: ${buildA.gpu.name} + ${buildA.cpu.name} = $${priceA}`);
+    console.log(`  B: ${buildB.gpu.name} + ${buildB.cpu.name} = $${priceB}`);
+    if (priceA !== priceB) {
+      throw new Error("The premise of the creative packages is that these builds cost the same. They no longer do.");
+    }
+
+    // BEHAVIOUR 1 — the model's own range is consulted before any comparison
+    // claim is allowed.
+    const survey = surveySeparability(
+      (creativeGames as { id: string; name: string; gpu_bound: number; base_fps: Record<string, Record<string, number>> }[]).map((game) => ({
+        context: game,
+        a: estimateFps(buildA.gpu.gpu_multiplier, buildA.cpu.cpu_multiplier, game.base_fps["1440p"].high, game.gpu_bound),
+        b: estimateFps(buildB.gpu.gpu_multiplier, buildB.cpu.cpu_multiplier, game.base_fps["1440p"].high, game.gpu_bound),
+      })),
+    );
+    console.log(`\nSeparability over ${survey.points.length} catalog games at 1440p/High:`);
+    console.log(`  point-estimate leader flips across the set: ${survey.pointLeaderFlips}`);
+    console.log(`  separable: ${survey.separableCount}, inseparable: ${survey.inseparableCount}, undetermined: ${survey.undeterminedCount}`);
+    const widest = survey.points.reduce((best, entry) =>
+      Math.abs(entry.result.pointGap ?? 0) > Math.abs(best.result.pointGap ?? 0) ? entry : best,
+    );
+    console.log(`  widest gap: ${widest.context.name}, ${Math.abs(widest.result.pointGap ?? 0)} fps — verdict ${widest.result.verdict}`);
+    console.log(`  permitted wording: ${permittedWording(widest.result, "Build A", "Build B").safest}`);
+    if (!survey.pointLeaderFlips) {
+      throw new Error("The crossover the packages are built on is gone; the creative premise is no longer true.");
+    }
+    if (survey.separableCount > 0 || !survey.noPointSeparates) {
+      throw new Error("A game now separates these builds, so the packages' central claim must be re-derived rather than reprinted.");
+    }
+    if (permittedWording(widest.result, "Build A", "Build B").directional !== null) {
+      throw new Error("A directional claim was permitted on an inseparable comparison. The refusal is not load-bearing.");
+    }
+
+    // BEHAVIOUR 2 — concepts are proposed and assessed structurally.
+    // BEHAVIOUR 3 — every visual declares what kind of thing it is.
+    // BEHAVIOUR 4 — a concept blocked on a missing capability is reported.
+    const critique = critiqueConceptSet({
+      concepts: SECTION_ONE_PACKAGES,
+      availableCapabilityIds: AVAILABLE_CAPABILITIES,
+      guaranteedDisclosureIds: [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_EDITORIAL_PRICE, DISCLOSURE_MODEL_RANGE],
+    });
+    console.log(`\nConcept set: ${SECTION_ONE_PACKAGES.length} packages for one audience problem.`);
+    console.log(`  set is divergent on structure, not wording: ${critique.divergent}`);
+    for (const entry of critique.concepts) {
+      const state = entry.ready ? "ready" : entry.blockedOnCapability.length > 0 && entry.humanRequired.length === 0 ? "blocked" : "needs a human";
+      console.log(`  ${entry.conceptId}: ${state}`);
+      for (const finding of entry.findings) console.log(`    [${finding.routing}] ${finding.code}: ${finding.detail}`);
+    }
+    if (!critique.divergent) {
+      throw new Error("The three packages are no longer genuinely different, so only one of them needed to exist.");
+    }
+    // A missing capability is a reported condition, not a permanent requirement:
+    // adding renderer support must not make this pipeline fail.
+
+    // The emitted beats are the pipeline's own beat type, carrying the visual
+    // classification forward rather than losing it in prose.
+    const emitted = toStoryboardBeats(PACKAGE_CROSSOVER);
+    const reversal = emitted.find((beat) => beat.purpose === "reversal");
+    console.log(`\nEmitted ${emitted.length} beats for ${PACKAGE_CROSSOVER.conceptId}.`);
+    console.log(`  reversal visual direction: ${reversal?.visualDirection}`);
+    if (reversal === undefined || !reversal.visualDirection.includes("[derived-illustration:")) {
+      throw new Error("The visual honesty classification did not survive emission into the storyboard.");
+    }
+
+    // BEHAVIOUR 5 — a creative decision is recorded, with unknown as a
+    // first-class outcome rather than a neutral default.
+    // BEHAVIOUR 6 — retrieval returns no guidance it does not have.
+    const memory = [
+      recordCreativeDecision({
+        entryId: "m6-e1",
+        conceptId: PACKAGE_SPEC_FORENSICS.conceptId,
+        decision: { kind: "explanatory-structure", value: "elimination-then-substitution" },
+        outcome: { state: "process", observation: "The corrected package still requires an unavailable annotated spec-card surface." },
+        evidenceStrength: "anecdotal",
+        synthetic: false,
+        note: "Observed while writing the section-1 packages by hand.",
+        now: creativeNow,
+      }),
+      recordCreativeDecision({
+        entryId: "m6-e2",
+        conceptId: PACKAGE_CROSSOVER.conceptId,
+        decision: { kind: "explanatory-structure", value: "continuum-then-falsification" },
+        outcome: { state: "unknown", reason: "nothing has been published, so no audience outcome exists" },
+        evidenceStrength: "insufficient",
+        synthetic: false,
+        note: "",
+        now: creativeNow,
+      }),
+    ];
+    const retrieved = retrieveCreativeMemory(memory, { kind: "explanatory-structure", allowSynthetic: false });
+    console.log(`\nCreative memory: ${memory.length} entries, ${retrieved.observations.length} retrieved.`);
+    for (const observation of retrieved.observations) {
+      console.log(`  [${observation.usage}] ${observation.phrasing}`);
+    }
+    console.log(`  guidance available: ${!retrieved.noGuidanceAvailable}`);
+    console.log(`  brief lines produced: ${briefLinesFromMemory(retrieved).length}`);
+    if (!retrieved.noGuidanceAvailable) {
+      throw new Error("Creative memory produced guidance from a single unreplicated observation.");
+    }
+
+    const engineeringMemory = new CreativeMemoryStore(publishingStoreRoot, true);
+    const resolvedEvidence = { experiment: registered.experiment, result: experimentResult };
+    const memoryInput = {
+      entryId: `SYNTHETIC_ENGINEERING_FIXTURE-${experimentResult.resultId}`,
+      conceptId: "SYNTHETIC_ENGINEERING_FIXTURE-experiment-concept",
+      decision: { kind: "hook-form" as const, value: "result-first" },
+      outcome: { state: "measured" as const, experimentId: experimentResult.experimentId, observation: "Ignored caller wording" },
+      evidenceStrength: experimentResult.interpretation!.evidence.strength,
+      evidenceSource: resolvedEvidence, synthetic: true, note: "Engineering data only; never audience performance evidence.", now: creativeNow,
+    };
+    engineeringMemory.append(memoryInput);
+    engineeringMemory.append(memoryInput); // exact replay is idempotent
+    const reloadedMemory = engineeringMemory.load();
+    if (reloadedMemory.length !== 1) throw new Error("Duplicate source ingestion inflated creative memory.");
+    let productionMemoryRefused = false;
+    try { new CreativeMemoryStore(publishingStoreRoot).append(memoryInput); }
+    catch { productionMemoryRefused = true; }
+    if (!productionMemoryRefused) throw new Error("Production memory accepted synthetic experiment evidence.");
+
+    const missionInput = {
+      missionId: `${content.packageId}-fresh-creative-mission`, viewerQuestion: generatedScript.title,
+      productDestination: content.site.route,
+      renderRequest: deriveUiRenderState({ feature: storyboard.feature, subjectIds: storyboard.subjectIds, ideaId: storyboard.ideaId }),
+      research: research.result.contract, researchSynthetic: research.result.containsSyntheticEvidence, allowSynthetic: true, memory: [],
+      retrieval: { kind: "explanatory-structure" as const, allowSynthetic: true, scope: registered.experiment.scope,
+        evidenceSources: new Map([[registered.experiment.experimentId, resolvedEvidence]]) }, platform: PLATFORM,
+    };
+    const freshMission = runCreativeProposalPass(missionInput);
+    const generatorMission = await runCreativeGenerationPass(missionInput);
+    console.log(`Generator-driven mission: ${generatorMission.status}. ${generatorMission.reason}`);
+    if (generatorMission.history.length || generatorMission.result.selected) {
+      throw new Error("The credential-free pipeline must not secretly invoke a text provider or approve templates as generator output.");
+    }
+    const memoryInformed = runCreativeProposalPass({ ...missionInput, memory: reloadedMemory });
+    console.log(`Resolved experiment candidate → immutable engineering memory → retrieval: ${memoryInformed.retrieved.observations.length} observations; guidance ${!memoryInformed.retrieved.noGuidanceAvailable}`);
+    if (!memoryInformed.retrieved.noGuidanceAvailable) throw new Error("Unreplicated source became production guidance.");
+    console.log(`Fresh mission generated ${freshMission.proposals.length} editorial proposals: ${freshMission.reason}`);
+    for (const proposal of freshMission.proposals) {
+      console.log(`  ${proposal.concept.conceptId}: ${proposal.storyboard.beats.length} beats; contract eligible ${proposal.contractEligible}; human review required`);
+    }
+    if (freshMission.retrieved.observations.length !== 0) {
+      throw new Error("Empty memory unexpectedly supplied creative observations.");
+    }
+    if (!research.result.contract.safeClaims.length) {
+      if (freshMission.proposals.length || freshMission.selected) throw new Error("An evidence-empty mission invented an approved answer.");
+      console.log("Evidence-empty mission correctly produced nothing. This is not a generator failure.");
+    } else if (freshMission.proposals.length !== 3) {
+      throw new Error("Evidence-backed scaffold mission did not generate three editorial proposals.");
+    }
+    if (freshMission.selected) {
+      const proposalPackage = { ...storyboard, scripts: [freshMission.selected.storyboard] };
+      const proposalPlan = buildCreativeProposalProductionPlan(storyboard, freshMission.selected);
+      const proposalReview = buildQualityReviewRequest(content, proposalPackage, proposalPlan, PLATFORM);
+      console.log(`Fresh proposal reached existing production/quality-review contract: ${proposalReview.hardBlockers.length} blockers.`);
+    } else {
+      console.log("All fresh proposals remain blocked by evidence/craft review; none was silently approved.");
+    }
+
+    console.log("\nNegative check — an illustration that describes itself as a thermal simulation:");
+    const dishonest = reviewVisualHonesty([
+      {
+        kind: "derived-illustration",
+        visualId: "nc-airflow",
+        explains: "A thermal simulation of this case under load.",
+        subject: "airflow",
+        explanatoryLabel: null,
+        derivedFrom: null,
+        showsNumericValues: true,
+      },
+    ]);
+    for (const finding of dishonest.findings) console.log(`  ${finding.code}: ${finding.detail}`);
+    if (dishonest.acceptable || !dishonest.findings.some((finding) => finding.code === "implies-measurement")) {
+      throw new Error("An illustration claiming to be a simulation was accepted. The visual honesty gate is not load-bearing.");
+    }
+  }
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
@@ -427,6 +1137,34 @@ async function main(): Promise<void> {
   if (!allHashesMatch || !allCreativeIdsMatch) {
     throw new Error("Identity chain is broken — final media, rights bundle, publishing request, ledger, and analytics context do not all refer to the same artifact.");
   }
+
+  section("8. CONTENT_CREATIVE_REPORT — one structured artifact, including what was NOT established");
+  const creativeReport = buildContentCreativeReport({
+    review: repair.finalReview,
+    fingerprint,
+    repair,
+    // Deliberately null. The bytes rendered in section 2 are a separate
+    // hand-authored timeline, not a render of the storyboard this report
+    // describes, and binding them here would be a false media attribution.
+    mediaSha256: null,
+    now: generatedAt,
+    // No recorded human decisions are supplied, because none were made in this
+    // run. The report therefore reports publishReady=false, which is the true
+    // answer, and no code path here can turn a machine score into an approval.
+  });
+  console.log(formatContentCreativeReport(creativeReport));
+  if (creativeReport.publishReady) {
+    throw new Error("CONTENT_CREATIVE_REPORT reported publishReady with no recorded human decisions and no rendered media; the human gates are not closable by machine.");
+  }
+
+  section("9. MASTER #2 audit output — provider inventory and completion ledger");
+  console.log(formatProviderInventory());
+  const paidCore = coreDependencies().filter((record) => record.paidUsagePossible);
+  if (paidCore.length > 0) {
+    throw new Error(`The $0 operating requirement is broken: ${paidCore.map((record) => record.name).join(", ")} is a core dependency that can cost money.`);
+  }
+  console.log(`\nZero-dollar check: ${coreDependencies().length} core dependency/dependencies, none paid.`);
+  console.log(`\n${formatMaster2Ledger()}`);
 
   section("Done");
   console.log("Real idea -> real generated storyboard/production-plan contract -> real (separately-authored) render -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger stopped at qc-passed -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled. Wiring the generated storyboard through to a real render is separate future work — see the header comment.");

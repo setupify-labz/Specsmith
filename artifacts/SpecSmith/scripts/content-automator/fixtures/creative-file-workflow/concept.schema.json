@@ -1,0 +1,157 @@
+{
+  "$comment": "One CreativeConcept per file, in batches/attempt-<n>/. Exactly three files per attempt. Beats must be contiguous: each beat's startSecond equals the previous beat's endSecond, and the first starts at 0.",
+  "type": "object",
+  "required": [
+    "conceptId",
+    "axes",
+    "viewerQuestion",
+    "viewerTakeaway",
+    "visuals",
+    "beats",
+    "requiredCapabilities",
+    "productDestination",
+    "requiredDisclosures",
+    "disclosureTextByBeat"
+  ],
+  "properties": {
+    "conceptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "axes": {
+      "type": "object",
+      "required": [
+        "audienceExperience",
+        "explanatoryStructure",
+        "visualMechanism"
+      ],
+      "properties": {
+        "audienceExperience": {
+          "enum": [
+            "spectator",
+            "investigator",
+            "participant"
+          ]
+        },
+        "explanatoryStructure": {
+          "enum": [
+            "continuum-then-falsification",
+            "elimination-then-substitution",
+            "branch-no-ranking",
+            "linear-demonstration",
+            "prediction-then-reveal",
+            "question-evidence-boundary"
+          ]
+        },
+        "visualMechanism": {
+          "enum": [
+            "animated-product-walk",
+            "annotated-static-card",
+            "split-screen-fork",
+            "single-surface-hold"
+          ]
+        }
+      }
+    },
+    "viewerQuestion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "viewerTakeaway": {
+      "type": "string",
+      "minLength": 1
+    },
+    "productDestination": {
+      "const": "/compare"
+    },
+    "visuals": {
+      "type": "array",
+      "minItems": 1,
+      "$comment": "This production adapter renders only the exact validated Compare capture. Every visual must be a real-product-capture naming that state. A declared illustration stays blocked rather than being silently replaced with a screenshot.",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "visualId",
+          "surface",
+          "stateIdentifier"
+        ],
+        "properties": {
+          "kind": {
+            "const": "real-product-capture"
+          },
+          "surface": {
+            "const": "compare"
+          },
+          "stateIdentifier": {
+            "const": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+          }
+        }
+      }
+    },
+    "beats": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "purpose",
+          "startSecond",
+          "endSecond",
+          "narration",
+          "onScreenText",
+          "visualIds",
+          "factDependencies"
+        ],
+        "properties": {
+          "purpose": {
+            "enum": [
+              "hook",
+              "commitment",
+              "evidence",
+              "reversal",
+              "payoff",
+              "cta"
+            ]
+          },
+          "startSecond": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSecond": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "factDependencies": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+              ]
+            },
+            "$comment": "At least one beat must carry an approved claimId. No other id is accepted."
+          }
+        }
+      }
+    },
+    "requiredDisclosures": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "disclosure.fps-estimate",
+          "disclosure.model-range"
+        ]
+      }
+    },
+    "disclosureTextByBeat": {
+      "type": "object",
+      "$comment": "Keys are beat indices as strings. Every beat that shows a product capture must list the exact disclosure text verbatim. A disclosure promised by id but absent from the beat is rejected.",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

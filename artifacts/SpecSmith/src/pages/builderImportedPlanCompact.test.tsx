@@ -47,7 +47,26 @@ const PERIPHERALS = {
 const onScreen = (category: string) =>
   filterAndSort(parts.filter((p) => p.category === category) as any, EMPTY_FILTERS)[0] as any;
 
+// The committed catalog carries a real capture time, and the retail layer
+// treats a snapshot older than DEFAULT_MAX_SNAPSHOT_AGE_MS (26 hours) as stale
+// — correctly, because a stale price must never be shown as live.
+//
+// That makes this suite time-dependent: 26 hours after the catalog was
+// generated, every listing goes stale, the retailer subtotal renders as an
+// em dash and the assertions here start failing for everyone. It is asserting
+// the calendar rather than the behaviour it describes.
+//
+// Pinning the clock an hour after the catalog's own generatedAt fixes that
+// without weakening anything: the listings are fresh exactly as they were when
+// the catalog was captured, and the staleness rule itself is untouched and
+// still covered by offerSnapshot.test.ts. Only Date is faked, so waitFor's
+// real timers keep working.
+const CATALOG_GENERATED_AT = Date.parse(published.generatedAt as string);
+const AN_HOUR_AFTER_CAPTURE = new Date(CATALOG_GENERATED_AT + 60 * 60 * 1000);
+
 beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+  vi.setSystemTime(AN_HOUR_AFTER_CAPTURE);
   window.localStorage.clear();
   vi.stubGlobal('scrollTo', vi.fn());
   Element.prototype.scrollIntoView = vi.fn();
@@ -61,6 +80,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   cleanup();
 });
