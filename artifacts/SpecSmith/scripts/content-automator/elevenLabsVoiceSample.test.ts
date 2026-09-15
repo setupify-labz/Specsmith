@@ -17,6 +17,7 @@ import {
   PREFERRED_VOICE_NAME,
   resolveVoice,
   SAMPLE_TEXT,
+  verifyVoiceSampleAccess,
   VoiceSampleError,
 } from "./elevenLabsVoiceSample.ts";
 import { elevenLabsTtsConfigFromEnv } from "./elevenLabsTts.ts";
@@ -408,5 +409,46 @@ describe("cost is reported as what it is", () => {
   it("no longer claims a figure for characters actually spent", async () => {
     const { manifest } = await run({});
     expect(manifest).not.toHaveProperty("spentIncludedCharacters");
+  });
+});
+
+describe("verification proves access without generating", () => {
+  it("never calls text-to-speech", async () => {
+    const ttsCalls: string[] = [];
+    const verification = await verifyVoiceSampleAccess({
+      env: ENV,
+      fetchImpl: stubFetch({ onTts: (url) => ttsCalls.push(url) }),
+    });
+    expect(ttsCalls).toEqual([]);
+    expect(verification.voice.name).toBe(PREFERRED_VOICE_NAME);
+    expect(verification.subscription.canExtend).toBe(false);
+    expect(verification.requestCharactersPlanned).toBe(SAMPLE_TEXT.length);
+  });
+
+  it("applies the same billing guard the real run applies", async () => {
+    const ttsCalls: string[] = [];
+    await expect(
+      verifyVoiceSampleAccess({
+        env: ENV,
+        fetchImpl: stubFetch({
+          subscriptionBody: subscriptionBody({ can_extend_character_limit: undefined }),
+          onTts: (url) => ttsCalls.push(url),
+        }),
+      }),
+    ).rejects.toThrow(/can_extend_character_limit as a boolean/);
+    expect(ttsCalls).toEqual([]);
+  });
+
+  it("fails verification when the requested voice is absent", async () => {
+    await expect(
+      verifyVoiceSampleAccess({
+        env: ENV,
+        fetchImpl: stubFetch({ voices: [{ voice_id: CONFIG.voiceId, name: "George" }] }),
+      }),
+    ).rejects.toThrow(/is not on this ElevenLabs account/);
+  });
+
+  it("refuses to verify without a key", async () => {
+    await expect(verifyVoiceSampleAccess({ env: {} as NodeJS.ProcessEnv })).rejects.toThrow(/nothing to verify/);
   });
 });

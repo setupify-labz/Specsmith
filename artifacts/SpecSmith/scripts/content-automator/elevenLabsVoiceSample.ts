@@ -224,6 +224,38 @@ export async function resolveVoice(
   return { voiceId: match.voice_id, name: match.name ?? preferredName };
 }
 
+export interface AccessVerification {
+  readonly subscription: SubscriptionInfo;
+  readonly voice: ResolvedVoice;
+  readonly requestCharactersPlanned: number;
+}
+
+/**
+ * Prove the key can read billing and find the voice, WITHOUT generating audio.
+ *
+ * This is the same code path `generateVoiceSample` runs, stopping immediately
+ * before the one call that costs money. It is deliberately not a separate
+ * reimplementation: a preflight that checks something other than what the real
+ * run checks is worse than no preflight.
+ */
+export async function verifyVoiceSampleAccess(options: {
+  readonly fetchImpl?: FetchLike;
+  readonly env?: NodeJS.ProcessEnv;
+} = {}): Promise<AccessVerification> {
+  const config = elevenLabsTtsConfigFromEnv(options.env ?? process.env);
+  if (config === undefined) {
+    throw new VoiceSampleError("ELEVENLABS_API_KEY is not set in this environment, so there is nothing to verify.");
+  }
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const characters = SAMPLE_TEXT.length;
+
+  const subscription = await readSubscription(config, fetchImpl);
+  assertWithinIncludedAllowance(subscription, characters);
+  const voice = await resolveVoice(config, fetchImpl);
+
+  return { subscription, voice, requestCharactersPlanned: characters };
+}
+
 export interface VoiceSampleResult {
   readonly audioPath: string;
   readonly manifestPath: string;
@@ -345,9 +377,26 @@ export async function generateVoiceSample(options: {
   };
 }
 
+function reportVerification(verification: AccessVerification): void {
+  console.log("Access verified. NO audio was generated and no credits were spent.");
+  console.log(`  subscription read: ok (tier ${verification.subscription.tier})`);
+  console.log(`  can extend limit:  ${verification.subscription.canExtend} (must be exactly false to proceed)`);
+  console.log(`  included remaining: ${verification.subscription.remaining} characters`);
+  console.log(`  voice "${PREFERRED_VOICE_NAME}": found (${verification.voice.voiceId})`);
+  console.log(`  would send:        ${verification.requestCharactersPlanned} characters`);
+}
+
 const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
 
-if (isMain) {
+if (isMain && process.argv[2] === "verify") {
+  verifyVoiceSampleAccess()
+    .then(reportVerification)
+    .catch((error: unknown) => {
+      console.error("ACCESS VERIFICATION FAILED — nothing was generated:");
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    });
+} else if (isMain) {
   generateVoiceSample()
     .then((result) => {
       console.log("ElevenLabs voice sample generated.");

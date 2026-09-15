@@ -17,9 +17,17 @@ name: ElevenLabs voice sample (manual)
 on:
   workflow_dispatch:
     inputs:
-      confirm:
-        description: 'Type "generate" to confirm spending included ElevenLabs credits'
+      mode:
+        description: 'verify = check billing and voice access only, no audio. generate = produce one sample.'
         required: true
+        type: choice
+        options:
+          - verify
+          - generate
+        default: verify
+      confirm:
+        description: 'Only for mode=generate. Type "generate" to confirm spending included credits.'
+        required: false
         default: ''
 
 permissions:
@@ -35,10 +43,10 @@ jobs:
   sample:
     runs-on: ubuntu-latest
     steps:
-      - name: Require explicit confirmation
-        if: inputs.confirm != 'generate'
+      - name: Require explicit confirmation before spending credits
+        if: inputs.mode == 'generate' && inputs.confirm != 'generate'
         run: |
-          echo "::error::Refusing to run. Re-dispatch with confirm set to exactly: generate"
+          echo "::error::mode=generate requires confirm set to exactly: generate"
           exit 1
 
       - name: Require the API key to be configured as a secret
@@ -67,7 +75,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Reads billing and resolves the voice, then stops before the one call
+      # that costs money. Runs in BOTH modes, so generation never happens on an
+      # unverified key.
+      - name: Verify billing and voice access (no audio)
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+        run: pnpm exec tsx scripts/content-automator/elevenLabsVoiceSample.ts verify
+
       - name: Generate one voice sample
+        if: inputs.mode == 'generate'
         working-directory: artifacts/SpecSmith
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
@@ -77,6 +97,7 @@ jobs:
         run: pnpm exec tsx scripts/content-automator/elevenLabsVoiceSample.ts
 
       - name: Upload the sample for approval
+        if: inputs.mode == 'generate'
         uses: actions/upload-artifact@v4
         with:
           name: specsmith-voice-sample
