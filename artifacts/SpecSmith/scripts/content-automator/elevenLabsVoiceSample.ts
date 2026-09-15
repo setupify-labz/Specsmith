@@ -127,10 +127,17 @@ export function assertWithinIncludedAllowance(subscription: SubscriptionInfo, ch
 export interface ResolvedVoice {
   readonly voiceId: string;
   readonly name: string;
-  /** True when the requested voice was not on the account. */
-  readonly isFallback: boolean;
 }
 
+/**
+ * Find the requested voice, or stop.
+ *
+ * There is deliberately NO fallback. The sample exists so a human can decide
+ * whether to narrate with a specific voice; generating a different one spends
+ * credits producing an audition nobody asked for, and answers a question that
+ * was not put. If the requested voice is not on the account, that is the
+ * finding, and it is reported rather than worked around.
+ */
 export async function resolveVoice(
   config: ElevenLabsTtsConfig,
   fetchImpl: FetchLike,
@@ -145,18 +152,18 @@ export async function resolveVoice(
   const body = (await response.json()) as { voices?: { voice_id?: string; name?: string }[] };
   const voices = body.voices ?? [];
   const match = voices.find((voice) => (voice.name ?? "").trim().toLowerCase() === preferredName.toLowerCase());
-  if (match?.voice_id) {
-    return { voiceId: match.voice_id, name: match.name ?? preferredName, isFallback: false };
+  if (match?.voice_id === undefined) {
+    const available = voices
+      .map((voice) => (voice.name ?? "").trim())
+      .filter(Boolean)
+      .sort();
+    throw new VoiceSampleError(
+      `The requested voice "${preferredName}" is not on this ElevenLabs account, so nothing was generated and no ` +
+        `credits were spent. This script never substitutes another voice. Voices available: ` +
+        `${available.length > 0 ? available.join(", ") : "none returned"}.`,
+    );
   }
-  // The requested voice is not available. Use the configured default, but say
-  // so loudly — a sample labelled "Liam" that is not Liam is worthless for the
-  // decision it exists to support.
-  const fallback = voices.find((voice) => voice.voice_id === config.voiceId);
-  return {
-    voiceId: config.voiceId,
-    name: fallback?.name ?? `configured default (${config.voiceId})`,
-    isFallback: true,
-  };
+  return { voiceId: match.voice_id, name: match.name ?? preferredName };
 }
 
 export interface VoiceSampleResult {
@@ -237,7 +244,7 @@ export async function generateVoiceSample(options: {
     requestedVoice: PREFERRED_VOICE_NAME,
     voiceUsed: voice.name,
     voiceId: voice.voiceId,
-    requestedVoiceAvailable: !voice.isFallback,
+    requestedVoiceAvailable: true,
     modelId: config.modelId,
     outputFormat: config.outputFormat,
     text: SAMPLE_TEXT,
@@ -265,7 +272,7 @@ if (isMain) {
     .then((result) => {
       console.log("ElevenLabs voice sample generated.");
       console.log(`  voice requested: ${PREFERRED_VOICE_NAME}`);
-      console.log(`  voice used:      ${result.voice.name}${result.voice.isFallback ? "  <-- REQUESTED VOICE NOT AVAILABLE" : ""}`);
+      console.log(`  voice used:      ${result.voice.name}`);
       console.log(`  characters:      ${result.characters} (included allowance only; no top-up, no upgrade)`);
       console.log(`  remaining before: ${result.subscription.remaining} on tier ${result.subscription.tier}`);
       console.log(`  audio:           ${result.audioPath} (${result.bytes} bytes)`);

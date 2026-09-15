@@ -145,18 +145,62 @@ describe("no silent substitution", () => {
   });
 });
 
-describe("voice selection", () => {
+describe("voice selection stops rather than substituting", () => {
   it("uses Liam when the account has it", async () => {
     const voice = await resolveVoice(CONFIG, stubFetch());
     expect(voice.name).toBe(PREFERRED_VOICE_NAME);
     expect(voice.voiceId).toBe("liam-voice-id");
-    expect(voice.isFallback).toBe(false);
   });
 
-  it("marks a fallback loudly rather than passing another voice off as Liam", async () => {
-    const voice = await resolveVoice(CONFIG, stubFetch({ voices: [{ voice_id: CONFIG.voiceId, name: "George" }] }));
-    expect(voice.isFallback).toBe(true);
-    expect(voice.name).not.toBe(PREFERRED_VOICE_NAME);
+  it("stops when Liam is absent instead of picking another voice", async () => {
+    await expect(
+      resolveVoice(CONFIG, stubFetch({ voices: [{ voice_id: CONFIG.voiceId, name: "George" }] })),
+    ).rejects.toThrow(/is not on this ElevenLabs account/);
+  });
+
+  it("names the voices that ARE available, so the answer is actionable", async () => {
+    await expect(
+      resolveVoice(
+        CONFIG,
+        stubFetch({ voices: [{ voice_id: "a", name: "George" }, { voice_id: "b", name: "Rachel" }] }),
+      ),
+    ).rejects.toThrow(/George, Rachel/);
+  });
+
+  it("stops even when the account returns no voices at all", async () => {
+    await expect(resolveVoice(CONFIG, stubFetch({ voices: [] }))).rejects.toThrow(/never substitutes another voice/);
+  });
+
+  it("does not fall back to the configured default voice id", async () => {
+    // The adapter's DEFAULT_VOICE_ID is George. Before this rule, an account
+    // without Liam would have silently auditioned George.
+    await expect(
+      resolveVoice(CONFIG, stubFetch({ voices: [{ voice_id: CONFIG.voiceId, name: "George" }] })),
+    ).rejects.toThrow(VoiceSampleError);
+  });
+
+  it("spends nothing and writes nothing when Liam is absent", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "voice-sample-"));
+    const ttsCalls: string[] = [];
+    try {
+      await expect(
+        generateVoiceSample({
+          env: ENV,
+          outputDir: directory,
+          fetchImpl: stubFetch({
+            voices: [{ voice_id: CONFIG.voiceId, name: "George" }],
+            onTts: (url) => ttsCalls.push(url),
+          }),
+        }),
+      ).rejects.toThrow(/is not on this ElevenLabs account/);
+
+      // The generation endpoint is what costs money. It must never be reached.
+      expect(ttsCalls).toEqual([]);
+      expect(() => readFileSync(join(directory, "specsmith-voice-sample.mp3"))).toThrow();
+      expect(() => readFileSync(join(directory, "specsmith-voice-sample.json"))).toThrow();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
 
