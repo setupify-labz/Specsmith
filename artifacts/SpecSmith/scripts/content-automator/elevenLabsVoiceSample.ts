@@ -207,6 +207,22 @@ export interface ResolvedVoice {
 }
 
 /**
+ * The voice's name without its descriptor.
+ *
+ * ElevenLabs library voices are commonly listed as "Liam - Energetic, Social
+ * Media Creator": a name, a separator, then marketing copy. Matching the whole
+ * string against "Liam" fails against a voice that is plainly present, so the
+ * comparison is made on the part before the separator.
+ *
+ * Only a dash separator is stripped. A voice genuinely named "Liam Smith" keeps
+ * its full name and will not match "Liam", which is the conservative behaviour:
+ * a near-miss must not resolve to a different voice.
+ */
+export function baseVoiceName(name: string): string {
+  return name.split(/\s[-–—]\s/)[0].trim();
+}
+
+/**
  * Find the requested voice, or stop.
  *
  * There is deliberately NO fallback. The sample exists so a human can decide
@@ -228,8 +244,12 @@ export async function resolveVoice(
   }
   const body = (await response.json()) as { voices?: { voice_id?: string; name?: string }[] };
   const voices = body.voices ?? [];
-  const match = voices.find((voice) => (voice.name ?? "").trim().toLowerCase() === preferredName.toLowerCase());
-  if (match?.voice_id === undefined) {
+
+  const candidates = voices.filter(
+    (voice) => baseVoiceName(voice.name ?? "").toLowerCase() === preferredName.trim().toLowerCase(),
+  );
+
+  if (candidates.length === 0) {
     const available = voices
       .map((voice) => (voice.name ?? "").trim())
       .filter(Boolean)
@@ -240,7 +260,23 @@ export async function resolveVoice(
         `${available.length > 0 ? available.join(", ") : "none returned"}.`,
     );
   }
-  return { voiceId: match.voice_id, name: match.name ?? preferredName };
+
+  // Two voices sharing a first name is a real shape on this account (there are
+  // two Georges). Picking one would be guessing which voice the human meant, so
+  // it stops and names them. Prefer no match over an ambiguous match.
+  if (candidates.length > 1) {
+    throw new VoiceSampleError(
+      `"${preferredName}" matches ${candidates.length} voices on this account, so nothing was generated and no ` +
+        `credits were spent: ${candidates.map((voice) => `"${(voice.name ?? "").trim()}"`).join(", ")}. ` +
+        "Name the voice exactly to disambiguate.",
+    );
+  }
+
+  const match = candidates[0];
+  if (match.voice_id === undefined || match.voice_id.trim() === "") {
+    throw new VoiceSampleError(`The provider returned "${preferredName}" without a voice id, so it cannot be used.`);
+  }
+  return { voiceId: match.voice_id, name: (match.name ?? preferredName).trim() };
 }
 
 export interface AccessVerification {

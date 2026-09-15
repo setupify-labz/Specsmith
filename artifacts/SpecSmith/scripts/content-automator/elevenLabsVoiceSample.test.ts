@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 
 import {
   assertWithinIncludedAllowance,
+  baseVoiceName,
   generateVoiceSample,
   MAX_SAMPLE_CHARACTERS,
   PREFERRED_VOICE_NAME,
@@ -164,6 +165,45 @@ describe("voice selection stops rather than substituting", () => {
     const voice = await resolveVoice(CONFIG, stubFetch());
     expect(voice.name).toBe(PREFERRED_VOICE_NAME);
     expect(voice.voiceId).toBe("liam-voice-id");
+  });
+
+  it("finds a voice listed with a descriptor suffix, as this account lists them", async () => {
+    // The real account returns "Liam - Energetic, Social Media Creator".
+    // Exact-string matching missed a voice that was plainly present.
+    const voice = await resolveVoice(
+      CONFIG,
+      stubFetch({ voices: [{ voice_id: "liam-real", name: "Liam - Energetic, Social Media Creator" }] }),
+    );
+    expect(voice.voiceId).toBe("liam-real");
+    expect(voice.name).toBe("Liam - Energetic, Social Media Creator");
+  });
+
+  it("stops rather than guessing when a first name matches more than one voice", async () => {
+    // This account really does have two Georges.
+    await expect(
+      resolveVoice(
+        CONFIG,
+        stubFetch({
+          voices: [
+            { voice_id: "g1", name: "George - Perpetually exasperated" },
+            { voice_id: "g2", name: "George - Warm, Captivating Storyteller" },
+          ],
+        }),
+        "George",
+      ),
+    ).rejects.toThrow(/matches 2 voices/);
+  });
+
+  it("does not let a different name starting with the same letters match", async () => {
+    await expect(
+      resolveVoice(CONFIG, stubFetch({ voices: [{ voice_id: "w", name: "William - Narrator" }] })),
+    ).rejects.toThrow(/is not on this ElevenLabs account/);
+  });
+
+  it("does not treat a two-word personal name as a descriptor", async () => {
+    await expect(
+      resolveVoice(CONFIG, stubFetch({ voices: [{ voice_id: "ls", name: "Liam Smith" }] })),
+    ).rejects.toThrow(/is not on this ElevenLabs account/);
   });
 
   it("stops when Liam is absent instead of picking another voice", async () => {
@@ -483,5 +523,22 @@ describe("provider failures are explained, not swallowed", () => {
     expect(leaked).toContain("[redacted]");
     // Ordinary words must survive, or the message stops being useful.
     expect(redactTokens("missing_permissions")).toBe("missing_permissions");
+  });
+});
+
+describe("voice name parsing", () => {
+  it.each([
+    ["Liam - Energetic, Social Media Creator", "Liam"],
+    ["George – Warm, Captivating Storyteller", "George"],
+    ["Brian — Deep, Resonant and Comforting", "Brian"],
+    ["Liam", "Liam"],
+    ["  Liam  ", "Liam"],
+  ])("reduces %s to %s", (input, expected) => {
+    expect(baseVoiceName(input)).toBe(expected);
+  });
+
+  it("leaves a hyphenated or multi-word name intact", () => {
+    expect(baseVoiceName("Mary-Jane")).toBe("Mary-Jane");
+    expect(baseVoiceName("Liam Smith")).toBe("Liam Smith");
   });
 });
