@@ -1,18 +1,18 @@
 // MASTER #4 — Cross-platform package plan (section 15).
 //
-// A creative difference needs typed provenance. The current brief contract does
-// not carry per-field platform fact IDs, so this layer refuses to invent a fact
-// ID from a naming convention. Until that contract is enriched, identical
-// execution is the only platform adaptation this planner can honestly certify.
+// One mission, up to three platform versions, one shared core truth.
+// A material difference is legal only when PLATFORM_CREATIVE_BRIEF carries the
+// exact usable platform fact that caused it. We never synthesize fact IDs from
+// platform names or infer an absent capability from an unknown one.
 
 import type { PlatformId } from "../platform/model.ts";
-import type { PlatformCreativeBrief } from "./brief.ts";
+import type { AdaptationDimension, PlatformAdaptationEvidence, PlatformCreativeBrief } from "./brief.ts";
 import type { AudiencePlatformFit, RefusalReason } from "./fit.ts";
 import type { TruthInvariant } from "./invariants.ts";
 
 export interface PlatformDifference {
   readonly platform: PlatformId;
-  readonly dimension: string;
+  readonly dimension: AdaptationDimension;
   readonly difference: string;
   readonly justifiedByFactId: string;
   readonly justification: string;
@@ -59,25 +59,37 @@ export class UntraceablePlatformDifferenceError extends Error {
 }
 
 interface MaterialDifference {
-  readonly platform: PlatformId;
-  readonly dimension: string;
+  readonly reference: PlatformCreativeBrief;
+  readonly changed: PlatformCreativeBrief;
+  readonly dimension: AdaptationDimension;
+  readonly description: string;
 }
 
-function materialDifferences(reference: PlatformCreativeBrief, brief: PlatformCreativeBrief): readonly MaterialDifference[] {
+function materialDifferences(reference: PlatformCreativeBrief, changed: PlatformCreativeBrief): readonly MaterialDifference[] {
   const differences: MaterialDifference[] = [];
-  if ((reference.metadata.title === null) !== (brief.metadata.title === null)) {
-    differences.push({ platform: brief.platform, dimension: "metadata.title" });
+  if ((reference.metadata.title === null) !== (changed.metadata.title === null) || reference.metadata.title !== changed.metadata.title) {
+    differences.push({ reference, changed, dimension: "metadata.title", description: "Title treatment differs." });
   }
-  if (reference.metadata.description !== brief.metadata.description) {
-    differences.push({ platform: brief.platform, dimension: "metadata.description" });
+  if (reference.metadata.description !== changed.metadata.description) {
+    differences.push({ reference, changed, dimension: "metadata.description", description: "Description treatment differs." });
   }
-  if (reference.execution.ctaTreatment.treatment !== brief.execution.ctaTreatment.treatment) {
-    differences.push({ platform: brief.platform, dimension: "execution.cta" });
+  if (reference.execution.ctaTreatment.treatment !== changed.execution.ctaTreatment.treatment) {
+    differences.push({ reference, changed, dimension: "execution.cta", description: "CTA placement/treatment differs." });
   }
-  if (JSON.stringify(reference.execution.targetDurationSecondsRange) !== JSON.stringify(brief.execution.targetDurationSecondsRange)) {
-    differences.push({ platform: brief.platform, dimension: "execution.duration" });
+  if (JSON.stringify(reference.execution.targetDurationSecondsRange) !== JSON.stringify(changed.execution.targetDurationSecondsRange)) {
+    differences.push({ reference, changed, dimension: "execution.duration", description: "Platform-derived duration constraint differs." });
   }
   return differences;
+}
+
+function evidenceForDifference(difference: MaterialDifference): PlatformAdaptationEvidence | null {
+  // Prefer the changed brief's evidence because the difference is reported on
+  // that platform. If only the reference side has a sourced capability, that
+  // still legitimately explains why the two transport-independent briefs
+  // differ: the other side remains unknown rather than being asserted false.
+  return difference.changed.adaptationEvidence.find((entry) => entry.dimension === difference.dimension)
+    ?? difference.reference.adaptationEvidence.find((entry) => entry.dimension === difference.dimension)
+    ?? null;
 }
 
 export function buildCrossPlatformPlan(input: PackagePlanInput): CrossPlatformPackagePlan {
@@ -86,21 +98,32 @@ export function buildCrossPlatformPlan(input: PackagePlanInput): CrossPlatformPa
     .filter((fit) => fit.verdict === "refuse")
     .map((fit) => ({ platform: fit.platform, refusals: fit.refusals }));
 
-  // The old implementation manufactured fact IDs such as `${platform}-link`
-  // whenever outputs differed. A plausible identifier is not provenance. Fail
-  // closed until the brief carries the exact fact IDs that caused each field.
+  const differences: PlatformDifference[] = [];
   if (briefs.length > 1) {
     const reference = briefs[0];
-    const untraceable = briefs.slice(1).flatMap((brief) => materialDifferences(reference, brief));
-    if (untraceable.length > 0) {
-      throw new UntraceablePlatformDifferenceError(
-        `Cross-platform outputs differ without typed per-field fact provenance: ${untraceable.map((d) => `${d.platform}:${d.dimension}`).join(", ")}. ` +
-          "Do not invent a fact ID from the platform name. Carry the exact source fact through the brief before adapting this dimension.",
-      );
+    for (const changed of briefs.slice(1)) {
+      for (const difference of materialDifferences(reference, changed)) {
+        const evidence = evidenceForDifference(difference);
+        if (evidence === null) {
+          throw new UntraceablePlatformDifferenceError(
+            `Cross-platform outputs differ at ${changed.platform}:${difference.dimension} without an exact carried platform fact. ` +
+              "Unknown capability is not adaptation evidence, and a plausible fact id may not be invented from a platform name.",
+          );
+        }
+        differences.push({
+          platform: changed.platform,
+          dimension: difference.dimension,
+          difference: difference.description,
+          justifiedByFactId: evidence.factId,
+          justification:
+            `Exact source-bound platform fact ${evidence.factId} (${evidence.platform}) states: ${evidence.claim} ` +
+            `Source: ${evidence.source}; captured ${evidence.capturedAt}. The other platform may remain unknown; this difference does not assert the inverse there.`,
+        });
+      }
     }
   }
 
-  const uniform = briefs.length > 1;
+  const uniform = differences.length === 0 && briefs.length > 1;
   return {
     version: "cross-platform-package-plan-v1",
     planId: `package-${input.missionId}`,
@@ -115,10 +138,10 @@ export function buildCrossPlatformPlan(input: PackagePlanInput): CrossPlatformPa
     },
     platformsIncluded: briefs.map((brief) => brief.platform),
     platformsRefused: refused,
-    differences: [],
+    differences,
     uniformExecutionJustified: uniform,
     uniformExecutionReason: uniform
-      ? "No traceable platform fact in the current brief contract justifies a creative difference. Uniform execution is therefore the only certified plan; unknown platform behaviour is not a reason to invent adaptation."
+      ? "No source-bound platform fact caused a material difference between included briefs. Uniform execution is therefore justified; unknown platform behaviour is not converted into fake optimization."
       : null,
     limitations: buildLimitations(briefs, refused),
   };
@@ -129,11 +152,9 @@ function buildLimitations(briefs: readonly PlatformCreativeBrief[], refused: rea
     "No platform ranking or distribution behaviour is modelled, so no adaptation claims to optimize reach.",
     "No posting time is recommended because none has been measured for these accounts.",
     "No trend informs adaptation because no platform trend collector is connected.",
-    "Per-field platform fact IDs are not yet carried by PLATFORM_CREATIVE_BRIEF; creative differences therefore fail closed instead of receiving invented provenance.",
+    "A cross-platform difference is emitted only when an exact usable source fact is carried in the brief; otherwise the planner fails closed.",
   ];
-  if (refused.length > 0) {
-    limitations.push(`${refused.length} platform(s) were refused rather than receiving a degraded version.`);
-  }
+  if (refused.length > 0) limitations.push(`${refused.length} platform(s) were refused rather than receiving a degraded version.`);
   if (briefs.some((brief) => brief.provenance.synthetic)) {
     limitations.push("This package plan rests on engineering fixture input and is not a production delivery decision.");
   }
@@ -151,6 +172,10 @@ export function formatPackagePlan(plan: CrossPlatformPackagePlan): string {
     lines.push(`  REFUSED ${refusal.platform}: ${refusal.refusals.map((reason) => reason.code).join(", ")}`);
   }
   if (plan.uniformExecutionJustified) lines.push(`  uniform execution: ${plan.uniformExecutionReason}`);
+  for (const difference of plan.differences) {
+    lines.push(`  ${difference.platform} differs on ${difference.dimension}: ${difference.difference}`);
+    lines.push(`    justified by ${difference.justifiedByFactId}: ${difference.justification}`);
+  }
   for (const limitation of plan.limitations) lines.push(`  limitation: ${limitation}`);
   return lines.join("\n");
 }
