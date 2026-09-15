@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { checkScriptAgainstResearch, type ResearchCreativeContract } from "./creativeContract.ts";
+import type { ResearchCreativeContract } from "./creativeContract.ts";
+import { checkScriptAgainstResearchStrict } from "./strictEvidenceGate.ts";
 import type { PlatformScriptStoryboard } from "../../types.ts";
 
 function storyboard(title: string): PlatformScriptStoryboard {
@@ -9,15 +10,7 @@ function storyboard(title: string): PlatformScriptStoryboard {
     targetDurationSeconds: 24,
     title,
     narrationStyle: "direct",
-    beats: [{
-      startSecond: 0,
-      endSecond: 24,
-      purpose: "hook",
-      narration: "",
-      visualDirection: "ui",
-      onScreenText: "",
-      factDependencies: [],
-    }],
+    beats: [{ startSecond: 0, endSecond: 24, purpose: "hook", narration: "", visualDirection: "ui", onScreenText: "", factDependencies: [] }],
     finalCta: "",
     factualGuardrails: [],
   };
@@ -47,18 +40,24 @@ function contract(bucket: "unsafe" | "disputed"): ResearchCreativeContract {
 
 describe("MASTER #2 adversarial audit: uncertainty wording must not become evidence", () => {
   it("does not let 'may' turn an unsupported factual claim into publishable copy", () => {
-    const findings = checkScriptAgainstResearch(
-      storyboard("Widget-9000 may outrun Widget-8000 by 40 percent"),
-      contract("unsafe"),
-    );
+    const findings = checkScriptAgainstResearchStrict(storyboard("Widget-9000 may outrun Widget-8000 by 40 percent"), contract("unsafe"));
     expect(findings.some((finding) => finding.code === "unsupported-factual-claim" && finding.severity === "hard-fail")).toBe(true);
   });
 
-  it("does not let a generic hedge present a disputed claim without disclosing the dispute", () => {
-    const findings = checkScriptAgainstResearch(
-      storyboard("Widget-9000 may outrun Widget-8000 by 40 percent"),
-      contract("disputed"),
-    );
+  it("does not let 'might', 'could', 'about', or 'roughly' manufacture evidence either", () => {
+    for (const hedge of ["might", "could", "about", "roughly"]) {
+      const findings = checkScriptAgainstResearchStrict(storyboard(`Widget-9000 ${hedge} outruns Widget-8000 by 40 percent`), contract("unsafe"));
+      expect(findings.some((finding) => finding.code === "unsupported-factual-claim" && finding.severity === "hard-fail"), hedge).toBe(true);
+    }
+  });
+
+  it("does not let a generic hedge hide a disputed claim", () => {
+    const findings = checkScriptAgainstResearchStrict(storyboard("Widget-9000 may outrun Widget-8000 by 40 percent"), contract("disputed"));
     expect(findings.some((finding) => finding.code === "disputed-presented-as-settled" && finding.severity === "hard-fail")).toBe(true);
+  });
+
+  it("does not regress to the old generic-GPU false positive", () => {
+    const findings = checkScriptAgainstResearchStrict(storyboard("Pick the GPU before SpecSmith reveals the names"), contract("unsafe"));
+    expect(findings).toEqual([]);
   });
 });
