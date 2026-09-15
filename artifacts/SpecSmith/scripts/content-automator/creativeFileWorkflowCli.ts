@@ -97,9 +97,9 @@ export const DEMO_RESEARCH: ResearchCreativeContract = {
 
 export const DEMO_MISSION: Omit<CreativeMissionInput, "concepts"> = {
   missionId: "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
-  // Preserve the original demonstrated mission; generic shared subject words
-  // and incidental counts no longer require an authoring workaround.
-  viewerQuestion: "Same price, different parts. What does this comparison page actually settle?",
+  // The public title must not introduce an unqualified price claim. Original
+  // Claude-authored attempts remain unchanged as historical draft evidence.
+  viewerQuestion: "Different parts. What do these model estimates actually establish?",
   productDestination: "/compare",
   renderRequest: {
     captureType: "static",

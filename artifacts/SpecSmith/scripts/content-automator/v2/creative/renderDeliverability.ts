@@ -126,6 +126,20 @@ export interface DeliverabilityInput {
   readonly lines: readonly { readonly location: string; readonly text: string }[];
 }
 
+/** Narrow, feature-specific absence descriptions, not a blanket negation
+ * escape. Each clause is checked independently, so an honest denial cannot
+ * excuse a later promise about the same or a different missing element. */
+function describesAbsence(clause: string, element: string): boolean {
+  const feature = element === "any price" ? "prices?" : "(?:ranges?|error\\s+bars?|min\\s*[–—-]\\s*max)";
+  const subjectDenial = new RegExp(`\\b${feature}\\b[^.!?;]{0,80}?\\b(?:is|are|was|were)\\s+(?:not|never)\\s+(?:shown|displayed|printed|rendered|drawn|visible|present|available)\\b`, "i");
+  const actorDenial = new RegExp(`\\b(?:page|screen|capture|comparison|it)\\s+(?:does\\s+not|doesn't|cannot|can't|never|will\\s+not|won't)\\s+(?:show|display|render|print|draw)\\b[^.!?;]{0,40}?\\b${feature}\\b`, "i");
+  const noFeature = new RegExp(`\\b(?:there\\s+(?:is|are)|(?:page|screen|capture|comparison)\\s+(?:has|shows|displays|renders))\\s+no\\s+(?:estimate\\s+)?${feature}\\b|^\\s*no\\s+${feature}(?:\\s+here)?\\s*$`, "i");
+  // A command to inspect an absent feature is still wrong even if its clause
+  // also describes that feature as absent.
+  if (/\b(?:look\s+at|check|inspect|watch|see)\s+(?:the\s+)?(?:range|prices?|error\s+bars?)\b/i.test(clause)) return false;
+  return subjectDenial.test(clause) || actorDenial.test(clause) || noFeature.test(clause);
+}
+
 /**
  * Check a concept's copy against what its declared renderer will deliver.
  *
@@ -157,9 +171,11 @@ export function checkRenderDeliverability(input: DeliverabilityInput): readonly 
 
     if (content === undefined) continue;
     for (const absent of content.absent) {
-      for (const pattern of absent.promises) {
-        const match = pattern.exec(line.text);
-        if (match === null) continue;
+      const clauses = line.text.split(/[.!?;,]|\b(?:but|however|yet|and)\b/i);
+      for (const clause of clauses) {
+        if (describesAbsence(clause, absent.element)) continue;
+        const match = absent.promises.map((pattern) => pattern.exec(clause)).find((hit) => hit !== null);
+        if (match === undefined) continue;
         findings.push({
           code: "promises-absent-element",
           conceptId: input.conceptId,

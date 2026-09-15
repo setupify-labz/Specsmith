@@ -35,6 +35,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
+import { normalizeForMatching } from "../research/claimMention.ts";
 import { assessDivergence } from "./divergence.ts";
 import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
 import { stateIdentifier, parseUiRenderRequest } from "../../uiRender/uiRenderState.ts";
@@ -698,6 +699,7 @@ export interface FeedbackExpectations {
    * wording — rather than modifying the audited gate to do it.
    */
   readonly requiredWordingByClaimId: Readonly<Record<string, readonly string[]>>;
+  readonly claimPropositionsById: Readonly<Record<string, string>>;
   readonly captureStateIdentifier: string;
   readonly productDestination: string;
   /** The surface and capture type the mission's render request declares. */
@@ -748,22 +750,42 @@ export function buildRevisionFeedback(
       if (finding.routing === "machine-applicable") advisory.push(action);
       else required.push(action);
     }
-    // A beat that binds a claim must carry the wording that makes the claim
-    // true. Dropping "not a complete build and not a live retail price" from a
-    // statement about identical prices does not make the statement shorter, it
-    // makes it false.
-    proposal.concept.beats.forEach((beat, index) => {
-      const spoken = `${beat.narration} ${beat.onScreenText}`;
-      for (const claimId of beat.factDependencies) {
+    // Inspect emitted copy as well as declared bindings. An author cannot
+    // remove a claimId while keeping its assertion to escape required wording.
+    const priceIdentity = /\b(?:same|equal|identical)\s+(?:prices?|costs?|(?:parts\s+)?subtotals?)\b|\b(?:costs?|prices?|priced|(?:parts\s+)?subtotals?)\s+(?:are\s+|is\s+|at\s+|the\s+)?(?:same|equal|identical)\b/i;
+    const editorialClaimIds = expectations.approvedClaimIds.filter((id) =>
+      (expectations.requiredWordingByClaimId[id] ?? []).some((wording) => /editorial.*subtotal/i.test(wording)));
+    const wordingLines = [
+      { location: "title", text: proposal.storyboard.title, bindings: [] as readonly string[] },
+      ...proposal.concept.beats.map((beat, index) => ({ location: `beat-${index + 1}`,
+        text: `${beat.narration} ${beat.onScreenText}`, bindings: beat.factDependencies })),
+      { location: "cta", text: proposal.storyboard.finalCta, bindings: [] as readonly string[] },
+    ];
+    for (const line of wordingLines) {
+      const actions = line.location === "title" ? missionBlockers : required;
+      // Exact approved assertions are recognizable without reusing the broad
+      // subject-overlap matcher, which would reintroduce incidental false
+      // positives here. Price paraphrases use the explicit predicate below.
+      const inferred = expectations.approvedClaimIds.filter((id) => {
+        const proposition = normalizeForMatching(expectations.claimPropositionsById[id] ?? "").replace(/[.!?]+$/, "");
+        return proposition.length > 0 && normalizeForMatching(line.text).includes(proposition);
+      });
+      const samePrice = priceIdentity.test(line.text);
+      if (samePrice && !editorialClaimIds.length) {
+        actions.push(`Unapproved price identity at ${line.location}: no approved editorial-subtotal claim supports this wording. Remove it or supply research. Offending text: "${line.text}"`);
+      }
+      const claimIds = new Set([...line.bindings, ...inferred, ...(samePrice ? editorialClaimIds : [])]);
+      for (const claimId of claimIds) {
         for (const wording of expectations.requiredWordingByClaimId[claimId] ?? []) {
-          if (spoken.includes(wording)) continue;
-          required.push(
-            `Required wording missing at beat-${index + 1}: claim "${claimId}" may only be stated with the wording ` +
-              `"${wording}", which makes it true. Add it verbatim, or stop binding this beat to that claim.`,
+          if (line.text.includes(wording)) continue;
+          actions.push(
+            `Required wording missing at ${line.location}: claim "${claimId}" may only be stated with the wording ` +
+              `"${wording}", which makes it true. Add it verbatim or remove the assertion; deleting its claimId is not a fix. Offending text: "${line.text}"` +
+              (line.location === "title" ? " This is the mission's viewer question; the mission must be re-specified." : ""),
           );
         }
       }
-    });
+    }
 
     // Does the copy promise what the renderer will actually put on screen?
     // The evidence gate cannot answer this: "watch the range appear" is not a

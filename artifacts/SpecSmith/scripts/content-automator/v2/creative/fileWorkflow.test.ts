@@ -27,7 +27,7 @@ import type { CreativeMissionInput } from "./proposalPass.ts";
 const STATE = "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2";
 const CLAIM = "SYNTHETIC_TEST_FIXTURE-range-limit";
 const REFUSED = "SYNTHETIC_TEST_FIXTURE-better-buy";
-const QUESTION = "Same price, different parts. What does this comparison page actually settle?";
+const QUESTION = "Different parts. What do these model estimates actually establish?";
 const DISCLOSURES = [
   "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
   "The range shown is a model convention, not measured or calibrated uncertainty.",
@@ -157,7 +157,7 @@ function validBatch(): unknown[] {
   return [
     concept("t-predict", "participant", "prediction-then-reveal", "I can tell when a page has not settled my question.", {
       hook: {
-        narration: "Same price, different parts. Before you scroll, say out loud which side you expect to come out ahead.",
+        narration: "Different parts. Before you read the bars, say out loud which side you expect to come out ahead.",
         onScreenText: "Commit to an answer first",
       },
       close: {

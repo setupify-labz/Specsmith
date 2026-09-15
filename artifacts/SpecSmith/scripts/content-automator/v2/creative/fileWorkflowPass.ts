@@ -100,6 +100,7 @@ export async function runCreativeFileWorkflow(
       requiredWordingByClaimId: Object.fromEntries(
         exported.brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording]),
       ),
+      claimPropositionsById: Object.fromEntries(exported.brief.approvedClaims.map((claim) => [claim.claimId, claim.proposition])),
       captureStateIdentifier: exported.brief.captureStateIdentifier,
       productDestination: exported.brief.productDestination,
       surface: exported.brief.captureSurface,
