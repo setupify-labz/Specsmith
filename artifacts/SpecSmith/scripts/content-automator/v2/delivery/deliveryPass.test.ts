@@ -60,12 +60,17 @@ function fitInputs(mission = missionFixture(), snapshot = baselinePlatformSnapsh
   };
 }
 
-function bindingFact(platform: PlatformSnapshot["platform"], factId: string, claim: string): PlatformFact {
+function bindingFact(
+  platform: PlatformSnapshot["platform"],
+  factId: string,
+  claim: string,
+  category: PlatformFact["category"] = "media-constraint",
+): PlatformFact {
   return {
     factId,
     platform,
     claim,
-    category: "media-constraint",
+    category,
     status: "stable-constraint",
     source: "synthetic adversarial test fixture",
     sourceQuality: "direct-observation",
@@ -146,8 +151,9 @@ describe("unknown never becomes incompatible, false or a magic default", () => {
         },
       },
     };
-    const fit = assessAudiencePlatformFit(fitInputs(mission, snapshot));
-    expect(requiredHonestySeconds(fitInputs(mission, snapshot).invariant)).toBeLessThanOrEqual(60);
+    const inputs = fitInputs(mission, snapshot);
+    const fit = assessAudiencePlatformFit(inputs);
+    expect(requiredHonestySeconds(inputs.invariant)).toBeLessThanOrEqual(60);
     expect(fit.refusals.map((reason) => reason.code)).not.toContain("evidence-cannot-fit-honestly");
   });
 
@@ -172,25 +178,25 @@ describe("unknown never becomes incompatible, false or a magic default", () => {
   });
 
   it("does not claim description clickability or a profile link when both are unknown", () => {
-    const result = pass();
-    for (const brief of result.briefs) {
+    for (const brief of pass().briefs) {
       expect(brief.execution.ctaTreatment.treatment).toMatch(/Do not claim the description is clickable/i);
       expect(brief.execution.ctaTreatment.treatment).toMatch(/profile-link surface exists/i);
     }
   });
 
   it("does not truncate descriptions to an invented 2200-character fallback", () => {
-    const result = pass();
-    for (const brief of result.briefs) {
+    for (const brief of pass().briefs) {
       expect(brief.metadata.description.length).toBeGreaterThan(0);
       expect(brief.execution.targetDurationSecondsRange).toBeNull();
-      expect(brief.execution.targetDurationBasis).toMatch(/No verified platform maximum/);
+      expect(brief.execution.targetDurationBasis).toMatch(/No source-bound platform maximum/);
+      expect(brief.adaptationEvidence).toEqual([]);
     }
   });
 
   it("describes analytics availability as unknown rather than absent", () => {
-    expect(pass().outcomes[0].fit.platformRisks.join(" ")).toMatch(/availability is unknown/i);
-    expect(pass().outcomes[0].fit.platformRisks.join(" ")).not.toMatch(/No analytics are available/);
+    const risks = pass().outcomes[0].fit.platformRisks.join(" ");
+    expect(risks).toMatch(/availability is unknown/i);
+    expect(risks).not.toMatch(/No analytics are available/);
   });
 });
 
@@ -209,7 +215,7 @@ describe("audience evidence remains separate from the mission's target", () => {
     expect(empty.audienceProfile!.expertise.basis).toMatch(/not an observation/);
   });
 
-  it("changes state only when real fixture signals are supplied", () => {
+  it("changes state only when fixture signals are supplied", () => {
     const observed = pass({ audienceSignals: parseAudienceSignalBundle(fixtureObservedAudience(NOW), ENGINEERING) });
     expect(observed.audienceProfile!.expertise.state).toBe("observed");
     expect(observed.audienceProfile!.expertise.value).toBe("beginner");
@@ -258,16 +264,18 @@ describe("metadata stays inside the evidence boundary", () => {
     expect(briefOutwardText(result.briefs[0]).length).toBeGreaterThan(0);
   });
 
-  it("refuses hostile metadata when a title surface is actually established", () => {
+  it("refuses hostile metadata when a title surface is source-bound", () => {
     const hostile = missionFixture({ centralQuestion: "More VRAM does not matter for gaming performance" });
     const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const titleFact = bindingFact(base.platform, "title-cap", "A separate title field accepts up to 100 characters.", "text-capability");
     const snapshot: PlatformSnapshot = {
       ...base,
+      facts: [titleFact],
       capability: {
         ...base.capability,
         text: {
           ...base.capability.text,
-          titleMaxChars: { value: 100, status: "observed-capability", factId: "title-cap", basis: "test established title surface" },
+          titleMaxChars: { value: 100, status: "stable-constraint", factId: titleFact.factId, basis: "source-bound test title surface" },
         },
       },
     };
@@ -303,14 +311,15 @@ describe("CTA follows product readiness and verified link capability", () => {
   it("uses a description link only when clickability is established", () => {
     const mission = missionFixture();
     const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const linkFact = bindingFact(base.platform, "link-fact", "Description links are clickable.", "interaction-capability");
     const snapshot: PlatformSnapshot = {
       ...base,
-      facts: [bindingFact(base.platform, "link-fact", "Description links are clickable.")],
+      facts: [linkFact],
       capability: {
         ...base.capability,
         interaction: {
           ...base.capability.interaction,
-          outboundLinkInDescription: { value: true, status: "observed-capability", factId: "link-fact", basis: "test observation" },
+          outboundLinkInDescription: { value: true, status: "stable-constraint", factId: linkFact.factId, basis: "source-bound test observation" },
         },
       },
     };
@@ -336,15 +345,15 @@ describe("accessibility remains SpecSmith-owned and non-negotiable", () => {
   });
 });
 
-describe("cross-platform planning does not manufacture provenance", () => {
+describe("cross-platform planning requires exact source provenance", () => {
   const result = pass();
-  it("certifies uniform execution when no established platform fact justifies a difference", () => {
+  it("certifies uniform execution when no source-bound platform fact justifies a difference", () => {
     expect(result.packagePlan!.differences).toEqual([]);
     expect(result.packagePlan!.uniformExecutionJustified).toBe(true);
-    expect(result.packagePlan!.uniformExecutionReason).toMatch(/No traceable platform fact/i);
+    expect(result.packagePlan!.uniformExecutionReason).toMatch(/No source-bound platform fact/i);
   });
 
-  it("fails closed if briefs differ without typed per-field fact provenance", () => {
+  it("fails closed if briefs differ without exact carried fact provenance", () => {
     const briefs = [...result.briefs];
     const altered = {
       ...briefs[1],
@@ -357,6 +366,52 @@ describe("cross-platform planning does not manufacture provenance", () => {
       fits: result.outcomes.map((outcome) => outcome.fit),
       now: NOW,
     })).toThrow(UntraceablePlatformDifferenceError);
+  });
+
+  it("emits a real difference using the exact fact carried by the brief", () => {
+    const mission = missionFixture();
+    const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const linkFact = bindingFact(base.platform, "yt-link-observed", "Description links are clickable.", "interaction-capability");
+    const snapshot: PlatformSnapshot = {
+      ...base,
+      facts: [linkFact],
+      capability: {
+        ...base.capability,
+        interaction: {
+          ...base.capability.interaction,
+          outboundLinkInDescription: { value: true, status: "stable-constraint", factId: linkFact.factId, basis: "source-bound test observation" },
+        },
+      },
+    };
+    const inputs = fitInputs(mission, snapshot);
+    const fit = assessAudiencePlatformFit(inputs);
+    const sourcedBrief = buildPlatformBrief({
+      mission,
+      invariant: inputs.invariant,
+      profile: inputs.profile,
+      fit,
+      snapshot,
+      hypotheses: [],
+      strategyRunId: "strategy-test-1",
+      creativeId: "creative-source-bound",
+      now: NOW,
+      producedBy: "test",
+    });
+    expect(sourcedBrief.adaptationEvidence.map((entry) => entry.factId)).toContain(linkFact.factId);
+
+    const reference = result.briefs.find((brief) => brief.platform === "instagram-reels")!;
+    const referenceFit = result.outcomes.find((outcome) => outcome.fit.platform === "instagram-reels")!.fit;
+    const plan = buildCrossPlatformPlan({
+      missionId: mission.missionId,
+      invariant: inputs.invariant,
+      briefs: [reference, sourcedBrief],
+      fits: [referenceFit, fit],
+      now: NOW,
+    });
+    expect(plan.differences).toHaveLength(1);
+    expect(plan.differences[0].dimension).toBe("execution.cta");
+    expect(plan.differences[0].justifiedByFactId).toBe(linkFact.factId);
+    expect(plan.differences[0].justification).toContain(linkFact.claim);
   });
 });
 
