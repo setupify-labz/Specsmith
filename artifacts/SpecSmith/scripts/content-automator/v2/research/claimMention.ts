@@ -50,7 +50,7 @@
  */
 const GENERIC_TERMS = new Set([
   "gpu", "cpu", "card", "cards", "fps", "price", "prices", "faster", "slower",
-  "better", "worse", "performance", "specs", "spec", "build", "pc", "game",
+  "better", "worse", "performance", "specs", "spec", "build", "builds", "pc", "game",
   "games", "gaming", "memory", "vram", "new", "best", "buy", "value",
 ]);
 
@@ -64,7 +64,7 @@ const GENERIC_TERMS = new Set([
  */
 const STOP_WORDS = new Set([
   "the", "a", "an", "is", "are", "was", "were", "and", "or", "of", "to", "in", "on",
-  "at", "for", "with", "this", "that", "it", "its", "than", "more", "less", "be",
+  "at", "for", "with", "this", "that", "these", "those", "it", "its", "than", "more", "less", "be",
   "has", "have", "costs", "cost", "gets", "get", "may", "might", "could",
   "about", "roughly", "approximately", "around", "possibly", "seems", "seem",
   "really", "just", "very", "some", "evidence", "suggests", "not",
@@ -206,7 +206,23 @@ function extractFigures(normalized: string): string[] {
     if (entry.terminator !== undefined && PERCENT_MARKERS.has(entry.terminator)) {
       figures.add(figureToken(entry.value, "pct"));
     }
-    figures.add(figureToken(entry.value, "money"));
+    // Small unqualified counts are not prices: "Step one" and "two builds"
+    // must not assert a refused claim merely by repeating its determiner.
+    // Preserve quantitative specs and explicit money; full spoken prices and
+    // shorthand prices are still recognized below.
+    const quantitativeUnit = /^(?:dollars|usd|bucks|fps|gb|gib|mb|mhz|ghz|watts|w|cores|threads)$/;
+    if ((entry.value >= 20 && !PERCENT_MARKERS.has(entry.terminator ?? "")) ||
+        (entry.terminator !== undefined && quantitativeUnit.test(entry.terminator))) {
+      figures.add(figureToken(entry.value, "money"));
+    }
+  }
+
+  // A small amount can still be an unsupported price without a currency word:
+  // "costs two" is not the incidental instruction "Step two".
+  const numberWord = [...Object.keys(UNITS), ...Object.keys(TENS), "hundred"].join("|");
+  const pricePhrase = new RegExp(`\\b(?:costs?|priced at|pay)\\s+((?:(?:${numberWord})\\b[\\s-]*)+)`, "g");
+  for (const match of normalized.matchAll(pricePhrase)) {
+    for (const entry of spelledNumbers(match[1].match(/[a-z]+/g) ?? [])) figures.add(figureToken(entry.value, "money"));
   }
 
   // A SPOKEN price. Nobody narrating a short-form video says "five hundred and
@@ -286,6 +302,7 @@ export function analyseMention(text: string, proposition: string): MentionAnalys
             token.length > 2 &&
             !STOP_WORDS.has(token) &&
             !GENERIC_TERMS.has(token) &&
+            !(token in UNITS) && !(token in TENS) && token !== "hundred" &&
             // A token that is purely a figure is handled by the figure path;
             // counting it twice would let "40%" alone satisfy the word rule.
             !/^[\d$%.]+$/.test(token),
@@ -295,6 +312,15 @@ export function analyseMention(text: string, proposition: string): MentionAnalys
   ].filter(Boolean);
   const textWords = new Set(wordTokens(normalizedText).map(canonicalToken));
   const wordHits = distinctiveWords.filter((token) => textWords.has(token));
+
+  // Generic purchase claims have no identifying nouns after count/domain
+  // filtering. Match their judgment rather than their incidental counts.
+  // Questions, hedges and denials remain mentions: the strict gate owns the
+  // permission to discuss an unsupported recommendation, not this matcher.
+  const purchaseJudgment = /\b(?:better|best|worse|worst|superior|inferior)\s+(?:buy|purchase|value|choice)\b/;
+  if (purchaseJudgment.test(normalizedClaim) && purchaseJudgment.test(normalizedText)) {
+    return { mentions: true, figureHits, wordHits, reason: "repeats the claim's purchase judgment" };
+  }
 
   if (figureHits.length > 0) {
     return {

@@ -44,12 +44,10 @@ export const DEMO_RESEARCH: ResearchCreativeContract = {
   safeClaims: [
     {
       claimId: "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit",
-      // Deliberately does NOT repeat the refused claim's subject phrase.
-      // MASTER #2's strict gate matches on subject overlap and fails closed, so
-      // an approved claim that reuses a refused claim's subject wording becomes
-      // unstatable — the gate rejects the approved proposition verbatim. That
-      // conservatism is correct and is not weakened here; the fixture is worded
-      // to respect it. See docs/creative/master6-file-workflow.md.
+      // Historical fixture wording avoided the matcher's incidental-count
+      // false positives. The independent repair now permits generic shared
+      // wording such as "these two builds" without permitting a better-buy
+      // judgment. Preserve this fixture and its authored history unchanged.
       proposition:
         "On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own estimates, so the model does not separate them on frame rate.",
       state: "known",
@@ -80,11 +78,8 @@ export const DEMO_RESEARCH: ResearchCreativeContract = {
 
 export const DEMO_MISSION: Omit<CreativeMissionInput, "concepts"> = {
   missionId: "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
-  // Deliberately avoids the refused claim's subject phrase and bare number
-  // words. MASTER #2's strict gate treats both as subject tokens and fails
-  // closed, so a mission question that reuses them is rejected before any
-  // author writes a line. The gate is not modified here; see
-  // docs/creative/master6-file-workflow.md for the reproduction.
+  // Preserve the original demonstrated mission; generic shared subject words
+  // and incidental counts no longer require an authoring workaround.
   viewerQuestion: "Same price, different parts. What does this comparison page actually settle?",
   productDestination: "/compare",
   renderRequest: {
