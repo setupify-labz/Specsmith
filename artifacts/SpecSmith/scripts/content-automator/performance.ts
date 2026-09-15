@@ -176,7 +176,60 @@ function learnFactor(
   }).sort((a, b) => b.liftVsBaseline - a.liftVsBaseline || b.sampleSize - a.sampleSize || a.factor.localeCompare(b.factor));
 }
 
+/**
+ * Refuses a record set that would manufacture confidence the data cannot support.
+ *
+ * TWO WAYS ONE UPLOAD BECOMES A FAKE RULE, BOTH SILENT BEFORE THIS.
+ *
+ * 1. THE SAME CREATIVE, SEVERAL TIMES. Analytics are captured as immutable
+ *    snapshots at 1h/6h/24h/72h/7d (analyticsIngestion.ts), and every snapshot
+ *    carries a full VideoPerformanceRecord. The obvious wiring —
+ *    `snapshots.map((s) => s.record)` — hands the learner FIVE records for one
+ *    video. learnFactor counts records, so `group.length` becomes 5: the
+ *    factor clears the `< 3 -> explore` bar on the strength of a single
+ *    upload and is promoted or retired as a rule. The shrinkage prior exists
+ *    precisely to "stop one lucky upload from becoming a fake rule", and
+ *    duplicate snapshots walk straight around it.
+ *
+ * 2. MIXED WINDOWS. A creative measured at 7d has had a week to accumulate
+ *    views; one measured at 1h has had an hour. Scoring them into one baseline
+ *    ranks age, not creative. Comparing like with like is the caller's job —
+ *    selectLearnerRecords() in analyticsIngestion.ts does it — and this check
+ *    makes skipping that step impossible rather than merely discouraged.
+ *
+ * Both throw instead of quietly de-duplicating: a silent fix would hide the
+ * wiring mistake that produced the duplicates, and the caller would keep
+ * believing it had five creatives.
+ */
+function assertOneRecordPerCreativeAtOneWindow(records: VideoPerformanceRecord[]): void {
+  const seen = new Map<string, string>();
+  for (const record of records) {
+    // creativeId is the exact-creative attribution key; videoId is the
+    // fallback for records predating fingerprinting.
+    const key = record.creativeId ?? record.videoId;
+    const previous = seen.get(key);
+    if (previous !== undefined) {
+      throw new Error(
+        `Performance learning received ${key} more than once (windows ${previous} and ${record.snapshotWindow ?? "unspecified"}). ` +
+        "One creative must contribute one record, or its sample size is inflated and a single upload can be promoted as a rule. " +
+        "Use selectLearnerRecords() to pick one snapshot window per creative.",
+      );
+    }
+    seen.set(key, record.snapshotWindow ?? "unspecified");
+  }
+
+  const windows = new Set(records.map((record) => record.snapshotWindow).filter((w): w is NonNullable<typeof w> => w !== undefined));
+  if (windows.size > 1) {
+    throw new Error(
+      `Performance learning received mixed snapshot windows (${[...windows].sort().join(", ")}). ` +
+      "A creative measured at 7d has had a week to accumulate views and one measured at 1h has had an hour, so scoring them together ranks age rather than creative. " +
+      "Select a single window with selectLearnerRecords().",
+    );
+  }
+}
+
 export function analyzePerformance(records: VideoPerformanceRecord[], now = new Date()): PerformanceLearning {
+  assertOneRecordPerCreativeAtOneWindow(records);
   const videos = records.map(scoreVideo);
   const scoreMap = new Map(videos.map((score) => [score.videoId, score]));
 
