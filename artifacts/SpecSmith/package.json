@@ -25,6 +25,8 @@
     "content:render:mp4-smoke:offline": "tsx scripts/content-automator/offlineCompositorSmoke.ts",
     "content:meshy:ingest": "tsx scripts/content-automator/meshyIngestCli.ts",
     "content:e2e:offline": "tsx scripts/content-automator/endToEndOfflinePipeline.ts",
+    "content:metricool:live-smoke": "tsx scripts/content-automator/metricoolLiveSmoke.ts",
+    "content:analytics:pass": "tsx scripts/content-automator/analyticsPassCli.ts",
     "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts"
   },
   "devDependencies": {
