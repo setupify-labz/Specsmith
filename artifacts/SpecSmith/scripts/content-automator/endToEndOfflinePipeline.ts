@@ -91,6 +91,12 @@ import type { ContentIdea, PlatformScriptStoryboard, VideoPlatform } from "./typ
 import { reviewCreativeQuality, type CreativeQualityReview } from "./v2/creativeQualityReview.ts";
 import { repairCreative } from "./v2/beatRepair.ts";
 import { buildContentCreativeReport, formatContentCreativeReport } from "./v2/contentCreativeReport.ts";
+import { runResearchClosedLoop, formatEvidenceFindings } from "./v2/research/closedLoop.ts";
+import { formatResearchReport } from "./v2/research/researchPass.ts";
+import { ingestResearchEvidence } from "./v2/research/ingestion.ts";
+import { buildFixtureIngestionDocument } from "./v2/research/engineeringFixture.ts";
+import { coreDependencies, formatProviderInventory } from "./v2/research/providerInventory.ts";
+import { formatMaster2Ledger } from "./v2/research/completionLedger.ts";
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -252,6 +258,40 @@ async function main(): Promise<void> {
     scripts: generatedStoryboard.scripts.map((entry) => (entry.platform === PLATFORM ? script : entry)),
   };
   const production = buildProductionPlanPackage(storyboard);
+
+  section("1c. Research intelligence — the evidence gate, run over the REAL generated storyboard using explicitly synthetic fixture evidence");
+  // The evidence is synthetic and says so: this branch has no autonomous web
+  // access, and fabricating plausible research would be worse than having none.
+  // What is being demonstrated is the MACHINERY — that a laptop benchmark
+  // cannot support a desktop claim, that three retellings of one press release
+  // are one source, that a four-day-old listing is not a current price — not
+  // any fact about any product. Production ingestion refuses synthetic records
+  // outright, which is asserted below rather than merely stated.
+  const research = runResearchClosedLoop({ storyboard: script, now: generatedAt });
+  console.log(formatResearchReport(research.result));
+  console.log("Evidence gate against the generated storyboard:");
+  console.log(formatEvidenceFindings(research.findings));
+  if (!research.result.containsSyntheticEvidence) {
+    throw new Error("The research fixture must be marked as synthetic evidence; it is not production research.");
+  }
+  // The production boundary, exercised for real: the same document that the
+  // engineering path accepts must be refused when synthetic data is not allowed.
+  let syntheticRefused = false;
+  try {
+    ingestResearchEvidence(buildFixtureIngestionDocument({ now: generatedAt }), { allowSynthetic: false });
+  } catch (error) {
+    syntheticRefused = true;
+    console.log(`Production ingestion correctly refused the synthetic fixture: ${(error as Error).message}`);
+  }
+  if (!syntheticRefused) {
+    throw new Error("Synthetic research evidence was accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+  // The gate is a real gate: a hard evidence finding against this storyboard
+  // stops the run here, before anything is rendered or published.
+  const blockingEvidenceFindings = research.findings.filter((finding) => finding.severity === "hard-fail");
+  if (blockingEvidenceFindings.length > 0) {
+    throw new Error(`Generated copy makes ${blockingEvidenceFindings.length} claim(s) the research evidence does not support: ${blockingEvidenceFindings.map((finding) => `${finding.code} @ ${finding.location}`).join(", ")}`);
+  }
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
@@ -504,6 +544,15 @@ async function main(): Promise<void> {
   if (creativeReport.publishReady) {
     throw new Error("CONTENT_CREATIVE_REPORT reported publishReady with no recorded human decisions and no rendered media; the human gates are not closable by machine.");
   }
+
+  section("9. MASTER #2 audit output — provider inventory and completion ledger");
+  console.log(formatProviderInventory());
+  const paidCore = coreDependencies().filter((record) => record.paidUsagePossible);
+  if (paidCore.length > 0) {
+    throw new Error(`The $0 operating requirement is broken: ${paidCore.map((record) => record.name).join(", ")} is a core dependency that can cost money.`);
+  }
+  console.log(`\nZero-dollar check: ${coreDependencies().length} core dependency/dependencies, none paid.`);
+  console.log(`\n${formatMaster2Ledger()}`);
 
   section("Done");
   console.log("Real idea -> real generated storyboard/production-plan contract -> real (separately-authored) render -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger stopped at qc-passed -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled. Wiring the generated storyboard through to a real render is separate future work — see the header comment.");
