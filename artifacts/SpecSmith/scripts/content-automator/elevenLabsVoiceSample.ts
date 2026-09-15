@@ -64,7 +64,12 @@ interface SubscriptionInfo {
   readonly characterCount: number;
   readonly characterLimit: number;
   readonly remaining: number;
-  readonly canExtend: boolean;
+  /**
+   * Always the provider's explicit boolean. A missing or non-boolean field
+   * never reaches here — `readSubscription` stops first — because "we could not
+   * read whether this account bills overages" is not the same as "it does not".
+   */
+  readonly canExtend: false;
 }
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -85,18 +90,69 @@ export async function readSubscription(config: ElevenLabsTtsConfig, fetchImpl: F
     );
   }
   const body = (await response.json()) as Record<string, unknown>;
-  const characterCount = Number(body.character_count ?? Number.NaN);
-  const characterLimit = Number(body.character_limit ?? Number.NaN);
-  if (!Number.isFinite(characterCount) || !Number.isFinite(characterLimit)) {
-    throw new VoiceSampleError("The subscription response did not report a usable character count or limit.");
+
+  // Every billing field is required to be present and well typed. A coerced
+  // value would let a string, a null or an absent field pass as a number, and
+  // the whole point of reading the subscription is to know the numbers.
+  const characterCount = strictNumber(body.character_count, "character_count");
+  const characterLimit = strictNumber(body.character_limit, "character_limit");
+
+  // This one decides whether an overage is billable, so it must be an explicit
+  // false. Missing, null, a string "false", or anything else stops here —
+  // BEFORE any generation call — rather than being read as permission.
+  const canExtend = body.can_extend_character_limit;
+  if (typeof canExtend !== "boolean") {
+    throw new VoiceSampleError(
+      `The subscription response did not report can_extend_character_limit as a boolean (got ${describeType(canExtend)}). ` +
+        "Refusing to generate: not knowing whether this account bills overages is not the same as knowing it does not.",
+    );
   }
+  if (canExtend) {
+    throw new VoiceSampleError(
+      "This account can extend its character limit, so an overage here would be billed. Refusing to generate.",
+    );
+  }
+
   return {
-    tier: String(body.tier ?? "unknown"),
+    tier: typeof body.tier === "string" && body.tier.trim() !== "" ? body.tier : "unknown",
     characterCount,
     characterLimit,
     remaining: characterLimit - characterCount,
-    canExtend: body.can_extend_character_limit === true,
+    canExtend,
   };
+}
+
+/**
+ * The provider's reported charge for one request, or null when it did not
+ * report one in a form we can trust.
+ *
+ * Null is a real answer here and is recorded as such. Substituting the request
+ * length would turn "we do not know what this cost" into a number.
+ */
+export function parseCharacterCost(header: string | null): number | null {
+  if (header === null || header.trim() === "") return null;
+  const value = Number(header);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return value;
+}
+
+function describeType(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "missing";
+  return typeof value;
+}
+
+function strictNumber(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new VoiceSampleError(
+      `The subscription response did not report ${field} as a finite number (got ${describeType(value)}). ` +
+        "Refusing to generate on an unreadable allowance.",
+    );
+  }
+  if (value < 0) {
+    throw new VoiceSampleError(`The subscription reported a negative ${field}, which cannot be reasoned about.`);
+  }
+  return value;
 }
 
 /**
@@ -116,7 +172,9 @@ export function assertWithinIncludedAllowance(subscription: SubscriptionInfo, ch
         "Refusing: this script never tops up, upgrades, or spends past the included allowance.",
     );
   }
-  if (subscription.canExtend) {
+  // `readSubscription` already refuses anything but an explicit false, so this
+  // is a belt-and-braces check for callers that construct the value directly.
+  if (subscription.canExtend !== false) {
     throw new VoiceSampleError(
       "This account is configured to extend its character limit, which means an overage here would be billed. " +
         "Refusing until that is turned off, so a sample cannot quietly cost money.",
@@ -172,7 +230,10 @@ export interface VoiceSampleResult {
   readonly voice: ResolvedVoice;
   readonly subscription: SubscriptionInfo;
   readonly bytes: number;
-  readonly characters: number;
+  /** Characters submitted. An estimate of cost, not a measurement. */
+  readonly requestCharactersSent: number;
+  /** The provider's own reported charge, or null when it reported none. */
+  readonly providerReportedCharacterCost: number | null;
 }
 
 export async function generateVoiceSample(options: {
@@ -226,6 +287,11 @@ export async function generateVoiceSample(options: {
     );
   }
 
+  // What the provider says it charged. The request length is what we SENT, not
+  // what was billed; the two can differ, and reporting one as the other would
+  // be inventing a measurement.
+  const reportedCharacterCost = parseCharacterCost(response.headers.get("character-cost"));
+
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength === 0) {
     throw new VoiceSampleError("ElevenLabs returned an empty audio body. No fixture audio is substituted.");
@@ -248,11 +314,17 @@ export async function generateVoiceSample(options: {
     modelId: config.modelId,
     outputFormat: config.outputFormat,
     text: SAMPLE_TEXT,
-    characters,
     bytes: bytes.byteLength,
     subscriptionTier: subscription.tier,
     includedCharactersRemainingBefore: subscription.remaining,
-    spentIncludedCharacters: characters,
+    // What we sent. An ESTIMATE of the cost, not a measurement of it.
+    requestCharactersSent: characters,
+    estimatedCharacterCost: characters,
+    estimatedCharacterCostBasis: "length of the submitted text; the provider may bill a different amount",
+    // What the provider said it charged, or null when it reported nothing
+    // usable. Never backfilled from the estimate.
+    providerReportedCharacterCost: reportedCharacterCost,
+    characterCostIsProviderReported: reportedCharacterCost !== null,
     toppedUp: false,
     upgraded: false,
     note:
@@ -262,7 +334,15 @@ export async function generateVoiceSample(options: {
   const manifestPath = join(outputDir, "specsmith-voice-sample.json");
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-  return { audioPath, manifestPath, voice, subscription, bytes: bytes.byteLength, characters };
+  return {
+    audioPath,
+    manifestPath,
+    voice,
+    subscription,
+    bytes: bytes.byteLength,
+    requestCharactersSent: characters,
+    providerReportedCharacterCost: reportedCharacterCost,
+  };
 }
 
 const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
@@ -273,7 +353,14 @@ if (isMain) {
       console.log("ElevenLabs voice sample generated.");
       console.log(`  voice requested: ${PREFERRED_VOICE_NAME}`);
       console.log(`  voice used:      ${result.voice.name}`);
-      console.log(`  characters:      ${result.characters} (included allowance only; no top-up, no upgrade)`);
+      console.log(`  characters sent: ${result.requestCharactersSent} (estimate of cost, not a measurement)`);
+      console.log(
+        `  provider charge: ${
+          result.providerReportedCharacterCost === null
+            ? "not reported by the provider"
+            : `${result.providerReportedCharacterCost} characters`
+        }`,
+      );
       console.log(`  remaining before: ${result.subscription.remaining} on tier ${result.subscription.tier}`);
       console.log(`  audio:           ${result.audioPath} (${result.bytes} bytes)`);
       console.log(`  manifest:        ${result.manifestPath}`);

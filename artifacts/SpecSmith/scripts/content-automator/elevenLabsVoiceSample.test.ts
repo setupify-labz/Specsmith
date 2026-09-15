@@ -39,8 +39,22 @@ function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 }
 
-function audioResponse(bytes = new Uint8Array([0x49, 0x44, 0x33, 0x04])): Response {
-  return new Response(bytes, { status: 200, headers: { "content-type": "audio/mpeg" } });
+function audioResponse(
+  bytes = new Uint8Array([0x49, 0x44, 0x33, 0x04]),
+  headers: Record<string, string> = {},
+): Response {
+  return new Response(bytes, { status: 200, headers: { "content-type": "audio/mpeg", ...headers } });
+}
+
+/** A subscription body with every billing field present and well typed. */
+function subscriptionBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    tier: "starter",
+    character_count: 1_000,
+    character_limit: 30_000,
+    can_extend_character_limit: false,
+    ...overrides,
+  };
 }
 
 /** A fetch stub that answers the three calls the script makes. */
@@ -53,9 +67,7 @@ function stubFetch(options: {
   return async (input: string | URL | Request): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     if (url.includes("/v1/user/subscription")) {
-      return jsonResponse(
-        options.subscriptionBody ?? { tier: "starter", character_count: 1_000, character_limit: 30_000, can_extend_character_limit: false },
-      );
+      return jsonResponse(options.subscriptionBody ?? subscriptionBody());
     }
     if (url.includes("/v1/voices")) {
       return jsonResponse({ voices: options.voices ?? [{ voice_id: "liam-voice-id", name: "Liam" }] });
@@ -248,5 +260,153 @@ describe("the offline fixture narrator is untouched", () => {
     const source = readFileSync(join(import.meta.dirname, "localFixtureTts.ts"), "utf8");
     expect(source).toContain("isFixture: true");
     expect(source).toContain("isPaidProvider: false");
+  });
+});
+
+describe("billing fields must be explicit, and nothing generates until they are", () => {
+  /** Runs the sample against a subscription body and records TTS calls. */
+  async function attempt(body: Record<string, unknown> | undefined) {
+    const directory = mkdtempSync(join(tmpdir(), "voice-sample-"));
+    const ttsCalls: string[] = [];
+    try {
+      const error = await generateVoiceSample({
+        env: ENV,
+        outputDir: directory,
+        fetchImpl: stubFetch({ subscriptionBody: body, onTts: (url) => ttsCalls.push(url) }),
+      }).then(
+        () => null,
+        (caught: unknown) => caught as Error,
+      );
+      return {
+        error,
+        ttsCalls,
+        wroteAudio: (() => {
+          try {
+            readFileSync(join(directory, "specsmith-voice-sample.mp3"));
+            return true;
+          } catch {
+            return false;
+          }
+        })(),
+      };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+
+  it("requires can_extend_character_limit to be exactly false", async () => {
+    const result = await attempt(subscriptionBody());
+    expect(result.error).toBeNull();
+    expect(result.ttsCalls).toHaveLength(1);
+  });
+
+  it.each([
+    ["missing", { can_extend_character_limit: undefined }],
+    ["null", { can_extend_character_limit: null }],
+    ["the string \"false\"", { can_extend_character_limit: "false" }],
+    ["the number 0", { can_extend_character_limit: 0 }],
+    ["an object", { can_extend_character_limit: {} }],
+  ])("stops before any generation call when can_extend_character_limit is %s", async (_label, overrides) => {
+    const body = subscriptionBody(overrides);
+    if (overrides.can_extend_character_limit === undefined) delete body.can_extend_character_limit;
+
+    const result = await attempt(body);
+    expect(result.error?.message).toMatch(/can_extend_character_limit as a boolean/);
+    expect(result.error?.message).toMatch(/not the same as knowing it does not/);
+    expect(result.ttsCalls).toEqual([]);
+    expect(result.wroteAudio).toBe(false);
+  });
+
+  it("stops before any generation call when the account can extend", async () => {
+    const result = await attempt(subscriptionBody({ can_extend_character_limit: true }));
+    expect(result.error?.message).toMatch(/overage here would be billed/);
+    expect(result.ttsCalls).toEqual([]);
+    expect(result.wroteAudio).toBe(false);
+  });
+
+  it.each([
+    ["character_count missing", { character_count: undefined }],
+    ["character_count as a string", { character_count: "1000" }],
+    ["character_count null", { character_count: null }],
+    ["character_limit missing", { character_limit: undefined }],
+    ["character_limit as a string", { character_limit: "30000" }],
+    ["character_limit NaN-ish", { character_limit: Number.NaN }],
+  ])("stops before any generation call when %s", async (_label, overrides) => {
+    const body = subscriptionBody(overrides);
+    for (const [key, value] of Object.entries(overrides)) if (value === undefined) delete body[key];
+
+    const result = await attempt(body);
+    expect(result.error?.message).toMatch(/Refusing to generate on an unreadable allowance|negative/);
+    expect(result.ttsCalls).toEqual([]);
+    expect(result.wroteAudio).toBe(false);
+  });
+
+  it("stops on a negative allowance rather than reasoning about it", async () => {
+    const result = await attempt(subscriptionBody({ character_count: -5 }));
+    expect(result.error?.message).toMatch(/negative character_count/);
+    expect(result.ttsCalls).toEqual([]);
+  });
+
+  it("does not coerce a string tier into a usable one, but does not block on it either", async () => {
+    // Tier is descriptive, not a billing control. It must not stop generation.
+    const result = await attempt(subscriptionBody({ tier: 7 }));
+    expect(result.error).toBeNull();
+    expect(result.ttsCalls).toHaveLength(1);
+  });
+});
+
+describe("cost is reported as what it is", () => {
+  async function run(ttsHeaders: Record<string, string>) {
+    const directory = mkdtempSync(join(tmpdir(), "voice-sample-"));
+    try {
+      const result = await generateVoiceSample({
+        env: ENV,
+        outputDir: directory,
+        fetchImpl: stubFetch({ ttsResponse: () => audioResponse(undefined, ttsHeaders) }),
+      });
+      return {
+        result,
+        manifest: JSON.parse(readFileSync(result.manifestPath, "utf8")) as Record<string, unknown>,
+      };
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
+
+  it("records the provider's reported charge when it reports one", async () => {
+    const { result, manifest } = await run({ "character-cost": "118" });
+    expect(result.providerReportedCharacterCost).toBe(118);
+    expect(manifest.providerReportedCharacterCost).toBe(118);
+    expect(manifest.characterCostIsProviderReported).toBe(true);
+  });
+
+  it("records null, not the request length, when the provider reports nothing", async () => {
+    const { result, manifest } = await run({});
+    expect(result.providerReportedCharacterCost).toBeNull();
+    expect(manifest.providerReportedCharacterCost).toBeNull();
+    expect(manifest.characterCostIsProviderReported).toBe(false);
+    // The crucial part: the estimate must not be laundered into the reported field.
+    expect(manifest.providerReportedCharacterCost).not.toBe(manifest.estimatedCharacterCost);
+  });
+
+  it.each(["", "   ", "not-a-number", "-4"])(
+    "treats an unusable character-cost header (%s) as unreported rather than guessing",
+    async (header) => {
+      const { manifest } = await run({ "character-cost": header });
+      expect(manifest.providerReportedCharacterCost).toBeNull();
+      expect(manifest.characterCostIsProviderReported).toBe(false);
+    },
+  );
+
+  it("labels the request length as an estimate and says what it is based on", async () => {
+    const { manifest } = await run({});
+    expect(manifest.estimatedCharacterCost).toBe(SAMPLE_TEXT.length);
+    expect(manifest.requestCharactersSent).toBe(SAMPLE_TEXT.length);
+    expect(String(manifest.estimatedCharacterCostBasis)).toMatch(/may bill a different amount/);
+  });
+
+  it("no longer claims a figure for characters actually spent", async () => {
+    const { manifest } = await run({});
+    expect(manifest).not.toHaveProperty("spentIncludedCharacters");
   });
 });
