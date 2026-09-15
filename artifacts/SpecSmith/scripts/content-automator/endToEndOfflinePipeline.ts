@@ -114,6 +114,25 @@ import {
   fixtureChainResearch,
 } from "./v2/delivery/engineeringFixture.ts";
 import { formatMaster4Ledger } from "./v2/delivery/completionLedger.ts";
+import { runExperimentPass, assertZeroCostExperiment, formatExperimentReport } from "./v2/experiment/experimentPass.ts";
+import { registerExperiment } from "./v2/experiment/registry.ts";
+import { AssignmentLedger } from "./v2/experiment/assignment.ts";
+import { buildObservation, ObservationStore } from "./v2/experiment/observation.ts";
+import { formatLearningCandidate } from "./v2/experiment/learning.ts";
+import { formatMaster5Ledger } from "./v2/experiment/completionLedger.ts";
+import {
+  FIXTURE_IDS as EXP_IDS,
+  FIXTURE_PUBLISHED_AT as EXP_PUBLISHED_AT,
+  FIXTURE_SHAS as EXP_SHAS,
+  fixtureCleanExperiment,
+  fixtureCleanShippedFacts,
+  fixtureConfoundedShippedFacts,
+  fixtureControlAnalytics,
+  fixtureGuardrailsFailing,
+  fixtureGuardrailsPassing,
+  fixtureLineage,
+  fixtureVariantAnalytics,
+} from "./v2/experiment/engineeringFixture.ts";
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -508,6 +527,157 @@ async function main(): Promise<void> {
   }
 
   console.log(`\n${formatMaster4Ledger()}`);
+
+  section("1f. Experiment + performance intelligence — what are we testing, is the comparison valid, and what may we actually conclude?");
+  // Everything in this stage is SYNTHETIC. No real analytics exist in this
+  // repository, and none are invented: the figures below describe a graphics
+  // card that does not exist, and the production refusal is asserted rather
+  // than assumed.
+  const experimentNow = generatedAt;
+  const registered = registerExperiment(fixtureCleanExperiment(experimentNow), experimentNow);
+
+  const assignments = new AssignmentLedger();
+  const assignedAt = new Date(Date.parse(EXP_PUBLISHED_AT) - 86_400_000);
+  assignments.bind({
+    experimentId: EXP_IDS.experimentId, experimentRevision: 1, variantId: EXP_IDS.controlVariantId,
+    creativeId: EXP_IDS.controlCreativeId, creativeLineageId: EXP_IDS.controlLineageId,
+    platform: "youtube-shorts", packageId: EXP_IDS.packageId, approvedMediaSha256: EXP_SHAS.control,
+    providerPostId: EXP_IDS.controlPostId, publishedAt: EXP_PUBLISHED_AT, now: assignedAt,
+  });
+  assignments.bind({
+    experimentId: EXP_IDS.experimentId, experimentRevision: 1, variantId: EXP_IDS.variantId,
+    creativeId: EXP_IDS.variantCreativeId, creativeLineageId: EXP_IDS.variantLineageId,
+    platform: "youtube-shorts", packageId: EXP_IDS.packageId, approvedMediaSha256: EXP_SHAS.variant,
+    providerPostId: EXP_IDS.variantPostId, publishedAt: EXP_PUBLISHED_AT, now: assignedAt,
+  });
+
+  const observationStore = new ObservationStore();
+  for (const [creativeId, analytics] of [
+    [EXP_IDS.controlCreativeId, fixtureControlAnalytics()],
+    [EXP_IDS.variantCreativeId, fixtureVariantAnalytics()],
+  ] as const) {
+    observationStore.record(
+      buildObservation({
+        analytics,
+        assignment: assignments.forCreative(creativeId)!,
+        expectedWindow: "24h",
+        synthetic: true,
+        environment: { allowSynthetic: true },
+        now: experimentNow,
+        producedBy: "specsmith-engineering-fixture",
+      }),
+    );
+  }
+
+  // Production must refuse the same synthetic observation.
+  let syntheticAnalyticsRefused = false;
+  try {
+    buildObservation({
+      analytics: fixtureControlAnalytics(),
+      assignment: assignments.forCreative(EXP_IDS.controlCreativeId)!,
+      expectedWindow: "24h",
+      synthetic: true,
+      environment: { allowSynthetic: false },
+      now: experimentNow,
+      producedBy: "specsmith-engineering-fixture",
+    });
+  } catch (error) {
+    syntheticAnalyticsRefused = true;
+    console.log(`Production performance ingestion correctly refused the synthetic analytics: ${(error as Error).message}`);
+  }
+  if (!syntheticAnalyticsRefused) {
+    throw new Error("Synthetic analytics were accepted by production ingestion; the fixture boundary is not load-bearing.");
+  }
+
+  const experimentResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureCleanShippedFacts(),
+    guardrailResults: fixtureGuardrailsPassing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log(`\n${formatExperimentReport(experimentResult, registered.experiment)}`);
+
+  if (experimentResult.learningCandidate !== null) {
+    console.log("\nLEARNING CANDIDATE (proposal only — MASTER #6 decides what becomes memory):");
+    console.log(formatLearningCandidate(experimentResult.learningCandidate));
+  }
+
+  const experimentZeroCost = assertZeroCostExperiment(experimentResult);
+  console.log(`\nZero-dollar experiment check: ${experimentZeroCost.ok ? "ok" : "FAILED"} — ${experimentZeroCost.reason}`);
+  if (!experimentZeroCost.ok) {
+    throw new Error(`The MASTER #5 core path requires paid access: ${experimentZeroCost.reason}`);
+  }
+
+  // Negative check 1: a confounded comparison must NOT be reported as a
+  // hook-form result, however real its numbers are.
+  const confoundedResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureConfoundedShippedFacts(),
+    guardrailResults: fixtureGuardrailsPassing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log("\nNegative check — the same numbers with five dimensions changed instead of one:");
+  console.log(`  validity: ${confoundedResult.interpretation?.validity.state}`);
+  console.log(`  causal language permitted: ${confoundedResult.interpretation?.causal.strength}`);
+  if (confoundedResult.interpretation?.validity.state !== "confounded") {
+    throw new Error("A five-variable comparison was not classified as confounded; the confounding detector is not load-bearing.");
+  }
+  if (confoundedResult.interpretation.validity.causalReadingPermitted) {
+    throw new Error("A confounded comparison permitted a causal reading; the causal gate is not load-bearing.");
+  }
+
+  // Negative check 2: a variant that wins by dropping a required caveat must
+  // never become a learning candidate.
+  const guardrailFailedResult = runExperimentPass({
+    experiment: registered.experiment,
+    preregistration: registered.preregistration,
+    assignments: assignments.all(),
+    observations: observationStore.forExperiment(EXP_IDS.experimentId),
+    lineage: fixtureLineage(),
+    shippedFacts: fixtureCleanShippedFacts(),
+    guardrailResults: fixtureGuardrailsFailing(),
+    replications: [],
+    conflictingExperimentIds: [],
+    supportingExperimentIds: [],
+    daysRunning: 14,
+    unresolvedHypotheses: 3,
+    synthetic: true,
+    now: experimentNow,
+    producedBy: "specsmith-engineering-fixture",
+  });
+  console.log("\nNegative check — the winning variant dropped the required 'estimated' label:");
+  console.log(`  decision: ${guardrailFailedResult.decision}`);
+  console.log(`  memory action: ${guardrailFailedResult.learningCandidate?.recommendedMemoryAction}`);
+  if (guardrailFailedResult.decision !== "blocked-by-guardrail") {
+    throw new Error("A guardrail failure did not block the decision; integrity is not overriding performance.");
+  }
+  if (guardrailFailedResult.learningCandidate?.recommendedMemoryAction !== "do-not-store") {
+    throw new Error("A guardrail-failing variant produced a storable learning candidate; performance is eroding integrity.");
+  }
+
+  console.log(`\n${formatMaster5Ledger()}`);
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
