@@ -11,6 +11,10 @@
 // honest-copy half is not decoration: it is what keeps the strict half
 // deployable.
 
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { analyseMention, mentionsClaim, normalizeForMatching } from "./claimMention.ts";
@@ -165,5 +169,39 @@ describe("normalization", () => {
 
   it("does not match two different figures", () => {
     expect(analyseMention("The first card is 25% faster", COMPARISON).figureHits).toEqual([]);
+  });
+});
+
+describe("only the strict gate is reachable from production", () => {
+  // checkScriptAgainstResearch still contains the hedge escape the audit found:
+  // the strict gate wraps it and adds hedge-independent findings, so the
+  // production path is sound. But the weak function remains exported, and a
+  // future caller importing it directly would silently get the old behaviour
+  // back. This asserts structurally that nobody does.
+  const researchDir = dirname(fileURLToPath(import.meta.url));
+  const automatorRoot = resolve(researchDir, "..", "..");
+
+  function sourceFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) return sourceFiles(full);
+      if (!entry.name.endsWith(".ts") || entry.name.includes(".test.")) return [];
+      return [full];
+    });
+  }
+
+  it("imports the non-strict gate only inside strictEvidenceGate.ts", () => {
+    const importers = sourceFiles(automatorRoot).filter((file) => {
+      const source = readFileSync(file, "utf8");
+      return /\bcheckScriptAgainstResearch\b(?!Strict)/.test(source);
+    });
+    const names = importers.map((file) => file.slice(automatorRoot.length + 1)).sort();
+    expect(names).toEqual(["v2/research/creativeContract.ts", "v2/research/strictEvidenceGate.ts"]);
+  });
+
+  it("routes the closed loop through the strict gate", () => {
+    const loop = readFileSync(join(researchDir, "closedLoop.ts"), "utf8");
+    expect(loop).toContain("checkScriptAgainstResearchStrict");
+    expect(/\bcheckScriptAgainstResearch\b(?!Strict)/.test(loop)).toBe(false);
   });
 });
