@@ -1,0 +1,37 @@
+{
+  "version": "creative-file-workflow-v1",
+  "attempt": 1,
+  "briefHash": "b36976e4fb8399c19837e39cc914e5d43822e702699979be0ed5e6c5a2ea5188",
+  "status": "blocked-revision",
+  "reason": "Bounded revision budget exhausted; unresolved concepts preserved for review, not approved.",
+  "concepts": [
+    {
+      "conceptId": "claude-batch-commit-first",
+      "contractEligible": false,
+      "required": [
+        "Evidence gate hard-fail [unsupported-factual-claim] at beat-1.narration: Asserts a claim research could not support (requires-human-judgment): \"One of these two builds is the better buy.\". A purchase recommendation depends on price, availability and the viewer's own library, none of which this evidence establishes. Offending text: \"Two builds, the same price. Before you scroll, say out loud which one you think this page will favour.\""
+      ],
+      "advisory": [],
+      "missionBlockers": []
+    },
+    {
+      "conceptId": "claude-batch-three-checks",
+      "contractEligible": false,
+      "required": [
+        "Evidence gate hard-fail [unsupported-factual-claim] at beat-1.narration: Asserts a claim research could not support (requires-human-judgment): \"One of these two builds is the better buy.\". A purchase recommendation depends on price, availability and the viewer's own library, none of which this evidence establishes. Offending text: \"Here is a three-step check you can run on any comparison page, starting with this one.\"",
+        "Evidence gate hard-fail [unsupported-factual-claim] at beat-2.narration: Asserts a claim research could not support (requires-human-judgment): \"One of these two builds is the better buy.\". A purchase recommendation depends on price, availability and the viewer's own library, none of which this evidence establishes. Offending text: \"Step one: write down what would actually answer your question, before you look for the bigger number.\""
+      ],
+      "advisory": [],
+      "missionBlockers": []
+    },
+    {
+      "conceptId": "claude-batch-vanishing-gap",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": []
+    }
+  ],
+  "setFindings": [],
+  "nextStep": "Author a revised batch in batches/attempt-2/ addressing every \"required\" item above."
+}
