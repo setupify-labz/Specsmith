@@ -133,6 +133,26 @@ import {
   fixtureLineage,
   fixtureVariantAnalytics,
 } from "./v2/experiment/engineeringFixture.ts";
+// MASTER #6 — creative intelligence.
+import { estimateFps } from "../../src/lib/fps.ts";
+import cpus from "../../src/data/cpus.json" with { type: "json" };
+import creativeGames from "../../src/data/games.json" with { type: "json" };
+import gpus from "../../src/data/gpus.json" with { type: "json" };
+import { permittedWording, surveySeparability } from "./v2/creative/separability.ts";
+import { reviewVisualHonesty } from "./v2/creative/visualHonesty.ts";
+import { toStoryboardBeats } from "./v2/creative/concept.ts";
+import { critiqueConceptSet } from "./v2/creative/conceptCritique.ts";
+import { briefLinesFromMemory, recordCreativeDecision, retrieveCreativeMemory } from "./v2/creative/memory.ts";
+import {
+  AVAILABLE_CAPABILITIES,
+  DISCLOSURE_EDITORIAL_PRICE,
+  DISCLOSURE_FPS_ESTIMATE,
+  DISCLOSURE_MODEL_RANGE,
+  PACKAGE_CROSSOVER,
+  PACKAGE_SPEC_FORENSICS,
+  SECTION_ONE_PACKAGES,
+} from "./v2/creative/sectionOnePackages.ts";
+
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -678,6 +698,148 @@ async function main(): Promise<void> {
   }
 
   console.log(`\n${formatMaster5Ledger()}`);
+
+  section("1g. Creative intelligence — can SpecSmith propose genuinely different packages, and does it refuse the claims its own model cannot support?");
+  // Everything in this stage is REAL. The builds come from the shipped catalog,
+  // the frame-rate figures come from the shipped model in src/lib/fps.ts, and
+  // the three packages are the ones developed by hand in
+  // docs/creative/master6-creative-target.md before any of this was built.
+  {
+    const creativeNow = generatedAt;
+    const catalogGpu = (id: string) => {
+      const found = (gpus as { id: string; name: string; price_usd: number; gpu_multiplier: number }[]).find((entry) => entry.id === id);
+      if (!found) throw new Error(`Catalog drift: gpu ${id} is gone, so the creative demonstration no longer rests on real data.`);
+      return found;
+    };
+    const catalogCpu = (id: string) => {
+      const found = (cpus as { id: string; name: string; price_usd: number; cpu_multiplier: number }[]).find((entry) => entry.id === id);
+      if (!found) throw new Error(`Catalog drift: cpu ${id} is gone, so the creative demonstration no longer rests on real data.`);
+      return found;
+    };
+
+    const buildA = { gpu: catalogGpu("rtx5060ti"), cpu: catalogCpu("i3-13100f") };
+    const buildB = { gpu: catalogGpu("rtx4060ti"), cpu: catalogCpu("r5-9600x") };
+    const priceA = buildA.gpu.price_usd + buildA.cpu.price_usd;
+    const priceB = buildB.gpu.price_usd + buildB.cpu.price_usd;
+    console.log(`Audience problem: two builds at the same SpecSmith editorial reference price.`);
+    console.log(`  A: ${buildA.gpu.name} + ${buildA.cpu.name} = $${priceA}`);
+    console.log(`  B: ${buildB.gpu.name} + ${buildB.cpu.name} = $${priceB}`);
+    if (priceA !== priceB) {
+      throw new Error("The premise of the creative packages is that these builds cost the same. They no longer do.");
+    }
+
+    // BEHAVIOUR 1 — the model's own range is consulted before any comparison
+    // claim is allowed.
+    const survey = surveySeparability(
+      (creativeGames as { id: string; name: string; gpu_bound: number; base_fps: Record<string, Record<string, number>> }[]).map((game) => ({
+        context: game,
+        a: estimateFps(buildA.gpu.gpu_multiplier, buildA.cpu.cpu_multiplier, game.base_fps["1440p"].high, game.gpu_bound),
+        b: estimateFps(buildB.gpu.gpu_multiplier, buildB.cpu.cpu_multiplier, game.base_fps["1440p"].high, game.gpu_bound),
+      })),
+    );
+    console.log(`\nSeparability over ${survey.points.length} catalog games at 1440p/High:`);
+    console.log(`  point-estimate leader flips across the set: ${survey.pointLeaderFlips}`);
+    console.log(`  separable: ${survey.separableCount}, inseparable: ${survey.inseparableCount}, undetermined: ${survey.undeterminedCount}`);
+    const widest = survey.points.reduce((best, entry) =>
+      Math.abs(entry.result.pointGap ?? 0) > Math.abs(best.result.pointGap ?? 0) ? entry : best,
+    );
+    console.log(`  widest gap: ${widest.context.name}, ${Math.abs(widest.result.pointGap ?? 0)} fps — verdict ${widest.result.verdict}`);
+    console.log(`  permitted wording: ${permittedWording(widest.result, "Build A", "Build B").safest}`);
+    if (!survey.pointLeaderFlips) {
+      throw new Error("The crossover the packages are built on is gone; the creative premise is no longer true.");
+    }
+    if (survey.separableCount > 0 || !survey.noPointSeparates) {
+      throw new Error("A game now separates these builds, so the packages' central claim must be re-derived rather than reprinted.");
+    }
+    if (permittedWording(widest.result, "Build A", "Build B").directional !== null) {
+      throw new Error("A directional claim was permitted on an inseparable comparison. The refusal is not load-bearing.");
+    }
+
+    // BEHAVIOUR 2 — concepts are proposed and assessed structurally.
+    // BEHAVIOUR 3 — every visual declares what kind of thing it is.
+    // BEHAVIOUR 4 — a concept blocked on a missing capability is reported.
+    const critique = critiqueConceptSet({
+      concepts: SECTION_ONE_PACKAGES,
+      availableCapabilityIds: AVAILABLE_CAPABILITIES,
+      guaranteedDisclosureIds: [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_EDITORIAL_PRICE, DISCLOSURE_MODEL_RANGE],
+    });
+    console.log(`\nConcept set: ${SECTION_ONE_PACKAGES.length} packages for one audience problem.`);
+    console.log(`  set is divergent on structure, not wording: ${critique.divergent}`);
+    for (const entry of critique.concepts) {
+      const state = entry.ready ? "ready" : entry.blockedOnCapability.length > 0 && entry.humanRequired.length === 0 ? "blocked" : "needs a human";
+      console.log(`  ${entry.conceptId}: ${state}`);
+      for (const finding of entry.findings) console.log(`    [${finding.routing}] ${finding.code}: ${finding.detail}`);
+    }
+    if (!critique.divergent) {
+      throw new Error("The three packages are no longer genuinely different, so only one of them needed to exist.");
+    }
+    if (critique.blockedConceptIds.length === 0) {
+      throw new Error("No package reported a missing capability. The best idea is being silently trimmed to fit the renderer.");
+    }
+
+    // The emitted beats are the pipeline's own beat type, carrying the visual
+    // classification forward rather than losing it in prose.
+    const emitted = toStoryboardBeats(PACKAGE_CROSSOVER);
+    const reversal = emitted.find((beat) => beat.purpose === "reversal");
+    console.log(`\nEmitted ${emitted.length} beats for ${PACKAGE_CROSSOVER.conceptId}.`);
+    console.log(`  reversal visual direction: ${reversal?.visualDirection}`);
+    if (reversal === undefined || !reversal.visualDirection.includes("[derived-illustration:")) {
+      throw new Error("The visual honesty classification did not survive emission into the storyboard.");
+    }
+
+    // BEHAVIOUR 5 — a creative decision is recorded, with unknown as a
+    // first-class outcome rather than a neutral default.
+    // BEHAVIOUR 6 — retrieval returns no guidance it does not have.
+    const memory = [
+      recordCreativeDecision({
+        entryId: "m6-e1",
+        conceptId: PACKAGE_SPEC_FORENSICS.conceptId,
+        decision: { kind: "explanatory-structure", value: "elimination-then-substitution" },
+        outcome: { state: "process", observation: "Its payoff beat depends on forward-looking claims the evidence gate will hedge." },
+        evidenceStrength: "anecdotal",
+        synthetic: false,
+        note: "Observed while writing the section-1 packages by hand.",
+        now: creativeNow,
+      }),
+      recordCreativeDecision({
+        entryId: "m6-e2",
+        conceptId: PACKAGE_CROSSOVER.conceptId,
+        decision: { kind: "explanatory-structure", value: "continuum-then-falsification" },
+        outcome: { state: "unknown", reason: "nothing has been published, so no audience outcome exists" },
+        evidenceStrength: "insufficient",
+        synthetic: false,
+        note: "",
+        now: creativeNow,
+      }),
+    ];
+    const retrieved = retrieveCreativeMemory(memory, { kind: "explanatory-structure", allowSynthetic: false });
+    console.log(`\nCreative memory: ${memory.length} entries, ${retrieved.observations.length} retrieved.`);
+    for (const observation of retrieved.observations) {
+      console.log(`  [${observation.usage}] ${observation.phrasing}`);
+    }
+    console.log(`  guidance available: ${!retrieved.noGuidanceAvailable}`);
+    console.log(`  brief lines produced: ${briefLinesFromMemory(retrieved).length}`);
+    if (!retrieved.noGuidanceAvailable) {
+      throw new Error("Creative memory produced guidance from a single unreplicated observation.");
+    }
+
+    console.log("\nNegative check — an illustration that describes itself as a thermal simulation:");
+    const dishonest = reviewVisualHonesty([
+      {
+        kind: "derived-illustration",
+        visualId: "nc-airflow",
+        explains: "A thermal simulation of this case under load.",
+        subject: "airflow",
+        explanatoryLabel: null,
+        derivedFrom: null,
+        showsNumericValues: true,
+      },
+    ]);
+    for (const finding of dishonest.findings) console.log(`  ${finding.code}: ${finding.detail}`);
+    if (dishonest.acceptable || !dishonest.findings.some((finding) => finding.code === "implies-measurement")) {
+      throw new Error("An illustration claiming to be a simulation was accepted. The visual honesty gate is not load-bearing.");
+    }
+  }
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
