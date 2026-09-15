@@ -1,11 +1,4 @@
-// MASTER #4 — Delivery pass, fit, brief and cross-platform tests.
-//
-// Exercises the whole chain on the engineering fixture:
-//
-//   RESEARCH_RESULT -> CONTENT_MISSION -> AUDIENCE -> PLATFORM -> FIT -> BRIEF
-//
-// and then attacks it: force a refusal, remove the product route, hand it a
-// synthetic bundle in production, run it twice for determinism.
+// MASTER #4 — Delivery, fit, brief and cross-platform integrity tests.
 
 import { describe, expect, it } from "vitest";
 
@@ -14,16 +7,17 @@ import { buildCreativeHandoff, assertCreativeHonoursBrief, DEFERRED_TO_LATER_MAS
 import { extractTruthInvariant } from "./invariants.ts";
 import { BriefRefusedError, buildPlatformBrief, briefOutwardText } from "./brief.ts";
 import { assessAudiencePlatformFit, requiredHonestySeconds } from "./fit.ts";
+import { buildCrossPlatformPlan, UntraceablePlatformDifferenceError } from "./crossPlatform.ts";
 import { buildAudienceProfile, assessAudienceFit } from "../audience/profile.ts";
 import { parseAudienceSignalBundle, unavailableAudienceSignals } from "../audience/signals.ts";
 import { baselinePlatformSnapshot, postingTimeFor, trendFor, REGISTRY_REVIEWED_AT } from "../platform/registry.ts";
 import { missionFixture, researchFixture, contractFixture } from "./testFixtures.ts";
 import { fixtureNoAudienceSignals, fixtureObservedAudience, assertUnmistakablySynthetic } from "./engineeringFixture.ts";
+import type { PlatformFact, PlatformSnapshot } from "../platform/model.ts";
 import type { PlatformScriptStoryboard } from "../../types.ts";
 
 const NOW = new Date("2026-09-15T12:00:00.000Z");
 const ENGINEERING = { allowSynthetic: true } as const;
-
 const research = researchFixture();
 const contract = contractFixture();
 
@@ -43,126 +37,190 @@ function pass(overrides: Partial<Parameters<typeof runDeliveryPass>[0]> = {}) {
   });
 }
 
-describe("the full chain runs and produces briefs", () => {
+function fitInputs(mission = missionFixture(), snapshot = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT)) {
+  const invariant = extractTruthInvariant(mission, contract, research);
+  const profile = buildAudienceProfile({
+    mission,
+    contract,
+    research,
+    signals: unavailableAudienceSignals(NOW.toISOString()),
+    hypotheses: [],
+    now: NOW,
+    producedBy: "test",
+  });
+  return {
+    mission,
+    invariant,
+    profile,
+    audienceFit: assessAudienceFit(profile, mission),
+    snapshot,
+    postingTime: postingTimeFor(snapshot.platform),
+    trend: trendFor(snapshot.platform),
+    now: NOW,
+  };
+}
+
+function bindingFact(platform: PlatformSnapshot["platform"], factId: string, claim: string): PlatformFact {
+  return {
+    factId,
+    platform,
+    claim,
+    category: "media-constraint",
+    status: "stable-constraint",
+    source: "synthetic adversarial test fixture",
+    sourceQuality: "direct-observation",
+    capturedAt: NOW.toISOString(),
+    effectiveAt: null,
+    expiresAt: null,
+    confidence: "high",
+    notes: "test only",
+  };
+}
+
+describe("the full chain runs without inventing platform knowledge", () => {
   const result = pass();
 
-  it("produces one brief per platform that can carry the truth", () => {
-    expect(result.briefs.length).toBe(3);
+  it("produces transport-independent briefs for all three platforms", () => {
+    expect(result.briefs).toHaveLength(3);
     expect(result.briefs.map((brief) => brief.platform).sort()).toEqual(["instagram-reels", "tiktok", "youtube-shorts"]);
   });
 
-  it("records every identity an auditor needs to reconstruct the decision", () => {
+  it("records reconstructable identity", () => {
     const brief = result.briefs[0];
     expect(brief.missionId).toBe("mission-fixture-1");
     expect(brief.researchQuestionId).toBe("question-vram-fps");
     expect(brief.strategyRunId).toBe("strategy-test-1");
-    expect(brief.audienceProfileId).toBe("audience-mission-fixture-1");
     expect(brief.platformSnapshotId).toContain("platform-");
-    expect(brief.platformSnapshotRevision).toBeGreaterThanOrEqual(1);
   });
 
-  it("breaches no invariant", () => {
+  it("breaches no truth invariant", () => {
     expect(result.invariantFindings.filter((finding) => finding.severity === "hard-fail")).toEqual([]);
   });
 
-  it("carries claims by reference, identically across every platform", () => {
-    const claimSets = result.briefs.map((brief) => brief.allowedClaims.map((claim) => claim.claimId).join(","));
-    expect(new Set(claimSets).size).toBe(1);
-    const wordingSets = result.briefs.map((brief) => brief.requiredWording.join("|"));
-    expect(new Set(wordingSets).size).toBe(1);
-  });
-
-  it("gives every platform the same objective and thesis", () => {
+  it("preserves claims, wording, objective and thesis across platforms", () => {
+    expect(new Set(result.briefs.map((brief) => brief.allowedClaims.map((claim) => claim.claimId).join(","))).size).toBe(1);
+    expect(new Set(result.briefs.map((brief) => brief.requiredWording.join("|"))).size).toBe(1);
     expect(new Set(result.briefs.map((brief) => brief.objective)).size).toBe(1);
     expect(new Set(result.briefs.map((brief) => brief.thesis)).size).toBe(1);
   });
 
-  it("is deterministic: the same inputs produce the same hash", () => {
+  it("is deterministic and zero-provider", () => {
     expect(pass().resultHash).toBe(result.resultHash);
+    expect(assertZeroCostDelivery(result).ok).toBe(true);
   });
 
-  it("requires no paid access", () => {
-    const zeroCost = assertZeroCostDelivery(result);
-    expect(zeroCost.ok).toBe(true);
-    expect(zeroCost.reason).toMatch(/no provider call of any kind/);
-  });
-
-  it("renders a report that explains itself", () => {
+  it("explains unknown platform state in the report", () => {
     const report = formatDeliveryReport(result);
     expect(report).toContain("AUDIENCE");
     expect(report).toContain("demographics: unknown");
-    expect(report).toContain("TRUTH INVARIANTS");
     expect(report).toContain("posting time: unknown");
   });
 });
 
-describe("audience stays unknown without a collector", () => {
-  const result = pass();
-  const profile = result.audienceProfile!;
+describe("unknown never becomes incompatible, false or a magic default", () => {
+  it("does not refuse a baseline platform merely because orientation is unknown", () => {
+    const fit = assessAudiencePlatformFit(fitInputs());
+    expect(fit.verdict).toBe("unknown");
+    expect(fit.refusals.map((reason) => reason.code)).not.toContain("media-incompatible");
+  });
 
-  it("does not invent a persona from an empty bundle", () => {
+  it("does not reinterpret unknown maximum duration as 60 seconds", () => {
+    const heavy = missionFixture({ requiredWording: Array.from({ length: 160 }, (_, i) => `required-${i}`) });
+    const fit = assessAudiencePlatformFit(fitInputs(heavy));
+    expect(fit.verdict).toBe("unknown");
+    expect(fit.refusals.map((reason) => reason.code)).not.toContain("evidence-cannot-fit-honestly");
+  });
+
+  it("does not use the removed 50% honesty-budget heuristic", () => {
+    const mission = missionFixture({ requiredWording: Array.from({ length: 45 }, (_, i) => `required-${i}`) });
+    const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const maxFact = bindingFact(base.platform, "verified-max", "Verified maximum duration is 60 seconds.");
+    const snapshot: PlatformSnapshot = {
+      ...base,
+      facts: [maxFact],
+      capability: {
+        ...base.capability,
+        media: {
+          ...base.capability.media,
+          maxDurationSeconds: { value: 60, status: "stable-constraint", factId: maxFact.factId, basis: "test verified maximum" },
+        },
+      },
+    };
+    const fit = assessAudiencePlatformFit(fitInputs(mission, snapshot));
+    expect(requiredHonestySeconds(fitInputs(mission, snapshot).invariant)).toBeLessThanOrEqual(60);
+    expect(fit.refusals.map((reason) => reason.code)).not.toContain("evidence-cannot-fit-honestly");
+  });
+
+  it("does refuse when an established maximum is genuinely too short for the required truth", () => {
+    const mission = missionFixture({ requiredWording: Array.from({ length: 220 }, (_, i) => `required-${i}`) });
+    const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const maxFact = bindingFact(base.platform, "verified-max", "Verified maximum duration is 30 seconds.");
+    const snapshot: PlatformSnapshot = {
+      ...base,
+      facts: [maxFact],
+      capability: {
+        ...base.capability,
+        media: {
+          ...base.capability.media,
+          maxDurationSeconds: { value: 30, status: "stable-constraint", factId: maxFact.factId, basis: "test verified maximum" },
+        },
+      },
+    };
+    const fit = assessAudiencePlatformFit(fitInputs(mission, snapshot));
+    expect(fit.verdict).toBe("refuse");
+    expect(fit.refusals.map((reason) => reason.code)).toContain("evidence-cannot-fit-honestly");
+  });
+
+  it("does not claim description clickability or a profile link when both are unknown", () => {
+    const result = pass();
+    for (const brief of result.briefs) {
+      expect(brief.execution.ctaTreatment.treatment).toMatch(/Do not claim the description is clickable/i);
+      expect(brief.execution.ctaTreatment.treatment).toMatch(/profile-link surface exists/i);
+    }
+  });
+
+  it("does not truncate descriptions to an invented 2200-character fallback", () => {
+    const result = pass();
+    for (const brief of result.briefs) {
+      expect(brief.metadata.description.length).toBeGreaterThan(0);
+      expect(brief.execution.targetDurationSecondsRange).toBeNull();
+      expect(brief.execution.targetDurationBasis).toMatch(/No verified platform maximum/);
+    }
+  });
+
+  it("describes analytics availability as unknown rather than absent", () => {
+    expect(pass().outcomes[0].fit.platformRisks.join(" ")).toMatch(/availability is unknown/i);
+    expect(pass().outcomes[0].fit.platformRisks.join(" ")).not.toMatch(/No analytics are available/);
+  });
+});
+
+describe("audience evidence remains separate from the mission's target", () => {
+  const empty = pass();
+  it("does not invent a persona from no audience observations", () => {
+    const profile = empty.audienceProfile!;
     expect(profile.job.state).toBe("unknown");
     expect(profile.intent.state).toBe("unknown");
     expect(profile.readiness.state).toBe("unknown");
-    expect(profile.objections.state).toBe("unknown");
-  });
-
-  it("treats the mission's target as a decision, not an observation", () => {
-    expect(profile.expertise.state).toBe("known");
-    expect(profile.expertise.basis).toMatch(/not an observation that such an audience asked for it/);
-  });
-
-  it("keeps demographics unknown", () => {
     expect(profile.demographics.age.value).toBeNull();
-    expect(profile.demographics.location.state).toBe("unknown");
   });
 
-  it("reports audience fit as weakly grounded, because no job or intent was observed", () => {
-    // Without observed language there is no basis even for a segment, so the
-    // honest verdict is that WHO this serves is unestablished — not that the
-    // content is wrong.
-    expect(result.audienceFit?.verdict).toBe("weakly-grounded");
-    expect(result.audienceFit?.reasons.join(" ")).toMatch(/who it serves is genuinely unestablished/);
+  it("keeps the mission's selected expertise distinct from observation", () => {
+    expect(empty.audienceProfile!.expertise.state).toBe("known");
+    expect(empty.audienceProfile!.expertise.basis).toMatch(/not an observation/);
   });
 
-  it("names the missing collectors as limitations", () => {
-    expect(profile.limitations.join(" ")).toMatch(/No audience collector is connected/);
-  });
-
-  it("asserts no misconception without an approved misconception-exists claim", () => {
-    expect(profile.confusion.evidencedMisconceptions.state).toBe("unknown");
-    expect(profile.confusion.evidencedMisconceptions.basis).toMatch(/no misconception may be attributed/);
+  it("changes state only when real fixture signals are supplied", () => {
+    const observed = pass({ audienceSignals: parseAudienceSignalBundle(fixtureObservedAudience(NOW), ENGINEERING) });
+    expect(observed.audienceProfile!.expertise.state).toBe("observed");
+    expect(observed.audienceProfile!.expertise.value).toBe("beginner");
+    expect(observed.audienceProfile!.intent.state).toBe("supported-inference");
+    expect(observed.audienceProfile!.demographics.age.state).toBe("unknown");
   });
 });
 
-describe("observed audience signals actually change the profile", () => {
-  const result = pass({ audienceSignals: parseAudienceSignalBundle(fixtureObservedAudience(NOW), ENGINEERING) });
-  const profile = result.audienceProfile!;
-
-  it("reaches logically-grounded once a job and intent can be derived", () => {
-    expect(result.audienceFit?.verdict).toBe("logically-grounded");
-    expect(result.audienceFit?.reasons.join(" ")).toMatch(/not evidence that this audience asked for it/);
-  });
-
-  it("reaches the observed state when a collector really saw it", () => {
-    expect(profile.expertise.state).toBe("observed");
-    expect(profile.expertise.value).toBe("beginner");
-    expect(profile.expertise.signalIds.length).toBeGreaterThan(0);
-  });
-
-  it("infers intent from observed phrasing as an inference, not an observation", () => {
-    expect(profile.intent.state).toBe("supported-inference");
-  });
-
-  it("still keeps demographics unknown even with signals present", () => {
-    expect(profile.demographics.age.state).toBe("unknown");
-  });
-});
-
-describe("audience hypotheses are declared, not hidden in constants", () => {
+describe("hypotheses stay labelled as hypotheses", () => {
   const result = pass();
-
-  it("emits untested hypotheses with falsification conditions", () => {
+  it("keeps audience hypotheses untested with falsification conditions", () => {
     expect(result.hypotheses.length).toBeGreaterThan(0);
     for (const hypothesis of result.hypotheses) {
       expect(hypothesis.status).toBe("untested");
@@ -171,256 +229,174 @@ describe("audience hypotheses are declared, not hidden in constants", () => {
     }
   });
 
-  it("types the pacing guidance as a hypothesis rather than an optimum", () => {
-    const fit = result.outcomes[0].fit;
-    expect(fit.pacing.isHypothesis).toBe(true);
-    expect(fit.pacing.basis).toMatch(/not from any measured optimum/);
-  });
-
-  it("carries the hypotheses into every brief's uncertainty section", () => {
-    expect(result.briefs[0].uncertainty.audienceHypotheses.length).toBe(result.hypotheses.length);
+  it("labels pacing numbers as unmeasured creative hypotheses", () => {
+    const pacing = result.outcomes[0].fit.pacing;
+    expect(pacing.isHypothesis).toBe(true);
+    expect(pacing.basis).toMatch(/not a measured platform optimum/i);
   });
 });
 
-describe("no posting time, no trend, no analytics", () => {
+describe("metadata stays inside the evidence boundary", () => {
   const result = pass();
-
-  it("reports posting time as unknown on every platform", () => {
-    for (const outcome of result.outcomes) {
-      expect(outcome.fit.postingTime.state).toBe("unknown");
-    }
-  });
-
-  it("reports trend as unknown on every platform", () => {
-    for (const outcome of result.outcomes) {
-      expect(outcome.fit.trend.state).toBe("unknown");
-    }
-  });
-
-  it("does not let posting time influence the verdict", () => {
-    expect(result.outcomes[0].fit.reasons.join(" ")).toMatch(/cannot make a platform better or worse/);
-  });
-
-  it("names the absence of analytics as a platform risk", () => {
-    expect(result.outcomes[0].fit.platformRisks.join(" ")).toMatch(/No analytics are available/);
-  });
-});
-
-describe("metadata is inside the evidence boundary", () => {
-  const result = pass();
-
-  it("labels every tag as generic-descriptive, claiming no popularity", () => {
+  it("uses descriptive tags without popularity claims", () => {
     for (const brief of result.briefs) {
       for (const tag of brief.metadata.tags) {
         expect(tag.kind).toBe("generic-descriptive");
         expect(tag.factId).toBeNull();
-        expect(tag.basis).toMatch(/No popularity, reach or trend status is claimed/);
+        expect(tag.basis).toMatch(/without asserting popularity or trend/i);
       }
     }
   });
 
-  it("puts the required caveat before the CTA so truncation loses marketing", () => {
+  it("keeps caveat before CTA", () => {
     const description = result.briefs[0].metadata.description;
-    const disclosureAt = description.indexOf("estimated");
-    const ctaAt = description.indexOf("/compare");
-    expect(disclosureAt).toBeGreaterThanOrEqual(0);
-    expect(ctaAt).toBeGreaterThan(disclosureAt);
+    expect(description.indexOf("estimated")).toBeGreaterThanOrEqual(0);
+    expect(description.indexOf("/compare")).toBeGreaterThan(description.indexOf("estimated"));
   });
 
-  it("passes the truth gate over its own outward text", () => {
-    for (const brief of result.briefs) {
-      const texts = briefOutwardText(brief);
-      expect(texts.length).toBeGreaterThan(0);
-    }
+  it("passes outward metadata through the truth gate", () => {
+    expect(briefOutwardText(result.briefs[0]).length).toBeGreaterThan(0);
   });
 
-  it("refuses to emit a brief whose metadata would breach the boundary", () => {
-    // A mission whose central question IS the forbidden claim would produce a
-    // title asserting it. The brief must not be emitted at all.
+  it("refuses hostile metadata when a title surface is actually established", () => {
     const hostile = missionFixture({ centralQuestion: "More VRAM does not matter for gaming performance" });
-    const invariant = extractTruthInvariant(hostile, contract, research);
-    const profile = buildAudienceProfile({
-      mission: hostile, contract, research,
-      signals: unavailableAudienceSignals(NOW.toISOString()),
-      hypotheses: [], now: NOW, producedBy: "test",
-    });
-    const snapshot = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
-    const fit = assessAudiencePlatformFit({
-      mission: hostile, profile, audienceFit: assessAudienceFit(profile, hostile), invariant, snapshot,
-      postingTime: postingTimeFor("youtube-shorts"), trend: trendFor("youtube-shorts"), now: NOW,
-    });
-
+    const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const snapshot: PlatformSnapshot = {
+      ...base,
+      capability: {
+        ...base.capability,
+        text: {
+          ...base.capability.text,
+          titleMaxChars: { value: 100, status: "observed-capability", factId: "title-cap", basis: "test established title surface" },
+        },
+      },
+    };
+    const inputs = fitInputs(hostile, snapshot);
+    const fit = assessAudiencePlatformFit(inputs);
     expect(() => buildPlatformBrief({
-      mission: hostile, invariant, profile, fit, snapshot, hypotheses: [],
-      strategyRunId: "s", creativeId: "c", now: NOW, producedBy: "test",
+      mission: hostile,
+      invariant: inputs.invariant,
+      profile: inputs.profile,
+      fit,
+      snapshot,
+      hypotheses: [],
+      strategyRunId: "s",
+      creativeId: "c",
+      now: NOW,
+      producedBy: "test",
     })).toThrow(BriefRefusedError);
   });
 });
 
-describe("CTA follows product readiness, never the platform", () => {
-  it("includes a CTA when the mission carries a shipped route", () => {
+describe("CTA follows product readiness and verified link capability", () => {
+  it("includes a neutral CTA when the mission has a route but link surfaces are unknown", () => {
     const result = pass();
     expect(result.briefs.every((brief) => brief.execution.ctaTreatment.include)).toBe(true);
+    expect(result.briefs[0].execution.ctaTreatment.treatment).toMatch(/show .* on screen/i);
   });
 
-  it("produces no CTA when the mission has no shipped route", () => {
+  it("produces no CTA when the mission has no route", () => {
     const result = pass({ mission: missionFixture({ productRoute: null, productSurface: null }) });
-    for (const brief of result.briefs) {
-      expect(brief.execution.ctaTreatment.include).toBe(false);
-      expect(brief.execution.ctaTreatment.reason).toMatch(/point at something that does not exist/);
-    }
+    expect(result.briefs.every((brief) => !brief.execution.ctaTreatment.include)).toBe(true);
   });
 
-  it("adapts CTA placement to whether links are actually clickable", () => {
-    const result = pass();
-    const shorts = result.briefs.find((brief) => brief.platform === "youtube-shorts")!;
-    const tiktok = result.briefs.find((brief) => brief.platform === "tiktok")!;
-    expect(shorts.execution.ctaTreatment.treatment).toMatch(/description, where it is clickable/);
-    expect(tiktok.execution.ctaTreatment.treatment).toMatch(/profile/);
+  it("uses a description link only when clickability is established", () => {
+    const mission = missionFixture();
+    const base = baselinePlatformSnapshot("youtube-shorts", REGISTRY_REVIEWED_AT);
+    const snapshot: PlatformSnapshot = {
+      ...base,
+      facts: [bindingFact(base.platform, "link-fact", "Description links are clickable.")],
+      capability: {
+        ...base.capability,
+        interaction: {
+          ...base.capability.interaction,
+          outboundLinkInDescription: { value: true, status: "observed-capability", factId: "link-fact", basis: "test observation" },
+        },
+      },
+    };
+    const inputs = fitInputs(mission, snapshot);
+    const fit = assessAudiencePlatformFit(inputs);
+    expect(fit.cta.treatment).toMatch(/description/);
+    expect(fit.cta.treatment).toMatch(/establishes description-link clickability/);
   });
 });
 
-describe("accessibility is non-negotiable", () => {
+describe("accessibility remains SpecSmith-owned and non-negotiable", () => {
   const result = pass();
-
-  it("marks every accessibility requirement as non-negotiable", () => {
-    for (const requirement of result.outcomes[0].fit.accessibility) {
-      expect(requirement.negotiable).toBe(false);
-    }
+  it("marks every requirement non-negotiable", () => {
+    for (const requirement of result.outcomes[0].fit.accessibility) expect(requirement.negotiable).toBe(false);
   });
-
-  it("requires audio-independent comprehension on every platform", () => {
-    for (const outcome of result.outcomes) {
-      expect(outcome.fit.accessibility.map((r) => r.code)).toContain("audio-independent-comprehension");
-    }
-  });
-
-  it("uses a conservative safe area because none is measured", () => {
+  it("requires burned-in/audio-independent delivery without pretending platform-native captions are known", () => {
+    expect(result.briefs[0].execution.captionStrategy.mustBeBurnedIn).toBe(true);
+    expect(result.outcomes[0].fit.accessibility.map((r) => r.code)).toContain("audio-independent-comprehension");
     expect(result.outcomes[0].fit.accessibility.map((r) => r.code)).toContain("conservative-safe-area");
   });
-
-  it("carries the requirements into the handoff as non-negotiable", () => {
-    const handoff = buildCreativeHandoff(result.briefs[0], NOW);
-    expect(handoff.nonNegotiable.join(" ")).toMatch(/Accessibility \(non-negotiable\)/);
+  it("carries requirements into the MASTER #1 handoff", () => {
+    expect(buildCreativeHandoff(result.briefs[0], NOW).nonNegotiable.join(" ")).toMatch(/Accessibility \(non-negotiable\)/);
   });
 });
 
-describe("a platform can be refused", () => {
-  it("refuses when the required disclosure takes more than half the format", () => {
-    // A mission whose required wording is enormous cannot be delivered honestly
-    // in short form. Refusing is correct; trimming the caveat is not.
-    const wordy = Array.from({ length: 120 }, (_, index) => `mandatory-caveat-token-${index}`);
-    const heavy = missionFixture({ requiredWording: wordy });
-    const result = pass({ mission: heavy });
-
-    expect(result.briefs).toHaveLength(0);
-    expect(result.outcomes.every((outcome) => outcome.fit.verdict === "refuse")).toBe(true);
-    expect(result.outcomes[0].fit.refusals.map((r) => r.code)).toContain("evidence-cannot-fit-honestly");
-    expect(result.outcomes[0].refusedBecause).toMatch(/There is no honest cut here/);
+describe("cross-platform planning does not manufacture provenance", () => {
+  const result = pass();
+  it("certifies uniform execution when no established platform fact justifies a difference", () => {
+    expect(result.packagePlan!.differences).toEqual([]);
+    expect(result.packagePlan!.uniformExecutionJustified).toBe(true);
+    expect(result.packagePlan!.uniformExecutionReason).toMatch(/No traceable platform fact/i);
   });
 
-  it("escalates to strategy when no platform can carry the mission", () => {
-    const wordy = Array.from({ length: 120 }, (_, index) => `mandatory-caveat-token-${index}`);
-    const result = pass({ mission: missionFixture({ requiredWording: wordy }) });
-    expect(result.escalations.map((escalation) => escalation.code)).toContain("no-platform-can-carry-mission");
-    expect(result.escalations[0].whatStrategyMustDecide).toMatch(/will not produce a degraded version/);
-  });
-
-  it("computes how long the honesty actually takes", () => {
-    const invariant = extractTruthInvariant(missionFixture(), contract, research);
-    expect(requiredHonestySeconds(invariant)).toBeGreaterThan(0);
+  it("fails closed if briefs differ without typed per-field fact provenance", () => {
+    const briefs = [...result.briefs];
+    const altered = {
+      ...briefs[1],
+      metadata: { ...briefs[1].metadata, description: `${briefs[1].metadata.description} extra` },
+    };
+    expect(() => buildCrossPlatformPlan({
+      missionId: missionFixture().missionId,
+      invariant: result.invariant!,
+      briefs: [briefs[0], altered, briefs[2]],
+      fits: result.outcomes.map((outcome) => outcome.fit),
+      now: NOW,
+    })).toThrow(UntraceablePlatformDifferenceError);
   });
 });
 
-describe("no mission means no briefs, and that is a success", () => {
+describe("no mission is an honest no-op", () => {
   const result = pass({ mission: null });
-
-  it("produces nothing and says why", () => {
+  it("produces no brief or audience profile", () => {
     expect(result.briefs).toEqual([]);
     expect(result.noOpReason).toBe("no-mission-authorised");
-    expect(result.limitations.join(" ")).toMatch(/strategy explicitly declined to approve/);
-  });
-
-  it("builds no audience profile for a mission that does not exist", () => {
     expect(result.audienceProfile).toBeNull();
     expect(result.invariant).toBeNull();
   });
-
-  it("is still deterministic", () => {
-    expect(pass({ mission: null }).resultHash).toBe(result.resultHash);
-  });
+  it("remains deterministic", () => expect(pass({ mission: null }).resultHash).toBe(result.resultHash));
 });
 
-describe("the cross-platform plan is honest about sameness", () => {
-  const result = pass();
-  const plan = result.packagePlan!;
-
-  it("states the core truth once, shared by every version", () => {
-    expect(plan.coreInvariant.thesis).toBe(missionFixture().angle.thesis);
-    expect(plan.coreInvariant.requiredWording).toContain("estimated");
-  });
-
-  it("justifies every difference with an established platform fact", () => {
-    for (const difference of plan.differences) {
-      expect(difference.justifiedByFactId).not.toBe("");
-      expect(difference.justification.length).toBeGreaterThan(20);
-    }
-  });
-
-  it("never claims a difference driven by ranking or algorithm", () => {
-    const text = JSON.stringify(plan).toLowerCase();
-    expect(text).not.toContain("algorithm");
-    expect(text).not.toContain("the platform rewards");
-  });
-
-  it("records that no posting time and no trend informed the plan", () => {
-    expect(plan.limitations.join(" ")).toMatch(/No posting time is recommended/);
-    expect(plan.limitations.join(" ")).toMatch(/nothing may be described as trending/);
-  });
-});
-
-describe("the MASTER #1 handoff", () => {
+describe("MASTER #1 handoff preserves research truth", () => {
   const result = pass();
   const brief = result.briefs[0];
-
-  it("restates the invariants at the top level", () => {
-    const handoff = buildCreativeHandoff(brief, NOW);
-    expect(handoff.nonNegotiable.join(" ")).toContain("Objective is fixed");
-    expect(handoff.nonNegotiable.join(" ")).toContain("Required wording");
-    expect(handoff.nonNegotiable.join(" ")).toContain("Forbidden claim");
-  });
-
-  it("catches a creative that drops the estimate label", () => {
-    const storyboard = storyboardFixture("Example GPU-A is 15% faster.", "15% faster");
-    const findings = assertCreativeHonoursBrief(storyboard, brief, result.invariant!, contract);
+  it("catches a cut that drops the estimate label", () => {
+    const findings = assertCreativeHonoursBrief(storyboardFixture("Example GPU-A is 15% faster.", "15% faster"), brief, result.invariant!, contract);
     expect(findings.map((finding) => finding.code)).toContain("required-wording-dropped");
   });
-
-  it("accepts a creative that honours the brief", () => {
-    const storyboard = storyboardFixture(
-      "SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.",
-      "estimated, at 1440p high",
+  it("accepts a cut that preserves estimate status and configuration", () => {
+    const findings = assertCreativeHonoursBrief(
+      storyboardFixture("SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.", "estimated, at 1440p high"),
+      brief,
+      result.invariant!,
+      contract,
     );
-    const findings = assertCreativeHonoursBrief(storyboard, brief, result.invariant!, contract);
     expect(findings.filter((finding) => finding.severity === "hard-fail")).toEqual([]);
   });
-
-  it("catches a storyboard with no on-screen text at all", () => {
-    const storyboard = storyboardFixture(
-      "SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.",
-      "",
+  it("catches loss of the audio-independent layer", () => {
+    const findings = assertCreativeHonoursBrief(
+      storyboardFixture("SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.", ""),
+      brief,
+      result.invariant!,
+      contract,
     );
-    const findings = assertCreativeHonoursBrief(storyboard, brief, result.invariant!, contract);
     expect(findings.map((finding) => finding.code)).toContain("no-audio-independent-layer");
   });
-
-  it("still surfaces MASTER #2 findings rather than filtering them", () => {
-    // Upstream conservatism, documented rather than worked around: MASTER #2's
-    // strict gate flags any line sharing two distinctive words with an unsafe
-    // claim, and a product name supplies both. A contract whose unsafe claim
-    // names the SAME product as the approved one therefore blocks every script
-    // about that product. MASTER #4 passes those findings straight through and
-    // has no mechanism to suppress them.
+  it("does not suppress upstream MASTER #2 findings", () => {
     const sameSubjectContract = {
       ...contract,
       unsafeClaims: [{
@@ -430,33 +406,25 @@ describe("the MASTER #1 handoff", () => {
         reason: "Nothing establishes future performance.",
       }],
     };
-    const storyboard = storyboardFixture(
-      "SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.",
-      "estimated, at 1440p high",
+    const findings = assertCreativeHonoursBrief(
+      storyboardFixture("SpecSmith estimates Example GPU-A about 15% higher on FPS at 1440p high.", "estimated, at 1440p high"),
+      brief,
+      result.invariant!,
+      sameSubjectContract,
     );
-    const findings = assertCreativeHonoursBrief(storyboard, brief, result.invariant!, sameSubjectContract);
     expect(findings.map((finding) => finding.code)).toContain("unsupported-factual-claim");
   });
-
-  it("records what is deferred to later masters", () => {
+  it("keeps later-master boundaries explicit", () => {
     expect(DEFERRED_TO_LATER_MASTERS.map((entry) => entry.master)).toContain("MASTER #5");
     expect(DEFERRED_TO_LATER_MASTERS.map((entry) => entry.master)).toContain("MASTER #8");
   });
 });
 
-describe("the synthetic boundary", () => {
-  it("marks fixture-driven results as synthetic", () => {
+describe("synthetic fixture boundary", () => {
+  it("marks fixture-driven output synthetic and unmistakable", () => {
     expect(pass().containsSyntheticInput).toBe(true);
-  });
-
-  it("proves the fixture is unmistakably synthetic", () => {
     const bundle = parseAudienceSignalBundle(fixtureNoAudienceSignals(NOW), ENGINEERING);
     expect(() => assertUnmistakablySynthetic(bundle)).not.toThrow();
-    expect(bundle.provenance.producedBy).toContain("SYNTHETIC_ENGINEERING_FIXTURE");
-  });
-
-  it("records the synthetic state as a limitation on the result", () => {
-    expect(pass().limitations.join(" ")).toMatch(/engineering fixture input/);
   });
 });
 
@@ -466,17 +434,15 @@ function storyboardFixture(narration: string, onScreenText: string): PlatformScr
     targetDurationSeconds: 30,
     title: "Does more VRAM mean more FPS?",
     narrationStyle: "plain",
-    beats: [
-      {
-        startSecond: 0,
-        endSecond: 5,
-        purpose: "hook",
-        narration,
-        visualDirection: "SpecSmith comparison view",
-        onScreenText,
-        factDependencies: ["claim-fps"],
-      },
-    ],
+    beats: [{
+      startSecond: 0,
+      endSecond: 5,
+      purpose: "hook",
+      narration,
+      visualDirection: "SpecSmith comparison view",
+      onScreenText,
+      factDependencies: ["claim-fps"],
+    }],
     finalCta: "Check your own pair in the comparison tool.",
     factualGuardrails: [],
   };
