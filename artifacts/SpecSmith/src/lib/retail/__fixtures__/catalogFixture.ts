@@ -110,6 +110,8 @@ export const rtx5070Listing = (specsVerified: boolean): AffiliatePart => ({
   imageContentRatio: null,
   imageSha256: null,
   upc: null,
+  sku: null,
+  unitSpecs: null,
 });
 
 /** A listing the matcher could not identify. Its performance is not guessed. */
@@ -146,6 +148,8 @@ const filler = (category: RetailPartCategory, index: number): AffiliatePart => (
   imageContentRatio: null,
   imageSha256: null,
   upc: null,
+  sku: null,
+  unitSpecs: null,
 });
 
 /**

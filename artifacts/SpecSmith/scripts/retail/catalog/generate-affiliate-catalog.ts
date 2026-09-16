@@ -16,15 +16,14 @@ import { fileURLToPath } from 'node:url';
 
 import { parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import {
-  assertPagingConsistent,
-  fetchProductSearchXml,
+  fetchAllProductSearchPages,
   findItems,
   loadGpuCatalog,
   parseProductSearchXml,
   readAccessToken,
-  readPageInfo,
 } from '../rakuten';
 import { DEFAULT_REQUESTS_PER_MINUTE, RateLimiter } from '../coverage/rateLimiter';
+import { createInstrumentedFetch } from '../coverage/instrumentedFetch';
 import { buildSnapshot } from '../snapshot/buildSnapshot';
 import { sweepOffers } from '../snapshot/sweepOffers';
 import {
@@ -33,6 +32,7 @@ import {
   attachImageContentRatios,
   buildAffiliatePartCatalog,
   gpuOfferToAffiliatePart,
+  type CatalogSelectionReport,
 } from './affiliateCatalog';
 import { measureImageAtUrl } from './imageContent';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
@@ -99,36 +99,62 @@ async function run(argv: readonly string[]): Promise<number> {
   );
   candidates.set('gpu', gpuParts);
 
+  // EVERY PAGE, NOT THE FIRST ONE. This loop used to request `pageNumber: 1`
+  // and nothing else, so a category with 900 matching listings offered the
+  // selection 100 candidates for a quota of 55 — and which 100 was decided by
+  // the feed's own ordering. Selecting the best listings is meaningless if the
+  // candidates were already truncated by arrival before selection saw them.
+  //
+  // `fetchAllProductSearchPages` is the SAME pager the GPU sweep already uses,
+  // with the same paging-consistency rules and the same refusal to read a
+  // prefix and report it as the whole result. Requests go through the same
+  // instrumented, rate-limited fetch, so walking more pages costs time rather
+  // than breaching the feed's limits.
   const limiter = new RateLimiter(DEFAULT_REQUESTS_PER_MINUTE);
+  const { fetch: limitedFetch, stats } = createInstrumentedFetch({ limiter });
   for (const config of RETAIL_CATEGORY_CONFIG.filter((entry) => entry.category !== 'gpu')) {
-    await limiter.acquire();
-    const response = await fetchProductSearchXml({
-      keyword: config.keyword,
-      categoryLeaf: config.categoryLeaf,
-      max: 100,
-      pageNumber: 1,
-    });
-    const root = parseProductSearchXml(response.xml);
-    assertPagingConsistent(readPageInfo(root), 1, null);
-    const accepted = findItems(root).flatMap((item) => {
-      const admission = admitAffiliatePart(item, config.category, config.categoryLeaf, response.fetchedAt);
-      return admission.status === 'accepted' ? [admission.part] : [];
-    });
+    const result = await fetchAllProductSearchPages(
+      { keyword: config.keyword, categoryLeaf: config.categoryLeaf, max: 100 },
+      { fetch: limitedFetch },
+    );
+    const accepted = result.pages.flatMap((xml) =>
+      findItems(parseProductSearchXml(xml)).flatMap((item) => {
+        const admission = admitAffiliatePart(item, config.category, config.categoryLeaf, result.fetchedAt);
+        return admission.status === 'accepted' ? [admission.part] : [];
+      }),
+    );
+    console.error(
+      `${config.category}: walked ${result.pages.length} of ${result.totalPages} reported pages`
+        + ` (${result.totalMatches ?? 'unknown'} matches), ${accepted.length} admitted.`,
+    );
     candidates.set(config.category, accepted);
   }
+  console.error(`Feed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);
 
   console.error(
     `Admitted candidates: ${RETAIL_CATEGORY_CONFIG.map((config) => `${config.category}=${candidates.get(config.category)?.length ?? 0}`).join(', ')}.`,
   );
 
   let catalog;
+  const selection: CatalogSelectionReport[] = [];
   try {
-    catalog = buildAffiliatePartCatalog(candidates, new Date().toISOString());
+    catalog = buildAffiliatePartCatalog(candidates, new Date().toISOString(), selection);
   } catch (cause) {
     if (cause instanceof AffiliateCatalogFailure && cause.code === 'category-shortfall') {
       throw new GeneratorFailure('category-shortfall');
     }
     throw new GeneratorFailure('catalog-invalid');
+  }
+
+  // What the selection actually looked at. Printed because the defect this
+  // replaced was invisible from the outside: a run that published 80 of 600
+  // eligible GPU listings and one that published 80 of 80 produced identical
+  // output and identical logs.
+  for (const row of selection) {
+    console.error(
+      `${row.category}: published ${row.published} of ${row.distinctProducts} distinct products `
+        + `from ${row.considered} eligible listings (${row.consolidated} duplicate listings consolidated to their cheapest, ${row.stale} refused as stale).`,
+    );
   }
 
   // Frame measurement, after the quota is settled so only the 500 published

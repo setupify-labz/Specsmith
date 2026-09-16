@@ -15,6 +15,11 @@ import { NEWEGG_MID, type NeweggOffer } from '../rakuten/types';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 import type { ImageMeasurement } from './imageContent';
 import { detectIdentityConflict } from '../../../src/lib/retail/identityConflict';
+import { MAX_CLOCK_SKEW_MS } from '../../../src/lib/retail/offerSnapshot';
+import { PRICE_FRESHNESS_MS } from '../../../src/lib/retail/partPricing';
+import { listingIdentity, normalizeCatalogName, selectBestListings } from './listingSelection';
+
+export { normalizeCatalogName } from './listingSelection';
 
 export type CatalogAdmission =
   | { status: 'accepted'; part: AffiliatePart }
@@ -26,8 +31,6 @@ export type CatalogAdmission =
 const safeId = (category: RetailPartCategory, sku: string): string =>
   `newegg-${category}-${sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.replace(/-+$/g, '');
 
-export const normalizeCatalogName = (name: string): string =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 const has = (title: string, pattern: RegExp): boolean => pattern.test(title);
 
@@ -137,7 +140,13 @@ export function admitAffiliatePart(
       // Non-GPU listings have no model matcher, so neither identity nor
       // specifications are established for them.
       specsVerified: false,
+      // The merchant's item number verbatim, beside the slug derived from it.
+      sku,
       upc: readUpc(childText(item, 'upccode')),
+      // The Product Search feed publishes no dimensions and no specification
+      // block, so nothing is established for this listing. Filling this from a
+      // canonical model record is the defect partIdentity.ts exists for.
+      unitSpecs: null,
       // Measured from the pixels later, once the quota is settled: there is no
       // reason to download five thousand candidate images to publish five
       // hundred. See attachImageContentRatios.
@@ -225,7 +234,11 @@ export function gpuOfferToAffiliatePart(offer: NeweggOffer): AffiliatePart | nul
     // compatibility checks that would need those figures are withheld rather
     // than answered from the generic model record. See src/lib/retail/partIdentity.ts.
     specsVerified: false,
+    sku: offer.sku,
     upc: readUpc(offer.upc),
+    // Identity was established by the model matcher; no dimension of the board
+    // in the box was. See attachUnitSpecs in unitSpecs.ts.
+    unitSpecs: null,
     imageContentRatio: null,
     imageSha256: null,
   };
@@ -300,23 +313,64 @@ export class AffiliateCatalogFailure extends Error {
   }
 }
 
+/**
+ * How the quota was filled, per category. For the run's log, so a selection
+ * that quietly stopped considering most of the feed is visible.
+ */
+export interface CatalogSelectionReport {
+  category: RetailPartCategory;
+  /** Eligible candidates evaluated — ALL of them, not a prefix. */
+  considered: number;
+  /** Distinct products among them, after duplicate listings were consolidated. */
+  distinctProducts: number;
+  /** Listings dropped because another listing of the same product was cheaper. */
+  consolidated: number;
+  /** Candidates refused because their reading was already stale at publication. */
+  stale: number;
+  published: number;
+}
+
 export function buildAffiliatePartCatalog(
   candidates: ReadonlyMap<RetailPartCategory, readonly AffiliatePart[]>,
   generatedAt: string,
+  report?: CatalogSelectionReport[],
 ): AffiliatePartCatalog {
   const selected: AffiliatePart[] = [];
   const ids = new Set<string>();
   const names = new Set<string>();
+  // A catalogue is written from one sweep, so a listing whose reading is
+  // already outside the freshness window at publication time was read too long
+  // ago to be published as current. It is refused here rather than written and
+  // hidden by the card later: a file full of listings the reader will withhold
+  // is a publication that looks successful and shows nothing.
+  const publishedAt = Date.parse(generatedAt);
+  const isStaleAtPublication = (part: AffiliatePart): boolean => {
+    const read = Date.parse(part.fetchedAt);
+    if (!Number.isFinite(read) || !Number.isFinite(publishedAt)) return true;
+    if (read - publishedAt > MAX_CLOCK_SKEW_MS) return true;
+    return publishedAt - read > PRICE_FRESHNESS_MS;
+  };
+
   for (const config of RETAIL_CATEGORY_CONFIG) {
-    const unique = (candidates.get(config.category) ?? []).filter((part) => {
-      const name = normalizeCatalogName(part.name);
-      if (ids.has(part.id) || names.has(name)) return false;
+    const all = candidates.get(config.category) ?? [];
+    const fresh = all.filter((part) => !isStaleAtPublication(part));
+    const outcome = selectBestListings(fresh, config.quota, (part) =>
+      ids.has(part.id) || names.has(listingIdentity(part)),
+    );
+    if (outcome.selected.length < config.quota) throw new AffiliateCatalogFailure('category-shortfall');
+    for (const part of outcome.selected) {
       ids.add(part.id);
-      names.add(name);
-      return true;
+      names.add(listingIdentity(part));
+    }
+    selected.push(...outcome.selected);
+    report?.push({
+      category: config.category,
+      considered: outcome.considered,
+      distinctProducts: outcome.distinctProducts,
+      consolidated: outcome.consolidated,
+      stale: all.length - fresh.length,
+      published: outcome.selected.length,
     });
-    if (unique.length < config.quota) throw new AffiliateCatalogFailure('category-shortfall');
-    selected.push(...unique.slice(0, config.quota));
   }
   if (new Set(selected.map((part) => part.id)).size !== selected.length) throw new AffiliateCatalogFailure('duplicate-part');
   if (selected.length !== AFFILIATE_PART_TARGET) throw new AffiliateCatalogFailure('count-mismatch');

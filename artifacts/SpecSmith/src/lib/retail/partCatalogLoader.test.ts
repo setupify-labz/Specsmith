@@ -34,11 +34,15 @@ const catalog = {
 };
 
 /**
- * The fixture omits `upc`, which catalogues published before it existed do
- * too. The reader normalizes the absent field to null rather than refusing the
- * file, so the expectation carries the null the parts come back with.
+ * The fixture omits `upc`, `sku` and `unitSpecs`, which catalogues published
+ * before each field existed do too. The reader normalizes every absent field
+ * to null rather than refusing the file, so the expectation carries the nulls
+ * the parts come back with.
  */
-const normalized = { ...catalog, parts: catalog.parts.map((part) => ({ ...part, upc: null })) };
+const normalized = {
+  ...catalog,
+  parts: catalog.parts.map((part) => ({ ...part, upc: null, sku: null, unitSpecs: null })),
+};
 
 describe('affiliate catalog loader', () => {
   it('returns ok only after browser-side validation', async () => {

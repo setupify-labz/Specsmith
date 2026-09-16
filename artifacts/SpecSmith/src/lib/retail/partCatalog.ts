@@ -71,6 +71,30 @@ export const AFFILIATE_PART_CATEGORY_TARGETS: Readonly<Record<RetailPartCategory
   headset: 25,
 };
 
+/**
+ * How a specification field was established.
+ *
+ * A closed set. There is no value meaning "probably" or "derived": a figure is
+ * either attributable to a named source for this exact listing, or it is not
+ * carried at all.
+ */
+export const SPEC_VERIFICATIONS = ['manufacturer-listed', 'retailer-listed', 'unverified'] as const;
+
+export type SpecVerification = (typeof SPEC_VERIFICATIONS)[number];
+
+/** One specification field, with its provenance attached to the value itself. */
+export interface UnitSpecField {
+  /** The figure or text as the source published it. Never rounded or converted. */
+  value: number | string;
+  /** The unit the source used, e.g. 'mm' or 'W'. Null for a non-numeric value. */
+  unit: string | null;
+  /** Where this field came from: a URL, or a named document. Never blank. */
+  source: string;
+  verification: SpecVerification;
+  /** When the source was read. A specification with no instant is not evidence. */
+  observedAt: string;
+}
+
 export interface AffiliatePart {
   /** Stable, repository-safe identity derived from category + Newegg SKU. */
   id: string;
@@ -137,6 +161,35 @@ export interface AffiliatePart {
    * it was made from.
    */
   imageSha256: string | null;
+  /**
+   * Newegg's own item number, exactly as the feed published it.
+   *
+   * WHY THIS IS NOT `id`. `id` is a repository-safe slug — the SKU lowercased
+   * with every non-alphanumeric run collapsed to a hyphen. That transform is
+   * not reversible, so a reviewer holding a published part could not recover
+   * the item number to check it against the merchant's own record. The exact
+   * value now travels beside the slug.
+   *
+   * Null on catalogues generated before this field existed. The generator
+   * refuses to publish a part without one, so null means "older file", never
+   * "we had it and dropped it".
+   */
+  sku: string | null;
+  /**
+   * Manufacturer-listed specifications for THIS listing, field by field, each
+   * carrying where it came from and whether it is verified.
+   *
+   * Null means no specification has been established for this listing — which
+   * is the state of every part in the catalogue today, because the Rakuten
+   * Product Search feed publishes no dimensions and no specification block.
+   * See `scripts/retail/catalog/unitSpecs.ts` for the gate.
+   *
+   * This is a carrier with a rule attached, not a placeholder: the rule is
+   * that a field may only appear here when a named source supplied it FOR THIS
+   * LISTING. Copying a canonical model record's figures in would reintroduce
+   * exactly the defect `partIdentity.ts` exists to describe.
+   */
+  unitSpecs: Readonly<Record<string, UnitSpecField>> | null;
   /**
    * The manufacturer UPC the feed supplies in `<upccode>`, or null.
    *
@@ -238,9 +291,53 @@ const isContentRatio = (value: unknown): value is number =>
 const isCategory = (value: unknown): value is RetailPartCategory =>
   typeof value === 'string' && (RETAIL_PART_CATEGORIES as readonly string[]).includes(value);
 
-function parsePart(raw: unknown): AffiliatePart | null {
+/**
+ * Reads the per-field specification block, or refuses the part.
+ *
+ * FAIL CLOSED, FIELD BY FIELD. A field whose source is blank, whose
+ * verification is not one of the three known values, or whose observation
+ * instant is unreadable, invalidates the WHOLE part rather than being dropped
+ * quietly. A silently dropped field is a specification that was published and
+ * then disappeared, which is indistinguishable from never having existed — and
+ * the one thing this block is for is making provenance impossible to lose.
+ */
+function parseUnitSpecs(raw: unknown): Readonly<Record<string, UnitSpecField>> | null | 'invalid' {
+  if (raw === undefined || raw === null) return null;
+  if (!isObject(raw)) return 'invalid';
+  const fields: Record<string, UnitSpecField> = {};
+  for (const [field, value] of Object.entries(raw)) {
+    if (!isObject(value)) return 'invalid';
+    const { value: figure, unit, source, verification, observedAt } = value;
+    const numeric = typeof figure === 'number' && Number.isFinite(figure);
+    if (!numeric && !isText(figure)) return 'invalid';
+    if (unit !== null && !isText(unit)) return 'invalid';
+    if (!isText(source)) return 'invalid';
+    if (!SPEC_VERIFICATIONS.includes(verification as SpecVerification)) return 'invalid';
+    if (!isInstant(observedAt)) return 'invalid';
+    fields[field] = {
+      value: figure as number | string,
+      unit: (unit ?? null) as string | null,
+      source: source as string,
+      verification: verification as SpecVerification,
+      observedAt: observedAt as string,
+    };
+  }
+  // An empty block says "specifications were established" and then names none.
+  // Null is the honest way to say nothing was established.
+  return Object.keys(fields).length === 0 ? null : fields;
+}
+
+/**
+ * Validates ONE part against the published rules, or returns null.
+ *
+ * Exported for the same reason `checkPartPricing` is: the alternative is
+ * inferring a per-part rule from whether a whole 500-part document happened to
+ * parse, and the document's own count gate fires first, so a one-part fixture
+ * never reaches these rules at all.
+ */
+export function parseAffiliatePart(raw: unknown): AffiliatePart | null {
   if (!isObject(raw)) return null;
-  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified, imageContentRatio, imageSha256, upc } = raw;
+  const { id, category, merchant, name, imageUrl, trackedAffiliateUrl, fetchedAt, availability, retailPrice, salePrice, currency, canonicalPartId, specsVerified, imageContentRatio, imageSha256, upc, sku, unitSpecs } = raw;
   if (!isText(id) || !/^newegg-[a-z]+-[a-z0-9-]+$/.test(id)) return null;
   if (!isCategory(category) || merchant !== 'Newegg' || !isText(name)) return null;
   if (!isHttpUrl(imageUrl) || !isTrackedAffiliateUrl(trackedAffiliateUrl)) return null;
@@ -276,6 +373,17 @@ function parsePart(raw: unknown): AffiliatePart | null {
   if (imageSha256 !== undefined && imageSha256 !== null && !(typeof imageSha256 === 'string' && /^[0-9a-f]{64}$/.test(imageSha256))) {
     return null;
   }
+  // Optional so published v3 files still parse; a present value must be a
+  // plausible merchant item number rather than any truthy string, and it must
+  // be the one `id` was derived from. A SKU that does not agree with the id
+  // beside it is an identity that cannot be resolved, so the part is refused
+  // rather than published with two answers to "which listing is this".
+  if (sku !== undefined && sku !== null) {
+    if (typeof sku !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{3,63}$/.test(sku)) return null;
+    if (!id.endsWith(`-${sku.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/g, '')}`)) return null;
+  }
+  const specs = parseUnitSpecs(unitSpecs);
+  if (specs === 'invalid') return null;
   return {
     id,
     category,
@@ -293,6 +401,8 @@ function parsePart(raw: unknown): AffiliatePart | null {
     imageContentRatio: (imageContentRatio ?? null) as number | null,
     imageSha256: (imageSha256 ?? null) as string | null,
     upc: (upc ?? null) as string | null,
+    sku: (sku ?? null) as string | null,
+    unitSpecs: specs,
   };
 }
 
@@ -315,7 +425,7 @@ export function parseAffiliatePartCatalog(raw: unknown): AffiliateCatalogParse {
     RETAIL_PART_CATEGORIES.map((category) => [category, 0]),
   ) as Record<RetailPartCategory, number>;
   for (const candidate of raw.parts) {
-    const part = parsePart(candidate);
+    const part = parseAffiliatePart(candidate);
     if (!part) return { ok: false, problem: 'part-invalid' };
     if (ids.has(part.id)) return { ok: false, problem: 'duplicate-part-id' };
     const normalizedName = part.name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
