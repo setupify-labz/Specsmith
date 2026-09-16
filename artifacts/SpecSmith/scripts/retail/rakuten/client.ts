@@ -154,7 +154,11 @@ export async function fetchProductSearchXml(
  * silently stopped would be the truncation this function exists to prevent,
  * wearing a different name.
  */
-export const MAX_PAGES_PER_SEARCH = 40;
+// Deliberately above the largest page count observed by the bounded live
+// preflight on 2026-09-16: motherboard=45, RAM=42, keyboard=45 (run
+// 35150689619). Fifty admits those complete searches with five pages of
+// headroom while an unexpectedly larger result still fails closed.
+export const MAX_PAGES_PER_SEARCH = 50;
 
 export interface ProductSearchPages {
   /** Every page's raw XML, in page order. */
