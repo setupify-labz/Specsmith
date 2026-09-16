@@ -73,16 +73,16 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(combo|comb|bundle|starter kit|laptop|notebook|thinkcentre|replacement|extension cable)\b|motherboard\s+set\b|motherboard\b.*\bcpu\b.*\b(2x\d+gb|\d+gb ram|memory set)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
     case 'ram':
       return has(title, /\b(ram|memory)\b/)
-        && !has(title, /\b(laptop|notebook|sodimm|so dimm)\b/);
+        && !has(title, /\b(laptop|notebook|sodimm|so dimm|ddr2?|ddr3)\b/);
     case 'storage':
       return has(title, /\b(ssd|solid state drive)\b/)
-        && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case)\b/);
+        && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case|datacenter|data center|enterprise|server)\b|\bd3\s+s\d+\b|\bd7\s+[a-z]{1,3}\d+\b/);
     case 'psu':
       return has(title, /\b(atx|sfx|computer|desktop|workstation|pc)\b.*\b(power supply|psu)\b|\b(power supply|psu)\b.*\b(atx|sfx|computer|desktop|workstation|pc)\b/)
-        && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester)\b/);
+        && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester|breakout board|distribution board)\b|\b(?:adapter|converter)\s+board\b/);
     case 'case':
       return has(title, /\b(computer case|pc case|tower case|gaming case|desktop chassis|computer chassis)\b/)
-        && !has(title, /\b(carrying|protective|fan only)\b/);
+        && !has(title, /\b(carrying|protective|fan only|rackmount)\b|\b(?:server|storage|nas)\s+chassis\b/);
     case 'cooler':
       return has(title, /\b(cpu cooler|cpu air cooler|liquid cpu cooler|aio liquid|processor cooler|cpu heatsink)\b/)
         && !has(title, /\b(case fan|laptop|notebook|router|switch|replacement)\b/);
@@ -97,7 +97,7 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(mouse pad|mousepad|desk mat|skates|grips|feet|replacement cable)\b/);
     case 'headset':
       return has(title, /\b(headset|headphones)\b/)
-        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b|\bears universal\b/);
+        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b|\bears universal\b|\b(?:cable|cord|adapter)\s+(?:for|compatible with)\s+.*\b(?:headset|headphones)\b|\b(?:headset|headphones)\s+(?:replacement|extension|charging|audio)\s+(?:cable|cord)\b/);
   }
 }
 

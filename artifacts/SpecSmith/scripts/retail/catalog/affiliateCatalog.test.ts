@@ -78,8 +78,29 @@ describe('generic affiliate part admission', () => {
     ['psu', '2000W Mining Server Power Supply'],
     ['psu', 'ATX Power Supply Tester'],
     ['headset', 'Kitten Ears Universal for Gaming Headset'],
+    ['storage', 'Solidigm Solid State Drive D3-S4620 Series 3.84TB'],
+    ['storage', 'Solidigm D7-PS1030 Enterprise NVMe SSD'],
+    ['psu', 'ATX PSU Breakout Board Adapter for Desktop Power Supply'],
+    ['case', 'SilverStone Computer Case Storage Chassis'],
+    ['case', '4U Rackmount Computer Case'],
+    ['ram', '2GB DDR3 Desktop Memory RAM'],
+    ['headset', 'Audio Cable for Gaming Headset'],
+    ['headset', 'Gaming Headset Replacement Cable'],
   ] as const)('refuses a %s accessory or bundle: %s', (category, title) => {
     expect(isSelectableBuilderPart(category, title)).toBe(false);
+  });
+
+  it.each([
+    ['storage', 'Storage Devices', 'Solidigm Solid State Drive D3-S4620 Series 3.84TB', '199.99'],
+    ['psu', 'Computer Power Supplies', 'ATX PSU Breakout Board Adapter for Desktop Power Supply', '89.99'],
+    ['case', 'Desktop Computer & Server Cases', 'SilverStone Computer Case Storage Chassis', '149.99'],
+    ['ram', 'RAM', '2GB DDR3 Desktop Memory RAM', '59.99'],
+    ['headset', 'Headphones & Headsets', 'Audio Cable for Gaming Headset', '79.99'],
+  ] as const)('rejects an in-range %s false positive by kind, not price: %s', (category, leaf, title, price) => {
+    expect(admitAffiliatePart(item({ leaf, title, price }), category, leaf, fetchedAt)).toEqual({
+      status: 'rejected',
+      reason: 'kind',
+    });
   });
 
   it('applies the product-kind rule at the storage admission boundary', () => {
@@ -98,6 +119,10 @@ describe('generic affiliate part admission', () => {
     ['headset', 'SteelSeries Arctis Wireless Gaming Headset'],
     ['cooler', 'Noctua NH-D15 CPU Cooler'],
     ['psu', 'Corsair RM850x ATX Power Supply'],
+    ['storage', 'Samsung 990 PRO 2TB Internal SSD'],
+    ['ram', 'Corsair Vengeance 32GB DDR5 Desktop Memory'],
+    ['case', 'Fractal Design North Gaming PC Case'],
+    ['headset', 'SteelSeries Arctis Nova Gaming Headset with Detachable Cable'],
   ] as const)('keeps a real %s component: %s', (category, title) => {
     expect(isSelectableBuilderPart(category, title)).toBe(true);
   });
