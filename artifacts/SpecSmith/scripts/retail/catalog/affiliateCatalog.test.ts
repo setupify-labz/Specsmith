@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { findItems, parseProductSearchXml } from '../rakuten';
 import { AFFILIATE_PART_TARGET, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
-import { gpuOfferToAffiliatePart, admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, isSelectableBuilderPart } from './affiliateCatalog';
+import { accessoryLeadsHeadset, gpuOfferToAffiliatePart, admitAffiliatePart, AffiliateCatalogFailure, buildAffiliatePartCatalog, isLegacyMemory, isSelectableBuilderPart } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 
 const fetchedAt = '2026-08-29T23:00:00.000Z';
@@ -78,8 +78,29 @@ describe('generic affiliate part admission', () => {
     ['psu', '2000W Mining Server Power Supply'],
     ['psu', 'ATX Power Supply Tester'],
     ['headset', 'Kitten Ears Universal for Gaming Headset'],
+    ['storage', 'Solidigm Solid State Drive D3-S4620 Series 3.84TB'],
+    ['storage', 'Solidigm D7-PS1030 Enterprise NVMe SSD'],
+    ['psu', 'ATX PSU Breakout Board Adapter for Desktop Power Supply'],
+    ['case', 'SilverStone Computer Case Storage Chassis'],
+    ['case', '4U Rackmount Computer Case'],
+    ['ram', '2GB DDR3 Desktop Memory RAM'],
+    ['headset', 'Audio Cable for Gaming Headset'],
+    ['headset', 'Gaming Headset Replacement Cable'],
   ] as const)('refuses a %s accessory or bundle: %s', (category, title) => {
     expect(isSelectableBuilderPart(category, title)).toBe(false);
+  });
+
+  it.each([
+    ['storage', 'Storage Devices', 'Solidigm Solid State Drive D3-S4620 Series 3.84TB', '199.99'],
+    ['psu', 'Computer Power Supplies', 'ATX PSU Breakout Board Adapter for Desktop Power Supply', '89.99'],
+    ['case', 'Desktop Computer & Server Cases', 'SilverStone Computer Case Storage Chassis', '149.99'],
+    ['ram', 'RAM', '2GB DDR3 Desktop Memory RAM', '59.99'],
+    ['headset', 'Headphones & Headsets', 'Audio Cable for Gaming Headset', '79.99'],
+  ] as const)('rejects an in-range %s false positive by kind, not price: %s', (category, leaf, title, price) => {
+    expect(admitAffiliatePart(item({ leaf, title, price }), category, leaf, fetchedAt)).toEqual({
+      status: 'rejected',
+      reason: 'kind',
+    });
   });
 
   it('applies the product-kind rule at the storage admission boundary', () => {
@@ -98,8 +119,68 @@ describe('generic affiliate part admission', () => {
     ['headset', 'SteelSeries Arctis Wireless Gaming Headset'],
     ['cooler', 'Noctua NH-D15 CPU Cooler'],
     ['psu', 'Corsair RM850x ATX Power Supply'],
+    ['storage', 'Samsung 990 PRO 2TB Internal SSD'],
+    ['ram', 'Corsair Vengeance 32GB DDR5 Desktop Memory'],
+    ['case', 'Fractal Design North Gaming PC Case'],
+    ['headset', 'SteelSeries Arctis Nova Gaming Headset with Detachable Cable'],
   ] as const)('keeps a real %s component: %s', (category, title) => {
     expect(isSelectableBuilderPart(category, title)).toBe(true);
+  });
+
+  // THE LISTINGS AS THE FEED ACTUALLY WRITES THEM.
+  //
+  // The kind rules were first written against hand-composed titles, and three
+  // of them did not match the real thing. These are the verbatim names from
+  // the published catalogue, so a rule that passes a tidy fixture and misses
+  // the listing it was written for cannot pass again.
+  it.each([
+    ['case', 'SilverStone Case Storage Series SST-CS380 Black Computer Case'],
+    ['case', '19 inch standard rack mounted 2U server chassis Case industrial control computer case'],
+    ['headset', '3.5mm Earphone Cable with Inline Control for G633 G933 Gaming Headset Headphone Accessories'],
+    ['headset', 'Headphone Protective Cushion Pad for Arctis 1 Gaming Headset'],
+    ['storage', 'Solidigm Solid State Drive D5-P5336 Series (61.44TB, 2.5in PCIe 4.0 x4, 3D5, QLC) Generic FIPS Single Pack Data Center / Server / Internal SSD'],
+    ['storage', 'Solidigm Solid State Drive D7-PS1030 Series (1.6TB, U.2 15mm, PCIe 5.0 x4, V7, TLC) Generic'],
+    ['ram', 'samsung m378t5663eh3-cf7 8gb 4 x 2gb pc2-6400u ddr2 800 cl6 desktop memory kit'],
+    ['ram', 'MemoryMasters 8GB (2x 4GB) DDR3/DDR3L PC3-12800 1600MHz DIMM (240-Pin) Desktop Memory'],
+  ] as const)('refuses the real %s listing as published: %s', (category, title) => {
+    expect(isSelectableBuilderPart(category, title)).toBe(false);
+  });
+
+  // THE OTHER DIRECTION. Each of these was rejected by an earlier draft of the
+  // kind rules; each is an ordinary consumer part.
+  it.each([
+    // A merchant who spaces the generation out leaves "ddr" standing alone, and
+    // a rule matching the bare word took a current kit with it.
+    ['ram', 'Kingston FURY Beast DDR 5 32GB Desktop Memory RAM'],
+    // A compatibility note is not a specification. Scanning for "DDR3" without
+    // asking which way the sentence points reads this as a DDR3 kit.
+    ['ram', 'Crucial Pro 32GB DDR5 RAM for gaming desktop, DDR3 not supported'],
+    // "server" and "enterprise" as bare words are marketing copy on consumer
+    // drives. Every datacenter listing in the feed says "Data Center"; none
+    // says "enterprise", so the bare words cost real parts and caught nothing.
+    ['storage', 'WD Black SN850X 4TB NVMe SSD for PC and server builds'],
+    ['storage', 'Seagate FireCuda 530 2TB Gaming SSD, enterprise-grade endurance'],
+    // The commonest shape in the category: a wireless headset whose dongle is
+    // described as "adapter for PC", with "headphones" later in the title.
+    ['headset', 'SteelSeries Arctis Nova 7 Wireless Gaming Headset with USB-C adapter for PC, 2.4GHz Headphones'],
+    ['headset', 'HyperX Cloud III Wireless Gaming Headset, USB adapter for PC and PS5, over-ear headphones'],
+    ['headset', 'Logitech G Pro X Gaming Headset with detachable audio cable'],
+    ['case', 'Lian Li O11 Dynamic EVO Gaming Case with storage bay'],
+  ] as const)('keeps the real %s component an earlier draft rejected: %s', (category, title) => {
+    expect(isSelectableBuilderPart(category, title)).toBe(true);
+  });
+
+  it('decides a headset accessory by word order, not by adjacency', () => {
+    // A cable named BEFORE the device is the product; named after, it is in
+    // the box. Adjacency ("cable for … headset") got both of these wrong.
+    expect(accessoryLeadsHeadset('3 5mm earphone cable with inline control for g633 gaming headset')).toBe(true);
+    expect(accessoryLeadsHeadset('gaming headset with detachable audio cable')).toBe(false);
+  });
+
+  it('treats a legacy generation as disqualifying only when no current one is named', () => {
+    expect(isLegacyMemory('8gb ddr3 1600mhz desktop memory')).toBe(true);
+    expect(isLegacyMemory('32gb ddr5 6000 ram ddr3 not supported')).toBe(false);
+    expect(isLegacyMemory('kingston fury beast ddr 5 32gb desktop memory')).toBe(false);
   });
 });
 

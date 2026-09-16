@@ -60,6 +60,52 @@ export function readUpc(value: string | null | undefined): string | null {
  * the named slot in the PC builder. They intentionally use product-kind words,
  * never model/spec inference.
  */
+
+/**
+ * Memory the builder should not be recommending, without rejecting a current
+ * kit that merely MENTIONS an older standard.
+ *
+ * "DDR3" in a title is not enough on its own. A DDR5 listing saying "DDR3 not
+ * supported" is a current kit, and a substring test reads its compatibility
+ * note as its specification — the same polarity mistake as scanning for a word
+ * without asking which way the sentence points. So a legacy generation is
+ * disqualifying only when no current one is named.
+ *
+ * The bare word "ddr" is deliberately NOT matched. It was, and it rejected
+ * "Kingston FURY Beast DDR 5", because a merchant who spaces the generation
+ * out leaves "ddr" standing alone.
+ */
+export function isLegacyMemory(title: string): boolean {
+  const legacy = /\bddr\s?[23]\b/.test(title);
+  const current = /\bddr\s?[45]\b/.test(title);
+  return legacy && !current;
+}
+
+/** Accessory nouns that, standing before the device, name the product itself. */
+const HEADSET_ACCESSORY = /\b(cable|cord|cushion|pad|adapter|splitter|case|pouch)\b/;
+const HEADSET_DEVICE = /\b(headset|headphones)\b/;
+
+/**
+ * Whether an accessory noun names the PRODUCT rather than something in the box.
+ *
+ * Word ORDER decides it, because that is what actually separates the two:
+ *
+ *   "3.5mm Earphone CABLE ... for G633 Gaming HEADSET"  -> the cable is the product
+ *   "Gaming HEADSET with detachable audio CABLE"        -> the cable is included
+ *
+ * The rule this replaces tested adjacency — `cable for … headset` — which read
+ * the first as a headset (the real title says "cable WITH inline control FOR")
+ * and the second correctly, but also rejected every wireless headset described
+ * as having a "USB adapter for PC … headphones". Those are among the most
+ * common listings in the category.
+ */
+export function accessoryLeadsHeadset(title: string): boolean {
+  const accessory = HEADSET_ACCESSORY.exec(title);
+  if (accessory === null) return false;
+  const device = HEADSET_DEVICE.exec(title);
+  return device !== null && accessory.index < device.index;
+}
+
 export function isSelectableBuilderPart(category: RetailPartCategory, name: string): boolean {
   const title = normalizeCatalogName(name);
   switch (category) {
@@ -73,16 +119,17 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(combo|comb|bundle|starter kit|laptop|notebook|thinkcentre|replacement|extension cable)\b|motherboard\s+set\b|motherboard\b.*\bcpu\b.*\b(2x\d+gb|\d+gb ram|memory set)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
     case 'ram':
       return has(title, /\b(ram|memory)\b/)
-        && !has(title, /\b(laptop|notebook|sodimm|so dimm)\b/);
+        && !has(title, /\b(laptop|notebook|sodimm|so dimm)\b/)
+        && !isLegacyMemory(title);
     case 'storage':
       return has(title, /\b(ssd|solid state drive)\b/)
-        && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case)\b/);
+        && !has(title, /\b(enclosure|adapter|cable|dock|duplicator|carrying case|datacenter|data center)\b|\benterprise\s+(?:ssd|nvme|sata|drive)\b|\bd[3-7]\s+[sp]\d{4}\b|\bd7\s+[a-z]{1,3}\d+\b/);
     case 'psu':
       return has(title, /\b(atx|sfx|computer|desktop|workstation|pc)\b.*\b(power supply|psu)\b|\b(power supply|psu)\b.*\b(atx|sfx|computer|desktop|workstation|pc)\b/)
-        && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester)\b/);
+        && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester|breakout board|distribution board)\b|\b(?:adapter|converter)\s+board\b/);
     case 'case':
       return has(title, /\b(computer case|pc case|tower case|gaming case|desktop chassis|computer chassis)\b/)
-        && !has(title, /\b(carrying|protective|fan only)\b/);
+        && !has(title, /\b(carrying|protective|fan only)\b|\brack\s?mount(?:ed|able)?\b|\b(?:server|storage|nas)\s+(?:chassis|series)\b/);
     case 'cooler':
       return has(title, /\b(cpu cooler|cpu air cooler|liquid cpu cooler|aio liquid|processor cooler|cpu heatsink)\b/)
         && !has(title, /\b(case fan|laptop|notebook|router|switch|replacement)\b/);
@@ -97,7 +144,8 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(mouse pad|mousepad|desk mat|skates|grips|feet|replacement cable)\b/);
     case 'headset':
       return has(title, /\b(headset|headphones)\b/)
-        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b|\bears universal\b/);
+        && !has(title, /\b(hook|holder|stand|battery|replacement|earpads|ear pads|earpad|ear pad|ear cushion|cushion cover|cooling gel|charging dock)\b|\bears universal\b/)
+        && !accessoryLeadsHeadset(title);
   }
 }
 
