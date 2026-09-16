@@ -161,6 +161,27 @@ describe('fetchAllProductSearchPages', () => {
     await expect(fetchAllProductSearchPages({ keyword: 'x' }, { env, fetch: okFetch(many) })).rejects.toThrow(/guard/);
   });
 
+  it('admits all 45 observed pages without turning the guard into an unbounded walk', async () => {
+    // Live preflight run 35150689619 measured motherboard and keyboard at 45
+    // pages, and RAM at 42. Reverting the former 40-page limit makes this test
+    // fail before page 2; raising it beyond the reviewed 50 also fails the
+    // explicit boundary assertion.
+    expect(MAX_PAGES_PER_SEARCH).toBe(50);
+    const asked: number[] = [];
+    const fortyFivePages = (async (url: string | URL) => {
+      const page = Number(new URL(String(url)).searchParams.get('pagenumber') ?? '1');
+      asked.push(page);
+      return new Response(
+        `<result><TotalMatches>4446</TotalMatches><TotalPages>45</TotalPages><PageNumber>${page}</PageNumber><item><sku>page-${page}</sku></item></result>`,
+        { status: 200 },
+      );
+    }) as unknown as typeof globalThis.fetch;
+
+    const result = await fetchAllProductSearchPages({ keyword: 'motherboard' }, { env, fetch: fortyFivePages });
+    expect(result.pages).toHaveLength(45);
+    expect(asked).toEqual(Array.from({ length: 45 }, (_, index) => index + 1));
+  });
+
   it('throws when a page comes back as a different page than requested', async () => {
     const wrong = (async (url: string | URL) => {
       const page = Number(new URL(String(url)).searchParams.get('pagenumber') ?? '1');
