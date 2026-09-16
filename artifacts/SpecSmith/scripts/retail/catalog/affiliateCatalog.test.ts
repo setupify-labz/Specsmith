@@ -140,12 +140,18 @@ describe('the publication gate requires 500 parts AND 500 prices', () => {
     // The failure the gate exists for: a quota met in count but not in
     // evidence. Publishing it would ship 499 priced cards and one that renders
     // an empty price with no explanation.
+    //
+    // A ZERO price is now caught EARLIER, by the category scope: zero is below
+    // every category's floor, so the candidate never competes for a slot and
+    // the category comes up one short. The two gates are not redundant — the
+    // next test carries a pricing fault that IS in scope and still has to be
+    // refused — but the reported failure for this input is the shortfall.
     const map = candidates();
     const gpus = [...(map.get('gpu') ?? [])];
     gpus[0] = { ...gpus[0], retailPrice: 0 };
     map.set('gpu', gpus);
     expect(() => buildAffiliatePartCatalog(map, fetchedAt)).toThrow(
-      expect.objectContaining({ code: 'price-missing' }),
+      expect.objectContaining({ code: 'category-shortfall' }),
     );
   });
 

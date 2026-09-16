@@ -151,9 +151,12 @@ async function run(argv: readonly string[]): Promise<number> {
   // eligible GPU listings and one that published 80 of 80 produced identical
   // output and identical logs.
   for (const row of selection) {
+    const rejected = Object.entries(row.outOfScope).map(([reason, count]) => `${reason}=${count}`).join(', ');
     console.error(
       `${row.category}: published ${row.published} of ${row.distinctProducts} distinct products `
-        + `from ${row.considered} eligible listings (${row.consolidated} duplicate listings consolidated to their cheapest, ${row.stale} refused as stale).`,
+        + `from ${row.considered} candidates, spread across ${row.coverageGroups} ${row.coverage} groups `
+        + `(${row.consolidated} duplicate listings consolidated to their cheapest, ${row.stale} refused as stale`
+        + `${rejected ? `, out of scope: ${rejected}` : ''}).`,
     );
   }
 

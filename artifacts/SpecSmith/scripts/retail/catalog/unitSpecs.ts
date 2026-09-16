@@ -28,12 +28,19 @@
 //      is. This reuses the model matcher the offer adapter already runs rather
 //      than adding a second opinion about what a title says.
 //
+//   4. The source must state a verification the schema publishes. There are
+//      only two — manufacturer-listed and retailer-listed — and there is
+//      deliberately no "unverified" one to fall back to. The earlier schema
+//      had one, which made this module's own rule self-contradictory: it said
+//      unconfirmed figures are withheld while providing a value that carried
+//      them anyway. See SPEC_VERIFICATIONS in partCatalog.ts.
+//
 // Anything that fails is WITHHELD with a named reason, never softened into a
 // lower confidence value. A withheld specification produces no claim; an
-// "unverified" one attached anyway produces a claim with a caveat, and the
+// unconfirmed one attached anyway produces a claim with a caveat, and the
 // caveat is what nobody reads.
 
-import type { AffiliatePart, SpecVerification, UnitSpecField } from '../../../src/lib/retail/partCatalog';
+import { SPEC_VERIFICATIONS, type AffiliatePart, type SpecVerification, type UnitSpecField } from '../../../src/lib/retail/partCatalog';
 import { findGpuMentions, mentionKey } from '../rakuten/gpuModelMatch';
 
 /**
@@ -49,7 +56,7 @@ export interface UnitSpecSource {
   sku: string;
   /** The UPC the source states, when it states one. */
   upc: string | null;
-  /** Where it was read: a URL, or a named document. */
+  /** Where it was read: a URL, or a named document. Never blank. */
   citation: string;
   /** When it was read. */
   observedAt: string;
@@ -70,7 +77,18 @@ export type SpecWithholdReason =
   /** The listing's title names more than one model, or none. */
   | 'variant-ambiguous'
   /** The source carried no usable fields. */
-  | 'source-empty';
+  | 'source-empty'
+  /** The source cites nothing, so nothing about it can be checked. */
+  | 'source-uncited'
+  /**
+   * The source states a verification the schema will not publish.
+   *
+   * Checked at run time as well as in the type, because a source can arrive
+   * from a JSON file a reviewer wrote, where the compiler never saw it. An
+   * 'unverified' value used to be accepted here; now it stops the attachment
+   * rather than being carried through to a published field.
+   */
+  | 'source-not-verified';
 
 export type SpecAttachment =
   | { status: 'attached'; specs: Readonly<Record<string, UnitSpecField>> }
@@ -108,6 +126,12 @@ export function attachUnitSpecs(
   }
   if (part.category === 'gpu' && !namesOneVariant(part.name)) {
     return { status: 'withheld', reason: 'variant-ambiguous' };
+  }
+  if (typeof source.citation !== 'string' || source.citation.trim() === '') {
+    return { status: 'withheld', reason: 'source-uncited' };
+  }
+  if (!(SPEC_VERIFICATIONS as readonly string[]).includes(source.verification)) {
+    return { status: 'withheld', reason: 'source-not-verified' };
   }
 
   const specs: Record<string, UnitSpecField> = {};

@@ -78,7 +78,30 @@ export const AFFILIATE_PART_CATEGORY_TARGETS: Readonly<Record<RetailPartCategory
  * either attributable to a named source for this exact listing, or it is not
  * carried at all.
  */
-export const SPEC_VERIFICATIONS = ['manufacturer-listed', 'retailer-listed', 'unverified'] as const;
+/**
+ * How a specification field was established.
+ *
+ * THERE IS NO 'unverified' MEMBER, AND THAT IS THE POINT.
+ *
+ * An earlier version of this file carried one, on the reasoning that a
+ * recorded-but-unconfirmed figure was worth keeping "so a reviewer can see the
+ * claim". That contradicted the rule the gate is built on: a specification
+ * that has not been established for this exact listing is WITHHELD. A schema
+ * that both says "withheld" and provides a value meaning "not established"
+ * will end up carrying the second, and a figure published with a caveat is
+ * read as a figure by almost everyone who sees it.
+ *
+ * So the two states are attached-and-cited, or absent. A field that cannot say
+ * where it came from does not appear in a published part at all — the reader
+ * below refuses the part rather than dropping the field, and
+ * `attachUnitSpecs` refuses the source rather than downgrading it.
+ */
+export const SPEC_VERIFICATIONS = [
+  /** Published by the manufacturer for this exact product, and cited. */
+  'manufacturer-listed',
+  /** Published by the retailer for this exact listing, and cited. */
+  'retailer-listed',
+] as const;
 
 export type SpecVerification = (typeof SPEC_VERIFICATIONS)[number];
 

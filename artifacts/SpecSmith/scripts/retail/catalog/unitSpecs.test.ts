@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
-import { parseAffiliatePart, type AffiliatePart } from '../../../src/lib/retail/partCatalog';
+import { parseAffiliatePart, SPEC_VERIFICATIONS, type AffiliatePart } from '../../../src/lib/retail/partCatalog';
 import { attachUnitSpecs, namesOneVariant, type UnitSpecSource } from './unitSpecs';
 
 const part = (over: Partial<AffiliatePart> = {}): AffiliatePart => ({
@@ -110,6 +110,40 @@ describe('ambiguous variants do not inherit specifications', () => {
 
   it('the ordinary case is no source, and the ordinary answer is nothing', () => {
     expect(attachUnitSpecs(part(), null)).toEqual({ status: 'withheld', reason: 'no-source' });
+  });
+});
+
+describe('an unverified specification is not attachable and not publishable', () => {
+  it('refuses a source that declares itself unverified', () => {
+    // The schema used to carry an 'unverified' verification, which made the
+    // rule self-contradictory: unconfirmed figures were said to be withheld
+    // while a value existed that carried them anyway. A source arriving from a
+    // reviewer's JSON file never met the compiler, so this is checked at run
+    // time and stops the attachment rather than downgrading it.
+    const declared = { ...source(), verification: 'unverified' } as unknown as UnitSpecSource;
+    expect(attachUnitSpecs(part(), declared)).toEqual({ status: 'withheld', reason: 'source-not-verified' });
+  });
+
+  it('refuses a source that cites nothing', () => {
+    expect(attachUnitSpecs(part(), source({ citation: '   ' }))).toEqual({ status: 'withheld', reason: 'source-uncited' });
+  });
+
+  it('publishes only the two verifications that name where a figure came from', () => {
+    expect([...SPEC_VERIFICATIONS]).toEqual(['manufacturer-listed', 'retailer-listed']);
+    expect(SPEC_VERIFICATIONS as readonly string[]).not.toContain('unverified');
+  });
+
+  it('the reader refuses a published field marked unverified', () => {
+    // Belt and braces: even a hand-edited catalogue cannot smuggle one in.
+    expect(parseAffiliatePart({
+      ...part(),
+      unitSpecs: { length_mm: { value: 302, unit: 'mm', source: 'https://example.invalid/s', verification: 'unverified', observedAt: '2026-09-01T00:00:00.000Z' } },
+    })).toBeNull();
+  });
+
+  it('accepts a retailer-listed figure, which does name its source', () => {
+    const attached = attachUnitSpecs(part(), source({ verification: 'retailer-listed' }));
+    expect(attached).toMatchObject({ status: 'attached' });
   });
 });
 

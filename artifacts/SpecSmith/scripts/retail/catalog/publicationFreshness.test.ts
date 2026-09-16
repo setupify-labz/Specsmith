@@ -31,7 +31,8 @@ const listing = (over: Partial<AffiliatePart> & { id: string; name: string }): A
   trackedAffiliateUrl: `https://click.linksynergy.com/link?id=site&offerid=${over.id}`,
   fetchedAt: generatedAt,
   availability: AVAILABILITY_UNKNOWN,
-  retailPrice: 500,
+  // Inside every category scope: above the highest floor and below the lowest ceiling.
+  retailPrice: 100,
   salePrice: null,
   currency: 'USD',
   canonicalPartId: 'rtx4070',
@@ -55,7 +56,7 @@ const candidates = (spoil?: (part: AffiliatePart) => AffiliatePart) =>
           canonicalPartId: config.category === 'gpu' ? 'rtx4070' : null,
           id: `newegg-${config.category}-${index}`,
           name: `${config.category} ${index}`,
-          retailPrice: 500 + index,
+          retailPrice: 100 + index,
         });
         return index === 0 && spoil ? spoil(part) : part;
       }),
@@ -94,9 +95,9 @@ describe('stale data cannot be published as current', () => {
     const gpu = map.get('gpu') ?? [];
     map.set('gpu', [
       // Cheapest in the feed, and read two days ago. It must not win the slot.
-      { ...gpu[0], id: 'newegg-gpu-stale-bargain', name: 'stale bargain', retailPrice: 1, fetchedAt: at(-(PRICE_FRESHNESS_MS + 60_000)) },
+      { ...gpu[0], id: 'newegg-gpu-stale-bargain', name: 'stale bargain', retailPrice: 70, fetchedAt: at(-(PRICE_FRESHNESS_MS + 60_000)) },
       ...gpu,
-      listing({ id: 'newegg-gpu-spare', name: 'gpu spare', retailPrice: 999 }),
+      listing({ id: 'newegg-gpu-spare', name: 'gpu spare', retailPrice: 199 }),
     ]);
     const parts = buildAffiliatePartCatalog(map, generatedAt).parts;
     // The stale listing is the cheapest in the feed, and this ranking publishes
@@ -111,13 +112,13 @@ describe('stale data cannot display as current', () => {
   const part = listing({ id: 'newegg-gpu-1', name: 'gpu 1', fetchedAt: generatedAt });
 
   it('shows the number while the reading is inside the window', () => {
-    expect(priceView(part, publishedAtMs + 1_000)).toMatchObject({ status: 'fresh', displayAmount: 500 });
+    expect(priceView(part, publishedAtMs + 1_000)).toMatchObject({ status: 'fresh', displayAmount: 100 });
   });
 
   it('carries no number at all once the window has passed', () => {
     const view = priceView(part, publishedAtMs + PRICE_FRESHNESS_MS + 1_000);
     expect(view).toEqual({ status: 'stale', reason: 'expired' });
-    expect(JSON.stringify(view)).not.toContain('500');
+    expect(JSON.stringify(view)).not.toContain('100');
   });
 
   it('sends the shopper to the merchant instead of captioning an old figure', () => {

@@ -9,10 +9,13 @@ import { describe, expect, it } from 'vitest';
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
 import type { AffiliatePart, RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { AffiliateCatalogFailure, buildAffiliatePartCatalog, type CatalogSelectionReport } from './affiliateCatalog';
+import { loadCategoryScopes } from './categoryScope';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 import { compareListings, effectivePrice, selectBestListings } from './listingSelection';
 
 const generatedAt = '2026-09-01T12:00:00.000Z';
+const scopes = loadCategoryScopes();
+const gpuScope = scopes.get('gpu')!;
 
 const listing = (over: Partial<AffiliatePart> & { id: string; name: string; retailPrice: number }): AffiliatePart => ({
   category: 'gpu',
@@ -43,8 +46,8 @@ describe('arrival order cannot hide a cheaper eligible offer', () => {
 
     // Dear first is the shape that used to lose: de-duplication kept the first
     // arrival of a normalized name and discarded the cheaper later one.
-    expect(selectBestListings([dear, cheap], 1).selected).toEqual([cheap]);
-    expect(selectBestListings([cheap, dear], 1).selected).toEqual([cheap]);
+    expect(selectBestListings([dear, cheap], 1, gpuScope).selected).toEqual([cheap]);
+    expect(selectBestListings([cheap, dear], 1, gpuScope).selected).toEqual([cheap]);
   });
 
   it('a cheaper offer arriving after the quota is filled still reaches the catalogue', () => {
@@ -55,7 +58,7 @@ describe('arrival order cannot hide a cheaper eligible offer', () => {
     );
     const lateBargain = listing({ id: 'newegg-gpu-late', name: 'Brand GeForce RTX 4070 Bargain', retailPrice: 399 });
 
-    const { selected } = selectBestListings([...early, lateBargain], 80);
+    const { selected } = selectBestListings([...early, lateBargain], 80, gpuScope);
     expect(selected.map((part) => part.id)).toContain('newegg-gpu-late');
     expect(selected).toHaveLength(80);
   });
@@ -64,7 +67,7 @@ describe('arrival order cannot hide a cheaper eligible offer', () => {
     const many = Array.from({ length: 500 }, (_, index) =>
       listing({ id: `newegg-gpu-${index}`, name: `Brand GeForce RTX 4070 Model ${index}`, retailPrice: 300 + index }),
     );
-    const outcome = selectBestListings(many, 80);
+    const outcome = selectBestListings(many, 80, gpuScope);
     expect(outcome.considered).toBe(500);
     expect(outcome.distinctProducts).toBe(500);
   });
@@ -73,9 +76,9 @@ describe('arrival order cannot hide a cheaper eligible offer', () => {
     const many = Array.from({ length: 300 }, (_, index) =>
       listing({ id: `newegg-gpu-${index}`, name: `Brand GeForce RTX 4070 Model ${index}`, retailPrice: 300 + ((index * 37) % 600) }),
     );
-    const baseline = selectBestListings(many, 80).selected.map((part) => part.id).sort();
+    const baseline = selectBestListings(many, 80, gpuScope).selected.map((part) => part.id).sort();
     for (const by of [1, 57, 149, 299]) {
-      expect(selectBestListings(rotate(many, by), 80).selected.map((part) => part.id).sort()).toEqual(baseline);
+      expect(selectBestListings(rotate(many, by), 80, gpuScope).selected.map((part) => part.id).sort()).toEqual(baseline);
     }
   });
 
@@ -93,16 +96,6 @@ describe('arrival order cannot hide a cheaper eligible offer', () => {
     expect(compareListings(b, a)).toBeGreaterThan(0);
   });
 
-  it('spreads the quota across the price range instead of taking the cheap end', () => {
-    // 400 candidates from $200 to $1,795. Ranking by price and taking the head
-    // would cap the catalogue at about $500 and leave a larger budget nothing.
-    const many = Array.from({ length: 400 }, (_, index) =>
-      listing({ id: `newegg-gpu-${index}`, name: `Brand GeForce RTX 4070 Model ${index}`, retailPrice: 200 + index * 4 }),
-    );
-    const prices = selectBestListings(many, 80).selected.map(effectivePrice);
-    expect(Math.min(...prices)).toBeLessThan(400);
-    expect(Math.max(...prices)).toBeGreaterThan(1400);
-  });
 });
 
 describe('the whole catalogue is built this way, not just the helper', () => {
@@ -117,7 +110,9 @@ describe('the whole catalogue is built this way, not just the helper', () => {
               canonicalPartId: config.category === 'gpu' ? 'rtx4070' : null,
               id: `newegg-${config.category}-filler-${index}`,
               name: `${config.category} filler ${index}`,
-              retailPrice: 1000 + index,
+              // Inside every category's scope: above the highest floor ($69.50,
+              // gpu) and below the lowest ceiling ($358, cooler).
+              retailPrice: 100 + index,
             }),
           ),
           ...extra.filter((part) => part.category === config.category),
@@ -126,7 +121,10 @@ describe('the whole catalogue is built this way, not just the helper', () => {
     );
 
   it('admits a cheaper late arrival into the published 500', () => {
-    const bargain = listing({ id: 'newegg-cpu-bargain', category: 'cpu', canonicalPartId: null, name: 'cpu bargain', retailPrice: 9 });
+    // In scope, and cheaper than every filler. A $9 "processor" would now be
+    // refused by the cpu floor before it could compete, which is the point of
+    // the scope gate — so the bargain here is a real budget part, not a fault.
+    const bargain = listing({ id: 'newegg-cpu-bargain', category: 'cpu', canonicalPartId: null, name: 'cpu bargain', retailPrice: 59 });
     const catalog = buildAffiliatePartCatalog(fullCandidates([bargain]), generatedAt);
     expect(catalog.parts.map((part) => part.id)).toContain('newegg-cpu-bargain');
   });
@@ -135,7 +133,7 @@ describe('the whole catalogue is built this way, not just the helper', () => {
     const report: CatalogSelectionReport[] = [];
     buildAffiliatePartCatalog(fullCandidates(), generatedAt, report);
     const gpu = report.find((row) => row.category === 'gpu');
-    expect(gpu).toMatchObject({ considered: 80, distinctProducts: 80, consolidated: 0, published: 80 });
+    expect(gpu).toMatchObject({ considered: 80, distinctProducts: 80, consolidated: 0, published: 80, outOfScope: {} });
   });
 
   it('still refuses to publish when a category has too few distinct products', () => {

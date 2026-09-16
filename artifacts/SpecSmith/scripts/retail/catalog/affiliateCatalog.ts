@@ -18,6 +18,7 @@ import { detectIdentityConflict } from '../../../src/lib/retail/identityConflict
 import { MAX_CLOCK_SKEW_MS } from '../../../src/lib/retail/offerSnapshot';
 import { PRICE_FRESHNESS_MS } from '../../../src/lib/retail/partPricing';
 import { listingIdentity, normalizeCatalogName, selectBestListings } from './listingSelection';
+import { loadCategoryScopes, type CategoryPriceScope } from './categoryScope';
 
 export { normalizeCatalogName } from './listingSelection';
 
@@ -319,8 +320,14 @@ export class AffiliateCatalogFailure extends Error {
  */
 export interface CatalogSelectionReport {
   category: RetailPartCategory;
-  /** Eligible candidates evaluated — ALL of them, not a prefix. */
+  /** Candidates evaluated — ALL of them, not a prefix. */
   considered: number;
+  /** Rejected as outside the category's declared scope, by reason. */
+  outOfScope: Record<string, number>;
+  /** How coverage was spread: by verified attribute, or by fixed scope tier. */
+  coverage: 'verified-attribute' | 'scope-tier';
+  /** Distinct groups the slots were cycled over. */
+  coverageGroups: number;
   /** Distinct products among them, after duplicate listings were consolidated. */
   distinctProducts: number;
   /** Listings dropped because another listing of the same product was cheaper. */
@@ -334,6 +341,7 @@ export function buildAffiliatePartCatalog(
   candidates: ReadonlyMap<RetailPartCategory, readonly AffiliatePart[]>,
   generatedAt: string,
   report?: CatalogSelectionReport[],
+  scopes: ReadonlyMap<RetailPartCategory, CategoryPriceScope> = loadCategoryScopes(),
 ): AffiliatePartCatalog {
   const selected: AffiliatePart[] = [];
   const ids = new Set<string>();
@@ -354,7 +362,12 @@ export function buildAffiliatePartCatalog(
   for (const config of RETAIL_CATEGORY_CONFIG) {
     const all = candidates.get(config.category) ?? [];
     const fresh = all.filter((part) => !isStaleAtPublication(part));
-    const outcome = selectBestListings(fresh, config.quota, (part) =>
+    const scope = scopes.get(config.category);
+    // No scope, no publication. A category whose bounds nobody set is a
+    // category where any listing at any price would be admitted, which is the
+    // state this replaced.
+    if (scope === undefined) throw new AffiliateCatalogFailure('category-shortfall');
+    const outcome = selectBestListings(fresh, config.quota, scope, (part) =>
       ids.has(part.id) || names.has(listingIdentity(part)),
     );
     if (outcome.selected.length < config.quota) throw new AffiliateCatalogFailure('category-shortfall');
@@ -368,6 +381,9 @@ export function buildAffiliatePartCatalog(
       considered: outcome.considered,
       distinctProducts: outcome.distinctProducts,
       consolidated: outcome.consolidated,
+      outOfScope: outcome.outOfScope,
+      coverage: outcome.coverage,
+      coverageGroups: outcome.coverageGroups,
       stale: all.length - fresh.length,
       published: outcome.selected.length,
     });
