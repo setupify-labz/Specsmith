@@ -56,6 +56,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'content-e2e-offline.yml',
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
+      'newegg-paging-preflight.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
@@ -155,6 +156,26 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(catalog).toMatch(/^\s*push:/m);
     expect(catalog).not.toMatch(/^\s*pull_request(_target)?:/m);
     expect(catalog).not.toMatch(/^\s*schedule:/m);
+
+    const pagingPreflight = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'newegg-paging-preflight.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(new Set([...pagingPreflight.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1])))
+      .toEqual(new Set(CREDENTIAL_SECRETS));
+    expect(pagingPreflight).toMatch(/^\s*workflow_dispatch:/m);
+    expect(pagingPreflight).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|repository_dispatch):/m);
+    expect(pagingPreflight).toContain("if: inputs.confirm == 'inspect'");
+    expect(pagingPreflight).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(pagingPreflight).not.toContain('contents: write');
+    expect(pagingPreflight).toContain('persist-credentials: false');
+    expect(pagingPreflight).toContain('pagingPreflight.ts');
+    expect(pagingPreflight).not.toContain('generate-affiliate-catalog.ts');
+    expect(pagingPreflight).not.toMatch(/git\s+(add|commit|push)/);
+    expect(pagingPreflight).toContain('${RUNNER_TEMP}/paging-preflight/report.json');
+    expect(pagingPreflight).toContain('if-no-files-found: error');
+    expect(pagingPreflight).toContain('test -z "$(git status --porcelain)"');
   });
 
   /**

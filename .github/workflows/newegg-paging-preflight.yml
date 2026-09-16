@@ -1,0 +1,85 @@
+# Three-request diagnosis for the catalogue searches that exceeded the current
+# 40-page walker. It reads page 1 only for motherboard, RAM, and keyboard,
+# uploads the paging header, and cannot write a catalogue or modify the repo.
+
+name: Newegg paging preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type inspect to authorize exactly three page-one feed requests'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: newegg-paging-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    if: inputs.confirm == 'inspect'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify the preflight boundary before touching the feed
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          pnpm exec vitest run scripts/retail/catalog/pagingPreflight.test.ts scripts/retail/coverage/workflowSafety.test.ts
+
+      - name: Mint a short-lived token and inspect three page-one headers
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/paging-preflight"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          pnpm exec tsx scripts/retail/catalog/pagingPreflight.ts \
+            --out "${RUNNER_TEMP}/paging-preflight/report.json"
+
+      - name: Upload the page-one report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: newegg-paging-preflight-${{ github.run_id }}
+          path: ${{ runner.temp }}/paging-preflight/report.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
