@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
       'validate-rakuten-gpu-coverage.yml',
@@ -129,6 +130,22 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(audit).toContain('workflow_dispatch:');
     expect(audit).not.toMatch(/^\s*(push|pull_request|schedule):/m);
 
+    // The voice sample is the only workflow that spends a paid provider's
+    // credits. Manual dispatch only, behind a typed confirmation, so it cannot
+    // be started by a push, a schedule, or a pull request from a fork.
+    const voiceSample = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'elevenlabs-voice-sample.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(voiceSample).toContain('secrets.ELEVENLABS_API_KEY');
+    expect(voiceSample).toContain('workflow_dispatch:');
+    expect(voiceSample).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule):/m);
+    expect(voiceSample).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    // The confirmation gate is the thing standing between a stray dispatch and
+    // a spend, so it is asserted rather than assumed.
+    expect(voiceSample).toContain("inputs.confirm != 'generate'");
+
     const catalog = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'build-retail-affiliate-catalog.yml'), 'utf-8')
       .split('\n')
@@ -138,6 +155,91 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(catalog).toMatch(/^\s*push:/m);
     expect(catalog).not.toMatch(/^\s*pull_request(_target)?:/m);
     expect(catalog).not.toMatch(/^\s*schedule:/m);
+  });
+
+  /**
+   * INVARIANTS THAT APPLY TO EVERY WORKFLOW, INCLUDING ONES NOT YET WRITTEN.
+   *
+   * The inventory above is a hand-written list, and a hand-written list is why
+   * a new workflow could arrive holding a paid API key while pinning its
+   * actions to moving tags, persisting a push token it never needed, and
+   * running without a timeout: the list failed, someone added the filename,
+   * and nothing looked at the file. These three checks read every workflow in
+   * the directory, so the next one is held to the same standard on the day it
+   * lands rather than whenever somebody thinks to look.
+   */
+  const workflowDir = path.join(repoRoot, '.github', 'workflows');
+  const eachWorkflow = () =>
+    fs.readdirSync(workflowDir).sort().map((name) => ({
+      name,
+      body: fs
+        .readFileSync(path.join(workflowDir, name), 'utf-8')
+        .split('\n')
+        .filter((l) => !/^\s*#/.test(l))
+        .join('\n'),
+    }));
+
+  it('pins every action to a commit SHA, never a moving tag', () => {
+    // A tag is repointable by whoever controls the action's repository. Several
+    // of these jobs hold a credential while that code runs.
+    const offenders: string[] = [];
+    for (const { name, body: text } of eachWorkflow()) {
+      for (const [, ref] of text.matchAll(/uses:\s*(\S+)/g)) {
+        if (!/@[0-9a-f]{40}$/.test(ref)) offenders.push(`${name}: ${ref}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('gives every workflow a timeout', () => {
+    const offenders = eachWorkflow()
+      .filter(({ body: text }) => !/timeout-minutes:\s*\d+/.test(text))
+      .map(({ name }) => name);
+    expect(offenders).toEqual([]);
+  });
+
+  it('checks out without a push token everywhere except the one workflow that commits', () => {
+    // `refresh-retail-prices.yml` persists credentials deliberately: it is the
+    // only workflow that pushes, and the only one holding `contents: write`.
+    const offenders = eachWorkflow()
+      .filter(({ name, body: text }) => name !== 'refresh-retail-prices.yml'
+        && /uses:\s*actions\/checkout/.test(text)
+        && !text.includes('persist-credentials: false'))
+      .map(({ name }) => name);
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * A workflow may not invoke a script that is not in the repository.
+   *
+   * ONE DOCUMENTED EXCEPTION. `elevenlabs-voice-sample.yml` was merged in #134
+   * ahead of its script on purpose — registering the file is what makes the
+   * manual dispatch button exist in the GitHub UI, and the entrypoint arrives
+   * with the rest of the MASTER #6 work. The run fails at the generate step
+   * with a module-resolution error, BEFORE any request to the provider, so a
+   * stray dispatch costs nothing. When that script lands, delete the exception
+   * rather than the test.
+   */
+  const PENDING_ENTRYPOINTS = new Set(['scripts/content-automator/elevenLabsVoiceSample.ts']);
+
+  it('invokes only scripts that exist', () => {
+    const missing: string[] = [];
+    for (const { name, body: text } of eachWorkflow()) {
+      for (const [, script] of text.matchAll(/(?:pnpm exec tsx|node)\s+(\S+\.(?:ts|mjs|js))/g)) {
+        if (PENDING_ENTRYPOINTS.has(script)) continue;
+        if (!fs.existsSync(path.join(repoRoot, 'artifacts', 'SpecSmith', script))) missing.push(`${name}: ${script}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('keeps the pending entrypoint list honest', () => {
+    // If a pending script has landed, the exception is stale and the line
+    // above is now hiding a real check. Fails when that happens.
+    const stillPending = [...PENDING_ENTRYPOINTS].filter(
+      (script) => !fs.existsSync(path.join(repoRoot, 'artifacts', 'SpecSmith', script)),
+    );
+    expect(stillPending).toEqual([...PENDING_ENTRYPOINTS]);
   });
 
   it('the live sweep no longer runs on every change under scripts/retail', () => {
