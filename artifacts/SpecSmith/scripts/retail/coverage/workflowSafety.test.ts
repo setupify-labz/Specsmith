@@ -154,6 +154,13 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(dryRun).toContain('--dry-run');
     expect(dryRun).toMatch(/--out "\$\{RUNNER_TEMP\}/);
     expect(dryRun).toContain('test -z "$(git status --porcelain)"');
+    // A dry run that fell short of a quota is a FAILED run. The first version
+    // swallowed the generator's exit code and the job went green while three
+    // categories had published nothing, which is the one result that must
+    // never look like a pass.
+    expect(dryRun).toContain('dry-run-exit-code');
+    expect(dryRun).toMatch(/exit "\$\{code\}"/);
+    expect(dryRun).not.toContain('|| true');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can

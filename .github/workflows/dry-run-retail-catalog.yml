@@ -77,15 +77,22 @@ jobs:
           RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
           rm -f "${token_file}"
           export RAKUTEN_API_ACCESS_TOKEN
-          # A shortfall exits non-zero BY DESIGN and quotas are never lowered to
-          # avoid it. The report is written either way, so the run is still
-          # uploaded for review; `|| true` keeps the upload step reachable and
-          # the outcome is recorded explicitly below.
+          # A shortfall exits non-zero BY DESIGN and quotas are never lowered
+          # to avoid it. The report is written either way, so the exit code is
+          # HELD rather than discarded: the upload step below runs on
+          # `if: always()` and gets the report regardless, and the run is then
+          # failed for real at the end.
+          #
+          # The first version swallowed the code with `set +e` and only echoed
+          # it. The run went GREEN while three categories had published nothing
+          # - exactly the shape of result that must never look like a pass.
           set +e
           pnpm exec tsx scripts/retail/catalog/generate-affiliate-catalog.ts \
             --dry-run --out "${RUNNER_TEMP}/dry-run/proposed-retail-parts.json"
-          echo "generator_exit=$?" | tee -a "${GITHUB_OUTPUT:-/dev/null}"
+          generator_exit=$?
           set -e
+          echo "${generator_exit}" > "${RUNNER_TEMP}/dry-run-exit-code"
+          echo "Generator exit code: ${generator_exit}"
 
       - name: Upload the proposed catalogue and selection report
         if: always()
@@ -101,3 +108,16 @@ jobs:
         run: |
           set -euo pipefail
           test -z "$(git status --porcelain)"
+
+      # Last, so the report is always uploaded first. A dry run that fell short
+      # of a quota is a FAILED run; it is not allowed to look like a pass
+      # merely because the report it produced was written successfully.
+      - name: Fail the run if the dry run did
+        if: always()
+        run: |
+          set -euo pipefail
+          code="$(cat "${RUNNER_TEMP}/dry-run-exit-code" 2>/dev/null || echo 1)"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Dry run exited ${code} - see the per-category report above. Quotas were NOT lowered."
+            exit "${code}"
+          fi
