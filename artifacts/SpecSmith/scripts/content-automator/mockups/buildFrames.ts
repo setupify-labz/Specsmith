@@ -57,6 +57,21 @@ export const GAME_FRAMES: readonly GameFrame[] = [
   },
 ];
 
+/**
+ * Short-form platforms draw their own controls over the frame: captions and
+ * account chrome across the top, caption/CTA furniture across the bottom, and
+ * a column of action buttons down the right edge. Nothing that has to be read
+ * — least of all a disclosure — may sit underneath them.
+ *
+ * These reserves are deliberately generous. Losing a little canvas costs
+ * nothing; losing the disclosure behind a platform's caption bar would make
+ * the frame dishonest on the one platform it was made for.
+ */
+const SAFE_TOP_PX = 240;
+const SAFE_BOTTOM_PX = 390;
+const SAFE_RIGHT_PX = 120;
+const SAFE_LEFT_PX = 56;
+
 const SHARED_CSS = `
   :root {
     --bg: #0A0A0F; --border: rgba(255,255,255,0.08);
@@ -67,51 +82,53 @@ const SHARED_CSS = `
   body {
     background: var(--bg); color: var(--text);
     font-family: Arial, Helvetica, sans-serif;
-    display: flex; flex-direction: column; padding: 64px 56px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: ${SAFE_TOP_PX}px ${SAFE_RIGHT_PX}px ${SAFE_BOTTOM_PX}px ${SAFE_LEFT_PX}px;
   }
   .disclosure {
-    font-size: 30px; line-height: 1.35; text-align: center;
+    font-size: 31px; line-height: 1.35; text-align: center;
     background: rgba(0,0,0,0.75); border: 1px solid var(--border);
     border-radius: 14px; padding: 20px 24px;
   }
-  .footer { margin-top: 40px; text-align: center; }
+  .footer { margin-top: 26px; text-align: center; }
   .badge {
-    display: inline-block; font-size: 24px; font-weight: 700;
+    display: inline-block; font-size: 23px; font-weight: 700;
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-2);
-    border: 1px solid var(--border); border-radius: 999px; padding: 14px 26px;
+    border: 1px solid var(--border); border-radius: 999px; padding: 12px 24px;
   }
 `;
 
 const FRAME_CSS = `
-  .context { margin-top: 72px; text-align: center; }
+  .context { margin-top: 40px; text-align: center; }
   .eyebrow {
-    font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 25px; letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--text-2); font-weight: 700;
   }
-  .game { font-size: 88px; font-weight: 900; margin-top: 16px; line-height: 1.05; }
-  .settings { font-size: 32px; color: var(--text-2); margin-top: 14px; }
-  .cards { margin-top: 72px; display: flex; flex-direction: column; gap: 32px; }
+  .game { font-size: 76px; font-weight: 900; margin-top: 10px; line-height: 1.05; }
+  .settings { font-size: 29px; color: var(--text-2); margin-top: 8px; }
+  .cards { margin-top: 34px; display: flex; flex-direction: column; gap: 22px; }
   .card {
-    border-radius: 24px; padding: 40px 44px;
-    display: flex; align-items: center; justify-content: space-between; gap: 28px;
+    border-radius: 22px; padding: 30px 34px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
   }
   .who { min-width: 0; }
-  .side { font-size: 26px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-  .parts { font-size: 38px; font-weight: 700; margin-top: 10px; line-height: 1.25; }
+  .side { font-size: 24px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+  .parts { font-size: 35px; font-weight: 700; margin-top: 8px; line-height: 1.24; }
   .num { text-align: right; flex-shrink: 0; }
-  .fps { font-size: 132px; font-weight: 900; line-height: 1; }
+  .fps { font-size: 116px; font-weight: 900; line-height: 1; }
   .fpslabel {
-    font-size: 24px; color: var(--text-2); margin-top: 8px;
+    font-size: 22px; color: var(--text-2); margin-top: 6px;
     letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700;
   }
-  .range { font-size: 27px; color: var(--text-2); margin-top: 12px; }
+  .range { font-size: 24px; color: var(--text-2); margin-top: 8px; }
+  /* Directly beneath the cards, not pushed to the foot of the frame. */
   .verdict {
-    margin-top: auto; text-align: center;
-    border-top: 1px solid var(--border); padding-top: 32px;
+    margin-top: 26px; text-align: center;
+    border-top: 1px solid var(--border); padding-top: 24px;
   }
-  .verdict .line1 { font-size: 38px; color: var(--text-2); line-height: 1.35; }
+  .verdict .line1 { font-size: 36px; color: var(--text-2); line-height: 1.3; }
   .verdict .line1 strong { color: var(--text); font-weight: 800; }
-  .verdict .line2 { font-size: 31px; color: var(--text-2); margin-top: 18px; line-height: 1.4; }
+  .verdict .line2 { font-size: 28px; color: var(--text-2); margin-top: 14px; line-height: 1.38; }
 `;
 
 function page(title: string, css: string, body: string): string {
@@ -147,7 +164,7 @@ function card(
       <div class="num">
         <div class="fps" style="color:${build.colour}">${value.estimate}</div>
         <div class="fpslabel">Estimated FPS</div>
-        <div class="range">model range ${value.min}–${value.max}</div>
+        <div class="range">range ${value.min}–${value.max}</div>
       </div>
     </div>`;
 }
@@ -167,27 +184,27 @@ ${card(BUILD_B, frame.b)}
 
   <div class="verdict">
     <div class="line1">In this one game, <strong>${higher}</strong> has the higher point estimate.</div>
-    <div class="line2">The model ranges overlap, so this does not establish a real-world winner.</div>
+    <div class="line2">Ranges are a model convention, not measured uncertainty. They overlap here, so this does not establish a real-world winner.</div>
   </div>`;
   return page(`${frame.game} — editorial frame`, FRAME_CSS, body);
 }
 
 const TITLE_CSS = `
-  .middle { margin: auto 0; text-align: center; }
+  .middle { text-align: center; margin-top: 40px; }
   .kicker {
-    font-size: 28px; letter-spacing: 0.18em; text-transform: uppercase;
+    font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--text-2); font-weight: 700;
   }
-  .question { font-size: 104px; font-weight: 900; line-height: 1.1; margin-top: 28px; }
-  .answer { font-size: 46px; color: var(--text-2); margin-top: 36px; line-height: 1.35; }
-  .builds { margin-top: 72px; display: flex; flex-direction: column; gap: 22px; }
+  .question { font-size: 72px; font-weight: 900; line-height: 1.16; margin-top: 20px; }
+  .answer { font-size: 38px; color: var(--text-2); margin-top: 24px; line-height: 1.35; }
+  .builds { margin-top: 48px; display: flex; flex-direction: column; gap: 20px; }
   .row {
-    display: flex; align-items: center; gap: 22px; text-align: left;
-    border-radius: 20px; padding: 26px 32px;
+    display: flex; align-items: center; gap: 20px; text-align: left;
+    border-radius: 20px; padding: 24px 30px;
   }
-  .swatch { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; }
-  .rowside { font-size: 26px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-  .rowparts { font-size: 34px; font-weight: 700; margin-top: 6px; line-height: 1.25; }
+  .swatch { width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0; }
+  .rowside { font-size: 24px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+  .rowparts { font-size: 32px; font-weight: 700; margin-top: 6px; line-height: 1.25; }
 `;
 
 /**
@@ -210,8 +227,8 @@ export function titleCardHtml(): string {
 
   const body = `  <div class="middle">
     <div class="kicker">Two builds, compared</div>
-    <div class="question">Which parts<br />suit your games?</div>
-    <div class="answer">It depends on which games.</div>
+    <div class="question">A higher FPS estimate<br />isn&rsquo;t a proven winner.</div>
+    <div class="answer">It depends on which games you play.</div>
 
     <div class="builds">
 ${row(BUILD_A, "rgba(155,148,255,0.10)", "rgba(155,148,255,0.35)")}
