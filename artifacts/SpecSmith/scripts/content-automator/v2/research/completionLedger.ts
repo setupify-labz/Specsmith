@@ -50,6 +50,8 @@ const CONTRACT = "v2/research/creativeContract.ts";
 const INGEST = "v2/research/ingestion.ts";
 const PASS = "v2/research/researchPass.ts";
 const LOOP = "v2/research/closedLoop.ts";
+const STRICT = "v2/research/strictEvidenceGate.ts";
+const MENTION = "v2/research/claimMention.ts";
 const FIXTURE = "v2/research/engineeringFixture.ts";
 const PIPELINE = "endToEndOfflinePipeline.ts";
 
@@ -59,6 +61,8 @@ const T_EVIDENCE = "v2/research/evidence.test.ts";
 const T_CONTRACT = "v2/research/creativeContract.test.ts";
 const T_INGEST = "v2/research/ingestion.test.ts";
 const T_LOOP = "v2/research/closedLoop.test.ts";
+const T_MENTION = "v2/research/claimMention.test.ts";
+const T_AUDIT = "v2/research/creativeContract.audit.test.ts";
 
 export const MASTER2_LEDGER: readonly SectionRecord[] = [
   { section: 1, name: "Zero-dollar operating requirement", status: "tested", modules: [PASS, MODEL], callers: [PIPELINE], tests: [T_LOOP],
@@ -121,13 +125,13 @@ export const MASTER2_LEDGER: readonly SectionRecord[] = [
     note: "Requires beliefs (section 28) and new evidence arriving over time. Neither exists yet." },
   { section: 30, name: "Disconfirmation search", status: "partially-implemented", modules: [CONFIDENCE, EVIDENCE], callers: [PASS], tests: [T_EVIDENCE],
     note: "The interpretation half is real: contradicting evidence is a first-class stance, conflicts are preserved, and confidence names what would falsify a claim. Actively GOING TO LOOK for disconfirming sources is blocked with section 21." },
-  { section: 31, name: "Self-confirmation protection", status: "tested", modules: [CONTRACT, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT],
+  { section: 31, name: "Self-confirmation protection", status: "tested", modules: [CONTRACT, STRICT, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT, T_AUDIT],
     note: "No function in the contract accepts a parameter expressing what the creative side wants. A claim becomes safe only by clearing its own risk class's evidence bar, and the pipeline demonstrates research refusing a hook." },
   { section: 32, name: "Claim-risk classification", status: "tested", modules: [MODEL, CLAIMS], callers: [PASS], tests: [T_CLAIMS],
     note: "MINIMUM_RISK_BY_KIND is a floor a caller cannot argue below: asking for low risk on a price claim still yields high." },
-  { section: 33, name: "Content-evidence contradiction check", status: "tested", modules: [CONTRACT, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT, T_LOOP],
-    note: "checkScriptAgainstResearch scans every line a viewer hears or reads and emits findings in the same severity vocabulary MASTER #1's slop report uses, so the pipeline's existing blocking logic applies without a second rule set. It does not duplicate anti-slop: that module judges language, this one judges evidence." },
-  { section: 34, name: "Research -> Creative Director contract", status: "tested", modules: [CONTRACT, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT],
+  { section: 33, name: "Content-evidence contradiction check", status: "tested", modules: [CONTRACT, STRICT, MENTION, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT, T_LOOP, T_MENTION, T_AUDIT],
+    note: "The production path is checkScriptAgainstResearchStrict, which fails closed: a generic hedge such as may or roughly does not excuse an unsupported or disputed assertion, because a hedge communicates uncertainty without supplying evidence. Matching lives in one shared module so the two gates cannot drift apart, and it compares normalized figures and identifiers so the same assertion written differently still matches. Findings use the severity vocabulary MASTER #1 already blocks on. It does not duplicate anti-slop: that module judges language, this one judges evidence." },
+  { section: 34, name: "Research -> Creative Director contract", status: "tested", modules: [CONTRACT, STRICT, LOOP], callers: [LOOP, PIPELINE], tests: [T_CONTRACT, T_AUDIT],
     note: "Safe claims, unsafe claims with what would fix them, disputed claims, grounded hook material, open questions, required wording and attribution. Structured, never an essay." },
   { section: 35, name: "Creative decision traceability", status: "partially-implemented", modules: [MODEL, PASS], callers: [PASS], tests: [T_LOOP],
     note: "The chain from snapshot to observation to claim to confidence to contract entry is complete and traceable by id. The link onward to a creative decision and then to analytics needs MASTER #1's revision lineage joined to published performance, and nothing has been published." },
@@ -197,10 +201,10 @@ export const MASTER2_LEDGER: readonly SectionRecord[] = [
     note: "Machine-readable result plus a human-readable render, deliberately with no headline score: a single number would be the first thing read and the last thing checked." },
   { section: 68, name: "No research theater", status: "tested", modules: [LOOP, FIXTURE], callers: [PIPELINE], tests: [T_LOOP],
     note: "Every module marked integrated or tested here is reachable from the offline pipeline, and this ledger's own test refuses a caller claim unless the import genuinely exists. Sections with no honest caller are recorded as blocked rather than given one." },
-  { section: 69, name: "Negative controls", status: "tested", modules: [EVIDENCE, CONTRACT, INGEST, CONFIDENCE], callers: [PIPELINE], tests: [T_EVIDENCE, T_CONTRACT, T_INGEST],
+  { section: 69, name: "Negative controls", status: "tested", modules: [EVIDENCE, CONTRACT, INGEST, CONFIDENCE, MENTION], callers: [PIPELINE], tests: [T_EVIDENCE, T_CONTRACT, T_INGEST, T_MENTION],
     note: "Each load-bearing guard has a test that fails when the guard is disabled; the controls and what each proves are recorded in the commit message." },
-  { section: 70, name: "Adversarial fixtures", status: "tested", modules: [FIXTURE], callers: [LOOP, PIPELINE], tests: [T_LOOP, T_EVIDENCE],
-    note: "Laptop-versus-desktop, exact-SKU mismatch, stale price, patch mismatch, frame generation, press-release repetition, missing publication date, search-summary retrieval, marketing presented as measurement, malformed ingestion, duplicate snapshot and synthetic-into-production are each exercised." },
+  { section: 70, name: "Adversarial fixtures", status: "tested", modules: [FIXTURE, MENTION], callers: [LOOP, PIPELINE], tests: [T_LOOP, T_EVIDENCE, T_MENTION],
+    note: "Laptop-versus-desktop, exact-SKU mismatch, stale price, patch mismatch, frame generation, press-release repetition, missing publication date, search-summary retrieval, marketing presented as measurement, malformed ingestion, duplicate snapshot and synthetic-into-production are each exercised. Gate-evasion is covered separately: hedging, negation, question form, aliased subjects, percent and price written several ways, spelled numbers, spoken prices, full-width digits and invisible characters inside an identifier." },
   { section: 71, name: "Determinism", status: "tested", modules: [PASS, SOURCES, EVIDENCE], callers: [LOOP], tests: [T_LOOP, T_SOURCES],
     note: "No module reads the clock: every time-dependent function takes `now`. Source ranking breaks ties on snapshotId. Identical inputs produce byte-identical results, asserted by test." },
   { section: 72, name: "Synthetic test data boundary", status: "tested", modules: [INGEST, FIXTURE], callers: [PIPELINE], tests: [T_INGEST, T_LOOP],

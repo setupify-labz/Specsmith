@@ -154,6 +154,17 @@ export interface BuildCrateState {
 export type UiRenderSurfaceState = CompareState | BuilderState | UpgradeState | BuildCrateState;
 
 export interface UiRenderRequest {
+  /**
+   * Frame the capture on this text instead of the surface's default anchor.
+   *
+   * Compare's default anchor is the Build A name, which always lands the crop
+   * on the summary card. A storyboard that wants a specific band of the
+   * per-game table has no way to ask for it otherwise.
+   *
+   * It is part of the state identifier, so two frames of the same page framed
+   * on different rows cannot share an identity.
+   */
+  focusText?: string;
   state: UiRenderSurfaceState;
   captureType: UiCaptureType;
   viewport?: UiViewport;
@@ -163,7 +174,21 @@ export interface UiRenderRequest {
   fps?: number;
 }
 
-const SURFACES: readonly UiRenderSurface[] = ["compare", "builder", "upgrade-gpu", "upgrade-cpu", "build-crate"];
+/**
+ * The surfaces the deterministic renderer can actually capture.
+ *
+ * Exported so that callers which need to know whether a proposed visual is a
+ * real product capture read this list rather than duplicating it and drifting.
+ */
+export const UI_RENDER_SURFACES: readonly UiRenderSurface[] = [
+  "compare",
+  "builder",
+  "upgrade-gpu",
+  "upgrade-cpu",
+  "build-crate",
+];
+
+const SURFACES: readonly UiRenderSurface[] = UI_RENDER_SURFACES;
 const RESOLUTIONS = ["1080p", "1440p", "4k"] as const;
 const PRESETS = ["low", "medium", "high", "ultra"] as const;
 
@@ -254,6 +279,14 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
 
   const viewport = validateViewport((raw.viewport as UiViewport | undefined) ?? VERTICAL_1080x1920);
 
+  let focusText: string | undefined;
+  if (raw.focusText !== undefined) {
+    if (typeof raw.focusText !== "string" || raw.focusText.trim() === "") {
+      throw new UiRenderStateError("malformed", "focusText must be a non-empty string when provided.");
+    }
+    focusText = raw.focusText.trim();
+  }
+
   let durationSeconds: number | undefined;
   let fps: number | undefined;
   if (captureType === "sequence") {
@@ -329,7 +362,7 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
       throw new UiRenderStateError("unknown-surface", `Unhandled surface ${surface}.`);
   }
 
-  return { state, captureType, viewport, durationSeconds, fps };
+  return { state, captureType, viewport, durationSeconds, fps, focusText };
 }
 
 /**
@@ -360,6 +393,7 @@ export function stateIdentifier(request: UiRenderRequest): string {
       parts.push(`seed${s.seed}`);
       break;
   }
+  if (request.focusText !== undefined) parts.push(`focus:${request.focusText}`);
   parts.push(request.captureType);
   const v = request.viewport ?? VERTICAL_1080x1920;
   parts.push(`${v.width}x${v.height}@${v.deviceScaleFactor}`);

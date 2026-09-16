@@ -165,13 +165,17 @@ export default function Compare() {
         fullGame: g.name,
         'Build A': fpsA,
         'Build B': fpsB,
-        winner: fpsA >= fpsB ? 'A' : 'B',
+        // A tie is a tie. Awarding it to Build A inflated one side's lead
+        // count and made the tally disagree with the average frame rate it sits
+        // next to, which is the opposite of what a comparison is for.
+        winner: fpsA === fpsB ? 'tie' : fpsA > fpsB ? 'A' : 'B',
       };
     });
   }, [canCompare, selectedGpuA, selectedCpuA, selectedGpuB, selectedCpuB, resolution, preset]);
 
   const winsA = chartData.filter(d => d.winner === 'A').length;
   const winsB = chartData.filter(d => d.winner === 'B').length;
+  const ties = chartData.filter(d => d.winner === 'tie').length;
   const avgFpsA = getAverageFps(chartData.map(d => d['Build A']));
   const avgFpsB = getAverageFps(chartData.map(d => d['Build B']));
   const maxChartFps = Math.max(1, ...chartData.flatMap(d => [d['Build A'], d['Build B']]));
@@ -292,7 +296,17 @@ export default function Compare() {
                 </div>
                 {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsA}</div>}
               </div>
-              <div className="flex items-center justify-center text-secondary-custom font-bold text-lg">VS</div>
+              <div className="flex flex-col items-center justify-center px-1">
+                <span className="text-secondary-custom font-bold text-lg">VS</span>
+                {chartData.length > 0 && (
+                  <span
+                    className="text-secondary-custom text-xs mt-1 text-center leading-tight"
+                    data-testid="comparison-tie-count"
+                  >
+                    {ties} {ties === 1 ? 'tie' : 'ties'}
+                  </span>
+                )}
+              </div>
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.b}15`, border: `1px solid ${COLORS.b}30` }}>
                 <div className="text-3xl font-black" style={{ color: COLORS.b }}>{winsB}</div>
                 <div className="text-secondary-custom text-xs mt-1">Modelled Game Leads</div>
@@ -373,11 +387,14 @@ export default function Compare() {
                           <span
                             className="text-xs font-bold px-2 py-0.5 rounded-full"
                             style={{
-                              color: row.winner === 'A' ? COLORS.a : COLORS.b,
-                              backgroundColor: `${row.winner === 'A' ? COLORS.a : COLORS.b}18`
+                              color: row.winner === 'tie' ? 'var(--ff-text-2)' : row.winner === 'A' ? COLORS.a : COLORS.b,
+                              backgroundColor:
+                                row.winner === 'tie'
+                                  ? 'var(--ff-surface-2)'
+                                  : `${row.winner === 'A' ? COLORS.a : COLORS.b}18`
                             }}
                           >
-                            Build {row.winner}
+                            {row.winner === 'tie' ? 'Tie' : `Build ${row.winner}`}
                           </span>
                         </td>
                       </motion.tr>

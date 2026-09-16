@@ -1,0 +1,110 @@
+{
+  "conceptId": "claude-batch-three-checks",
+  "axes": {
+    "audienceExperience": "investigator",
+    "explanatoryStructure": "question-evidence-boundary",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Same price, different parts. What does this comparison page actually settle?",
+  "viewerTakeaway": "I can apply a repeatable check to any comparison page and know when its numbers are too close to act on.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate",
+    "disclosure.model-range"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 5,
+      "narration": "Here is a short check you can run on any comparison page, starting with the page in front of you.",
+      "onScreenText": "Question, evidence, boundary",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 5,
+      "endSecond": 13,
+      "narration": "First, write down what would actually answer your question, before you look for the bigger number.",
+      "onScreenText": "What would answer this?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 13,
+      "endSecond": 28,
+      "narration": "On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own estimates, so the model does not separate them on frame rate. These are model estimates.",
+      "onScreenText": "Read the range, not just the value",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 28,
+      "endSecond": 37,
+      "narration": "Then name what is still unsettled. Here that is everything outside frame rate, and this page does not cover it.",
+      "onScreenText": "What is still unsettled?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 37,
+      "endSecond": 43,
+      "narration": "Run that check on the comparison you actually care about.",
+      "onScreenText": "Run the check",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ]
+  }
+}

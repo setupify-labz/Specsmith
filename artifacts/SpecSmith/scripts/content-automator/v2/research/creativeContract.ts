@@ -35,6 +35,7 @@ import {
   type SourceSnapshot,
 } from "./model.ts";
 import { meetsAcceptableUncertainty, requiredStateForRisk, weakestState } from "./confidence.ts";
+import { mentionsClaim } from "./claimMention.ts";
 import type { PlatformScriptStoryboard } from "../../types.ts";
 
 /** A claim the Creative Director may state, with the wording it must use. */
@@ -374,53 +375,4 @@ export function checkScriptAgainstResearch(
   }
 
   return findings;
-}
-
-/**
- * Generic domain vocabulary that identifies nothing.
- *
- * Every SpecSmith script says "gpu" and "fps". Letting those count towards a
- * match means every line matches every hardware claim, and the gate then blocks
- * copy that never mentioned the claim at all — which is exactly what an earlier
- * version of this function did to a title reading "Pick the GPU before
- * SpecSmith reveals the names".
- */
-const GENERIC_TERMS = new Set([
-  "gpu", "cpu", "card", "cards", "fps", "price", "prices", "faster", "slower",
-  "better", "worse", "performance", "specs", "spec", "build", "pc", "game",
-  "games", "gaming", "memory", "vram", "new", "best", "buy", "value",
-]);
-
-const STOP_WORDS = new Set([
-  "the", "a", "an", "is", "are", "was", "were", "and", "or", "of", "to", "in", "on",
-  "at", "for", "with", "this", "that", "it", "its", "than", "more", "less", "be",
-  "has", "have", "costs", "cost", "gets", "get",
-]);
-
-/**
- * Whether a line is talking about a claim.
- *
- * Matching is on DISTINCTIVE tokens — model identifiers, figures, proper nouns
- * — because a script never restates a proposition verbatim, and the generic
- * words it shares with every other script carry no evidence that this
- * particular claim is being made.
- *
- * Tokenization deliberately keeps hyphens and digits together: "gpu-a" is the
- * identifying token, and splitting it into "gpu" + "a" both destroys the
- * identity and leaves behind a generic word that matches everything.
- */
-function mentionsClaim(text: string, proposition: string): boolean {
-  const tokenize = (value: string) =>
-    value.toLowerCase().split(/[^a-z0-9$%.\-]+/).map((token) => token.replace(/^[.\-]+|[.\-]+$/g, "")).filter(Boolean);
-
-  const distinctive = [...new Set(tokenize(proposition))].filter(
-    (token) => token.length > 2 && !STOP_WORDS.has(token) && !GENERIC_TERMS.has(token),
-  );
-  if (distinctive.length === 0) return false;
-
-  const haystack = new Set(tokenize(text));
-  const hits = distinctive.filter((token) => haystack.has(token)).length;
-
-  // Two distinct identifying tokens, or every token of a very short claim.
-  return hits >= 2 || (distinctive.length <= 2 && hits === distinctive.length);
 }
