@@ -72,15 +72,20 @@ async function sweepOne(
 ): Promise<GpuSweepOutcome> {
   try {
     const result = await fetchNeweggOffersForGpu(gpu, deps);
-    // Rejections are counted and dropped here. They are diagnostic — the
-    // coverage tool exists to report them — and a snapshot that carried the
-    // listings it refused would be publishing the wrong cards' prices.
+    // Rejections travel as DIAGNOSTICS and are never persisted: a snapshot
+    // that carried the listings it refused would be publishing the wrong
+    // cards' prices. `buildSnapshot` does not read them.
     return {
       gpuId: gpu.id,
       status: 'ok',
       offers: result.offers,
       emptyResult: result.emptyResult,
       itemsSeen: result.itemsSeen,
+      // Diagnostic. Carried, not persisted — see GpuSweepOutcome.
+      rejected: result.rejected,
+      pagesRead: result.pagesRead,
+      feedTotalPages: result.feedTotalPages,
+      totalMatches: result.totalMatches,
     };
   } catch (cause) {
     // Classified from the error's TYPE, never its message: a message can quote

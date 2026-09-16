@@ -363,11 +363,35 @@ export class AffiliateCatalogFailure extends Error {
 }
 
 /**
+ * Whether a listing's reading is still current at the instant it would be
+ * published.
+ *
+ * A catalogue is written from one sweep, so a listing read before the
+ * freshness window opened was read too long ago to be published as current.
+ * It is refused at build time rather than written and hidden by the card
+ * later: a file of listings the reader will withhold is a publication that
+ * looks successful and shows nothing.
+ *
+ * A reading stamped in the future is refused too, rather than treated as
+ * maximally fresh — otherwise the cheapest way to make an old price look
+ * current would be to write tomorrow's date on it.
+ */
+export function isFreshAtPublication(part: AffiliatePart, generatedAt: string): boolean {
+  const publishedAt = Date.parse(generatedAt);
+  const read = Date.parse(part.fetchedAt);
+  if (!Number.isFinite(read) || !Number.isFinite(publishedAt)) return false;
+  if (read - publishedAt > MAX_CLOCK_SKEW_MS) return false;
+  return publishedAt - read <= PRICE_FRESHNESS_MS;
+}
+
+/**
  * How the quota was filled, per category. For the run's log, so a selection
  * that quietly stopped considering most of the feed is visible.
  */
 export interface CatalogSelectionReport {
   category: RetailPartCategory;
+  /** Slots the category asked for. Never lowered to match what was found. */
+  quota: number;
   /** Candidates evaluated — ALL of them, not a prefix. */
   considered: number;
   /** Rejected as outside the category's declared scope, by reason. */
@@ -383,6 +407,91 @@ export interface CatalogSelectionReport {
   /** Candidates refused because their reading was already stale at publication. */
   stale: number;
   published: number;
+  /** What the selected listings cost, low to high. Null when none was selected. */
+  range: CatalogSelectionRange | null;
+}
+
+/**
+ * Adds the per-category price range to the selection report.
+ *
+ * Reported rather than inferred by a reader: the range is the fastest way to
+ * see whether a category's coverage actually spans its scope or has collapsed
+ * to one end of it.
+ */
+export interface CatalogSelectionRange {
+  lowUsd: number;
+  highUsd: number;
+}
+
+/**
+ * Chooses what each category would publish, and reports why, WITHOUT refusing.
+ *
+ * Split out of `buildAffiliatePartCatalog` so a dry run and a real build make
+ * the same choices through the same code. The publication GATES stay in the
+ * builder: this function never throws, so a shortfall is something a caller
+ * can look at rather than something that stops the run before it can be
+ * measured. A build still refuses — see below — it just refuses after the
+ * report exists instead of instead of it.
+ */
+export function planCatalogSelection(
+  candidates: ReadonlyMap<RetailPartCategory, readonly AffiliatePart[]>,
+  generatedAt: string,
+  scopes: ReadonlyMap<RetailPartCategory, CategoryPriceScope> = loadCategoryScopes(),
+): { selected: AffiliatePart[]; report: CatalogSelectionReport[] } {
+  const selected: AffiliatePart[] = [];
+  const report: CatalogSelectionReport[] = [];
+  const ids = new Set<string>();
+  const names = new Set<string>();
+
+  for (const config of RETAIL_CATEGORY_CONFIG) {
+    const all = candidates.get(config.category) ?? [];
+    const fresh = all.filter((part) => isFreshAtPublication(part, generatedAt));
+    const scope = scopes.get(config.category);
+    // No scope, no publication. A category whose bounds nobody set is a
+    // category where any listing at any price would be admitted, which is the
+    // state this replaced. Reported as a total shortfall rather than thrown,
+    // so a dry run names the category instead of dying on the first one.
+    if (scope === undefined) {
+      report.push({
+        category: config.category,
+        quota: config.quota,
+        considered: all.length,
+        outOfScope: { 'no-scope-declared': all.length },
+        coverage: 'scope-tier',
+        coverageGroups: 0,
+        distinctProducts: 0,
+        consolidated: 0,
+        stale: all.length - fresh.length,
+        published: 0,
+        range: null,
+      });
+      continue;
+    }
+    const outcome = selectBestListings(fresh, config.quota, scope, (part) =>
+      ids.has(part.id) || names.has(listingIdentity(part)),
+    );
+    for (const part of outcome.selected) {
+      ids.add(part.id);
+      names.add(listingIdentity(part));
+    }
+    selected.push(...outcome.selected);
+    const prices = outcome.selected.map((part) => part.salePrice ?? part.retailPrice);
+    report.push({
+      category: config.category,
+      quota: config.quota,
+      considered: outcome.considered,
+      outOfScope: outcome.outOfScope,
+      coverage: outcome.coverage,
+      coverageGroups: outcome.coverageGroups,
+      distinctProducts: outcome.distinctProducts,
+      consolidated: outcome.consolidated,
+      stale: all.length - fresh.length,
+      published: outcome.selected.length,
+      range: prices.length === 0 ? null : { lowUsd: Math.min(...prices), highUsd: Math.max(...prices) },
+    });
+  }
+
+  return { selected, report };
 }
 
 export function buildAffiliatePartCatalog(
@@ -391,50 +500,12 @@ export function buildAffiliatePartCatalog(
   report?: CatalogSelectionReport[],
   scopes: ReadonlyMap<RetailPartCategory, CategoryPriceScope> = loadCategoryScopes(),
 ): AffiliatePartCatalog {
-  const selected: AffiliatePart[] = [];
-  const ids = new Set<string>();
-  const names = new Set<string>();
-  // A catalogue is written from one sweep, so a listing whose reading is
-  // already outside the freshness window at publication time was read too long
-  // ago to be published as current. It is refused here rather than written and
-  // hidden by the card later: a file full of listings the reader will withhold
-  // is a publication that looks successful and shows nothing.
-  const publishedAt = Date.parse(generatedAt);
-  const isStaleAtPublication = (part: AffiliatePart): boolean => {
-    const read = Date.parse(part.fetchedAt);
-    if (!Number.isFinite(read) || !Number.isFinite(publishedAt)) return true;
-    if (read - publishedAt > MAX_CLOCK_SKEW_MS) return true;
-    return publishedAt - read > PRICE_FRESHNESS_MS;
-  };
-
-  for (const config of RETAIL_CATEGORY_CONFIG) {
-    const all = candidates.get(config.category) ?? [];
-    const fresh = all.filter((part) => !isStaleAtPublication(part));
-    const scope = scopes.get(config.category);
-    // No scope, no publication. A category whose bounds nobody set is a
-    // category where any listing at any price would be admitted, which is the
-    // state this replaced.
-    if (scope === undefined) throw new AffiliateCatalogFailure('category-shortfall');
-    const outcome = selectBestListings(fresh, config.quota, scope, (part) =>
-      ids.has(part.id) || names.has(listingIdentity(part)),
-    );
-    if (outcome.selected.length < config.quota) throw new AffiliateCatalogFailure('category-shortfall');
-    for (const part of outcome.selected) {
-      ids.add(part.id);
-      names.add(listingIdentity(part));
-    }
-    selected.push(...outcome.selected);
-    report?.push({
-      category: config.category,
-      considered: outcome.considered,
-      distinctProducts: outcome.distinctProducts,
-      consolidated: outcome.consolidated,
-      outOfScope: outcome.outOfScope,
-      coverage: outcome.coverage,
-      coverageGroups: outcome.coverageGroups,
-      stale: all.length - fresh.length,
-      published: outcome.selected.length,
-    });
+  const plan = planCatalogSelection(candidates, generatedAt, scopes);
+  report?.push(...plan.report);
+  const selected = plan.selected;
+  // The quota gate, applied after the plan exists so the plan can be reported.
+  if (plan.report.some((row) => row.published < row.quota)) {
+    throw new AffiliateCatalogFailure('category-shortfall');
   }
   if (new Set(selected.map((part) => part.id)).size !== selected.length) throw new AffiliateCatalogFailure('duplicate-part');
   if (selected.length !== AFFILIATE_PART_TARGET) throw new AffiliateCatalogFailure('count-mismatch');

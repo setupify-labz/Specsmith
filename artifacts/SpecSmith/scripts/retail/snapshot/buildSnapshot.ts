@@ -35,7 +35,7 @@ import {
   type SnapshotOffer,
   type SnapshotProblem,
 } from '../../../src/lib/retail/offerSnapshot';
-import { RAKUTEN_ADAPTER_VERSION, type NeweggOffer } from '../rakuten/types';
+import { RAKUTEN_ADAPTER_VERSION, type NeweggOffer, type RejectedOffer } from '../rakuten/types';
 import type { GpuFailure } from '../coverage/coverageReport';
 
 /**
@@ -48,12 +48,26 @@ export type GpuSweepOutcome =
   | {
       gpuId: string;
       status: 'ok';
-      /** Accepted listings only. Rejections are counted by the sweep and never persisted. */
+      /** Accepted listings only. Rejections are DIAGNOSTIC and never persisted. */
       offers: readonly NeweggOffer[];
       /** True when the feed returned no matching listing at all. */
       emptyResult: boolean;
       /** Listings seen before admission, so 'all rejected' can be told from 'nothing listed'. */
       itemsSeen: number;
+      /**
+       * What the sweep refused, and why. DIAGNOSTIC ONLY.
+       *
+       * `buildSnapshot` does not read this and no snapshot carries it: a
+       * snapshot holding the listings it refused would be publishing the wrong
+       * cards' prices. It travels so a dry run can say WHICH gate a category
+       * lost its candidates to, which was previously visible only by running
+       * the separate coverage tool over the same feed a second time.
+       */
+      rejected?: readonly RejectedOffer[];
+      /** Response documents fetched, and the feed's own page and match counts. */
+      pagesRead?: number;
+      feedTotalPages?: number;
+      totalMatches?: number | null;
     }
   | { gpuId: string; status: 'failed'; failure: GpuFailure };
 

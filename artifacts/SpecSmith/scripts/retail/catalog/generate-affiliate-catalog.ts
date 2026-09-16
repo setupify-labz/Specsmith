@@ -14,13 +14,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
+import { AFFILIATE_PART_TARGET, parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import {
   fetchAllProductSearchPages,
   findItems,
   loadGpuCatalog,
   parseProductSearchXml,
   readAccessToken,
+  childText,
 } from '../rakuten';
 import { DEFAULT_REQUESTS_PER_MINUTE, RateLimiter } from '../coverage/rateLimiter';
 import { createInstrumentedFetch } from '../coverage/instrumentedFetch';
@@ -32,7 +33,7 @@ import {
   attachImageContentRatios,
   buildAffiliatePartCatalog,
   gpuOfferToAffiliatePart,
-  type CatalogSelectionReport,
+  planCatalogSelection,
 } from './affiliateCatalog';
 import { measureImageAtUrl } from './imageContent';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
@@ -66,13 +67,55 @@ export function resolveCatalogOutputPath(file: string, root: string = repoRoot):
   return output;
 }
 
-export function parseArgs(argv: readonly string[]): { out: string } {
-  if (argv.length !== 2 || argv[0] !== '--out' || !argv[1]) throw new GeneratorFailure('argument-invalid');
-  return { out: resolveCatalogOutputPath(argv[1]) };
+/**
+ * `--dry-run` reports what a build WOULD publish and refuses to stop early.
+ *
+ * The difference is not the writing — `resolveCatalogOutputPath` already
+ * refuses any path inside the repository, so no run of this script can touch
+ * the committed catalogue. The difference is that a dry run reports every
+ * category even when one of them falls short, where a real build refuses at
+ * the first shortfall and leaves nobody able to see the other eleven.
+ *
+ * A dry run NEVER lowers a quota to make a category pass. It prints the
+ * shortfall and exits non-zero.
+ */
+export function parseArgs(argv: readonly string[]): { out: string; dryRun: boolean } {
+  const flags = argv.filter((arg) => arg.startsWith('--') && arg !== '--out');
+  const dryRun = flags.length === 1 && flags[0] === '--dry-run';
+  if (flags.length > (dryRun ? 1 : 0)) throw new GeneratorFailure('argument-invalid');
+  const rest = argv.filter((arg) => arg !== '--dry-run');
+  if (rest.length !== 2 || rest[0] !== '--out' || !rest[1]) throw new GeneratorFailure('argument-invalid');
+  return { out: resolveCatalogOutputPath(rest[1]), dryRun };
 }
 
+/** What one category's candidates cost to gather, and why listings were refused. */
+interface CandidateAudit {
+  pagesRead: number;
+  feedTotalPages: number;
+  totalMatches: number | null;
+  itemsSeen: number;
+  admitted: number;
+  /** Rejection counts by the first gate each listing failed. */
+  rejections: Record<string, number>;
+  /** One title per reason, so a reason can be checked rather than trusted. */
+  samples: { reason: string; title: string }[];
+}
+
+const emptyAudit = (): CandidateAudit => ({
+  pagesRead: 0, feedTotalPages: 0, totalMatches: null, itemsSeen: 0, admitted: 0, rejections: {}, samples: [],
+});
+
+const noteRejection = (audit: CandidateAudit, reason: string, title: string | null): void => {
+  audit.rejections[reason] = (audit.rejections[reason] ?? 0) + 1;
+  // Up to three per reason: enough to see what a gate is catching, few enough
+  // that the log stays readable.
+  if (audit.samples.filter((sample) => sample.reason === reason).length < 3 && title) {
+    audit.samples.push({ reason, title: title.slice(0, 120) });
+  }
+};
+
 async function run(argv: readonly string[]): Promise<number> {
-  const { out } = parseArgs(argv);
+  const { out, dryRun } = parseArgs(argv);
   if (!fs.existsSync(path.dirname(out))) throw new GeneratorFailure('output-directory-missing');
   readAccessToken();
 
@@ -86,6 +129,23 @@ async function run(argv: readonly string[]): Promise<number> {
   if (!measured.ok) throw new GeneratorFailure('gpu-sweep-refused');
 
   const candidates = new Map<RetailPartCategory, AffiliatePart[]>();
+  const audits = new Map<RetailPartCategory, CandidateAudit>();
+
+  const gpuAudit = emptyAudit();
+  gpuAudit.totalMatches = 0;
+  for (const outcome of gpuSweep.outcomes) {
+    if (outcome.status !== 'ok') {
+      noteRejection(gpuAudit, `sweep-${outcome.failure}`, outcome.gpuId);
+      continue;
+    }
+    gpuAudit.pagesRead += outcome.pagesRead ?? 0;
+    gpuAudit.feedTotalPages += outcome.feedTotalPages ?? 0;
+    gpuAudit.totalMatches = (gpuAudit.totalMatches ?? 0) + (outcome.totalMatches ?? 0);
+    gpuAudit.itemsSeen += outcome.itemsSeen;
+    for (const refusal of outcome.rejected ?? []) noteRejection(gpuAudit, refusal.reason, refusal.productName);
+  }
+  audits.set('gpu', gpuAudit);
+
   const gpuParts = gpuSweep.outcomes.flatMap((outcome) =>
     // An offer whose pricing would not satisfy the published schema yields
     // null and is dropped here, exactly like a non-GPU candidate rejected for
@@ -93,10 +153,14 @@ async function run(argv: readonly string[]): Promise<number> {
     outcome.status === 'ok'
       ? outcome.offers.flatMap((offer) => {
           const part = gpuOfferToAffiliatePart(offer);
+          // An accepted OFFER whose pricing the published schema would refuse.
+          // Counted here so it is not silently absent from both tallies.
+          if (part === null) noteRejection(gpuAudit, 'price', offer.productName);
           return part === null ? [] : [part];
         })
       : [],
   );
+  gpuAudit.admitted = gpuParts.length;
   candidates.set('gpu', gpuParts);
 
   // EVERY PAGE, NOT THE FIRST ONE. This loop used to request `pageNumber: 1`
@@ -117,16 +181,21 @@ async function run(argv: readonly string[]): Promise<number> {
       { keyword: config.keyword, categoryLeaf: config.categoryLeaf, max: 100 },
       { fetch: limitedFetch },
     );
+    const audit = emptyAudit();
+    audit.pagesRead = result.pages.length;
+    audit.feedTotalPages = result.totalPages;
+    audit.totalMatches = result.totalMatches;
     const accepted = result.pages.flatMap((xml) =>
       findItems(parseProductSearchXml(xml)).flatMap((item) => {
+        audit.itemsSeen += 1;
         const admission = admitAffiliatePart(item, config.category, config.categoryLeaf, result.fetchedAt);
-        return admission.status === 'accepted' ? [admission.part] : [];
+        if (admission.status === 'accepted') return [admission.part];
+        noteRejection(audit, admission.reason, childText(item, 'productname'));
+        return [];
       }),
     );
-    console.error(
-      `${config.category}: walked ${result.pages.length} of ${result.totalPages} reported pages`
-        + ` (${result.totalMatches ?? 'unknown'} matches), ${accepted.length} admitted.`,
-    );
+    audit.admitted = accepted.length;
+    audits.set(config.category, audit);
     candidates.set(config.category, accepted);
   }
   console.error(`Feed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);
@@ -135,29 +204,76 @@ async function run(argv: readonly string[]): Promise<number> {
     `Admitted candidates: ${RETAIL_CATEGORY_CONFIG.map((config) => `${config.category}=${candidates.get(config.category)?.length ?? 0}`).join(', ')}.`,
   );
 
+  const generatedAt = new Date().toISOString();
+  const plan = planCatalogSelection(candidates, generatedAt);
+
+  // THE REPORT, BEFORE ANY GATE CAN STOP THE RUN.
+  //
+  // Printed for every category even when one of them falls short, because a
+  // build that refuses at the first shortfall leaves nobody able to see the
+  // other eleven — and the shortfall itself is the thing worth looking at.
+  const shortfalls: string[] = [];
+  for (const row of plan.report) {
+    const audit = audits.get(row.category) ?? emptyAudit();
+    const gates = Object.entries(audit.rejections).sort(([, a], [, b]) => b - a);
+    const admissionRejects = gates.reduce((sum, [, count]) => sum + count, 0);
+    const scoped = Object.entries(row.outOfScope).map(([reason, count]) => `${reason}=${count}`).join(' ');
+    if (row.published < row.quota) shortfalls.push(`${row.category} ${row.published}/${row.quota}`);
+
+    console.error(`\n=== ${row.category} ===`);
+    console.error(
+      `  feed:      ${audit.pagesRead} pages read of ${audit.feedTotalPages} reported`
+        + `, ${audit.totalMatches ?? 'unknown'} matches claimed, ${audit.itemsSeen} listings examined`,
+    );
+    console.error(`  admission: ${audit.admitted} admitted, ${admissionRejects} refused`
+      + (gates.length ? ` — ${gates.map(([reason, count]) => `${reason}=${count}`).join(' ')}` : ''));
+    console.error(`  freshness: ${row.stale} refused as stale at publication`);
+    console.error(`  scope:     ${scoped || 'none refused'}`);
+    console.error(`  duplicates:${row.consolidated} listings consolidated to their cheapest`);
+    console.error(`  coverage:  ${row.coverageGroups} ${row.coverage} groups`);
+    console.error(
+      `  QUOTA:     ${row.published} published of ${row.quota} requested`
+        + ` (${row.distinctProducts} distinct products available)`
+        + `${row.published < row.quota ? `  *** SHORT BY ${row.quota - row.published} ***` : ''}`,
+    );
+    console.error(`  price:     ${row.range ? `$${row.range.lowUsd.toFixed(2)} – $${row.range.highUsd.toFixed(2)}` : 'nothing selected'}`);
+    for (const sample of audit.samples) console.error(`    [${sample.reason}] ${sample.title}`);
+  }
+
+  console.error(`\nFeed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);
+  console.error(`Selected ${plan.selected.length} of ${AFFILIATE_PART_TARGET} requested.`);
+
+  // The report is the artifact a reviewer reads; it is written whether or not
+  // the catalogue itself could be built.
+  const reportPath = `${out.replace(/\.json$/, '')}-report.json`;
+  fs.writeFileSync(
+    reportPath,
+    `${JSON.stringify({
+      generatedAt,
+      dryRun,
+      quotasLowered: false,
+      selection: plan.report,
+      candidates: Object.fromEntries([...audits].map(([category, audit]) => [category, audit])),
+      feedRequests: stats,
+    }, null, 2)}\n`,
+    { encoding: 'utf-8', mode: 0o600, flag: 'wx' },
+  );
+  console.error(`Selection report written: ${reportPath}`);
+
+  if (shortfalls.length > 0) {
+    // QUOTAS ARE NOT LOWERED TO MAKE THIS PASS. The shortfall is the finding.
+    console.error(`\nSHORTFALL: ${shortfalls.join(', ')}. Quotas were NOT lowered. Nothing was written as a catalogue.`);
+    throw new GeneratorFailure('category-shortfall');
+  }
+
   let catalog;
-  const selection: CatalogSelectionReport[] = [];
   try {
-    catalog = buildAffiliatePartCatalog(candidates, new Date().toISOString(), selection);
+    catalog = buildAffiliatePartCatalog(candidates, generatedAt);
   } catch (cause) {
     if (cause instanceof AffiliateCatalogFailure && cause.code === 'category-shortfall') {
       throw new GeneratorFailure('category-shortfall');
     }
     throw new GeneratorFailure('catalog-invalid');
-  }
-
-  // What the selection actually looked at. Printed because the defect this
-  // replaced was invisible from the outside: a run that published 80 of 600
-  // eligible GPU listings and one that published 80 of 80 produced identical
-  // output and identical logs.
-  for (const row of selection) {
-    const rejected = Object.entries(row.outOfScope).map(([reason, count]) => `${reason}=${count}`).join(', ');
-    console.error(
-      `${row.category}: published ${row.published} of ${row.distinctProducts} distinct products `
-        + `from ${row.considered} candidates, spread across ${row.coverageGroups} ${row.coverage} groups `
-        + `(${row.consolidated} duplicate listings consolidated to their cheapest, ${row.stale} refused as stale`
-        + `${rejected ? `, out of scope: ${rejected}` : ''}).`,
-    );
   }
 
   // Frame measurement, after the quota is settled so only the 500 published
@@ -183,7 +299,10 @@ async function run(argv: readonly string[]): Promise<number> {
   } catch {
     throw new GeneratorFailure('write-failed');
   }
-  console.error(`Affiliate catalog built: ${catalog.parts.length} image-and-link parts across ${RETAIL_CATEGORY_CONFIG.length} categories.`);
+  console.error(
+    `${dryRun ? 'PROPOSED catalogue (dry run, nothing published)' : 'Affiliate catalog built'}: `
+      + `${catalog.parts.length} parts across ${RETAIL_CATEGORY_CONFIG.length} categories -> ${out}`,
+  );
   return 0;
 }
 

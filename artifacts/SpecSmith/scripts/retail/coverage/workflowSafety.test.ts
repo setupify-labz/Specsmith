@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'dry-run-retail-catalog.yml',
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
@@ -117,6 +118,34 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(verifyPr).toContain('persist-credentials: false');
     expect(verifyPr).toMatch(/^\s*pull_request:/m);
     expect(verifyPr).not.toMatch(/^\s*pull_request_target:/m);
+
+    // The dry run DOES carry the three credentials, because reporting what a
+    // build would publish requires the same live feed a build reads. It is
+    // held to the same confinement as the build itself: read-only, manual
+    // dispatch only (a push trigger would spend live requests on every commit
+    // touching the catalogue), the token minted rather than stored, and the
+    // working tree asserted unchanged at the end.
+    const dryRun = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'dry-run-retail-catalog.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(new Set([...dryRun.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1])))
+      .toEqual(new Set(CREDENTIAL_SECRETS));
+    expect(dryRun).not.toContain(`secrets.${ENV_VAR}`);
+    expect(dryRun).not.toContain(RETIRED_SECRET);
+    expect(dryRun).toContain('request-access-token.ts');
+    expect(dryRun).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(dryRun).not.toContain('contents: write');
+    expect(dryRun).toContain('persist-credentials: false');
+    expect(dryRun).toMatch(/^\s*workflow_dispatch:/m);
+    expect(dryRun).not.toMatch(/^\s*push:/m);
+    expect(dryRun).not.toMatch(/^\s*pull_request(_target)?:/m);
+    // It runs the generator in dry-run mode, and writes only under the
+    // runner's temporary directory — never into the checkout.
+    expect(dryRun).toContain('--dry-run');
+    expect(dryRun).toMatch(/--out "\$\{RUNNER_TEMP\}/);
+    expect(dryRun).toContain('test -z "$(git status --porcelain)"');
 
     // The accepted-offer audit is a second, manual live tool. Its own safety
     // suite proves its credentials are confined to one step and that it can

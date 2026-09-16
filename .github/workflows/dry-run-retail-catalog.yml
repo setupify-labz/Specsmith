@@ -1,0 +1,96 @@
+# DRY RUN of the 500-part Newegg catalogue build.
+#
+# Reports what a build WOULD publish, per category, and writes nothing into the
+# repository. Three things make that true rather than intended:
+#
+#   - `permissions: contents: read`. The job cannot push.
+#   - `resolveCatalogOutputPath` refuses any path inside the checkout, so the
+#     committed catalogue at public/data/retail-parts.json cannot be named as
+#     an output by any invocation of the generator.
+#   - the final step fails the run if the working tree changed at all.
+#
+# Manual dispatch only. It spends live Rakuten requests, so it does not run on
+# a push.
+
+name: Dry-run retail catalogue
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-catalog-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the catalogue and adapter tests first
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          cd artifacts/SpecSmith
+          pnpm exec vitest run scripts/retail src/lib/retail
+
+      - name: Mint an access token and dry-run the catalogue
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/dry-run"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          # A shortfall exits non-zero BY DESIGN and quotas are never lowered to
+          # avoid it. The report is written either way, so the run is still
+          # uploaded for review; `|| true` keeps the upload step reachable and
+          # the outcome is recorded explicitly below.
+          set +e
+          pnpm exec tsx scripts/retail/catalog/generate-affiliate-catalog.ts \
+            --dry-run --out "${RUNNER_TEMP}/dry-run/proposed-retail-parts.json"
+          echo "generator_exit=$?" | tee -a "${GITHUB_OUTPUT:-/dev/null}"
+          set -e
+
+      - name: Upload the proposed catalogue and selection report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: retail-catalogue-dry-run-${{ github.run_id }}
+          path: ${{ runner.temp }}/dry-run/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
