@@ -129,13 +129,26 @@ async function run(argv: readonly string[]): Promise<number> {
     outcomes: gpuSweep.outcomes,
     generatedAt: gpuSweep.finishedAt,
   });
-  if (!measured.ok) throw new GeneratorFailure('gpu-sweep-refused');
+  // A REFUSED SWEEP STOPS A BUILD, BUT NOT A REPORT.
+  //
+  // `buildSnapshot` refuses when too much of the GPU catalogue failed at once
+  // — the right answer for a real build, which must not publish a collapsed
+  // sweep. But it fires before any category has been reported, so a dry run
+  // that hit it produced NOTHING: no report, no artifact, no indication of
+  // which GPUs failed. The second live dry run did exactly that.
+  //
+  // The dry run records the refusal and carries on with whatever the sweep did
+  // return, so the other eleven categories are still measured. GPU will fall
+  // short of its quota on a genuinely collapsed sweep, and the run still
+  // fails; it fails having said what happened.
+  if (!measured.ok && !dryRun) throw new GeneratorFailure('gpu-sweep-refused');
 
   const candidates = new Map<RetailPartCategory, AffiliatePart[]>();
   const audits = new Map<RetailPartCategory, CandidateAudit>();
 
   const gpuAudit = emptyAudit();
   gpuAudit.totalMatches = 0;
+  if (!measured.ok) noteRejection(gpuAudit, `sweep-refused-${measured.refusal.code}`, `${measured.refusal.failedGpus} of ${gpuCatalog.length} catalogue GPUs failed`);
   for (const outcome of gpuSweep.outcomes) {
     if (outcome.status !== 'ok') {
       noteRejection(gpuAudit, `sweep-${outcome.failure}`, outcome.gpuId);
