@@ -21,8 +21,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_OUTPUT_DIR = join(here, "..", "..", "..", "render-output", "mockups");
 
 async function main(): Promise<void> {
-  const input = resolve(process.argv[2] ?? join(here, "gameFrame.html"));
-  const output = resolve(process.argv[3] ?? join(DEFAULT_OUTPUT_DIR, "gameFrame.png"));
+  const input = resolve(process.argv[2] ?? join(here, "generated", "00-title-card.html"));
+  const output = resolve(process.argv[3] ?? join(DEFAULT_OUTPUT_DIR, "00-title-card.png"));
   await mkdir(dirname(output), { recursive: true });
 
   const browser = await chromium.launch();
