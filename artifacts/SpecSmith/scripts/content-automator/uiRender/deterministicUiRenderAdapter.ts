@@ -144,12 +144,15 @@ export function createDeterministicUiRenderAdapter(options: UiRenderAdapterOptio
         // the page. Failing to find the anchor is an error, not a shrug: it
         // would silently produce a capture of whatever happened to be at the
         // top, which for Compare is an expanded part picker.
-        if (plan.focusText) {
-          const framed = await focusOn(page, plan.focusText);
+        // A request may override the surface's default anchor to frame a
+        // different region of the same page.
+        const focusNeedle = request.focusText ?? plan.focusText;
+        if (focusNeedle) {
+          const framed = await focusOn(page, focusNeedle);
           if (!framed) {
             throw new UiCaptureError(
               "framing-failed",
-              `Could not locate "${plan.focusText}" to frame the capture at ${url}.`,
+              `Could not locate "${focusNeedle}" to frame the capture at ${url}.`,
             );
           }
         }
