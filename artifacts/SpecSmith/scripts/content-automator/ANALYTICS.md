@@ -110,9 +110,12 @@ Use a platform adapter that maps only metrics actually exposed to the authentica
 5. **Change one major creative variable at a time when testing a hypothesis.** Otherwise the learner cannot identify the cause.
 6. **Segment by platform and duration when the dataset becomes large enough.** A 17-second YouTube Short and a 42-second TikTok should not become one false baseline.
 7. **Preserve failures.** Losing concepts are training data for the strategist and should not be deleted from history.
+8. **One creative contributes one record, and every record is measured at the same window.** Analytics are captured as immutable snapshots at 1h/6h/24h/72h/7d, and each snapshot carries a complete performance record. Feeding them all to the learner (`snapshots.map((s) => s.record)`) type-checks and is wrong twice: one upload with all five windows becomes five samples, which walks straight around rule 1, and a creative measured at 7d outranks one measured at 1h on age rather than on creative. Use `selectLearnerRecords(snapshots, window)` to pick one snapshot per creative at one window; `analyzePerformance` throws on duplicates or mixed windows rather than quietly de-duplicating, because a silent fix would hide the wiring mistake. A creative missing that window is **excluded and named**, never back-filled from an adjacent window.
 
 ## Daily operating loop
 
-`Generate many ideas -> quality gate -> choose 5 distinct experiments -> render -> publish -> collect metrics -> normalize -> learn factors -> adjust tomorrow's ranking`
+`Generate many ideas -> quality gate -> choose 5 distinct experiments -> render -> publish -> collect metrics -> normalize -> select one window per creative -> learn factors -> adjust tomorrow's ranking`
+
+The `select one window per creative` step is not optional bookkeeping; without it the learner counts snapshots instead of uploads.
 
 The goal is not to automate five uploads. The goal is to automate a measurable creative-learning system that gets harder to copy as its evidence base grows.
