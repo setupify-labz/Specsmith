@@ -6,13 +6,12 @@ name: Build 500-part affiliate catalog
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - claude/rakuten-newegg-adapter-97h85y
-    paths:
-      - '.github/workflows/build-retail-affiliate-catalog.yml'
-      - 'artifacts/SpecSmith/scripts/retail/catalog/**'
-      - 'artifacts/SpecSmith/src/lib/retail/partCatalog*'
+  # NO PUSH TRIGGER. It used to run on every commit under
+  # scripts/retail/catalog/**, which meant a full live Rakuten sweep — 57 GPU
+  # keywords plus eleven paged category searches — on each push while the
+  # selection rules were being worked on. Every one of those runs failed, and
+  # each spent the feed requests anyway. A real build is a deliberate act; it
+  # is dispatched when someone wants a catalogue, not when a file changes.
 
 permissions:
   contents: read

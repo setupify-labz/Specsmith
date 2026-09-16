@@ -13,10 +13,15 @@ const body = fs.readFileSync(workflowPath, 'utf-8')
   .join('\n');
 
 describe('500-part catalog workflow safety', () => {
-  it('is branch-scoped, manually rerunnable and has no pull-request or schedule trigger', () => {
+  it('runs only when someone asks for a catalogue', () => {
     expect(body).toContain('workflow_dispatch:');
-    expect(body).toMatch(/on:\s*\n\s*workflow_dispatch:\s*\n\s*push:/);
-    expect(body).toContain('claude/rakuten-newegg-adapter-97h85y');
+    // NO PUSH TRIGGER. It used to run on every commit under
+    // scripts/retail/catalog/**, so a full live Rakuten sweep — 57 GPU
+    // keywords plus eleven paged category searches — went out on each push
+    // while the selection rules were being worked on. Every one of those runs
+    // failed, and each spent the requests anyway. Building a catalogue is a
+    // deliberate act, not a consequence of editing a file.
+    expect(body).not.toMatch(/^\s*push:/m);
     expect(body).not.toMatch(/^\s*pull_request(_target)?:/m);
     expect(body).not.toMatch(/^\s*schedule:/m);
   });

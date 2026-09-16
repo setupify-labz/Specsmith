@@ -18,6 +18,9 @@ import { AFFILIATE_PART_TARGET, parseAffiliatePartCatalog, type AffiliatePart, t
 import {
   fetchAllProductSearchPages,
   findItems,
+  RakutenAuthError,
+  RakutenPagingError,
+  RakutenRequestError,
   loadGpuCatalog,
   parseProductSearchXml,
   readAccessToken,
@@ -177,11 +180,39 @@ async function run(argv: readonly string[]): Promise<number> {
   const limiter = new RateLimiter(DEFAULT_REQUESTS_PER_MINUTE);
   const { fetch: limitedFetch, stats } = createInstrumentedFetch({ limiter });
   for (const config of RETAIL_CATEGORY_CONFIG.filter((entry) => entry.category !== 'gpu')) {
-    const result = await fetchAllProductSearchPages(
-      { keyword: config.keyword, categoryLeaf: config.categoryLeaf, max: 100 },
-      { fetch: limitedFetch },
-    );
     const audit = emptyAudit();
+    audits.set(config.category, audit);
+    // A CATEGORY THAT CANNOT BE FETCHED IS RECORDED, NOT THROWN.
+    //
+    // This is what `sweepOffers` already does for a GPU that fails: an
+    // exception here loses the other eleven categories along with the reason,
+    // and the reason is the whole point of a dry run. The live run that found
+    // this walked nine pages of processors, admitted 822 candidates, and then
+    // died on the next category with a generic 'category-request-failed' — no
+    // indication of which category or why.
+    //
+    // The category still reports zero published against its quota, so the run
+    // still fails. It fails having said what happened.
+    let result;
+    try {
+      result = await fetchAllProductSearchPages(
+        { keyword: config.keyword, categoryLeaf: config.categoryLeaf, max: 100 },
+        { fetch: limitedFetch },
+      );
+    } catch (cause) {
+      // Classified from the error's TYPE and its own code, never its message:
+      // a message can quote a response body or a URL carrying a publisher id.
+      const reason = cause instanceof RakutenPagingError
+        ? `paging-${cause.code}`
+        : cause instanceof RakutenRequestError
+          ? `http-${cause.httpStatus}`
+          : cause instanceof RakutenAuthError
+            ? 'auth'
+            : 'transport';
+      noteRejection(audit, `fetch-failed-${reason}`, config.keyword);
+      candidates.set(config.category, []);
+      continue;
+    }
     audit.pagesRead = result.pages.length;
     audit.feedTotalPages = result.totalPages;
     audit.totalMatches = result.totalMatches;
@@ -195,7 +226,6 @@ async function run(argv: readonly string[]): Promise<number> {
       }),
     );
     audit.admitted = accepted.length;
-    audits.set(config.category, audit);
     candidates.set(config.category, accepted);
   }
   console.error(`Feed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);

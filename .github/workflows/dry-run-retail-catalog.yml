@@ -9,13 +9,20 @@
 #     an output by any invocation of the generator.
 #   - the final step fails the run if the working tree changed at all.
 #
-# Manual dispatch only. It spends live Rakuten requests, so it does not run on
-# a push.
+# It spends live Rakuten requests, so it is NOT wired to the catalogue source.
+# The push trigger watches this file and nothing else: editing the dry run
+# itself is the one change that should re-run it, and a commit to the generator
+# or the selection rules must not. `workflow_dispatch` is listed too but only
+# works once this file reaches the default branch, which is why the narrow push
+# trigger exists at all.
 
 name: Dry-run retail catalogue
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/dry-run-retail-catalog.yml'
 
 permissions:
   contents: read

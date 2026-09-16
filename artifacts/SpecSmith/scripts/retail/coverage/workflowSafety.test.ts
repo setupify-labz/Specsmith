@@ -139,7 +139,15 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(dryRun).not.toContain('contents: write');
     expect(dryRun).toContain('persist-credentials: false');
     expect(dryRun).toMatch(/^\s*workflow_dispatch:/m);
-    expect(dryRun).not.toMatch(/^\s*push:/m);
+    // A push trigger exists because workflow_dispatch only works once a file
+    // reaches the default branch. It is confined to THIS file: a commit to the
+    // generator or the selection rules must not spend a live sweep.
+    expect(dryRun).toMatch(/^\s*push:\n\s*paths:\n\s*- '\.github\/workflows\/dry-run-retail-catalog\.yml'\n/m);
+    // Scoped to the TRIGGER block: the run step names the generator script, of
+    // course, but no catalogue source path may appear as a trigger path.
+    const dryRunTriggers = dryRun.slice(dryRun.indexOf('on:'), dryRun.indexOf('permissions:'));
+    expect(dryRunTriggers).not.toContain('scripts/retail');
+    expect(dryRunTriggers).not.toContain('src/lib/retail');
     expect(dryRun).not.toMatch(/^\s*pull_request(_target)?:/m);
     // It runs the generator in dry-run mode, and writes only under the
     // runner's temporary directory — never into the checkout.
@@ -183,7 +191,11 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(catalog).toContain('secrets.');
-    expect(catalog).toMatch(/^\s*push:/m);
+    // The build no longer runs on a push either. It spent a full live sweep on
+    // every commit under scripts/retail/catalog/**, and building a catalogue
+    // is a deliberate act rather than a consequence of editing a file.
+    expect(catalog).not.toMatch(/^\s*push:/m);
+    expect(catalog).toMatch(/^\s*workflow_dispatch:/m);
     expect(catalog).not.toMatch(/^\s*pull_request(_target)?:/m);
     expect(catalog).not.toMatch(/^\s*schedule:/m);
   });
