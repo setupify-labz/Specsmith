@@ -334,6 +334,33 @@ async function run(argv: readonly string[]): Promise<number> {
     `Duplicate identity in the selection: ids=${duplicates.ids}, links=${duplicates.trackedAffiliateUrls}, skus=${duplicates.skus}.`,
   );
 
+  // THE DEAREST SELECTED LISTINGS, NAMED.
+  //
+  // The per-category summary gives a price RANGE, which is enough to notice
+  // that a category reaches $5,399 and not enough to say what that listing is.
+  // Reviewing the top of a category — is this really a consumer part? — then
+  // needs the catalogue file, and the file is an artifact a reviewer has to
+  // download. These lines put the answer in the log beside the range.
+  //
+  // The tracked link is public data: it is already in the committed catalogue
+  // and carries no credential of ours. The access token never appears here.
+  const DEAREST_PER_CATEGORY = 10;
+  console.error(`\nDearest ${DEAREST_PER_CATEGORY} selected listings per category:`);
+  for (const config of RETAIL_CATEGORY_CONFIG) {
+    const dearest = plan.selected
+      .filter((part) => part.category === config.category)
+      .sort((a, b) => (b.salePrice ?? b.retailPrice) - (a.salePrice ?? a.retailPrice))
+      .slice(0, DEAREST_PER_CATEGORY);
+    if (dearest.length === 0) continue;
+    console.error(`  --- ${config.category} ---`);
+    for (const part of dearest) {
+      console.error(
+        `  $${(part.salePrice ?? part.retailPrice).toFixed(2).padStart(9)}  ${part.sku ?? '(no sku)'}  ${part.name.slice(0, 90)}`,
+      );
+      console.error(`             ${part.trackedAffiliateUrl}`);
+    }
+  }
+
   // The report is the artifact a reviewer reads; it is written whether or not
   // the catalogue itself could be built.
   const reportPath = `${out.replace(/\.json$/, '')}-report.json`;
@@ -381,6 +408,21 @@ async function run(argv: readonly string[]): Promise<number> {
   console.error(
     `Image framing measured for ${framing.measured}/${catalog.parts.length} parts${problems ? ` (${problems})` : ''}.`,
   );
+  for (const failure of framing.failures) {
+    console.error(`  [${failure.problem}] ${failure.sku ?? failure.id} ${failure.imageUrl}`);
+  }
+  if (framing.failures.length > 0) {
+    // NOT A REASON TO WITHHOLD ANYTHING, and said here so nobody reads the
+    // list as a defect report. These are outcomes of an OPTIONAL measurement:
+    // 'off-centre' means the product sits to one side, so enlarging it would
+    // crop it, and 'unsupported-format' means this build script has no decoder
+    // for those bytes — not that a browser lacks one. Either way the part
+    // keeps a null ratio and `imageZoom` returns 1, so the picture is
+    // published exactly as the merchant serves it. See imageFraming.ts.
+    console.error(
+      `  ${framing.failures.length} image(s) unmeasured; each is published unenlarged, at its original framing.`,
+    );
+  }
 
   // The measured catalogue is re-validated before it is written. The ratios
   // came from outside, and the file on disk must satisfy the same reader the

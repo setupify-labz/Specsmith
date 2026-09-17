@@ -312,12 +312,19 @@ export async function attachImageContentRatios(
   parts: readonly AffiliatePart[],
   measure: (url: string) => Promise<ImageMeasurement>,
   concurrency = 8,
-): Promise<{ parts: AffiliatePart[]; measured: number; problems: Record<string, number> }> {
+): Promise<{
+  parts: AffiliatePart[];
+  measured: number;
+  problems: Record<string, number>;
+  failures: { id: string; sku: string | null; problem: string; imageUrl: string }[];
+}> {
   const results = new Array<number | null>(parts.length).fill(null);
   // The hash of the bytes each ratio was measured from, so the published part
   // records WHICH version of the photograph it describes.
   const hashes = new Array<string | null>(parts.length).fill(null);
   const problems: Record<string, number> = {};
+  /** The problem each part hit, positionally, so failures can be named. */
+  const failureOf = new Array<string | undefined>(parts.length).fill(undefined);
   let next = 0;
 
   const worker = async (): Promise<void> => {
@@ -331,6 +338,7 @@ export async function attachImageContentRatios(
         hashes[index] = outcome.sha256 ?? null;
       } else {
         problems[outcome.problem] = (problems[outcome.problem] ?? 0) + 1;
+        failureOf[index] = outcome.problem;
       }
     }
   };
@@ -345,6 +353,15 @@ export async function attachImageContentRatios(
     })),
     measured: results.filter((value) => value !== null).length,
     problems,
+    // WHICH parts, not just how many. The counts alone said "11 off-centre, 2
+    // unsupported-format" and named none of them, so nobody could check
+    // whether those thirteen images were fine or broken without opening the
+    // catalogue file itself.
+    failures: parts.flatMap((part, index) =>
+      results[index] === null && failureOf[index] !== undefined
+        ? [{ id: part.id, sku: part.sku, problem: failureOf[index] as string, imageUrl: part.imageUrl }]
+        : [],
+    ),
   };
 }
 
