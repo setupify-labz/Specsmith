@@ -52,7 +52,17 @@ export type ConsumerRejection =
 
 export type ConsumerVerdict = { ok: true } | { ok: false; reason: ConsumerRejection };
 
-const normalize = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+/**
+ * Lowercase, punctuation collapsed to single spaces — except `+`, which is
+ * KEPT.
+ *
+ * A plus sign between a processor and a board is the shortest way a seller
+ * writes a bundle ("Ryzen 7 5700X + ASUS PRIME B550M-A"), and collapsing it
+ * into whitespace threw away the only evidence that the listing sold two
+ * things. Nothing else reads it, so keeping it costs the other rules nothing.
+ */
+const normalize = (name: string): string =>
+  name.toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim();
 
 /**
  * Several of one product in a box, where the catalogue represents one.
@@ -89,7 +99,7 @@ export function isMultipack(title: string): boolean {
 export function isServerBoard(title: string): boolean {
   return /\b(supermicro|asrock rack|tyan|gigabyte server)\b/.test(title)
     || /\bsp[56]\b/.test(title)
-    || /\bserver\s+(motherboard|mainboard|board)\b/.test(title)
+    || /\bserver\s+(?:motherboard|mainboard|board)s?\b/.test(title)
     || /\b(xeon|epyc)\b/.test(title)
     || /\bdual\s+socket\b/.test(title);
 }
@@ -110,27 +120,50 @@ export function isServerClassProcessor(title: string): boolean {
 /**
  * A processor listing that also sells a board.
  *
- * Bare, not "and a motherboard": the bundles that reached a proposed
- * catalogue wrote it as "+", as "with", and as a second clause that a rule
- * requiring the word "and" never reached. A CPU listing has no reason to name
- * a motherboard except to sell one alongside.
+ * NAMING A BOARD IS NOT ENOUGH, and the first version of this rule got that
+ * wrong. Processor listings legitimately say which boards they run on —
+ * "compatible with AM5 motherboards", "supports Z790 motherboards" — and
+ * rejecting those loses real CPUs for describing their own socket.
+ *
+ * So the board word is necessary and never sufficient. Something must also
+ * say a second product is in the box:
+ *
+ *   - a bundling noun: combo, bundle, kit, set;
+ *   - a `+` joining the two, which is why `normalize` keeps the character;
+ *   - "with" followed by a NAMED BOARD VENDOR. "with ASUS X570-E motherboard"
+ *     is a specific board someone is shipping; "with AM5 motherboards" is a
+ *     socket, and a socket is not a product.
  */
 export function isCpuBoardBundle(title: string): boolean {
-  return /\b(motherboard|mainboard)\b/.test(title);
+  if (!/\b(?:motherboard|mainboard)s?\b/.test(title)) return false;
+  if (/\b(combo|bundle|kit|set)\b/.test(title)) return true;
+  if (/\+/.test(title)) return true;
+  // "with <vendor> ... motherboard" — the vendor must come after "with" and
+  // before the board word, so a title that merely mentions a brand elsewhere
+  // is not read as shipping that brand's board.
+  return /\bwith\s+(?:[a-z0-9]+\s+){0,4}?(?:asus|asrock|msi|gigabyte|biostar|colorful|maxsun|nzxt|evga|supermicro)\b[^.]*?\b(?:motherboard|mainboard)s?\b/.test(title)
+    || /\b(?:motherboard|mainboard)s?\b[^.]*?\bwith\s+(?:[a-z0-9]+\s+){0,4}?(?:asus|asrock|msi|gigabyte|biostar|colorful|maxsun|nzxt|evga|supermicro)\b/.test(title);
 }
 
+
 /**
- * An open frame or tray, which is not a case.
+ * A test bench or a bare tray, which is not a case.
  *
- * It encloses nothing, ships without panels, and answers none of the
- * questions a case answers for someone building their first PC — will the
- * card fit, will the air move, is it quiet.
+ * "OPEN-FRAME" AND "OPEN-AIR" ARE NOT SIGNALS, and the first version of this
+ * rule treated them as ones. They describe a panel-less STYLE of case that
+ * vendors genuinely sell as cases — COUGAR's open-frame line (Newegg
+ * 9SIB7VEJWV5569, 9SIB7VEJWV7807) mounts a full build, takes a standard
+ * power supply and ships as a finished product. Rejecting it cost real cases
+ * for their styling.
+ *
+ * What remains is the equipment that is not a case at all: a test bench or
+ * bench table, which is laboratory furniture for swapping parts in and out,
+ * and a bare motherboard tray, which is a component OF a case sold on its
+ * own.
  */
 export function isOpenBenchChassis(title: string): boolean {
   return /\b(test\s*bench|bench\s*table|benchtable)\b/.test(title)
-    || /\bmotherboard\s+tray\b/.test(title)
-    || /\bopen[- ]?(air|frame)\b/.test(title)
-    || /\bdiy\s+(open\s+)?frame\b/.test(title);
+    || /\bmotherboard\s+trays?\b/.test(title);
 }
 
 /**

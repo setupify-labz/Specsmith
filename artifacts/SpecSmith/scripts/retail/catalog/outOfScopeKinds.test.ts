@@ -152,9 +152,21 @@ describe('an open frame is not a case', () => {
     'Open Air Computer Case Test Bench Frame ATX Motherboard Tray DIY Chassis',
     'Streacom BC1 Open Benchtable Computer Case Aluminium',
     'DIY Open Frame PC Case Vertical Motherboard Tray ATX Test Bench',
-    'Thermaltake Core P3 TG Pro Open-Air Computer Case',
   ])('refuses an open bench or tray: %s', (title) => {
     expect(isSelectableBuilderPart('case', title)).toBe(false);
+  });
+
+  it('keeps open-frame cases, which are a styling and not a bench', () => {
+    // Narrowed after review: "open-frame"/"open-air" describe a panel-less
+    // case vendors sell as a finished product — COUGAR's line (Newegg
+    // 9SIB7VEJWV5569, 9SIB7VEJWV7807) among them. Only the equipment words
+    // reject now. See consumerProductGate.ts.
+    for (const title of [
+      'Thermaltake Core P3 TG Pro Open-Air Computer Case',
+      'COUGAR Conquer 2 Open-Frame Mid Tower Computer Case ATX Gaming',
+    ]) {
+      expect(isSelectableBuilderPart('case', title), title).toBe(true);
+    }
   });
 
   it('keeps ordinary enclosed cases', () => {

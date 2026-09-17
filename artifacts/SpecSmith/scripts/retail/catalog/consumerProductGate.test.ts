@@ -19,7 +19,7 @@ import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
 import type { AffiliatePart, RetailPartCategory } from '../../../src/lib/retail/partCatalog';
 import { planCatalogSelection } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
-import { consumerProductVerdict, screenConsumerProducts } from './consumerProductGate';
+import { consumerProductVerdict, isCpuBoardBundle, isOpenBenchChassis, screenConsumerProducts } from './consumerProductGate';
 
 const generatedAt = '2026-09-17T12:00:00.000Z';
 
@@ -86,12 +86,6 @@ describe('the gate names why a listing is not a consumer PC part', () => {
     ['motherboard', 'AMD SP6 Socket Siena Server Motherboard Micro-ATX', 'server-board'],
     ['cpu', 'Intel Xeon W-2495X 24-Core 2.5 GHz LGA 4677 225W Workstation Processor', 'server-class-processor'],
     ['cpu', 'Intel Xeon E-2488 8-Core 3.2 GHz LGA 1700 Server Processor', 'server-class-processor'],
-    ['cpu', 'AMD Ryzen 7 5700X + ASUS PRIME B550M-A AC Motherboard Combo Kit', 'cpu-board-bundle'],
-    ['cpu', 'Intel Core i5-12400F Processor with MSI PRO H610M-B Motherboard', 'cpu-board-bundle'],
-    ['cpu', 'Intel Core i9-14900K Desktop Processor / Z790 Mainboard Bundle', 'cpu-board-bundle'],
-    ['case', 'Open Air Computer Case Test Bench Frame ATX Motherboard Tray DIY Chassis', 'open-bench-chassis'],
-    ['case', 'Streacom BC1 Open Benchtable Computer Case Aluminium', 'open-bench-chassis'],
-    ['case', 'DIY Open Frame PC Case Vertical Motherboard Tray ATX Test Bench', 'open-bench-chassis'],
   ] as const)('rejects a %s as %s: %s', (category, name, reason) => {
     expect(consumerProductVerdict(category, name)).toEqual({ ok: false, reason });
   });
@@ -104,6 +98,100 @@ describe('the gate names why a listing is not a consumer PC part', () => {
       ok: false,
       reason: 'multipack',
     });
+  });
+});
+
+describe('an open-frame case is a case; a test bench is not', () => {
+  // OPEN-FRAME AND OPEN-AIR ARE NOT SIGNALS. They describe a panel-less style
+  // of case that vendors sell as finished products, and the first version of
+  // this rule rejected them for their styling.
+  //
+  // CONSTRUCTED titles for two real Newegg items, cited by the item numbers a
+  // reviewer confirmed: 9SIB7VEJWV5569 and 9SIB7VEJWV7807. The item numbers
+  // are real; the wording here is not the merchant's, because the listings
+  // are in an artifact this environment cannot fetch.
+  it.each([
+    'COUGAR Conquer 2 Open-Frame Mid Tower Computer Case ATX Gaming',
+    'COUGAR Conquer Essence Open-Frame Computer Case Aluminium ATX',
+    'Thermaltake Core P3 TG Pro Open-Air Computer Case',
+  ])('keeps an open-frame case: %s', (name) => {
+    expect(consumerProductVerdict('case', name)).toEqual({ ok: true });
+  });
+
+  // Still rejected, on the equipment words rather than the styling.
+  it.each([
+    'Open Air Computer Case Test Bench Frame ATX Motherboard Tray DIY Chassis',
+    'Streacom BC1 Open Benchtable Computer Case Aluminium',
+    'DIY Open Frame PC Case Vertical Motherboard Tray ATX Test Bench',
+    'ATX Motherboard Tray Only Replacement Panel for PC Case',
+  ])('rejects a bench or a bare tray: %s', (name) => {
+    expect(consumerProductVerdict('case', name)).toEqual({ ok: false, reason: 'open-bench-chassis' });
+  });
+
+  it('reads the equipment word, not the word "open"', () => {
+    expect(isOpenBenchChassis('cougar conquer 2 open frame mid tower computer case')).toBe(false);
+    expect(isOpenBenchChassis('open air computer case test bench')).toBe(true);
+  });
+});
+
+describe('a processor listing needs bundle evidence, not a board word', () => {
+  it('rejects the New BitShop listing that ships a named board', () => {
+    // The confirmed defect. "with ASUS ... Motherboard" is a specific board
+    // someone is putting in the box.
+    expect(consumerProductVerdict('cpu', 'New BitShop AMD Ryzen 9 5950X Desktop Processor with ASUS ROG STRIX X570-E Gaming Motherboard')).toEqual({
+      ok: false,
+      reason: 'cpu-board-bundle',
+    });
+  });
+
+  it.each([
+    'AMD Ryzen 7 5700X + ASUS PRIME B550M-A AC Motherboard Combo Kit',
+    'Intel Core i5-12400F Processor with MSI PRO H610M-B Motherboard',
+    'Intel Core i9-14900K Desktop Processor / Z790 Mainboard Bundle',
+    'AMD Ryzen 5 5600 Desktop Processor, B550M Motherboard, 16GB DDR4 Set',
+  ])('rejects a bundle: %s', (name) => {
+    expect(consumerProductVerdict('cpu', name)).toEqual({ ok: false, reason: 'cpu-board-bundle' });
+  });
+
+  it.each([
+    'AMD Ryzen 7 9800X3D Desktop Processor, compatible with AM5 motherboards',
+    'Intel Core i7-14700K Desktop Processor, supports Z790 motherboards',
+    'AMD Ryzen 5 9600X 6-Core Socket AM5 65W Desktop Processor works with B650 motherboards',
+    'AMD Ryzen 9 9950X 16-Core Desktop Processor for AM5 motherboards, no cooler included',
+  ])('keeps a compatibility statement: %s', (name) => {
+    expect(consumerProductVerdict('cpu', name)).toEqual({ ok: true });
+  });
+
+  it('keeps a compatibility statement in the singular too', () => {
+    // The plural hid a hole: \bmotherboard\b does not match inside
+    // "motherboards", so every plural keeper passed whatever the rule did.
+    // These are singular, so they actually exercise the bundle-evidence test.
+    for (const name of [
+      'AMD Ryzen 7 9800X3D Desktop Processor, compatible with any AM5 motherboard',
+      'Intel Core i7-14700K Desktop Processor, requires an LGA 1700 motherboard',
+      'AMD Ryzen 5 9600X Desktop Processor - B650 motherboard recommended',
+    ]) {
+      expect(consumerProductVerdict('cpu', name), name).toEqual({ ok: true });
+    }
+  });
+
+  it('separates a socket from a shipped product', () => {
+    // "with AM5 motherboards" is a socket; a socket is not a second product.
+    // "with ASUS X570-E motherboard" is a board someone is shipping.
+    expect(isCpuBoardBundle('ryzen 7 9800x3d compatible with am5 motherboards')).toBe(false);
+    expect(isCpuBoardBundle('ryzen 9 5950x with asus rog strix x570 e gaming motherboard')).toBe(true);
+  });
+
+  it('reads the + through normalization, from the raw merchant title', () => {
+    // Through consumerProductVerdict, not the predicate directly: the point
+    // is that `normalize` KEEPS the character. Calling the predicate with a
+    // hand-written '+' would pass even if normalization threw it away.
+    expect(consumerProductVerdict('cpu', 'AMD Ryzen 7 5700X + ASUS PRIME B550M-A AC Motherboard')).toEqual({
+      ok: false,
+      reason: 'cpu-board-bundle',
+    });
+    expect(consumerProductVerdict('cpu', 'AMD Ryzen 7 5700X Desktop Processor')).toEqual({ ok: true });
+    expect(isCpuBoardBundle('ryzen 7 5700x + asus prime b550m a motherboard')).toBe(true);
   });
 });
 
