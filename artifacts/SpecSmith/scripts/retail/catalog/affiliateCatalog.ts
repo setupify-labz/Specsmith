@@ -28,8 +28,21 @@ import {
   isServerClassProcessor,
   screenConsumerProducts,
 } from './consumerProductGate';
+import { screenCompleteProducts } from './completeProductGate';
 
 // Re-exported so the rules have one definition and one import path.
+export {
+  completeProductVerdict,
+  isBoardAccessory,
+  isBoardComponentBundle,
+  isHardwareMonitorScreen,
+  isMouseComponent,
+  isMultiSocketServerBoard,
+  isWearableDeviceCase,
+  screenCompleteProducts,
+  type IncompleteRejection,
+} from './completeProductGate';
+
 export {
   consumerProductVerdict,
   isCpuBoardBundle,
@@ -457,6 +470,10 @@ export interface CatalogSelectionReport {
   notConsumerProduct: Record<string, number>;
   /** A few real titles per reason, so a rule can be checked rather than trusted. */
   notConsumerProductTitles: { reason: string; name: string }[];
+  /** Refused by the complete-product gate, by reason, BEFORE selection ran. */
+  notCompleteProduct: Record<string, number>;
+  /** A few real titles per reason, for the same reason as the line above. */
+  notCompleteProductTitles: { reason: string; name: string }[];
   published: number;
   /** What the selected listings cost, low to high. Null when none was selected. */
   range: CatalogSelectionRange | null;
@@ -503,7 +520,16 @@ export function planCatalogSelection(
     // selection would already have taken a slot — leaving a hole in a full
     // quota while good candidates sat unexamined.
     const screened = screenConsumerProducts(supplied);
-    const all = screened.kept;
+    // AND THE COMPLETE-PRODUCT GATE, AT THE SAME POINT AND FOR THE SAME REASON.
+    //
+    // Two gates rather than one because they ask different questions and a
+    // reviewer needs to see which one fired: a TPM module is a consumer
+    // product, and rejecting it under a `notConsumerProduct` tally would have
+    // reported something untrue about it. Order does not affect the outcome —
+    // both are pure — but running the consumer gate first keeps the existing
+    // tallies comparable with previous runs.
+    const complete = screenCompleteProducts(screened.kept);
+    const all = complete.kept;
     const fresh = all.filter((part) => isFreshAtPublication(part, generatedAt));
     const scope = scopes.get(config.category);
     // No scope, no publication. A category whose bounds nobody set is a
@@ -523,6 +549,8 @@ export function planCatalogSelection(
         stale: all.length - fresh.length,
         notConsumerProduct: screened.rejected,
         notConsumerProductTitles: screened.rejectedTitles,
+        notCompleteProduct: complete.rejected,
+        notCompleteProductTitles: complete.rejectedTitles,
         published: 0,
         range: null,
       });
@@ -549,6 +577,8 @@ export function planCatalogSelection(
       stale: all.length - fresh.length,
       notConsumerProduct: screened.rejected,
       notConsumerProductTitles: screened.rejectedTitles,
+      notCompleteProduct: complete.rejected,
+      notCompleteProductTitles: complete.rejectedTitles,
       published: outcome.selected.length,
       range: prices.length === 0 ? null : { lowUsd: Math.min(...prices), highUsd: Math.max(...prices) },
     });

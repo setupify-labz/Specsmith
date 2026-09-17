@@ -27,6 +27,7 @@ import {
   readAccessToken,
   childText,
 } from '../rakuten';
+import { reportProductScope, summariseProductScope } from './productScopeReport';
 import { DEFAULT_REQUESTS_PER_MINUTE, RateLimiter } from '../coverage/rateLimiter';
 import { createInstrumentedFetch } from '../coverage/instrumentedFetch';
 import { buildSnapshot } from '../snapshot/buildSnapshot';
@@ -284,6 +285,38 @@ async function run(argv: readonly string[]): Promise<number> {
     for (const sample of audit.samples) console.error(`    [${sample.reason}] ${sample.title}`);
   }
 
+  // PRODUCT-SCOPE QUESTIONS. REPORTED, NEVER ACTED ON.
+  //
+  // Computed on `plan.selected` AFTER selection, and nothing downstream reads
+  // it: `plan.selected` is what gets written either way. That is the whole
+  // point — these listings are real products, and whether a gaming-PC
+  // catalogue should carry a 128 MB DDR-266 stick or a Dell OptiPlex
+  // replacement board is a decision for a person, arriving here as a named
+  // question with the SKUs attached rather than as a listing that quietly
+  // vanished.
+  const scopeFindings = reportProductScope(
+    plan.selected.map((part) => ({
+      sku: part.sku ?? part.id,
+      category: part.category,
+      name: part.name,
+      retailPrice: part.salePrice ?? part.retailPrice,
+    })),
+  );
+  const scopeTally = summariseProductScope(scopeFindings);
+  console.error(`\nPRODUCT-SCOPE QUESTIONS (reported only — every one of these listings WAS selected):`);
+  if (scopeFindings.length === 0) {
+    console.error('  none');
+  } else {
+    for (const [flag, count] of Object.entries(scopeTally)) console.error(`  ${flag.padEnd(28)} ${count}`);
+    for (const finding of scopeFindings) {
+      console.error(
+        `  [${finding.flag}] $${finding.priceUsd.toFixed(2)}  ${finding.sku}  ${finding.name.slice(0, 80)}`,
+      );
+      console.error(`      ${finding.detail}`);
+    }
+    console.error('  These were NOT filtered. An explicit product-scope decision is needed.');
+  }
+
   console.error(`\nFeed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);
   console.error(`Selected ${plan.selected.length} of ${AFFILIATE_PART_TARGET} requested.`);
 
@@ -371,6 +404,8 @@ async function run(argv: readonly string[]): Promise<number> {
       dryRun,
       quotasLowered: false,
       selection: plan.report,
+      /** Reported for a human decision. NOTHING here was filtered out. */
+      productScopeQuestions: { tally: scopeTally, findings: scopeFindings },
       completeness,
       duplicates,
       candidates: Object.fromEntries([...audits].map(([category, audit]) => [category, audit])),
