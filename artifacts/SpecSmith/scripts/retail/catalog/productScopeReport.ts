@@ -184,12 +184,46 @@ const median = (values: readonly number[]): number => {
   return sorted[Math.floor(sorted.length / 2)];
 };
 
-/** What a listing looks like to this file. Deliberately the fixture's shape. */
+/**
+ * The two prices a listing carries. `salePrice` is null unless the merchant
+ * set one; 130 of the 500 listings in run 35275594594 did.
+ */
+export interface ListingPrice {
+  retailPrice: number;
+  salePrice: number | null;
+}
+
+/**
+ * THE PRICE A SHOPPER ACTUALLY PAYS, and the one every price judgement here
+ * must be made on.
+ *
+ * Exported and used by the generator rather than inlined, because an inlined
+ * `salePrice ?? retailPrice` is exactly the expression a fixture silently
+ * fails to reproduce. An independent review found that: the fixture carried
+ * raw `retailPrice` while the generator passed the effective price, so the
+ * unit-price medians the tests asserted on were computed from prices no
+ * shopper would have been charged. Both sides now call this function, and the
+ * fixture-integrity test re-derives every row through it.
+ */
+export function effectivePriceUsd(listing: ListingPrice): number {
+  return listing.salePrice ?? listing.retailPrice;
+}
+
+/**
+ * What a listing looks like to this file.
+ *
+ * The field is `priceUsd`, NOT `retailPrice`. The old name was the defect's
+ * hiding place: a caller holding an `AffiliatePart` could assign its
+ * `retailPrice` straight across and be wrong on 130 of 500 rows without any
+ * type error, because the name it was assigning to matched the name it came
+ * from. `priceUsd` does not match anything on `AffiliatePart`, so it has to be
+ * computed — and `effectivePriceUsd` above is the only thing that computes it.
+ */
 export interface ScopeCandidate {
   sku: string;
   category: RetailPartCategory;
   name: string;
-  retailPrice: number;
+  priceUsd: number;
 }
 
 /**
@@ -227,7 +261,7 @@ export function extremeUnitPriceFindings(candidates: readonly ScopeCandidate[]):
   const measured = candidates
     .map((row) => {
       const unit = unitFor(row.category, normalize(row.name));
-      return unit === null ? null : { row, unit, unitPrice: row.retailPrice / unit.size };
+      return unit === null ? null : { row, unit, unitPrice: row.priceUsd / unit.size };
     })
     .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
@@ -246,7 +280,7 @@ export function extremeUnitPriceFindings(candidates: readonly ScopeCandidate[]):
       sku: entry.row.sku,
       category: entry.row.category,
       name: entry.row.name,
-      priceUsd: entry.row.retailPrice,
+      priceUsd: entry.row.priceUsd,
       flag: 'extreme-unit-price',
       detail:
         `$${entry.unitPrice.toFixed(2)}/${entry.unit.label} is ${multiple.toFixed(1)}x the ` +
@@ -268,7 +302,7 @@ export function reportProductScope(candidates: readonly ScopeCandidate[]): Scope
 
   for (const row of candidates) {
     const title = normalize(row.name);
-    const base = { sku: row.sku, category: row.category, name: row.name, priceUsd: row.retailPrice };
+    const base = { sku: row.sku, category: row.category, name: row.name, priceUsd: row.priceUsd };
 
     if (row.category === 'ram' && isLegacyRam(title)) {
       const gb = statedGigabytes(title);

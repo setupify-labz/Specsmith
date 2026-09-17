@@ -20,6 +20,8 @@
 // nearest legitimate one, so a later change to either number has to face what
 // it costs.
 
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import type { RetailPartCategory } from '../../../src/lib/retail/partCatalog';
@@ -28,6 +30,7 @@ import { completeProductVerdict } from './completeProductGate';
 import { consumerProductVerdict } from './consumerProductGate';
 import {
   EXTREME_UNIT_PRICE_MULTIPLE,
+  effectivePriceUsd,
   extremeUnitPriceFindings,
   isLegacyRam,
   isLowWattagePsu,
@@ -40,8 +43,17 @@ import {
   type ScopeFlag,
 } from './productScopeReport';
 
-const SELECTED = fixture.selected as ScopeCandidate[];
+/** The fixture's full shape: both prices, plus the effective one derived here. */
+type FixtureRow = ScopeCandidate & { retailPrice: number; salePrice: number | null };
+
+const SELECTED = fixture.selected as FixtureRow[];
 const FINDINGS = reportProductScope(SELECTED);
+
+/** The same rows with the raw list price in the slot the report reads. */
+const AT_LIST_PRICE: FixtureRow[] = SELECTED.map((candidate) => ({
+  ...candidate,
+  priceUsd: candidate.retailPrice,
+}));
 
 const skusFor = (flag: ScopeFlag): string[] =>
   FINDINGS.filter((finding) => finding.flag === flag).map((finding) => finding.sku).sort();
@@ -53,6 +65,109 @@ const row = (sku: string): ScopeCandidate => {
 };
 
 const lower = (sku: string): string => row(sku).name.toLowerCase();
+
+describe('the fixture prices what a shopper pays, not what is struck through', () => {
+  // AN INDEPENDENT REVIEW FOUND THIS, AND THE OLD TESTS COULD NOT HAVE.
+  //
+  // The generator passes `salePrice ?? retailPrice` into the reporter, and the
+  // first fixture carried raw `retailPrice`. So the unit-price medians these
+  // tests asserted on were computed from prices no shopper would be charged,
+  // and every assertion still passed — because none of the 26 flagged rows
+  // happens to be discounted, so the one identity check the suite had
+  // (`finding.priceUsd === listing.retailPrice`) was true by coincidence.
+  //
+  // A coincidence is not a guard. These tests fail on the mismatch itself,
+  // independently of whether it currently moves a finding.
+
+  it('derives every row through the same function the generator uses', () => {
+    // `effectivePriceUsd` is exported and called on both sides. A fixture
+    // regenerated with a hand-written rule that drifts from it fails here.
+    for (const candidate of SELECTED) {
+      expect(candidate.priceUsd, candidate.sku).toBe(effectivePriceUsd(candidate));
+    }
+  });
+
+  it('keeps both prices so the derivation is checkable, not merely asserted', () => {
+    for (const candidate of SELECTED) {
+      expect(typeof candidate.retailPrice, candidate.sku).toBe('number');
+      expect(candidate.retailPrice).toBeGreaterThan(0);
+      expect(candidate.salePrice === null || typeof candidate.salePrice === 'number', candidate.sku).toBe(true);
+      if (candidate.salePrice !== null) expect(candidate.salePrice).toBeLessThan(candidate.retailPrice);
+    }
+  });
+
+  it('actually contains discounted rows, so none of this is vacuous', () => {
+    // The number that made the defect invisible. If a future regeneration
+    // dropped sale prices entirely, every check above would pass on a fixture
+    // that had quietly become the buggy one again.
+    const discounted = SELECTED.filter((candidate) => candidate.salePrice !== null);
+    expect(discounted).toHaveLength(130);
+    for (const candidate of discounted) expect(candidate.priceUsd).toBeLessThan(candidate.retailPrice);
+  });
+
+  it('is discounted in both categories the price test measures', () => {
+    // `psu` and `ram` are the only categories whose unit price is computed, so
+    // they are the only ones where the mismatch can move a median. Both must
+    // carry discounted rows or the observability test below proves nothing.
+    for (const category of ['psu', 'ram'] as const) {
+      const discounted = SELECTED.filter(
+        (candidate) => candidate.category === category && candidate.salePrice !== null,
+      );
+      expect(discounted.length, category).toBeGreaterThan(0);
+    }
+  });
+
+  it('the choice of price is OBSERVABLE — the medians differ', () => {
+    // The test that would have gone red on the original fixture. It asserts
+    // the two price views are not interchangeable, so a report built from the
+    // wrong one is a different report even when the flag set is unchanged.
+    const ramMedian = (rows: readonly FixtureRow[]): number => {
+      const perGb = rows
+        .filter((candidate) => candidate.category === 'ram')
+        .map((candidate) => {
+          const gb = statedGigabytes(candidate.name.toLowerCase());
+          return gb === null || gb <= 0 ? null : candidate.priceUsd / gb;
+        })
+        .filter((value): value is number => value !== null)
+        .sort((a, b) => a - b);
+      return perGb[Math.floor(perGb.length / 2)];
+    };
+
+    expect(ramMedian(SELECTED)).toBeCloseTo(20.31, 2);
+    expect(ramMedian(AT_LIST_PRICE)).toBeCloseTo(20.62, 2);
+    expect(ramMedian(SELECTED)).toBeLessThan(ramMedian(AT_LIST_PRICE));
+  });
+
+  it('reports the effective price in the detail string, so a reviewer sees it', () => {
+    // The 128 MB stick is not discounted, but the median it is measured
+    // against moved, and the multiple printed beside it moved with it.
+    const stick = FINDINGS.find(
+      (finding) => finding.sku === '9SIAE9A8TV4830' && finding.flag === 'extreme-unit-price',
+    );
+    expect(stick?.detail).toContain('$20.31/GB');
+    expect(stick?.detail).toContain('7.4x');
+  });
+
+  it('the generator computes the price through effectivePriceUsd, not by hand', () => {
+    // A structural guard, because this is the one seam a unit test cannot
+    // reach: the reporter is correct in isolation and the fixture is correct
+    // in isolation, and the defect lived in how the generator joined them.
+    const source = readFileSync(new URL('./generate-affiliate-catalog.ts', import.meta.url), 'utf-8');
+    expect(source).toContain('priceUsd: effectivePriceUsd(part)');
+    expect(source).not.toMatch(/priceUsd:\s*part\.retailPrice/);
+    expect(source).not.toMatch(/retailPrice:\s*part\.salePrice/);
+  });
+
+  it('the report has no field a caller could confuse for a list price', () => {
+    // `ScopeCandidate.retailPrice` was the defect's hiding place: it matched
+    // `AffiliatePart.retailPrice` by name, so assigning the wrong one across
+    // produced no type error. Renaming it to `priceUsd` is the fix, and this
+    // keeps the name from coming back.
+    const source = readFileSync(new URL('./productScopeReport.ts', import.meta.url), 'utf-8');
+    const shape = source.slice(source.indexOf('export interface ScopeCandidate'));
+    expect(shape.slice(0, shape.indexOf('}'))).not.toContain('retailPrice');
+  });
+});
 
 describe('nothing is filtered — this is a report', () => {
   it('returns findings and leaves the input untouched', () => {
@@ -295,13 +410,14 @@ describe('the run report a reviewer reads', () => {
     expect(FINDINGS).toHaveLength(26);
   });
 
-  it('carries the verbatim title and the published price on every finding', () => {
+  it('carries the verbatim title and the EFFECTIVE price on every finding', () => {
     // So the question can be answered from the report alone, without the
-    // artifact the report was derived from.
+    // artifact the report was derived from — and answered at the price a
+    // shopper is charged, not the struck-through one.
     for (const finding of FINDINGS) {
       const listing = row(finding.sku);
       expect(finding.name).toBe(listing.name);
-      expect(finding.priceUsd).toBe(listing.retailPrice);
+      expect(finding.priceUsd).toBe(effectivePriceUsd(listing));
       expect(finding.category).toBe(listing.category as RetailPartCategory);
       expect(finding.detail.length).toBeGreaterThan(0);
     }

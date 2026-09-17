@@ -27,7 +27,7 @@ import {
   readAccessToken,
   childText,
 } from '../rakuten';
-import { reportProductScope, summariseProductScope } from './productScopeReport';
+import { effectivePriceUsd, reportProductScope, summariseProductScope } from './productScopeReport';
 import { DEFAULT_REQUESTS_PER_MINUTE, RateLimiter } from '../coverage/rateLimiter';
 import { createInstrumentedFetch } from '../coverage/instrumentedFetch';
 import { buildSnapshot } from '../snapshot/buildSnapshot';
@@ -299,7 +299,11 @@ async function run(argv: readonly string[]): Promise<number> {
       sku: part.sku ?? part.id,
       category: part.category,
       name: part.name,
-      retailPrice: part.salePrice ?? part.retailPrice,
+      // NOT `part.retailPrice`. A discounted listing's unit price has to be
+      // measured on what a shopper pays, and 130 of the 500 listings in run
+      // 35275594594 carried a sale price. `effectivePriceUsd` is shared with
+      // the fixture-integrity test so the two cannot drift apart again.
+      priceUsd: effectivePriceUsd(part),
     })),
   );
   const scopeTally = summariseProductScope(scopeFindings);

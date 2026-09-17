@@ -51,6 +51,9 @@ interface FixtureRow {
   category: RetailPartCategory;
   name: string;
   retailPrice: number;
+  salePrice: number | null;
+  /** The effective published price: `salePrice ?? retailPrice`. */
+  priceUsd: number;
 }
 
 const SELECTED = fixture.selected as FixtureRow[];
@@ -87,6 +90,18 @@ describe('the fixture is the run, not a paraphrase of it', () => {
     expect(fixture._provenance.source).toContain('35275594594');
     expect(fixture._provenance.source).toContain('10519804365');
     expect(fixture._provenance.headSha).toBe('7d1026e510a1e4554063a40d4fabf1794feb54b3');
+  });
+
+  it('prices every row at what a shopper pays', () => {
+    // The gate itself reads no price — it reads product KIND — so this is
+    // here only to keep the shared fixture honest for the price comparison
+    // below and for the scope report, which does read it. 130 of the 500
+    // listings are discounted, and the first version of this fixture carried
+    // the struck-through price for all of them.
+    for (const listing of SELECTED) {
+      expect(listing.priceUsd, listing.sku).toBe(listing.salePrice ?? listing.retailPrice);
+    }
+    expect(SELECTED.filter((listing) => listing.salePrice !== null)).toHaveLength(130);
   });
 
   it('carries every SKU the defect table asserts on', () => {
@@ -292,7 +307,7 @@ describe('a switch is not a mouse', () => {
     // a real mouse. It leans on the noun instead.
     for (const sku of ['9SIAFJTKJX1446', '9SIAFJTKJX1547', '9SIACD55AW0338']) {
       const listing = row(sku);
-      expect(listing.retailPrice).toBeGreaterThan(row('9SIC6T1M085452').retailPrice);
+      expect(listing.priceUsd).toBeGreaterThan(row('9SIC6T1M085452').priceUsd);
       expect(isMouseComponent(listing.name.toLowerCase()), listing.name).toBe(false);
       expect(completeProductVerdict('mouse', listing.name), sku).toEqual({ ok: true });
     }
