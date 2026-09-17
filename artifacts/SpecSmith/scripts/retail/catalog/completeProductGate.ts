@@ -128,24 +128,40 @@ export function isBoardComponentBundle(title: string): boolean {
  *   9SIB66RK6B0037  "X99 Dual CPU Motherboard F8D PLUS Intel X99 LGA 2011-3
  *                    E5 V3 DDR4 RECC 512GB M.2 NVME NGFF USB3.0 E-ATX Server"
  *
- * WORD ORDER IS THE WHOLE POINT. `isServerBoard` in the consumer gate matches
- * `server motherboard` and nothing else, so this title — where "Server" is the
- * LAST word and "Motherboard" the third — walked straight past it. It also
- * says "Dual CPU", which `\bdual socket\b` does not match either.
+ * WHAT THIS ACTUALLY KEYS ON IS THE SOCKET COUNT, and only that. The title
+ * above says "Dual CPU", which is a statement about the board's hardware. The
+ * word "Server" in it is not consulted.
  *
- * Kept deliberately narrow so single-socket workstation boards survive. Two
- * were selected in the same run and are legitimate DIY purchases:
+ * A `server` + board-noun clause WAS here, added because `isServerBoard` in
+ * the consumer gate matches `server motherboard` in that word order only, and
+ * this title puts "Server" last. IT IS GONE, because run 35284766312 showed
+ * what it costs: the ASUS Pro WS W790-ACE — a complete, single-socket,
+ * buildable workstation board — was rejected for the phrase "SERVER-GRADE",
+ * where "server" is an adjective describing a feature's quality and no part of
+ * what is in the box.
+ *
+ * That is the same mistake, in a new place, that this codebase has now made
+ * three times: reading a word as a product claim when it is describing
+ * something else. "PC" in "Hard PC Case" was polycarbonate. "CPU" in "Supports
+ * CPUs 285K" was a socket list. "Server" in "server-grade" is an adjective.
+ * A bare keyword is not evidence of what is being sold.
+ *
+ * Dropping the clause loses nothing real. The defect above is still rejected,
+ * on "Dual CPU"; the consumer gate still catches `server motherboard` in the
+ * forward order, plus Xeon, EPYC, SP5/SP6 and `dual socket`. What a
+ * reverse-order server board with ONE socket and no server-class chip would
+ * slip through on is a gap this leaves open on purpose — an over-broad rule
+ * that eats real workstation boards is the worse of the two errors.
+ *
+ * Single-socket workstation boards must survive. Three are now on record:
  *
  *   9SIC70UKZA6987  ASUS Pro WS TRX50-SAGE WIFI A ... workstation motherboard
  *   9SIC6E1M4K7626  ASUS WS X299 Pro/SE LGA 2066 CEB Intel Motherboard
- *
- * Neither takes two processors, and "workstation" is not consulted here.
+ *   (run 35284766312) ASUS Pro WS W790-ACE, on "server-grade"
  */
 export function isMultiSocketServerBoard(title: string): boolean {
   if (/\bdual\s*[- ]?\s*(?:cpu|processor)s?\b/.test(title)) return true;
   if (/\b(?:2|two|dual)\s*[- ]?\s*socket\b/.test(title)) return true;
-  // "server" and a board noun in EITHER order, anywhere in the title.
-  if (/\bserver\b/.test(title) && /\b(motherboard|mainboard)\b/.test(title)) return true;
   return false;
 }
 
@@ -198,8 +214,59 @@ export function isWearableDeviceCase(title: string): boolean {
  *   9SIBJBBJU76117  UPERFECT 13.3 Inch Portable Monitor, 1080 FHD Ultra-thin
  *
  * Neither says "monitoring", and neither is a secondary panel.
+ *
+ * BUT "SECONDARY SCREEN" WAS NOT ENOUGH EITHER, and run 35284766312 proved
+ * it: a Unew 15.6-inch portable gaming monitor was rejected on that phrase.
+ * A portable monitor is a secondary screen — that is its entire purpose — so
+ * the phrase cannot carry the decision on its own. Size now decides first,
+ * and the phrase only applies to panels too small to work on.
  */
-export function isHardwareMonitorScreen(title: string): boolean {
+/**
+ * The smallest diagonal SpecSmith treats as a display someone works on.
+ *
+ * A SPECSMITH CHOICE, not a standard, and the margin is wide rather than
+ * thin: the accessory panels in run 35275594594 state 5 inches and the
+ * smallest real portable monitor in the same run is 13.3 inches. Nothing sits
+ * between 5 and 13.3, so the threshold is not close to any real product.
+ */
+export const MIN_WORKABLE_DISPLAY_INCHES = 13;
+
+/**
+ * The screen diagonal the title states, in inches, or null.
+ *
+ * TAKES THE RAW MERCHANT TITLE, NOT THE NORMALIZED ONE, and that is the whole
+ * subtlety. `normalize` collapses every non-alphanumeric run to a space, which
+ * destroys exactly the two characters a size is written with: `UPERFECT 13.3
+ * Inch` becomes `uperfect 13 3 inch`, where a decimal-blind parser reads THREE
+ * INCHES and condemns a real portable monitor, and `15.6''` loses its quotes
+ * entirely and parses as nothing. The first draft of this function did both.
+ *
+ * AN EXPLICIT UNIT IS REQUIRED — `inch`, `inches`, `"` or `''`. Not fussiness:
+ * `Thermalright Trofeo Vision LCD AIO Display 9.16 PC Monitor` writes its 9.16
+ * with no unit at all, and a parser that guessed at bare numbers would read
+ * `1080P`, `800*400` or a model number as a size somewhere else. A title that
+ * does not state its size gets none, and is then judged on what it does say.
+ *
+ * A bare `in` is deliberately not accepted: it is an ordinary English word and
+ * `Display Data Monitoring for Gaming Computer` has no shortage of places for
+ * it to appear next to a number.
+ */
+export function statedDiagonalInches(rawName: string): number | null {
+  const match = /(\d{1,2}(?:\.\d{1,2})?)\s*-?\s*(?:inch(?:es)?\b|''|")/i.exec(rawName);
+  return match === null ? null : Number(match[1]);
+}
+
+export function isHardwareMonitorScreen(title: string, rawName: string): boolean {
+  // A DISPLAY BIG ENOUGH TO WORK ON IS A MONITOR, whatever else it says.
+  //
+  // Run 35284766312 rejected the Unew 15.6-inch portable gaming monitor
+  // because its copy calls it a "secondary screen" — which is exactly what a
+  // portable monitor IS, a second display you carry to use beside a laptop.
+  // The phrase was meant to catch the 5-inch sensor panel that sits inside a
+  // case, and at 15.6 inches this is not that, so size decides first.
+  const diagonal = statedDiagonalInches(rawName);
+  if (diagonal !== null && diagonal >= MIN_WORKABLE_DISPLAY_INCHES) return false;
+
   if (/\b(hardware|system|temperature|data|sensor|cpu)\s+monitoring\b/.test(title)) return true;
   if (/\bsecondary\s+(?:ips\s+)?(?:screen|display|monitor)\b/.test(title)) return true;
   // NOT evidenced by this run — the same product under another vendor's name.
@@ -237,8 +304,51 @@ export function isHardwareMonitorScreen(title: string): boolean {
  *
  * `mouse pad` and `mouse grips` went the same way: both appear inside bundle
  * titles for complete mice, and neither was needed for anything in this run.
+ *
+ * AND THE CLICK-ENDURANCE CLAUSE CAME BACK TO BITE ANYWAY, from the other
+ * direction. Removing it was not enough: run 35284766312 showed the plain
+ * `mouse switch` noun rejecting the iRocks M31R, a complete wireless mouse
+ * that simply says which switch is fitted. `describesCompleteMouse` above is
+ * the fix, and it is a guard rather than a narrowing — the switch rules are
+ * untouched, they just no longer get to decide when the title has already
+ * established that a whole mouse is being sold.
  */
+/**
+ * Whether the title describes a COMPLETE POINTING DEVICE.
+ *
+ * Read off the things a mouse has and a bag of switches does not: a tracking
+ * resolution, a wireless radio, a sensor, a programmable button count, a
+ * battery. None of them appears in the switch four-pack's title —
+ *
+ *   NoirVogel TTC Dustproof Gold Micro Mouse Switch (4Pcs-Dustproof Gold),
+ *   0.74N, 80 Million Clicks for Gaming Mouse
+ *
+ * — which states an actuation force, a click endurance and a quantity, and
+ * whose only "gaming mouse" is the thing the switches go INTO. Nor in the
+ * bungee's, which is a cable holder and says nothing about tracking.
+ */
+export function describesCompleteMouse(title: string): boolean {
+  if (/\b\d{3,6}\s*dpi\b/.test(title)) return true;
+  if (/\b\d{1,3}\s*[k]\s*dpi\b/.test(title)) return true;
+  if (/\b(?:wireless|tri\s*mode|dual\s*mode|bluetooth|2\s*4\s*g(?:hz)?)\b/.test(title)) return true;
+  if (/\b(?:optical|laser|hero|paw\d+|pixart)\s+sensor\b/.test(title)) return true;
+  if (/\bsensor\b/.test(title) && /\bmouse\b/.test(title)) return true;
+  if (/\b\d{1,2}\s+(?:programmable\s+)?buttons?\b/.test(title)) return true;
+  if (/\b(?:rechargeable|battery\s+life|mah)\b/.test(title)) return true;
+  return false;
+}
+
 export function isMouseComponent(title: string): boolean {
+  // A COMPLETE MOUSE THAT NAMES ITS OWN SWITCHES IS STILL A MOUSE.
+  //
+  // Run 35284766312 rejected the iRocks M31R — a complete wireless gaming
+  // mouse — because it advertises the switch fitted inside it. Naming a
+  // component is how a real product describes its build quality; it is not a
+  // statement that the component is what ships. So evidence that this IS a
+  // mouse outranks the switch noun, exactly as chassis evidence outranks a
+  // worn-device name in `isWearableDeviceCase`.
+  if (describesCompleteMouse(title)) return false;
+
   // The product noun. Evidenced by 9SIC6T1M085452.
   if (/\b(?:micro\s+)?mouse\s+switch(?:es)?\b/.test(title)) return true;
   // Evidenced by 9SIC2ZPKRA0778.
@@ -267,7 +377,7 @@ export function completeProductVerdict(category: RetailPartCategory, name: strin
       if (isWearableDeviceCase(title)) return { ok: false, reason: 'wearable-device-case' };
       break;
     case 'monitor':
-      if (isHardwareMonitorScreen(title)) return { ok: false, reason: 'hardware-monitor-screen' };
+      if (isHardwareMonitorScreen(title, name)) return { ok: false, reason: 'hardware-monitor-screen' };
       break;
     case 'mouse':
       if (isMouseComponent(title)) return { ok: false, reason: 'mouse-component' };
@@ -279,17 +389,38 @@ export function completeProductVerdict(category: RetailPartCategory, name: strin
 }
 
 /**
- * Screens a candidate set, returning what survives and a tally of what did not.
+ * One refusal, in the form a reviewer can act on.
  *
- * Pure and total, and shaped like `screenConsumerProducts` so the two report
- * the same way.
+ * SKU AND THE FULL TITLE, both of them, because the previous shape had
+ * neither and that cost a whole dry run. It recorded at most three titles per
+ * reason, truncated to 120 characters and with no identifier at all — so when
+ * run 35284766312 rejected three legitimate products, the report named them
+ * only as clipped strings that could not be looked up, priced, or traced back
+ * to a listing. Checking a rule against reality needs the exact row.
  */
-export function screenCompleteProducts<T extends { category: RetailPartCategory; name: string }>(
+export interface IncompleteRejectionRecord {
+  reason: IncompleteRejection;
+  /** The merchant SKU, or null when the candidate carries none. */
+  sku: string | null;
+  /** The merchant title, COMPLETE. Never truncated. */
+  name: string;
+}
+
+/**
+ * Screens a candidate set, returning what survives and every refusal in full.
+ *
+ * Pure and total. It reports EVERY rejection, not a sample: a sampled report
+ * can only ever show that a rule fired, never that it fired on the right
+ * things, and a false positive outside the sample is invisible.
+ */
+export function screenCompleteProducts<
+  T extends { category: RetailPartCategory; name: string; sku?: string | null },
+>(
   candidates: readonly T[],
-): { kept: T[]; rejected: Record<string, number>; rejectedTitles: { reason: IncompleteRejection; name: string }[] } {
+): { kept: T[]; rejected: Record<string, number>; rejections: IncompleteRejectionRecord[] } {
   const kept: T[] = [];
   const rejected: Record<string, number> = {};
-  const rejectedTitles: { reason: IncompleteRejection; name: string }[] = [];
+  const rejections: IncompleteRejectionRecord[] = [];
   for (const candidate of candidates) {
     const verdict = completeProductVerdict(candidate.category, candidate.name);
     if (verdict.ok) {
@@ -297,9 +428,7 @@ export function screenCompleteProducts<T extends { category: RetailPartCategory;
       continue;
     }
     rejected[verdict.reason] = (rejected[verdict.reason] ?? 0) + 1;
-    if (rejectedTitles.filter((entry) => entry.reason === verdict.reason).length < 3) {
-      rejectedTitles.push({ reason: verdict.reason, name: candidate.name.slice(0, 120) });
-    }
+    rejections.push({ reason: verdict.reason, sku: candidate.sku ?? null, name: candidate.name });
   }
-  return { kept, rejected, rejectedTitles };
+  return { kept, rejected, rejections };
 }

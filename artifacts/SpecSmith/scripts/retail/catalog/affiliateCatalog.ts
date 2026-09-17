@@ -472,8 +472,20 @@ export interface CatalogSelectionReport {
   notConsumerProductTitles: { reason: string; name: string }[];
   /** Refused by the complete-product gate, by reason, BEFORE selection ran. */
   notCompleteProduct: Record<string, number>;
-  /** A few real titles per reason, for the same reason as the line above. */
-  notCompleteProductTitles: { reason: string; name: string }[];
+  /**
+   * EVERY refusal, with its SKU and its complete untruncated title.
+   *
+   * Renamed from `notCompleteProductTitles`, which was a sample of at most
+   * three clipped titles per reason and carried no identifier. Run
+   * 35284766312 refused three legitimate products — an ASUS Pro WS W790-ACE
+   * on "server-grade", a 15.6-inch portable monitor on "secondary screen",
+   * and a complete iRocks mouse on the switch fitted inside it — and the
+   * report could not say which listings they were. The name changed with the
+   * shape on purpose: a field called `…Titles` that also holds SKUs, and a
+   * sample that reads like a complete list, are both the kind of quiet
+   * mismatch that hid the retailPrice/salePrice defect.
+   */
+  notCompleteProductRejections: { reason: string; sku: string | null; name: string }[];
   published: number;
   /** What the selected listings cost, low to high. Null when none was selected. */
   range: CatalogSelectionRange | null;
@@ -550,7 +562,7 @@ export function planCatalogSelection(
         notConsumerProduct: screened.rejected,
         notConsumerProductTitles: screened.rejectedTitles,
         notCompleteProduct: complete.rejected,
-        notCompleteProductTitles: complete.rejectedTitles,
+        notCompleteProductRejections: complete.rejections,
         published: 0,
         range: null,
       });
@@ -578,7 +590,7 @@ export function planCatalogSelection(
       notConsumerProduct: screened.rejected,
       notConsumerProductTitles: screened.rejectedTitles,
       notCompleteProduct: complete.rejected,
-      notCompleteProductTitles: complete.rejectedTitles,
+      notCompleteProductRejections: complete.rejections,
       published: outcome.selected.length,
       range: prices.length === 0 ? null : { lowUsd: Math.min(...prices), highUsd: Math.max(...prices) },
     });
