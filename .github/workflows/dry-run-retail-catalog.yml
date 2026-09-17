@@ -1,0 +1,124 @@
+# DRY RUN of the 500-part Newegg catalogue build.
+#
+# Reports what a build WOULD publish, per category, and writes nothing into the
+# repository. Three things make that true rather than intended:
+#
+#   - `permissions: contents: read`. The job cannot push.
+#   - `resolveCatalogOutputPath` refuses any path inside the checkout, so the
+#     committed catalogue at public/data/retail-parts.json cannot be named as
+#     an output by any invocation of the generator.
+#   - the final step fails the run if the working tree changed at all.
+#
+# MANUAL DISPATCH ONLY. It spends live Rakuten requests — a full GPU catalogue
+# sweep plus eleven paged category searches, around 250 of them now the paging
+# guard admits the large categories — so it never runs off a commit.
+#
+# It twice carried a push trigger confined to this one file, because
+# `workflow_dispatch` does not work until a workflow reaches the default branch
+# and that was the only way to run it from a feature branch. Each edit to this
+# file then cost a sweep. The 2026-09-17 run passed with every quota met, so
+# the trigger is removed; dispatching it again requires putting this file on
+# the default branch first, which is the deliberate step it should be.
+
+name: Dry-run retail catalogue
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-catalog-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run the catalogue and adapter tests first
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          cd artifacts/SpecSmith
+          pnpm exec vitest run scripts/retail src/lib/retail
+
+      - name: Mint an access token and dry-run the catalogue
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/dry-run"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          # A shortfall exits non-zero BY DESIGN and quotas are never lowered
+          # to avoid it. The report is written either way, so the exit code is
+          # HELD rather than discarded: the upload step below runs on
+          # `if: always()` and gets the report regardless, and the run is then
+          # failed for real at the end.
+          #
+          # The first version swallowed the code with `set +e` and only echoed
+          # it. The run went GREEN while three categories had published nothing
+          # - exactly the shape of result that must never look like a pass.
+          set +e
+          pnpm exec tsx scripts/retail/catalog/generate-affiliate-catalog.ts \
+            --dry-run --out "${RUNNER_TEMP}/dry-run/proposed-retail-parts.json"
+          generator_exit=$?
+          set -e
+          echo "${generator_exit}" > "${RUNNER_TEMP}/dry-run-exit-code"
+          echo "Generator exit code: ${generator_exit}"
+
+      - name: Upload the proposed catalogue and selection report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: retail-catalogue-dry-run-${{ github.run_id }}
+          path: ${{ runner.temp }}/dry-run/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+
+      # Last, so the report is always uploaded first. A dry run that fell short
+      # of a quota is a FAILED run; it is not allowed to look like a pass
+      # merely because the report it produced was written successfully.
+      - name: Fail the run if the dry run did
+        if: always()
+        run: |
+          set -euo pipefail
+          code="$(cat "${RUNNER_TEMP}/dry-run-exit-code" 2>/dev/null || echo 1)"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Dry run exited ${code} - see the per-category report above. Quotas were NOT lowered."
+            exit "${code}"
+          fi
