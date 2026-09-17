@@ -19,6 +19,27 @@ import { MAX_CLOCK_SKEW_MS } from '../../../src/lib/retail/offerSnapshot';
 import { PRICE_FRESHNESS_MS } from '../../../src/lib/retail/partPricing';
 import { listingIdentity, normalizeCatalogName, selectBestListings } from './listingSelection';
 import { loadCategoryScopes, type CategoryPriceScope } from './categoryScope';
+import {
+  consumerProductVerdict,
+  isCpuBoardBundle,
+  isMultipack,
+  isOpenBenchChassis,
+  isServerBoard,
+  isServerClassProcessor,
+  screenConsumerProducts,
+} from './consumerProductGate';
+
+// Re-exported so the rules have one definition and one import path.
+export {
+  consumerProductVerdict,
+  isCpuBoardBundle,
+  isMultipack,
+  isOpenBenchChassis,
+  isServerBoard,
+  isServerClassProcessor,
+  screenConsumerProducts,
+  type ConsumerRejection,
+} from './consumerProductGate';
 
 export { normalizeCatalogName } from './listingSelection';
 
@@ -107,78 +128,6 @@ export function accessoryLeadsHeadset(title: string): boolean {
 }
 
 
-/**
- * Several of one product in a box, where the catalogue represents one.
- *
- * A published part carries ONE price and links to ONE listing, and every
- * downstream figure — the build subtotal, the comparison, the card — reads it
- * as a single item. "2-Pack Bundle" at $1,329 is then a $1,329 monitor, which
- * is wrong by a factor of two and looks like an ordinary expensive display.
- *
- * ONLY EXPLICIT PACK COUNTS. Deliberately no bare "x2": a monitor title says
- * "HDMI x2" about its ports, and a rule matching that would reject ordinary
- * displays for describing themselves accurately.
- */
-export function isMultipack(title: string): boolean {
-  return /\b\d+\s*[- ]?pack\b/.test(title)
-    || /\bpack of \d+\b/.test(title)
-    || /\b(two|three|four|twin|dual)[- ]pack\b/.test(title)
-    || /\b\d+\s*[- ]?pc?s\s+(?:bundle|set)\b/.test(title);
-}
-
-/**
- * A board built for a server, not for the machine this site helps someone
- * build.
- *
- * Three independent signals, because no one of them catches all of it:
- *
- *   - THE VENDOR LINE. Supermicro builds server boards; "ASRock Rack" is
- *     ASRock's server division and is NOT the consumer "ASRock" brand, so the
- *     space matters and a bare "ASRock" must keep passing.
- *   - THE SOCKET. SP5 and SP6 are EPYC sockets; nothing consumer uses them.
- *   - WHAT THE TITLE CALLS ITSELF. "Server Motherboard", "Server Mainboard",
- *     or a board whose processor family is Xeon or EPYC.
- */
-export function isServerBoard(title: string): boolean {
-  return /\b(supermicro|asrock rack|tyan|gigabyte server)\b/.test(title)
-    || /\bsp[56]\b/.test(title)
-    || /\bserver\s+(motherboard|mainboard|board)\b/.test(title)
-    || /\b(xeon|epyc)\b/.test(title)
-    || /\bdual\s+socket\b/.test(title);
-}
-
-/**
- * A processor sold into workstations and servers rather than desktops.
- *
- * MODEL FAMILY, NOT MARKETING COPY. A marketplace seller describes a Ryzen 9
- * 7950X as being "for workstation/server" use; that is a claim about who might
- * buy it, and the part is an ordinary consumer desktop CPU that belongs in
- * this catalogue. So the words "workstation" and "server" are NOT read here at
- * all — only the family name in the model itself is.
- *
- * Plain Threadripper is left alone deliberately: the PRO line is the
- * workstation one, and only that was asked for.
- */
-export function isServerClassProcessor(title: string): boolean {
-  return /\bxeon\b/.test(title)
-    || /\bthreadripper\s+pro\b/.test(title)
-    || /\bepyc\b/.test(title);
-}
-
-/**
- * An open frame or tray, which is not a case.
- *
- * It encloses nothing, ships without panels, and answers none of the
- * questions a case answers for someone building their first PC — will the card
- * fit, will the air move, is it quiet.
- */
-export function isOpenBenchChassis(title: string): boolean {
-  return /\b(test\s*bench|bench\s*table|benchtable)\b/.test(title)
-    || /\bmotherboard\s+tray\b/.test(title)
-    || /\bopen[- ]?(air|frame)\b/.test(title)
-    || /\bdiy\s+(open\s+)?frame\b/.test(title);
-}
-
 export function isSelectableBuilderPart(category: RetailPartCategory, name: string): boolean {
   const title = normalizeCatalogName(name);
   switch (category) {
@@ -190,7 +139,7 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         // A CPU listing naming a board is selling both. Bare, not "and a
         // motherboard": the bundles that got through wrote it as "+", "with",
         // and as a second clause the older pattern did not reach.
-        && !has(title, /\b(motherboard|mainboard)\b/)
+        && !isCpuBoardBundle(title)
         && !isServerClassProcessor(title);
     case 'motherboard':
       return has(title, /\b(motherboard|mainboard)\b/)
@@ -504,6 +453,10 @@ export interface CatalogSelectionReport {
   consolidated: number;
   /** Candidates refused because their reading was already stale at publication. */
   stale: number;
+  /** Refused by the consumer-product gate, by reason, BEFORE selection ran. */
+  notConsumerProduct: Record<string, number>;
+  /** A few real titles per reason, so a rule can be checked rather than trusted. */
+  notConsumerProductTitles: { reason: string; name: string }[];
   published: number;
   /** What the selected listings cost, low to high. Null when none was selected. */
   range: CatalogSelectionRange | null;
@@ -542,7 +495,15 @@ export function planCatalogSelection(
   const names = new Set<string>();
 
   for (const config of RETAIL_CATEGORY_CONFIG) {
-    const all = candidates.get(config.category) ?? [];
+    const supplied = candidates.get(config.category) ?? [];
+    // THE CONSUMER-PRODUCT GATE, BEFORE ANYTHING COMPETES FOR A SLOT.
+    //
+    // Applied here rather than only at admission because the GPU sweep does
+    // not go through admission at all, and because a listing rejected after
+    // selection would already have taken a slot — leaving a hole in a full
+    // quota while good candidates sat unexamined.
+    const screened = screenConsumerProducts(supplied);
+    const all = screened.kept;
     const fresh = all.filter((part) => isFreshAtPublication(part, generatedAt));
     const scope = scopes.get(config.category);
     // No scope, no publication. A category whose bounds nobody set is a
@@ -553,13 +514,15 @@ export function planCatalogSelection(
       report.push({
         category: config.category,
         quota: config.quota,
-        considered: all.length,
+        considered: supplied.length,
         outOfScope: { 'no-scope-declared': all.length },
         coverage: 'scope-tier',
         coverageGroups: 0,
         distinctProducts: 0,
         consolidated: 0,
         stale: all.length - fresh.length,
+        notConsumerProduct: screened.rejected,
+        notConsumerProductTitles: screened.rejectedTitles,
         published: 0,
         range: null,
       });
@@ -584,6 +547,8 @@ export function planCatalogSelection(
       distinctProducts: outcome.distinctProducts,
       consolidated: outcome.consolidated,
       stale: all.length - fresh.length,
+      notConsumerProduct: screened.rejected,
+      notConsumerProductTitles: screened.rejectedTitles,
       published: outcome.selected.length,
       range: prices.length === 0 ? null : { lowUsd: Math.min(...prices), highUsd: Math.max(...prices) },
     });
