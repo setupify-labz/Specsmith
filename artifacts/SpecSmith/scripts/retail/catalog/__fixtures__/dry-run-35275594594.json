@@ -1,0 +1,4011 @@
+{
+  "_provenance": {
+    "source": "GitHub Actions run 35275594594, artifact 10519804365",
+    "workflow": "dry-run-retail-catalog.yml",
+    "headSha": "7d1026e510a1e4554063a40d4fabf1794feb54b3",
+    "generatedAt": "2026-09-17T21:19:12.154Z",
+    "note": "The 500 listings that run PROPOSED to publish. Trimmed to the fields the gates read. SKUs, categories and titles are verbatim; nothing is edited, added or invented. priceUsd is the EFFECTIVE published price — salePrice when the merchant set one, retailPrice otherwise — which is what the generator passes downstream. retailPrice and salePrice are both kept so that identity is re-derivable rather than asserted."
+  },
+  "selected": [
+    {
+      "sku": "N82E16814930112",
+      "category": "gpu",
+      "name": "ASRock Challenger Arc A580 Graphics Card A580 CL 8GO",
+      "retailPrice": 199.99,
+      "salePrice": null,
+      "priceUsd": 199.99
+    },
+    {
+      "sku": "N82E16814930134",
+      "category": "gpu",
+      "name": "ASRock Challenger Arc B570 Graphics Card B570 CL 10GO",
+      "retailPrice": 263.99,
+      "salePrice": 259.99,
+      "priceUsd": 259.99
+    },
+    {
+      "sku": "N82E16814930131",
+      "category": "gpu",
+      "name": "ASRock Challenger Arc B580 Graphics Card B580 CL 12GO",
+      "retailPrice": 349.99,
+      "salePrice": 329.99,
+      "priceUsd": 329.99
+    },
+    {
+      "sku": "N82E16814137810",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 3050 Graphics Card RTX 3050 VENTUS 2X XS 8G OC",
+      "retailPrice": 269.99,
+      "salePrice": 259.99,
+      "priceUsd": 259.99
+    },
+    {
+      "sku": "N82E16814932658",
+      "category": "gpu",
+      "name": "GIGABYTE GeForce RTX 3060 WINDFORCE OC 12G (rev. 2.0) Graphics Card, 2x WINDFORCE Fans, 12GB 192-bit GDDR6, GV-N3060WF2OC-12GD Rev2.0 Graphics Card",
+      "retailPrice": 499.99,
+      "salePrice": 459.99,
+      "priceUsd": 459.99
+    },
+    {
+      "sku": "N82E16814932817",
+      "category": "gpu",
+      "name": "GIGABYTE Low Profile GeForce RTX 5050 Graphics Card GV-N5050OC-8GL",
+      "retailPrice": 309.99,
+      "salePrice": 299.99,
+      "priceUsd": 299.99
+    },
+    {
+      "sku": "N82E16814932804",
+      "category": "gpu",
+      "name": "GIGABYTE WINDFORCE GeForce RTX 5060 Graphics Card GV-N5060WF2OC-8GD",
+      "retailPrice": 499.99,
+      "salePrice": 459.99,
+      "priceUsd": 459.99
+    },
+    {
+      "sku": "N82E16814137977",
+      "category": "gpu",
+      "name": "MSI SHADOW GeForce RTX 5060 Ti Graphics Card RTX 5060 Ti 16G SHADOW 2X OC PLUS",
+      "retailPrice": 799.99,
+      "salePrice": 779.99,
+      "priceUsd": 779.99
+    },
+    {
+      "sku": "N82E16814932774",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming GeForce RTX 5070 Graphics Card GV-N5070GAMING OC-12GD",
+      "retailPrice": 839.99,
+      "salePrice": null,
+      "priceUsd": 839.99
+    },
+    {
+      "sku": "N82E16814932771",
+      "category": "gpu",
+      "name": "GIGABYTE WindForce GeForce RTX 5070 Ti Graphics Card GV-N507TWF3OC-16GD",
+      "retailPrice": 1169.99,
+      "salePrice": null,
+      "priceUsd": 1169.99
+    },
+    {
+      "sku": "N82E16814137914",
+      "category": "gpu",
+      "name": "MSI SHADOW GeForce RTX 5080 Graphics Card RTX 5080 16G SHADOW 3X OC",
+      "retailPrice": 1579.99,
+      "salePrice": null,
+      "priceUsd": 1579.99
+    },
+    {
+      "sku": "N82E16814932763",
+      "category": "gpu",
+      "name": "GIGABYTE AORUS GeForce RTX 5090 Graphics Card GV-N5090AORUSX W-32GD",
+      "retailPrice": 5999.99,
+      "salePrice": 5399.99,
+      "priceUsd": 5399.99
+    },
+    {
+      "sku": "N82E16814930093",
+      "category": "gpu",
+      "name": "ASRock Challenger Radeon RX 7600 Graphics Card RX7600 CL 8GO",
+      "retailPrice": 349.99,
+      "salePrice": 339.99,
+      "priceUsd": 339.99
+    },
+    {
+      "sku": "N82E16814202457",
+      "category": "gpu",
+      "name": "SAPPHIRE PULSE Radeon RX 9060 XT Graphics Card 11350-03-20G",
+      "retailPrice": 499.99,
+      "salePrice": null,
+      "priceUsd": 499.99
+    },
+    {
+      "sku": "N82E16814932807",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming Radeon RX 9060 XT Graphics Card GV-R9060XTGAMING OC-8GD RX 9060XT",
+      "retailPrice": 479.99,
+      "salePrice": 459.99,
+      "priceUsd": 459.99
+    },
+    {
+      "sku": "N82E16814930138",
+      "category": "gpu",
+      "name": "ASRock Challenger Radeon RX 9070 Graphics Card RX9070 CL 16G",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16814980002",
+      "category": "gpu",
+      "name": "Yeston Sakura Radeon RX 9070 XT Graphics Card RX9070XT",
+      "retailPrice": 799,
+      "salePrice": null,
+      "priceUsd": 799
+    },
+    {
+      "sku": "N82E16814982013",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 3060 Graphics Card RTX 3060 Ventus 2X 12G OC",
+      "retailPrice": 479.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137982",
+      "category": "gpu",
+      "name": "MSI SHADOW GeForce RTX 5050 Graphics Card RTX 5050 8G SHADOW 2X OC",
+      "retailPrice": 419.99,
+      "salePrice": null,
+      "priceUsd": 419.99
+    },
+    {
+      "sku": "N82E16814137973",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5060 Graphics Card RTX 5060 8G VENTUS 3X OC",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137992",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5060 Ti Graphics Card (RTX 5060 Ti 16G VENTUS 2X OC BLACK PLUS)",
+      "retailPrice": 799.99,
+      "salePrice": 789.99,
+      "priceUsd": 789.99
+    },
+    {
+      "sku": "N82E16814932773",
+      "category": "gpu",
+      "name": "GIGABYTE AERO GeForce RTX 5070 Graphics Card GV-N5070AERO OC-12GD",
+      "retailPrice": 899.99,
+      "salePrice": 849.99,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814137933",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5070 Ti Graphics Card RTX 5070 TI 16G VENTUS 3X OC",
+      "retailPrice": 1199.99,
+      "salePrice": 1179.99,
+      "priceUsd": 1179.99
+    },
+    {
+      "sku": "N82E16814932754",
+      "category": "gpu",
+      "name": "GIGABYTE WINDFORCE GeForce RTX 5080 Graphics Card GV-N5080WF3OC-16GD",
+      "retailPrice": 1599.99,
+      "salePrice": 1579.99,
+      "priceUsd": 1579.99
+    },
+    {
+      "sku": "N82E16814150916",
+      "category": "gpu",
+      "name": "XFX Mercury Radeon RX 9060 XT Graphics Card RX-96TMERCBA",
+      "retailPrice": 519.99,
+      "salePrice": 499.99,
+      "priceUsd": 499.99
+    },
+    {
+      "sku": "N82E16814932752",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming Radeon RX 9070 Graphics Card GV-R9070GAMING OC-16GD",
+      "retailPrice": 729.99,
+      "salePrice": 699.99,
+      "priceUsd": 699.99
+    },
+    {
+      "sku": "N82E16814131871",
+      "category": "gpu",
+      "name": "PowerColor Reaper Radeon RX 9070 XT 16GB GDDR6 PCI Express 5.0 x16 RDNA 4 ATX Graphics Card RX9070XT 16G-A",
+      "retailPrice": 799.99,
+      "salePrice": null,
+      "priceUsd": 799.99
+    },
+    {
+      "sku": "N82E16814126524",
+      "category": "gpu",
+      "name": "ASUS Dual GeForce RTX 3060 Graphics Card DUAL-RTX3060-O12G-V2",
+      "retailPrice": 509.99,
+      "salePrice": 499.99,
+      "priceUsd": 499.99
+    },
+    {
+      "sku": "N82E16814137976",
+      "category": "gpu",
+      "name": "MSI SHADOW GeForce RTX 5060 Graphics Card RTX 5060 8G SHADOW 2X OC",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137957",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5060 Ti Graphics Card RTX 5060 Ti 16G VENTUS 3X OC",
+      "retailPrice": 799.99,
+      "salePrice": null,
+      "priceUsd": 799.99
+    },
+    {
+      "sku": "N82E16814126761",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5070 12GB 192-Bit GDDR7 PCI Express 5.0 DLSS 4.0 Graphics Card PRIME-RTX5070-12G",
+      "retailPrice": 1099.99,
+      "salePrice": 849.99,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814137935",
+      "category": "gpu",
+      "name": "MSI SHADOW GeForce RTX 5070 Ti Graphics Card RTX 5070 TI 16G SHADOW 3X OC",
+      "retailPrice": 1199.99,
+      "salePrice": 1179.99,
+      "priceUsd": 1179.99
+    },
+    {
+      "sku": "N82E16814932753",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming GeForce RTX 5080 Graphics Card GV-N5080GAMING OC-16GD",
+      "retailPrice": 1699.99,
+      "salePrice": 1599.99,
+      "priceUsd": 1599.99
+    },
+    {
+      "sku": "N82E16814980005",
+      "category": "gpu",
+      "name": "Yeston ACE Radeon RX 9060 XT Graphics Card RX9060XT",
+      "retailPrice": 509,
+      "salePrice": null,
+      "priceUsd": 509
+    },
+    {
+      "sku": "N82E16814126832",
+      "category": "gpu",
+      "name": "ASUS PRIME Radeon RX 9070 Graphics Card PRIME-RX9070-O16G-EVO",
+      "retailPrice": 759.99,
+      "salePrice": 709.99,
+      "priceUsd": 709.99
+    },
+    {
+      "sku": "N82E16814930145",
+      "category": "gpu",
+      "name": "ASRock Challenger Radeon RX 9070 XT Graphics Card RX9070XT CL 16G",
+      "retailPrice": 829.99,
+      "salePrice": 799.99,
+      "priceUsd": 799.99
+    },
+    {
+      "sku": "N82E16814500620",
+      "category": "gpu",
+      "name": "ZOTAC AMP GeForce RTX 5060 Graphics Card RTX 5060 AMP",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137954",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5060 Ti Graphics Card RTX 5060 Ti 16G GAMING TRIO OC",
+      "retailPrice": 809.99,
+      "salePrice": 799.99,
+      "priceUsd": 799.99
+    },
+    {
+      "sku": "N82E16814137938",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5070 Graphics Card RTX 5070 12G GAMING TRIO OC",
+      "retailPrice": 899.99,
+      "salePrice": 869.99,
+      "priceUsd": 869.99
+    },
+    {
+      "sku": "N82E16814932770",
+      "category": "gpu",
+      "name": "GIGABYTE Eagle GeForce RTX 5070 Ti Graphics Card GV-N507TEAGLE OC-16GD",
+      "retailPrice": 1199.99,
+      "salePrice": 1179.99,
+      "priceUsd": 1179.99
+    },
+    {
+      "sku": "N82E16814137912",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5080 Graphics Card RTX 5080 16G VENTUS 3X OC WHITE",
+      "retailPrice": 1899.99,
+      "salePrice": 1679.99,
+      "priceUsd": 1679.99
+    },
+    {
+      "sku": "N82E16814930140",
+      "category": "gpu",
+      "name": "ASRock Challenger Radeon RX 9060 XT Graphics Card RX9060XT CL 16GO RX 9060XT",
+      "retailPrice": 549.99,
+      "salePrice": 519.99,
+      "priceUsd": 519.99
+    },
+    {
+      "sku": "N82E16814930136",
+      "category": "gpu",
+      "name": "ASRock Steel Legend Radeon RX 9070 XT Graphics Card RX9070XT SL 16G",
+      "retailPrice": 849.99,
+      "salePrice": 819.99,
+      "priceUsd": 819.99
+    },
+    {
+      "sku": "N82E16814500623",
+      "category": "gpu",
+      "name": "ZOTAC GAMING GeForce RTX 5060 Twin Edge OC DLSS 4 8GB GDDR7 128-bit 28 Gbps PCIE 5.0 Gaming Graphics Card, SFF-ready compact card, ZT-B50600H-10M",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814126798",
+      "category": "gpu",
+      "name": "ASUS Dual GeForce RTX 5060 Ti 16GB 128-Bit GDDR7 PCI Express 5.0 x8 DLSS 4.0 Graphics Card DUAL-RTX5060TI-O16G",
+      "retailPrice": 899.99,
+      "salePrice": 799.99,
+      "priceUsd": 799.99
+    },
+    {
+      "sku": "N82E16814126760",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5070 OC 12GB 192-Bit GDDR7 PCI Express 5.0 DLSS 4.0 Graphics Card PRIME-RTX5070-O12G",
+      "retailPrice": 1099.99,
+      "salePrice": 909.99,
+      "priceUsd": 909.99
+    },
+    {
+      "sku": "N82E16814932769",
+      "category": "gpu",
+      "name": "GIGABYTE Eagle GeForce RTX 5070 Ti Graphics Card GV-N507TEAGLEOC ICE-16GD",
+      "retailPrice": 1199.99,
+      "salePrice": 1189.99,
+      "priceUsd": 1189.99
+    },
+    {
+      "sku": "N82E16814126744",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 OC Edition PRIME-RTX5080-O16G PCI-Express 5.0 DLSS 4.0 Graphics Card",
+      "retailPrice": 1799.99,
+      "salePrice": 1699.99,
+      "priceUsd": 1699.99
+    },
+    {
+      "sku": "N82E16814932824",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming Radeon RX 9060 XT Graphics Card GV-R906XGAMINGOCICE-16GD",
+      "retailPrice": 679.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16814930146",
+      "category": "gpu",
+      "name": "ASRock Monster Hunter Wilds Radeon RX 9070 XT Graphics Card RX9070XT MH 16G",
+      "retailPrice": 849.99,
+      "salePrice": 819.99,
+      "priceUsd": 819.99
+    },
+    {
+      "sku": "N82E16814932801",
+      "category": "gpu",
+      "name": "GIGABYTE Low Profile GeForce RTX 5060 Graphics Card GV-N5060OC-8GL",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137955",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5060 Ti Graphics Card RTX 5060 Ti 16G GAMING OC",
+      "retailPrice": 819.99,
+      "salePrice": null,
+      "priceUsd": 819.99
+    },
+    {
+      "sku": "N82E16814126813",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5070 DLSS 4.0 Graphics Card PRIME-RTX5070-O12G-WHITE",
+      "retailPrice": 1099.99,
+      "salePrice": 919.99,
+      "priceUsd": 919.99
+    },
+    {
+      "sku": "N82E16814137993",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5070 Ti Graphics Card RTX 5070 TI 16G VENTUS 3X OC BLACK",
+      "retailPrice": 1399.99,
+      "salePrice": 1189.99,
+      "priceUsd": 1189.99
+    },
+    {
+      "sku": "N82E16814932756",
+      "category": "gpu",
+      "name": "GIGABYTE AERO GeForce RTX 5080 Graphics Card GV-N5080AERO OC-16GD",
+      "retailPrice": 1899.99,
+      "salePrice": 1749.99,
+      "priceUsd": 1749.99
+    },
+    {
+      "sku": "N82E16814150923",
+      "category": "gpu",
+      "name": "XFX Mercury Radeon RX 9070 XT Graphics Card RX-97TRGBBBA",
+      "retailPrice": 849.99,
+      "salePrice": null,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814932803",
+      "category": "gpu",
+      "name": "GIGABYTE Eagle GeForce RTX 5060 Graphics Card GV-N5060EAGLE OC-8GD",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814126795",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5060 Ti 16GB 128-Bit GDDR7 PCI Express 5.0 x8 DLSS 4.0 Graphics Card PRIME-RTX5060TI-O16G",
+      "retailPrice": 899.99,
+      "salePrice": 829.99,
+      "priceUsd": 829.99
+    },
+    {
+      "sku": "N82E16814932832",
+      "category": "gpu",
+      "name": "AORUS GeForce RTX 5070 INFINITY 12G Graphics Card GV-N5070AORUS IF-12GD",
+      "retailPrice": 969.99,
+      "salePrice": 929.99,
+      "priceUsd": 929.99
+    },
+    {
+      "sku": "N82E16814982006",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5070 Ti Graphics Card RTX 5070 Ti 16G VENTUS 3X PZ OC BLACK",
+      "retailPrice": 1209.99,
+      "salePrice": 1199.99,
+      "priceUsd": 1199.99
+    },
+    {
+      "sku": "N82E16814133898",
+      "category": "gpu",
+      "name": "PNY ARGB OC GeForce RTX 5080 16GB 256-Bit GDDR7 DLSS 4.0 PCI Express 5.0 x16 Graphics Card VCG508016TFXXPB1-O",
+      "retailPrice": 1899.99,
+      "salePrice": 1799.99,
+      "priceUsd": 1799.99
+    },
+    {
+      "sku": "N82E16814126831",
+      "category": "gpu",
+      "name": "ASUS PRIME Radeon RX 9070 XT Graphics Card PRIME-RX9070XT-O16G-WHITE",
+      "retailPrice": 859.99,
+      "salePrice": 849.99,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814932814",
+      "category": "gpu",
+      "name": "GIGABYTE WINDFORCE GeForce RTX 5060 Graphics Card GV-N5060WF2MAX OC-8GD",
+      "retailPrice": 499.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814137995",
+      "category": "gpu",
+      "name": "MSI Ventus GeForce RTX 5070 Ti Graphics Card RTX 5070 Ti 16G VENTUS 3X PZ OC",
+      "retailPrice": 1299.99,
+      "salePrice": 1199.99,
+      "priceUsd": 1199.99
+    },
+    {
+      "sku": "N82E16814137910",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5080 Graphics Card RTX 5080 16G GAMING TRIO OC",
+      "retailPrice": 1899.99,
+      "salePrice": 1799.99,
+      "priceUsd": 1799.99
+    },
+    {
+      "sku": "N82E16814131883",
+      "category": "gpu",
+      "name": "PowerColor Hellhound Radeon RX 9070 XT Graphics Card Hellhound Spectral White AMD Radeon RX 9070 XT 16GB GDDR6",
+      "retailPrice": 879.99,
+      "salePrice": 849.99,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814126807",
+      "category": "gpu",
+      "name": "ASUS Dual GeForce RTX 5060 8GB 128-Bit PCI Express 5.0 x8 GDDR7 Graphics Card DUAL-RTX5060-O8G",
+      "retailPrice": 599.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "N82E16814932768",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming GeForce RTX 5070 Ti Graphics Card GV-N507TGAMING OC-16GD",
+      "retailPrice": 1249.99,
+      "salePrice": null,
+      "priceUsd": 1249.99
+    },
+    {
+      "sku": "N82E16814932755",
+      "category": "gpu",
+      "name": "GIGABYTE AORUS GeForce RTX 5080 Graphics Card GV-N5080AORUS M-16GD",
+      "retailPrice": 1899.99,
+      "salePrice": 1799.99,
+      "priceUsd": 1799.99
+    },
+    {
+      "sku": "N82E16814131901",
+      "category": "gpu",
+      "name": "PowerColor Hellhound Radeon RX 9070 XT Graphics Card RX9070XT 16G-L/OC/RES",
+      "retailPrice": 879.99,
+      "salePrice": 849.99,
+      "priceUsd": 849.99
+    },
+    {
+      "sku": "N82E16814137971",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5060 Graphics Card RTX 5060 8G GAMING OC",
+      "retailPrice": 499.99,
+      "salePrice": 489.99,
+      "priceUsd": 489.99
+    },
+    {
+      "sku": "N82E16814137931",
+      "category": "gpu",
+      "name": "MSI Gaming GeForce RTX 5070 Ti Graphics Card RTX 5070 Ti 16G GAMING TRIO OC",
+      "retailPrice": 1279.99,
+      "salePrice": 1249.99,
+      "priceUsd": 1249.99
+    },
+    {
+      "sku": "N82E16814932757",
+      "category": "gpu",
+      "name": "GIGABYTE AORUS GeForce RTX 5080 Graphics Card GV-N5080AORUSM ICE-16G",
+      "retailPrice": 1899.99,
+      "salePrice": 1799.99,
+      "priceUsd": 1799.99
+    },
+    {
+      "sku": "N82E16814150899",
+      "category": "gpu",
+      "name": "XFX Mercury Radeon RX 9070 XT OC 16GB 256-Bit GDDR6 PCI-Express 5.0 RDNA 4 Graphics Card RX-97TRGBBB9",
+      "retailPrice": 899.99,
+      "salePrice": null,
+      "priceUsd": 899.99
+    },
+    {
+      "sku": "N82E16814126847",
+      "category": "gpu",
+      "name": "ASUS Dual GeForce RTX 5060 Graphics Card DUAL-RTX5060-O8G-A",
+      "retailPrice": 559.99,
+      "salePrice": 529.99,
+      "priceUsd": 529.99
+    },
+    {
+      "sku": "N82E16814932767",
+      "category": "gpu",
+      "name": "GIGABYTE AERO GeForce RTX 5070 Ti Graphics Card GV-N507TAERO OC-16GD",
+      "retailPrice": 1299.99,
+      "salePrice": 1259.99,
+      "priceUsd": 1259.99
+    },
+    {
+      "sku": "N82E16814932829",
+      "category": "gpu",
+      "name": "AORUS GeForce RTX 5080 INFINITY WOOD 16G Graphics Card GV-N5080AORUSIF WD-16GD",
+      "retailPrice": 1949.99,
+      "salePrice": 1899.99,
+      "priceUsd": 1899.99
+    },
+    {
+      "sku": "N82E16814932751",
+      "category": "gpu",
+      "name": "GIGABYTE Gaming Radeon RX 9070 XT Graphics Card GV-R9070XTGAMING OC-16GD",
+      "retailPrice": 959.99,
+      "salePrice": 939.99,
+      "priceUsd": 939.99
+    },
+    {
+      "sku": "N82E16814126801",
+      "category": "gpu",
+      "name": "ASUS PRIME GeForce RTX 5060 Graphics Card PRIME-RTX5060-O8G",
+      "retailPrice": 599.99,
+      "salePrice": 539.99,
+      "priceUsd": 539.99
+    },
+    {
+      "sku": "1FT-000M-00474",
+      "category": "gpu",
+      "name": "ZOTAC Gaming GeForce RTX 5070 Ti Solid SFF OC 16GB GDDR7 Video Graphics Card",
+      "retailPrice": 1299.99,
+      "salePrice": null,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIC7XKM1G8088",
+      "category": "cpu",
+      "name": "Intel Core i5-7400 - Core i5 7th Gen Quad-Core 3.0 GHz LGA 1151 65W Intel HD Graphics 630 Desktop CPU Processor - CM8067702867050",
+      "retailPrice": 40.5,
+      "salePrice": null,
+      "priceUsd": 40.5
+    },
+    {
+      "sku": "9SIBZW0M081016",
+      "category": "cpu",
+      "name": "Intel Core i7-13700F Desktop Processor 16 cores (8 P-cores + 8 E-cores) 30MB Cache, up to 5.2 GHz - Box",
+      "retailPrice": 331.74,
+      "salePrice": null,
+      "priceUsd": 331.74
+    },
+    {
+      "sku": "9SIAM8PKP33644",
+      "category": "cpu",
+      "name": "Intel Core i9-10900K - Core i9 10th Gen Comet Lake 10-Core 3.7 GHz LGA 1200 125W Intel UHD Graphics 630 Desktop CPU Processor - BX8070110900K",
+      "retailPrice": 639,
+      "salePrice": null,
+      "priceUsd": 639
+    },
+    {
+      "sku": "9SIADRHJWB8550",
+      "category": "cpu",
+      "name": "Intel Core i5-7400 - Core i5 7th Gen Kaby Lake Quad-Core 3.0 GHz LGA 1151 65W Intel HD Graphics 630 Desktop CPU Processor - CM8067702867050",
+      "retailPrice": 40.99,
+      "salePrice": null,
+      "priceUsd": 40.99
+    },
+    {
+      "sku": "9SIBZW0M081754",
+      "category": "cpu",
+      "name": "Intel Core Ultra 7 265K, Arrow Lake 20-Core (8P+12E), LGA 1851, 125W Desktop Processor - BX80768265K",
+      "retailPrice": 335.3,
+      "salePrice": null,
+      "priceUsd": 335.3
+    },
+    {
+      "sku": "274-000A-01P71",
+      "category": "cpu",
+      "name": "Intel Core Ultra 9 285 24core 4.6GHz OC LGA-1851 Boxed Processor BX80768285",
+      "retailPrice": 662.99,
+      "salePrice": null,
+      "priceUsd": 662.99
+    },
+    {
+      "sku": "9SIBZW0KFS8130",
+      "category": "cpu",
+      "name": "Intel Core i5 i5-4460 Quad-core (4 Core) 320 GHz Processor - Socket H3 LGA-1150OEM Pack - 1 MB - 6",
+      "retailPrice": 42.26,
+      "salePrice": null,
+      "priceUsd": 42.26
+    },
+    {
+      "sku": "N82E16819118368",
+      "category": "cpu",
+      "name": "Intel Core i7-12700 - Core i7 12th Gen Alder Lake 12-Core (8P+4E) 2.1 GHz LGA 1700 65W Intel UHD Graphics 770 Desktop Processor - BX8071512700",
+      "retailPrice": 389.99,
+      "salePrice": 336.5,
+      "priceUsd": 336.5
+    },
+    {
+      "sku": "9SIB879M675213",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 9950X3D - Ryzen 9 9000 Series Granite Ridge (Zen 5) 16-Core 4.3 GHz Socket AM5 170W AMD Radeon Graphics Desktop CPU Processor -...",
+      "retailPrice": 669,
+      "salePrice": null,
+      "priceUsd": 669
+    },
+    {
+      "sku": "9SIA1K6JHT2930",
+      "category": "cpu",
+      "name": "Intel Celeron G3930 Kaby Lake Dual-Core 2.9 GHz LGA 1151 51W BX80677G3930 Desktop Processor Intel HD Graphics 610",
+      "retailPrice": 43.93,
+      "salePrice": null,
+      "priceUsd": 43.93
+    },
+    {
+      "sku": "9SIA12KKT73119",
+      "category": "cpu",
+      "name": "Intel Core Ultra 5 235 - Core Ultra 5 (Series 2) Arrow Lake 14-Core (6P+8E) 2.9 GHz (E-core base) / 3.4 GHz (P-core base) LGA 1851 65W Intel...",
+      "retailPrice": 340.15,
+      "salePrice": null,
+      "priceUsd": 340.15
+    },
+    {
+      "sku": "9SIA0ZXKFG2593",
+      "category": "cpu",
+      "name": "Intel Core Ultra 9 285 - Core Ultra 9 (Series 2) 24-Core (8P+16E) Performance-core Base Frequency: 2.5 GHz Efficient-core Base Frequency: 1.9 GHz...",
+      "retailPrice": 670.17,
+      "salePrice": null,
+      "priceUsd": 670.17
+    },
+    {
+      "sku": "9SIBZW0KFT4966",
+      "category": "cpu",
+      "name": "Intel Core i3 8th Gen - OEM Core i3-8100 Coffee Lake Quad-Core 3.6 GHz LGA 1151 (300 Series) CM8068403377308 Desktop Processor Intel UHD Graphics 630",
+      "retailPrice": 44.19,
+      "salePrice": null,
+      "priceUsd": 44.19
+    },
+    {
+      "sku": "9SIC3U3KN44697",
+      "category": "cpu",
+      "name": "AMD Ryzen 7 7800X3D - Ryzen 7 7000 Series Zen 4 8-Core 4.2 GHz - Socket AM5 120W - AMD Radeon Graphics Desktop Processor - 100-100000910WOF",
+      "retailPrice": 346.99,
+      "salePrice": null,
+      "priceUsd": 346.99
+    },
+    {
+      "sku": "9SIC6E1M4K7882",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 7950X - 7000 Series 16-Core 4.5 GHz - Socket AM5 - 170W w/Radeon Graphics - Desktop / Workstation / Server Processor - 100-000000514 -...",
+      "retailPrice": 694.91,
+      "salePrice": null,
+      "priceUsd": 694.91
+    },
+    {
+      "sku": "9SIC7XKM1K2139",
+      "category": "cpu",
+      "name": "Intel Core i3 7th Gen - Core i3-7300 Kaby Lake Dual-Core 4.0 GHz LGA 1151 51W BX80677I37300 Desktop Processor Intel HD Graphics 630",
+      "retailPrice": 44.31,
+      "salePrice": null,
+      "priceUsd": 44.31
+    },
+    {
+      "sku": "9SIBZW0KFP0202",
+      "category": "cpu",
+      "name": "Intel Core i9-11900KF - Core i9 11th Gen 8-Core 3.5 GHz LGA 1200 125W None Integrated Graphics Desktop CPU Processor - BX8070811900KF",
+      "retailPrice": 347.83,
+      "salePrice": null,
+      "priceUsd": 347.83
+    },
+    {
+      "sku": "N82E16819113884",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 9950X3D - Ryzen 9 9000 Series 16-Core 4.3 GHz Socket AM5 170W AMD Radeon Graphics Desktop CPU Processor - 100-100000719WOF",
+      "retailPrice": 699,
+      "salePrice": null,
+      "priceUsd": 699
+    },
+    {
+      "sku": "9SIBZW0KFS7309",
+      "category": "cpu",
+      "name": "Intel Core i5-4570 - Core i5 4th Gen Quad-Core 3.2 GHz LGA 1150 84W Intel HD Graphics Desktop Processor - BX80646I54570",
+      "retailPrice": 44.57,
+      "salePrice": null,
+      "priceUsd": 44.57
+    },
+    {
+      "sku": "9SIAAEEG236039",
+      "category": "cpu",
+      "name": "Intel Core i5 8th Gen - Core i5-8500 Coffee Lake 6-Core 3.0 GHz LGA 1151 (300 Series) CM8068403362607 Desktop Processor",
+      "retailPrice": 348.1,
+      "salePrice": null,
+      "priceUsd": 348.1
+    },
+    {
+      "sku": "9SIAAEEK500232",
+      "category": "cpu",
+      "name": "Intel Core i9-9900 Desktop Processor 8 Cores up to 5.0GHz LGA1151 300 Series 65W (BX80684I99900)",
+      "retailPrice": 699.1,
+      "salePrice": null,
+      "priceUsd": 699.1
+    },
+    {
+      "sku": "9SIBZW0KPW3444",
+      "category": "cpu",
+      "name": "Intel Core i3-4340 - Core i3 4th Gen Dual-Core 3.6 GHz LGA 1150 54W Intel HD Graphics 4600 Desktop Processor - BX80646I34340",
+      "retailPrice": 44.57,
+      "salePrice": null,
+      "priceUsd": 44.57
+    },
+    {
+      "sku": "9SIBZW0KFS7279",
+      "category": "cpu",
+      "name": "Intel Core i9-10900KF - Core i9 10th Gen 10-Core 3.7 GHz LGA 1200 125W None Integrated Graphics Desktop CPU Processor - BX8070110900KF",
+      "retailPrice": 348.29,
+      "salePrice": null,
+      "priceUsd": 348.29
+    },
+    {
+      "sku": "9SIC7VBM1J1447",
+      "category": "cpu",
+      "name": "Intel Core i7 X-Series - Core i7-7820X Skylake-X 8-Core 3.6 GHz LGA 2066 140W BX80673I77820X Desktop Processor",
+      "retailPrice": 706.95,
+      "salePrice": null,
+      "priceUsd": 706.95
+    },
+    {
+      "sku": "9SIC7XKM1K3279",
+      "category": "cpu",
+      "name": "Intel Pentium Gold G5400 Coffee Lake Dual-Core 3.7 GHz LGA 1151 (300 Series) 58W BX80684G5400 Desktop Processor Intel UHD Graphics 610",
+      "retailPrice": 45.91,
+      "salePrice": null,
+      "priceUsd": 45.91
+    },
+    {
+      "sku": "N82E16819113940",
+      "category": "cpu",
+      "name": "AMD Ryzen 7 5800X3D 10th Anniversary Edition - Ryzen 7 5000 Series Vermeer (Zen 3) 8-Core 3.4 GHz Socket AM4 105W Desktop CPU Processor -...",
+      "retailPrice": 349,
+      "salePrice": null,
+      "priceUsd": 349
+    },
+    {
+      "sku": "9SIA4RECAY8370",
+      "category": "cpu",
+      "name": "AMD Ryzen 5 3600XT - Ryzen 5 3rd Gen 6-Core 3.8 GHz Socket AM4 95W Desktop CPU Processor - 100-100000281BOX",
+      "retailPrice": 714.99,
+      "salePrice": null,
+      "priceUsd": 714.99
+    },
+    {
+      "sku": "9SIBZW0KFS7369",
+      "category": "cpu",
+      "name": "Intel Core i5-4460 - Core i5 4th Gen Quad-Core 3.2 GHz LGA 1150 84W Intel HD Graphics 4600 Desktop Processor - BX80646I54460",
+      "retailPrice": 45.92,
+      "salePrice": null,
+      "priceUsd": 45.92
+    },
+    {
+      "sku": "9SIBSWCM0Z3556",
+      "category": "cpu",
+      "name": "Intel Core i9-12900KF - Core i9 12th Gen Alder Lake 16-Core (8P+8E) 3.2 GHz LGA 1700 125W Desktop Processor - BX8071512900KF",
+      "retailPrice": 357.99,
+      "salePrice": null,
+      "priceUsd": 357.99
+    },
+    {
+      "sku": "9SIBZW0M081753",
+      "category": "cpu",
+      "name": "Intel Core Ultra 9 285 - Core Ultra 9 (Series 2) Arrow Lake 24-Core (8P+16E) Performance-core Base Frequency: 2.5 GHz Efficient-core Base...",
+      "retailPrice": 779,
+      "salePrice": null,
+      "priceUsd": 779
+    },
+    {
+      "sku": "9SIBZW0KFS8098",
+      "category": "cpu",
+      "name": "Intel Core i3-7350K - Core i3 7th Gen 4.2 GHz LGA 1151 60W Intel HD Graphics 630 Desktop CPU Processor - CM8067703014431",
+      "retailPrice": 46.89,
+      "salePrice": null,
+      "priceUsd": 46.89
+    },
+    {
+      "sku": "9SIBKFRKWG1603",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 5900XT - Ryzen 9 5000 Series Vermeer (Zen 3) 16-Core 3.3 GHz Socket AM4 105W None Integrated Graphics Desktop CPU Processor -...",
+      "retailPrice": 359.99,
+      "salePrice": null,
+      "priceUsd": 359.99
+    },
+    {
+      "sku": "9SIC7VBM1H9301",
+      "category": "cpu",
+      "name": "Intel Core i9 X-Series Extreme Edition - Core i9-9980XE Skylake X 18-Core 3.0 GHz (4.4 GHz Turbo) LGA 2066 165W BX80673I99980X Desktop Processor",
+      "retailPrice": 878.95,
+      "salePrice": null,
+      "priceUsd": 878.95
+    },
+    {
+      "sku": "9SIC7XKM1J9980",
+      "category": "cpu",
+      "name": "Intel Core i5 7th Gen - Core i5-7400 Kaby Lake Quad-Core 3.0 GHz LGA 1151 65W BX80677I57400 Desktop Processor",
+      "retailPrice": 51.94,
+      "salePrice": null,
+      "priceUsd": 51.94
+    },
+    {
+      "sku": "N82E16819118468",
+      "category": "cpu",
+      "name": "Intel Core i7-14700KF - Core i7 14th Gen 20-Core (8P+12E) LGA 1700 125W None Integrated Graphics Desktop Processor - Boxed - BX8071514700KF",
+      "retailPrice": 419.99,
+      "salePrice": 359.99,
+      "priceUsd": 359.99
+    },
+    {
+      "sku": "N82E16819113938",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 9950X3D2 Dual Edition - Ryzen 9 9000 Series 16-Core 4.3 GHz Socket AM5 200W AMD Radeon Graphics Desktop CPU Processor - 100-100001978WOF",
+      "retailPrice": 899,
+      "salePrice": null,
+      "priceUsd": 899
+    },
+    {
+      "sku": "9SIBZW0KFT6214",
+      "category": "cpu",
+      "name": "Intel Core i5-4670 - Core i5 4th Gen Quad-Core 3.4 GHz LGA 1150 84W Intel HD Graphics Desktop Processor - BX80646I54670",
+      "retailPrice": 52.08,
+      "salePrice": null,
+      "priceUsd": 52.08
+    },
+    {
+      "sku": "9SIC7XKM1M8812",
+      "category": "cpu",
+      "name": "Intel Core i9 X-Series - Core i9-9920X Skylake X 12-Core 3.5 GHz (4.4 GHz Turbo) LGA 2066 165W BX80673I99920X Desktop Processor",
+      "retailPrice": 361.78,
+      "salePrice": null,
+      "priceUsd": 361.78
+    },
+    {
+      "sku": "9SIBZW0KFS7394",
+      "category": "cpu",
+      "name": "Intel Core i5-3470 - Core i5 3rd Gen Quad-Core 3.2 GHz LGA 1155 77W Intel HD Graphics 2500 Desktop Processor - BX80637i53470",
+      "retailPrice": 52.3,
+      "salePrice": null,
+      "priceUsd": 52.3
+    },
+    {
+      "sku": "9SIC7VBM1T1392",
+      "category": "cpu",
+      "name": "Intel Core i9-10850K 3.6 GHz LGA 1200 Desktop Processor - BX8070110850K",
+      "retailPrice": 365.57,
+      "salePrice": null,
+      "priceUsd": 365.57
+    },
+    {
+      "sku": "9SIC3DRKSH3064",
+      "category": "cpu",
+      "name": "OEM - AMD RYZEN 5 2400G Quad-Core 3.6 GHz (3.9 GHz Max Boost) Socket AM4 65W YD2400C5FBBOX Desktop Processor - Without Box,No Cooler,No Warranty",
+      "retailPrice": 54.17,
+      "salePrice": null,
+      "priceUsd": 54.17
+    },
+    {
+      "sku": "9SIA2W0JH18114",
+      "category": "cpu",
+      "name": "AMD Ryzen 7 5800X3D - Ryzen 7 5000 Series 8-Core 3.4 GHz Socket AM4 105W None Integrated Graphics Desktop CPU Processor - 100-100000651WOF",
+      "retailPrice": 369.99,
+      "salePrice": null,
+      "priceUsd": 369.99
+    },
+    {
+      "sku": "9SIBZW0KFT3849",
+      "category": "cpu",
+      "name": "Intel Core i3 8th Gen - Core i3-8300 Coffee Lake Quad-Core 3.7 GHz LGA 1151 (300 Series) 65W BX80684I38300 Desktop Processor Intel UHD Graphics 630",
+      "retailPrice": 54.54,
+      "salePrice": null,
+      "priceUsd": 54.54
+    },
+    {
+      "sku": "9SIC7XKM1M4902",
+      "category": "cpu",
+      "name": "Intel Core i9-12900KS - Core i9 12th Gen Alder Lake 16-Core (8P+8E) 3.4 GHz LGA 1700 150W Intel UHD Graphics 770 Desktop Processor - BX8071512900KS",
+      "retailPrice": 371.25,
+      "salePrice": null,
+      "priceUsd": 371.25
+    },
+    {
+      "sku": "9SIC7XKM1M5764",
+      "category": "cpu",
+      "name": "Intel Core i5 7th Gen - Core i5-7500 Kaby Lake Quad-Core 3.4 GHz LGA 1151 65W BX80677I57500 Desktop Processor OEM,No Box",
+      "retailPrice": 55.48,
+      "salePrice": null,
+      "priceUsd": 55.48
+    },
+    {
+      "sku": "9SIA1K6KDA5303",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 5900XT - Ryzen 9 5000 Series 16-Core 3.3 GHz Socket AM4 105W None Integrated Graphics Desktop CPU Processor - 100-100001581WOF",
+      "retailPrice": 377.76,
+      "salePrice": null,
+      "priceUsd": 377.76
+    },
+    {
+      "sku": "9SIBZW0KFT4935",
+      "category": "cpu",
+      "name": "Intel Core i5-7600K Desktop Processor i5 7th Gen Kaby Lake Quad-Core 3.8 GHz LGA 1151 91W BX80677I57600K OEM,No Box",
+      "retailPrice": 55.54,
+      "salePrice": null,
+      "priceUsd": 55.54
+    },
+    {
+      "sku": "N82E16819118575",
+      "category": "cpu",
+      "name": "Intel Core Ultra 7 265 - Core Ultra 7 (Series 2) 20-Core (8P+12E) Performance-core Base Frequency: 2.4 GHz Efficient-core Base Frequency: 1.8 GHz...",
+      "retailPrice": 399.99,
+      "salePrice": 379.99,
+      "priceUsd": 379.99
+    },
+    {
+      "sku": "9SIBZW0KFS7368",
+      "category": "cpu",
+      "name": "Intel Core i5-6500 - Core i5 6th Gen Quad-Core 3.2 GHz LGA 1151 65W Intel HD Graphics 530 Desktop Processor - BX80662I56500",
+      "retailPrice": 56.09,
+      "salePrice": null,
+      "priceUsd": 56.09
+    },
+    {
+      "sku": "9SIC6E1M4K8101",
+      "category": "cpu",
+      "name": "AMD Ryzen 9 7950X3D - Ryzen 9 7000 Series Zen 4 16-Core 4.2 GHz - Socket AM5 120W - AMD Radeon Graphics Desktop Processor - 100-100000908 - Tray",
+      "retailPrice": 380.72,
+      "salePrice": null,
+      "priceUsd": 380.72
+    },
+    {
+      "sku": "9SIBZW0KFS8105",
+      "category": "cpu",
+      "name": "Intel Core i5-3570K - Core i5 3rd Gen Ivy Bridge Quad-Core 3.4GHz (3.8GHz Turbo) LGA 1155 77W Intel HD Graphics 4000 Desktop Processor -...",
+      "retailPrice": 56.26,
+      "salePrice": null,
+      "priceUsd": 56.26
+    },
+    {
+      "sku": "9SIAD6HFH72972",
+      "category": "cpu",
+      "name": "Intel Core i5 10th Gen - Core i5-10600KA Comet Lake 6-Core 4.1 GHz LGA 1200 125W Desktop Processor Intel UHD Graphics 630 - Avenger Special Edition...",
+      "retailPrice": 380.78,
+      "salePrice": null,
+      "priceUsd": 380.78
+    },
+    {
+      "sku": "9SIC3DRKN76257",
+      "category": "cpu",
+      "name": "AMD Ryzen 5 2400G 3.6 GHz Socket AM4 YD2400C5M4MFB Desktop Processor",
+      "retailPrice": 56.47,
+      "salePrice": null,
+      "priceUsd": 56.47
+    },
+    {
+      "sku": "274-000A-01PA4",
+      "category": "cpu",
+      "name": "Intel Core Ultra 7 Series 2 (2nd Gen) 270K PLUS Tetracosa-core (24 Core) 3.70 GHz Processor - 36 MB L3 Cache - 40 MB L2 Cache - 64-bit Processing -...",
+      "retailPrice": 381.6,
+      "salePrice": null,
+      "priceUsd": 381.6
+    },
+    {
+      "sku": "9SIBZW0KFS7353",
+      "category": "cpu",
+      "name": "Intel Core i7-2700K - Core i7 2nd Gen Quad-Core 3.5GHz (3.9GHz Turbo) LGA 1155 95W Intel HD Graphics 3000 Desktop Processor - BX80623i72700K",
+      "retailPrice": 57.4,
+      "salePrice": null,
+      "priceUsd": 57.4
+    },
+    {
+      "sku": "9SIBZT2KJN8869",
+      "category": "motherboard",
+      "name": "2pcs/lot XTW100 Programmer USB Motherboard Multifunctional BIOS SPI FLASH 2425 Read / write Burner",
+      "retailPrice": 30.39,
+      "salePrice": null,
+      "priceUsd": 30.39
+    },
+    {
+      "sku": "9SIC6E1M4K8125",
+      "category": "motherboard",
+      "name": "MSI MAG B560 TOMAHAWK WIFI LGA 1200 ATX Intel Motherboard",
+      "retailPrice": 275.68,
+      "salePrice": null,
+      "priceUsd": 275.68
+    },
+    {
+      "sku": "9SIC6VHKXB9196",
+      "category": "motherboard",
+      "name": "ASUS TUF GAMING Z790-BTF WIFI Intel Z790(LGA1700)ATXGaming motherboard,AlPC ready,PCle 5.0, DDR5,four M.2slots,WiFi7 Intel 2.5...",
+      "retailPrice": 528.33,
+      "salePrice": null,
+      "priceUsd": 528.33
+    },
+    {
+      "sku": "9SIC7XKM1J8582",
+      "category": "motherboard",
+      "name": "ASUS ROG MAXIMUS Z790 APEX ENCORE LGA 1700(Intel 14th & 13th & 12th Gen) ATX Gaming Motherboard (24+0+2 power stages, DDR5 support, Wi-Fi 7, 5xM.2...",
+      "retailPrice": 770.74,
+      "salePrice": null,
+      "priceUsd": 770.74
+    },
+    {
+      "sku": "9SIC7PVM6D3745",
+      "category": "motherboard",
+      "name": "ASUS Prime X299 Edition 30 LGA 2066 ATX Intel Motherboard",
+      "retailPrice": 1032.12,
+      "salePrice": null,
+      "priceUsd": 1032.12
+    },
+    {
+      "sku": "9SIC6E1M4J4236",
+      "category": "motherboard",
+      "name": "TPM 2.0 Security Module Supports Windows 11 For ASUS Motherboard 14 Pin LPC Card",
+      "retailPrice": 32.21,
+      "salePrice": null,
+      "priceUsd": 32.21
+    },
+    {
+      "sku": "9SIC7PVM6D1374",
+      "category": "motherboard",
+      "name": "Gigabyte Z690 Aorus Elite DDR4, Intel Z690 Socket 1700 Motherboard",
+      "retailPrice": 276.37,
+      "salePrice": null,
+      "priceUsd": 276.37
+    },
+    {
+      "sku": "9SIC6E1M4K6972",
+      "category": "motherboard",
+      "name": "ASUS TUF GAMING B550M-E WIFI Socket AM4 AMD B550 DDR4 Micro ATX Motherboard and AMD Ryzen 7 5700X - Ryzen 7 5000 Series 8-Core 3.4 GHz Socket AM4...",
+      "retailPrice": 530.9,
+      "salePrice": null,
+      "priceUsd": 530.9
+    },
+    {
+      "sku": "9SIC7PVM6D3721",
+      "category": "motherboard",
+      "name": "ASUS ROG Strix Z790-A Gaming WiFi II (WiFI 7) LGA 1700(Intel 14th,13th & 12th Gen) ATX gaming motherboard(16 + 1+2 power stages, DDR5, 5X M.2 slots,",
+      "retailPrice": 776.44,
+      "salePrice": null,
+      "priceUsd": 776.44
+    },
+    {
+      "sku": "9SIAGBAKAE0755",
+      "category": "motherboard",
+      "name": "GIGABYTE Z790 AORUS TACHYON X LGA 1700 Intel Z790 EATX Motherboard with DDR5, 4*M.2, PCIe 5.0, USB 3.2 Gen2X2 Type-C, Intel WiFi 6E, Intel 2.5GbE...",
+      "retailPrice": 1039,
+      "salePrice": null,
+      "priceUsd": 1039
+    },
+    {
+      "sku": "9SIC6E1M4J4239",
+      "category": "motherboard",
+      "name": "TPM 2.0 Module 14-1 Pin Safety Block For SPI Card 14pin Motherboard Windows 11",
+      "retailPrice": 35.83,
+      "salePrice": null,
+      "priceUsd": 35.83
+    },
+    {
+      "sku": "9SIC7VBM152504",
+      "category": "motherboard",
+      "name": "ASUS PRIME Z790-V AX LGA 1700 (Intel 14th, 13th & 12th Gen) ATX motherboard (PCIe 5.0, DDR5, 14+1Power Stages, 3x M.2, WiFi 6, Bluetooth v5.3, USB...",
+      "retailPrice": 277.79,
+      "salePrice": null,
+      "priceUsd": 277.79
+    },
+    {
+      "sku": "9SIC3DRKN72269",
+      "category": "motherboard",
+      "name": "MSI MPG Z690 EDGE TI WIFI Motherboard (ATX,Intel Z690 LGA1700 12th Gen Intel Core,4×DDR4 DIMM, PCI-E 5.0, 4×M.2, USB3.2 Gen2x2 Type-C, 2.5GbE...",
+      "retailPrice": 531.05,
+      "salePrice": null,
+      "priceUsd": 531.05
+    },
+    {
+      "sku": "9SIC7VBM5B2016",
+      "category": "motherboard",
+      "name": "ASUS ROG RAMPAGE VI EXTREME LGA 2066 Intel X299 SATA 6Gb/s USB 3.1 Extended ATX Intel Motherboard",
+      "retailPrice": 776.5,
+      "salePrice": null,
+      "priceUsd": 776.5
+    },
+    {
+      "sku": "9SIC70UKZA6129",
+      "category": "motherboard",
+      "name": "ROG MAXIMUS Z690 HERO EVA(ROG x Evangelion Collaboration) LGA 1700(Intel12th & 13th Gen) ATX Gaming motherboard with 20+1 power stages, DDR5, Five M.2)",
+      "retailPrice": 1039.66,
+      "salePrice": null,
+      "priceUsd": 1039.66
+    },
+    {
+      "sku": "9SIBT5SM0Z2557",
+      "category": "motherboard",
+      "name": "Dell Optiplex 5070 SFF Intel Chipset Q370 Socket LGA1151 Motherboard YJMC0 Intel LGA1151 Motherboard",
+      "retailPrice": 39.99,
+      "salePrice": null,
+      "priceUsd": 39.99
+    },
+    {
+      "sku": "9SIC7XKM1H9491",
+      "category": "motherboard",
+      "name": "ASUS ROG STRIX B450-F GAMING AM4 ATX AMD Motherboard",
+      "retailPrice": 278.02,
+      "salePrice": null,
+      "priceUsd": 278.02
+    },
+    {
+      "sku": "9SIC7PVM6D1804",
+      "category": "motherboard",
+      "name": "ASUS PRIME X299-A LGA 2066 ATX Motherboard for Intel Core i9 and i7 X-Series CPU",
+      "retailPrice": 539.16,
+      "salePrice": null,
+      "priceUsd": 539.16
+    },
+    {
+      "sku": "9SIC6E1M4K7500",
+      "category": "motherboard",
+      "name": "ASUS ROG CROSSHAIR VIII EXTREME AM4 Extended ATX AMD Motherboard",
+      "retailPrice": 781.12,
+      "salePrice": null,
+      "priceUsd": 781.12
+    },
+    {
+      "sku": "9SIC70UKZA6987",
+      "category": "motherboard",
+      "name": "ASUS Pro WS TRX50-SAGE WIFI A AMD TRX50 TR5 CEB workstation motherboard, CPU & memory overclocking ready, robust 20 power-stage design, PCIe 5.0 x...",
+      "retailPrice": 1060.86,
+      "salePrice": null,
+      "priceUsd": 1060.86
+    },
+    {
+      "sku": "9SIAGUZKG99228",
+      "category": "motherboard",
+      "name": "Dell 773VG Optiplex 7010 LGA 1155/Socket H2 DDR3 SDRAM Desktop Motherboard",
+      "retailPrice": 44,
+      "salePrice": null,
+      "priceUsd": 44
+    },
+    {
+      "sku": "9SIB66RK6A9763",
+      "category": "motherboard",
+      "name": "X99H Motherboard+E5 2666 V3 CPU+Switch Cable+SATA Cable Kit LGA2011-V3 DDR3X4 RAM Slot M.2 NVME PCI-E 3.0 X16 SATA3.0",
+      "retailPrice": 278.59,
+      "salePrice": null,
+      "priceUsd": 278.59
+    },
+    {
+      "sku": "9SIC6E1M4N1266",
+      "category": "motherboard",
+      "name": "MSI Z370 GODLIKE GAMING LGA 1151 (300 Series) Extended ATX Intel Motherboard",
+      "retailPrice": 539.23,
+      "salePrice": null,
+      "priceUsd": 539.23
+    },
+    {
+      "sku": "9SIC7PVM6D3747",
+      "category": "motherboard",
+      "name": "GIGABYTE Z490 AORUS XTREME WATERFORCE LGA 1200 Intel Z490 E-ATX Motherboard with Triple M.2, SATA 6Gb/s, USB 3.2 Gen 2, WIFI 6, 10 GbE LAN, Dual...",
+      "retailPrice": 786.37,
+      "salePrice": null,
+      "priceUsd": 786.37
+    },
+    {
+      "sku": "9SIC7PVM6D3790",
+      "category": "motherboard",
+      "name": "ASUS PROART X570-CREATOR WIFI AM4 ATX AMD Motherboard",
+      "retailPrice": 1099.5,
+      "salePrice": null,
+      "priceUsd": 1099.5
+    },
+    {
+      "sku": "9SIBT5SKME3318",
+      "category": "motherboard",
+      "name": "Dell Inspiron 3470 Intel CPU LGA115x DDR4 Desktop Motherboard D02VH 0D02VH",
+      "retailPrice": 44,
+      "salePrice": null,
+      "priceUsd": 44
+    },
+    {
+      "sku": "9SIBZW0KXX3091",
+      "category": "motherboard",
+      "name": "GIGABYTE Z690 AORUS ELITE AX DDR4 LGA 1700 Intel Z690 ATX Motherboard with DDR4, Quad M.2, PCIe 5.0, USB 3.2 Gen2X2 Type-C, WiFi 6, 2.5GbE LAN",
+      "retailPrice": 278.59,
+      "salePrice": null,
+      "priceUsd": 278.59
+    },
+    {
+      "sku": "9SIC3DRKN67497",
+      "category": "motherboard",
+      "name": "GIGABYTE X570S AORUS MASTER AM4 ATX AMD Motherboard",
+      "retailPrice": 540.47,
+      "salePrice": null,
+      "priceUsd": 540.47
+    },
+    {
+      "sku": "9SIC6E1M4K7946",
+      "category": "motherboard",
+      "name": "ASUS ROG Maximus Z790 Extreme (WiFi 6E) LGA 1700(Intel12th & 13th Gen) EATX gaming motherboard (PCIe 5.0, DDR5,24+1 105A power stages,5x M.2,1xPCIe...",
+      "retailPrice": 787.96,
+      "salePrice": null,
+      "priceUsd": 787.96
+    },
+    {
+      "sku": "9SIBP4YM3E6389",
+      "category": "motherboard",
+      "name": "MSI MEG Z890 ACE WIFI7 War God Motherboard with 10G Ethernet Port; Supports CPUs 285K/265K/270K/250K (Intel Z890/LGA 1851)",
+      "retailPrice": 1099.99,
+      "salePrice": null,
+      "priceUsd": 1099.99
+    },
+    {
+      "sku": "9SIBT5SKME3325",
+      "category": "motherboard",
+      "name": "For Dell VOSTRO 3470 SFF Desktop Motherboard D02VH 0D02VH 03NJH0 3NJH0 DDR4 LGA 1151 17530-1 P9Y5R DDR4 MB",
+      "retailPrice": 44,
+      "salePrice": null,
+      "priceUsd": 44
+    },
+    {
+      "sku": "9SIC3DRKN72351",
+      "category": "motherboard",
+      "name": "MSI PRO Z790-A WIFI LGA 1700 Intel Z790 SATA 6Gb/s DDR5 ATX Motherboard",
+      "retailPrice": 278.77,
+      "salePrice": null,
+      "priceUsd": 278.77
+    },
+    {
+      "sku": "9SIC6E1M4K7626",
+      "category": "motherboard",
+      "name": "ASUS WS X299 Pro/SE LGA 2066 CEB Intel Motherboard",
+      "retailPrice": 541.63,
+      "salePrice": null,
+      "priceUsd": 541.63
+    },
+    {
+      "sku": "9SIC7PVM6D3735",
+      "category": "motherboard",
+      "name": "GIGABYTE X299 AORUS MASTER LGA 2066 Extended ATX Intel Motherboard",
+      "retailPrice": 797,
+      "salePrice": null,
+      "priceUsd": 797
+    },
+    {
+      "sku": "9SIC7PVM6D3769",
+      "category": "motherboard",
+      "name": "MSI MEG Z690 GODLIKE DDR5 LGA 1700 Extended ATX Intel Motherboard",
+      "retailPrice": 1104.07,
+      "salePrice": null,
+      "priceUsd": 1104.07
+    },
+    {
+      "sku": "9SIC6J1KVX0070",
+      "category": "motherboard",
+      "name": "HP 437340-001 DC7800 LGA 775/Socket T DDR2 SODIMM Motherboard",
+      "retailPrice": 45,
+      "salePrice": null,
+      "priceUsd": 45
+    },
+    {
+      "sku": "9SIC7VBM152181",
+      "category": "motherboard",
+      "name": "Gigabyte AMD X870M AORUS ELITE WiFi7 motherboard AM5 DDR5 Micro ATX M.2 PCIe",
+      "retailPrice": 278.97,
+      "salePrice": null,
+      "priceUsd": 278.97
+    },
+    {
+      "sku": "9SIC70UKZS9682",
+      "category": "motherboard",
+      "name": "MSI MEG Z790 ACE LGA 1700 Intel Z790 SATA 6Gb/s DDR5 Extended ATX Motherboard",
+      "retailPrice": 545.22,
+      "salePrice": null,
+      "priceUsd": 545.22
+    },
+    {
+      "sku": "9SIC7PVM6D3786",
+      "category": "motherboard",
+      "name": "GIGABYTE Z790 AORUS MASTER X LGA 1700(14th,13th,12th Gen) Intel Z790 X EATX Motherboard with DDR5, 5 M.2, PCIe 5.0, USB 3.2 Type-C, Wi-Fi 7, 10GbE...",
+      "retailPrice": 797,
+      "salePrice": null,
+      "priceUsd": 797
+    },
+    {
+      "sku": "9SIC7PVM6D3771",
+      "category": "motherboard",
+      "name": "ASUS ROG Rampage VI Extreme Encore LGA 2066 Extended ATX Intel Motherboard",
+      "retailPrice": 1113.88,
+      "salePrice": null,
+      "priceUsd": 1113.88
+    },
+    {
+      "sku": "9SIC6J1KVX3470",
+      "category": "motherboard",
+      "name": "Dell Optiplex 790 990 USFF LGA1155/Socket H2 Desktop Motherboard NKW6Y",
+      "retailPrice": 45,
+      "salePrice": null,
+      "priceUsd": 45
+    },
+    {
+      "sku": "9SIB66RK675167",
+      "category": "motherboard",
+      "name": "MAXSUN MS-Terminator Z790M D5 Gaming PC Motherboard, (M-ATX, CPU type thirteen generation Core, CPU slot LGA 1700, DDR5, PCIe 5.0 x16, RTL8125...",
+      "retailPrice": 278.99,
+      "salePrice": null,
+      "priceUsd": 278.99
+    },
+    {
+      "sku": "9SIB66RK6B0037",
+      "category": "motherboard",
+      "name": "X99 Dual CPU Motherboard F8D PLUS Intel X99 LGA 2011-3 E5 V3 DDR4 RECC 512GB M.2 NVME NGFF USB3.0 E-ATX Server",
+      "retailPrice": 549.92,
+      "salePrice": null,
+      "priceUsd": 549.92
+    },
+    {
+      "sku": "9SIC6E1M5F5559",
+      "category": "motherboard",
+      "name": "ASUS Republic of Gamers Zenith Extreme TR4 Extended ATX Motherboard",
+      "retailPrice": 798.59,
+      "salePrice": null,
+      "priceUsd": 798.59
+    },
+    {
+      "sku": "9SIC3DRKN67308",
+      "category": "motherboard",
+      "name": "GIGABYTE Z690 AORUS XTREME LGA 1700 Intel Z690 EATX Motherboard with DDR5, Quad M.2, PCIe 5.0, USB 3.2 Gen2X2 Type-C, Intel WiFi 6E, AQUANTIA 10GbE...",
+      "retailPrice": 1128.08,
+      "salePrice": null,
+      "priceUsd": 1128.08
+    },
+    {
+      "sku": "9SIAAFJ41E4242",
+      "category": "ram",
+      "name": "CMS 2GB (1X2GB) Memory Ram Compatible with Emachines El1352G-01W Desktop - A116",
+      "retailPrice": 17.75,
+      "salePrice": null,
+      "priceUsd": 17.75
+    },
+    {
+      "sku": "9SIAMBVK098110",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Hynix HMCG78MEBUA081N, HMCG78MEBUA084N DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "9SIA2W0M061888",
+      "category": "ram",
+      "name": "CORSAIR Dominator Titanium 32GB (2 x 16GB) DDR5 6000 (PC5 48000) Desktop Memory Model CMP32GX5M2B6000Z30",
+      "retailPrice": 649.99,
+      "salePrice": null,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820374618",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 RGB Series 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model F5-6400J3039G16GX2-TZ5RK",
+      "retailPrice": 979.99,
+      "salePrice": 969.99,
+      "priceUsd": 969.99
+    },
+    {
+      "sku": "N82E16820982013",
+      "category": "ram",
+      "name": "CORSAIR Dominator Platinum RGB 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model CMT64GX5M2B6000C30",
+      "retailPrice": 1320,
+      "salePrice": 1297.99,
+      "priceUsd": 1297.99
+    },
+    {
+      "sku": "9SIAAFJ41E4647",
+      "category": "ram",
+      "name": "CMS 2GB (1X2GB) Memory Ram Compatible with Dell Xps 8300 Desktop Dimm - A116",
+      "retailPrice": 17.75,
+      "salePrice": null,
+      "priceUsd": 17.75
+    },
+    {
+      "sku": "9SIAMBVK098114",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Samsung M323R2GA3BB0-CQK DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "9SIBKFRKPY5088",
+      "category": "ram",
+      "name": "Patriot Memory Viper Venom 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model PVV532G640C32K, Compatible with Intel Gen14 Only",
+      "retailPrice": 649.99,
+      "salePrice": null,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820374619",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 RGB Series 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model F5-6400J3039G16GX2-TZ5RKW",
+      "retailPrice": 979.99,
+      "salePrice": 969.99,
+      "priceUsd": 969.99
+    },
+    {
+      "sku": "9SIAEYEKR49695",
+      "category": "ram",
+      "name": "Kingston FURY Beast 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Memory (Desktop Memory) Model KF564C32BBEAK2-64",
+      "retailPrice": 1298.99,
+      "salePrice": null,
+      "priceUsd": 1298.99
+    },
+    {
+      "sku": "9SIAAFJ41E5300",
+      "category": "ram",
+      "name": "CMS 2GB (1X2GB) Memory Ram Compatible with Asus/Asmobile Cg Desktop Essentio Cg8250, Cg8350 - A78",
+      "retailPrice": 17.75,
+      "salePrice": null,
+      "priceUsd": 17.75
+    },
+    {
+      "sku": "9SIAMBVK098120",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Micron MTC8C1084S1UC48B, MTC8C1084S1UC48BA1 DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "N82E16820374377",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 RGB Series 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3040F16GX2-TZ5RK",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820101097",
+      "category": "ram",
+      "name": "Klevv 64GB (2 x 32GB) DDR5 6000 (PC5 48000) Desktop Memory Model KD5BGUA80-60A300H",
+      "retailPrice": 999.99,
+      "salePrice": 969.99,
+      "priceUsd": 969.99
+    },
+    {
+      "sku": "9SIA12KM675371",
+      "category": "ram",
+      "name": "Crucial CT64G64C52CU5 64GB 6400MT/s DDR5 SDRAM DDR5-6400 PC5 51200 CUDIMM 288-Pin Desktop Memory Model",
+      "retailPrice": 1299,
+      "salePrice": null,
+      "priceUsd": 1299
+    },
+    {
+      "sku": "9SIAAFJ6S90741",
+      "category": "ram",
+      "name": "CMS 2GB (1X2GB) Memory Ram Compatible with Gateway desktop DX DX4831, DX4831-01e, DX4831-03 - A116",
+      "retailPrice": 17.75,
+      "salePrice": null,
+      "priceUsd": 17.75
+    },
+    {
+      "sku": "9SIAMBVK0Z7809",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Crucial CT16G48C40U5, CT2K16G48C40U5 DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "N82E16820374378",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 RGB Series 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3040F16GX2-TZ5RS",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820101098",
+      "category": "ram",
+      "name": "Klevv 64GB (2 x 32GB) DDR5 6000 (PC5 48000) Desktop Memory Model KD5BGUA80-60A300I",
+      "retailPrice": 999.99,
+      "salePrice": 969.99,
+      "priceUsd": 969.99
+    },
+    {
+      "sku": "9SIC7PVM6D3863",
+      "category": "ram",
+      "name": "HyperX Predator 128GB (8 x 16GB) DDR4 3000MHz DRAM (Desktop Memory) CL15 1.35V Black DIMM (288-pin) HX430C15PB3K8/128 (Intel XMP)",
+      "retailPrice": 1299,
+      "salePrice": null,
+      "priceUsd": 1299
+    },
+    {
+      "sku": "9SIAE9A8TV4830",
+      "category": "ram",
+      "name": "Kingston ValueRAM 128MB DDR 266 (PC 2100) Desktop Memory Model KVR266X64C25/128",
+      "retailPrice": 18.75,
+      "salePrice": null,
+      "priceUsd": 18.75
+    },
+    {
+      "sku": "9SIAMBVK0Z7834",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Dell AB883074, SNPK7G24C/16G DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "N82E16820374427",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 Neo RGB Series AMD EXPO 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3038F16GX2-TZ5NR",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820236875",
+      "category": "ram",
+      "name": "CORSAIR Vengeance 64GB (2 x 32GB) 288-Pin PC RAM DDR5 4800 (PC5 38400) Desktop Memory Model CMK64GX5M2A4800C40",
+      "retailPrice": 1000,
+      "salePrice": 974.99,
+      "priceUsd": 974.99
+    },
+    {
+      "sku": "N82E16820374443",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 Neo Series 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3040G32GX2-TZ5N",
+      "retailPrice": 1319.99,
+      "salePrice": 1299.99,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIAAFJ4GW6966",
+      "category": "ram",
+      "name": "CMS 1GB (1X1GB) DDR1 3200 400MHZ NON ECC DIMM Memory Ram Upgrade Compatible with HP/Compaq Business Desktop Dc5000 Mt, Dx6050, Dx6050 Mt, D330 Mt...",
+      "retailPrice": 19,
+      "salePrice": null,
+      "priceUsd": 19
+    },
+    {
+      "sku": "9SIAMBVK0Z8074",
+      "category": "ram",
+      "name": "16GB RAM Replacement for IBM-Lenovo 4X71K53891 DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "N82E16820374523",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 Neo Series 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3036F16GX2-TZ5NRW",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "9SIAGDFKBH3184",
+      "category": "ram",
+      "name": "DDR5 RAM GIGASTONE Black Gaming RAM 64GB (2x32GB) DDR5 RAM 64GB DDR5 5600MHz PC5-44800 CL40 1.25V 288 Pin Unbuffered Non ECC Dual Channel DIMM for...",
+      "retailPrice": 975.99,
+      "salePrice": null,
+      "priceUsd": 975.99
+    },
+    {
+      "sku": "N82E16820982005",
+      "category": "ram",
+      "name": "CORSAIR Vengeance RGB 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model CMH64GX5M2B6400C32",
+      "retailPrice": 1320,
+      "salePrice": 1299.99,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIAAFJ4GW7147",
+      "category": "ram",
+      "name": "CMS 2GB (2X1GB) Memory Ram Compatible with Dell Dimension E510 / E510N Desktop - C137",
+      "retailPrice": 19,
+      "salePrice": null,
+      "priceUsd": 19
+    },
+    {
+      "sku": "9SIAMBVK0Z8230",
+      "category": "ram",
+      "name": "16GB RAM Replacement for Kingston KVR48U40BS8-16, KVR48U40BS8K2-32 DDR5 4800MHz PC5-38400 DIMM 1Rx8 Desktop Memory",
+      "retailPrice": 333.62,
+      "salePrice": null,
+      "priceUsd": 333.62
+    },
+    {
+      "sku": "N82E16820374802",
+      "category": "ram",
+      "name": "G. SKILL Trident Z5 Neo RGB Series AMD EXPO 32GB (2 x 16GB) 288-Pin PC RAM DDR5 6000 (PC5 48000) Desktop Memory Model F5-6000J3038F16GH2-TZ5NR",
+      "retailPrice": 659.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820374367",
+      "category": "ram",
+      "name": "G. SKILL Ripjaws S5 Series 64GB (2 x 32GB) 288-Pin PC RAM DDR5 5600 (PC5 44800) Desktop Memory Model F5-5600J3636D32GX2-RS5K",
+      "retailPrice": 999.99,
+      "salePrice": 979.99,
+      "priceUsd": 979.99
+    },
+    {
+      "sku": "N82E16820982125",
+      "category": "ram",
+      "name": "CORSAIR Vengeance RGB 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop memory Model CMH64GX5M2B6400C32W",
+      "retailPrice": 1320,
+      "salePrice": 1299.99,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIAAFJ4GW7300",
+      "category": "ram",
+      "name": "CMS 1GB (1X1GB) DDR1 3200 400MHZ NON ECC DIMM Memory Ram Upgrade Compatible with HP/Compaq Business Desktop Dc7100 Sff Ddr - A114",
+      "retailPrice": 19,
+      "salePrice": null,
+      "priceUsd": 19
+    },
+    {
+      "sku": "9SIAD6HKHC7565",
+      "category": "ram",
+      "name": "Kingston Fury Beast 16GB 6000MT/s DDR5 CL30 Desktop Memory AMD Expo Plug N Play Single Module KF560C30BBE-16",
+      "retailPrice": 336.36,
+      "salePrice": null,
+      "priceUsd": 336.36
+    },
+    {
+      "sku": "0RN-00MB-000U2",
+      "category": "ram",
+      "name": "V-COLOR Manta XSky DDR5 32GB (2x16GB) 6000MHz CL28 1.4V SK Hynix IC RGB Gaming Desktop Upgrade Memory Module Black, for AMD EXPO (TMXSAL1660828KWK)",
+      "retailPrice": 669.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820374368",
+      "category": "ram",
+      "name": "G. SKILL Ripjaws S5 Series 64GB (2 x 32GB) 288-Pin PC RAM DDR5 5600 (PC5 44800) Desktop Memory Model F5-5600J3636D32GX2-RS5W",
+      "retailPrice": 999.99,
+      "salePrice": 979.99,
+      "priceUsd": 979.99
+    },
+    {
+      "sku": "N82E16820982242",
+      "category": "ram",
+      "name": "CORSAIR Vengeance RGB 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model CMH64GX5M2N6400C32W",
+      "retailPrice": 1320,
+      "salePrice": 1299.99,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIAWKTKTU5396",
+      "category": "ram",
+      "name": "SAMSUNG M378B5173Cb0-Ck0 Memory For Desktop Memory-M378B5173Cb0-Ck0",
+      "retailPrice": 19.6,
+      "salePrice": null,
+      "priceUsd": 19.6
+    },
+    {
+      "sku": "9SIB0ASKHK4904",
+      "category": "ram",
+      "name": "G. SKILL Trident Z RGB (For AMD) 32GB (2 x 16GB) 288-Pin PC RAM DDR4 3200 (PC4 25600) Desktop Memory Model F4-3200C16D-32GTZRX",
+      "retailPrice": 339,
+      "salePrice": null,
+      "priceUsd": 339
+    },
+    {
+      "sku": "N82E16820331923",
+      "category": "ram",
+      "name": "Team T-Force Delta RGB 32GB (2 x 16GB) 288-Pin PC RAM DDR5 7200 (PC5 57600) Desktop Memory Model FF3D532G7200HC34ADC01",
+      "retailPrice": 669.99,
+      "salePrice": 649.99,
+      "priceUsd": 649.99
+    },
+    {
+      "sku": "N82E16820982304",
+      "category": "ram",
+      "name": "CORSAIR Vengeance 64GB (2 x 32GB) 288-Pin PC RAM DDR5 4800 (PC5 38400) Desktop Memory Model CMH64GX5M2A4800C40",
+      "retailPrice": 1010,
+      "salePrice": 984.99,
+      "priceUsd": 984.99
+    },
+    {
+      "sku": "N82E16820982255",
+      "category": "ram",
+      "name": "CORSAIR Vengeance RGB 64GB (2 x 32GB) 288-Pin PC RAM DDR5 6400 (PC5 51200) Desktop Memory Model CMH64GX5M2N6400C32",
+      "retailPrice": 1320,
+      "salePrice": 1299.99,
+      "priceUsd": 1299.99
+    },
+    {
+      "sku": "9SIA56XK1Y5582",
+      "category": "storage",
+      "name": "Timetec 128GB SSD 3D NAND SATA III 6Gb/s 2.5 Inch 7mm (0.28') Read Speed Up to 520 MB/s 100TBW SLC Cache Performance Boost Internal Solid State...",
+      "retailPrice": 28.99,
+      "salePrice": null,
+      "priceUsd": 28.99
+    },
+    {
+      "sku": "9SIA0ZXK093205",
+      "category": "storage",
+      "name": "Super Talent TeraNova 1TB 2.5 inch SATA3 Solid State Drive (TLC)",
+      "retailPrice": 167.33,
+      "salePrice": null,
+      "priceUsd": 167.33
+    },
+    {
+      "sku": "9SIBFJRJ949674",
+      "category": "storage",
+      "name": "SAMSUNG 870 QVO Series 2.5' 1TB SATA III V-NAND Internal Solid State Drive (SSD) MZ-77Q1T0B/AM",
+      "retailPrice": 319.95,
+      "salePrice": null,
+      "priceUsd": 319.95
+    },
+    {
+      "sku": "N82E16820250282",
+      "category": "storage",
+      "name": "WD_BLACK SN8100 NVMe SSD - 2TB, With Heatsink, M.2 2280 PCI-Express 5.0 x4 Internal Solid State Drive (SSD) WDS200T1XHM-00CMT0",
+      "retailPrice": 549.99,
+      "salePrice": 469.99,
+      "priceUsd": 469.99
+    },
+    {
+      "sku": "9SIC6E1M4K8216",
+      "category": "storage",
+      "name": "GIGABYTE AORUS Gen4 M.2 2280 2TB PCI-Express 4.0 x4, NVMe 1.3 3D TLC Internal Solid State Drive (SSD) GP-AG42TB",
+      "retailPrice": 619.33,
+      "salePrice": null,
+      "priceUsd": 619.33
+    },
+    {
+      "sku": "9SIC7ABKZM4967",
+      "category": "storage",
+      "name": "Bestoss 2.5 Inch SATA III 3D NAND SSD 128GB Internal Solid State Hard Drive SSDs for Laptop and Computer, Up to 550MB/s",
+      "retailPrice": 28.99,
+      "salePrice": null,
+      "priceUsd": 28.99
+    },
+    {
+      "sku": "9SIC7VBM5J8668",
+      "category": "storage",
+      "name": "Western Digital WD Green SN350 NVMe M.2 2280 960GB PCI-Express 3.0 x4 Internal Solid State Drive (SSD) WDS960G2G0C",
+      "retailPrice": 167.65,
+      "salePrice": null,
+      "priceUsd": 167.65
+    },
+    {
+      "sku": "9SIA1DSK1F5819",
+      "category": "storage",
+      "name": "ORICO J10 Sereis 2TB M.2 2280 NVMe SSD PCIe Gen3x4 3D NAND Internal Solid State Drive with Cooling Vest, Read Speed up to 3100 MB/s for PC Desktop...",
+      "retailPrice": 319.99,
+      "salePrice": null,
+      "priceUsd": 319.99
+    },
+    {
+      "sku": "9SIBFJRJYT9882",
+      "category": "storage",
+      "name": "SAMSUNG 990 PRO w/ Heatsink SSD 2TB, PCIe Gen4 M.2 2280 Internal Solid State Hard Drive, Seq. Read Speeds Up To 7,450MB/s for High End Computing,...",
+      "retailPrice": 470,
+      "salePrice": null,
+      "priceUsd": 470
+    },
+    {
+      "sku": "9SIBP4YM501467",
+      "category": "storage",
+      "name": "ADATA XPG S70BLADE 2TB PCIe4.0 NVMe M.2 2280 Internal SSD, 7400MB/s Read, 6800MB/s Write, 2GB DRAM Cache, TLC NAND, PS5 Compatible",
+      "retailPrice": 619.99,
+      "salePrice": null,
+      "priceUsd": 619.99
+    },
+    {
+      "sku": "9SIBDGPKK23640",
+      "category": "storage",
+      "name": "Silicon power 128GB SSD 3D NAND A55 SLC Cache Performance Boost SATA III 2.5' 7mm (0.28') Internal Solid State Drive",
+      "retailPrice": 40.79,
+      "salePrice": 29.79,
+      "priceUsd": 29.79
+    },
+    {
+      "sku": "9SIAG9J8C25301",
+      "category": "storage",
+      "name": "M.2 2242 SSD 1TB Dogfish 3D NAND QLC SATA III 6 Gb/s, Internal Solid State Drive Compatible with Desktop PC Laptop (M.2 2242 1TB)",
+      "retailPrice": 168,
+      "salePrice": null,
+      "priceUsd": 168
+    },
+    {
+      "sku": "9SIA2W0EM83310",
+      "category": "storage",
+      "name": "Titanium Micro TH7175 1TB PCIe NVME 4.0 Gen 4 M.2 2280 Internal SSD",
+      "retailPrice": 319.99,
+      "salePrice": null,
+      "priceUsd": 319.99
+    },
+    {
+      "sku": "9SIC7VBM5K5993",
+      "category": "storage",
+      "name": "Western Digital 1TB WD Red SN700 NVMe Internal Solid State Drive SSD for NAS Devices - Gen3 PCIe, M.2 2280, Up to 3,430 MB/s - WDS100T1R0C",
+      "retailPrice": 474.25,
+      "salePrice": null,
+      "priceUsd": 474.25
+    },
+    {
+      "sku": "N82E16820982290",
+      "category": "storage",
+      "name": "Corsair MP700 ELITE M.2 2280 4TB PCI-Express 5.0 x4 3D TLC Internal Solid State Drive (SSD) CSSD-F4000GBMP700EHS",
+      "retailPrice": 699.99,
+      "salePrice": 619.99,
+      "priceUsd": 619.99
+    },
+    {
+      "sku": "9SIBSAYK3G7957",
+      "category": "storage",
+      "name": "Fanxiang 128GB SSD SATA III 2.5' Internal Solid State Drive, 3D NAND TLC, Up to 550MB/s, Compatible with laptops and PC Desktops",
+      "retailPrice": 49.99,
+      "salePrice": 29.99,
+      "priceUsd": 29.99
+    },
+    {
+      "sku": "9SIAG9J8GH0794",
+      "category": "storage",
+      "name": "Dogfish M.2 2242 SSD 1TB 3D NAND QLC SATA III 6 Gb/s Internal Solid State Drive Compatible with Desktop PC Laptop (M.2 2242 1TB)",
+      "retailPrice": 168,
+      "salePrice": null,
+      "priceUsd": 168
+    },
+    {
+      "sku": "9SIBX68KEF3579",
+      "category": "storage",
+      "name": "OWC 1TB Aura N2 NVMe SSD Upgrade Kit w/ 1TB Express USB 3.0 Compatible with MacBook Pro w/Retina Display (Late 2013 - Mid 2015) and MacBook Air...",
+      "retailPrice": 319.99,
+      "salePrice": null,
+      "priceUsd": 319.99
+    },
+    {
+      "sku": "9SIA4P0KDF6678",
+      "category": "storage",
+      "name": "Synology SNV3410 M.2 2280 400GB PCI-Express 3.0 x4 Internal Solid State Drive (SSD) SNV3410-400G",
+      "retailPrice": 474.99,
+      "salePrice": null,
+      "priceUsd": 474.99
+    },
+    {
+      "sku": "9SIA12KKGY9479",
+      "category": "storage",
+      "name": "Kingston FURY Renegade G5 M.2 2280 2TB PCI-Express 5.0 x4 3D NAND Internal Solid State Drive (SSD) SFYR2S/2T0 (GEN 5 SSD)",
+      "retailPrice": 627,
+      "salePrice": null,
+      "priceUsd": 627
+    },
+    {
+      "sku": "9SIANS1BH14990",
+      "category": "storage",
+      "name": "PioData 2.5' 120GB SATA III 3D NAND Internal Solid State Drive (SSD) PIO120S325-R",
+      "retailPrice": 30.95,
+      "salePrice": null,
+      "priceUsd": 30.95
+    },
+    {
+      "sku": "9SIC3DRKXU9114",
+      "category": "storage",
+      "name": "WD Blue 500GB SA510 M.2 Internal Solid State Drive SSD - WDS500G3B0B",
+      "retailPrice": 168.29,
+      "salePrice": null,
+      "priceUsd": 168.29
+    },
+    {
+      "sku": "N82E16820140040",
+      "category": "storage",
+      "name": "MSI M461 M.2 2280 2TB PCI-Express 4.0 3D NAND Internal Solid State Drive (SSD)",
+      "retailPrice": 359.99,
+      "salePrice": 319.99,
+      "priceUsd": 319.99
+    },
+    {
+      "sku": "9SIBFJRJ949566",
+      "category": "storage",
+      "name": "SAMSUNG 870 QVO Series 2.5' 2TB SATA III Samsung 4-bit QLC V-NAND Internal Solid State Drive (SSD) MZ-77Q2T0B/AM",
+      "retailPrice": 479.95,
+      "salePrice": null,
+      "priceUsd": 479.95
+    },
+    {
+      "sku": "9SIAD6HKGE1203",
+      "category": "storage",
+      "name": "MSI SPATIUM Series M570 PRO M.2 2280 2TB PCI-Express 5.0 x4 Internal Solid State Drive (SSD) -SM570PN2TBF",
+      "retailPrice": 627.09,
+      "salePrice": null,
+      "priceUsd": 627.09
+    },
+    {
+      "sku": "9SIA56XKFN3184",
+      "category": "storage",
+      "name": "Timetec 128GB SSD 3D NAND SATA III 6Gb/s M.2 2280 NGFF 64TBW Read Speed Up to 550MB/s SLC Cache Performance Boost Internal Solid State Drive for PC...",
+      "retailPrice": 31.99,
+      "salePrice": null,
+      "priceUsd": 31.99
+    },
+    {
+      "sku": "9SIBZW0KN79536",
+      "category": "storage",
+      "name": "Seagate Firecuda 520 500GB Performance Internal Solid State Drive SSD PCIe Gen4 X4 NVMe 1.3 for Gaming PC Gaming Laptop Desktop - 3-year Rescue...",
+      "retailPrice": 168.41,
+      "salePrice": null,
+      "priceUsd": 168.41
+    },
+    {
+      "sku": "9SIA0ZXKWY2164",
+      "category": "storage",
+      "name": "Adata Ultimate SU650 2TB 3D-NAND SATA 2.5 inch Internal SSD (ASU650SS-2TT-R)",
+      "retailPrice": 320.26,
+      "salePrice": null,
+      "priceUsd": 320.26
+    },
+    {
+      "sku": "9SIB1V8K0W0784",
+      "category": "storage",
+      "name": "KingSpec M.2 2280 4TB SSD NGFF M.2 SATA III 6Gb/s Internal Solid State Drive Hard Disk Data Storage for PC Desktop Laptop Ultrabook 3D NAND SATA...",
+      "retailPrice": 485.99,
+      "salePrice": null,
+      "priceUsd": 485.99
+    },
+    {
+      "sku": "9SIA12KKUH0114",
+      "category": "storage",
+      "name": "Micron 3500 2TB Solid State Drive - M.2 2280 - PCIe 4.0 x4 (NVMe) MTFDKBA2T0TGD-1BK1AABYYR",
+      "retailPrice": 629.99,
+      "salePrice": null,
+      "priceUsd": 629.99
+    },
+    {
+      "sku": "9SIBBJ0KZ00600",
+      "category": "storage",
+      "name": "PUSKILL SSD M.2 NVMe PCIe 3.0 M2 2280 Hard Disk Internal Solid State Drive Disk NVME 128GB",
+      "retailPrice": 44.1,
+      "salePrice": 33.55,
+      "priceUsd": 33.55
+    },
+    {
+      "sku": "9SIAG9J8C29790",
+      "category": "storage",
+      "name": "mSATA SSD 1TB Dogfish 3D NAND TLC SATA III 6 Gb/s, mSATA (30x50.9mm) Internal Solid State Drive Compatible with Desktop PC Laptop (mSATA 1TB)",
+      "retailPrice": 169,
+      "salePrice": null,
+      "priceUsd": 169
+    },
+    {
+      "sku": "9SIC6E1M5A0838",
+      "category": "storage",
+      "name": "WD_BLACK 2TB SN850X NVMe Internal Gaming SSD Solid State Drive - Gen4 PCIe, M.2 2280, Up to 7,300 MB/s - WDS200T2X0E",
+      "retailPrice": 321.72,
+      "salePrice": null,
+      "priceUsd": 321.72
+    },
+    {
+      "sku": "N82E16820985406",
+      "category": "storage",
+      "name": "Team Group T-Force G50 EVO M.2 2280 4TB PCIe Gen4.0 x4 with NVMe Internal SSD (TM8FGQ004T0C129)",
+      "retailPrice": 485.99,
+      "salePrice": null,
+      "priceUsd": 485.99
+    },
+    {
+      "sku": "9SIB1V8KPX3718",
+      "category": "storage",
+      "name": "KingSpec VP14000 4TB PCIe 5.0x4 M.2 NVMe 2280 Gen5 SSD TLC NAND Internal Solid State Drive, Seq. Read Speeds Up to 14,835/13,297 MB/s, Best for AI...",
+      "retailPrice": 629.99,
+      "salePrice": null,
+      "priceUsd": 629.99
+    },
+    {
+      "sku": "9SIA56XBED7541",
+      "category": "storage",
+      "name": "Timetec 128GB SSD 3D NAND SATA III 6Gb/s M.2 2280 NGFF Read Speed Up to 550MB/s SLC Cache Performance Boost Internal Solid State Drive for PC...",
+      "retailPrice": 34.99,
+      "salePrice": null,
+      "priceUsd": 34.99
+    },
+    {
+      "sku": "9SIC3DRM4F6813",
+      "category": "storage",
+      "name": "WD Blue 3D NAND 500GB Internal SSD - SATA III 6Gb/s 2.5'/7mm Solid State Drive - WDS500G2B0A",
+      "retailPrice": 169,
+      "salePrice": null,
+      "priceUsd": 169
+    },
+    {
+      "sku": "9SIA12KKFX7385",
+      "category": "storage",
+      "name": "Crucial P310 M.2 2280 2TB PCI-Express 4.0 x4 3D NAND Internal Solid State Drive (SSD) CT2000P310SSD5",
+      "retailPrice": 322.55,
+      "salePrice": null,
+      "priceUsd": 322.55
+    },
+    {
+      "sku": "9SIAGBAKYF7067",
+      "category": "storage",
+      "name": "Verbatim 4TB Vi7000 Internal SSD",
+      "retailPrice": 487.9,
+      "salePrice": null,
+      "priceUsd": 487.9
+    },
+    {
+      "sku": "9SIBP4YM4Z5343",
+      "category": "storage",
+      "name": "ADATA XPG S150 2TB PCIe5.0 NVMe M.2 2280 Internal SSD, Up to 14000MB/s Read Speed, TLC 3DNAND, 2GB DRAM Cache",
+      "retailPrice": 629.99,
+      "salePrice": null,
+      "priceUsd": 629.99
+    },
+    {
+      "sku": "9SIBSAYKAA9281",
+      "category": "storage",
+      "name": "Fanxiang mSATA SSD 128GB 3D NAND SATA III,3D NAND TLC Mini SATA III Internal Solid State Drive,up to 550MB/s 6Gb/s,For PC /Desktop/ Laptop",
+      "retailPrice": 59.99,
+      "salePrice": 35.99,
+      "priceUsd": 35.99
+    },
+    {
+      "sku": "9SIBZW0KFW5248",
+      "category": "storage",
+      "name": "XPG GAMMIX S50 Lite M.2 2280 1TB PCI-Express 4.0 x4 3D NAND Internal Solid State Drive (SSD)",
+      "retailPrice": 169.9,
+      "salePrice": null,
+      "priceUsd": 169.9
+    },
+    {
+      "sku": "9SIBZW0M164179",
+      "category": "storage",
+      "name": "PNY CS2241 M.2 2280 2TB PCI-Express 4.0 x4 3D NAND Internal Solid State Drive (SSD) M280CS2241-2TB-RB",
+      "retailPrice": 322.99,
+      "salePrice": null,
+      "priceUsd": 322.99
+    },
+    {
+      "sku": "9SIBTK0K9D2396",
+      "category": "storage",
+      "name": "MSI SPATIUM M480 Heatsink M.2 2280 2TB PCIe Gen4x4, NVMe 1.4 3D NAND Internal Solid State Drive (SSD)",
+      "retailPrice": 489,
+      "salePrice": null,
+      "priceUsd": 489
+    },
+    {
+      "sku": "9SIB1V8KS05208",
+      "category": "storage",
+      "name": "KingSpec ONEBOOM X500 4TB PCIe 5.0x4 M.2 NVMe 2280 Gen5 SSD TLC NAND Internal Solid State Drive, Seq. Read Speeds Up to 14,000/13,000 MB/s, Best...",
+      "retailPrice": 638.99,
+      "salePrice": null,
+      "priceUsd": 638.99
+    },
+    {
+      "sku": "9SIA56XBNY4449",
+      "category": "storage",
+      "name": "Timetec 256GB SSD 3D NAND SATA III 6Gb/s 2.5 Inch 7mm (0.28') Read Speed Up to 550 MB/s SLC Cache Performance Boost Internal Solid State Drive for...",
+      "retailPrice": 38.99,
+      "salePrice": null,
+      "priceUsd": 38.99
+    },
+    {
+      "sku": "9SIA1DSKDZ4428",
+      "category": "storage",
+      "name": "ORICO SATA SSD 2TB, 2.5' SATA III 6Gb/s SSD, up to 560MB/s, 3D NAND Internal Solid State Drive Aluminum SATA SSD, Upgrade Laptop PC and Desktops 2TB",
+      "retailPrice": 169.99,
+      "salePrice": null,
+      "priceUsd": 169.99
+    },
+    {
+      "sku": "9SIC7ABKZN2040",
+      "category": "storage",
+      "name": "Bestoss 2.5' 4TB SSD SATA III 6Gb/s 3D NAND Internal Solid State Hard Drive SSDs for Laptop and Computer, Up to 550MB/s, laptop PC Desktop compatible",
+      "retailPrice": 323.99,
+      "salePrice": null,
+      "priceUsd": 323.99
+    },
+    {
+      "sku": "N82E16820985283",
+      "category": "storage",
+      "name": "Team Group T-FORCE G50 M.2 2280 4TB PCIe 4.0 x4 with NVMe 1.4 TLC Internal Solid State Drive (SSD) TM8FFE004T0C129",
+      "retailPrice": 495.99,
+      "salePrice": null,
+      "priceUsd": 495.99
+    },
+    {
+      "sku": "9SIA12KKUX8936",
+      "category": "storage",
+      "name": "Crucial P310 M.2 2280 4TB PCI-Express 4.0 x4 NVMe 3D NAND Internal Solid State Drive (SSD) CT4000P310SSD801",
+      "retailPrice": 648.5,
+      "salePrice": null,
+      "priceUsd": 648.5
+    },
+    {
+      "sku": "9SIA56XK1Y5583",
+      "category": "storage",
+      "name": "Timetec 256GB SSD 3D NAND SATA III 6Gb/s 2.5 Inch 7mm (0.28') Read Speed Up to 530 MB/s SLC Cache Performance Boost Internal Solid State Drive for...",
+      "retailPrice": 38.99,
+      "salePrice": null,
+      "priceUsd": 38.99
+    },
+    {
+      "sku": "9SIBP4YM4Z4602",
+      "category": "storage",
+      "name": "ADATA XPG S20 512GB PCIe 3.0 NVMe M.2 2280 Internal Solid State Drive SSD",
+      "retailPrice": 169.99,
+      "salePrice": null,
+      "priceUsd": 169.99
+    },
+    {
+      "sku": "N82E16820985144",
+      "category": "storage",
+      "name": "Team Group T-FORCE G50 M.2 2280 2TB PCIe 4.0 x4 with NVMe 1.4 TLC Internal Solid State Drive (SSD) TM8FFE002T0C129",
+      "retailPrice": 349.99,
+      "salePrice": 324.99,
+      "priceUsd": 324.99
+    },
+    {
+      "sku": "9SIAADFJE43308",
+      "category": "storage",
+      "name": "SAMSUNG 2.5' 2TB SATA III Samsung V-NAND 3bit MLC Internal Solid State Drive (SSD) MZ-77E2T0E",
+      "retailPrice": 497.99,
+      "salePrice": null,
+      "priceUsd": 497.99
+    },
+    {
+      "sku": "9SIBZW0KN80566",
+      "category": "storage",
+      "name": "Seagate Nytro 1361 - SSD - 960 GB - internal - 2.5' - SATA 6Gb/s - XA960LE10006",
+      "retailPrice": 649,
+      "salePrice": null,
+      "priceUsd": 649
+    },
+    {
+      "sku": "9SIAKRCA5A4244",
+      "category": "psu",
+      "name": "COMPAQ 308437-001 240W ATX POWER SUPPLY",
+      "retailPrice": 36.99,
+      "salePrice": null,
+      "priceUsd": 36.99
+    },
+    {
+      "sku": "9SIA4P0KM53317",
+      "category": "psu",
+      "name": "Cooler Master MWE Gold 850 V3 Fully Modular Power Supply - 850W 80+ Gold Certified PSU, Cybenetics Platinum, 90° 12V-2x6 PCIe 5.1, ATX 3.1 Support,...",
+      "retailPrice": 144.99,
+      "salePrice": null,
+      "priceUsd": 144.99
+    },
+    {
+      "sku": "9SIA4REJT88824",
+      "category": "psu",
+      "name": "Great Wall (GX 850W) Rated 850W White Limited Edition ATX Power Supply, GX Gold Medal Full Module Power,0.01ms Speed Response,Fan Automatic Start...",
+      "retailPrice": 259.36,
+      "salePrice": null,
+      "priceUsd": 259.36
+    },
+    {
+      "sku": "9SIC6E1M4K7426",
+      "category": "psu",
+      "name": "ASUS ROG Strix 1200W Gold Aura Edition (Fully Modular Power Supply, 80+ Gold Certified, ATX 3.0, Cybenetics Lambda A+ Certification, PCIe Gen 5.0...",
+      "retailPrice": 374.72,
+      "salePrice": null,
+      "priceUsd": 374.72
+    },
+    {
+      "sku": "N82E16817222052",
+      "category": "psu",
+      "name": "be quiet! Dark Power Pro 14 1600W ATX 3.1 Power Supply 80 Plus Titanium Cybenetics Titanium PCIe 5.1 GPUs Modular BP023US",
+      "retailPrice": 499.99,
+      "salePrice": null,
+      "priceUsd": 499.99
+    },
+    {
+      "sku": "9SIC6VHM4Y2376",
+      "category": "psu",
+      "name": "Bestec ATX-300-12E Rev. D1R 300W Gateway Power Supply P/N: 6506087R",
+      "retailPrice": 38.8,
+      "salePrice": null,
+      "priceUsd": 38.8
+    },
+    {
+      "sku": "9SIAFSTKJG3665",
+      "category": "psu",
+      "name": "Lian Li SP V2 Gold - 850 Watt SFX Form Factor Power Supply with Native 12V-2x6 Cable - Low Noise - 80 Plus Gold Efficiency - ATX 3.1 & PCIe 5.0...",
+      "retailPrice": 144.99,
+      "salePrice": null,
+      "priceUsd": 144.99
+    },
+    {
+      "sku": "9SIB66RK698428",
+      "category": "psu",
+      "name": "300W PSU For Supermicro PWS-305-PQ Multi-Output PS2/ATX Power Supply",
+      "retailPrice": 261.99,
+      "salePrice": null,
+      "priceUsd": 261.99
+    },
+    {
+      "sku": "1HU-004H-000S7",
+      "category": "psu",
+      "name": "be quiet! Dark Power PRO 13 1300W ATX 3.0 Power Supply 80 PLUS Titanium Efficiency PCIe 5.0 Fully digital Modular BN500",
+      "retailPrice": 479.9,
+      "salePrice": 399.9,
+      "priceUsd": 399.9
+    },
+    {
+      "sku": "9SIC6BFKW90078",
+      "category": "psu",
+      "name": "Silverstone DA1650 Gold 80 PLUS Gold 1650W fully modular ATX power supply",
+      "retailPrice": 503.09,
+      "salePrice": null,
+      "priceUsd": 503.09
+    },
+    {
+      "sku": "9SIBZT7KT40900",
+      "category": "psu",
+      "name": "JBON 600WS Power Supply 500W,PC Power Supply with Continuous Power with 120mm Ultra Quiet PWM Cooling Fan, ATX 12V V2.3/EPS 12V Active PFC Power...",
+      "retailPrice": 38.81,
+      "salePrice": null,
+      "priceUsd": 38.81
+    },
+    {
+      "sku": "9SIAD6HK912714",
+      "category": "psu",
+      "name": "Thermaltake Toughpower GF A3 ATX 3.0 750W 80+ Gold Full Modular SLI/Crossfile Ready Power Supply; PCIe Gen.5 300W 12VHPWR Connector Included;...",
+      "retailPrice": 146.38,
+      "salePrice": null,
+      "priceUsd": 146.38
+    },
+    {
+      "sku": "9SIC7XKM1F9070",
+      "category": "psu",
+      "name": "ASUS ROG Loki SFX-L 850W Platinum (Fully Modular Power Supply, 80+ Platinum, 120mm PWM ARGB Fan, Aura Sync, ATX 3.0 Compatible, PCIe 5.0 Ready)",
+      "retailPrice": 265.35,
+      "salePrice": null,
+      "priceUsd": 265.35
+    },
+    {
+      "sku": "9SIBTK0KC39245",
+      "category": "psu",
+      "name": "MSI- MEG Ai1000P PCIE 5.0, 80 PLATINUM Full Modular Gaming PSU, 12VHPWR Cable, 4080 4090 ATX 3.0 Compatible, 1000W Power Supply",
+      "retailPrice": 404.65,
+      "salePrice": null,
+      "priceUsd": 404.65
+    },
+    {
+      "sku": "9SIC8MZM626913",
+      "category": "psu",
+      "name": "ASUS ROG Thor 1200W Platinum III PSU (80 PLUS Platinum Certified, ATX 3.1, GaN MOSFET, GPU-First Intelligent Voltage Stabilizer, Magnetic OLED...",
+      "retailPrice": 577,
+      "salePrice": null,
+      "priceUsd": 577
+    },
+    {
+      "sku": "N82E16817153233",
+      "category": "psu",
+      "name": "Thermaltake Smart Series 500W SLI/CrossFire Ready Continuous Power ATX 12V V2.3 / EPS 12V 80 PLUS Certified Active PFC Power Supply Haswell Ready...",
+      "retailPrice": 49.99,
+      "salePrice": 39.99,
+      "priceUsd": 39.99
+    },
+    {
+      "sku": "9SIC6E1M4H6675",
+      "category": "psu",
+      "name": "MSI - MPG A850GF PCIE 5.0, 80 GOLD Full Modular Gaming PSU, Japanese Electrolytic capacitor, 850W ATX Power Supply",
+      "retailPrice": 147.16,
+      "salePrice": null,
+      "priceUsd": 147.16
+    },
+    {
+      "sku": "9SIC2ZPKVM2562",
+      "category": "psu",
+      "name": "Silverstone SST-ST45SF-G 450W SFX/ATX Modular Power Supply",
+      "retailPrice": 266.19,
+      "salePrice": null,
+      "priceUsd": 266.19
+    },
+    {
+      "sku": "9SIBZW0KJ70086",
+      "category": "psu",
+      "name": "MSI MEG Ai1300P PCIE5, Fully Modular Gaming 1300W Power Supply, 80+ Platinum, Native 12V-2x6 Cable, 100% Japanese Capacitor, ATX 3.1 & PCIe 5.1...",
+      "retailPrice": 409.51,
+      "salePrice": null,
+      "priceUsd": 409.51
+    },
+    {
+      "sku": "N82E16817426005",
+      "category": "psu",
+      "name": "b-Vigor 550W ATX Power Supply",
+      "retailPrice": 44.99,
+      "salePrice": null,
+      "priceUsd": 44.99
+    },
+    {
+      "sku": "9SIA6ZPKYX7649",
+      "category": "psu",
+      "name": "MSI MAG A850GLS PCIE5, Fully Modular Compact Gaming 850W Power Supply, 80+ Gold, ATX 3.1 & PCIe 5.1 Ready, Native Dual-color 12V-2x6 cable,...",
+      "retailPrice": 147.5,
+      "salePrice": null,
+      "priceUsd": 147.5
+    },
+    {
+      "sku": "9SIBZT2KGK5661",
+      "category": "psu",
+      "name": "For H-P-Pavilion 500 110 ATX Power Supply PSU 180W 742317-001 PCD010 Psu",
+      "retailPrice": 267.31,
+      "salePrice": null,
+      "priceUsd": 267.31
+    },
+    {
+      "sku": "9SIB66RK699001",
+      "category": "psu",
+      "name": "PSU For Supermicro PWS-305-PQ PS2/ATX 300W Power Supply",
+      "retailPrice": 411.99,
+      "salePrice": null,
+      "priceUsd": 411.99
+    },
+    {
+      "sku": "N82E16817701047",
+      "category": "psu",
+      "name": "MSI MAG A500DN II Power Supply Unit, 500W, 80 PLUS Standard, ATX PSU, Black Flat Cables",
+      "retailPrice": 44.99,
+      "salePrice": null,
+      "priceUsd": 44.99
+    },
+    {
+      "sku": "9SIC9BAM699182",
+      "category": "psu",
+      "name": "CORSAIR VS Series VS500 500W 80 PLUS Certified Non-Modular ATX Power Supply, CP-9020223-NA",
+      "retailPrice": 149,
+      "salePrice": null,
+      "priceUsd": 149
+    },
+    {
+      "sku": "N82E16817222048",
+      "category": "psu",
+      "name": "be quiet! Dark Power 14 1000W ATX 3.1 Power Supply 80 Plus Titanium Efficiency PCIe 5.1 Modular 10 Year Warranty BP020US",
+      "retailPrice": 269.9,
+      "salePrice": null,
+      "priceUsd": 269.9
+    },
+    {
+      "sku": "N82E16817320057",
+      "category": "psu",
+      "name": "ASUS ROG Thor 1000W Platinum III PSU (80 PLUS Platinum Certified, ATX 3.1, GaN MOSFET, GPU-First Intelligent Voltage Stabilizer, Magnetic OLED...",
+      "retailPrice": 469.99,
+      "salePrice": 419.99,
+      "priceUsd": 419.99
+    },
+    {
+      "sku": "9SIB41TKTE2561",
+      "category": "psu",
+      "name": "SAMA B650 650W ATX 3.1 Power Supply, Cybenetics Bronze Certified, PCIe 5.1 Ready 12V-2x6 (450W), APFC LLC + DC-DC Design, 120mm Silent Fan,...",
+      "retailPrice": 53.97,
+      "salePrice": 44.99,
+      "priceUsd": 44.99
+    },
+    {
+      "sku": "9SIA2J5K4J0998",
+      "category": "psu",
+      "name": "TOPOWER TOP-1000WG1 PCIE 5.0, 80PLUS GOLD Full Modular Gaming Power Supply, 12VHPWR Cable, 4080 4090 ATX 3.0 Compatible, 1000W PSU",
+      "retailPrice": 149.99,
+      "salePrice": null,
+      "priceUsd": 149.99
+    },
+    {
+      "sku": "9SIAZRBKMA6340",
+      "category": "psu",
+      "name": "YEYIAN PSU. Fully Modular,1300W, ATX 3.1, 80 Plus Platinum, All Japanese Capacitors. Model YFT-1T33M-P1",
+      "retailPrice": 269.99,
+      "salePrice": null,
+      "priceUsd": 269.99
+    },
+    {
+      "sku": "9SIAZ8XKH06032",
+      "category": "psu",
+      "name": "Athena Power AP-PS2MK12P868 1200W PSU PS2, 80 PLUS Platinum, ATX 3.1 & PCIe 5.0, 12V-2x6 GPU, Dual Fans, Low Ripple, IEC/UL 62368-1 Certified,...",
+      "retailPrice": 423,
+      "salePrice": null,
+      "priceUsd": 423
+    },
+    {
+      "sku": "9SIA0ZX9H91351",
+      "category": "psu",
+      "name": "APEVIA ATX-VN500W 500 W Power Supply",
+      "retailPrice": 45.41,
+      "salePrice": null,
+      "priceUsd": 45.41
+    },
+    {
+      "sku": "9SIA2W0KZG1633",
+      "category": "psu",
+      "name": "MSI PRO A1000PL PCIE5 Fully Modular 1000W Power Supply, 80+ Platinum, 12V-2x6, ATX 3.1 & PCIe 5.1, 7 Year Warranty",
+      "retailPrice": 149.99,
+      "salePrice": null,
+      "priceUsd": 149.99
+    },
+    {
+      "sku": "9SIB66RK698513",
+      "category": "psu",
+      "name": "For 500 110 ATX Power Supply 180W 742317-001 PCD010",
+      "retailPrice": 269.99,
+      "salePrice": null,
+      "priceUsd": 269.99
+    },
+    {
+      "sku": "9SIAZ8XKH06033",
+      "category": "psu",
+      "name": "Athena Power AP-3UMK12P868 1200W PSU 3U, 80 PLUS Platinum, ATX 3.1 & PCIe 5.0, 12V-2x6 GPU Connector, Dual Smart Fans, IEC/UL 62368-1 Certified,...",
+      "retailPrice": 428,
+      "salePrice": null,
+      "priceUsd": 428
+    },
+    {
+      "sku": "9SIC84RM3W9827",
+      "category": "case",
+      "name": "Compatible for Amazfit Bip Max Case, Hard PC Case with Tempered Glass Screen Protector Compatible with Amazfit Bip Max 50mm Smartwatch, 2.07'...",
+      "retailPrice": 25.99,
+      "salePrice": null,
+      "priceUsd": 25.99
+    },
+    {
+      "sku": "9SIAD6HKHG6804",
+      "category": "case",
+      "name": "Cougar Airface RGB Black Mid Tower Computer Case with Mesh Front Panel",
+      "retailPrice": 107.67,
+      "salePrice": null,
+      "priceUsd": 107.67
+    },
+    {
+      "sku": "9SIA4REJVG1455",
+      "category": "case",
+      "name": "Cooler Master MasterBox MB600L V2 Computer Case MB600L2KN5NS00",
+      "retailPrice": 189.99,
+      "salePrice": null,
+      "priceUsd": 189.99
+    },
+    {
+      "sku": "N82E16811352233",
+      "category": "case",
+      "name": "Fractal Design Meshify 3 XL Ambience Pro RGB E-ATX Full Tower PC Case - Black Chassis with Light Tinted TG Side Panel",
+      "retailPrice": 274.99,
+      "salePrice": null,
+      "priceUsd": 274.99
+    },
+    {
+      "sku": "9SIA24GKX70073",
+      "category": "case",
+      "name": "ASUS ProArt PA602 Wood Edition Modern Black E-ATX Mid-Tower Case with Tempered Glass, Supports 440mm GPUs, 420mm Radiators, Includes One 140mm and...",
+      "retailPrice": 372.11,
+      "salePrice": null,
+      "priceUsd": 372.11
+    },
+    {
+      "sku": "9SIABW9KGJ2911",
+      "category": "case",
+      "name": "Zalman T6 MINI M-ATX Micro-ATX Compact Desktop PC Case with 80mm Fan, ITX DTX SFF SFX HTPC Small Form Factor Computer Chassis, USB 3.0, Fit ATX...",
+      "retailPrice": 54.99,
+      "salePrice": 25.99,
+      "priceUsd": 25.99
+    },
+    {
+      "sku": "9SIAFVFKKE5353",
+      "category": "case",
+      "name": "IN WIN EFS712 EFS712.CQ450TB3 Black Computer Case 5.25X1 3.5X1 BLACK",
+      "retailPrice": 109.84,
+      "salePrice": null,
+      "priceUsd": 109.84
+    },
+    {
+      "sku": "9SIB7VEK842300",
+      "category": "case",
+      "name": "ARGB PC Case Mid Tower Desktop Computer Gaming Superior Case for ATX/M-ATX/ITX with 6 ARGB Case Fans,Column-Free Design,360MM Radiator & 400MM GPU...",
+      "retailPrice": 189.99,
+      "salePrice": null,
+      "priceUsd": 189.99
+    },
+    {
+      "sku": "N82E16811352235",
+      "category": "case",
+      "name": "Fractal Design Meshify 3 XL Ambience Pro RGB E-ATX Full Tower PC Case - White Chassis with Clear TG Side Panel",
+      "retailPrice": 274.99,
+      "salePrice": null,
+      "priceUsd": 274.99
+    },
+    {
+      "sku": "9SIB7VEJWW1715",
+      "category": "case",
+      "name": "Cougar ARGB MidTower E-ATX Gaming Computer Case, Support 360mm Water Cooling,Aluminum Tempered Glass Side,Gen-2 Type-C USB 3.0 PC Case",
+      "retailPrice": 379,
+      "salePrice": null,
+      "priceUsd": 379
+    },
+    {
+      "sku": "9SIC25VKN29072",
+      "category": "case",
+      "name": "Itx case with 2 * ARGB Fan, High Airflow Micro ATX PC case, Support MATX (Remove Fan), Mini ITX, Micro ATX case Slim with USB 3.0 (Black with Fan)",
+      "retailPrice": 49.99,
+      "salePrice": 29.99,
+      "priceUsd": 29.99
+    },
+    {
+      "sku": "9SIAK91KK92481",
+      "category": "case",
+      "name": "MONTECH HS02, ATX Mid-Tower PC Case, Gaming PC, High-Airflow, Reversible Layout, Sturdy Curved Tempered Glass Front Panel, Sink-in Design, Toolless...",
+      "retailPrice": 109.9,
+      "salePrice": null,
+      "priceUsd": 109.9
+    },
+    {
+      "sku": "9SIBJJTK4A6854",
+      "category": "case",
+      "name": "Mechanic Master C+Max Compact MATX PC Case Aluminum Shell SPCC Frame Support 385mm GPU 240mm AIO ATX 14cm PSU Gaming Chassis",
+      "retailPrice": 189.99,
+      "salePrice": null,
+      "priceUsd": 189.99
+    },
+    {
+      "sku": "N82E16811119474",
+      "category": "case",
+      "name": "Cooler Master MasterFrame 360 Panorama ATX Mid-Tower PC Case - Front Showcase Stage with Spotlight & Panoramic Glass, Supports 430mm GPUs & 360mm...",
+      "retailPrice": 283.99,
+      "salePrice": 275.99,
+      "priceUsd": 275.99
+    },
+    {
+      "sku": "9SIB2TBFK88286",
+      "category": "case",
+      "name": "AZZA Cube 802 CSAZ-802 Black Computer Case",
+      "retailPrice": 379.99,
+      "salePrice": null,
+      "priceUsd": 379.99
+    },
+    {
+      "sku": "9SIBT2UK3H1147",
+      "category": "case",
+      "name": "matx case,itx case,High Airflow Micro ATX PC Case, Support MATX, Mini-ITX, Micro ATX case Slim with USB2.0x2 I/O Port, Black Without Fans",
+      "retailPrice": 31.99,
+      "salePrice": null,
+      "priceUsd": 31.99
+    },
+    {
+      "sku": "9SIAK91M0Z6773",
+      "category": "case",
+      "name": "Montech Heritage PRO Black Black Computer Case",
+      "retailPrice": 109.9,
+      "salePrice": null,
+      "priceUsd": 109.9
+    },
+    {
+      "sku": "N82E16811139238",
+      "category": "case",
+      "name": "CORSAIR FRAME 5000D RS Modular Mid-Tower PC Case, Black",
+      "retailPrice": 189.99,
+      "salePrice": null,
+      "priceUsd": 189.99
+    },
+    {
+      "sku": "9SIAD6HKKM3656",
+      "category": "case",
+      "name": "LIAN LI SUP01 Black Steel / Tempered Glass ATX Mid Tower Computer Case --SUP01X",
+      "retailPrice": 276.47,
+      "salePrice": null,
+      "priceUsd": 276.47
+    },
+    {
+      "sku": "9SIA4REKPS9555",
+      "category": "case",
+      "name": "ASUS Micro ATX Computer Case",
+      "retailPrice": 399.99,
+      "salePrice": null,
+      "priceUsd": 399.99
+    },
+    {
+      "sku": "9SIABW9KFA0272",
+      "category": "case",
+      "name": "Zalman CUBIX Compact mATX ITX PC Case, Micro-ATX/Mini-ITX/DTX, SFF Small Form Factor SFX HTPC Computer Chassis, Fits Standard ATX Power Supply, USB...",
+      "retailPrice": 49.99,
+      "salePrice": 33.98,
+      "priceUsd": 33.98
+    },
+    {
+      "sku": "N82E16811970048",
+      "category": "case",
+      "name": "MONTECH KING 15 PRO Micro-ATX PC Case, Curved Panoramic Glass, Chimney Airflow, 360mm Radiator Support, Compact Build for High-Performance Systems,...",
+      "retailPrice": 109.9,
+      "salePrice": null,
+      "priceUsd": 109.9
+    },
+    {
+      "sku": "9SIAD6HBUP1771",
+      "category": "case",
+      "name": "MSI MPG GUNGNIR 110R - Premium Mid-Tower Gaming PC Case - Tempered Glass Side Panel - 4 x ARGB 120mm Fans - Liquid Cooling Support up to 360mm...",
+      "retailPrice": 191.5,
+      "salePrice": null,
+      "priceUsd": 191.5
+    },
+    {
+      "sku": "9SIA7ABM283674",
+      "category": "case",
+      "name": "CORSAIR iCUE 5000D RGB AIRFLOW Mid-Tower Case, True White - 3x AF120 RGB ELITE - White Fans - iCUE Lighting Node PRO Controller - High-airflow Design",
+      "retailPrice": 279.99,
+      "salePrice": null,
+      "priceUsd": 279.99
+    },
+    {
+      "sku": "9SIB7VEJWV5569",
+      "category": "case",
+      "name": "Cougar Open-Frame Computer case ATX 240mm Radiator Aluminum Alloy Glass PC Game Case - Pink",
+      "retailPrice": 399.99,
+      "salePrice": null,
+      "priceUsd": 399.99
+    },
+    {
+      "sku": "9SIABW9KFA0284",
+      "category": "case",
+      "name": "Zalman CUBIX Compact mATX ITX PC Case, Micro-ATX / Mini-ITX / DTX, SFF Small Form Factor SFX HTPC Computer Chassis, Fits standard ATX Power Supply,...",
+      "retailPrice": 49.99,
+      "salePrice": 34.98,
+      "priceUsd": 34.98
+    },
+    {
+      "sku": "9SIAK91KJX1971",
+      "category": "case",
+      "name": "Montech Heritage PRO White White Computer Case",
+      "retailPrice": 119.9,
+      "salePrice": 109.9,
+      "priceUsd": 109.9
+    },
+    {
+      "sku": "N82E16811352216",
+      "category": "case",
+      "name": "Fractal Design North XL ATX mATX Full Tower PC Case - Charcoal Black Chassis with Walnut Front and Dark Tinted TG Side Panel - FD-C-NOR1X-02",
+      "retailPrice": 194.99,
+      "salePrice": 194.97,
+      "priceUsd": 194.97
+    },
+    {
+      "sku": "N82E16811163422",
+      "category": "case",
+      "name": "SilverStone ALTA F1 SST-ALF1B-G Black Computer Case",
+      "retailPrice": 329.99,
+      "salePrice": 279.99,
+      "priceUsd": 279.99
+    },
+    {
+      "sku": "9SIB7VEJWV7807",
+      "category": "case",
+      "name": "Cougar Open-Frame Computer case ATX 240mm Radiator Aluminum Alloy Glass PC Game Case - White",
+      "retailPrice": 399.99,
+      "salePrice": null,
+      "priceUsd": 399.99
+    },
+    {
+      "sku": "9SIABW9KRR2622",
+      "category": "case",
+      "name": "Zalman CUBIX-G Micro-ATX PC Case, MATX Case with 3 X 120mm FRGB Fans Pre-Installed, Panoramic View Tempered Glass Panels, USB Type-C Port, Fits up...",
+      "retailPrice": 59.99,
+      "salePrice": 34.98,
+      "priceUsd": 34.98
+    },
+    {
+      "sku": "9SIA7ABM2X9222",
+      "category": "case",
+      "name": "COUGAR MX350 Mesh-X, Elegant and Functional Mid-Tower Case",
+      "retailPrice": 109.99,
+      "salePrice": null,
+      "priceUsd": 109.99
+    },
+    {
+      "sku": "N82E16811352215",
+      "category": "case",
+      "name": "Fractal Design North XL ATX mATX Mid Tower PC Case - Charcoal Black Chassis with Walnut Front and Mesh Side Panel - FD-C-NOR1X-01",
+      "retailPrice": 194.99,
+      "salePrice": null,
+      "priceUsd": 194.99
+    },
+    {
+      "sku": "9SIA7TDADT2190",
+      "category": "case",
+      "name": "Anidees AI Crystal XL PRO LITE ver. Full Tower Tempered Glass XL-ATX/E-ATX/ATX Gaming Case Support 480/360 Radiator, - Black AI-XL-PRO-LITE",
+      "retailPrice": 289.9,
+      "salePrice": null,
+      "priceUsd": 289.9
+    },
+    {
+      "sku": "N82E16811173084",
+      "category": "case",
+      "name": "ASUS ROG Cronox White Edition Full Tower PC Gaming Case Curved Tempered-Glass Side Panel, Support for Graphics Cards up to 400mm Long, EATX and BTF...",
+      "retailPrice": 399.99,
+      "salePrice": null,
+      "priceUsd": 399.99
+    },
+    {
+      "sku": "9SIAKRCBC27875",
+      "category": "cooler",
+      "name": "intel pentium i3 i5 i7 cpu cooler fan & heatsink lga 1155 1156",
+      "retailPrice": 14.99,
+      "salePrice": null,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "9SIA4REK842810",
+      "category": "cooler",
+      "name": "Noctua NH-D9L chromax. black, Premium CPU Cooler with NF-A9 92mm Fan (Black)",
+      "retailPrice": 83.99,
+      "salePrice": null,
+      "priceUsd": 83.99
+    },
+    {
+      "sku": "2YM-002Y-00044",
+      "category": "cooler",
+      "name": "Lian Li Hydroshift II-C 360 Liquid CPU Cooler - Flexible Slide-Tube Clamp Coolant Pathway - 2.1 IPS LCD Screen - 3 Control Mode - Fits Most PC Fans...",
+      "retailPrice": 159.99,
+      "salePrice": 155.99,
+      "priceUsd": 155.99
+    },
+    {
+      "sku": "9SIA9F9KDF1748",
+      "category": "cooler",
+      "name": "Alphacool Apex 1 CPU Cooler - LGA 1700/1851, G1/4, Nickel Plated Copper (13851)",
+      "retailPrice": 224.98,
+      "salePrice": null,
+      "priceUsd": 224.98
+    },
+    {
+      "sku": "9SIBYP4KFB0786",
+      "category": "cooler",
+      "name": "TCOMAS LG700 Black 360 AIO Liquid CPU Cooler 3.5' IPS Display Pump Head, Real-Time Monitoring, ARGB Fans, Supports Intel LGA 1851/1700 & AMD AM5/AM4",
+      "retailPrice": 289.99,
+      "salePrice": null,
+      "priceUsd": 289.99
+    },
+    {
+      "sku": "9SIAT5SCTA7849",
+      "category": "cooler",
+      "name": "Iceberg Thermal IceFLOE T95 Extrusion Aluminum Heatsink CPU Cooler With 92mm PWM Fan",
+      "retailPrice": 14.99,
+      "salePrice": null,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "13C-001F-00070",
+      "category": "cooler",
+      "name": "be quiet! Dark Rock Pro 5 TDP 270W CPU Cooler Air Cooler Intel LGA 1851 1700 1200 1150 1151 1155 AM5 AM4 BK036",
+      "retailPrice": 89.9,
+      "salePrice": 84.81,
+      "priceUsd": 84.81
+    },
+    {
+      "sku": "9SIAEMWK5V3729",
+      "category": "cooler",
+      "name": "Bitspower Horus Liquid CPU Cooler Extreme performance on the 12th/13th/14th Intel or AM4/AM5 CPU DIY Edition with Soft Tubes (Black)",
+      "retailPrice": 170,
+      "salePrice": 157.5,
+      "priceUsd": 157.5
+    },
+    {
+      "sku": "9SIC3DRKN72359",
+      "category": "cooler",
+      "name": "Phanteks GLACIER ONE 240 M25 A-RGB AIO Liquid CPU Cooler, Infinity Mirror Pump Cap Design, 2X Silent 120mm M25 PWM Fans, White",
+      "retailPrice": 229,
+      "salePrice": null,
+      "priceUsd": 229
+    },
+    {
+      "sku": "9SIBYP4KFB0788",
+      "category": "cooler",
+      "name": "TCOMAS LG700 White 360 AIO Liquid CPU Cooler 3.5' IPS Display Pump Head, Real-Time Monitoring, ARGB Fans, Supports Intel LGA 1851/1700 & AMD AM5/AM4",
+      "retailPrice": 289.99,
+      "salePrice": null,
+      "priceUsd": 289.99
+    },
+    {
+      "sku": "9SIC3U3KNC1024",
+      "category": "cooler",
+      "name": "Cooler Master i30 CPU Cooler - 92mm Low Noise Cooling Fan & Heatsink - For Intel Socket LGA 1150 / 1151 / 1155 / 1156",
+      "retailPrice": 14.99,
+      "salePrice": null,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "13C-001F-00071",
+      "category": "cooler",
+      "name": "be quiet! Dark Rock Elite - TDP 280W CPU Cooler - Air Cooler - Intel LGA 1851,1700,1200,1150,1151,1155 - AMD AM5, AM4 (BK037)",
+      "retailPrice": 149.9,
+      "salePrice": 84.9,
+      "priceUsd": 84.9
+    },
+    {
+      "sku": "9SIC62TKUT1346",
+      "category": "cooler",
+      "name": "Noctua NH-U14S TR4-SP3, Premium-grade CPU Cooler for AMD sTRX4/TR4/SP3",
+      "retailPrice": 157.67,
+      "salePrice": null,
+      "priceUsd": 157.67
+    },
+    {
+      "sku": "N82E16835269055",
+      "category": "cooler",
+      "name": "be quiet! Light Loop IO LCD 240mm White - High-Performance ARGB AIO Liquid CPU Cooler with IPS Display",
+      "retailPrice": 229.9,
+      "salePrice": null,
+      "priceUsd": 229.9
+    },
+    {
+      "sku": "9SIC9BAM698498",
+      "category": "cooler",
+      "name": "Corsair Hydro Series, H150i PRO RGB, 360mm. 3 X 120mm ML PWM Fans, Advanced RGB Lighting & Fan Control w/ Software. Liquid CPU Cooler....",
+      "retailPrice": 299,
+      "salePrice": null,
+      "priceUsd": 299
+    },
+    {
+      "sku": "9SIC3U3M220498",
+      "category": "cooler",
+      "name": "AMD Wraith Stealth Socket AM4 4-Pin Connector CPU Cooler With Aluminum Heatsink & 3.93-Inch Fan (Slim)",
+      "retailPrice": 14.99,
+      "salePrice": null,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "9SIA8EFK2E4239",
+      "category": "cooler",
+      "name": "Thermaltake TOUGHAIR 710 250W TDP CPU Cooler, Intel LGA 1700/1200, AMD AM5/AM4, Dual-Tower Dual Fan Design, Copper base with 7 heat pipes,...",
+      "retailPrice": 84.99,
+      "salePrice": null,
+      "priceUsd": 84.99
+    },
+    {
+      "sku": "9SIC9BAM698826",
+      "category": "cooler",
+      "name": "Corsair Hydro Series, H60 2018 (CW-9060036-WW), 120mm Radiator, Single 120mm PWM Fan, Liquid CPU Cooler LGA 1700 Compatible",
+      "retailPrice": 159,
+      "salePrice": null,
+      "priceUsd": 159
+    },
+    {
+      "sku": "9SIA4REKPW1113",
+      "category": "cooler",
+      "name": "TX 360 ARGB All-in-one Liquid CPU Cooler",
+      "retailPrice": 229.99,
+      "salePrice": null,
+      "priceUsd": 229.99
+    },
+    {
+      "sku": "9SIC9BAM698593",
+      "category": "cooler",
+      "name": "Corsair Hydro Series, iCUE H100i ELITE CAPELLIX, 240mm Radiator, Dual ML120 RGB PWM Fans, Powerful iCUE Software, Liquid CPU Cooler LGA 1700...",
+      "retailPrice": 299,
+      "salePrice": null,
+      "priceUsd": 299
+    },
+    {
+      "sku": "9SIA2W0JE91076",
+      "category": "cooler",
+      "name": "ARCTIC Alpine 23 CO - Compact AMD CPU cooler for AM5 and AM4, Thermal compound MX-2 pre-applied, for Continous Operation, Computer, PC - Black",
+      "retailPrice": 15.99,
+      "salePrice": null,
+      "priceUsd": 15.99
+    },
+    {
+      "sku": "9SIC135KJ72051",
+      "category": "cooler",
+      "name": "darkFlash DH360D 360mm AIO Liquid CPU Cooler Magnetic Segment LCD Display Infinity Mirror ARGB Fans 3200 RPM Pump 3x 120mm PWM Fans Intel...",
+      "retailPrice": 84.99,
+      "salePrice": null,
+      "priceUsd": 84.99
+    },
+    {
+      "sku": "9SIC9BAM698828",
+      "category": "cooler",
+      "name": "CORSAIR Hydro Series H110 Extreme Performance Water/Liquid CPU Cooler. 280mm (CW-9060014-WW)",
+      "retailPrice": 159,
+      "salePrice": null,
+      "priceUsd": 159
+    },
+    {
+      "sku": "9SIC7PTM0T3217",
+      "category": "cooler",
+      "name": "AORUS WATERFORCE X II 360 ICE Liquid CPU Cooler, 360mm Radiator with 3x 120mm low noise ARGB Fans, compatible with Intel LGA 1851, LGA 1700, and...",
+      "retailPrice": 232.99,
+      "salePrice": null,
+      "priceUsd": 232.99
+    },
+    {
+      "sku": "9SIC9BAM699184",
+      "category": "cooler",
+      "name": "CORSAIR Hydro Series, H100i RGB PLATINUM, 240mm, 2 x ML PRO 120mm RGB PWM Fans, RGB Lighting & Fan Control w/ Software, Liquid CPU Cooler,...",
+      "retailPrice": 299,
+      "salePrice": null,
+      "priceUsd": 299
+    },
+    {
+      "sku": "9SIA4REK885640",
+      "category": "cooler",
+      "name": "Cooler Master A95 95mm Cooling fan Computer CPU Cooler",
+      "retailPrice": 15.99,
+      "salePrice": null,
+      "priceUsd": 15.99
+    },
+    {
+      "sku": "9SIB41TJUX3961",
+      "category": "cooler",
+      "name": "SAMA SM360 Gaming Water Liquid Cooler White 360mm AIO PC CPU Cooler with LCD Display Moitor Screen, 3 ARGB PWM Silent Fans",
+      "retailPrice": 101.97,
+      "salePrice": 84.99,
+      "priceUsd": 84.99
+    },
+    {
+      "sku": "9SIA4REJWR2266",
+      "category": "cooler",
+      "name": "Noctua NH-U12S DX-3647, Premium CPU Cooler for Intel Xeon LGA3647 (120mm, Brown)",
+      "retailPrice": 159.05,
+      "salePrice": null,
+      "priceUsd": 159.05
+    },
+    {
+      "sku": "2YM-002Y-00047",
+      "category": "cooler",
+      "name": "Lian Li HydroShift II - LCD-C 360TL RGB Liquid CPU Cooler - 360mm AIO - 3X 120 RGB Fans - 2.1 IPS LCD Screen - 3 Control Mode - Flexible Tubes...",
+      "retailPrice": 234.99,
+      "salePrice": null,
+      "priceUsd": 234.99
+    },
+    {
+      "sku": "9SIC9BAM699892",
+      "category": "cooler",
+      "name": "Corsair Hydro Series, iCUE H115i ELITE CAPELLIX, 280mm Radiator, Dual ML140 RGB PWM Fans, Powerful iCUE Software, Liquid CPU Cooler LGA 1700...",
+      "retailPrice": 299,
+      "salePrice": null,
+      "priceUsd": 299
+    },
+    {
+      "sku": "9SIBGX1KDX8839",
+      "category": "cooler",
+      "name": "Vetroo V3 CPU Air Cooler w/ ARGB Lighting and PWM Smart Control - Compact Design with Height of 133mm & 92mm Fan, Direct Heat Pipes, Aluminium...",
+      "retailPrice": 17.99,
+      "salePrice": 15.99,
+      "priceUsd": 15.99
+    },
+    {
+      "sku": "9SIB41TJUX3984",
+      "category": "cooler",
+      "name": "SAMA SM360 Black 360mm Liquid Water AIO CPU Cooler For Gaming PC Computer with Screen LCD Display, 3 ARGB PWM Silent Fans",
+      "retailPrice": 101.97,
+      "salePrice": 84.99,
+      "priceUsd": 84.99
+    },
+    {
+      "sku": "9SIAADYKB59099",
+      "category": "cooler",
+      "name": "Noctua NH-D15 G2 HBC, Dual Tower CPU Cooler, Specialised High Base Convexity Version for Intel LGA1700 (Brown)",
+      "retailPrice": 159.95,
+      "salePrice": null,
+      "priceUsd": 159.95
+    },
+    {
+      "sku": "9SIBTK0KBR1472",
+      "category": "cooler",
+      "name": "ASUS ROG Strix LC II 360 ARGB White Edition All-in-one AIO Liquid CPU Cooler 360mm Radiator, Intel LGA1700, 115x/2066 and AMD AM4/TR4 Support,...",
+      "retailPrice": 235.05,
+      "salePrice": null,
+      "priceUsd": 235.05
+    },
+    {
+      "sku": "9SIC6E1M4J8303",
+      "category": "cooler",
+      "name": "ROG Strix LC 360 ARGB LCD All-in-One (AIO) Liquid CPU Cooler",
+      "retailPrice": 299.72,
+      "salePrice": null,
+      "priceUsd": 299.72
+    },
+    {
+      "sku": "9SIBVHXKPK5189",
+      "category": "monitor",
+      "name": "Thermalright Trofeo Vision LCD AIO Display 9.16 PC Monitor, USB Type-C Screen for Real-Time Hardware Monitoring, with Preset Themes for Gaming PC...",
+      "retailPrice": 49.9,
+      "salePrice": null,
+      "priceUsd": 49.9
+    },
+    {
+      "sku": "9SIA6ZPKGF2702",
+      "category": "monitor",
+      "name": "OMEN 32x 32' 4K UHD 3840x2160 144hz 1ms Smart Gaming LCD Monitor 99Z68AAABA",
+      "retailPrice": 564.7,
+      "salePrice": null,
+      "priceUsd": 564.7
+    },
+    {
+      "sku": "9SIBKFRKH12142",
+      "category": "monitor",
+      "name": "Dell Alienware - AW3225QF 31.6' Quantum Dot OLED Curved Gaming Monitor - 240Hz - NVIDIA G-Sync - VESA - HDMI, USB-C - Lunar Light",
+      "retailPrice": 1069.99,
+      "salePrice": null,
+      "priceUsd": 1069.99
+    },
+    {
+      "sku": "N82E16824027402",
+      "category": "monitor",
+      "name": "SAMSUNG Odyssey 32 inch Max 6K 165Hz 3K 330Hz IPS AMD FreeSync Premium & G-Sync Compatible HDR10+ Gaming Computer Monitor with Height Adjustable,...",
+      "retailPrice": 1599.99,
+      "salePrice": null,
+      "priceUsd": 1599.99
+    },
+    {
+      "sku": "N82E16824027274",
+      "category": "monitor",
+      "name": "Samsung Odyssey Neo G9 LS57CG952NNXZA 57' Curved Gaming Monitor 4K 240Hz with FreeSync Premium Pro and 1ms Response Time",
+      "retailPrice": 2099.99,
+      "salePrice": null,
+      "priceUsd": 2099.99
+    },
+    {
+      "sku": "9SIA4REJYD1812",
+      "category": "monitor",
+      "name": "CORN Secondary IPS Screen, 5 inch 800*400 On-Screen Display Data Monitoring for Gaming Computer Personal PC with 16GB TF Card - White(Automatically...",
+      "retailPrice": 60.99,
+      "salePrice": null,
+      "priceUsd": 60.99
+    },
+    {
+      "sku": "9SIC57KKTB7136",
+      "category": "monitor",
+      "name": "Dell Alienware AW2725DF OLED Gaming Monitor - 26.7-inch Quantom-Dot WQHD (2560x1440) 360Hz 0.03Ms Display, AMD FreeSync Premium Pro, HDMI/DP/USB...",
+      "retailPrice": 649.99,
+      "salePrice": 588.99,
+      "priceUsd": 588.99
+    },
+    {
+      "sku": "9SIAHRCM154510",
+      "category": "monitor",
+      "name": "Lenovo Legion Pro 32UD-10 32-inch OLED 4K 240Hz Gaming Monitor, For Gaming",
+      "retailPrice": 1099.99,
+      "salePrice": null,
+      "priceUsd": 1099.99
+    },
+    {
+      "sku": "9SIA4P0KPM0676",
+      "category": "monitor",
+      "name": "LG 45GX950A-B UltraGear 45\" Curved OLED Gaming Monitor 5K 165Hz FreeSync Pro G-SYNC Compatible",
+      "retailPrice": 1699.99,
+      "salePrice": null,
+      "priceUsd": 1699.99
+    },
+    {
+      "sku": "9SIAGBAKKY8279",
+      "category": "monitor",
+      "name": "LG 39.6' 240Hz OLED WQHD Gaming Monitor FreeSync Premium Pro & G-Sync Compatible DCI-P3 98.5% (CIE1976) HDMI, DisplayPort, USB, Audio UltraGear...",
+      "retailPrice": 2548.9,
+      "salePrice": null,
+      "priceUsd": 2548.9
+    },
+    {
+      "sku": "9SIA4REJYD1813",
+      "category": "monitor",
+      "name": "CORN Secondary IPS Screen, 5 inch 800*400 On-Screen Display Data Monitoring for Gaming Computer Personal PC with 16GB TF Card(Automatically play...",
+      "retailPrice": 60.99,
+      "salePrice": null,
+      "priceUsd": 60.99
+    },
+    {
+      "sku": "9SIAGBAM0W7130",
+      "category": "monitor",
+      "name": "LG Ultragear 32GS60QX - 32\" Ultragear 1000R Curved Gaming Monitor QHD, 1ms (GtG), 180Hz / 32-inch QHD (2560x1440) 1000R Curved Display / 180Hz...",
+      "retailPrice": 595.9,
+      "salePrice": null,
+      "priceUsd": 595.9
+    },
+    {
+      "sku": "N82E16824027394",
+      "category": "monitor",
+      "name": "SAMSUNG ODYSSEY G7 32 inch Dual Mode UHD 4K 165Hz Full HD 330Hz AMD FreeSync Premium Pro & G-SYNC Compatible HDR400 OLED Gaming Computer Monitor...",
+      "retailPrice": 1099.99,
+      "salePrice": null,
+      "priceUsd": 1099.99
+    },
+    {
+      "sku": "9SIBKFRKXD3986",
+      "category": "monitor",
+      "name": "LG UltraGear 52 inch UHD 4K 240Hz AMD FreeSync Premium (Adaptive Sync) HDR600 USB-C 1ms Built-in Speaker Curved 5K2K Gaming Computer Monitor with...",
+      "retailPrice": 1799.99,
+      "salePrice": null,
+      "priceUsd": 1799.99
+    },
+    {
+      "sku": "N82E16824475559",
+      "category": "monitor",
+      "name": "MSI 22 inch (21.45' viewable) Full HD 120Hz Adaptive Sync Anti Glare 1ms Computer Monitor with VGA D-Sub port for both work and causal gaming PRO...",
+      "retailPrice": 69.99,
+      "salePrice": 64.99,
+      "priceUsd": 64.99
+    },
+    {
+      "sku": "9SIAWATKJW3573",
+      "category": "monitor",
+      "name": "Redragon 27' OLED Flat Gaming Monitor - QHD 2560x1440, 240Hz, 0.03ms GTG, AMD FreeSync Premium, 98.5% DCI-P3, HDR10, Tilt Adjustable",
+      "retailPrice": 599,
+      "salePrice": null,
+      "priceUsd": 599
+    },
+    {
+      "sku": "N82E16824026491",
+      "category": "monitor",
+      "name": "LG UltraGear 45GX900A-B 45' OLED Curved Gaming Monitor 3440 x 1440 240Hz 0.03ms",
+      "retailPrice": 1699.99,
+      "salePrice": 1099.99,
+      "priceUsd": 1099.99
+    },
+    {
+      "sku": "9SIAGBAM467142",
+      "category": "monitor",
+      "name": "AORUS FO32U2 Pro 32' QD OLED 4K UHD 3840 x 2160 240Hz 0.03ms GTG AMD FreeSync Premium Pro, USB-C, KVM, HDMI 2.1, Display Port 2.1, Height...",
+      "retailPrice": 1822.9,
+      "salePrice": null,
+      "priceUsd": 1822.9
+    },
+    {
+      "sku": "9SIBJBBJNN7651",
+      "category": "monitor",
+      "name": "UPERFECT Portable Monitor 15.6'' 1080P FHD VESA 100% sRGB High Color Gamut Computer Display External Laptop Monitor IPS HDR Eye Care Gaming...",
+      "retailPrice": 69.77,
+      "salePrice": null,
+      "priceUsd": 69.77
+    },
+    {
+      "sku": "N82E16824281394",
+      "category": "monitor",
+      "name": "ASUS ROG Strix XG27AQNGV 27' QHD Gaming Monitor 360Hz with FreeSync Premium & G-Sync",
+      "retailPrice": 599,
+      "salePrice": null,
+      "priceUsd": 599
+    },
+    {
+      "sku": "9SIA4P0KPM0680",
+      "category": "monitor",
+      "name": "ASUS ROG Swift PG27UCDM 27' UHD 4K OLED Gaming Monitor 240Hz 0.03ms G-Sync Compatible",
+      "retailPrice": 1109.2,
+      "salePrice": null,
+      "priceUsd": 1109.2
+    },
+    {
+      "sku": "9SIC63CM125987",
+      "category": "monitor",
+      "name": "ReHisk 24 inch IPS FHD 1080P 100Hz Gaming Monitor VESA 75*75mm 1ms Response Time FreeSync & G-sync Compatible 24 inch monitor with HDMI2.0...",
+      "retailPrice": 74.99,
+      "salePrice": null,
+      "priceUsd": 74.99
+    },
+    {
+      "sku": "9SIAB71KKR9053",
+      "category": "monitor",
+      "name": "Pixio PX277 OLED Max V2 27' OLED QHD Wide 2560 x 1440 240Hz Refresh Rate 0.03ms GTG Response Time Adaptive Sync Gaming Monitor",
+      "retailPrice": 599.99,
+      "salePrice": null,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "9SIAKDXKZF6130",
+      "category": "monitor",
+      "name": "Lenovo Legion R45W-30 44.5' Dual QHD VA 1500R Up to 170Hz 450 Nit Gaming Monitor",
+      "retailPrice": 1133.99,
+      "salePrice": null,
+      "priceUsd": 1133.99
+    },
+    {
+      "sku": "9SIC63CM3W1104",
+      "category": "monitor",
+      "name": "24' IPS FHD 100Hz Gaming Monitor, 1920x1080, 1ms MPRT, FreeSync/G-Sync, HDMI/DP, VESA 75x75mm, Low Blue Light, Compatible with 100Hz/75Hz/60Hz",
+      "retailPrice": 74.99,
+      "salePrice": null,
+      "priceUsd": 74.99
+    },
+    {
+      "sku": "9SIAB71KP39987",
+      "category": "monitor",
+      "name": "Pixio PX277 OLED Max V2 White 27' OLED QHD Wide 2560 x 1440 240Hz Refresh Rate 0.03ms GTG Response Time Adaptive Sync Gaming Monitor",
+      "retailPrice": 599.99,
+      "salePrice": null,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "9SIA24GM613226",
+      "category": "monitor",
+      "name": "BenQ 26.5' 240Hz OLED UHD Gaming Monitor 99% DCI-P3 MOBIUZ EX271UZ",
+      "retailPrice": 1147.41,
+      "salePrice": null,
+      "priceUsd": 1147.41
+    },
+    {
+      "sku": "9SIAN7GFED5118",
+      "category": "monitor",
+      "name": "ViewSonic VA2247-MH 22 Inch Full HD 1080p Computer Monitor with 75Hz Refresh Rate and Ultra-Thin Bezel",
+      "retailPrice": 79.99,
+      "salePrice": null,
+      "priceUsd": 79.99
+    },
+    {
+      "sku": "9SIBTPSKR46761",
+      "category": "monitor",
+      "name": "Viewedge 49' Curved Monitor Ultrawide Gaming 120Hz 1ms 32:9 DQHD 5120 x 1440P Computer Monitor, R1500, 110% sRGB, DisplayPort, HDMI,Support...",
+      "retailPrice": 599.99,
+      "salePrice": null,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "N82E16824027398",
+      "category": "monitor",
+      "name": "SAMSUNG ViewFinity 40 inch UltraWide WUHD 5K2K 144Hz AMD FreeSync Premium (Adaptive Sync) Thunderbolt 5 Curved Gaming Computer Monitor with Height...",
+      "retailPrice": 1399.99,
+      "salePrice": 1149.99,
+      "priceUsd": 1149.99
+    },
+    {
+      "sku": "9SIBJBBJU76117",
+      "category": "monitor",
+      "name": "UPERFECT 13.3 Inch Portable Monitor, 1080 FHD Ultra-thin External Monitor, IPS Screen with HDMI Type C, OTG, Eye Care Gaming Screen for PS3 PS4...",
+      "retailPrice": 79.99,
+      "salePrice": null,
+      "priceUsd": 79.99
+    },
+    {
+      "sku": "N82E16824027393",
+      "category": "monitor",
+      "name": "SAMSUNG Odyssey G6 27 inch QHD 2K 1440P 240Hz AMD FreeSync Premium HDR10 OLED Gaming Computer Monitor with Height Adjustable, Swivel, Pivot & Tilt...",
+      "retailPrice": 599.99,
+      "salePrice": null,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "0JC-0019-02HU6",
+      "category": "monitor",
+      "name": "HP 734pm 34' Curved UW-QHD Monitor 3440 x 1440 IPS FreeSync",
+      "retailPrice": 1282.99,
+      "salePrice": 1182.99,
+      "priceUsd": 1182.99
+    },
+    {
+      "sku": "9SIBK6TKE79605",
+      "category": "monitor",
+      "name": "KTC 24.5 Inch 100Hz IPS Computer Monitor - FHD(1920 x 1080P), Anti-Blue Light Screen, 126% sRGB, 16.7M, Support FreeSync and GSync, PC Monitor for...",
+      "retailPrice": 89.99,
+      "salePrice": 79.99,
+      "priceUsd": 79.99
+    },
+    {
+      "sku": "N82E16824281435",
+      "category": "monitor",
+      "name": "ASUS ROG 27 Inch 5K HDR Fast IPS Gaming Monitor (XG27JCEG) - Dual mode 5K 80Hz or QHD 320Hz, Extreme Low Motion Blur Sync, USB-C (15W PD), G-SYNC...",
+      "retailPrice": 599.99,
+      "salePrice": null,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "N82E16824026495",
+      "category": "monitor",
+      "name": "LG UltraGear 34' UWQHD 2K 1440P 240Hz AMD FreeSync Premium Pro & G-Sync Compatible 0.03ms HDR400 USB-C OLED Curved Gaming Computer Monitor with...",
+      "retailPrice": 1199.99,
+      "salePrice": null,
+      "priceUsd": 1199.99
+    },
+    {
+      "sku": "N82E16824475479",
+      "category": "monitor",
+      "name": "MSI G242L E14 24' Full HD Gaming Monitor 144Hz IPS 1ms Response Time",
+      "retailPrice": 99.99,
+      "salePrice": 79.99,
+      "priceUsd": 79.99
+    },
+    {
+      "sku": "9SIBW1PKP45151",
+      "category": "monitor",
+      "name": "Arozzi Nova 49' Curved VA 165Hz Ultrawide Gaming Monitor - Black",
+      "retailPrice": 699.99,
+      "salePrice": 599.99,
+      "priceUsd": 599.99
+    },
+    {
+      "sku": "9SIAA65K5W4824",
+      "category": "monitor",
+      "name": "Asus ROG Strix XG49VQ 3440 x 1080 Curved 49 Double Full HD 144 Hz 4 ms Gaming Monitor Bundle with Eye Care, FreeSync Premium, DisplayPort, HDMI,...",
+      "retailPrice": 1299,
+      "salePrice": null,
+      "priceUsd": 1299
+    },
+    {
+      "sku": "N82E16824475576",
+      "category": "monitor",
+      "name": "MSI 24 inch (24.5' viewable) Full HD 144Hz IPS AMD FreeSync 1ms FHD Computer Monitor with VGA port for both work and gaming PRO MP251 E14L",
+      "retailPrice": 109.99,
+      "salePrice": 84.99,
+      "priceUsd": 84.99
+    },
+    {
+      "sku": "9SIB66RK633804",
+      "category": "keyboard",
+      "name": "Lomiluskr AK33 Wired Mechanical Keyboard, 82-Keys Compact Mechanical Gaming Keyboard with Anti-ghosting Keys, Small and Portable (Black Switch/Blue...",
+      "retailPrice": 17.99,
+      "salePrice": null,
+      "priceUsd": 17.99
+    },
+    {
+      "sku": "9SIAC33F210179",
+      "category": "keyboard",
+      "name": "Ducky One 2 SF RGB LED 65% Double Shot PBT (Kailh BOX Brown) Mechanical Keyboard",
+      "retailPrice": 114,
+      "salePrice": null,
+      "priceUsd": 114
+    },
+    {
+      "sku": "9SIBP4YKCC1187",
+      "category": "keyboard",
+      "name": "Logitech G913 TKL LIGHTSPEED Wireless RGB Mechanical Keyboard, Dedicated Media Keys, 87 Keys, Aluminum Faceplate, Low Profile Switches, RGB Light...",
+      "retailPrice": 209.99,
+      "salePrice": null,
+      "priceUsd": 209.99
+    },
+    {
+      "sku": "N82E16823193168",
+      "category": "keyboard",
+      "name": "ASUS ROG Azoth 96 HE Wireless Gaming Keyboard, Hall Effect Magnetic Switches, 2.4GHz/Bluetooth, OLED Display, Hot-Swappable, PC",
+      "retailPrice": 359.99,
+      "salePrice": 308.99,
+      "priceUsd": 308.99
+    },
+    {
+      "sku": "9SIC0A0KMA8811",
+      "category": "keyboard",
+      "name": "Keychron Q1 Pro Wireless Custom Mechanical Keyboard, QMK/VIA Programmable Full Aluminum 75% Layout Bluetooth/Wired RGB with Hot-swappable Keychron...",
+      "retailPrice": 409.48,
+      "salePrice": null,
+      "priceUsd": 409.48
+    },
+    {
+      "sku": "9SIBNFDK296659",
+      "category": "keyboard",
+      "name": "Raidmax Mini ONE MK01GMB 60% Gasket Keyboard - Compact and ARGB Gaming Keyboard, Mini Mechanical, RGB Lighing, Hot Swap Switch",
+      "retailPrice": 49.99,
+      "salePrice": 19.99,
+      "priceUsd": 19.99
+    },
+    {
+      "sku": "9SIBN6JKXR3767",
+      "category": "keyboard",
+      "name": "ATTACK SHARK X820 Ultra 75% Wireless Gaming Mechanical Keyboard Hot-Swappable Gasket Mount RGB Backlit BT/2.4G/Wired Custom Keyboard with Smart TFT...",
+      "retailPrice": 114.35,
+      "salePrice": null,
+      "priceUsd": 114.35
+    },
+    {
+      "sku": "9SIAD6HKKY1787",
+      "category": "keyboard",
+      "name": "NuPhy Air75 HE RGB Low Profile Hotswap Wired Mechanical Gaming Keyboard 75% Layout (84 Keys), Magnetic Jade PRO Switches Compatible with Windows,...",
+      "retailPrice": 212.32,
+      "salePrice": null,
+      "priceUsd": 212.32
+    },
+    {
+      "sku": "9SIC3FZKVW1088",
+      "category": "keyboard",
+      "name": "nuphy Air75 V3 Hot Swappable Wireless Mechanical Keyboard, 84 Keys 75% Custom Low Profile Keyboard with Knob, RGB Backlit, Gasket Mounted, Support...",
+      "retailPrice": 311.9,
+      "salePrice": null,
+      "priceUsd": 311.9
+    },
+    {
+      "sku": "9SIBFJNKS40558",
+      "category": "keyboard",
+      "name": "Keychron Q5 Pro Wireless QMK/VIA Mechanical Keyboard, Full Customizable 96% Layout with Programmable Knob, Hot-swappable K Pro Brown Switch...",
+      "retailPrice": 419.31,
+      "salePrice": null,
+      "priceUsd": 419.31
+    },
+    {
+      "sku": "9SIA6ZPK9Y9753",
+      "category": "keyboard",
+      "name": "MANHATTAN Wired Keyboard Enhanced II",
+      "retailPrice": 20.8,
+      "salePrice": null,
+      "priceUsd": 20.8
+    },
+    {
+      "sku": "9SIBFJNKS40405",
+      "category": "keyboard",
+      "name": "Ajazz AK980 V2 Wireless Mechanical Gaming Keyboard,Tri-Mode BT5.0/2.4GHz/USB-C 10000mAh Battery Hot Swappable RGB Backlit Computer Gaming Keyboards...",
+      "retailPrice": 114.38,
+      "salePrice": null,
+      "priceUsd": 114.38
+    },
+    {
+      "sku": "9SIBN6JKUH8997",
+      "category": "keyboard",
+      "name": "nuphy Kick75 Low Profile Keyboard with Volume Knob,75% Hot Swappable Custom Wireless Mechanical Keyboard,80 Keys RGB Backlit with PBT...",
+      "retailPrice": 214.4,
+      "salePrice": null,
+      "priceUsd": 214.4
+    },
+    {
+      "sku": "9SIC3DZKMJ7684",
+      "category": "keyboard",
+      "name": "Machenike KT68 Pro 65% RGB Wireless Compact Mechanical Gaming Keyboard, Customizable LED Screen, 3-Modes 68 Keys Hot Swappable Brown Switch,...",
+      "retailPrice": 316.78,
+      "salePrice": null,
+      "priceUsd": 316.78
+    },
+    {
+      "sku": "9SIBFJNKS40564",
+      "category": "keyboard",
+      "name": "Keychron Q5 Pro Wireless QMK/VIA Mechanical Keyboard, 96% Layout Programmable Knob Full Aluminum Double-Gasket Design, Hot-swappable K Pro Banana...",
+      "retailPrice": 419.31,
+      "salePrice": null,
+      "priceUsd": 419.31
+    },
+    {
+      "sku": "9SIARZZKEW1444",
+      "category": "keyboard",
+      "name": "Rii RK100+ Multiple Color Rainbow LED Backlit Large Size USB Wired Mechanical Feeling Multimedia PC Gaming Keyboard,Office Keyboard for Working or...",
+      "retailPrice": 21.33,
+      "salePrice": null,
+      "priceUsd": 21.33
+    },
+    {
+      "sku": "9SIBN6JKUH8613",
+      "category": "keyboard",
+      "name": "8BitDo Retro 87 Mechanical Keyboard with Hot-Swappable Kailh Switches, RGB Backlight, Programmable Buttons, Wireless 2.4G/Bluetooth/USB-C for...",
+      "retailPrice": 114.66,
+      "salePrice": null,
+      "priceUsd": 114.66
+    },
+    {
+      "sku": "9SIBN6JKUC8146",
+      "category": "keyboard",
+      "name": "Keychron K10 Pro QMK/VIA Custom Wireless Mechanical Keyboard, Hot-Swappable Full Size 108 Keys Programmable RGB LED Backlit Red Switch,...",
+      "retailPrice": 214.48,
+      "salePrice": null,
+      "priceUsd": 214.48
+    },
+    {
+      "sku": "9SIC9BAM694237",
+      "category": "keyboard",
+      "name": "Corsair K95 RGB Platinum XT Mechanical Gaming Keyboard, Backlit RGB LED, Cherry MX Speed RGB Silver, Black (CH-9127414-NA)",
+      "retailPrice": 319,
+      "salePrice": null,
+      "priceUsd": 319
+    },
+    {
+      "sku": "9SIBFJNKS40601",
+      "category": "keyboard",
+      "name": "Keychron Q5 Pro Wireless QMK/VIA Mechanical Keyboard, Full Customizable 96% Layout with Programmable Knob, Hot-swappable K Pro Banana Switch...",
+      "retailPrice": 419.31,
+      "salePrice": null,
+      "priceUsd": 419.31
+    },
+    {
+      "sku": "9SIBN6JKUE3843",
+      "category": "keyboard",
+      "name": "Rii RK100 3 Colors LED Backlit Mechanical Feeling USB Wired Multimedia Gaming Keyboard, Office Keyboard for Working or Primer Gaming,Office Device",
+      "retailPrice": 21.85,
+      "salePrice": null,
+      "priceUsd": 21.85
+    },
+    {
+      "sku": "9SIA8EF5UY0032",
+      "category": "keyboard",
+      "name": "Tt eSPORTS Poseidon Z Forged KB-BAZ-KLBLUS-01 Black USB Wired Aluminum Gaming Mechanical Keyboard",
+      "retailPrice": 114.99,
+      "salePrice": null,
+      "priceUsd": 114.99
+    },
+    {
+      "sku": "9SIBN6JKUE4357",
+      "category": "keyboard",
+      "name": "Keychron K4 Pro Custom Wireless Mechanical Keyboard, 96 Keys Hot-swappable QMK/VIA Programmable Macro with K Pro Brown Switch RGB Backlit...",
+      "retailPrice": 214.48,
+      "salePrice": null,
+      "priceUsd": 214.48
+    },
+    {
+      "sku": "9SIC9BAM696791",
+      "category": "keyboard",
+      "name": "Corsair CH-9127411-NA K95 RGB PLATINUM XT Gaming Keyboard",
+      "retailPrice": 319,
+      "salePrice": null,
+      "priceUsd": 319
+    },
+    {
+      "sku": "9SIBFJNKS40617",
+      "category": "keyboard",
+      "name": "Keychron Q5 Pro Wireless QMK/VIA Mechanical Keyboard, Full Customizable 96% Layout with Programmable Knob, Hot-swappable K Pro Red Switch...",
+      "retailPrice": 419.31,
+      "salePrice": null,
+      "priceUsd": 419.31
+    },
+    {
+      "sku": "9SIC6T1M085452",
+      "category": "mouse",
+      "name": "NoirVogel TTC Dustproof Gold Micro Mouse Switch (4Pcs-Dustproof Gold), 0.74N, 80 Million Clicks for Gaming Mouse",
+      "retailPrice": 14.99,
+      "salePrice": null,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "9SIC7R0M6E8927",
+      "category": "mouse",
+      "name": "Steel Series Aerox 3 Wireless 18000dpi RGB Gaming Mouse",
+      "retailPrice": 88.2,
+      "salePrice": null,
+      "priceUsd": 88.2
+    },
+    {
+      "sku": "9SIARZZK9P0644",
+      "category": "mouse",
+      "name": "G PRO X SUPERLIGHT Wireless Gaming Mouse, Ultra-Lightweight, HERO 25K Sensor, 25,600 DPI, 5 Programmable Buttons, Long Battery Life, Compatible...",
+      "retailPrice": 159.97,
+      "salePrice": null,
+      "priceUsd": 159.97
+    },
+    {
+      "sku": "9SIC6MWKWB5904",
+      "category": "mouse",
+      "name": "SteelSeries USB Gaming Mouse Wired Aerox 5 Ultra Lightweight 9 Buttons Fast Response Long Life TRUEMOVE AIR Sensor Built-in 62401 Black",
+      "retailPrice": 237.19,
+      "salePrice": null,
+      "priceUsd": 237.19
+    },
+    {
+      "sku": "9SIC3X1KNW8668",
+      "category": "mouse",
+      "name": "The Authentic R. A.T. Pro X3 Gaming Mouse",
+      "retailPrice": 305.99,
+      "salePrice": null,
+      "priceUsd": 305.99
+    },
+    {
+      "sku": "9SIABW9G006436",
+      "category": "mouse",
+      "name": "Zalman GM5 RGB Gaming Mouse, 4,000 DPI with High Performance Sensor, RGB LED Backlighting, Ergonomic Design for Gamers, Pixart A3050, Up to 1,000Hz",
+      "retailPrice": 24.99,
+      "salePrice": 14.99,
+      "priceUsd": 14.99
+    },
+    {
+      "sku": "9SIC0A0KMA9331",
+      "category": "mouse",
+      "name": "DAREU A950 Wireless Gaming Mouse with RGB Charging Dock,88g Lightweight Programmable Tri-Mode Wireless Mouse Gaming, Up to 12K DPI,1000Hz,120Hrs...",
+      "retailPrice": 88.48,
+      "salePrice": null,
+      "priceUsd": 88.48
+    },
+    {
+      "sku": "9SIBP4YM5A3518",
+      "category": "mouse",
+      "name": "Logitech PRO X SUPERLIGHT 910-005881 Black Lightspeed Wireless Gaming Mouse",
+      "retailPrice": 159.99,
+      "salePrice": null,
+      "priceUsd": 159.99
+    },
+    {
+      "sku": "9SIC2ZPKNX2719",
+      "category": "mouse",
+      "name": "ROCCAT Kova Pure Performance 7000DPI Optical Gaming Mouse, 1.8m, Black (ROC-11-502)",
+      "retailPrice": 238.99,
+      "salePrice": null,
+      "priceUsd": 238.99
+    },
+    {
+      "sku": "9SIC6E1M4K8075",
+      "category": "mouse",
+      "name": "SteelSeries Rival 650 Quantum Wireless Gaming Mouse - Rapid Charging Battery - 12, 000 Cpi Truemove3+ Dual Optical Sensor - Low 0.5 Lift-Off...",
+      "retailPrice": 307.69,
+      "salePrice": null,
+      "priceUsd": 307.69
+    },
+    {
+      "sku": "9SIAFJTKJX1446",
+      "category": "mouse",
+      "name": "GAMING BLOODBAT GM02 7 Keys USB Wired Optoelectronics Game Mouse Digital Respiratory Lights Mouse",
+      "retailPrice": 15.23,
+      "salePrice": null,
+      "priceUsd": 15.23
+    },
+    {
+      "sku": "9SIC8NJM5K3650",
+      "category": "mouse",
+      "name": "EVGA TORQ X10 901-X1-1103-KR Black Wired Laser Gaming Mouse",
+      "retailPrice": 88.91,
+      "salePrice": null,
+      "priceUsd": 88.91
+    },
+    {
+      "sku": "9SIC2ZPKNX3898",
+      "category": "mouse",
+      "name": "DELL CONSUMER DELL-AW558-BK Alienware Adv Gaming Mouse",
+      "retailPrice": 159.99,
+      "salePrice": null,
+      "priceUsd": 159.99
+    },
+    {
+      "sku": "9SIC2ZPKRC0770",
+      "category": "mouse",
+      "name": "MAD CATZ The Authentic R. A.T 8+ Optical Gaming Mouse - Black",
+      "retailPrice": 238.99,
+      "salePrice": null,
+      "priceUsd": 238.99
+    },
+    {
+      "sku": "9SIC3ATKWE1977",
+      "category": "mouse",
+      "name": "LOFREE Hypace Ultra-Lightweight Wireless Gaming Mouse, 47g, PAW3950 Sensor, 40K DPI, 8K Polling Rate, Mg Alloy Frame,...",
+      "retailPrice": 318.38,
+      "salePrice": null,
+      "priceUsd": 318.38
+    },
+    {
+      "sku": "9SIAFJTKJX1547",
+      "category": "mouse",
+      "name": "YINDIAO 6 Keys Gaming Office USB Mute Mechanical Wired Mouse(Black)",
+      "retailPrice": 15.27,
+      "salePrice": null,
+      "priceUsd": 15.27
+    },
+    {
+      "sku": "9SIC2ZPKRA0778",
+      "category": "mouse",
+      "name": "ROCCAT Apuri Raw Gaming Mouse Bungee ROC15340",
+      "retailPrice": 88.99,
+      "salePrice": null,
+      "priceUsd": 88.99
+    },
+    {
+      "sku": "9SIAZTUKGB7355",
+      "category": "mouse",
+      "name": "Roccat Kone XP Air Wireless Optical Gaming Mouse - Black ROC-11-442-01",
+      "retailPrice": 161.93,
+      "salePrice": null,
+      "priceUsd": 161.93
+    },
+    {
+      "sku": "9SIC2ZPM5X4729",
+      "category": "mouse",
+      "name": "ROCCAT Kova - Pure Performance Gaming Mouse, Black (ROC-11-502-AM)",
+      "retailPrice": 238.99,
+      "salePrice": null,
+      "priceUsd": 238.99
+    },
+    {
+      "sku": "9SIC2ZPKRC0766",
+      "category": "mouse",
+      "name": "Mad Catz R. A.T. TE Tournament Edition Gaming Mouse for PC and Mac - Red",
+      "retailPrice": 318.99,
+      "salePrice": null,
+      "priceUsd": 318.99
+    },
+    {
+      "sku": "9SIACD55AW0338",
+      "category": "mouse",
+      "name": "Zelotes Gaming Mouse [7200 DPI Adjustable High Precision]Ergonomic [Braided Wire] Optical Gaming Mouse [Fire Button] 7 Buttons Mice for...",
+      "retailPrice": 15.49,
+      "salePrice": null,
+      "priceUsd": 15.49
+    },
+    {
+      "sku": "9SIBW8HKTA9907",
+      "category": "mouse",
+      "name": "NZXT Lift - MS-1WRAX-WM - PC Gaming Mouse - Lightweight Ambidextrous Mouse - High-end PixArt 3389 Optical Sensor - 16k Resolution - RGB Lighting -...",
+      "retailPrice": 89,
+      "salePrice": null,
+      "priceUsd": 89
+    },
+    {
+      "sku": "9SIC2ZPKPX6860",
+      "category": "mouse",
+      "name": "GravaStar Mercury X Wireless Gaming Mouse 32,000 DPI PAW 3950 Sensor, 1000Hz Polling Rate, Only 49g, Magnesium Alloy Hollow Frame, RGB Lighting, 5...",
+      "retailPrice": 164.99,
+      "salePrice": null,
+      "priceUsd": 164.99
+    },
+    {
+      "sku": "9SIC2ZPM5X4737",
+      "category": "mouse",
+      "name": "ROCCAT Kova RGB Performance Gaming Mouse - Black",
+      "retailPrice": 238.99,
+      "salePrice": null,
+      "priceUsd": 238.99
+    },
+    {
+      "sku": "9SIC6VHKXB4892",
+      "category": "mouse",
+      "name": "SteelSeries - Rival 710 Wired Optical Gaming Mouse - Black",
+      "retailPrice": 321.39,
+      "salePrice": null,
+      "priceUsd": 321.39
+    },
+    {
+      "sku": "9SIB439J7H4506",
+      "category": "headset",
+      "name": "Prosonic DJ2KG Headsets with Boom Mic, Wired Over Ear Headphones for Business Meeting, Skype Zoom, PC Gaming,PS4, Xbox One, Discord, Podcast,...",
+      "retailPrice": 24.98,
+      "salePrice": null,
+      "priceUsd": 24.98
+    },
+    {
+      "sku": "9SIB38FKHU6037",
+      "category": "headset",
+      "name": "HyperX Cloud III Wired Gaming Headset, PC, PS5, Xbox Series X S, Angled 53mm Drivers, DTS Spatial Audio, Memory Foam, Durable Frame, Ultra-Clear...",
+      "retailPrice": 159.69,
+      "salePrice": null,
+      "priceUsd": 159.69
+    },
+    {
+      "sku": "9SIC84TM3K5835",
+      "category": "headset",
+      "name": "Quantum 650X - Wireless multiplatform Gaming Headset Customizable Through QuantumENGINE, 50mm Carbon Dynamic Drivers, Spatial Sound, Dual Wireless...",
+      "retailPrice": 299.99,
+      "salePrice": null,
+      "priceUsd": 299.99
+    },
+    {
+      "sku": "9SIC2ZPKRC0844",
+      "category": "headset",
+      "name": "Mad Catz F. R.E. Q.5 Stereo Gaming Headset for PC and Mac, Red",
+      "retailPrice": 478.99,
+      "salePrice": null,
+      "priceUsd": 478.99
+    },
+    {
+      "sku": "9SIAENCC317896",
+      "category": "headset",
+      "name": "HP Wired Over-ear Gaming Headset with Noise Canceling Microphone and LED Light, (HP H220)",
+      "retailPrice": 24.99,
+      "salePrice": null,
+      "priceUsd": 24.99
+    },
+    {
+      "sku": "9SIC6XKM3V1120",
+      "category": "headset",
+      "name": "Logitech G733 Lightweight Wireless Bluetooth Gaming Headset with Microphone, RGB Lighting, Wireless 20 meters, USB 2.0, for Windows 10/macOS...",
+      "retailPrice": 159.94,
+      "salePrice": null,
+      "priceUsd": 159.94
+    },
+    {
+      "sku": "9SIC99BM6F4137",
+      "category": "headset",
+      "name": "Arctis Nova 7 Wireless Gen 2 Gaming Headset - Real-Time App Control, 50+ HR Play, Neodymium Drivers, Mix 2.4GHz/Bluetooth, PC, PS5, PS4, Switch...",
+      "retailPrice": 299.99,
+      "salePrice": null,
+      "priceUsd": 299.99
+    },
+    {
+      "sku": "9SIA4REK084835",
+      "category": "headset",
+      "name": "SteelSeries Gaming Headphones Arctis Nova Pro Wireless X Wireless Wireless XBOX Sealed High Resolution Active Noise Canceling Hi-Fi Sound 61521...",
+      "retailPrice": 554.99,
+      "salePrice": null,
+      "priceUsd": 554.99
+    },
+    {
+      "sku": "0TH-07MV-00006",
+      "category": "headset",
+      "name": "4Gamers C6-100 Gaming Headset for Nintendo Switch, Switch 2, PS5, PS4 XBOX, PC & Mobile - Neon Blue and Red",
+      "retailPrice": 27.99,
+      "salePrice": 24.99,
+      "priceUsd": 24.99
+    },
+    {
+      "sku": "9SIC4U0KS39587",
+      "category": "headset",
+      "name": "Alpha Bravo GX3 Pro Gaming Headset",
+      "retailPrice": 159.95,
+      "salePrice": null,
+      "priceUsd": 159.95
+    },
+    {
+      "sku": "9SIC62TKUT0481",
+      "category": "headset",
+      "name": "Sennheiser GSP 670 Premium Wireless Gaming Headset",
+      "retailPrice": 320,
+      "salePrice": null,
+      "priceUsd": 320
+    },
+    {
+      "sku": "9SIAJGNEGR0107",
+      "category": "headset",
+      "name": "Gamdias HEBE M2 Wired Gaming Headset RGB, 53mm, USB",
+      "retailPrice": 25.23,
+      "salePrice": null,
+      "priceUsd": 25.23
+    },
+    {
+      "sku": "9SIBP4YKAV0822",
+      "category": "headset",
+      "name": "Logitech GPROX Pro Player Gaming Wired Headset with Microphone, 7.1 surround sound, Blue VOICE broadcast filter, External USB sound card,PRO-G...",
+      "retailPrice": 159.99,
+      "salePrice": null,
+      "priceUsd": 159.99
+    },
+    {
+      "sku": "9SIC2V8M4M3148",
+      "category": "headset",
+      "name": "RIG 800 PRO HX Wireless Gaming Headset & Multi-Function Base Station Xbox Officially Licensed for Xbox Series X S, Xbox One, PC - Dolby Atmos 3D...",
+      "retailPrice": 323.49,
+      "salePrice": null,
+      "priceUsd": 323.49
+    },
+    {
+      "sku": "9SIC84TM3M9030",
+      "category": "headset",
+      "name": "CCZ DC01 Pro in Ear Monitor Headphones, iems for Gaming, Professional Gaming Earbuds Super Bass Wired Earphones with 1DD, Patent Ear fins, Ear...",
+      "retailPrice": 25.49,
+      "salePrice": null,
+      "priceUsd": 25.49
+    },
+    {
+      "sku": "9SIC3DRKN34318",
+      "category": "headset",
+      "name": "SteelSeries ARCTIS 7 Wireless Gaming Headset - Black (2019 Edition)",
+      "retailPrice": 160.81,
+      "salePrice": null,
+      "priceUsd": 160.81
+    },
+    {
+      "sku": "9SIC6E1M5E9218",
+      "category": "headset",
+      "name": "ASUS Gaming Headset ROG Delta S Wireless (AI beamforming microphone with AI noise canceling function / Dual wireless connection with 2.4GHz and...",
+      "retailPrice": 341.72,
+      "salePrice": null,
+      "priceUsd": 341.72
+    },
+    {
+      "sku": "9SIC8FVM4S0515",
+      "category": "headset",
+      "name": "ND Venus in Ear Monitor Headphones, 10mm Double Magnetic Dynamic Driver IEM Earphones, HiFi Wired Gaming Earbuds, 2 Pin Detachable Cable (Without...",
+      "retailPrice": 25.49,
+      "salePrice": null,
+      "priceUsd": 25.49
+    },
+    {
+      "sku": "9SIB38FKHU6027",
+      "category": "headset",
+      "name": "HyperX Cloud Stinger 2 - Wireless Gaming Headset Compatible with PC. Noise-cancelling Swivel-to-mute Microphone, Comfortable Memory Foam, UP to 20...",
+      "retailPrice": 162.95,
+      "salePrice": null,
+      "priceUsd": 162.95
+    },
+    {
+      "sku": "9SIC2ZPKNX3757",
+      "category": "headset",
+      "name": "SteelSeries Siberia 800 Lag-Free Wireless Gaming Headset with OLED Transmitter and Dolby 7.1 Surround Sound",
+      "retailPrice": 348.99,
+      "salePrice": null,
+      "priceUsd": 348.99
+    },
+    {
+      "sku": "9SIC8FVM4S0519",
+      "category": "headset",
+      "name": "ND Venus in Ear Monitor Headphones, 10mm Double Magnetic Dynamic Driver IEM Earphones, HiFi Wired Gaming Earbuds, 2 Pin Detachable Cable (with Mic,...",
+      "retailPrice": 25.49,
+      "salePrice": null,
+      "priceUsd": 25.49
+    },
+    {
+      "sku": "9SIA4RE4ZU4466",
+      "category": "headset",
+      "name": "ROCCAT Kulo Stereo Gaming Headset",
+      "retailPrice": 162.99,
+      "salePrice": null,
+      "priceUsd": 162.99
+    },
+    {
+      "sku": "9SIAFJYKVP6115",
+      "category": "headset",
+      "name": "Enjoy stylish comfort and audiophile-grade sound quality with the HD 550 from Sennheiser, over-ear, open-back headphones ideal for gaming and...",
+      "retailPrice": 349.95,
+      "salePrice": null,
+      "priceUsd": 349.95
+    },
+    {
+      "sku": "9SIBKUWKZ23535",
+      "category": "headset",
+      "name": "KENRO T2 Crystal TWS Earbuds Portable Wireless Bluetooth Headphones Dual Stereo Sport Gaming NFC Waterproof Long Standby - White - No Size",
+      "retailPrice": 25.99,
+      "salePrice": null,
+      "priceUsd": 25.99
+    },
+    {
+      "sku": "9SIAB2GKNZ9297",
+      "category": "headset",
+      "name": "Sony ULT WEAR Wireless Over-Ear Noise-Canceling Headphones (Black) with Fitness & Wellness Plus Software and JLab Play Gaming Wireless Bluetooth...",
+      "retailPrice": 163.99,
+      "salePrice": null,
+      "priceUsd": 163.99
+    }
+  ]
+}
