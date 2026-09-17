@@ -8,6 +8,8 @@
     "build": "vite build --config vite.config.ts && node scripts/check-performance-budget.mjs && node scripts/prerender.mjs && node scripts/check-static-seo.mjs",
     "check:performance-budget": "node scripts/check-performance-budget.mjs",
     "check:seo": "node scripts/check-static-seo.mjs",
+    "search:indexnow": "node scripts/submit-indexnow.mjs",
+    "search:audit": "tsx scripts/search-indexing/audit.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
