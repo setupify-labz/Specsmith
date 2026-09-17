@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'dry-run-retail-catalog.yml',
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'newegg-paging-preflight.yml',
@@ -156,6 +157,46 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(catalog).toMatch(/^\s*push:/m);
     expect(catalog).not.toMatch(/^\s*pull_request(_target)?:/m);
     expect(catalog).not.toMatch(/^\s*schedule:/m);
+
+    // The dry run DOES carry the three credentials, because reporting what a
+    // build would publish requires the same live feed a build reads. It is
+    // held to the same confinement as the build itself: read-only, manual
+    // dispatch only, the token minted rather than stored, and the working tree
+    // asserted unchanged at the end.
+    const dryRun = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'dry-run-retail-catalog.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(new Set([...dryRun.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1])))
+      .toEqual(new Set(CREDENTIAL_SECRETS));
+    expect(dryRun).not.toContain(`secrets.${ENV_VAR}`);
+    expect(dryRun).not.toContain(RETIRED_SECRET);
+    expect(dryRun).toContain('request-access-token.ts');
+    expect(dryRun).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(dryRun).not.toContain('contents: write');
+    expect(dryRun).toContain('persist-credentials: false');
+    expect(dryRun).toMatch(/^\s*workflow_dispatch:/m);
+    // NO AUTOMATIC TRIGGER OF ANY KIND. A run is ~250 live Rakuten requests
+    // and must never fire off a commit. It twice carried a push trigger
+    // confined to its own file, the only way to run it from a feature branch
+    // before workflow_dispatch works; each edit then cost a sweep. Registering
+    // the file here is what removes the need for one.
+    expect(dryRun).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|repository_dispatch):/m);
+    // It runs the generator in dry-run mode and writes only under the runner's
+    // temporary directory — never into the checkout, so the committed
+    // catalogue at public/data/retail-parts.json cannot be named as an output.
+    expect(dryRun).toContain('--dry-run');
+    expect(dryRun).toMatch(/--out "\$\{RUNNER_TEMP\}/);
+    expect(dryRun).not.toMatch(/git\s+(add|commit|push)/);
+    expect(dryRun).toContain('test -z "$(git status --porcelain)"');
+    // A dry run that fell short of a quota is a FAILED run. An earlier version
+    // swallowed the generator's exit code and the job went green while three
+    // categories had published nothing, which is the one result that must
+    // never look like a pass.
+    expect(dryRun).toContain('dry-run-exit-code');
+    expect(dryRun).toMatch(/exit "\$\{code\}"/);
+    expect(dryRun).not.toContain('|| true');
 
     const pagingPreflight = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'newegg-paging-preflight.yml'), 'utf-8')
