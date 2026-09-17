@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import { AVAILABILITY_UNKNOWN } from '../../../src/lib/retail/offerSnapshot';
 import type { AffiliatePart, RetailPartCategory } from '../../../src/lib/retail/partCatalog';
-import { planCatalogSelection } from './affiliateCatalog';
+import { isSelectableBuilderPart, planCatalogSelection } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
 import { consumerProductVerdict, isCpuBoardBundle, isOpenBenchChassis, screenConsumerProducts } from './consumerProductGate';
 
@@ -131,6 +131,71 @@ describe('an open-frame case is a case; a test bench is not', () => {
   it('reads the equipment word, not the word "open"', () => {
     expect(isOpenBenchChassis('cougar conquer 2 open frame mid tower computer case')).toBe(false);
     expect(isOpenBenchChassis('open air computer case test bench')).toBe(true);
+  });
+});
+
+describe('the two COUGAR listings the reviewer named, and the words that still reject', () => {
+  // PROVENANCE, AND ITS LIMIT. Newegg is blocked by this environment's egress
+  // policy, so the merchant's own page could not be fetched. This wording is
+  // the listing title indexed publicly for these two item numbers, read on
+  // 2026-09-17: one product line in two colourways, 9SIB7VEJWV5569 and
+  // 9SIB7VEJWV7807, sold by BFKK at $399.99.
+  //
+  // It is SECONDARY evidence — a search index, not the merchant — so it proves
+  // the rule keeps a title of this shape, not that the published listing reads
+  // character for character this way. Replace it with the captured title when
+  // a capture covering the case category exists.
+  const cougarOpenFrame = 'Cougar Open-Frame Computer case ATX 240mm Radiator Aluminum Alloy Glass PC Game Case';
+
+  it.each([
+    ['9SIB7VEJWV5569', `${cougarOpenFrame} - Pink`],
+    ['9SIB7VEJWV7807', `${cougarOpenFrame} - White`],
+  ])('keeps Newegg item %s', (_item, name) => {
+    expect(consumerProductVerdict('case', name)).toEqual({ ok: true });
+    // The gate is only half the path: a case also has to clear admission.
+    expect(isSelectableBuilderPart('case', name)).toBe(true);
+  });
+
+  // The narrowing, stated as the property rather than as example titles: the
+  // styling words carry no weight on their own, in any spelling or spacing.
+  it.each([
+    'open-frame',
+    'open frame',
+    'openframe',
+    'open-air',
+    'open air',
+    'Open-Frame',
+    'OPEN AIR',
+  ])('does not reject a case for the word "%s" alone', (styling) => {
+    const name = `Phanteks Evolv ${styling} Mid Tower Computer Case ATX Tempered Glass`;
+    expect(consumerProductVerdict('case', name)).toEqual({ ok: true });
+  });
+
+  // The equipment words, each on its own, so a broken one fails alone rather
+  // than hiding behind another word in the same title.
+  it.each([
+    ['test bench', 'Thermaltake Core P5 Test Bench Wall Mount Computer Case'],
+    ['testbench (unspaced)', 'Ediloca Testbench Open Computer Case ATX'],
+    ['bench table', 'DimasTech Bench Table EasyXL Computer Case Aluminium'],
+    ['benchtable (unspaced)', 'Streacom BC1 Open Benchtable Computer Case Aluminium'],
+    ['motherboard tray', 'ATX Motherboard Tray Only Replacement Panel for PC Case'],
+    ['motherboard trays (plural)', 'Motherboard Trays for ATX Micro-ATX Mini-ITX Open Case'],
+  ])('still rejects on "%s"', (_word, name) => {
+    expect(consumerProductVerdict('case', name)).toEqual({ ok: false, reason: 'open-bench-chassis' });
+  });
+
+  it('rejects the equipment word even when the styling word is absent', () => {
+    // Guards against a future rule that requires "open" before the bench word.
+    expect(consumerProductVerdict('case', 'ALAMENGDA Two-way Server ATX Test Bench Stand Mid Tower')).toEqual({
+      ok: false,
+      reason: 'open-bench-chassis',
+    });
+  });
+
+  it('applies only to the case category', () => {
+    // isOpenBenchChassis is wired under `case` alone. A motherboard listing
+    // naming its tray is not this rule's business.
+    expect(consumerProductVerdict('motherboard', 'ASUS PRIME B650M-A II AM5 Micro ATX Motherboard Tray Mount')).toEqual({ ok: true });
   });
 });
 
