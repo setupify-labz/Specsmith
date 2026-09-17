@@ -9,20 +9,26 @@
 #     an output by any invocation of the generator.
 #   - the final step fails the run if the working tree changed at all.
 #
-# MANUAL DISPATCH ONLY. It spends live Rakuten requests — roughly 120 of them,
-# a full GPU catalogue sweep plus eleven paged category searches — so it never
-# runs off a commit.
+# It spends live Rakuten requests — a full GPU catalogue sweep plus eleven
+# paged category searches, around 250 of them now the paging guard admits the
+# large categories — so it never runs off a change to the catalogue source.
 #
-# It briefly carried a push trigger confined to this one file, because
-# `workflow_dispatch` does not work until a workflow reaches the default
-# branch. That was the only way to run it from a feature branch, and it cost a
-# live sweep per edit to this file. Dispatching it now requires merging this
-# file to the default branch first, which is the deliberate step it should be.
+# The push trigger is confined to THIS ONE FILE. `workflow_dispatch` does not
+# work until a workflow reaches the default branch, and this one has not, so
+# editing this file is the only way to run it from a feature branch. That makes
+# each edit here cost one authorized sweep, which is the intended cadence: it
+# is edited when someone wants a run.
+#
+# Once this file is on the default branch, delete the push trigger and dispatch
+# it instead.
 
 name: Dry-run retail catalogue
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/dry-run-retail-catalog.yml'
 
 permissions:
   contents: read

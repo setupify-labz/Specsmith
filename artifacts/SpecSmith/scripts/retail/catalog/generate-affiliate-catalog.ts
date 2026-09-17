@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { AFFILIATE_PART_TARGET, parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../../src/lib/retail/partCatalog';
+import { isHttpUrl, isInstant, isTrackedAffiliateUrl } from '../../../src/lib/retail/offerSnapshot';
 import {
   fetchAllProductSearchPages,
   findItems,
@@ -286,6 +287,53 @@ async function run(argv: readonly string[]): Promise<number> {
   console.error(`\nFeed requests: ${stats.requests} (${stats.rateLimited} rate-limited, ${Math.round(stats.waitedMs / 1000)}s waiting).`);
   console.error(`Selected ${plan.selected.length} of ${AFFILIATE_PART_TARGET} requested.`);
 
+  // FIELD COMPLETENESS, COUNTED ON THE SELECTED LISTINGS THEMSELVES.
+  //
+  // The published reader already refuses a part missing a price, a currency, a
+  // tracked link, an image or a fetchedAt — so a catalogue that parses has
+  // them by construction. `sku` is the exception: it is OPTIONAL at the reader
+  // so that catalogues published before the field existed still load, which
+  // means "the file parsed" is not evidence that this run captured it.
+  //
+  // So the run counts them rather than inferring them from a successful parse.
+  // A reviewer asking "does every listing carry an exact SKU" gets a number
+  // measured on these listings, not a deduction from a schema rule.
+  const completeness = {
+    total: plan.selected.length,
+    sku: plan.selected.filter((part) => typeof part.sku === 'string' && part.sku.trim() !== '').length,
+    trackedAffiliateUrl: plan.selected.filter((part) => isTrackedAffiliateUrl(part.trackedAffiliateUrl)).length,
+    imageUrl: plan.selected.filter((part) => isHttpUrl(part.imageUrl)).length,
+    retailPrice: plan.selected.filter((part) => Number.isFinite(part.retailPrice) && part.retailPrice > 0).length,
+    currency: plan.selected.filter((part) => /^[A-Z]{3}$/.test(part.currency)).length,
+    fetchedAt: plan.selected.filter((part) => isInstant(part.fetchedAt)).length,
+    upc: plan.selected.filter((part) => typeof part.upc === 'string' && part.upc !== '').length,
+    unitSpecs: plan.selected.filter((part) => part.unitSpecs !== null).length,
+  };
+  console.error('\nField completeness across the selected listings:');
+  for (const [field, count] of Object.entries(completeness)) {
+    if (field === 'total') continue;
+    const optional = field === 'upc' || field === 'unitSpecs';
+    console.error(
+      `  ${field.padEnd(22)} ${count}/${completeness.total}`
+        + `${count === completeness.total ? '' : optional ? '  (not supplied for every listing)' : '  *** INCOMPLETE ***'}`,
+    );
+  }
+
+  // Duplicate identity, checked ACROSS categories on the final selection —
+  // the per-category consolidation counts above cannot see a collision
+  // between two categories.
+  const ids = plan.selected.map((part) => part.id);
+  const urls = plan.selected.map((part) => part.trackedAffiliateUrl);
+  const skus = plan.selected.map((part) => part.sku).filter((sku): sku is string => typeof sku === 'string');
+  const duplicates = {
+    ids: ids.length - new Set(ids).size,
+    trackedAffiliateUrls: urls.length - new Set(urls).size,
+    skus: skus.length - new Set(skus).size,
+  };
+  console.error(
+    `Duplicate identity in the selection: ids=${duplicates.ids}, links=${duplicates.trackedAffiliateUrls}, skus=${duplicates.skus}.`,
+  );
+
   // The report is the artifact a reviewer reads; it is written whether or not
   // the catalogue itself could be built.
   const reportPath = `${out.replace(/\.json$/, '')}-report.json`;
@@ -296,6 +344,8 @@ async function run(argv: readonly string[]): Promise<number> {
       dryRun,
       quotasLowered: false,
       selection: plan.report,
+      completeness,
+      duplicates,
       candidates: Object.fromEntries([...audits].map(([category, audit]) => [category, audit])),
       feedRequests: stats,
     }, null, 2)}\n`,

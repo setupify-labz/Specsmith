@@ -139,10 +139,10 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(dryRun).not.toContain('contents: write');
     expect(dryRun).toContain('persist-credentials: false');
     expect(dryRun).toMatch(/^\s*workflow_dispatch:/m);
-    // No push trigger at all: a full sweep is ~120 live requests and must not
-    // fire off a commit. It briefly had one confined to this file, as the only
-    // way to run it from a feature branch before workflow_dispatch works.
-    expect(dryRun).not.toMatch(/^\s*push:/m);
+    // The push trigger is confined to THIS file, the only way to run the
+    // workflow from a feature branch before workflow_dispatch works. A commit
+    // to the generator or the selection rules must never spend a sweep.
+    expect(dryRun).toMatch(/^\s*push:\n\s*paths:\n\s*- '\.github\/workflows\/dry-run-retail-catalog\.yml'\n/m);
     // Scoped to the TRIGGER block: the run step names the generator script, of
     // course, but no catalogue source path may appear as a trigger path.
     const dryRunTriggers = dryRun.slice(dryRun.indexOf('on:'), dryRun.indexOf('permissions:'));
