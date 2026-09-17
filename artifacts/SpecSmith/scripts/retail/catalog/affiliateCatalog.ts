@@ -106,6 +106,79 @@ export function accessoryLeadsHeadset(title: string): boolean {
   return device !== null && accessory.index < device.index;
 }
 
+
+/**
+ * Several of one product in a box, where the catalogue represents one.
+ *
+ * A published part carries ONE price and links to ONE listing, and every
+ * downstream figure — the build subtotal, the comparison, the card — reads it
+ * as a single item. "2-Pack Bundle" at $1,329 is then a $1,329 monitor, which
+ * is wrong by a factor of two and looks like an ordinary expensive display.
+ *
+ * ONLY EXPLICIT PACK COUNTS. Deliberately no bare "x2": a monitor title says
+ * "HDMI x2" about its ports, and a rule matching that would reject ordinary
+ * displays for describing themselves accurately.
+ */
+export function isMultipack(title: string): boolean {
+  return /\b\d+\s*[- ]?pack\b/.test(title)
+    || /\bpack of \d+\b/.test(title)
+    || /\b(two|three|four|twin|dual)[- ]pack\b/.test(title)
+    || /\b\d+\s*[- ]?pc?s\s+(?:bundle|set)\b/.test(title);
+}
+
+/**
+ * A board built for a server, not for the machine this site helps someone
+ * build.
+ *
+ * Three independent signals, because no one of them catches all of it:
+ *
+ *   - THE VENDOR LINE. Supermicro builds server boards; "ASRock Rack" is
+ *     ASRock's server division and is NOT the consumer "ASRock" brand, so the
+ *     space matters and a bare "ASRock" must keep passing.
+ *   - THE SOCKET. SP5 and SP6 are EPYC sockets; nothing consumer uses them.
+ *   - WHAT THE TITLE CALLS ITSELF. "Server Motherboard", "Server Mainboard",
+ *     or a board whose processor family is Xeon or EPYC.
+ */
+export function isServerBoard(title: string): boolean {
+  return /\b(supermicro|asrock rack|tyan|gigabyte server)\b/.test(title)
+    || /\bsp[56]\b/.test(title)
+    || /\bserver\s+(motherboard|mainboard|board)\b/.test(title)
+    || /\b(xeon|epyc)\b/.test(title)
+    || /\bdual\s+socket\b/.test(title);
+}
+
+/**
+ * A processor sold into workstations and servers rather than desktops.
+ *
+ * MODEL FAMILY, NOT MARKETING COPY. A marketplace seller describes a Ryzen 9
+ * 7950X as being "for workstation/server" use; that is a claim about who might
+ * buy it, and the part is an ordinary consumer desktop CPU that belongs in
+ * this catalogue. So the words "workstation" and "server" are NOT read here at
+ * all — only the family name in the model itself is.
+ *
+ * Plain Threadripper is left alone deliberately: the PRO line is the
+ * workstation one, and only that was asked for.
+ */
+export function isServerClassProcessor(title: string): boolean {
+  return /\bxeon\b/.test(title)
+    || /\bthreadripper\s+pro\b/.test(title)
+    || /\bepyc\b/.test(title);
+}
+
+/**
+ * An open frame or tray, which is not a case.
+ *
+ * It encloses nothing, ships without panels, and answers none of the
+ * questions a case answers for someone building their first PC — will the card
+ * fit, will the air move, is it quiet.
+ */
+export function isOpenBenchChassis(title: string): boolean {
+  return /\b(test\s*bench|bench\s*table|benchtable)\b/.test(title)
+    || /\bmotherboard\s+tray\b/.test(title)
+    || /\bopen[- ]?(air|frame)\b/.test(title)
+    || /\bdiy\s+(open\s+)?frame\b/.test(title);
+}
+
 export function isSelectableBuilderPart(category: RetailPartCategory, name: string): boolean {
   const title = normalizeCatalogName(name);
   switch (category) {
@@ -113,9 +186,15 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
       return true; // GPU candidates have already passed the stricter GPU adapter.
     case 'cpu':
       return has(title, /\b(processor|ryzen|athlon|celeron|pentium|intel core)\b/)
-        && !has(title, /\b(combo|bundle|starter kit)\b|\band\b.*\bmotherboard\b|\band\s+(asus|msi|gigabyte|asrock|biostar)\b/);
+        && !has(title, /\b(combo|bundle|starter kit)\b|\band\b.*\bmotherboard\b|\band\s+(asus|msi|gigabyte|asrock|biostar)\b/)
+        // A CPU listing naming a board is selling both. Bare, not "and a
+        // motherboard": the bundles that got through wrote it as "+", "with",
+        // and as a second clause the older pattern did not reach.
+        && !has(title, /\b(motherboard|mainboard)\b/)
+        && !isServerClassProcessor(title);
     case 'motherboard':
       return has(title, /\b(motherboard|mainboard)\b/)
+        && !isServerBoard(title)
         && !has(title, /\b(combo|comb|bundle|starter kit|laptop|notebook|thinkcentre|replacement|extension cable)\b|motherboard\s+set\b|motherboard\b.*\bcpu\b.*\b(2x\d+gb|\d+gb ram|memory set)\b|motherboard\s+(and|with)\s+.*\b(cpu|processor|ram|memory)\b/);
     case 'ram':
       return has(title, /\b(ram|memory)\b/)
@@ -129,13 +208,15 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
         && !has(title, /\b(ups|backup battery|mining|server|switching converter|power supply tester|breakout board|distribution board)\b|\b(?:adapter|converter)\s+board\b/);
     case 'case':
       return has(title, /\b(computer case|pc case|tower case|gaming case|desktop chassis|computer chassis)\b/)
-        && !has(title, /\b(carrying|protective|fan only)\b|\brack\s?mount(?:ed|able)?\b|\b(?:server|storage|nas)\s+(?:chassis|series)\b/);
+        && !has(title, /\b(carrying|protective|fan only)\b|\brack\s?mount(?:ed|able)?\b|\b(?:server|storage|nas)\s+(?:chassis|series)\b/)
+        && !isOpenBenchChassis(title);
     case 'cooler':
       return has(title, /\b(cpu cooler|cpu air cooler|liquid cpu cooler|aio liquid|processor cooler|cpu heatsink)\b/)
         && !has(title, /\b(case fan|laptop|notebook|router|switch|replacement)\b/);
     case 'monitor':
       return has(title, /\b(monitor|display)\b/)
-        && !has(title, /\b(stand|mount|arm|screen protector|replacement panel)\b/);
+        && !has(title, /\b(stand|mount|arm|screen protector|replacement panel)\b/)
+        && !isMultipack(title);
     case 'keyboard':
       return has(title, /\bkeyboard\b/)
         && !has(title, /\b(cable|keycap|keycaps|switch tester|wrist rest|keyboard case)\b|^custom switch\b|\bswitches\b.*\b(pcs|housing)\b|\bswitches?\s*\(/);
