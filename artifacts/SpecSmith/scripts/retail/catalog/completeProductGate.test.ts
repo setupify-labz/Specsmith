@@ -44,7 +44,11 @@ import {
   isMultiSocketServerBoard,
   isWearableDeviceCase,
   describesCompleteMouse,
+  describesWorkableMonitor,
+  sellsMousePart,
+  showsSensorReadings,
   statedDiagonalInches,
+  MIN_WORKABLE_DISPLAY_INCHES,
   screenCompleteProducts,
   type IncompleteRejection,
 } from './completeProductGate';
@@ -493,6 +497,52 @@ describe('run 35284766312 false positives: three complete products the gate ate'
     expect(completeProductVerdict('mouse', title), title).toEqual({ ok: true });
   });
 
+  it('does not let mouse vocabulary rescue a part that is plainly a part', () => {
+    // CODEX FOUND THESE ON 0d73e39, and they are the reason the guard is no
+    // longer an early return. In both, "wireless", "Bluetooth", "2.4G" and
+    // "gaming mouse" describe the mouse the PART IS FOR — the positive
+    // evidence was being read as though it described the thing in the box.
+    for (const title of [
+      'Replacement Huano Mouse Switch for Wireless Gaming Mouse, Bluetooth 2.4G Compatible',
+      'Wireless Gaming Mouse Bungee Charging Dock with 2.4G Receiver',
+    ]) {
+      const lower = title.toLowerCase();
+      // The positive signal really is present — that is the whole trap.
+      expect(describesCompleteMouse(lower), title).toBe(true);
+      // And it no longer decides.
+      expect(sellsMousePart(lower), title).toBe(true);
+      expect(isMouseComponent(lower), title).toBe(true);
+      expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+    }
+  });
+
+  it('does not let a workable diagonal rescue a panel that reports sensors', () => {
+    // CODEX'S THIRD CASE. At 14 inches this cleared the size gate, which was
+    // an unconditional early return, and every accessory noun after it went
+    // unread. Size now has a much smaller job.
+    const title = '14 Inch PC Sensor Panel Secondary Screen for Hardware Monitoring, USB Display Inside Case';
+    const lower = title.toLowerCase();
+    expect(statedDiagonalInches(title)).toBe(14);
+    expect(statedDiagonalInches(title)).toBeGreaterThanOrEqual(MIN_WORKABLE_DISPLAY_INCHES);
+    expect(showsSensorReadings(lower), title).toBe(true);
+    expect(isHardwareMonitorScreen(lower, title), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false,
+      reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('requires BOTH size and monitor evidence to neutralise "secondary screen"', () => {
+    // The phrase is ambiguous, so neither signal may carry it alone. A
+    // 15.6-inch panel with no monitor vocabulary stays rejected; so does a
+    // monitor-shaped title with no stated size.
+    const sizeOnly = '15.6 Inch Secondary Screen Panel for PC';
+    expect(isHardwareMonitorScreen(sizeOnly.toLowerCase(), sizeOnly), sizeOnly).toBe(true);
+    const monitorOnly = 'Portable Gaming Monitor 1080P secondary screen for laptop, HDMI Type-C';
+    expect(statedDiagonalInches(monitorOnly)).toBeNull();
+    expect(isHardwareMonitorScreen(monitorOnly.toLowerCase(), monitorOnly), monitorOnly).toBe(true);
+  });
+
   it('and still rejects the part-only versions of all three', () => {
     // The point of a narrowing is that it narrows rather than disables. Each
     // of the three rules must still refuse the thing it was written for, and
@@ -503,6 +553,82 @@ describe('run 35284766312 false positives: three complete products the gate ate'
       .toEqual({ ok: false, reason: 'hardware-monitor-screen' });
     expect(completeProductVerdict('mouse', row('9SIC6T1M085452').name))
       .toEqual({ ok: false, reason: 'mouse-component' });
+  });
+});
+
+describe('each authoritative clause carries its own weight', () => {
+  // WHY THIS BLOCK EXISTS. The mutation run showed six clauses could be
+  // deleted with every test still green — not because they are useless, but
+  // because the real listings trip two or three of them at once, so removing
+  // one leaves another to catch the same row. Redundancy on real data is
+  // fine; redundancy that hides a deletion is not.
+  //
+  // Every title here is CONSTRUCTED to isolate exactly one clause. They are
+  // labelled as constructed and prove rule structure, not that any such
+  // listing was ever offered for sale.
+
+  it('the piece count catches a switch multipack that talks like a mouse', () => {
+    // Isolates the `\d+ pcs` clause. Without it the ambiguity resolver sees
+    // "wireless" and keeps a bag of ten switches. The real NoirVogel pack
+    // states no mouse specs, so it never exercised this path.
+    const title = '10Pcs Huano Blue Mouse Switches for Wireless Gaming Mouse, 20 Million Clicks';
+    const lower = title.toLowerCase();
+    expect(describesCompleteMouse(lower)).toBe(true);
+    expect(sellsMousePart(lower), title).toBe(true);
+    expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+  });
+
+  it('a bare switch with no part-sale signal and no mouse specs is still a part', () => {
+    // Isolates the ambiguity resolver's reject branch. No "replacement", no
+    // count, no bungee — and nothing that says a whole mouse is in the box.
+    const title = 'Kailh GM 8.0 Mouse Switch Micro Switch Dust-proof';
+    const lower = title.toLowerCase();
+    expect(sellsMousePart(lower)).toBe(false);
+    expect(describesCompleteMouse(lower)).toBe(false);
+    expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+  });
+
+  it('"sensor panel" alone is authoritative, at any size', () => {
+    // Isolates the sensor-panel clause: workable size, monitor vocabulary,
+    // and no monitoring/in-case phrase to fall back on.
+    const title = '15.6 Inch Sensor Panel Secondary Screen 1080P for Gaming PC';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('"inside the case" alone is authoritative, at any size', () => {
+    // Isolates the in-case clause. A screen that mounts in the chassis is not
+    // one you sit in front of, however large the panel is.
+    const title = '14 Inch Secondary Screen 1080P Gaming Monitor Mounted Inside Case';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('"hardware monitoring" alone is authoritative, at any size', () => {
+    // Isolates the monitoring clause: no sensor-panel noun, no AIO, no
+    // in-case phrase, and a diagonal well over the floor.
+    const title = '16 Inch 1080P Display for Real-Time Hardware Monitoring, USB Type-C';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('the 13-inch floor is what keeps a small panel small', () => {
+    // Isolates MIN_WORKABLE_DISPLAY_INCHES. This title has monitor
+    // vocabulary and a stated size, so only the threshold stands between it
+    // and being neutralised — and at 5 inches it is a case panel.
+    const title = '5 Inch Secondary Screen 1080P Mini Display for PC';
+    expect(statedDiagonalInches(title)).toBe(5);
+    expect(describesWorkableMonitor(title.toLowerCase())).toBe(true);
+    expect(showsSensorReadings(title.toLowerCase())).toBe(false);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
   });
 });
 

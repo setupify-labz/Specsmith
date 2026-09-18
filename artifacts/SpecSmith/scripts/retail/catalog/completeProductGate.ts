@@ -256,23 +256,63 @@ export function statedDiagonalInches(rawName: string): number | null {
   return match === null ? null : Number(match[1]);
 }
 
-export function isHardwareMonitorScreen(title: string, rawName: string): boolean {
-  // A DISPLAY BIG ENOUGH TO WORK ON IS A MONITOR, whatever else it says.
-  //
-  // Run 35284766312 rejected the Unew 15.6-inch portable gaming monitor
-  // because its copy calls it a "secondary screen" — which is exactly what a
-  // portable monitor IS, a second display you carry to use beside a laptop.
-  // The phrase was meant to catch the 5-inch sensor panel that sits inside a
-  // case, and at 15.6 inches this is not that, so size decides first.
-  const diagonal = statedDiagonalInches(rawName);
-  if (diagonal !== null && diagonal >= MIN_WORKABLE_DISPLAY_INCHES) return false;
-
+/**
+ * A panel that exists to report sensor readings, said unambiguously.
+ *
+ * AUTHORITATIVE. Size does not override any of these, because each names what
+ * the product IS FOR rather than how big it is. A 14-inch panel bolted inside
+ * a case to show core temperatures is still not a display anyone works on:
+ *
+ *   14 Inch PC Sensor Panel Secondary Screen for Hardware Monitoring,
+ *   USB Display Inside Case
+ *
+ * An earlier draft let every diagonal of 13 inches or more short-circuit the
+ * whole function, so that title passed. The size check has a job, but it is a
+ * much smaller one than it was given — see below.
+ */
+export function showsSensorReadings(title: string): boolean {
   if (/\b(hardware|system|temperature|data|sensor|cpu)\s+monitoring\b/.test(title)) return true;
-  if (/\bsecondary\s+(?:ips\s+)?(?:screen|display|monitor)\b/.test(title)) return true;
-  // NOT evidenced by this run — the same product under another vendor's name.
-  if (/\bsub\s*[- ]?screen\b/.test(title)) return true;
+  if (/\bsensor\s+(?:panel|screen|display)\b/.test(title)) return true;
   // An AIO cooler's pump-head display, sold as a "monitor".
-  if (/\baio\s+display\b/.test(title)) return true;
+  if (/\baio\s+(?:display|screen)\b/.test(title)) return true;
+  // A screen that mounts INSIDE the chassis is not one you sit in front of.
+  if (/\b(?:inside|in)\s+(?:the\s+)?case\b/.test(title)) return true;
+  if (/\bcase\s+mounted\b/.test(title)) return true;
+  return false;
+}
+
+/**
+ * Evidence that this is a display someone actually works in front of.
+ *
+ * Used ONLY to resolve the `secondary screen` ambiguity, never on its own. A
+ * portable monitor is a secondary screen — that is its whole purpose — so the
+ * phrase cannot decide alone; but neither can size, because a sensor panel
+ * can be 14 inches. Both are required, and neither outranks the accessory
+ * evidence above.
+ */
+export function describesWorkableMonitor(title: string): boolean {
+  if (/\b(?:portable|external|travel)\s+(?:gaming\s+)?(?:monitor|display)\b/.test(title)) return true;
+  if (/\b(?:gaming|computer|desktop)\s+monitor\b/.test(title)) return true;
+  if (/\b\d{2,3}\s*hz\b/.test(title)) return true;
+  if (/\b(?:1080p|1440p|2160p|fhd|qhd|uhd|4k|wqhd)\b/.test(title)) return true;
+  return false;
+}
+
+export function isHardwareMonitorScreen(title: string, rawName: string): boolean {
+  // WHAT IT IS FOR, BEFORE HOW BIG IT IS.
+  if (showsSensorReadings(title)) return true;
+
+  // `secondary screen` and `sub-screen` are the ambiguous phrases: a sensor
+  // panel is one, and so is every portable monitor ever sold. Neutralised
+  // only when the title ALSO states a workable size AND reads like a monitor
+  // — and only here, where the authoritative evidence above has already had
+  // its say.
+  if (/\bsecondary\s+(?:ips\s+)?(?:screen|display|monitor)\b/.test(title)
+      || /\bsub\s*[- ]?screen\b/.test(title)) {
+    const diagonal = statedDiagonalInches(rawName);
+    const workableSize = diagonal !== null && diagonal >= MIN_WORKABLE_DISPLAY_INCHES;
+    return !(workableSize && describesWorkableMonitor(title));
+  }
   return false;
 }
 
@@ -338,25 +378,65 @@ export function describesCompleteMouse(title: string): boolean {
   return false;
 }
 
-export function isMouseComponent(title: string): boolean {
-  // A COMPLETE MOUSE THAT NAMES ITS OWN SWITCHES IS STILL A MOUSE.
-  //
-  // Run 35284766312 rejected the iRocks M31R — a complete wireless gaming
-  // mouse — because it advertises the switch fitted inside it. Naming a
-  // component is how a real product describes its build quality; it is not a
-  // statement that the component is what ships. So evidence that this IS a
-  // mouse outranks the switch noun, exactly as chassis evidence outranks a
-  // worn-device name in `isWearableDeviceCase`.
-  if (describesCompleteMouse(title)) return false;
-
-  // The product noun. Evidenced by 9SIC6T1M085452.
-  if (/\b(?:micro\s+)?mouse\s+switch(?:es)?\b/.test(title)) return true;
-  // Evidenced by 9SIC2ZPKRA0778.
+/**
+ * A part being SOLD, said in a way a complete product never says it.
+ *
+ * AUTHORITATIVE. Nothing below overrides these, because each one is a
+ * statement about what is in the box rather than about what the thing in the
+ * box contains:
+ *
+ *   - `replacement` or `spare` beside a switch. A mouse is not a replacement
+ *     switch, whatever else its copy mentions.
+ *   - a COUNT of switches. `(4Pcs-Dustproof Gold)` is four components; no
+ *     mouse ships as four of itself.
+ *   - `bungee`, `mouse feet`, `mouse skates`. These name a product that is
+ *     categorically not a pointing device — a cable holder, a set of glides —
+ *     so no amount of mouse vocabulary in the same title can redeem them.
+ *
+ * That last point is the one an earlier draft got wrong. `Wireless Gaming
+ * Mouse Bungee Charging Dock with 2.4G Receiver` is a bungee: the words
+ * "wireless", "gaming mouse" and "2.4G" all describe the mouse it HOLDS.
+ */
+export function sellsMousePart(title: string): boolean {
+  if (/\b(?:replacement|spare)\b[\s\S]{0,40}?\bswitch(?:es)?\b/.test(title)) return true;
+  if (/\bswitch(?:es)?\b[\s\S]{0,40}?\b(?:replacement|spare)\b/.test(title)) return true;
+  if (/\b\d+\s*(?:pcs?|pack|pieces?)\b/.test(title) && /\bswitch(?:es)?\b/.test(title)) return true;
   if (/\bbungee\b/.test(title)) return true;
-  // NOT evidenced by this run: no selected listing is a set of glide pads.
-  // Kept because "mouse feet" and "mouse skates" are product nouns no complete
-  // mouse uses, so the extrapolation carries no false-positive shape.
   if (/\bmouse\s+(?:feet|skates)\b/.test(title)) return true;
+  return false;
+}
+
+export function isMouseComponent(title: string): boolean {
+  // ACCESSORY NOUNS DECIDE FIRST. This order is the correction Codex asked
+  // for on 0d73e39, and the ordering WAS the defect — not the evidence.
+  //
+  // `describesCompleteMouse` used to run here as an unconditional early
+  // return, which made any mention of wireless, Bluetooth, 2.4G, DPI or a
+  // battery conclusive proof that a mouse was being sold. Two titles show why
+  // that is wrong, and in both the mouse vocabulary describes the mouse the
+  // PART IS FOR:
+  //
+  //   Replacement Huano Mouse Switch for Wireless Gaming Mouse,
+  //   Bluetooth 2.4G Compatible
+  //
+  //   Wireless Gaming Mouse Bungee Charging Dock with 2.4G Receiver
+  //
+  // A listing that says it is a replacement, sells switches by the piece, or
+  // names a bungee is a part, full stop.
+  if (sellsMousePart(title)) return true;
+
+  // ONLY NOW is there anything to resolve. What is left is the genuinely
+  // ambiguous shape: a bare `mouse switch` with no part-sale signal, which is
+  // how a complete mouse names the switch fitted inside it —
+  //
+  //   iRocks M31R Wireless Gaming Mouse, 26000 DPI ... Huano mouse switch
+  //   rated 80 million clicks, 6 programmable buttons, rechargeable
+  //
+  // — and also how a bare switch listing might read. Positive evidence breaks
+  // the tie, and ONLY the tie.
+  if (/\b(?:micro\s+)?mouse\s+switch(?:es)?\b/.test(title)) {
+    return !describesCompleteMouse(title);
+  }
   return false;
 }
 
