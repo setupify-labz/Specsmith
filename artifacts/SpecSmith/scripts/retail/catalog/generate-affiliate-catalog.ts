@@ -272,6 +272,22 @@ async function run(argv: readonly string[]): Promise<number> {
     );
     console.error(`  admission: ${audit.admitted} admitted, ${admissionRejects} refused`
       + (gates.length ? ` — ${gates.map(([reason, count]) => `${reason}=${count}`).join(' ')}` : ''));
+    // THE COMPLETE-PRODUCT GATE, PRINTED WHERE A READER IS ALREADY LOOKING.
+    //
+    // It was missing from this block entirely: the tally went into the report
+    // JSON and nowhere else, so run 35284766312's console output gave no hint
+    // that the gate had refused anything at all — let alone that three of its
+    // refusals were legitimate products. A gate nobody can see working is a
+    // gate nobody can see misfiring.
+    const incomplete = Object.entries(row.notCompleteProduct).sort(([, a], [, b]) => b - a);
+    const incompleteTotal = incomplete.reduce((sum, [, count]) => sum + count, 0);
+    console.error(
+      `  complete:  ${incompleteTotal} refused as not a complete product`
+        + (incomplete.length ? ` — ${incomplete.map(([reason, count]) => `${reason}=${count}`).join(' ')}` : ''),
+    );
+    for (const refusal of row.notCompleteProductRejections) {
+      console.error(`    [${refusal.reason}] ${refusal.sku ?? '(no sku)'}  ${refusal.name}`);
+    }
     console.error(`  freshness: ${row.stale} refused as stale at publication`);
     console.error(`  scope:     ${scoped || 'none refused'}`);
     console.error(`  duplicates:${row.consolidated} listings consolidated to their cheapest`);

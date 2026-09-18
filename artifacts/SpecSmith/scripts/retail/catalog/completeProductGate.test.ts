@@ -34,6 +34,7 @@ import type { AffiliatePart, RetailPartCategory } from '../../../src/lib/retail/
 import fixture from './__fixtures__/dry-run-35275594594.json';
 import { planCatalogSelection } from './affiliateCatalog';
 import { RETAIL_CATEGORY_CONFIG } from './catalogConfig';
+import { consumerProductVerdict } from './consumerProductGate';
 import {
   completeProductVerdict,
   isBoardAccessory,
@@ -42,6 +43,12 @@ import {
   isMouseComponent,
   isMultiSocketServerBoard,
   isWearableDeviceCase,
+  describesCompleteMouse,
+  describesWorkableMonitor,
+  sellsMousePart,
+  showsSensorReadings,
+  statedDiagonalInches,
+  MIN_WORKABLE_DISPLAY_INCHES,
   screenCompleteProducts,
   type IncompleteRejection,
 } from './completeProductGate';
@@ -190,9 +197,29 @@ describe('word order does not excuse a dual-CPU server board', () => {
     });
   });
 
-  it('rejects "server" before the noun and after it alike', () => {
-    expect(isMultiSocketServerBoard('supermicro x11 server motherboard atx')).toBe(true);
-    expect(isMultiSocketServerBoard('x11 motherboard atx lga3647 server')).toBe(true);
+  it('keys on the socket count and never on the word "server"', () => {
+    // The `server` + board-noun clause is GONE — see the doc comment. It was
+    // rejecting the ASUS Pro WS W790-ACE for the phrase "server-grade", where
+    // "server" is an adjective describing a feature. These assertions pin the
+    // removal: a board is rejected for taking two processors, not for the
+    // company its marketing copy keeps.
+    expect(isMultiSocketServerBoard('supermicro x11 server motherboard atx')).toBe(false);
+    expect(isMultiSocketServerBoard('x11 motherboard atx lga3647 server')).toBe(false);
+    expect(isMultiSocketServerBoard('x11dpi nt dual socket lga3647 motherboard')).toBe(true);
+    expect(isMultiSocketServerBoard('x99 dual cpu motherboard f8d plus')).toBe(true);
+    expect(isMultiSocketServerBoard('h12ssl i two socket epyc board')).toBe(true);
+  });
+
+  it('leaves forward-order server boards to the consumer gate, which still has them', () => {
+    // Removing the clause does not let `Supermicro X11 Server Motherboard`
+    // through the pipeline — it means a DIFFERENT gate refuses it. Asserted
+    // here so the removal cannot be read as opening a hole.
+    for (const title of [
+      'Supermicro X11SCL-F Server Motherboard LGA 1151 Intel C242 ATX',
+      'ASRock Rack ROMED8-2T Server Motherboard Socket SP3 AMD EPYC 7003 ATX',
+    ]) {
+      expect(consumerProductVerdict('motherboard', title).ok, title).toBe(false);
+    }
   });
 
   it('keeps the two selected single-socket workstation boards', () => {
@@ -341,6 +368,38 @@ describe('the whole run, offline: 500 rows in', () => {
     }
   });
 
+  it('records more than three refusals of one reason, without sampling', () => {
+    // ANOTHER NEGATIVE-CONTROL GAP. Re-imposing the old three-per-reason cap
+    // broke nothing on the real fixture, because no reason reaches four there
+    // — board-accessory and hardware-monitor-screen both stop at exactly
+    // three. So the cap's absence is proven on a set built to exceed it.
+    //
+    // The titles are the three REAL board accessories; the fourth and fifth
+    // repeat one of them under synthetic SKUs. That is bookkeeping under test,
+    // not product data: the claim is about how many records the screener
+    // keeps, and nothing here is presented as a listing that exists.
+    const accessory = row('9SIC6E1M4J4236');
+    const candidates = [
+      row('9SIBZT2KJN8869'),
+      row('9SIC6E1M4J4236'),
+      row('9SIC6E1M4J4239'),
+      { ...accessory, sku: 'TEST-DUPLICATE-1' },
+      { ...accessory, sku: 'TEST-DUPLICATE-2' },
+    ];
+    const screened = screenCompleteProducts(candidates);
+
+    expect(screened.kept).toHaveLength(0);
+    expect(screened.rejected).toEqual({ 'board-accessory': 5 });
+    expect(screened.rejections).toHaveLength(5);
+    expect(screened.rejections.map((refusal) => refusal.sku)).toEqual([
+      '9SIBZT2KJN8869',
+      '9SIC6E1M4J4236',
+      '9SIC6E1M4J4239',
+      'TEST-DUPLICATE-1',
+      'TEST-DUPLICATE-2',
+    ]);
+  });
+
   it('touches no category it was not given a rule for', () => {
     // Eight of the twelve categories have no rule. Every row in them survives,
     // which is asserted rather than assumed: a rule written without a `case`
@@ -361,9 +420,215 @@ describe('the whole run, offline: 500 rows in', () => {
       'hardware-monitor-screen': 3,
       'mouse-component': 2,
     });
-    // At most three sample titles per reason, and each one a real title.
-    const titles = new Set(SELECTED.map((candidate) => candidate.name.slice(0, 120)));
-    for (const sample of screened.rejectedTitles) expect(titles.has(sample.name), sample.name).toBe(true);
+    // EVERY rejection is recorded, not a sample, and each carries the SKU and
+    // the complete untruncated title. The old shape — three clipped titles per
+    // reason, no identifier — is why run 35284766312's three false positives
+    // could not be traced back to listings.
+    expect(screened.rejections).toHaveLength(12);
+    const bySku = new Map(SELECTED.map((candidate) => [candidate.sku, candidate.name]));
+    for (const refusal of screened.rejections) {
+      expect(refusal.sku, refusal.name).not.toBeNull();
+      expect(bySku.get(refusal.sku as string), refusal.sku as string).toBe(refusal.name);
+      expect(refusal.name.endsWith('…'), refusal.name).toBe(false);
+    }
+    expect(screened.rejections.map((refusal) => refusal.sku).sort())
+      .toEqual([...CONFIRMED_DEFECTS.map(([sku]) => sku)].sort());
+  });
+});
+
+describe('run 35284766312 false positives: three complete products the gate ate', () => {
+  // PROVENANCE, STATED PLAINLY BECAUSE IT IS WEAKER THAN EVERYTHING ABOVE.
+  //
+  // These three listings were refused by the deployed gate in dry run
+  // 35284766312, and Aaron identified them from that run's
+  // `notCompleteProductTitles`. The titles below are RECONSTRUCTED FROM HIS
+  // DESCRIPTION — they are NOT the verbatim merchant rows, because the run's
+  // artifact cannot be fetched from this environment (the blob host is
+  // refused by the egress policy) and the console output of that run did not
+  // print the gate's refusals at all. That reporting gap is fixed in this same
+  // change, so the next run will print SKU and full title for every refusal.
+  //
+  // WHAT THAT MEANS FOR THESE TESTS: each one proves the rule no longer fires
+  // on the SHAPE Aaron described. None proves it no longer fires on the exact
+  // listing that shipped. They must be replaced with the verbatim rows, by
+  // SKU, as soon as the artifact is to hand — exactly as the twelve confirmed
+  // defects above already are. Until then they are the weakest evidence in
+  // this file and should be read that way.
+
+  it('keeps a single-socket workstation board that says "server-grade"', () => {
+    // "server" as an ADJECTIVE describing a feature's quality. The board takes
+    // one processor and ships alone.
+    const title = 'ASUS Pro WS W790-ACE Intel LGA 4677 CEB Workstation Motherboard, server-grade power design, DDR5 R-DIMM, PCIe 5.0, dual Intel 10G LAN';
+    expect(isMultiSocketServerBoard(title.toLowerCase()), title).toBe(false);
+    expect(completeProductVerdict('motherboard', title), title).toEqual({ ok: true });
+  });
+
+  it('refuses to read a size out of a number that has no unit', () => {
+    // A NEGATIVE CONTROL FOUND THIS GAP. Loosening the parser to accept bare
+    // numbers broke nothing, because no tested title happens to be misread in
+    // a way that flips a verdict — so the contract is asserted directly.
+    //
+    // The first title is the real Thermalright row: its "9.16" carries no
+    // unit, and a guessing parser would call 1080P a ten-inch screen or read
+    // a model number as a diagonal.
+    expect(statedDiagonalInches('Thermalright Trofeo Vision LCD AIO Display 9.16 PC Monitor, 1080P USB Type-C')).toBeNull();
+    expect(statedDiagonalInches('CORN Secondary IPS Screen 800*400 Data Monitoring with 16GB TF card')).toBeNull();
+    expect(statedDiagonalInches('MSI G274CV 27 Curved 1080P Full HD 75 Hz Gaming Monitor')).toBeNull();
+    // And it does read the forms merchants actually write.
+    expect(statedDiagonalInches("UPERFECT Portable Monitor 15.6'' 1080P FHD")).toBe(15.6);
+    expect(statedDiagonalInches('UPERFECT 13.3 Inch Portable Monitor')).toBe(13.3);
+    expect(statedDiagonalInches('Unew 15.6-inch Portable Gaming Monitor')).toBe(15.6);
+    expect(statedDiagonalInches('CORN Secondary IPS Screen, 5 inch 800*400')).toBe(5);
+  });
+
+  it('keeps a 15.6-inch portable monitor that calls itself a "secondary screen"', () => {
+    // Which is what a portable monitor IS. Size decides before the phrase.
+    const title = 'Unew 15.6 Inch Portable Gaming Monitor 1080P FHD IPS, secondary screen for laptop PC, HDMI Type-C, built-in speakers';
+    expect(statedDiagonalInches(title)).toBe(15.6);
+    expect(isHardwareMonitorScreen(title.toLowerCase(), title), title).toBe(false);
+    expect(completeProductVerdict('monitor', title), title).toEqual({ ok: true });
+  });
+
+  it('keeps a complete wireless mouse that names the switch fitted inside it', () => {
+    // Naming a component is how a real product describes its build.
+    const title = 'iRocks M31R Wireless Gaming Mouse, 26000 DPI PAW3395 Sensor, Huano mouse switch rated 80 million clicks, 6 programmable buttons, rechargeable';
+    expect(describesCompleteMouse(title.toLowerCase()), title).toBe(true);
+    expect(isMouseComponent(title.toLowerCase()), title).toBe(false);
+    expect(completeProductVerdict('mouse', title), title).toEqual({ ok: true });
+  });
+
+  it('does not let mouse vocabulary rescue a part that is plainly a part', () => {
+    // CODEX FOUND THESE ON 0d73e39, and they are the reason the guard is no
+    // longer an early return. In both, "wireless", "Bluetooth", "2.4G" and
+    // "gaming mouse" describe the mouse the PART IS FOR — the positive
+    // evidence was being read as though it described the thing in the box.
+    for (const title of [
+      'Replacement Huano Mouse Switch for Wireless Gaming Mouse, Bluetooth 2.4G Compatible',
+      'Wireless Gaming Mouse Bungee Charging Dock with 2.4G Receiver',
+    ]) {
+      const lower = title.toLowerCase();
+      // The positive signal really is present — that is the whole trap.
+      expect(describesCompleteMouse(lower), title).toBe(true);
+      // And it no longer decides.
+      expect(sellsMousePart(lower), title).toBe(true);
+      expect(isMouseComponent(lower), title).toBe(true);
+      expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+    }
+  });
+
+  it('does not let a workable diagonal rescue a panel that reports sensors', () => {
+    // CODEX'S THIRD CASE. At 14 inches this cleared the size gate, which was
+    // an unconditional early return, and every accessory noun after it went
+    // unread. Size now has a much smaller job.
+    const title = '14 Inch PC Sensor Panel Secondary Screen for Hardware Monitoring, USB Display Inside Case';
+    const lower = title.toLowerCase();
+    expect(statedDiagonalInches(title)).toBe(14);
+    expect(statedDiagonalInches(title)).toBeGreaterThanOrEqual(MIN_WORKABLE_DISPLAY_INCHES);
+    expect(showsSensorReadings(lower), title).toBe(true);
+    expect(isHardwareMonitorScreen(lower, title), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false,
+      reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('requires BOTH size and monitor evidence to neutralise "secondary screen"', () => {
+    // The phrase is ambiguous, so neither signal may carry it alone. A
+    // 15.6-inch panel with no monitor vocabulary stays rejected; so does a
+    // monitor-shaped title with no stated size.
+    const sizeOnly = '15.6 Inch Secondary Screen Panel for PC';
+    expect(isHardwareMonitorScreen(sizeOnly.toLowerCase(), sizeOnly), sizeOnly).toBe(true);
+    const monitorOnly = 'Portable Gaming Monitor 1080P secondary screen for laptop, HDMI Type-C';
+    expect(statedDiagonalInches(monitorOnly)).toBeNull();
+    expect(isHardwareMonitorScreen(monitorOnly.toLowerCase(), monitorOnly), monitorOnly).toBe(true);
+  });
+
+  it('and still rejects the part-only versions of all three', () => {
+    // The point of a narrowing is that it narrows rather than disables. Each
+    // of the three rules must still refuse the thing it was written for, and
+    // the twelve real defects above assert exactly that on verbatim rows.
+    expect(completeProductVerdict('motherboard', row('9SIB66RK6B0037').name))
+      .toEqual({ ok: false, reason: 'multi-socket-server-board' });
+    expect(completeProductVerdict('monitor', row('9SIA4REJYD1812').name))
+      .toEqual({ ok: false, reason: 'hardware-monitor-screen' });
+    expect(completeProductVerdict('mouse', row('9SIC6T1M085452').name))
+      .toEqual({ ok: false, reason: 'mouse-component' });
+  });
+});
+
+describe('each authoritative clause carries its own weight', () => {
+  // WHY THIS BLOCK EXISTS. The mutation run showed six clauses could be
+  // deleted with every test still green — not because they are useless, but
+  // because the real listings trip two or three of them at once, so removing
+  // one leaves another to catch the same row. Redundancy on real data is
+  // fine; redundancy that hides a deletion is not.
+  //
+  // Every title here is CONSTRUCTED to isolate exactly one clause. They are
+  // labelled as constructed and prove rule structure, not that any such
+  // listing was ever offered for sale.
+
+  it('the piece count catches a switch multipack that talks like a mouse', () => {
+    // Isolates the `\d+ pcs` clause. Without it the ambiguity resolver sees
+    // "wireless" and keeps a bag of ten switches. The real NoirVogel pack
+    // states no mouse specs, so it never exercised this path.
+    const title = '10Pcs Huano Blue Mouse Switches for Wireless Gaming Mouse, 20 Million Clicks';
+    const lower = title.toLowerCase();
+    expect(describesCompleteMouse(lower)).toBe(true);
+    expect(sellsMousePart(lower), title).toBe(true);
+    expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+  });
+
+  it('a bare switch with no part-sale signal and no mouse specs is still a part', () => {
+    // Isolates the ambiguity resolver's reject branch. No "replacement", no
+    // count, no bungee — and nothing that says a whole mouse is in the box.
+    const title = 'Kailh GM 8.0 Mouse Switch Micro Switch Dust-proof';
+    const lower = title.toLowerCase();
+    expect(sellsMousePart(lower)).toBe(false);
+    expect(describesCompleteMouse(lower)).toBe(false);
+    expect(completeProductVerdict('mouse', title), title).toEqual({ ok: false, reason: 'mouse-component' });
+  });
+
+  it('"sensor panel" alone is authoritative, at any size', () => {
+    // Isolates the sensor-panel clause: workable size, monitor vocabulary,
+    // and no monitoring/in-case phrase to fall back on.
+    const title = '15.6 Inch Sensor Panel Secondary Screen 1080P for Gaming PC';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('"inside the case" alone is authoritative, at any size', () => {
+    // Isolates the in-case clause. A screen that mounts in the chassis is not
+    // one you sit in front of, however large the panel is.
+    const title = '14 Inch Secondary Screen 1080P Gaming Monitor Mounted Inside Case';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('"hardware monitoring" alone is authoritative, at any size', () => {
+    // Isolates the monitoring clause: no sensor-panel noun, no AIO, no
+    // in-case phrase, and a diagonal well over the floor.
+    const title = '16 Inch 1080P Display for Real-Time Hardware Monitoring, USB Type-C';
+    expect(showsSensorReadings(title.toLowerCase()), title).toBe(true);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
+  });
+
+  it('the 13-inch floor is what keeps a small panel small', () => {
+    // Isolates MIN_WORKABLE_DISPLAY_INCHES. This title has monitor
+    // vocabulary and a stated size, so only the threshold stands between it
+    // and being neutralised — and at 5 inches it is a case panel.
+    const title = '5 Inch Secondary Screen 1080P Mini Display for PC';
+    expect(statedDiagonalInches(title)).toBe(5);
+    expect(describesWorkableMonitor(title.toLowerCase())).toBe(true);
+    expect(showsSensorReadings(title.toLowerCase())).toBe(false);
+    expect(completeProductVerdict('monitor', title), title).toEqual({
+      ok: false, reason: 'hardware-monitor-screen',
+    });
   });
 });
 
@@ -438,7 +703,11 @@ describe('the gate runs BEFORE selection, so a defect cannot take a slot', () =>
 
     expect(motherboard?.notCompleteProduct).toEqual({ 'board-accessory': 2 });
     expect(motherboard?.notConsumerProduct).toEqual({});
-    expect(motherboard?.notCompleteProductTitles).toHaveLength(2);
+    expect(motherboard?.notCompleteProductRejections).toHaveLength(2);
+    for (const refusal of motherboard?.notCompleteProductRejections ?? []) {
+      expect(refusal.reason).toBe('board-accessory');
+      expect(refusal.name.length).toBeGreaterThan(40);
+    }
     expect(motherboard?.considered).toBe(motherboard?.quota);
   });
 });
