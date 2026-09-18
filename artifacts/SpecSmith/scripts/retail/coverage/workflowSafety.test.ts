@@ -58,7 +58,9 @@ describe('the validation workflow exists and is wired to the right events', () =
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'newegg-paging-preflight.yml',
+      'notify-indexnow.yml',
       'refresh-retail-prices.yml',
+      'search-indexing-audit.yml',
       'validate-rakuten-gpu-coverage.yml',
       'validate-retail-snapshot.yml',
       'verify-pr.yml',
@@ -217,6 +219,50 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(pagingPreflight).toContain('${RUNNER_TEMP}/paging-preflight/report.json');
     expect(pagingPreflight).toContain('if-no-files-found: error');
     expect(pagingPreflight).toContain('test -z "$(git status --porcelain)"');
+
+    // IndexNow needs no private credential: its verification key is public by
+    // protocol and is served from the site root. The scheduled job may notify
+    // only URLs selected from the canonical sitemap, never write the repo, and
+    // a manual all-URL run is protected by a typed confirmation.
+    const indexNow = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'notify-indexnow.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(indexNow).not.toContain('secrets.');
+    expect(indexNow).toMatch(/^\s*schedule:/m);
+    expect(indexNow).toMatch(/^\s*workflow_dispatch:/m);
+    expect(indexNow).not.toMatch(/^\s*(push|pull_request|pull_request_target|repository_dispatch):/m);
+    expect(indexNow).toContain("inputs.confirm == 'notify'");
+    expect(indexNow).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(indexNow).toContain('persist-credentials: false');
+    expect(indexNow).toContain('select-indexnow-urls.ts');
+    expect(indexNow).toContain('submit-indexnow.mjs');
+    expect(indexNow).toContain('--dry-run');
+    expect(indexNow).not.toMatch(/git\s+(add|commit|push)/);
+    expect(indexNow).toContain('test -z "$(git status --porcelain)"');
+
+    // Search-provider account credentials are isolated in a read-only,
+    // manually-dispatched audit. It produces a temporary artifact and cannot
+    // press Google's UI-only Request Indexing control or submit Bing URLs.
+    const searchAudit = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'search-indexing-audit.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(new Set([...searchAudit.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1])))
+      .toEqual(new Set(['GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON', 'BING_WEBMASTER_API_KEY']));
+    expect(searchAudit).toMatch(/^\s*workflow_dispatch:/m);
+    expect(searchAudit).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|repository_dispatch):/m);
+    expect(searchAudit).toContain("inputs.confirm == 'audit'");
+    expect(searchAudit).toMatch(/permissions:\s*\n\s*contents:\s*read/);
+    expect(searchAudit).not.toContain('contents: write');
+    expect(searchAudit).toContain('persist-credentials: false');
+    expect(searchAudit).toContain('${RUNNER_TEMP}/search-indexing-audit');
+    expect(searchAudit).toContain('search-indexing/audit.ts');
+    expect(searchAudit).not.toContain('submit-indexnow.mjs');
+    expect(searchAudit).not.toMatch(/git\s+(add|commit|push)/);
+    expect(searchAudit).toContain('test -z "$(git status --porcelain)"');
   });
 
   /**
@@ -287,7 +333,7 @@ describe('the validation workflow exists and is wired to the right events', () =
   it('invokes only scripts that exist', () => {
     const missing: string[] = [];
     for (const { name, body: text } of eachWorkflow()) {
-      for (const [, script] of text.matchAll(/(?:pnpm exec tsx|node)\s+(\S+\.(?:ts|mjs|js))/g)) {
+      for (const [, script] of text.matchAll(/(?:pnpm exec tsx|node(?:\s+--import(?:=|\s+)tsx)?)\s+(\S+\.(?:ts|mjs|js))/g)) {
         if (PENDING_ENTRYPOINTS.has(script)) continue;
         if (!fs.existsSync(path.join(repoRoot, 'artifacts', 'SpecSmith', script))) missing.push(`${name}: ${script}`);
       }
