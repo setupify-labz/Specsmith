@@ -237,6 +237,8 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(indexNow).toMatch(/permissions:\s*\n\s*contents:\s*read/);
     expect(indexNow).toContain('persist-credentials: false');
     expect(indexNow).toContain('select-indexnow-urls.ts');
+    expect(indexNow).toContain('priority-20');
+    expect(indexNow).toContain('--priority-limit 20');
     expect(indexNow).toContain('submit-indexnow.mjs');
     expect(indexNow).toContain('--dry-run');
     expect(indexNow).not.toMatch(/git\s+(add|commit|push)/);
@@ -259,6 +261,7 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(searchAudit).not.toContain('contents: write');
     expect(searchAudit).toContain('persist-credentials: false');
     expect(searchAudit).toContain('${RUNNER_TEMP}/search-indexing-audit');
+    expect(searchAudit).toMatch(/manual_request_limit:[\s\S]*?default: '20'/);
     expect(searchAudit).toContain('search-indexing/audit.ts');
     expect(searchAudit).not.toContain('submit-indexnow.mjs');
     expect(searchAudit).not.toMatch(/git\s+(add|commit|push)/);

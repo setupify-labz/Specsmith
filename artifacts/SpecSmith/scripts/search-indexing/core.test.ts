@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildGoogleRequestQueue, parseSitemap, selectIndexNowUrls } from './core';
+import { buildGoogleRequestQueue, parseSitemap, selectHighestValueUrls, selectIndexNowUrls } from './core';
 
 describe('parseSitemap', () => {
   it('deduplicates canonical SpecSmith URLs', () => {
@@ -63,5 +63,44 @@ describe('selectIndexNowUrls', () => {
     expect(selectIndexNowUrls(urls, urls, ['artifacts/SpecSmith/src/entry-server.tsx'])).toEqual(urls);
     expect(selectIndexNowUrls(urls, urls, ['artifacts/SpecSmith/scripts/prerender.mjs'])).toEqual(urls);
     expect(selectIndexNowUrls(urls, urls, ['artifacts/SpecSmith/src/lib/fps.ts'])).toEqual(urls);
+  });
+});
+
+describe('selectHighestValueUrls', () => {
+  const details = Array.from({ length: 20 }, (_, index) => `https://specsmithpc.com/upgrade/gpu-${index}`);
+  const urls = [
+    ...details,
+    'https://specsmithpc.com/about',
+    'https://specsmithpc.com/best-cpu',
+    'https://specsmithpc.com/builder',
+    'https://specsmithpc.com/compare',
+    'https://specsmithpc.com/',
+    'https://specsmithpc.com/upgrade',
+  ];
+
+  it('selects exactly the bounded number of highest-value sitemap URLs', () => {
+    const selected = selectHighestValueUrls(urls, 20);
+    expect(selected).toHaveLength(20);
+    expect(selected.slice(0, 6)).toEqual([
+      'https://specsmithpc.com/builder',
+      'https://specsmithpc.com/',
+      'https://specsmithpc.com/compare',
+      'https://specsmithpc.com/upgrade',
+      'https://specsmithpc.com/best-cpu',
+      'https://specsmithpc.com/about',
+    ]);
+    expect(selected.every((url) => urls.includes(url))).toBe(true);
+  });
+
+  it('is arrival-order independent, deduplicates, and never pads a short sitemap', () => {
+    const short = urls.slice(0, 4);
+    expect(selectHighestValueUrls([...urls].reverse(), 20)).toEqual(selectHighestValueUrls(urls, 20));
+    expect(selectHighestValueUrls([...short, short[0]], 20)).toEqual([...short].sort());
+  });
+
+  it('rejects an unsafe or malformed bound', () => {
+    expect(() => selectHighestValueUrls(urls, 0)).toThrow('integer from 1 to 100');
+    expect(() => selectHighestValueUrls(urls, 101)).toThrow('integer from 1 to 100');
+    expect(() => selectHighestValueUrls(urls, 1.5)).toThrow('integer from 1 to 100');
   });
 });
