@@ -56,6 +56,30 @@ const CORE_PRIORITY: Record<string, number> = {
   '/best-motherboard': 85,
 };
 
+function canonicalPathname(url: string): string {
+  return new URL(url).pathname.replace(/\/$/, '') || '/';
+}
+
+function editorialPriority(url: string): number {
+  const pathname = canonicalPathname(url);
+  const hubBonus = pathname.split('/').filter(Boolean).length === 1 ? 10 : 0;
+  return (CORE_PRIORITY[pathname] ?? 30) + hubBonus;
+}
+
+/**
+ * Selects a deterministic, bounded set of the site's most important canonical
+ * pages. This intentionally uses editorial route importance only: provider
+ * metrics can be incomplete for pages that have not yet been crawled.
+ */
+export function selectHighestValueUrls(sitemapUrls: string[], limit = 20): string[] {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error('The highest-value URL limit must be an integer from 1 to 100.');
+  }
+  return [...new Set(sitemapUrls)]
+    .sort((a, b) => editorialPriority(b) - editorialPriority(a) || a.localeCompare(b))
+    .slice(0, limit);
+}
+
 function indexed(inspection: InspectionSummary): boolean {
   const state = inspection.coverageState.toLowerCase();
   return inspection.verdict === 'PASS' || (state.includes('indexed') && !state.includes('not indexed'));
@@ -87,9 +111,9 @@ export function buildGoogleRequestQueue(
       continue;
     }
     const metric = metricsByUrl.get(inspection.url) ?? { clicks: 0, impressions: 0, ctr: 0, position: 0 };
-    const pathname = new URL(inspection.url).pathname.replace(/\/$/, '') || '/';
+    const pathname = canonicalPathname(inspection.url);
     const reasons: string[] = [];
-    let priorityScore = CORE_PRIORITY[pathname] ?? 30;
+    let priorityScore = editorialPriority(inspection.url);
 
     if (metric.impressions > 0) {
       priorityScore += Math.min(40, Math.log2(metric.impressions + 1) * 8);
@@ -105,7 +129,6 @@ export function buildGoogleRequestQueue(
     }
     if (CORE_PRIORITY[pathname]) reasons.push('core SpecSmith page');
     if (pathname.split('/').filter(Boolean).length === 1) {
-      priorityScore += 10;
       reasons.push('hub or primary tool page');
     }
     if (reasons.length === 0) reasons.push('present in the canonical sitemap');

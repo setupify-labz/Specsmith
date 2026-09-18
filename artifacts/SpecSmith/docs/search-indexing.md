@@ -14,8 +14,11 @@ The IndexNow key is public by protocol. Its matching verification file is
 `public/3b2b270931b45edfe57324016c9aa24c.txt`. No Bing account credential is
 available to this workflow.
 
-For initial setup, dispatch **Notify IndexNow of changed pages**, type `notify`,
-and choose `all`. Normal scheduled runs use `changed` and do nothing when no
+For a bounded priority pass, dispatch **Notify IndexNow of changed pages**, type
+`notify`, and choose `priority-20`. That mode sends exactly the 20 highest-value
+canonical pages (or every page when the sitemap has fewer than 20), ordered by
+the same editorial route priorities used by the Google queue. Reserve `all` for
+initial setup. Normal scheduled runs use `changed` and do nothing when no
 canonical URL needs a notification.
 
 An HTTP success means the notification was accepted. It does not establish
@@ -61,7 +64,7 @@ chat message.
 ### Running the audit
 
 Dispatch **Search indexing audit**, type `audit`, and select a queue size. The
-artifact contains:
+default is 20. The artifact contains:
 
 - `search-indexing-audit.json` — complete machine-readable evidence;
 - `search-indexing-audit.md` — the manual Google request queue and technical

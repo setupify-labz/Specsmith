@@ -10,12 +10,13 @@ on:
         required: true
         type: string
       scope:
-        description: 'Changed/new URLs, or every canonical sitemap URL for initial setup'
+        description: 'Changed/new URLs, the 20 highest-value pages, or every canonical URL'
         required: true
         default: changed
         type: choice
         options:
           - changed
+          - priority-20
           - all
 
 permissions:
@@ -78,6 +79,7 @@ jobs:
           fi
           extra=()
           if [ "${REQUESTED_SCOPE}" = 'all' ]; then extra+=(--all); fi
+          if [ "${REQUESTED_SCOPE}" = 'priority-20' ]; then extra+=(--priority-limit 20); fi
           cd artifacts/SpecSmith
           node --import tsx scripts/search-indexing/select-indexnow-urls.ts \
             --current dist/public/sitemap.xml \
