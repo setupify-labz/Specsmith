@@ -1,0 +1,110 @@
+{
+  "conceptId": "claude-batch-vanishing-gap",
+  "axes": {
+    "audienceExperience": "spectator",
+    "explanatoryStructure": "continuum-then-falsification",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Same price, different parts. What does this comparison page actually settle?",
+  "viewerTakeaway": "I can recognise when a difference on screen is too small for the estimate that produced it to support.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "narrowing-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate",
+    "disclosure.model-range"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 4,
+      "narration": "Watch what happens to the difference on this page when the range around it is drawn in.",
+      "onScreenText": "Watch the difference",
+      "visualIds": [
+        "narrowing-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 4,
+      "endSecond": 10,
+      "narration": "Every value here arrives with a range. Most comparisons show you the value and hide the range.",
+      "onScreenText": "Every value has a range",
+      "visualIds": [
+        "narrowing-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 10,
+      "endSecond": 25,
+      "narration": "On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own estimates, so the model does not separate them on frame rate. These are model estimates.",
+      "onScreenText": "The difference does not survive the range",
+      "visualIds": [
+        "narrowing-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+      ]
+    },
+    {
+      "purpose": "reversal",
+      "startSecond": 25,
+      "endSecond": 33,
+      "narration": "A visible gap on a chart is not the same as a difference the underlying estimate can support.",
+      "onScreenText": "A visible gap is not a supported difference",
+      "visualIds": [
+        "narrowing-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 33,
+      "endSecond": 39,
+      "narration": "Before you use a comparison to choose, look for the range around the number.",
+      "onScreenText": "Look for the range",
+      "visualIds": [
+        "narrowing-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ]
+  }
+}
