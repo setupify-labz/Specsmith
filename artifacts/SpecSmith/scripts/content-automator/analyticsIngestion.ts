@@ -362,3 +362,84 @@ export function viewsPerHourBetween(earlier: AnalyticsSnapshot, later: Analytics
   if (delta < 0) return null;
   return Number((delta / hours).toFixed(2));
 }
+
+/** One creative that could not contribute to learning, and why. */
+export interface ExcludedCreative {
+  creativeId: string;
+  /** Windows this creative does have, so a caller can see what it could use instead. */
+  availableWindows: SnapshotWindow[];
+  reason: "window-not-captured";
+}
+
+export interface LearnerRecordSelection {
+  window: SnapshotWindow;
+  records: VideoPerformanceRecord[];
+  excluded: ExcludedCreative[];
+}
+
+/**
+ * Picks the records the learning loop may score: exactly one per creative, all
+ * measured at the same snapshot window.
+ *
+ * WHY THIS EXISTS RATHER THAN `snapshots.map((s) => s.record)`.
+ *
+ * Every snapshot carries a complete VideoPerformanceRecord, so the naive
+ * mapping type-checks and looks right. It is wrong twice over. A creative with
+ * all five windows captured becomes five records, and performance.ts's
+ * learnFactor counts records — so `sampleSize` reads 5, the factor clears the
+ * "fewer than 3 samples is only exploratory" bar, and one upload is promoted
+ * or retired as a rule the data never supported. Mixing windows is the second
+ * error: a creative measured at 7d has had a week to accumulate views against
+ * another measured at 1h, so a baseline built from both ranks age, not
+ * creative. analyzePerformance now refuses both, and this is the function that
+ * produces input it accepts.
+ *
+ * NOTHING IS INVENTED FOR A MISSING WINDOW. A creative whose 24h snapshot was
+ * never captured is EXCLUDED and named in `excluded`, never back-filled from
+ * its 6h or 7d figures and never interpolated. A smaller honest sample is the
+ * correct output; the caller can see exactly which creatives dropped out and
+ * which windows they do have.
+ *
+ * Ties (the same creative and window captured twice, which the immutable store
+ * should prevent) resolve to the earliest `capturedAt`, so the selection is
+ * deterministic rather than dependent on array order.
+ */
+export function selectLearnerRecords(
+  snapshots: readonly AnalyticsSnapshot[],
+  window: SnapshotWindow,
+): LearnerRecordSelection {
+  if (!SNAPSHOT_ORDER.includes(window)) {
+    throw new Error(`Unknown snapshot window ${JSON.stringify(window)}. Known: ${SNAPSHOT_ORDER.join(", ")}.`);
+  }
+
+  const byCreative = new Map<string, AnalyticsSnapshot[]>();
+  for (const snapshot of snapshots) {
+    const group = byCreative.get(snapshot.creativeId) ?? [];
+    group.push(snapshot);
+    byCreative.set(snapshot.creativeId, group);
+  }
+
+  const records: VideoPerformanceRecord[] = [];
+  const excluded: ExcludedCreative[] = [];
+
+  for (const [creativeId, group] of [...byCreative.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    const atWindow = group
+      .filter((snapshot) => snapshot.window === window)
+      .sort((a, b) => (a.capturedAt < b.capturedAt ? -1 : a.capturedAt > b.capturedAt ? 1 : 0));
+
+    if (atWindow.length === 0) {
+      excluded.push({
+        creativeId,
+        availableWindows: SNAPSHOT_ORDER.filter((w) => group.some((snapshot) => snapshot.window === w)),
+        reason: "window-not-captured",
+      });
+      continue;
+    }
+
+    // The window is stamped onto the record so analyzePerformance's mixed-window
+    // check can see it even if a stored record predates the field.
+    records.push({ ...atWindow[0].record, creativeId, snapshotWindow: window });
+  }
+
+  return { window, records, excluded };
+}

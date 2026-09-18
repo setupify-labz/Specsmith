@@ -1,0 +1,110 @@
+{
+  "conceptId": "claude-batch-commit-first",
+  "axes": {
+    "audienceExperience": "participant",
+    "explanatoryStructure": "prediction-then-reveal",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "These two builds cost the same. What do the numbers on this page actually settle?",
+  "viewerTakeaway": "I committed to an answer, then found out the page could not settle it, so I know to decide on something else.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "commit-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate",
+    "disclosure.model-range"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 5,
+      "narration": "Two builds, the same price. Before you scroll, say out loud which one you think this page will favour.",
+      "onScreenText": "Commit to an answer first",
+      "visualIds": [
+        "commit-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 5,
+      "endSecond": 11,
+      "narration": "Hold that answer. The point is not whether you were right. It is what the page can and cannot settle for you.",
+      "onScreenText": "Hold your answer",
+      "visualIds": [
+        "commit-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 11,
+      "endSecond": 26,
+      "narration": "On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own estimates, so the model does not separate them on frame rate. These are model estimates.",
+      "onScreenText": "The gaps sit inside the model's own range",
+      "visualIds": [
+        "commit-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 26,
+      "endSecond": 34,
+      "narration": "So whichever answer you committed to, this page did not settle it. That is a real result, not a missing feature.",
+      "onScreenText": "Undecided is a result",
+      "visualIds": [
+        "commit-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 34,
+      "endSecond": 40,
+      "narration": "Open the comparison and check whether the gap you care about survives the range around it.",
+      "onScreenText": "Check your own comparison",
+      "visualIds": [
+        "commit-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ]
+  }
+}
