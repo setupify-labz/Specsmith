@@ -48,6 +48,10 @@ const onScreen = (category: string) =>
   filterAndSort(parts.filter((p) => p.category === category) as any, EMPTY_FILTERS)[0] as any;
 
 beforeEach(() => {
+  // The committed catalogue is the fixture for this integration test. Anchor
+  // its clock to that fixture's own generation time so a genuinely fresh
+  // listing does not become stale merely because the test runs 26 hours later.
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse(published.generatedAt));
   window.localStorage.clear();
   vi.stubGlobal('scrollTo', vi.fn());
   Element.prototype.scrollIntoView = vi.fn();
@@ -61,6 +65,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   cleanup();
 });
