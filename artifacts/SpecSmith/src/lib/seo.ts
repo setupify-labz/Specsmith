@@ -21,9 +21,9 @@ export interface RouteMeta {
 export const ROUTE_META: RouteMeta[] = [
   {
     path: '/',
-    title: 'SpecSmith — Free PC Builder & FPS Estimator',
+    title: 'Free PC Builder & FPS Calculator | SpecSmith',
     description:
-      'Build a compatible gaming PC and see estimated FPS across 20 games before you buy — 50+ GPUs and CPUs, live compatibility checks, and real pricing.',
+      'Build a gaming PC, check supported part compatibility, review retailer listings, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/404',
@@ -35,7 +35,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/builder',
     title: 'PC Build Calculator & FPS Estimator | SpecSmith',
     description:
-      'Build a gaming PC, check supported part compatibility, total current listing prices, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free.',
+      'Pick PC parts, check supported compatibility, total current listing prices, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free, no account.',
   },
   {
     path: '/prebuilts',
@@ -45,15 +45,15 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/compare',
-    title: 'Compare PC Builds Side-by-Side | SpecSmith',
+    title: 'Compare PC Builds & Estimated FPS | SpecSmith',
     description:
-      'Compare two GPU + CPU combinations across 20 games with clearly labelled SpecSmith FPS estimates. Adjust resolution and quality without live-price or purchase recommendations.',
+      'Compare two GPU and CPU combinations side by side. See clearly labeled estimated FPS across 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/about',
-    title: 'How SpecSmith Estimates FPS | About',
+    title: 'What Is SpecSmith? FPS Estimates Explained',
     description:
-      'Learn how SpecSmith\u2019s tier-based algorithm estimates gaming FPS from GPU and CPU benchmark data, and how we check socket, RAM, and PSU compatibility.',
+      'Learn how SpecSmith estimates gaming FPS from GPU and CPU performance data, what its compatibility checks cover, and where the model has limits.',
   },
   {
     path: '/best-gpu',
@@ -69,16 +69,16 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/gpu-tier-list',
-    title: 'GPU Tier List — Ranked S to D | SpecSmith',
+    title: 'Gaming GPU Tier List — Graphics Cards Ranked | SpecSmith',
     description:
-      'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50, AMD RX 6000/7000/9000, and Intel Arc.',
+      'Compare every tracked gaming GPU in an S-to-D tier list ranked by raw benchmark performance, with value picks across NVIDIA RTX, AMD Radeon, and Intel Arc.',
     image: `${SITE_URL}/opengraph-gpu-tier-list.jpg`,
   },
   {
     path: '/cpu-tier-list',
-    title: 'CPU Tier List — Ranked S to D | SpecSmith',
+    title: 'Gaming CPU Tier List — Processors Ranked | SpecSmith',
     description:
-      'Every CPU we track ranked S through D by raw gaming performance — Ryzen 9000/7000, Intel Core Ultra, and 12th-14th gen.',
+      'Compare every tracked gaming CPU in an S-to-D tier list ranked by raw benchmark performance, with value picks across AMD Ryzen and recent Intel processors.',
     image: `${SITE_URL}/opengraph-cpu-tier-list.jpg`,
   },
   {
