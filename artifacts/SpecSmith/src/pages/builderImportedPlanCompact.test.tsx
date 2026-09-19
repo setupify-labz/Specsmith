@@ -49,6 +49,10 @@ const onScreen = (category: string) =>
 
 beforeEach(() => {
   window.localStorage.clear();
+  // The checked-in snapshot is the fixture. Its prices must be evaluated at
+  // the instant that fixture was generated, otherwise this test turns red
+  // merely because the wall clock crossed the freshness window.
+  vi.spyOn(Date, 'now').mockReturnValue(new Date(published.generatedAt).getTime());
   vi.stubGlobal('scrollTo', vi.fn());
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal(
@@ -61,6 +65,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   cleanup();
 });
