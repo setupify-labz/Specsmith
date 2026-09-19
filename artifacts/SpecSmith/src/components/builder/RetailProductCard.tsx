@@ -222,6 +222,7 @@ export default function RetailProductCard({
             href={part.trackedAffiliateUrl}
             target="_blank"
             rel="sponsored noopener noreferrer"
+            data-analytics-placement="retail-product-card"
             data-testid="view-at-newegg"
             className="ff-accent-control flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
             style={{ background: 'var(--ff-retailer-fill)', color: 'var(--ff-on-retailer)' }}
