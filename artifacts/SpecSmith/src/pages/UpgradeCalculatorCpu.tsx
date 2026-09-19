@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from '../components/MotionLite';
 import { ArrowRight, BarChart3, Gamepad2, Monitor, Share2 } from 'lucide-react';
@@ -15,6 +15,7 @@ import {
   CPU_UPGRADE_COMPARISON_PREVIEW_LIMIT,
   CPU_UPGRADE_REFERENCE_GPU,
 } from '../lib/cpuUpgradeCalculator';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 export default function UpgradeCalculatorCpu() {
   useSeo(getRouteMeta('/upgrade-calculator-cpu'));
@@ -32,6 +33,14 @@ export default function UpgradeCalculatorCpu() {
     () => currentId ? getClosestCpuUpgradeComparisons(currentId) : [],
     [currentId],
   );
+
+  useEffect(() => {
+    if (!current) return;
+    trackProductEvent({
+      name: 'upgrade_comparison_viewed',
+      metadata: { component: 'cpu', resultCount: comparisons.length },
+    });
+  }, [current, comparisons.length]);
 
   const shareResult = async () => {
     if (!current) return;
