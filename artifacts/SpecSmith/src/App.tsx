@@ -14,6 +14,8 @@ const Prebuilts = lazy(() => import('./pages/Prebuilts'));
 const PrebuiltDetail = lazy(() => import('./pages/PrebuiltDetail'));
 const Compare = lazy(() => import('./pages/Compare'));
 const About = lazy(() => import('./pages/About'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
@@ -64,6 +66,8 @@ function AppRoutes() {
           <Route path="/prebuilts/:slug" element={<PageWrapper><PrebuiltDetail /></PageWrapper>} />
           <Route path="/compare"   element={<PageWrapper><Compare /></PageWrapper>} />
           <Route path="/about"     element={<PageWrapper><About /></PageWrapper>} />
+          <Route path="/privacy"   element={<PageWrapper><Privacy /></PageWrapper>} />
+          <Route path="/terms"     element={<PageWrapper><Terms /></PageWrapper>} />
           <Route path="/login"     element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/signup"    element={<PageWrapper><Signup /></PageWrapper>} />
           <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />

@@ -42,6 +42,7 @@ import {
 } from '../lib/retail/coreBuild';
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
 const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
@@ -355,6 +356,23 @@ export default function Builder() {
   // counter here, the cart, the desktop rail and the mobile chips. They drifted
   // apart by being derived three different ways in three different files.
   const core = describeCoreBuild(build, catalogueKnowledge);
+  const previousCoreCount = useRef(0);
+  const buildStartedTracked = useRef(false);
+
+  useEffect(() => {
+    if (!core.settled) return;
+    if (core.count > 0 && !buildStartedTracked.current) {
+      trackProductEvent({
+        name: 'builder_started',
+        metadata: { entry: initialBuild ? 'preloaded' : 'blank' },
+      });
+      buildStartedTracked.current = true;
+    }
+    if (core.count === CORE_BUILD_TOTAL && previousCoreCount.current < CORE_BUILD_TOTAL) {
+      trackProductEvent({ name: 'build_completed', metadata: { selectedCoreParts: CORE_BUILD_TOTAL } });
+    }
+    previousCoreCount.current = core.count;
+  }, [core.count, core.settled, initialBuild]);
 
   /**
    * Sends the shopper to a category, and says so out loud.
@@ -503,6 +521,10 @@ export default function Builder() {
   };
 
   const handleEstimateFps = () => {
+    trackProductEvent({
+      name: 'fps_estimate_viewed',
+      metadata: { source: 'builder', resolution: fpsResolution, preset: fpsPreset },
+    });
     setShowFps(true);
     // Wait a tick so the FPS section has mounted before scrolling to it —
     // scrolls every time the button is clicked, not just the first.

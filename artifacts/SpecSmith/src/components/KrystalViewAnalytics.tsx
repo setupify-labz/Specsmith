@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
+import {
+  ANALYTICS_CONSENT_KEY,
+  ANALYTICS_CONSENT_RESET_EVENT,
+  PRODUCT_EVENT_NAME,
+  trackProductEvent,
+  type ProductEventDetail,
+} from '../lib/productAnalytics';
 
-const CONSENT_KEY = 'specsmith-krystalview-consent';
 const SCRIPT_ID = 'krystalview-analytics-script';
 const SITE_KEY = 'site_b9f3ba4454244538adfbbc147334d354';
 const COLLECTOR_BASE_URL = 'https://krystalview.com/api';
@@ -9,6 +15,7 @@ type Consent = 'accepted' | 'declined' | null;
 
 type KrystalViewInstance = {
   enableRecording?: () => void;
+  disableRecording?: () => void;
 };
 
 type KrystalViewWindow = Window & {
@@ -46,10 +53,11 @@ function sendTrackedError(payload: Record<string, unknown>) {
 
 export default function KrystalViewAnalytics() {
   const [consent, setConsent] = useState<Consent | 'loading'>('loading');
+  const [lastProductEvent, setLastProductEvent] = useState<ProductEventDetail | null>(null);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(CONSENT_KEY);
+      const saved = localStorage.getItem(ANALYTICS_CONSENT_KEY);
       setConsent(saved === 'accepted' || saved === 'declined' ? saved : null);
     } catch {
       setConsent(null);
@@ -57,9 +65,45 @@ export default function KrystalViewAnalytics() {
   }, []);
 
   useEffect(() => {
+    const reset = () => {
+      (window as KrystalViewWindow).__krystalView?.disableRecording?.();
+      setLastProductEvent(null);
+      setConsent(null);
+    };
+    window.addEventListener(ANALYTICS_CONSENT_RESET_EVENT, reset);
+    return () => window.removeEventListener(ANALYTICS_CONSENT_RESET_EVENT, reset);
+  }, []);
+
+  useEffect(() => {
     if (consent !== 'accepted') return;
 
     const kvWindow = window as KrystalViewWindow;
+
+    const onProductEvent = (event: Event) => {
+      setLastProductEvent((event as CustomEvent<ProductEventDetail>).detail);
+    };
+
+    const onRetailerClick = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const link = target?.closest<HTMLAnchorElement>('a[rel~="sponsored"]');
+      if (!link) return;
+      let retailer = 'retailer';
+      try {
+        const host = new URL(link.href).hostname.toLowerCase();
+        if (host.includes('newegg')) retailer = 'newegg';
+        else if (host.includes('amazon')) retailer = 'amazon';
+        else if (host.includes('rakuten') || host.includes('linksynergy')) retailer = 'rakuten';
+      } catch {
+        // Do not include or inspect a malformed destination beyond its label.
+      }
+      const placement = link.dataset.analyticsPlacement
+        ?? link.closest<HTMLElement>('[data-analytics-placement]')?.dataset.analyticsPlacement
+        ?? 'content';
+      trackProductEvent({ name: 'retailer_link_clicked', metadata: { retailer, placement } });
+    };
+
+    window.addEventListener(PRODUCT_EVENT_NAME, onProductEvent);
+    document.addEventListener('click', onRetailerClick, { capture: true });
 
     const initialize = () => {
       if (kvWindow.__krystalView) {
@@ -115,20 +159,32 @@ export default function KrystalViewAnalytics() {
     return () => {
       window.removeEventListener('error', onError);
       window.removeEventListener('unhandledrejection', onUnhandledRejection);
+      window.removeEventListener(PRODUCT_EVENT_NAME, onProductEvent);
+      document.removeEventListener('click', onRetailerClick, { capture: true });
       existingScript?.removeEventListener('load', initialize);
     };
   }, [consent]);
 
   const choose = (next: Exclude<Consent, null>) => {
     try {
-      localStorage.setItem(CONSENT_KEY, next);
+      localStorage.setItem(ANALYTICS_CONSENT_KEY, next);
     } catch {
       // Consent still applies for this page load even if storage is unavailable.
     }
     setConsent(next);
   };
 
-  if (consent !== null) return null;
+  if (consent !== null) {
+    return lastProductEvent ? (
+      <span
+        hidden
+        aria-hidden="true"
+        data-specsmith-product-event={lastProductEvent.name}
+        data-specsmith-product-path={lastProductEvent.path}
+        data-specsmith-product-event-at={lastProductEvent.timestamp}
+      />
+    ) : null;
+  }
 
   return (
     <div

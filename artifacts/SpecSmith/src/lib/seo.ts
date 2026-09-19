@@ -56,6 +56,16 @@ export const ROUTE_META: RouteMeta[] = [
       'Learn how SpecSmith estimates gaming FPS from GPU and CPU performance data, what its compatibility checks cover, and where the model has limits.',
   },
   {
+    path: '/privacy',
+    title: 'Privacy Policy | SpecSmith',
+    description: 'Learn what SpecSmith stores, how optional analytics works, and how to manage your privacy choices.',
+  },
+  {
+    path: '/terms',
+    title: 'Terms of Use | SpecSmith',
+    description: 'The terms for using SpecSmith, including important limits on PC performance, compatibility, and price estimates.',
+  },
+  {
     path: '/best-gpu',
     title: 'Best GPU by Game — FPS-Ranked Picks for 20 Games | SpecSmith',
     description:

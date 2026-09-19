@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { hasDismissedEmailCapture, dismissEmailCaptureForever } from '../lib/emailCapture';
 import { useModalA11y } from '../hooks/useModalA11y';
 import EmailCaptureModal from './EmailCaptureModal';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 const QRCodeSVG = lazy(() => import('qrcode.react').then(module => ({ default: module.QRCodeSVG })));
 
@@ -44,6 +45,7 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
     if (typeof navigator.share === 'function') {
       try {
         await navigator.share({ title: buildName || 'My PC Build', url });
+        trackProductEvent({ name: 'build_shared', metadata: { method: 'native' } });
         markShared();
         return;
       } catch (err) {
@@ -60,6 +62,7 @@ export default function ShareButton({ buildState, buildName, buildId, size = 'md
   const copyLinkOnly = async () => {
     try {
       await navigator.clipboard.writeText(url);
+      trackProductEvent({ name: 'build_shared', metadata: { method: 'clipboard' } });
       setCopied(true);
       markShared();
       setTimeout(() => setCopied(false), 2500);
