@@ -4,6 +4,7 @@ import { motion } from '../components/MotionLite';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PageGlow from '../components/PageGlow';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 interface FieldError { username?: string; email?: string; password?: string; confirm?: string; }
 
@@ -44,6 +45,7 @@ export default function Signup() {
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [confirmEmailSent, setConfirmEmailSent] = useState(false);
+  const [ageAndTermsAccepted, setAgeAndTermsAccepted] = useState(false);
 
   // Format-only — no server round trip. Username/email *availability* is
   // checked separately (async): username on blur below, email only at
@@ -109,6 +111,10 @@ export default function Signup() {
     setErrors(newErrors);
     setTouched({ username: true, email: true, password: true, confirm: true });
     if (Object.values(newErrors).some(Boolean)) return;
+    if (!ageAndTermsAccepted) {
+      setSubmitError('You must be at least 13 and agree to the Terms and Privacy Policy.');
+      return;
+    }
 
     setLoading(true);
     const result = await signup(fields.username, fields.email, fields.password);
@@ -117,6 +123,10 @@ export default function Signup() {
       setSubmitError(result.error ?? 'Could not create account');
       return;
     }
+    trackProductEvent({
+      name: 'signup_completed',
+      metadata: { confirmationRequired: Boolean(result.needsEmailConfirmation) },
+    });
     if (result.needsEmailConfirmation) {
       setConfirmEmailSent(true);
     } else {
@@ -202,6 +212,19 @@ export default function Signup() {
               {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           )}
+
+          <label className="flex items-start gap-2 text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }}>
+            <input
+              type="checkbox"
+              checked={ageAndTermsAccepted}
+              onChange={event => setAgeAndTermsAccepted(event.target.checked)}
+              required
+              className="mt-0.5"
+            />
+            <span>
+              I am at least 13 and agree to the <Link to="/terms" className="font-semibold" style={{ color: 'var(--ff-accent-text)' }}>Terms</Link> and <Link to="/privacy" className="font-semibold" style={{ color: 'var(--ff-accent-text)' }}>Privacy Policy</Link>.
+            </span>
+          </label>
 
           <button
             type="submit"
