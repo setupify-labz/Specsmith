@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from '../components/MotionLite';
 import { ArrowRight, BarChart3, Cpu, Gamepad2, Share2 } from 'lucide-react';
@@ -17,6 +17,7 @@ import {
   upgradeCalculatorFaqs,
   upgradeCalculatorFaqJsonLd,
 } from '../lib/upgradeCalculator';
+import { trackProductEvent } from '../lib/productAnalytics';
 
 export default function UpgradeCalculator() {
   useSeo(getRouteMeta('/upgrade-calculator'));
@@ -34,6 +35,14 @@ export default function UpgradeCalculator() {
     () => currentId ? getClosestUpgradeComparisons(currentId) : [],
     [currentId],
   );
+
+  useEffect(() => {
+    if (!current) return;
+    trackProductEvent({
+      name: 'upgrade_comparison_viewed',
+      metadata: { component: 'gpu', resultCount: comparisons.length },
+    });
+  }, [current, comparisons.length]);
 
   const shareResult = async () => {
     if (!current) return;
