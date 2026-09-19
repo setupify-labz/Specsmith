@@ -6,6 +6,7 @@ import type {
   ScriptStoryboardPackage,
   StoryboardBeat,
 } from "./types.ts";
+import type { CaptionCue } from "./captionRender.ts";
 import { buildRightsSafeVisualPrompt, buildVisualRightsPolicyState } from "./rightsSafeVisuals.ts";
 import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
 
@@ -150,13 +151,7 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
   // not guess cue times by dividing a video evenly or parsing prose.
   (captionTask as ProductionTask & { captionRenderState?: unknown }).captionRenderState = {
     durationSeconds: script.targetDurationSeconds,
-    cues: script.beats
-      .filter((beat) => beat.onScreenText.trim().length > 0)
-      .map((beat) => ({
-        startSecond: beat.startSecond,
-        endSecond: beat.endSecond,
-        text: beat.onScreenText,
-      })),
+    cues: captionCuesForScript(script),
   };
   tasks.push(captionTask);
 
@@ -215,6 +210,23 @@ function buildPlatformProductionPlan(script: PlatformScriptStoryboard, context: 
       "Reject and regenerate if the output looks like generic AI B-roll plus captions.",
     ],
   };
+}
+
+/**
+ * The caption cues for one script.
+ *
+ * Exported so that anything reasoning about caption readability measures the
+ * SAME cues the renderer will burn in, rather than deriving a second, slowly
+ * diverging copy of this rule.
+ */
+export function captionCuesForScript(script: PlatformScriptStoryboard): CaptionCue[] {
+  return script.beats
+    .filter((beat) => beat.onScreenText.trim().length > 0)
+    .map((beat) => ({
+      startSecond: beat.startSecond,
+      endSecond: beat.endSecond,
+      text: beat.onScreenText,
+    }));
 }
 
 export function buildProductionPlanPackage(scriptPackage: ScriptStoryboardPackage): ProductionPlanPackage {
