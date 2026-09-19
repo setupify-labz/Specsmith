@@ -195,6 +195,7 @@ export default function RetailBuildSummary({
                           href={part.trackedAffiliateUrl}
                           target="_blank"
                           rel="sponsored noopener noreferrer"
+                          data-analytics-placement="build-summary"
                           className="inline-flex items-center gap-1 text-xs"
                           style={{ color: 'var(--ff-text-2)' }}
                           data-testid={`summary-stale-${category}`}
