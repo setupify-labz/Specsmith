@@ -21,9 +21,9 @@ export interface RouteMeta {
 export const ROUTE_META: RouteMeta[] = [
   {
     path: '/',
-    title: 'SpecSmith — Free PC Builder & FPS Estimator',
+    title: 'Free PC Builder & FPS Calculator | SpecSmith',
     description:
-      'Build a compatible gaming PC and see estimated FPS across 20 games before you buy — 50+ GPUs and CPUs, live compatibility checks, and real pricing.',
+      'Build a gaming PC, check supported part compatibility, review retailer listings, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/404',
@@ -33,9 +33,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/builder',
-    title: 'PC Builder + FPS Estimator | SpecSmith',
+    title: 'PC Build Calculator & FPS Estimator | SpecSmith',
     description:
-      'Pick your GPU, CPU, motherboard, RAM, storage, PSU, case, and cooler. Get instant compatibility checks and estimated FPS in 20 games at 1080p, 1440p, and 4K.',
+      'Pick PC parts, check supported compatibility, total current listing prices, and estimate FPS in 20 games at 1080p, 1440p, or 4K. Free, no account.',
   },
   {
     path: '/prebuilts',
@@ -45,15 +45,25 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/compare',
-    title: 'Compare PC Builds Side-by-Side | SpecSmith',
+    title: 'Compare PC Builds & Estimated FPS | SpecSmith',
     description:
-      'Compare two PC builds head-to-head with FPS and price charts. See exactly which configuration gives you more performance per dollar before you buy.',
+      'Compare two GPU and CPU combinations side by side. See clearly labeled estimated FPS across 20 games at 1080p, 1440p, or 4K. Free.',
   },
   {
     path: '/about',
-    title: 'How SpecSmith Estimates FPS | About',
+    title: 'What Is SpecSmith? FPS Estimates Explained',
     description:
-      'Learn how SpecSmith\u2019s tier-based algorithm estimates gaming FPS from GPU and CPU benchmark data, and how we check socket, RAM, and PSU compatibility.',
+      'Learn how SpecSmith estimates gaming FPS from GPU and CPU performance data, what its compatibility checks cover, and where the model has limits.',
+  },
+  {
+    path: '/privacy',
+    title: 'Privacy Policy | SpecSmith',
+    description: 'Learn what SpecSmith stores, how optional analytics works, and how to manage your privacy choices.',
+  },
+  {
+    path: '/terms',
+    title: 'Terms of Use | SpecSmith',
+    description: 'The terms for using SpecSmith, including important limits on PC performance, compatibility, and price estimates.',
   },
   {
     path: '/best-gpu',
@@ -69,16 +79,16 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/gpu-tier-list',
-    title: 'GPU Tier List — Ranked S to D | SpecSmith',
+    title: 'Gaming GPU Tier List — Graphics Cards Ranked | SpecSmith',
     description:
-      'Every GPU we track ranked S through D by performance-per-dollar and raw FPS — RTX 40/50, AMD RX 6000/7000/9000, and Intel Arc.',
+      'Compare every tracked gaming GPU in an S-to-D tier list ranked by raw benchmark performance, with value picks across NVIDIA RTX, AMD Radeon, and Intel Arc.',
     image: `${SITE_URL}/opengraph-gpu-tier-list.jpg`,
   },
   {
     path: '/cpu-tier-list',
-    title: 'CPU Tier List — Ranked S to D | SpecSmith',
+    title: 'Gaming CPU Tier List — Processors Ranked | SpecSmith',
     description:
-      'Every CPU we track ranked S through D by raw gaming performance — Ryzen 9000/7000, Intel Core Ultra, and 12th-14th gen.',
+      'Compare every tracked gaming CPU in an S-to-D tier list ranked by raw benchmark performance, with value picks across AMD Ryzen and recent Intel processors.',
     image: `${SITE_URL}/opengraph-cpu-tier-list.jpg`,
   },
   {
@@ -89,15 +99,15 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-calculator',
-    title: 'GPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'GPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current GPU is worth used, what it costs to trade up to a faster card after resale, and the real FPS gain.',
+      'Compare your current GPU with the closest faster GPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results or buying advice.',
   },
   {
     path: '/upgrade-calculator-cpu',
-    title: 'CPU Trade-Up Calculator — Is It Worth Upgrading? | SpecSmith',
+    title: 'CPU Upgrade Comparison Calculator | SpecSmith',
     description:
-      'See what your current CPU is worth used, what it costs to trade up to a faster chip after resale, and the real FPS gain.',
+      'Compare your current CPU with the closest faster CPUs in SpecSmith’s model. See clearly labelled FPS estimates—not benchmark results, live prices or buying advice.',
   },
   {
     path: '/crate',
@@ -127,9 +137,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade',
-    title: 'GPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'GPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every GPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse GPU comparison pages for every GPU we track — price-independent modelled FPS comparisons using a fixed reference CPU, clearly labelled as estimates.',
   },
   {
     path: '/parts-guides',
@@ -145,9 +155,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/upgrade-cpu',
-    title: 'CPU Upgrade Guides — What Should You Upgrade To? | SpecSmith',
+    title: 'CPU Upgrade Comparisons | SpecSmith',
     description:
-      'Browse upgrade guides for every CPU we track — estimated resale value, real upgrade options ranked by FPS gain, and net cost after trading up.',
+      'Browse CPU comparison pages for every CPU we track — price-independent modelled FPS comparisons using a fixed reference GPU, clearly labelled as estimates.',
   },
   {
     path: '/best-gpu-budget',
@@ -326,7 +336,6 @@ export interface BreadcrumbItem {
   path: string;
 }
 
-// :slug detail pages get their listing page as the middle breadcrumb.
 const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/vs/', parent: { name: 'GPU & CPU Comparisons', path: '/vs' } },
   { prefix: '/best-gpu/', parent: { name: 'Best GPU by Game', path: '/best-gpu' } },
@@ -341,7 +350,6 @@ const SECTION_PARENTS: { prefix: string; parent: BreadcrumbItem }[] = [
   { prefix: '/quiz/', parent: { name: 'PC Build Quiz', path: '/quiz' } },
 ];
 
-// Standalone guide/index pages that hang off the Parts Guides hub.
 const PARTS_GUIDES_PAGES = new Set([
   '/gpu-tier-list', '/cpu-tier-list', '/upgrade', '/upgrade-cpu', '/best-motherboard',
   '/best-ram', '/best-storage', '/best-psu', '/best-case', '/best-cooler',

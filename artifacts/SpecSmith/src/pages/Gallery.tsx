@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Trophy, Eye, ExternalLink, Cpu, Users, Sparkles } from 'lucide-react';
 import { fetchRecentBuilds, fetchTopBuilds, recordBuildView } from '../lib/gallery';
 import { isGalleryEnabled } from '../lib/supabase';

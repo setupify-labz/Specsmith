@@ -1,4 +1,5 @@
-// Issue #101: the published-catalogue reader must accept a verified CPU.
+// Issue #101: the published-catalogue reader must accept a CPU whose identity
+// is verified without treating that as proof of exact-unit specifications.
 //
 // The generator can now emit a CPU carrying a canonical mapping. Before this,
 // `parsePart` allowed a canonicalPartId on GPUs only, so a legitimately
@@ -20,9 +21,9 @@ const withPart = (part: unknown) => ({
 const idsIn = (result: ReturnType<typeof parseAffiliatePartCatalog>) =>
   result.ok ? result.catalog.parts.map((p) => p.id) : null;
 
-describe('a verified CPU survives the reader', () => {
+describe('a CPU with verified identity survives the reader', () => {
   it('parses a CPU carrying a canonical mapping', () => {
-    const mapped = { ...cpu, canonicalPartId: 'i5-13400f', specsVerified: true };
+    const mapped = { ...cpu, canonicalPartId: 'i5-13400f', specsVerified: false };
     const parsed = parseAffiliatePartCatalog(withPart(mapped));
     expect(parsed.ok).toBe(true);
     expect(idsIn(parsed)).toContain(cpu.id);
@@ -34,13 +35,12 @@ describe('a verified CPU survives the reader', () => {
     expect(idsIn(parsed)).toContain(cpu.id);
   });
 
-  it('refuses a CPU that is half-mapped in either direction', () => {
+  it('refuses a CPU that claims exact-unit specs in either identity state', () => {
     for (const broken of [
-      { ...cpu, canonicalPartId: 'i5-13400f', specsVerified: false },
+      { ...cpu, canonicalPartId: 'i5-13400f', specsVerified: true },
       { ...cpu, canonicalPartId: null, specsVerified: true },
     ]) {
       const parsed = parseAffiliatePartCatalog(withPart(broken));
-      // The part is dropped rather than trusted; a half-claim is not a claim.
       expect(parsed.ok ? idsIn(parsed) : []).not.toContain(cpu.id);
     }
   });

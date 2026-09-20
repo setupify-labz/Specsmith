@@ -141,6 +141,20 @@ describe('the frame the cut-out is composited on', () => {
     expect(declarations).toHaveLength(1);
     expect(declarations[0]).toContain('var(--ff-photo-bg)');
   });
+
+  it('keeps large card spacing separate from shared thumbnail geometry', () => {
+    renderCard(manifest());
+    const frame = screen.getByTestId('open-details-image');
+    expect(frame.className).toContain('retail-photo-frame-inset');
+    expect(frame.className).not.toContain('w-full');
+
+    const css = fs.readFileSync(path.join(__dirname, '..', '..', 'index.css'), 'utf-8');
+    const shared = css.match(/\.retail-photo-frame\s*\{[^}]*\}/)?.[0] ?? '';
+    const inset = css.match(/\.retail-photo-frame-inset\s*\{[^}]*\}/)?.[0] ?? '';
+    expect(shared).not.toContain('margin:');
+    expect(inset).toContain('width: auto');
+    expect(inset).toContain('margin: 8px 8px 0');
+  });
 });
 
 describe('nothing about the listing itself changes', () => {

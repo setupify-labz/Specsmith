@@ -96,6 +96,14 @@ export default function Footer() {
             <Link to="/about" className="inline-block text-sm mt-3 transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
               About SpecSmith
             </Link>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+              <Link to="/privacy" className="text-sm transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+                Privacy
+              </Link>
+              <Link to="/terms" className="text-sm transition-colors hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+                Terms
+              </Link>
+            </div>
           </div>
         </div>
 

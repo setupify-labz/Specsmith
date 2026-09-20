@@ -5,7 +5,7 @@ import type { AffiliatePart } from '../../lib/retail/partCatalog';
 import { AVAILABILITY_UNKNOWN_LABEL, STALE_PRICE_LABEL, formatAmount, formatCheckedAt, priceView } from '../../lib/retail/partPricing';
 import { imageAltText, verifiedImages } from '../../lib/retail/productImages';
 import { imageZoom } from '../../lib/retail/imageFraming';
-import { UNVERIFIED_NOTICE, confidenceOf } from '../../lib/retail/retailShopping';
+import { confidenceOf, unverifiedNoticeFor } from '../../lib/retail/retailShopping';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
@@ -245,6 +245,8 @@ export default function ProductDetailDrawer({
             <img
               src={current}
               alt={imageAltText(part.name, index, images.length)}
+              width={640}
+              height={480}
               decoding="async"
               data-image-source={current === part.imageUrl ? 'merchant' : 'processed'}
               onError={() => {
@@ -308,7 +310,7 @@ export default function ProductDetailDrawer({
                     border: `1px solid ${thumbIndex === index ? 'var(--ff-accent)' : 'var(--ff-border)'}`,
                   }}
                 >
-                  <img src={url} alt="" className="h-full w-full object-contain p-0.5" />
+                  <img src={url} alt="" width={48} height={48} loading="lazy" decoding="async" className="h-full w-full object-contain p-0.5" />
                 </button>
               ))}
             </div>
@@ -344,7 +346,7 @@ export default function ProductDetailDrawer({
           )}
           <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }}>{AVAILABILITY_UNKNOWN_LABEL}</p>
           {confidenceOf(part) === 'unverified' && (
-            <p className="text-[11px]" style={{ color: 'var(--ff-amber)' }}>{UNVERIFIED_NOTICE}</p>
+            <p className="text-[11px]" style={{ color: 'var(--ff-amber)' }}>{unverifiedNoticeFor(part)}</p>
           )}
         </div>
 
@@ -366,6 +368,7 @@ export default function ProductDetailDrawer({
             href={part.trackedAffiliateUrl}
             target="_blank"
             rel="sponsored noopener noreferrer"
+            data-analytics-placement="product-detail"
             data-testid="detail-view-at-newegg"
             className="ff-accent-control flex items-center justify-center gap-1 rounded-lg px-3 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--ff-newegg)', color: '#111' }}

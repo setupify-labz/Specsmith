@@ -120,12 +120,14 @@ describe('against the real published catalogue', () => {
     const white = whiteParts(catalog.parts);
     expect(white.length).toBeGreaterThan(0);
     expect(white.length).toBeLessThan(catalog.parts.length / 10);
-    // The three keyboards that mention white are all describing something
-    // else, so the keyboard collection is empty rather than wrong.
+    // A feed refresh may remove every keyboard that mentions white. When any
+    // are present, none may enter the collection merely because the word
+    // describes a backlight, keycap or switch; the unit cases above keep this
+    // assertion non-vacuous even when today's rotating feed has none.
     const keyboardsMentioningWhite = catalog.parts.filter(
       (part) => part.category === 'keyboard' && /white/i.test(part.name),
     );
-    expect(keyboardsMentioningWhite.length).toBeGreaterThan(0);
+    expect(keyboardsMentioningWhite.every((part) => !classifyWhiteFinish(part.name).white)).toBe(true);
     expect(white.some((part) => part.category === 'keyboard')).toBe(false);
   });
 

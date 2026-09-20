@@ -1,5 +1,5 @@
-import { useState, useEffect, useId } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useId, type MouseEvent } from 'react';
+import { motion, AnimatePresence } from './MotionLite';
 import { X, Save, LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -60,7 +60,7 @@ export default function SaveBuildModal({ open, onClose, buildState }: Props) {
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
             className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
             style={{ backgroundColor: 'var(--ff-surface)' }}
-            onClick={e => e.stopPropagation()}
+            onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
             ref={modalRef}
             role="dialog"
             aria-modal="true"

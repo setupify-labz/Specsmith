@@ -16,8 +16,13 @@ import {
 const CPUS = (cpuData as unknown as { id: string; name: string }[]).map((c) => ({ id: c.id, name: c.name }));
 const PARTS = ((catalogData as any).parts ?? catalogData) as any[];
 const partById = (id: string) => PARTS.find((p) => p.id === id);
-const TARGET = 'newegg-cpu-9sic7vbm1r3247';
 const BASE = CPU_IDENTITY_BINDINGS[0];
+const TARGET_PART = PARTS.find((part) => {
+  const destination = decodeMerchantDestination(part.trackedAffiliateUrl);
+  return destination !== null && merchantProductIdFrom(destination) === BASE.retailer.merchantProductId;
+});
+if (!TARGET_PART) throw new Error(`reviewed product ${BASE.retailer.merchantProductId} is absent from the catalogue`);
+const TARGET = TARGET_PART.id;
 
 const inputFor = (id: string) => {
   const p = partById(id);
@@ -200,15 +205,15 @@ describe('everything unreviewed stays fail-closed', () => {
 });
 
 describe('a binding survives the merchant re-issuing the same product', () => {
-  it('binds the i5-13400F under its NEW offer id, which is why it is keyed on the product', () => {
-    // Observed 2026-09-09: Newegg replaced item 9SIA4REKG24553 with
-    // 9SIC7VBM1R3247 for this identical listing, changing the published part
-    // id with it. Keyed on the part id, the binding died overnight; keyed on
-    // the /p/ product id, it holds.
+  it('binds whichever offer currently carries the reviewed product', () => {
+    // The offer-level item id has changed while the /p/ product id stayed the
+    // same. The test deliberately discovers today's offer instead of pinning
+    // either observed value, so another harmless rotation cannot break it.
     const part = partById(TARGET);
-    expect(part.id).toBe('newegg-cpu-9sic7vbm1r3247');
-    expect(part.trackedAffiliateUrl).toContain('9SIC7VBM1R3247');
     expect(CPU_IDENTITY_BINDINGS[0].retailer.observedItemId).toBe('9SIA4REKG24553');
+    expect(merchantProductIdFrom(decodeMerchantDestination(part.trackedAffiliateUrl)!)).toBe(
+      BASE.retailer.merchantProductId,
+    );
 
     expect(resolveCpuIdentity(inputFor(TARGET), CPUS)).toMatchObject({
       bound: true,

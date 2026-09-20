@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '../components/MotionLite';
 import { ArrowUp, ArrowDown, Trophy, RotateCcw, Cpu, Share2 } from 'lucide-react';
 import PageGlow from '../components/PageGlow';
 import { useSeo } from '../hooks/useSeo';

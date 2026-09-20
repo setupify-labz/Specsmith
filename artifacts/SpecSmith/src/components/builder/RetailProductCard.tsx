@@ -9,7 +9,7 @@ import {
   priceView,
 } from '../../lib/retail/partPricing';
 import { imageZoom } from '../../lib/retail/imageFraming';
-import { UNVERIFIED_NOTICE, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
+import { confidenceOf, shortenTitle, unverifiedNoticeFor } from '../../lib/retail/retailShopping';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
@@ -20,6 +20,8 @@ interface Props {
   onToggle: (id: string) => void;
   /** Opens the product detail view. The card itself stays a card. */
   onOpenDetails?: (id: string) => void;
+  /** The first visible card is a likely LCP candidate and should not be lazy-loaded. */
+  priority?: boolean;
   /**
    * Approved local cut-outs, indexed by part id.
    *
@@ -48,6 +50,7 @@ export default function RetailProductCard({
   now,
   onToggle,
   onOpenDetails,
+  priority = false,
   processedImages,
 }: Props) {
   // The cut-out/merchant/placeholder ladder, shared with the detail drawer and
@@ -93,7 +96,7 @@ export default function RetailProductCard({
         aria-label={`View details for ${part.name}`}
         data-testid="open-details-image"
         disabled={onOpenDetails === undefined}
-        className="retail-photo-frame ff-accent-control relative flex h-[240px] w-full items-center justify-center rounded-t-xl overflow-hidden md:h-auto md:aspect-[4/3]"
+        className="retail-photo-frame retail-photo-frame-inset ff-accent-control relative flex h-[240px] items-center justify-center overflow-hidden md:h-auto md:aspect-[4/3]"
       >
         {image.failed ? (
           // A broken image loses the picture, never the product: the card keeps
@@ -110,7 +113,10 @@ export default function RetailProductCard({
           <img
             src={image.src}
             alt=""
-            loading="lazy"
+            width={640}
+            height={480}
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
             decoding="async"
             data-image-source={image.source}
             onError={image.onError}
@@ -131,14 +137,14 @@ export default function RetailProductCard({
           <span
             className="absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium"
             style={{ background: 'var(--ff-surface)', color: 'var(--ff-text-2)', border: '1px solid var(--ff-border)' }}
-            title={UNVERIFIED_NOTICE}
+            title={unverifiedNoticeFor(part)}
           >
             Specs unverified
           </span>
         )}
       </button>
 
-      <div className="flex flex-1 flex-col gap-2 p-3">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         {/* The shortened title is what is shown; the complete merchant title is
             the accessible name, so nothing is withheld from a screen reader. */}
         {/* TWO TRIGGERS, NOT THREE. The image is the intuitive one — a
@@ -169,7 +175,7 @@ export default function RetailProductCard({
                   </span>
                 )}
               </div>
-              <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="price-checked">
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ff-text-2)' }} data-testid="price-checked">
                 {formatCheckedAt(view.checkedAt)}
               </p>
             </>
@@ -180,7 +186,7 @@ export default function RetailProductCard({
               {STALE_PRICE_LABEL}
             </p>
           )}
-          <p className="text-[11px]" style={{ color: 'var(--ff-text-3)' }} data-testid="availability">
+          <p className="text-xs" style={{ color: 'var(--ff-text-2)' }} data-testid="availability">
             {AVAILABILITY_UNKNOWN_LABEL}
           </p>
         </div>
@@ -197,12 +203,12 @@ export default function RetailProductCard({
           </button>
         )}
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
             onClick={() => onToggle(part.id)}
             data-testid="add-to-build"
-            className="ff-accent-control flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
+            className="ff-accent-control flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors"
             style={{
               background: selected ? 'var(--ff-accent-solid)' : 'var(--ff-surface)',
               color: selected ? 'var(--ff-on-accent)' : 'var(--ff-text)',
@@ -216,9 +222,10 @@ export default function RetailProductCard({
             href={part.trackedAffiliateUrl}
             target="_blank"
             rel="sponsored noopener noreferrer"
+            data-analytics-placement="retail-product-card"
             data-testid="view-at-newegg"
-            className="flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
-            style={{ background: 'var(--ff-newegg)', color: '#111' }}
+            className="ff-accent-control flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+            style={{ background: 'var(--ff-retailer-fill)', color: 'var(--ff-on-retailer)' }}
           >
             View at Newegg
             <ExternalLink size={12} aria-hidden="true" />

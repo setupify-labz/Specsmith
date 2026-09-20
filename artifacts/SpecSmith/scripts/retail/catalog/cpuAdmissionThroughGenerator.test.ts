@@ -15,10 +15,19 @@ import { describe, expect, it } from 'vitest';
 import catalogData from '../../../public/data/retail-parts.json';
 import { findItems, parseProductSearchXml } from '../rakuten/parseProductSearchXml';
 import { admitAffiliatePart } from './affiliateCatalog';
+import { decodeMerchantDestination, merchantProductIdFrom } from './cpuIdentityBinding';
+import { CPU_IDENTITY_BINDINGS } from './cpuIdentityRegistry';
 
 const PARTS = ((catalogData as any).parts ?? catalogData) as any[];
-const TARGET = 'newegg-cpu-9sic7vbm1r3247';
-const real = PARTS.find((p) => p.id === TARGET);
+const PRODUCT_ID = CPU_IDENTITY_BINDINGS[0].retailer.merchantProductId;
+const real = PARTS.find((part) => {
+  const destination = decodeMerchantDestination(part.trackedAffiliateUrl);
+  return destination !== null && merchantProductIdFrom(destination) === PRODUCT_ID;
+});
+if (!real) throw new Error(`reviewed product ${PRODUCT_ID} is absent from the catalogue`);
+const TARGET = real.id;
+const REAL_SKU = new URL(decodeMerchantDestination(real.trackedAffiliateUrl)!).searchParams.get('item');
+if (!REAL_SKU) throw new Error(`reviewed product ${PRODUCT_ID} has no current offer id`);
 
 const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -27,7 +36,7 @@ const feedItem = (over: { sku?: string; title?: string; link?: string } = {}) =>
   findItems(
     parseProductSearchXml(`<result><item>
       <mid>44583</mid>
-      <sku>${over.sku ?? '9SIC7VBM1R3247'}</sku>
+      <sku>${over.sku ?? REAL_SKU}</sku>
       <productname>${xmlEscape(over.title ?? real.name)}</productname>
       <category><primary>Electronics</primary><secondary>Components~~Computer Processors</secondary></category>
       <imageurl>${xmlEscape(real.imageUrl)}</imageurl>
@@ -40,17 +49,17 @@ const feedItem = (over: { sku?: string; title?: string; link?: string } = {}) =>
 const admit = (over = {}) =>
   admitAffiliatePart(feedItem(over), 'cpu', 'Computer Processors', '2026-09-08T08:12:42.395Z');
 
-describe('the generator admits the reviewed processor as a verified part', () => {
+describe('the generator admits the reviewed processor with verified identity', () => {
   it('the real record exists and is currently unsupported in published data', () => {
     expect(real).toBeTruthy();
     expect(real.canonicalPartId).toBeNull();
     expect(real.specsVerified).toBe(false);
   });
 
-  it('emits canonicalPartId i5-13400f and specsVerified true', () => {
+  it('emits canonicalPartId i5-13400f without claiming exact-unit specs', () => {
     expect(admit()).toMatchObject({
       status: 'accepted',
-      part: { id: TARGET, category: 'cpu', canonicalPartId: 'i5-13400f', specsVerified: true },
+      part: { id: TARGET, category: 'cpu', canonicalPartId: 'i5-13400f', specsVerified: false },
     });
   });
 
@@ -69,7 +78,7 @@ describe('the generator still refuses everything it should', () => {
     // same product page still resolves.
     expect(admit({ sku: '9SIANEWOFFER0001' })).toMatchObject({
       status: 'accepted',
-      part: { canonicalPartId: 'i5-13400f', specsVerified: true },
+      part: { canonicalPartId: 'i5-13400f', specsVerified: false },
     });
   });
 

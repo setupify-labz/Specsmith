@@ -587,7 +587,7 @@ export default function BuildCrate() {
               </div>
 
               <div className="mb-6">
-                <CompatibilityBanner warnings={finalBuild.compat.warnings} passed={finalBuild.compat.passed} />
+                <CompatibilityBanner warnings={finalBuild.compat.warnings} passed={finalBuild.compat.passed} skipped={finalBuild.compat.skipped} />
               </div>
 
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">

@@ -16,6 +16,8 @@ import Prebuilts from './pages/Prebuilts';
 import PrebuiltDetail from './pages/PrebuiltDetail';
 import Compare from './pages/Compare';
 import About from './pages/About';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import SharedBuild from './pages/SharedBuild';
 import ResetPassword from './pages/ResetPassword';
 import Login from './pages/Login';
@@ -71,6 +73,8 @@ export const PRERENDER_ROUTES = [
   '/prebuilts',
   '/compare',
   '/about',
+  '/privacy',
+  '/terms',
   '/build',
   '/reset-password',
   '/login',
@@ -164,6 +168,8 @@ export function render(url: string): string {
                 <Route path="/prebuilts/:slug" element={<PageWrapper><PrebuiltDetail /></PageWrapper>} />
                 <Route path="/compare" element={<PageWrapper><Compare /></PageWrapper>} />
                 <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
+                <Route path="/privacy" element={<PageWrapper><Privacy /></PageWrapper>} />
+                <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
                 <Route path="/build" element={<PageWrapper><SharedBuild /></PageWrapper>} />
                 <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
                 <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />

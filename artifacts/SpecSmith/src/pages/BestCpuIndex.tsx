@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { ChevronRight, Cpu as CpuIcon } from 'lucide-react';
 import { CPU_GAME_PAGES } from '../lib/cpuGamePages';
 import { getPageGame, getGamePageTitle } from '../lib/gamePages';

@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion } from '../components/MotionLite';
 import { Share2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, LabelList } from 'recharts';
 import PartSelector from '../components/PartSelector';
 import { estimateFpsForBuild } from '../lib/fps';
 import gpuData from '../data/gpus.json';
@@ -12,7 +11,7 @@ import { useSeo } from '../hooks/useSeo';
 import { getRouteMeta, SITE_URL } from '../lib/seo';
 import { useToast } from '../context/ToastContext';
 import PageGlow from '../components/PageGlow';
-import { getAverageFps, getCostPerFps, getBetterValueBuild } from '../lib/compareValue';
+import { getAverageFps } from '../lib/compareValue';
 
 type Resolution = '1080p' | '1440p' | '4k';
 type Preset = 'low' | 'medium' | 'high' | 'ultra';
@@ -41,10 +40,6 @@ const gpus = gpuData as GPU[];
 const cpus = cpuData as CPU[];
 const games = gamesData as Game[];
 
-// Reuses the theme-aware --ff-accent-text/--ff-cyan tokens directly (not
-// raw hex) so "Build A"/"Build B" text stays WCAG-AA-contrast in both
-// themes — this used to be hardcoded to the dark-mode hex values and read
-// as low as ~2:1 in light mode, found via an axe-core light-theme sweep.
 const COLORS = { a: 'var(--ff-accent-text)', b: 'var(--ff-cyan)' };
 
 function BuildColumn({
@@ -63,7 +58,7 @@ function BuildColumn({
       </div>
       <div className="space-y-3">
         <PartSelector
-          category="gpu" label="GPU" defaultOpen
+          category="gpu" label="GPU" defaultOpen showShopping={false}
           parts={gpus} selectedId={gpuId} onSelect={onGpuSelect}
           getSpecs={p => {
             const g = p as GPU;
@@ -75,7 +70,7 @@ function BuildColumn({
           }}
         />
         <PartSelector
-          category="cpu" label="CPU"
+          category="cpu" label="CPU" showShopping={false}
           parts={cpus} selectedId={cpuId} onSelect={onCpuSelect}
           getSpecs={p => {
             const c = p as CPU;
@@ -91,52 +86,21 @@ function BuildColumn({
   );
 }
 
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: Array<{ color: string; name: string; value: number; payload: { fullGame: string } }>;
-  label?: string;
-}
-
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const fullGame = payload[0]?.payload?.fullGame ?? '';
-  return (
-    <div className="rounded-xl p-3 shadow-2xl max-w-[220px]" style={{ backgroundColor: 'var(--ff-card)', border: '1px solid var(--ff-border)' }}>
-      <p className="text-ff-primary text-xs font-bold mb-2">{fullGame}</p>
-      {payload.map(p => (
-        <div key={p.name} className="flex items-center gap-2 text-xs">
-          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="text-secondary-custom">{p.name}:</span>
-          <span className="text-ff-primary font-bold">{p.value} FPS</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function GameAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
-  return (
-    <text x={x} y={y} dy={4} textAnchor="end" fill="var(--ff-text-2)" fontSize={11}>
-      {payload?.value}
-    </text>
-  );
-}
-
 const resolutions: Resolution[] = ['1080p', '1440p', '4k'];
 const presets: Preset[] = ['low', 'medium', 'high', 'ultra'];
 
 const compareFaqs = [
   {
-    title: 'Does changing resolution or quality preset change which build wins a given game?',
-    content: 'No — for any single game, both builds are scaled by that game\'s same base FPS number at the chosen resolution/preset, so the winner for that game is fixed by the builds themselves. Resolution and preset change the raw FPS numbers shown, not which build comes out ahead in that particular title.',
+    title: 'Does changing resolution or quality preset change which build has the higher estimate for a game?',
+    content: 'No — for any single game, both builds are scaled by that game\'s same base FPS number at the chosen resolution/preset, so the model\'s ordering for that game is fixed by the builds themselves. Resolution and preset change the estimated FPS numbers shown, not which build has the higher estimate in that title.',
   },
   {
-    title: 'Why does Build A win some games and Build B win others?',
-    content: 'Each tracked game has its own real weighting of how much GPU strength versus CPU strength matters (a GPU-bound shooter behaves differently than a CPU-heavy strategy game) — so a build with a stronger GPU but weaker CPU can win GPU-heavy titles while losing CPU-sensitive ones to a more balanced build, even if one build costs more overall.',
+    title: 'Why does Build A lead some games and Build B lead others?',
+    content: 'Each tracked game has its own model weighting for how much GPU strength versus CPU strength matters. A build with a stronger GPU but weaker CPU can therefore lead GPU-heavy titles while trailing CPU-sensitive ones. These are modeled estimates, not measured benchmark pairings.',
   },
   {
     title: 'What do the two default builds represent?',
-    content: 'A starting example, not a recommendation — two real, similarly-priced GPU+CPU pairings (currently about $100 apart) so the comparison has something to show before you\'ve picked your own parts. Swap either side using the selectors above; the URL updates so you can share your specific comparison.',
+    content: 'A starting example, not a recommendation — two contrasting GPU+CPU pairings so the comparison has something to show before you pick your own parts. Swap either side using the selectors above; the URL updates so you can share your specific comparison.',
   },
 ];
 
@@ -206,17 +170,11 @@ export default function Compare() {
     });
   }, [canCompare, selectedGpuA, selectedCpuA, selectedGpuB, selectedCpuB, resolution, preset]);
 
-  const costA = (selectedGpuA?.price_usd ?? 0) + (selectedCpuA?.price_usd ?? 0);
-  const costB = (selectedGpuB?.price_usd ?? 0) + (selectedCpuB?.price_usd ?? 0);
-
   const winsA = chartData.filter(d => d.winner === 'A').length;
   const winsB = chartData.filter(d => d.winner === 'B').length;
-
   const avgFpsA = getAverageFps(chartData.map(d => d['Build A']));
   const avgFpsB = getAverageFps(chartData.map(d => d['Build B']));
-  const costPerFpsA = getCostPerFps(costA, avgFpsA);
-  const costPerFpsB = getCostPerFps(costB, avgFpsB);
-  const betterValue = getBetterValueBuild(costPerFpsA, costPerFpsB);
+  const maxChartFps = Math.max(1, ...chartData.flatMap(d => [d['Build A'], d['Build B']]));
 
   const shareComparison = async () => {
     if (!canCompare) return;
@@ -244,13 +202,15 @@ export default function Compare() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(compareFaqJsonLd()) }} />
       <PageGlow variant="cool" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-black text-ff-primary mb-4">
             Build <span className="gradient-text">Comparison</span>
           </h1>
           <p className="text-secondary-custom text-lg max-w-xl mx-auto">
-            Compare two GPU + CPU combinations side by side across 20 games. We've pre-loaded a sample matchup below — swap in any parts to compare your own builds.
+            Compare two GPU + CPU combinations side by side across 20 games. Swap in any parts to compare your own builds.
+          </p>
+          <p className="text-secondary-custom text-xs mt-3 max-w-2xl mx-auto" data-testid="comparison-evidence-note">
+            FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems. This page does not use editorial part prices to declare a better-value build.
           </p>
           <p className="text-secondary-custom text-sm mt-3">
             Not sure where to start? See the{' '}
@@ -262,7 +222,6 @@ export default function Compare() {
           </p>
         </motion.div>
 
-        {/* Two columns */}
         <div className="flex flex-col lg:flex-row gap-6 mb-8">
           <BuildColumn
             title="Build A" color={COLORS.a}
@@ -280,14 +239,12 @@ export default function Compare() {
           />
         </div>
 
-        {/* Chart */}
         {canCompare ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border border-subtle bg-surface p-6"
           >
-            {/* Controls */}
             <div className="flex flex-col sm:flex-row sm:items-end gap-4 mb-6">
               <div className="flex-1">
                 <label className="block text-xs text-secondary-custom mb-1.5 font-medium uppercase tracking-wider">Resolution</label>
@@ -296,9 +253,7 @@ export default function Compare() {
                     <button
                       key={r}
                       onClick={() => setResolution(r)}
-                      className={`px-4 py-2 text-xs font-semibold transition-colors ${
-                        resolution === r ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
-                      }`}
+                      className={`px-4 py-2 text-xs font-semibold transition-colors ${resolution === r ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'}`}
                     >
                       {r === '4k' ? '4K' : r}
                     </button>
@@ -312,9 +267,7 @@ export default function Compare() {
                     <button
                       key={p}
                       onClick={() => setPreset(p)}
-                      className={`px-4 py-2 text-xs font-semibold transition-colors capitalize ${
-                        preset === p ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'
-                      }`}
+                      className={`px-4 py-2 text-xs font-semibold transition-colors capitalize ${preset === p ? 'text-[var(--ff-on-accent)] bg-[var(--ff-accent-solid)]' : 'text-secondary-custom hover:opacity-70'}`}
                     >
                       {p}
                     </button>
@@ -330,99 +283,68 @@ export default function Compare() {
               </button>
             </div>
 
-            {/* Score summary */}
             <div className="flex gap-4 mb-6">
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.a}15`, border: `1px solid ${COLORS.a}30` }}>
                 <div className="text-3xl font-black" style={{ color: COLORS.a }}>{winsA}</div>
-                <div className="text-secondary-custom text-xs mt-1">Build A Wins</div>
+                <div className="text-secondary-custom text-xs mt-1">Modelled Game Leads</div>
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuA?.name} + {selectedCpuA?.name}
                 </div>
-                {costA > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costA.toLocaleString()}</div>}
                 {avgFpsA > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsA}</div>}
-                {costPerFpsA !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsA}/avg FPS</div>
-                )}
-                {betterValue === 'A' && (
-                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
-                    style={{ backgroundColor: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: '1px solid rgba(255,215,0,0.35)' }}>
-                    Better Value
-                  </span>
-                )}
               </div>
               <div className="flex items-center justify-center text-secondary-custom font-bold text-lg">VS</div>
               <div className="flex-1 rounded-xl p-4 text-center" style={{ backgroundColor: `${COLORS.b}15`, border: `1px solid ${COLORS.b}30` }}>
                 <div className="text-3xl font-black" style={{ color: COLORS.b }}>{winsB}</div>
-                <div className="text-secondary-custom text-xs mt-1">Build B Wins</div>
+                <div className="text-secondary-custom text-xs mt-1">Modelled Game Leads</div>
                 <div className="text-ff-primary text-xs font-semibold mt-2">
                   {selectedGpuB?.name} + {selectedCpuB?.name}
                 </div>
-                {costB > 0 && <div className="text-secondary-custom text-xs mt-1">GPU+CPU: ${costB.toLocaleString()}</div>}
                 {avgFpsB > 0 && <div className="text-secondary-custom text-xs mt-1">Est. Avg FPS: {avgFpsB}</div>}
-                {costPerFpsB !== null && (
-                  <div className="text-secondary-custom text-xs mt-1">${costPerFpsB}/avg FPS</div>
-                )}
-                {betterValue === 'B' && (
-                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
-                    style={{ backgroundColor: 'rgba(255,215,0,0.12)', color: 'var(--ff-gold)', border: '1px solid rgba(255,215,0,0.35)' }}>
-                    Better Value
-                  </span>
-                )}
               </div>
             </div>
-            {(costPerFpsA !== null || costPerFpsB !== null) && (
-              <p className="text-[10px] text-secondary-custom text-center -mt-2 mb-6">
-                $/avg FPS = total GPU+CPU cost divided by average FPS across all 20 games at the selected resolution/quality — lower is a better value, separate from which build wins more individual games.
-              </p>
-            )}
 
-            {/* Bar chart */}
             <div className="overflow-x-auto">
-              <div style={{ height: Math.max(560, chartData.length * 42), minWidth: 640 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    layout="vertical"
-                    margin={{ top: 0, right: 44, left: 4, bottom: 0 }}
-                    barSize={14}
-                    barGap={4}
-                    barCategoryGap="30%"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--ff-border)" horizontal={false} />
-                    <XAxis type="number" stroke="var(--ff-text-2)" tick={{ fontSize: 11, fill: 'var(--ff-text-2)' }} />
-                    <YAxis
-                      type="category" dataKey="game" width={160}
-                      tick={<GameAxisTick />}
-                      tickLine={false}
-                      stroke="transparent"
-                      interval={0}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(136,136,170,0.08)' }} />
-                    <Legend
-                      wrapperStyle={{ paddingTop: '16px', fontSize: '12px', color: 'var(--ff-text-2)' }}
-                    />
-                    <Bar dataKey="Build A" fill={COLORS.a} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build A" position="right" fontSize={10} fill="var(--ff-text-2)" />
-                    </Bar>
-                    <Bar dataKey="Build B" fill={COLORS.b} radius={[0, 4, 4, 0]}>
-                      <LabelList dataKey="Build B" position="right" fontSize={10} fill="var(--ff-text-2)" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="space-y-2" style={{ minWidth: 640 }} aria-hidden="true">
+                {chartData.map(row => (
+                  <div key={row.fullGame} className="grid grid-cols-[160px_1fr] items-center gap-3">
+                    <span className="truncate text-right text-[11px] text-secondary-custom" title={row.fullGame}>
+                      {row.game}
+                    </span>
+                    <div className="space-y-1">
+                      <div className="flex h-3 items-center gap-2">
+                        <div
+                          className="h-3 rounded-r"
+                          style={{ width: `${(row['Build A'] / maxChartFps) * 100}%`, backgroundColor: COLORS.a }}
+                        />
+                        <span className="shrink-0 text-[10px] text-secondary-custom">{row['Build A']}</span>
+                      </div>
+                      <div className="flex h-3 items-center gap-2">
+                        <div
+                          className="h-3 rounded-r"
+                          style={{ width: `${(row['Build B'] / maxChartFps) * 100}%`, backgroundColor: COLORS.b }}
+                        />
+                        <span className="shrink-0 text-[10px] text-secondary-custom">{row['Build B']}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-center gap-5 pt-2 text-xs text-secondary-custom">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS.a }} />Build A</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: COLORS.b }} />Build B</span>
+                </div>
               </div>
             </div>
             <p className="sm:hidden text-[10px] text-secondary-custom text-center mt-2">← Scroll the chart to see full bars and values →</p>
 
-            {/* Detailed table */}
             <div className="mt-6 rounded-xl border border-subtle overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead style={{ backgroundColor: 'var(--ff-card)' }}>
                     <tr>
                       <th className="text-left px-4 py-2 text-xs text-secondary-custom font-medium">Game</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.a }}>Build A FPS</th>
-                      <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.b }}>Build B FPS</th>
-                      <th className="text-right px-4 py-2 text-xs text-secondary-custom font-medium">Winner</th>
+                      <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.a }}>Build A Est. FPS</th>
+                      <th className="text-right px-4 py-2 text-xs font-medium" style={{ color: COLORS.b }}>Build B Est. FPS</th>
+                      <th className="text-right px-4 py-2 text-xs text-secondary-custom font-medium">Higher Estimate</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Shared client for both Supabase-backed features: the public Gallery
 // (anon-key read/write, no login) and real accounts (AuthContext.tsx —
@@ -51,17 +51,28 @@ const rememberAwareStorage = (url && anonKey) ? {
   },
 } : undefined;
 
-export const supabase: SupabaseClient | null = url && anonKey
-  ? createClient(url, anonKey, { auth: { storage: rememberAwareStorage } })
-  : null;
-
-export const isGalleryEnabled = supabase !== null;
+export const isGalleryEnabled = Boolean(url && anonKey);
 
 // Same underlying check as isGalleryEnabled (same client, same env vars) —
 // named separately for AuthContext.tsx so each feature's "is this
 // configured" flag reads clearly at its own call sites, without renaming
 // the gallery's existing export.
-export const isSupabaseConfigured = supabase !== null;
+export const isSupabaseConfigured = isGalleryEnabled;
+
+// Supabase is only needed for accounts, saved builds, and community data.
+// Loading it on demand keeps the SDK out of every route's initial bundle,
+// including production builds where the public credentials are configured.
+let clientPromise: Promise<SupabaseClient | null> | null = null;
+
+export function getSupabase(): Promise<SupabaseClient | null> {
+  if (!url || !anonKey) return Promise.resolve(null);
+  if (!clientPromise) {
+    clientPromise = import('@supabase/supabase-js').then(({ createClient }) =>
+      createClient(url, anonKey, { auth: { storage: rememberAwareStorage } }),
+    );
+  }
+  return clientPromise;
+}
 
 export interface ProfileRow {
   id: string;

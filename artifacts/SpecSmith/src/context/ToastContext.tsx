@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from '../components/MotionLite';
 import { CheckCircle, AlertCircle, XCircle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'warning' | 'error' | 'info';

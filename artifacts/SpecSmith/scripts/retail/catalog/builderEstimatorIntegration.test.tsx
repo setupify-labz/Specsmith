@@ -18,12 +18,21 @@ import { ToastProvider } from '../../../src/context/ToastContext';
 import publishedCatalog from '../../../public/data/retail-parts.json';
 import { findItems, parseProductSearchXml } from '../rakuten/parseProductSearchXml';
 import { admitAffiliatePart } from './affiliateCatalog';
+import { decodeMerchantDestination, merchantProductIdFrom } from './cpuIdentityBinding';
+import { CPU_IDENTITY_BINDINGS } from './cpuIdentityRegistry';
 import Builder from '../../../src/pages/Builder';
 
-const TARGET_CPU = 'newegg-cpu-9sic7vbm1r3247';
 const published = publishedCatalog as any;
 const publishedParts = (published.parts ?? published) as any[];
-const realCpu = publishedParts.find((p) => p.id === TARGET_CPU);
+const PRODUCT_ID = CPU_IDENTITY_BINDINGS[0].retailer.merchantProductId;
+const realCpu = publishedParts.find((part) => {
+  const destination = decodeMerchantDestination(part.trackedAffiliateUrl);
+  return destination !== null && merchantProductIdFrom(destination) === PRODUCT_ID;
+});
+if (!realCpu) throw new Error(`reviewed product ${PRODUCT_ID} is absent from the catalogue`);
+const TARGET_CPU = realCpu.id;
+const REAL_SKU = new URL(decodeMerchantDestination(realCpu.trackedAffiliateUrl)!).searchParams.get('item');
+if (!REAL_SKU) throw new Error(`reviewed product ${PRODUCT_ID} has no current offer id`);
 const xmlEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** The reviewed CPU, admitted through the generator rather than hand-written. */
@@ -31,7 +40,7 @@ function generatedCpuPart() {
   const item = findItems(
     parseProductSearchXml(`<result><item>
       <mid>44583</mid>
-      <sku>9SIC7VBM1R3247</sku>
+      <sku>${REAL_SKU}</sku>
       <productname>${xmlEscape(realCpu.name)}</productname>
       <category><primary>Electronics</primary><secondary>Components~~Computer Processors</secondary></category>
       <imageurl>${xmlEscape(realCpu.imageUrl)}</imageurl>
@@ -51,7 +60,7 @@ function regeneratedCatalog() {
   return { ...published, parts: publishedParts.map((p) => (p.id === TARGET_CPU ? generated : p)) };
 }
 
-const supportedGpu = () => publishedParts.find((p) => p.category === 'gpu' && p.specsVerified && p.canonicalPartId);
+const supportedGpu = () => publishedParts.find((p) => p.category === 'gpu' && p.canonicalPartId);
 
 function stubCatalog(catalog: unknown) {
   vi.stubGlobal(
