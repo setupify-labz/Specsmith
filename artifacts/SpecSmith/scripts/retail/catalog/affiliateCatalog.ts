@@ -97,6 +97,15 @@ export function isSelectableBuilderPart(category: RetailPartCategory, name: stri
   }
 }
 
+import cpuCatalogData from '../../../src/data/cpus.json';
+import { resolveCpuIdentity } from './cpuIdentityBinding';
+
+/** Canonical processors, read once. Only `id` and `name` are used. */
+const CANONICAL_CPUS = (cpuCatalogData as unknown as { id: string; name: string }[]).map((c) => ({
+  id: c.id,
+  name: c.name,
+}));
+
 export function admitAffiliatePart(
   item: XmlElement,
   category: RetailPartCategory,
@@ -119,10 +128,17 @@ export function admitAffiliatePart(
   const pricing = readListingPricing(item);
   if (!pricing) return { status: 'rejected', reason: 'price' };
 
+  const partId = safeId(category, sku);
+  const identity =
+    category === 'cpu'
+      ? resolveCpuIdentity({ retailPartId: partId, name, trackedAffiliateUrl }, CANONICAL_CPUS)
+      : null;
+  const cpuIdentity = identity && identity.bound ? identity.canonicalCpuId : null;
+
   return {
     status: 'accepted',
     part: {
-      id: safeId(category, sku),
+      id: partId,
       category,
       merchant: 'Newegg',
       name,
@@ -133,9 +149,14 @@ export function admitAffiliatePart(
       retailPrice: pricing.retailPrice,
       salePrice: pricing.salePrice,
       currency: pricing.currency,
-      canonicalPartId: null,
-      // Non-GPU listings have no model matcher, so neither identity nor
-      // specifications are established for them.
+      // Issue #101: a processor may carry a canonical id only when a reviewed
+      // registry entry, the current title and the merchant's own deep link all
+      // name the same chip. Every other part in every other category stays
+      // unsupported, exactly as before — this does not widen anything.
+      canonicalPartId: cpuIdentity,
+      // The binding establishes chip identity, not measurements for the exact
+      // boxed unit. Keep this false under the identity/specification split on
+      // current main; FPS uses canonicalPartId and exact-unit claims do not.
       specsVerified: false,
       upc: readUpc(childText(item, 'upccode')),
       // Measured from the pixels later, once the quota is settled: there is no
