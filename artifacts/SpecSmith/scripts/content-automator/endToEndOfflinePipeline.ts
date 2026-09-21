@@ -70,7 +70,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
-import { buildProductionPlanPackage } from "./productionPlan.ts";
+import { buildProductionPlanPackage, captionCuesForScript } from "./productionPlan.ts";
 import {
   buildQualityReviewRequest,
   reviewRenderedVideo,
@@ -87,7 +87,10 @@ import {
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type PublishingConfig } from "./publishing.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
-import type { ContentIdea, VideoPlatform } from "./types.ts";
+import type { ContentIdea, PlatformScriptStoryboard, VideoPlatform } from "./types.ts";
+import { reviewCreativeQuality, type CreativeQualityReview } from "./v2/creativeQualityReview.ts";
+import { repairCreative } from "./v2/beatRepair.ts";
+import { buildContentCreativeReport, formatContentCreativeReport } from "./v2/contentCreativeReport.ts";
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -186,14 +189,69 @@ async function main(): Promise<void> {
 
   section("1. Real idea -> real content package -> real script/storyboard -> real generated production-plan CONTRACT (not rendered through — see header comment)");
   const content = buildContentPackage(idea, generatedAt);
-  const storyboard = buildScriptStoryboardPackage(idea, content);
-  const production = buildProductionPlanPackage(storyboard);
-  const script = storyboard.scripts.find((entry) => entry.platform === PLATFORM);
-  if (!script) throw new Error(`No ${PLATFORM} script in the storyboard.`);
+  const generatedStoryboard = buildScriptStoryboardPackage(idea, content);
+  const generatedScript = generatedStoryboard.scripts.find((entry) => entry.platform === PLATFORM);
+  if (!generatedScript) throw new Error(`No ${PLATFORM} script in the storyboard.`);
   console.log(`Idea: ${idea.id} ("${idea.title}")`);
   console.log(`Content package: ${content.packageId} (campaign ${content.campaignId})`);
-  console.log(`Storyboard for ${PLATFORM}: ${script.beats.length} beats, target ${script.targetDurationSeconds}s`);
+  console.log(`Storyboard for ${PLATFORM}: ${generatedScript.beats.length} beats, target ${generatedScript.targetDurationSeconds}s`);
   console.log(`CTA route: ${content.site.route}`);
+
+  section("1b. Creative Director review and beat-level repair of the GENERATED storyboard (before any production plan is built from it)");
+  // This runs on the real generated storyboard and the real caption cues the
+  // renderer would burn in — not on a sample. Its output is load-bearing: the
+  // production plan below is built from whatever storyboard repair returns, so
+  // an accepted repair genuinely changes what would be produced.
+  const reviewGeneratedScript = (candidate: PlatformScriptStoryboard): CreativeQualityReview =>
+    reviewCreativeQuality({
+      creativeId: `${content.packageId}-${PLATFORM}`,
+      packageId: content.packageId,
+      storyboard: candidate,
+      captionCues: captionCuesForScript(candidate),
+      ctaRoute: content.site.route,
+      // No media and no audio evidence is passed: the only render in this
+      // pipeline is the separate hand-authored timeline in section 2, which is
+      // NOT a render of this storyboard. Attributing those bytes or that
+      // loudness measurement to this creative would be a false binding.
+      mediaSha256: null,
+      now: generatedAt,
+    });
+
+  const initialCreativeReview = reviewGeneratedScript(generatedScript);
+  console.log(`Creative review: productionQuality=${initialCreativeReview.productionQualityScore}/10, confidence=${initialCreativeReview.confidence}`);
+  console.log(`Machine-measured dimensions: ${initialCreativeReview.overall.filter((entry) => entry.score !== null).length}; not machine-assessable: ${initialCreativeReview.overall.filter((entry) => entry.score === null).length}`);
+  console.log(`Anti-slop: ${initialCreativeReview.slop.hardFailures.length} hard failure(s), ${initialCreativeReview.slop.warnings.length} warning(s)`);
+  for (const finding of initialCreativeReview.slop.findings) {
+    console.log(`  ${finding.severity} ${finding.code} @ ${finding.location}: ${JSON.stringify(finding.evidence)}`);
+  }
+  console.log(`Recommended fixes: ${initialCreativeReview.recommendedFixes.length}`);
+
+  const repair = repairCreative({
+    creativeId: `${content.packageId}-${PLATFORM}`,
+    storyboard: generatedScript,
+    review: reviewGeneratedScript,
+    ctaRoute: content.site.route,
+  });
+  console.log(`Repair: ${repair.passes.length} pass(es), stopped because ${repair.stoppedBecause}`);
+  for (const pass of repair.passes) {
+    console.log(`  ${pass.lineage.parentCreativeId} -> ${pass.lineage.revisionId}: beats [${pass.lineage.changedBeats.map((index) => index + 1).join(", ")}] ${pass.lineage.beforeQualityScore} -> ${pass.lineage.afterQualityScore} (${pass.lineage.accepted ? "accepted" : `rejected: ${pass.lineage.rejectionReason}`})`);
+    for (const change of pass.changes) {
+      console.log(`    beat ${change.beatIndex + 1} ${change.field} ${change.transform}: ${JSON.stringify(change.before)} -> ${JSON.stringify(change.after)}`);
+    }
+  }
+  for (const entry of repair.unrepairable) {
+    console.log(`  refused to auto-repair ${entry.fix.dimension}: ${entry.reason}`);
+  }
+
+  // The repaired storyboard — not the original — is what everything downstream
+  // is built from. That is what makes this section a real caller rather than a
+  // report nobody acts on.
+  const script = repair.finalStoryboard;
+  const storyboard = {
+    ...generatedStoryboard,
+    scripts: generatedStoryboard.scripts.map((entry) => (entry.platform === PLATFORM ? script : entry)),
+  };
+  const production = buildProductionPlanPackage(storyboard);
 
   const reviewRequest = buildQualityReviewRequest(content, storyboard, production, PLATFORM);
   console.log(`Quality-review contract built with ${reviewRequest.hardBlockers.length} hard blockers and ${reviewRequest.requiredFacts.length} required fact(s): ${reviewRequest.requiredFacts.join(", ")}`);
@@ -426,6 +484,25 @@ async function main(): Promise<void> {
   console.log(`All creative-id identities match (including tracked-URL utm_content): ${allCreativeIdsMatch}`);
   if (!allHashesMatch || !allCreativeIdsMatch) {
     throw new Error("Identity chain is broken — final media, rights bundle, publishing request, ledger, and analytics context do not all refer to the same artifact.");
+  }
+
+  section("8. CONTENT_CREATIVE_REPORT — one structured artifact, including what was NOT established");
+  const creativeReport = buildContentCreativeReport({
+    review: repair.finalReview,
+    fingerprint,
+    repair,
+    // Deliberately null. The bytes rendered in section 2 are a separate
+    // hand-authored timeline, not a render of the storyboard this report
+    // describes, and binding them here would be a false media attribution.
+    mediaSha256: null,
+    now: generatedAt,
+    // No recorded human decisions are supplied, because none were made in this
+    // run. The report therefore reports publishReady=false, which is the true
+    // answer, and no code path here can turn a machine score into an approval.
+  });
+  console.log(formatContentCreativeReport(creativeReport));
+  if (creativeReport.publishReady) {
+    throw new Error("CONTENT_CREATIVE_REPORT reported publishReady with no recorded human decisions and no rendered media; the human gates are not closable by machine.");
   }
 
   section("Done");
