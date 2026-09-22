@@ -272,6 +272,22 @@ async function run(argv: readonly string[]): Promise<number> {
     );
     console.error(`  admission: ${audit.admitted} admitted, ${admissionRejects} refused`
       + (gates.length ? ` — ${gates.map(([reason, count]) => `${reason}=${count}`).join(' ')}` : ''));
+    // THE CONSUMER-PRODUCT GATE, PRINTED FOR THE SAME REASON AS THE ONE BELOW.
+    //
+    // It was missing here too, and this is the gate that refuses the most.
+    // `admission:` above counts what the KIND gate turned away; neither
+    // product gate appeared in the console at all, which is how three
+    // legitimate refusals went unnoticed for a whole dry run.
+    const notConsumer = Object.entries(row.notConsumerProduct).sort(([, a], [, b]) => b - a);
+    const notConsumerTotal = notConsumer.reduce((sum, [, count]) => sum + count, 0);
+    console.error(
+      `  consumer:  ${notConsumerTotal} refused as not a consumer product`
+        + (notConsumer.length ? ` — ${notConsumer.map(([reason, count]) => `${reason}=${count}`).join(' ')}` : ''),
+    );
+    for (const refusal of row.notConsumerProductRejections) {
+      console.error(`    [${refusal.reason}] ${refusal.sku ?? '(no sku)'}  ${refusal.name}`);
+    }
+
     // THE COMPLETE-PRODUCT GATE, PRINTED WHERE A READER IS ALREADY LOOKING.
     //
     // It was missing from this block entirely: the tally went into the report

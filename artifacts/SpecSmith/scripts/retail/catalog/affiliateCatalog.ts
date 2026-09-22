@@ -468,8 +468,17 @@ export interface CatalogSelectionReport {
   stale: number;
   /** Refused by the consumer-product gate, by reason, BEFORE selection ran. */
   notConsumerProduct: Record<string, number>;
-  /** A few real titles per reason, so a rule can be checked rather than trusted. */
-  notConsumerProductTitles: { reason: string; name: string }[];
+  /**
+   * EVERY refusal, with its SKU and its complete untruncated title.
+   *
+   * Renamed from the old `…Titles` field alongside the same change to the
+   * complete-product gate, and for the same reason: a sample of three clipped
+   * titles per reason, carrying no identifier, cannot be checked against the
+   * listings it names. A field called `…Titles` that also holds SKUs would be
+   * the kind of quiet mismatch that hid the retailPrice/salePrice defect, so
+   * the name moved with the shape.
+   */
+  notConsumerProductRejections: { reason: string; sku: string | null; name: string }[];
   /** Refused by the complete-product gate, by reason, BEFORE selection ran. */
   notCompleteProduct: Record<string, number>;
   /**
@@ -560,7 +569,7 @@ export function planCatalogSelection(
         consolidated: 0,
         stale: all.length - fresh.length,
         notConsumerProduct: screened.rejected,
-        notConsumerProductTitles: screened.rejectedTitles,
+        notConsumerProductRejections: screened.rejections,
         notCompleteProduct: complete.rejected,
         notCompleteProductRejections: complete.rejections,
         published: 0,
@@ -588,7 +597,7 @@ export function planCatalogSelection(
       consolidated: outcome.consolidated,
       stale: all.length - fresh.length,
       notConsumerProduct: screened.rejected,
-      notConsumerProductTitles: screened.rejectedTitles,
+      notConsumerProductRejections: screened.rejections,
       notCompleteProduct: complete.rejected,
       notCompleteProductRejections: complete.rejections,
       published: outcome.selected.length,

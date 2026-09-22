@@ -203,12 +203,47 @@ export function consumerProductVerdict(category: RetailPartCategory, name: strin
  *
  * Pure and total: every input lands in exactly one of the two.
  */
-export function screenConsumerProducts<T extends { category: RetailPartCategory; name: string }>(
+/**
+ * One refusal, in the form a reviewer can act on.
+ *
+ * Mirrors `IncompleteRejectionRecord` in the complete-product gate, and for
+ * the reason that gate's version exists: SKU and the COMPLETE title, every
+ * time. The shape this replaces kept at most three titles per reason,
+ * truncated to 120 characters, with no identifier at all.
+ */
+export interface ConsumerRejectionRecord {
+  reason: ConsumerRejection;
+  /** The merchant SKU, or null when the candidate carries none. */
+  sku: string | null;
+  /** The merchant title, COMPLETE. Never truncated. */
+  name: string;
+}
+
+/**
+ * Screens a candidate set, returning what survives and every refusal in full.
+ *
+ * THIS GATE HAD THE SAME BLIND SPOT THE COMPLETE-PRODUCT GATE JUST LOST, and
+ * it matters more here, not less. Dry run 35284766312 refused three
+ * legitimate products — a workstation board on "server-grade", a 15.6-inch
+ * portable monitor on "secondary screen", a complete mouse on its own fitted
+ * switch — and the report named them only as clipped strings that could not
+ * be looked up. That cost a whole dry run to find and a second one to
+ * confirm.
+ *
+ * This gate is the older and the broader of the two: it refuses far more
+ * candidates, across more categories, which is exactly more room for a
+ * mistake to hide in. A sampled report can show that a rule fired; it can
+ * never show that the rule fired on the right things, and a false positive
+ * outside the sample is invisible.
+ */
+export function screenConsumerProducts<
+  T extends { category: RetailPartCategory; name: string; sku?: string | null },
+>(
   candidates: readonly T[],
-): { kept: T[]; rejected: Record<string, number>; rejectedTitles: { reason: ConsumerRejection; name: string }[] } {
+): { kept: T[]; rejected: Record<string, number>; rejections: ConsumerRejectionRecord[] } {
   const kept: T[] = [];
   const rejected: Record<string, number> = {};
-  const rejectedTitles: { reason: ConsumerRejection; name: string }[] = [];
+  const rejections: ConsumerRejectionRecord[] = [];
   for (const candidate of candidates) {
     const verdict = consumerProductVerdict(candidate.category, candidate.name);
     if (verdict.ok) {
@@ -216,11 +251,7 @@ export function screenConsumerProducts<T extends { category: RetailPartCategory;
       continue;
     }
     rejected[verdict.reason] = (rejected[verdict.reason] ?? 0) + 1;
-    // Up to three per reason, so a reviewer can check a rule rather than
-    // trust a count.
-    if (rejectedTitles.filter((entry) => entry.reason === verdict.reason).length < 3) {
-      rejectedTitles.push({ reason: verdict.reason, name: candidate.name.slice(0, 120) });
-    }
+    rejections.push({ reason: verdict.reason, sku: candidate.sku ?? null, name: candidate.name });
   }
-  return { kept, rejected, rejectedTitles };
+  return { kept, rejected, rejections };
 }

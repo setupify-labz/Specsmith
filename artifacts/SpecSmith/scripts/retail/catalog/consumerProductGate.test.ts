@@ -279,8 +279,40 @@ describe('a rejected listing cannot consume a slot', () => {
     const { report } = planCatalogSelection(candidates(intruders), generatedAt);
     const monitor = report.find((row) => row.category === 'monitor');
     expect(monitor?.notConsumerProduct).toEqual({ multipack: 7 });
-    expect(monitor?.notConsumerProductTitles).toHaveLength(3);
-    expect(monitor?.notConsumerProductTitles[0].reason).toBe('multipack');
+
+    // ALL SEVEN, NOT A SAMPLE OF THREE, each with its SKU and its complete
+    // title. The old shape kept three clipped strings with no identifier, and
+    // run 35284766312 showed what that costs: three legitimate products were
+    // refused and the report could not say which listings they were.
+    expect(monitor?.notConsumerProductRejections).toHaveLength(7);
+    const refusals = monitor?.notConsumerProductRejections ?? [];
+    for (const refusal of refusals) {
+      expect(refusal.reason).toBe('multipack');
+      expect(MULTIPACKS).toContain(refusal.name);
+      expect(refusal.name.length).toBeGreaterThan(120);
+    }
+  });
+
+  it('carries the SKU on every refusal, so a rule can be checked against a listing', () => {
+    const withSkus = MULTIPACKS.map((name, index) =>
+      part('monitor', name, { retailPrice: 70, sku: `9SITEST${String(index).padStart(6, '0')}` }),
+    );
+    const screened = screenConsumerProducts(withSkus);
+
+    expect(screened.kept).toHaveLength(0);
+    expect(screened.rejections.map((refusal) => refusal.sku)).toEqual(
+      withSkus.map((candidate) => candidate.sku),
+    );
+    for (const refusal of screened.rejections) expect(refusal.sku).not.toBeNull();
+  });
+
+  it('records more than three refusals of one reason, without sampling', () => {
+    // The cap this replaces was three PER REASON, so it only ever showed on a
+    // set with four or more of a kind. Seven real multipack titles is such a
+    // set; under the old shape four of them were invisible.
+    const screened = screenConsumerProducts(MULTIPACKS.map((name) => part('monitor', name)));
+    expect(screened.rejections).toHaveLength(7);
+    expect(new Set(screened.rejections.map((refusal) => refusal.name)).size).toBe(7);
   });
 
   it('screens the candidates before the freshness and scope gates see them', () => {
