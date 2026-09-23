@@ -266,8 +266,19 @@ jobs:
             || { echo "::error::The publish gate did not refuse a fixture-built draft."; exit 1; }
           grep -q "fixture-artifact" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
             || { echo "::error::The publish gate did not detect the fixture artifacts."; exit 1; }
-          grep -q "non-liam-narration" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+          # NOT "non-liam-narration". That code does not exist and never did
+          # on this branch — publishGate.ts emits narration-not-elevenlabs and
+          # narration-voice-not-liam. The stale string made this assertion
+          # unsatisfiable, so it failed the job in CI run 35933143796 while
+          # the gate underneath was working perfectly, refusing for all 8
+          # expected reasons. A test now checks every gate code grepped here
+          # against the codes publishGate.ts can actually emit.
+          grep -qE "narration-not-elevenlabs|narration-voice-not-liam" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
             || { echo "::error::The publish gate did not detect the stand-in narration."; exit 1; }
+          grep -q "silent-music-bed" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the silent stand-in bed."; exit 1; }
+          grep -q "placeholder-hook" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the placeholder hook card."; exit 1; }
 
       - name: Run the offline end-to-end content pipeline (a refusal is the pass)
         working-directory: artifacts/SpecSmith

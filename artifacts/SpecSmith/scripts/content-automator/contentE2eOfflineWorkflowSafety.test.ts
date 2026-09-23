@@ -114,6 +114,40 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     }
   });
 
+  it('greps only for publish-gate refusal codes that publishGate.ts can actually emit', () => {
+    // REAL CI FAILURE, run 35933143796. The render step grepped its log for
+    // "non-liam-narration" — a code that does not exist. publishGate.ts emits
+    // narration-not-elevenlabs and narration-voice-not-liam; the name changed
+    // when the gate was rewritten and this string did not follow. The
+    // assertion was therefore unsatisfiable: it failed the job while the gate
+    // underneath refused correctly, for all 8 expected reasons.
+    //
+    // It failed CLOSED, which is the safe direction, but an assertion that
+    // can never pass is not evidence of anything. The same typo in a
+    // `grep -v` or a negated check would have failed OPEN and quietly waved
+    // a fixture render through. Pin the strings to the source.
+    const gateSource = fs.readFileSync(path.join(here, 'publishGate.ts'), 'utf-8');
+    const emitted = new Set([...gateSource.matchAll(/code:\s*"([a-z-]+)"/g)].map((match) => match[1]));
+    expect(emitted.size, 'no refusal codes found in publishGate.ts').toBeGreaterThan(5);
+
+    // Only greps aimed at a log file this workflow writes — not the ffmpeg
+    // capability probes, which match encoder names, not gate codes.
+    const logGreps = [...body.matchAll(/grep -q[E]?\s+"([^"]+)"\s+"\$\{RUNNER_TEMP\}[^"]*"/g)].map((m) => m[1]);
+    expect(logGreps.length, 'no log greps found').toBeGreaterThan(0);
+
+    const codeLike = /^[a-z]+(?:-[a-z0-9]+)+$/;
+    const checked: string[] = [];
+    for (const pattern of logGreps) {
+      for (const alternative of pattern.split('|')) {
+        const token = alternative.trim();
+        if (!codeLike.test(token)) continue; // prose like "Evidence check: NO MATCH"
+        checked.push(token);
+        expect(emitted.has(token), `the workflow greps for "${token}", which publishGate.ts never emits`).toBe(true);
+      }
+    }
+    expect(checked.length, 'no gate codes were actually checked').toBeGreaterThan(0);
+  });
+
   it('serves the built app locally rather than depending on any external host', () => {
     expect(body).toContain('npx --yes serve dist/public');
     expect(body).toContain('SPECSMITH_RENDER_BASE_URL: http://localhost:5178');
