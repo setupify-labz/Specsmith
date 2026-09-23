@@ -94,7 +94,7 @@ export function parseArgs(argv: readonly string[]): { out: string; dryRun: boole
 }
 
 /** What one category's candidates cost to gather, and why listings were refused. */
-interface CandidateAudit {
+export interface CandidateAudit {
   pagesRead: number;
   feedTotalPages: number;
   totalMatches: number | null;
@@ -102,20 +102,44 @@ interface CandidateAudit {
   admitted: number;
   /** Rejection counts by the first gate each listing failed. */
   rejections: Record<string, number>;
-  /** One title per reason, so a reason can be checked rather than trusted. */
-  samples: { reason: string; title: string }[];
+  /**
+   * A few refusals per reason, so a reason can be checked rather than trusted.
+   *
+   * SAMPLED ON PURPOSE, unlike the two product gates beside it. Those record
+   * every refusal because they refuse a handful — twelve, in run
+   * 35275594594. This gate refuses THOUSANDS: 1678 motherboards on `kind`
+   * alone in run 35284766312, and roughly six thousand across all twelve
+   * categories. Recording each one would produce a report nobody reads and a
+   * console nobody can scroll.
+   *
+   * The cap stays. What changes is that each sample is now worth having: a
+   * SKU to look the listing up by, and the COMPLETE title. Clipping at 120
+   * characters and omitting the identifier is exactly what made the product
+   * gates' false positives untraceable, and this is the largest refusal path
+   * in the run.
+   */
+  samples: { reason: string; sku: string | null; title: string }[];
 }
 
-const emptyAudit = (): CandidateAudit => ({
+export const emptyAudit = (): CandidateAudit => ({
   pagesRead: 0, feedTotalPages: 0, totalMatches: null, itemsSeen: 0, admitted: 0, rejections: {}, samples: [],
 });
 
-const noteRejection = (audit: CandidateAudit, reason: string, title: string | null): void => {
+/** How many refusals are kept per reason. Bounded because this gate is huge. */
+export const SAMPLES_PER_REASON = 3;
+
+/** Exported for test: the bookkeeping is the thing under test, not the I/O. */
+export const noteRejection = (
+  audit: CandidateAudit,
+  reason: string,
+  title: string | null,
+  sku: string | null = null,
+): void => {
   audit.rejections[reason] = (audit.rejections[reason] ?? 0) + 1;
-  // Up to three per reason: enough to see what a gate is catching, few enough
-  // that the log stays readable.
-  if (audit.samples.filter((sample) => sample.reason === reason).length < 3 && title) {
-    audit.samples.push({ reason, title: title.slice(0, 120) });
+  // Bounded, for the reason on `samples` above — but never truncated, and
+  // never anonymous when the feed gave us an identifier.
+  if (audit.samples.filter((sample) => sample.reason === reason).length < SAMPLES_PER_REASON && title) {
+    audit.samples.push({ reason, sku, title });
   }
 };
 
@@ -236,7 +260,7 @@ async function run(argv: readonly string[]): Promise<number> {
         audit.itemsSeen += 1;
         const admission = admitAffiliatePart(item, config.category, config.categoryLeaf, result.fetchedAt);
         if (admission.status === 'accepted') return [admission.part];
-        noteRejection(audit, admission.reason, childText(item, 'productname'));
+        noteRejection(audit, admission.reason, childText(item, 'productname'), childText(item, 'sku'));
         return [];
       }),
     );
@@ -298,7 +322,9 @@ async function run(argv: readonly string[]): Promise<number> {
         + `${row.published < row.quota ? `  *** SHORT BY ${row.quota - row.published} ***` : ''}`,
     );
     console.error(`  price:     ${row.range ? `$${row.range.lowUsd.toFixed(2)} – $${row.range.highUsd.toFixed(2)}` : 'nothing selected'}`);
-    for (const sample of audit.samples) console.error(`    [${sample.reason}] ${sample.title}`);
+    for (const sample of audit.samples) {
+      console.error(`    [${sample.reason}] ${sample.sku ?? '(no sku)'}  ${sample.title}`);
+    }
   }
 
   // PRODUCT-SCOPE QUESTIONS. REPORTED, NEVER ACTED ON.
