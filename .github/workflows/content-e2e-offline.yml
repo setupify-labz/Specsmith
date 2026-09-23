@@ -238,7 +238,7 @@ jobs:
           grep -q "non-liam-narration" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
             || { echo "::error::The publish gate did not detect the stand-in narration."; exit 1; }
 
-      - name: Run the offline end-to-end content pipeline
+      - name: Run the offline end-to-end content pipeline (a refusal is the pass)
         working-directory: artifacts/SpecSmith
         env:
           SPECSMITH_RENDER_BASE_URL: http://localhost:5178
@@ -250,15 +250,41 @@ jobs:
           set -e
           echo "exit code: ${code}" | tee "${RUNNER_TEMP}/e2e/pipeline-exit-code.txt"
           cat "${RUNNER_TEMP}/e2e/pipeline.log"
+
+          # THE POLARITY IS INVERTED NOW, AND DELIBERATELY.
+          #
+          # This pipeline's master is built from an espeak narration fixture
+          # and a silent bed, and it seals a manifest that says so. Reaching
+          # "Done" would mean the publishing path had built a Metricool
+          # request out of stand-ins, which is precisely what the artifact
+          # gate exists to prevent. A clean exit is therefore the failure.
           if [ "${code}" -eq 0 ]; then
-            echo "Pipeline reached Done — this run's render matched the committed evidence file's sha256."
-            exit 0
+            echo "::error::The pipeline built a publishing request from a fixture render. The artifact gate did not hold."
+            exit 1
           fi
+
+          # TWO DOCUMENTED STOPS, EITHER OF WHICH IS CORRECT.
+          #
+          #  1. The sha256-bound quality gate. A freshly rendered master has
+          #     no committed inspection covering those exact bytes, and the
+          #     render is not byte-reproducible across machines — see this
+          #     file's header. This stop comes FIRST, so on most runners the
+          #     publishing step is never reached at all.
+          #  2. The artifact gate refusing to build a request from fixtures.
+          #
+          # An earlier draft of this step demanded (2) specifically, and would
+          # have failed the job on the perfectly correct (1).
           if grep -q "Evidence check: NO MATCH" "${RUNNER_TEMP}/e2e/pipeline.log"; then
-            echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — see this workflow file's header for why the render is not byte-reproducible across machines. This is the fail-closed gate working, not a regression."
+            echo "Stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner. The fail-closed gate is working."
             exit 0
           fi
-          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch — treating this as a real failure."
+          if grep -q "Artifact publish gate REFUSED this offline render" "${RUNNER_TEMP}/e2e/pipeline.log"; then
+            grep -qE "fixture-artifact|narration-not-elevenlabs" "${RUNNER_TEMP}/e2e/pipeline.log" \
+              || { echo "::error::The artifact gate refused, but not for the expected fixture reasons."; exit 1; }
+            echo "The artifact gate refused a fixture-built master: EXPECTED, and the point of the gate."
+            exit 0
+          fi
+          echo "Pipeline failed for a reason OTHER than the two documented stops — treating this as a real failure."
           exit "${code}"
 
       - name: Extract two frames from the rendered MP4, if one was produced

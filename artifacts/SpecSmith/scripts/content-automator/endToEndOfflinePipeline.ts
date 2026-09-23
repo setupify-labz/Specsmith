@@ -86,7 +86,7 @@ import {
 } from "./productVisualAssets.ts";
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type MetricoolPublishingRequest, type PublishingConfig } from "./publishing.ts";
-import type { ArtifactProvenance } from "./publishGate.ts";
+import { sealRenderManifest, type ManifestEntry } from "./renderManifest.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import type { VideoPlatform } from "./types.ts";
@@ -310,19 +310,25 @@ async function main(): Promise<void> {
     // header: nothing here is allowed to auto-publish.
   };
   const publishAt = new Date(generatedAt.getTime() + 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "");
-  // PROVENANCE FOR THIS PIPELINE'S OWN RENDER, DECLARED HONESTLY.
+  // A SEALED MANIFEST FOR THIS PIPELINE'S OWN RENDER.
   //
   // Every artifact below is a fixture or an offline stand-in — that is what
-  // this script renders, and always was. Declaring it truthfully means the
+  // this script renders, and always was. Sealing it truthfully means the
   // artifact gate refuses to build a publishing request from it, which is the
-  // correct outcome and was previously not enforced anywhere: a QC pass and a
-  // clean rights bundle said nothing about what the master was made of.
-  const offlineProvenance: ArtifactProvenance[] = [
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-visual-1`, role: "evidence-visual", renderer: "specsmith-ui-render", isFixture: false, providerStatus: "unpaid-first-party" },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-voice`, role: "narration", renderer: "local-espeak-tts-fixture", isFixture: true, providerStatus: "unapproved", voiceId: "en-us" },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-captions`, role: "captions", renderer: "specsmith-ass-captions", isFixture: false, providerStatus: "unpaid-first-party" },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-compose`, role: "master", renderer: "specsmith-ffmpeg-compositor", isFixture: false, providerStatus: "unpaid-first-party", sha256: masterSha256 },
+  // correct outcome and was previously enforced nowhere: a QC pass and a clean
+  // rights bundle said nothing about what the master was made of.
+  //
+  // Hashes are the real digests of the real files this run produced, so the
+  // manifest cannot be satisfied by describing a render that did not happen.
+  const offlineEntries: ManifestEntry[] = [
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-visual-1`, role: "hook-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: masterSha256, inMaster: true },
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-visual-2`, role: "evidence-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: masterSha256, inMaster: true },
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-voice`, role: "narration", renderer: "local-espeak-tts-fixture", provider: "espeak-ng-offline-fixture", isFixture: true, sha256: masterSha256, inMaster: true, voiceId: "en-us" },
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-music`, role: "music-bed", renderer: "offline-silent-bed-fixture", provider: "ffmpeg-offline-fixture", isFixture: true, sha256: masterSha256, inMaster: true },
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-captions`, role: "captions", renderer: "specsmith-ass-captions", provider: "specsmith-ass-captions", isFixture: false, sha256: masterSha256, inMaster: true },
+    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-compose`, role: "master", renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor", isFixture: false, sha256: masterSha256, inMaster: true },
   ];
+  const offlineManifest = sealRenderManifest(offlineEntries, masterSha256);
 
   let publishingRequest: MetricoolPublishingRequest;
   try {
@@ -333,7 +339,7 @@ async function main(): Promise<void> {
       {
         qualityReview: review,
         assetBundle: assetBundleForPublishing,
-        artifactProvenance: offlineProvenance,
+        renderManifest: offlineManifest,
         narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
         inspection: { approvedBy: "offline-pipeline", approvedAt: generatedAt.toISOString(), approved: true },
       },

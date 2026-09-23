@@ -26,9 +26,9 @@ export interface PublishingConfig {
 import {
   assertPublishable,
   type ApprovalRecord,
-  type ArtifactProvenance,
   type NarrationIdentityConfig,
 } from "./publishGate.ts";
+import type { SealedRenderManifest } from "./renderManifest.ts";
 
 export interface PublishingGateInput {
   /**
@@ -54,7 +54,7 @@ export interface PublishingGateInput {
    * perfectly legitimate asset to own. This closes that: nothing may ship
    * without an account of its own origin.
    */
-  artifactProvenance: readonly ArtifactProvenance[];
+  renderManifest: SealedRenderManifest;
   /** The Liam voice id narration is verified against. Blank refuses. */
   narrationIdentity: NarrationIdentityConfig;
   /** The recorded human inspection of the reviewed bytes. REQUIRED. */
@@ -378,7 +378,7 @@ function assertPublishGate(
   // about what was reviewed. `assertPublishable` throws with every refusal
   // listed, so a blocked publish names the whole distance to publishable.
   assertPublishable({
-    artifacts: gate.artifactProvenance,
+    manifest: gate.renderManifest,
     reviewedMasterSha256: gate.qualityReview.reviewedMediaSha256,
     narrationIdentity: gate.narrationIdentity,
     inspection: gate.inspection,

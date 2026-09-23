@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ArtifactProvenance } from "./publishGate.ts";
+import { sealRenderManifest, type ManifestEntry } from "./renderManifest.ts";
 import {
   advancePublicationLedger,
   assertNotAlreadyPublished,
@@ -182,28 +182,30 @@ function networks() {
 const LIAM_VOICE_ID = "test-liam-voice-id";
 
 /**
- * Provenance for a master that is genuinely publishable.
+ * A structurally complete, genuinely publishable render.
  *
- * Every artifact is real, the narration is ElevenLabs with the configured
- * Liam voice, and the master declares the digest the reviewer watched. Each
- * bypass test below spoils exactly one of these.
+ * Field names match what the real adapters emit — `provider: "elevenlabs"`
+ * with `voiceId` for narration, `renderer` for the first-party tools — not a
+ * shape invented to match the gate.
  */
-function cleanProvenance(): ArtifactProvenance[] {
+function cleanEntries(): ManifestEntry[] {
   return [
-    { taskId: "beat-1-visual", role: "hook-visual", renderer: "gemini-veo", isFixture: false, providerStatus: "approved-paid" },
-    { taskId: "beat-2-visual", role: "evidence-visual", renderer: "specsmith-ui-render", isFixture: false, providerStatus: "unpaid-first-party" },
-    { taskId: "voice", role: "narration", renderer: "elevenlabs-tts", isFixture: false, providerStatus: "approved-paid", voiceId: LIAM_VOICE_ID },
-    { taskId: "music", role: "music-bed", renderer: "licensed-library", isFixture: false, providerStatus: "approved-paid" },
-    { taskId: "captions", role: "captions", renderer: "specsmith-ass-captions", isFixture: false, providerStatus: "unpaid-first-party" },
-    { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", isFixture: false, providerStatus: "unpaid-first-party", sha256: MASTER_SHA256 },
+    { taskId: "beat-1-visual", role: "hook-visual", renderer: "gemini-veo", provider: "google-gemini-api", isFixture: false, sha256: "1".repeat(64), inMaster: true },
+    { taskId: "beat-2-visual", role: "evidence-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: "2".repeat(64), inMaster: true },
+    { taskId: "voice", role: "narration", renderer: "elevenlabs", provider: "elevenlabs", isFixture: false, sha256: "3".repeat(64), inMaster: true, voiceId: LIAM_VOICE_ID },
+    { taskId: "music", role: "music-bed", renderer: "licensed-library", provider: "licensed-library", isFixture: false, sha256: "4".repeat(64), inMaster: true },
+    { taskId: "captions", role: "captions", renderer: "specsmith-ass-captions", provider: "specsmith-ass-captions", isFixture: false, sha256: "5".repeat(64), inMaster: true },
+    { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor", isFixture: false, sha256: MASTER_SHA256.toLowerCase(), inMaster: true },
   ];
 }
+
+const cleanManifest = () => sealRenderManifest(cleanEntries(), MASTER_SHA256.toLowerCase());
 
 function gate(platform: VideoPlatform) {
   return {
     qualityReview: quality(platform),
     assetBundle: rights,
-    artifactProvenance: cleanProvenance(),
+    renderManifest: cleanManifest(),
     narrationIdentity: { liamVoiceId: LIAM_VOICE_ID },
     inspection: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z", approved: true },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z" },
@@ -525,12 +527,21 @@ describe("the artifact gate cannot be bypassed by the real request builder", () 
       NOW,
     );
 
-  const spoilArtifact = (taskId: string, patch: Partial<ArtifactProvenance>) => {
-    const provenance = cleanProvenance().map((entry) =>
-      entry.taskId === taskId ? { ...entry, ...patch } : entry,
-    );
-    return { artifactProvenance: provenance };
-  };
+  /** Spoils one entry and RESEALS, so the seal is not what catches it. */
+  const spoilArtifact = (taskId: string, patch: Partial<ManifestEntry>) => ({
+    renderManifest: sealRenderManifest(
+      cleanEntries().map((entry) => (entry.taskId === taskId ? { ...entry, ...patch } : entry)),
+      MASTER_SHA256.toLowerCase(),
+    ),
+  });
+
+  /** Drops an entry and reseals — the omission attack, done competently. */
+  const omitArtifact = (taskId: string) => ({
+    renderManifest: sealRenderManifest(
+      cleanEntries().filter((entry) => entry.taskId !== taskId),
+      MASTER_SHA256.toLowerCase(),
+    ),
+  });
 
   it("builds a request when every artifact is genuinely clean", () => {
     // The control. Without this, every assertion below could pass because the
@@ -548,33 +559,30 @@ describe("the artifact gate cannot be bypassed by the real request builder", () 
     // treated a missing key as "fine", so an artifact that never said what it
     // was sailed through the fixture check by not being caught by it.
     expect(() => build(spoilArtifact("beat-2-visual", { isFixture: undefined as unknown as boolean })))
-      .toThrow(/malformed-provenance/);
+      .toThrow(/malformed-manifest/);
   });
 
-  it("refuses when an artifact omits its renderer", () => {
-    expect(() => build(spoilArtifact("beat-2-visual", { renderer: "" })))
-      .toThrow(/malformed-provenance/);
+  it("refuses when an artifact records no source at all", () => {
+    expect(() => build(spoilArtifact("beat-2-visual", { renderer: "", provider: "" })))
+      .toThrow(/neither a renderer nor a provider/);
   });
 
   it("refuses when an artifact declares no recognised role", () => {
-    expect(() => build(spoilArtifact("beat-2-visual", { role: "b-roll" as ArtifactProvenance["role"] })))
-      .toThrow(/malformed-provenance/);
+    expect(() => build(spoilArtifact("beat-2-visual", { role: "b-roll" as ManifestEntry["role"] })))
+      .toThrow(/malformed-manifest/);
   });
 
-  it("refuses when an artifact declares no recognised provider status", () => {
-    expect(() => build(spoilArtifact("beat-2-visual", { providerStatus: "probably-fine" as ArtifactProvenance["providerStatus"] })))
-      .toThrow(/malformed-provenance/);
-  });
-
-  it("refuses when no provenance is supplied at all", () => {
-    expect(() => build({ artifactProvenance: [] })).toThrow(/missing-provenance/);
+  it("refuses when the manifest lists no artifacts at all", () => {
+    expect(() => build({ renderManifest: sealRenderManifest([], MASTER_SHA256.toLowerCase()) }))
+      .toThrow(/lists no artifacts/);
   });
 
   it("refuses narration from a renderer that is not ElevenLabs", () => {
     // Identity is role AND renderer AND voice id. A fixture that sets the
     // right voice id still fails on the renderer.
-    expect(() => build(spoilArtifact("voice", { renderer: "local-espeak-tts-fixture" })))
-      .toThrow(/narration-not-elevenlabs|fixture-artifact/);
+    expect(() => build(spoilArtifact("voice", {
+      renderer: "local-espeak-tts-fixture", provider: "espeak-ng-offline-fixture",
+    }))).toThrow(/narration-not-elevenlabs/);
   });
 
   it("refuses narration voiced with anything but the configured Liam id", () => {
@@ -597,8 +605,7 @@ describe("the artifact gate cannot be bypassed by the real request builder", () 
   });
 
   it("refuses when nothing declares the narration role", () => {
-    const provenance = cleanProvenance().filter((entry) => entry.role !== "narration");
-    expect(() => build({ artifactProvenance: provenance })).toThrow(/narration-missing/);
+    expect(() => build(omitArtifact("voice"))).toThrow(/no narration artifact is present/);
   });
 
   it("refuses the silent music bed", () => {
@@ -637,18 +644,113 @@ describe("the artifact gate cannot be bypassed by the real request builder", () 
   });
 
   it("refuses when the master's digest is not the digest that was reviewed", () => {
+    // Changing the master entry's hash desynchronises it from the manifest's
+    // own master digest, which the structural pass catches first.
     expect(() => build(spoilArtifact("compose", { sha256: "b".repeat(64) })))
-      .toThrow(/master-sha-mismatch|SHA-256|reviewed/);
+      .toThrow(/not the manifest's master digest/);
+  });
+
+  it("refuses when the manifest's master digest is not the reviewed one", () => {
+    const entries = cleanEntries().map((entry) =>
+      (entry.role === "master" ? { ...entry, sha256: "b".repeat(64) } : entry));
+    expect(() => build({ renderManifest: sealRenderManifest(entries, "b".repeat(64)) }))
+      .toThrow(/master-sha-mismatch/);
   });
 
   it("refuses when the master declares no digest of its own", () => {
     expect(() => build(spoilArtifact("compose", { sha256: "" })))
-      .toThrow(/malformed-provenance/);
+      .toThrow(/malformed-manifest/);
   });
 
   it("stays refused when a fixture render is inspected and approved", () => {
     // Inspection clears ONE condition. A signed-off fixture render is still a
     // fixture render, and a per-check gate is exactly what lets that through.
     expect(() => build(spoilArtifact("voice", { isFixture: true }))).toThrow(/fixture-artifact/);
+  });
+});
+
+describe("the omission attack: shortening the list to make it clean", () => {
+  // THE ATTACK THE SEAL EXISTS FOR. A caller-authored provenance array is an
+  // honour system, and the cheapest way past a gate that inspects a list is
+  // to hand it a shorter one. Drop the fixture hook and the silent bed and
+  // every remaining entry is genuinely clean — while both artifacts are still
+  // inside the master that would ship.
+  //
+  // These run against buildMetricoolPublishingRequest itself, and each
+  // attacker RESEALS after tampering, so a broken seal is not what saves us.
+
+  const fixtureRender = (): ManifestEntry[] => [
+    { taskId: "beat-1-visual", role: "hook-visual", renderer: "offline-card-video-fixture", provider: "ffmpeg-offline-fixture", isFixture: true, sha256: "1".repeat(64), inMaster: true },
+    { taskId: "beat-2-visual", role: "evidence-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: "2".repeat(64), inMaster: true },
+    { taskId: "voice", role: "narration", renderer: "elevenlabs", provider: "elevenlabs", isFixture: false, sha256: "3".repeat(64), inMaster: true, voiceId: LIAM_VOICE_ID },
+    { taskId: "music", role: "music-bed", renderer: "offline-silent-bed-fixture", provider: "ffmpeg-offline-fixture", isFixture: true, sha256: "4".repeat(64), inMaster: true },
+    { taskId: "captions", role: "captions", renderer: "specsmith-ass-captions", provider: "specsmith-ass-captions", isFixture: false, sha256: "5".repeat(64), inMaster: true },
+    { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor", isFixture: false, sha256: MASTER_SHA256.toLowerCase(), inMaster: true },
+  ];
+
+  const buildWith = (entries: ManifestEntry[]) =>
+    buildMetricoolPublishingRequest(
+      idea,
+      contentPackage,
+      fingerprint("tiktok"),
+      { ...gate("tiktok"), renderManifest: sealRenderManifest(entries, MASTER_SHA256.toLowerCase()) } as Parameters<typeof buildMetricoolPublishingRequest>[3],
+      networks(),
+      "2026-08-24T16:00:00",
+      NOW,
+    );
+
+  it("refuses the honest fixture render", () => {
+    // The control: declared truthfully, it is refused for being fixtures.
+    expect(() => buildWith(fixtureRender())).toThrow(/fixture-artifact/);
+  });
+
+  it("refuses when the fixture HOOK is omitted and the list resealed", () => {
+    // Every surviving entry is clean. The master still contains the card.
+    const attacked = fixtureRender().filter((entry) => entry.taskId !== "beat-1-visual");
+    expect(() => buildWith(attacked)).toThrow(/no hook-visual artifact is present/);
+  });
+
+  it("refuses when the silent BED is omitted and the list resealed", () => {
+    const attacked = fixtureRender().filter((entry) => entry.taskId !== "music");
+    expect(() => buildWith(attacked)).toThrow(/no music-bed artifact is present/);
+  });
+
+  it("refuses when BOTH offending artifacts are omitted", () => {
+    // The full attack. Without required-role counts this manifest is
+    // flawless: four real artifacts, a real master, nothing to object to.
+    const attacked = fixtureRender().filter(
+      (entry) => entry.taskId !== "beat-1-visual" && entry.taskId !== "music",
+    );
+    expect(() => buildWith(attacked)).toThrow(/no hook-visual artifact is present|no music-bed artifact is present/);
+  });
+
+  it("refuses a fixture relabelled as something else rather than removed", () => {
+    // The variant that keeps the count right: leave the card in place and
+    // call it evidence. Two evidence beats, no hook.
+    const attacked = fixtureRender().map((entry) =>
+      (entry.taskId === "beat-1-visual" ? { ...entry, role: "evidence-visual" as const } : entry));
+    expect(() => buildWith(attacked)).toThrow(/no hook-visual artifact is present/);
+  });
+
+  it("refuses an EXTRA artifact smuggled in beside the real ones", () => {
+    const attacked = [...cleanEntries(), {
+      taskId: "smuggled", role: "evidence-visual" as const, renderer: "unknown-tool",
+      provider: "unknown-tool", isFixture: true, sha256: "9".repeat(64), inMaster: true,
+    }];
+    expect(() => buildWith(attacked)).toThrow(/fixture-artifact/);
+  });
+
+  it("refuses a tampered manifest whose seal was NOT recomputed", () => {
+    // The lazy attack, for completeness: edit an entry and leave the seal.
+    const sealed = sealRenderManifest(fixtureRender(), MASTER_SHA256.toLowerCase());
+    const tampered = {
+      ...sealed,
+      entries: sealed.entries.map((entry) => ({ ...entry, isFixture: false })),
+    };
+    expect(() => buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"),
+      { ...gate("tiktok"), renderManifest: tampered } as Parameters<typeof buildMetricoolPublishingRequest>[3],
+      networks(), "2026-08-24T16:00:00", NOW,
+    )).toThrow(/seal does not match/);
   });
 });
