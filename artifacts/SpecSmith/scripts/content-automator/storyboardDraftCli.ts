@@ -2,7 +2,7 @@
 // per-beat provenance. Draft only: nothing here passes a quality gate,
 // touches the publication ledger, or posts anywhere.
 
-import { renderGeneratedStoryboard, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
+import { renderGeneratedStoryboard, artifactProvenanceFor, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
 import { writeReviewPacket } from "./reviewPacket.ts";
 import { evaluatePublishGate } from "./publishGate.ts";
 
@@ -54,8 +54,9 @@ async function main(): Promise<number> {
   // through it, so the refusal printed below is a real verdict on real
   // metadata rather than a claim about what would happen.
   const verdict = evaluatePublishGate({
-    masterSha256: packet.master.sha256,
-    artifacts: result.render.taskResults.flatMap((task) => task.artifacts),
+    artifacts: artifactProvenanceFor({ ...result, masterSha256: packet.master.sha256 }),
+    reviewedMasterSha256: packet.master.sha256,
+    narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
   });
   console.log("\nPublish gate:");
   if (verdict.allowed) {

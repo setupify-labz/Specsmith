@@ -1,41 +1,83 @@
-// The one place that can say "this may be published", and the many reasons it
-// will not.
+// The gate a publishing request cannot be built without.
 //
-// WHY A SEPARATE GATE. Every stand-in in this pipeline already labels itself
-// honestly — `isFixture: true`, `isPaidProvider: false`, `isSilent: true`,
-// `requiresLicensedReplacement: true`. Honest labels are necessary and not
-// sufficient: nothing was READING them at the decision point. A draft could
-// carry six truthful markers saying "espeak-ng stand-in, silent bed,
-// placeholder hook, never inspected" and still reach a publish call, because
-// the labels sat in metadata that only a human happened to look at.
+// THE FIRST VERSION OF THIS FILE WAS A GATE NOBODY HAD TO OPEN. It exported a
+// correct verdict and the real publishing path — buildMetricoolPublishingRequest
+// — never called it. Every refusal it could produce was advisory. A gate that
+// the production caller can skip is documentation with a test suite.
 //
-// This gate reads them. It is fail-closed in the strict sense: it returns
-// `allowed: true` only when it has affirmatively confirmed every condition,
-// and ANY unreadable, missing or unexpected value is a refusal rather than a
-// pass. A render it cannot understand is not publishable.
+// It is now a required argument of `PublishingGateInput`, so a request cannot
+// be constructed without supplying provenance for every artifact and having
+// that provenance pass. There is no default, no optional field and no fallback
+// that lets a caller opt out.
 //
-// WHAT IT REFUSES
-//   fixture-artifact            any artifact carrying isFixture
-//   non-liam-narration          narration not produced by the approved voice
-//   unapproved-paid-provider    a paid provider used without an approval token
-//   silent-music-bed            the rights-deferring silent stand-in
-//   placeholder-hook            the offline card standing in for the hook
-//   unapproved-master-sha       bytes with no matching committed inspection
-//   no-approval-record          no inspection record supplied at all
+// PROVENANCE IS DECLARED, NEVER INFERRED. The previous version read optional
+// metadata and treated absence as "fine": an artifact with no `isFixture` key
+// passed the fixture check, and an audio artifact with no `voice` key passed
+// the voice check by not being caught. That is backwards. Every field below is
+// REQUIRED and every missing, malformed or unrecognised value is a refusal —
+// an artifact whose origin cannot be established is exactly the artifact that
+// should not ship.
 //
-// It does not publish anything. It answers one question and refuses to answer
-// it optimistically.
+// NARRATION IS IDENTIFIED, NOT NAMED. Matching a voice called "Liam" proves
+// nothing: a fixture can call itself anything. Identity here is the
+// conjunction of three facts — the artifact's declared ROLE, a renderer that
+// is actually the ElevenLabs adapter, and the configured Liam VOICE ID. A
+// stand-in can satisfy at most one.
 
-import type { RenderArtifact } from "./rendering.ts";
+/** What an artifact is FOR. Declared by the producer, never guessed. */
+export type ArtifactRole =
+  | "hook-visual"
+  | "evidence-visual"
+  | "narration"
+  | "music-bed"
+  | "captions"
+  | "master";
+
+export const ARTIFACT_ROLES: readonly ArtifactRole[] = [
+  "hook-visual", "evidence-visual", "narration", "music-bed", "captions", "master",
+];
+
+/**
+ * Whether a paid provider was used, and whether that spend was authorised.
+ *
+ * `unapproved` is the honest state for anything produced without a recorded
+ * approval, including free fixtures — the point is that no money was
+ * authorised, so nothing that claims to have spent it can be trusted.
+ */
+export type ProviderStatus = "approved-paid" | "unpaid-first-party" | "unapproved";
+
+export const PROVIDER_STATUSES: readonly ProviderStatus[] = [
+  "approved-paid", "unpaid-first-party", "unapproved",
+];
+
+/** Everything that must be true of one artifact before it may ship. */
+export interface ArtifactProvenance {
+  taskId: string;
+  role: ArtifactRole;
+  /** The adapter that produced it. Must be a real, non-fixture renderer. */
+  renderer: string;
+  /** Must be explicitly false. `undefined` is a refusal, not a pass. */
+  isFixture: boolean;
+  providerStatus: ProviderStatus;
+  /** Narration only: the provider voice id actually used. */
+  voiceId?: string;
+  /** Master only: the sha256 of the bytes this artifact is. */
+  sha256?: string;
+}
 
 export type PublishRefusalCode =
+  | "missing-provenance"
+  | "malformed-provenance"
   | "fixture-artifact"
-  | "non-liam-narration"
-  | "unapproved-paid-provider"
+  | "unapproved-provider"
+  | "narration-not-elevenlabs"
+  | "narration-voice-not-liam"
+  | "narration-missing"
   | "silent-music-bed"
   | "placeholder-hook"
-  | "unapproved-master-sha"
-  | "no-approval-record";
+  | "master-sha-mismatch"
+  | "no-approval-record"
+  | "malformed-approval";
 
 export interface PublishRefusal {
   code: PublishRefusalCode;
@@ -46,46 +88,113 @@ export type PublishVerdict =
   | { allowed: true; masterSha256: string }
   | { allowed: false; refusals: PublishRefusal[] };
 
-/**
- * The narration provider a publishable SpecSmith video must use.
- *
- * Named, not inferred. "Liam" is the approved ElevenLabs voice; anything else
- * — including the offline espeak-ng stand-in this repository renders drafts
- * with — is refused. The comparison is on the voice NAME recorded in the
- * artifact's own metadata, because a voice id cannot be validated here and
- * writing down an unverified one would be an invention.
- */
-export const APPROVED_NARRATION_VOICE = "Liam";
+/** Renderers that are fixtures by construction, whatever they declare. */
+const FIXTURE_RENDERERS = new Set([
+  "offline-card-video-fixture",
+  "offline-silent-bed-fixture",
+  "local-espeak-tts-fixture",
+]);
 
-/** A committed record that a human inspected one exact render. */
-export interface InspectionRecord {
-  /** The sha256 of the bytes that were actually watched. */
-  masterSha256: string;
-  inspectedBy: string;
-  inspectedAt: string;
-  /** False means inspected and rejected — still a refusal. */
-  approved: boolean;
+/** The ElevenLabs adapter's renderer name, as elevenLabsTts.ts reports it. */
+export const ELEVENLABS_RENDERER = "elevenlabs-tts";
+
+/**
+ * The Liam voice id, supplied by configuration and never hardcoded.
+ *
+ * There is no ElevenLabs credential in this repository to validate an id
+ * against, and writing a plausible-looking one into source would be an
+ * invention. The caller supplies it; an absent or blank id means narration
+ * identity cannot be established, which is a refusal.
+ */
+export interface NarrationIdentityConfig {
+  /** ELEVENLABS_VOICE_ID for Liam. Blank or absent refuses every narration. */
+  liamVoiceId: string;
+}
+
+/** Who approved something, and when. Both are validated, not trusted. */
+export interface ApprovalRecord {
+  approvedBy: string;
+  /** ISO-8601. Must parse, and must not be in the future. */
+  approvedAt: string;
 }
 
 export interface PublishGateInput {
-  /** Every artifact that contributed to the master, including the master. */
-  artifacts: readonly RenderArtifact[];
-  /** The sha256 of the bytes about to be published. */
-  masterSha256: string;
-  /** The committed inspection, if one exists. Absent is a refusal. */
-  inspection?: InspectionRecord;
-  /**
-   * Explicit approval to have spent on a paid provider. Absent means a paid
-   * artifact is refused even when it is real.
-   */
-  paidProviderApproval?: { approvedBy: string; approvedAt: string };
+  /** One entry per artifact that contributed to the master, plus the master. */
+  artifacts: readonly ArtifactProvenance[];
+  /** The digest a reviewer actually watched, read from the QC verdict. */
+  reviewedMasterSha256: string;
+  narrationIdentity: NarrationIdentityConfig;
+  /** Required. Absent refuses. */
+  inspection?: ApprovalRecord & { approved: boolean };
+  /** Required when any artifact declares `approved-paid`. */
+  paidProviderApproval?: ApprovalRecord;
+  /** Clock injection for tests. */
+  now?: Date;
 }
 
-const readBoolean = (metadata: Record<string, unknown>, key: string): boolean => metadata[key] === true;
-const readString = (metadata: Record<string, unknown>, key: string): string => {
-  const raw = metadata[key];
-  return typeof raw === "string" ? raw : "";
-};
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().length > 0;
+
+/**
+ * Hex digests compare case-insensitively.
+ *
+ * `AAAA…` and `aaaa…` are the same bytes, and the surrounding publishing code
+ * has normalised case on both sides for exactly that reason since before this
+ * gate existed. Comparing raw strings here reintroduced a mismatch it had
+ * already fixed — caught by its own regression test.
+ */
+const normaliseDigest = (value: unknown): string =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+/** Validates an approval's identity and timestamp. Returns refusal details. */
+export function approvalProblems(
+  label: string,
+  approval: ApprovalRecord | undefined,
+  now: Date,
+): string[] {
+  if (approval === undefined) return [`${label} is absent.`];
+  const problems: string[] = [];
+  if (!isNonEmptyString(approval.approvedBy)) {
+    problems.push(`${label}.approvedBy is empty; an approval needs an identity.`);
+  }
+  if (!isNonEmptyString(approval.approvedAt)) {
+    problems.push(`${label}.approvedAt is empty.`);
+  } else {
+    const at = new Date(approval.approvedAt);
+    if (Number.isNaN(at.getTime())) {
+      problems.push(`${label}.approvedAt "${approval.approvedAt}" is not a valid timestamp.`);
+    } else if (at.getTime() > now.getTime() + 60_000) {
+      // A minute of clock skew is tolerated; an approval dated next week is
+      // not an approval, it is a placeholder someone forgot to replace.
+      problems.push(`${label}.approvedAt "${approval.approvedAt}" is in the future.`);
+    }
+  }
+  return problems;
+}
+
+/** Structural validation of one provenance record. */
+function provenanceProblems(entry: ArtifactProvenance, index: number): string[] {
+  const where = isNonEmptyString(entry?.taskId) ? entry.taskId : `artifacts[${index}]`;
+  const problems: string[] = [];
+  if (!isNonEmptyString(entry?.taskId)) problems.push(`${where}: taskId is required.`);
+  if (!ARTIFACT_ROLES.includes(entry?.role)) {
+    problems.push(`${where}: role "${String(entry?.role)}" is not a declared artifact role.`);
+  }
+  if (!isNonEmptyString(entry?.renderer)) problems.push(`${where}: renderer is required.`);
+  if (typeof entry?.isFixture !== "boolean") {
+    problems.push(`${where}: isFixture must be explicitly true or false, not ${String(entry?.isFixture)}.`);
+  }
+  if (!PROVIDER_STATUSES.includes(entry?.providerStatus)) {
+    problems.push(`${where}: providerStatus "${String(entry?.providerStatus)}" is not recognised.`);
+  }
+  if (entry?.role === "narration" && !isNonEmptyString(entry?.voiceId)) {
+    problems.push(`${where}: narration must declare the voiceId it was produced with.`);
+  }
+  if (entry?.role === "master" && !isNonEmptyString(entry?.sha256)) {
+    problems.push(`${where}: the master must declare its own sha256.`);
+  }
+  return problems;
+}
 
 /**
  * Decides whether a render may be published. Refuses by default.
@@ -95,81 +204,133 @@ const readString = (metadata: Record<string, unknown>, key: string): string => {
  */
 export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
   const refusals: PublishRefusal[] = [];
+  const now = input.now ?? new Date();
+  const artifacts = Array.isArray(input.artifacts) ? input.artifacts : [];
 
-  for (const artifact of input.artifacts) {
-    const metadata = (artifact.metadata ?? {}) as Record<string, unknown>;
-    const renderer = readString(metadata, "renderer") || artifact.artifactId;
+  if (artifacts.length === 0) {
+    return {
+      allowed: false,
+      refusals: [{
+        code: "missing-provenance",
+        detail: "No artifact provenance was supplied. Publication needs an account of every artifact.",
+      }],
+    };
+  }
 
-    if (readBoolean(metadata, "isFixture")) {
+  for (const [index, entry] of artifacts.entries()) {
+    for (const problem of provenanceProblems(entry, index)) {
+      refusals.push({ code: "malformed-provenance", detail: problem });
+    }
+  }
+  // Structural problems make every judgement below unreliable, so stop here
+  // rather than reporting conclusions drawn from fields that did not validate.
+  if (refusals.length > 0) return { allowed: false, refusals };
+
+  for (const entry of artifacts) {
+    if (entry.isFixture || FIXTURE_RENDERERS.has(entry.renderer)) {
       refusals.push({
         code: "fixture-artifact",
-        detail: `${artifact.taskId} was produced by ${renderer}, which labels itself a fixture.`,
+        detail: `${entry.taskId} was produced by ${entry.renderer}, which is a fixture.`,
       });
     }
-    if (readBoolean(metadata, "isSilent") || readBoolean(metadata, "requiresLicensedReplacement")) {
-      refusals.push({
-        code: "silent-music-bed",
-        detail: `${artifact.taskId} is the silent stand-in bed; a licensed track has not been chosen.`,
-      });
-    }
-    if (renderer === "offline-card-video-fixture") {
+    if (entry.renderer === "offline-card-video-fixture" || (entry.role === "hook-visual" && entry.isFixture)) {
       refusals.push({
         code: "placeholder-hook",
-        detail: `${artifact.taskId} is the offline typographic card standing in for the hook beat.`,
+        detail: `${entry.taskId} is the placeholder card standing in for the hook beat.`,
       });
     }
-    if (artifact.kind === "audio" && metadata.voice !== undefined) {
-      const voice = readString(metadata, "voice");
-      if (voice !== APPROVED_NARRATION_VOICE) {
+    if (entry.role === "music-bed" && entry.renderer.includes("silent")) {
+      refusals.push({
+        code: "silent-music-bed",
+        detail: `${entry.taskId} is the silent stand-in bed; a licensed track has not been chosen.`,
+      });
+    }
+    if (entry.providerStatus === "unapproved") {
+      refusals.push({
+        code: "unapproved-provider",
+        detail: `${entry.taskId} declares providerStatus "unapproved".`,
+      });
+    }
+    if (entry.providerStatus === "approved-paid") {
+      for (const problem of approvalProblems("paidProviderApproval", input.paidProviderApproval, now)) {
         refusals.push({
-          code: "non-liam-narration",
-          detail: `${artifact.taskId} narration voice is "${voice || "unknown"}", not ${APPROVED_NARRATION_VOICE}.`,
+          code: "malformed-approval",
+          detail: `${entry.taskId} claims approved paid spend but ${problem}`,
         });
       }
     }
-    if (readBoolean(metadata, "isPaidProvider") && input.paidProviderApproval === undefined) {
+  }
+
+  // NARRATION IDENTITY: role AND renderer AND configured voice id.
+  const narration = artifacts.filter((entry) => entry.role === "narration");
+  if (narration.length === 0) {
+    refusals.push({
+      code: "narration-missing",
+      detail: "No artifact declares the narration role, so narration identity cannot be established.",
+    });
+  }
+  const liamVoiceId = input.narrationIdentity?.liamVoiceId;
+  for (const entry of narration) {
+    if (entry.renderer !== ELEVENLABS_RENDERER) {
       refusals.push({
-        code: "unapproved-paid-provider",
-        detail: `${artifact.taskId} used a paid provider with no recorded approval to spend.`,
+        code: "narration-not-elevenlabs",
+        detail: `${entry.taskId} narration renderer is "${entry.renderer}", not ${ELEVENLABS_RENDERER}.`,
+      });
+    }
+    if (!isNonEmptyString(liamVoiceId)) {
+      refusals.push({
+        code: "narration-voice-not-liam",
+        detail:
+          `${entry.taskId}: no Liam voice id is configured (ELEVENLABS_VOICE_ID), so the narration voice `
+          + "cannot be verified against anything.",
+      });
+    } else if (entry.voiceId !== liamVoiceId) {
+      refusals.push({
+        code: "narration-voice-not-liam",
+        detail: `${entry.taskId} was voiced with "${entry.voiceId}", not the configured Liam voice id.`,
       });
     }
   }
 
-  // Narration must be positively identified as Liam. An audio artifact that
-  // records no voice at all is not "probably fine" — it is unidentified.
-  const narrationArtifacts = input.artifacts.filter((artifact) => artifact.kind === "audio");
-  const identifiedLiam = narrationArtifacts.some((artifact) => {
-    const metadata = (artifact.metadata ?? {}) as Record<string, unknown>;
-    return readString(metadata, "voice") === APPROVED_NARRATION_VOICE;
-  });
-  if (!identifiedLiam) {
+  // MASTER SHA: the reviewed digest must be the digest of these exact bytes.
+  const masters = artifacts.filter((entry) => entry.role === "master");
+  if (masters.length !== 1) {
     refusals.push({
-      code: "non-liam-narration",
-      detail: `No artifact positively identifies ${APPROVED_NARRATION_VOICE} as the narration voice.`,
+      code: "malformed-provenance",
+      detail: `Exactly one artifact must declare the master role; found ${masters.length}.`,
+    });
+  } else if (!isNonEmptyString(input.reviewedMasterSha256)) {
+    refusals.push({
+      code: "master-sha-mismatch",
+      detail: "No reviewed master digest was supplied, so nothing ties the review to these bytes.",
+    });
+  } else if (normaliseDigest(masters[0].sha256) !== normaliseDigest(input.reviewedMasterSha256)) {
+    refusals.push({
+      code: "master-sha-mismatch",
+      detail:
+        `The review covers ${input.reviewedMasterSha256.slice(0, 16)}… but the master is `
+        + `${String(masters[0].sha256).slice(0, 16)}…. Different bytes were reviewed.`,
     });
   }
 
+  // INSPECTION: present, well-formed, and an approval rather than a rejection.
+  const inspectionProblems = approvalProblems("inspection", input.inspection, now);
   if (input.inspection === undefined) {
-    refusals.push({
-      code: "no-approval-record",
-      detail: "No committed inspection record was supplied for these bytes.",
-    });
-  } else if (input.inspection.masterSha256 !== input.masterSha256) {
-    refusals.push({
-      code: "unapproved-master-sha",
-      detail:
-        `The inspection record covers ${input.inspection.masterSha256.slice(0, 16)}… but these bytes are `
-        + `${input.masterSha256.slice(0, 16)}…. Different bytes were reviewed.`,
-    });
-  } else if (!input.inspection.approved) {
-    refusals.push({
-      code: "unapproved-master-sha",
-      detail: `The inspection of ${input.masterSha256.slice(0, 16)}… recorded a rejection, not an approval.`,
-    });
+    refusals.push({ code: "no-approval-record", detail: "No inspection record was supplied for these bytes." });
+  } else {
+    for (const problem of inspectionProblems) {
+      refusals.push({ code: "malformed-approval", detail: problem });
+    }
+    if (input.inspection.approved !== true) {
+      refusals.push({
+        code: "no-approval-record",
+        detail: "The inspection record does not say approved: true.",
+      });
+    }
   }
 
   if (refusals.length > 0) return { allowed: false, refusals };
-  return { allowed: true, masterSha256: input.masterSha256 };
+  return { allowed: true, masterSha256: masters[0].sha256 as string };
 }
 
 /** Throws unless publication is allowed. The only safe way to call the gate. */

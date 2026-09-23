@@ -1,170 +1,131 @@
-// A gate is only worth having if it refuses. Most of these tests build a
-// draft that is publishable in every respect but one, and check that the one
-// is enough — because the failure mode that matters is not "refuses
-// everything", it is "let one thing through".
+// Unit coverage for the gate's own logic. The tests that matter most for the
+// defect this closes live in publishing.test.ts, where they run against the
+// REAL buildMetricoolPublishingRequest — a gate nobody calls passes its own
+// tests indefinitely.
 
 import { describe, expect, it } from "vitest";
 
 import {
-  APPROVED_NARRATION_VOICE,
+  approvalProblems,
   assertPublishable,
+  ELEVENLABS_RENDERER,
   evaluatePublishGate,
-  type InspectionRecord,
+  type ArtifactProvenance,
   type PublishGateInput,
 } from "./publishGate";
-import type { RenderArtifact } from "./rendering";
 
 const SHA = "e3a3d07fc5faad39a05f53a935e6aba35d90c19caeaf74ed21cded2b3e282148";
+const LIAM = "configured-liam-voice-id";
+const NOW = new Date("2026-09-23T12:00:00Z");
 
-const artifact = (over: Partial<RenderArtifact> & { metadata?: Record<string, unknown> } = {}): RenderArtifact => ({
-  artifactId: "a", taskId: "t", kind: "video", uri: "file:///a.mp4", mimeType: "video/mp4",
-  metadata: {}, ...over,
-} as RenderArtifact);
-
-/** A draft that clears every condition. Each test spoils exactly one. */
-const publishable = (): PublishGateInput => ({
-  masterSha256: SHA,
-  inspection: { masterSha256: SHA, inspectedBy: "aaron", inspectedAt: "2026-09-23T21:00:00Z", approved: true },
+const clean = (): PublishGateInput => ({
   artifacts: [
-    artifact({ taskId: "beat-1", kind: "video", metadata: { renderer: "gemini-veo" } }),
-    artifact({ taskId: "voice", kind: "audio", metadata: { renderer: "elevenlabs-tts", voice: APPROVED_NARRATION_VOICE } }),
-    artifact({ taskId: "compose", kind: "video", metadata: { renderer: "specsmith-ffmpeg-compositor" } }),
+    { taskId: "voice", role: "narration", renderer: ELEVENLABS_RENDERER, isFixture: false, providerStatus: "approved-paid", voiceId: LIAM },
+    { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", isFixture: false, providerStatus: "unpaid-first-party", sha256: SHA },
   ],
+  reviewedMasterSha256: SHA,
+  narrationIdentity: { liamVoiceId: LIAM },
+  inspection: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", approved: true },
+  paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z" },
+  now: NOW,
 });
 
-describe("the gate lets a genuinely clean render through", () => {
-  it("allows publication when every condition is affirmatively met", () => {
-    const verdict = evaluatePublishGate(publishable());
-    expect(verdict).toEqual({ allowed: true, masterSha256: SHA });
-    expect(assertPublishable(publishable())).toBe(SHA);
-  });
-});
-
-describe("each condition alone makes publishing impossible", () => {
-  const spoil = (input: PublishGateInput): string[] => {
-    const verdict = evaluatePublishGate(input);
-    expect(verdict.allowed).toBe(false);
-    return verdict.allowed ? [] : verdict.refusals.map((refusal) => refusal.code);
-  };
-
-  it("refuses any artifact that labels itself a fixture", () => {
-    const input = publishable();
-    (input.artifacts[0].metadata as Record<string, unknown>).isFixture = true;
-    expect(spoil(input)).toContain("fixture-artifact");
+describe("approval identity and timestamp validation", () => {
+  it("accepts an approval with an identity and a past timestamp", () => {
+    expect(approvalProblems("x", { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z" }, NOW)).toEqual([]);
   });
 
-  it("refuses the silent music bed", () => {
-    const input = publishable();
-    input.artifacts = [...input.artifacts, artifact({
-      taskId: "music", kind: "audio",
-      metadata: { renderer: "offline-silent-bed-fixture", isSilent: true, requiresLicensedReplacement: true, voice: APPROVED_NARRATION_VOICE },
-    })];
-    expect(spoil(input)).toContain("silent-music-bed");
+  it("rejects an absent approval", () => {
+    expect(approvalProblems("x", undefined, NOW)).toEqual(["x is absent."]);
   });
 
-  it("refuses the placeholder hook card", () => {
-    const input = publishable();
-    (input.artifacts[0].metadata as Record<string, unknown>).renderer = "offline-card-video-fixture";
-    expect(spoil(input)).toContain("placeholder-hook");
+  it("rejects an anonymous approval", () => {
+    expect(approvalProblems("x", { approvedBy: "   ", approvedAt: "2026-09-23T10:00:00Z" }, NOW))
+      .toEqual([expect.stringContaining("approvedBy is empty")]);
   });
 
-  it("refuses narration that is not Liam", () => {
-    const input = publishable();
-    (input.artifacts[1].metadata as Record<string, unknown>).voice = "en-us";
-    expect(spoil(input)).toContain("non-liam-narration");
+  it("rejects a timestamp that is not a timestamp", () => {
+    expect(approvalProblems("x", { approvedBy: "aaron", approvedAt: "last tuesday" }, NOW))
+      .toEqual([expect.stringContaining("not a valid timestamp")]);
   });
 
-  it("refuses narration whose voice is not recorded at all", () => {
-    // Unidentified is not "probably fine". The gate has to see Liam, not
-    // merely fail to see something else.
-    const input = publishable();
-    delete (input.artifacts[1].metadata as Record<string, unknown>).voice;
-    expect(spoil(input)).toContain("non-liam-narration");
+  it("rejects an approval dated in the future", () => {
+    expect(approvalProblems("x", { approvedBy: "aaron", approvedAt: "2099-01-01T00:00:00Z" }, NOW))
+      .toEqual([expect.stringContaining("in the future")]);
   });
 
-  it("refuses a paid provider with no recorded approval to spend", () => {
-    const input = publishable();
-    (input.artifacts[0].metadata as Record<string, unknown>).isPaidProvider = true;
-    expect(spoil(input)).toContain("unapproved-paid-provider");
-  });
-
-  it("allows a paid provider once the spend is approved", () => {
-    const input = publishable();
-    (input.artifacts[0].metadata as Record<string, unknown>).isPaidProvider = true;
-    input.paidProviderApproval = { approvedBy: "aaron", approvedAt: "2026-09-23T21:00:00Z" };
-    expect(evaluatePublishGate(input).allowed).toBe(true);
-  });
-
-  it("refuses bytes that no inspection record covers", () => {
-    const input = publishable();
-    delete input.inspection;
-    expect(spoil(input)).toContain("no-approval-record");
-  });
-
-  it("refuses when the inspection covers DIFFERENT bytes", () => {
-    // The exact defect the sha-binding exists for: a real inspection, of a
-    // real render, that is not this one.
-    const input = publishable();
-    (input.inspection as InspectionRecord).masterSha256 = "0".repeat(64);
-    expect(spoil(input)).toContain("unapproved-master-sha");
-  });
-
-  it("refuses when the inspection recorded a rejection", () => {
-    const input = publishable();
-    (input.inspection as InspectionRecord).approved = false;
-    expect(spoil(input)).toContain("unapproved-master-sha");
+  it("tolerates a minute of clock skew but not a day", () => {
+    const skewed = new Date(NOW.getTime() + 30_000).toISOString();
+    expect(approvalProblems("x", { approvedBy: "aaron", approvedAt: skewed }, NOW)).toEqual([]);
+    const tomorrow = new Date(NOW.getTime() + 86_400_000).toISOString();
+    expect(approvalProblems("x", { approvedBy: "aaron", approvedAt: tomorrow }, NOW)).toHaveLength(1);
   });
 });
 
-describe("the gate refuses the actual draft this repository renders", () => {
-  /** The real artifact metadata `content:e2e:storyboard` produces today. */
-  const currentDraft = (): PublishGateInput => ({
-    masterSha256: SHA,
-    artifacts: [
-      artifact({ taskId: "beat-1-visual", kind: "video", metadata: { renderer: "offline-card-video-fixture", isFixture: true, isPaidProvider: false } }),
-      artifact({ taskId: "beat-2-visual", kind: "image", metadata: { renderer: "specsmith-ui-render" } }),
-      artifact({ taskId: "voice", kind: "audio", metadata: { renderer: "local-espeak-tts-fixture", voice: "en-us", isFixture: true, isPaidProvider: false } }),
-      artifact({ taskId: "audio", kind: "audio", metadata: { renderer: "offline-silent-bed-fixture", isSilent: true, requiresLicensedReplacement: true, isFixture: true } }),
-      artifact({ taskId: "compose", kind: "video", metadata: { renderer: "specsmith-ffmpeg-compositor" } }),
-    ],
-  });
-
-  it("is impossible to publish, for every reason at once", () => {
-    const verdict = evaluatePublishGate(currentDraft());
-    expect(verdict.allowed).toBe(false);
-    const codes = verdict.allowed ? [] : new Set(verdict.refusals.map((refusal) => refusal.code));
-    expect(codes).toContain("fixture-artifact");
-    expect(codes).toContain("placeholder-hook");
-    expect(codes).toContain("silent-music-bed");
-    expect(codes).toContain("non-liam-narration");
-    expect(codes).toContain("no-approval-record");
-  });
-
-  it("reports every refusal at once rather than one at a time", () => {
-    // One pass tells a person the whole distance to publishable.
-    const verdict = evaluatePublishGate(currentDraft());
-    expect(verdict.allowed).toBe(false);
-    if (!verdict.allowed) expect(verdict.refusals.length).toBeGreaterThanOrEqual(5);
-  });
-
-  it("throws from assertPublishable, naming each reason", () => {
-    expect(() => assertPublishable(currentDraft())).toThrow(/Publication refused/);
-    expect(() => assertPublishable(currentDraft())).toThrow(/fixture-artifact/);
-    expect(() => assertPublishable(currentDraft())).toThrow(/non-liam-narration/);
-  });
-
-  it("stays refused even after the bytes are inspected and approved", () => {
-    // Inspection clears ONE condition. A signed-off fixture render is still a
-    // fixture render — this is the composition that a per-check gate would
-    // have let slip.
-    const input = currentDraft();
-    input.inspection = { masterSha256: SHA, inspectedBy: "aaron", inspectedAt: "2026-09-23T21:00:00Z", approved: true };
+describe("structural problems stop the gate before it draws conclusions", () => {
+  it("reports malformed provenance and nothing derived from it", () => {
+    // Judgements about voice or digests read fields that did not validate, so
+    // reporting them alongside would be reporting guesses.
+    const input = clean();
+    input.artifacts = [{ taskId: "voice", role: "narration" } as ArtifactProvenance];
     const verdict = evaluatePublishGate(input);
     expect(verdict.allowed).toBe(false);
     if (!verdict.allowed) {
-      const codes = verdict.refusals.map((refusal) => refusal.code);
-      expect(codes).not.toContain("no-approval-record");
+      expect(new Set(verdict.refusals.map((refusal) => refusal.code))).toEqual(new Set(["malformed-provenance"]));
+    }
+  });
+
+  it("refuses an empty artifact list outright", () => {
+    const verdict = evaluatePublishGate({ ...clean(), artifacts: [] });
+    expect(verdict.allowed).toBe(false);
+    if (!verdict.allowed) expect(verdict.refusals[0].code).toBe("missing-provenance");
+  });
+
+  it("requires exactly one master", () => {
+    const input = clean();
+    input.artifacts = [...input.artifacts, { ...input.artifacts[1], taskId: "compose-2" }];
+    expect(() => assertPublishable(input)).toThrow(/Exactly one artifact must declare the master role/);
+  });
+});
+
+describe("digests compare as digests, not as strings", () => {
+  it("treats upper and lower case hex as the same bytes", () => {
+    // The surrounding publishing code has normalised case on both sides since
+    // before this gate existed; comparing raw strings reintroduced a mismatch
+    // it had already fixed.
+    const input = clean();
+    input.reviewedMasterSha256 = SHA.toUpperCase();
+    expect(evaluatePublishGate(input).allowed).toBe(true);
+  });
+
+  it("still refuses genuinely different bytes", () => {
+    const input = clean();
+    input.reviewedMasterSha256 = "f".repeat(64);
+    expect(() => assertPublishable(input)).toThrow(/master-sha-mismatch/);
+  });
+});
+
+describe("every refusal is reported, not just the first", () => {
+  it("names the whole distance to publishable in one pass", () => {
+    const input = clean();
+    input.artifacts = [
+      { taskId: "hook", role: "hook-visual", renderer: "offline-card-video-fixture", isFixture: true, providerStatus: "unapproved" },
+      { taskId: "voice", role: "narration", renderer: "local-espeak-tts-fixture", isFixture: true, providerStatus: "unapproved", voiceId: "en-us" },
+      { taskId: "music", role: "music-bed", renderer: "offline-silent-bed-fixture", isFixture: true, providerStatus: "unapproved" },
+      { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", isFixture: false, providerStatus: "unpaid-first-party", sha256: SHA },
+    ];
+    delete input.inspection;
+    const verdict = evaluatePublishGate(input);
+    expect(verdict.allowed).toBe(false);
+    if (!verdict.allowed) {
+      const codes = new Set(verdict.refusals.map((refusal) => refusal.code));
       expect(codes).toContain("fixture-artifact");
+      expect(codes).toContain("placeholder-hook");
+      expect(codes).toContain("silent-music-bed");
+      expect(codes).toContain("narration-not-elevenlabs");
+      expect(codes).toContain("unapproved-provider");
+      expect(codes).toContain("no-approval-record");
+      expect(verdict.refusals.length).toBeGreaterThanOrEqual(8);
     }
   });
 });

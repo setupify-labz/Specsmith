@@ -37,6 +37,7 @@ import { createMotionCompositorAdapter } from "./motionCompositor.ts";
 import { createOfflineCardVideoAdapter, createOfflineSilentBedAdapter } from "./offlineBeatFixtures.ts";
 import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRenderAdapter.ts";
 import { RenderAdapterRegistry, renderPlatformPlan, type PlatformRenderResult, type RenderArtifact } from "./rendering.ts";
+import type { ArtifactProvenance, ArtifactRole } from "./publishGate.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import type {
   ContentPackage,
@@ -199,6 +200,8 @@ export interface StoryboardRenderResult {
   master: RenderArtifact;
   beats: RenderedBeat[];
   outputDir: string;
+  /** sha256 of the master bytes, filled in by the caller that hashes them. */
+  masterSha256?: string;
 }
 
 /** Every adapter needed to run a generated plan without a paid provider. */
@@ -324,4 +327,54 @@ export async function renderGeneratedStoryboard(
     beats: describeRenderedBeats(plan, storyboard, platform, render, timingScale),
     outputDir,
   };
+}
+
+/**
+ * Declares what each rendered artifact actually is, for the publish gate.
+ *
+ * THIS IS A DECLARATION, NOT A DISCOVERY. The gate refuses anything whose
+ * origin it cannot establish, so this function's job is to say plainly what
+ * this pipeline produced — including, and especially, that almost all of it
+ * is a fixture. It reads the adapter's own recorded metadata rather than
+ * assuming, and where a field is absent it reports the artifact as a fixture
+ * from an unapproved provider, because an artifact that did not say what it
+ * was is not one to give the benefit of the doubt.
+ */
+export function artifactProvenanceFor(result: StoryboardRenderResult): ArtifactProvenance[] {
+  const provenance: ArtifactProvenance[] = [];
+  const hookBeatIndex = result.beats.find((beat) => beat.purpose === "hook")?.beatIndex;
+  const hookTaskId = hookBeatIndex === undefined
+    ? null
+    : `${result.plan.platform}-beat-${hookBeatIndex + 1}-visual`;
+
+  for (const task of result.render.taskResults) {
+    for (const artifact of task.artifacts) {
+      const metadata = (artifact.metadata ?? {}) as Record<string, unknown>;
+      const renderer = typeof metadata.renderer === "string" && metadata.renderer.trim()
+        ? metadata.renderer
+        : "unrecorded";
+      const isFixture = metadata.isFixture === true || renderer === "unrecorded";
+      const isPaid = metadata.isPaidProvider === true;
+
+      let role: ArtifactRole;
+      if (artifact.mimeType === "video/mp4" && task.taskId.endsWith("-compose")) role = "master";
+      else if (task.taskId.endsWith("-voice")) role = "narration";
+      else if (task.taskId.endsWith("-audio")) role = "music-bed";
+      else if (task.taskId.endsWith("-captions")) role = "captions";
+      else if (hookTaskId !== null && task.taskId === hookTaskId) role = "hook-visual";
+      else role = "evidence-visual";
+
+      provenance.push({
+        taskId: task.taskId,
+        role,
+        renderer,
+        isFixture,
+        // Nothing here has a recorded spend approval, so nothing may claim one.
+        providerStatus: isPaid ? "unapproved" : isFixture ? "unapproved" : "unpaid-first-party",
+        ...(role === "narration" ? { voiceId: typeof metadata.voice === "string" ? metadata.voice : "" } : {}),
+        ...(role === "master" ? { sha256: result.masterSha256 ?? "" } : {}),
+      });
+    }
+  }
+  return provenance;
 }

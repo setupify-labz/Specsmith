@@ -28,9 +28,6 @@ function factSlice(facts: string[], index: number): string[] {
 /** Words a natural read fits into a minute. espeak-ng measures at ~158. */
 export const NARRATION_WORDS_PER_MINUTE = 165;
 
-/** Mirrors motionCompositor.ts's voice-overrun tolerance, so they agree. */
-export const NARRATION_OVERRUN_TOLERANCE = 1.25;
-
 /** Seconds a piece of narration needs, spoken naturally. */
 export function narrationSecondsFor(text: string, wordsPerMinute = NARRATION_WORDS_PER_MINUTE): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -38,42 +35,107 @@ export function narrationSecondsFor(text: string, wordsPerMinute = NARRATION_WOR
 }
 
 /**
- * Refuses a storyboard whose words cannot be spoken in the time it allotted.
+ * Gives each beat a window big enough for the words it carries.
  *
- * FAILS AT GENERATION, NOT AT RENDER. The overrun that started all of this
- * surfaced three stages downstream, inside ffmpeg, as a compositor error
- * about voice duration — by which point an idea, a package, a plan and five
- * real browser captures had already been produced. A storyboard that cannot
- * be read aloud in its own runtime is malformed, and the cheapest place to
- * say so is where it is written.
+ * THE WINDOWS WERE AUTHORED WITHOUT REFERENCE TO THE NARRATION. The fixed
+ * 2/4/6/6/4/2 layout gave the hook two seconds and the call to action two
+ * seconds, and both carry copy the IDEA supplies — a hook line and a CTA
+ * line, eight to fourteen words each. Two seconds holds about five. No hook
+ * has ever fitted its own window; nothing noticed while the storyboard was
+ * never spoken aloud.
  *
- * Deliberately NOT a rescale. Stretching the clock to fit the words was the
- * previous accommodation, and it made a 24-second short 34 seconds long
- * without anyone choosing that. The budget is the constraint; the copy moves.
+ * THIS IS NOT THE RESCALING THAT WAS REMOVED. That stretched TOTAL runtime,
+ * turning a 24-second short into a 34-second one nobody asked for. The total
+ * here is exactly the platform duration, unchanged — what moves is how that
+ * fixed budget is divided, and it is divided by how much each beat actually
+ * has to say. Every beat keeps its order and the timeline stays contiguous.
  *
- * THE TOLERANCE IS THE COMPOSITOR'S OWN, DELIBERATELY. motionCompositor.ts
- * refuses narration beyond `duration * 1.25 + 0.25`, holding the final visual
- * for anything smaller. Matching it exactly means the two can never disagree:
- * generation rejects precisely what rendering would reject, no more and no
- * less. A stricter number here would hard-fail the whole idea pipeline over a
- * fraction of a second that renders perfectly well — and several real
- * generated ideas land 1-2% over because their OWN hooks are long, which is a
- * fact about those ideas rather than a defect in these templates.
+ * Slack beyond what the words need is shared out proportionally, so a beat
+ * with more to say also gets more room to breathe rather than being cut to
+ * the bone while a short beat holds a still frame.
+ */
+export function allocateBeatWindows(
+  narrations: readonly string[],
+  totalSeconds: number,
+  wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
+): { startSecond: number; endSecond: number }[] {
+  if (narrations.length === 0) return [];
+  const needed = narrations.map((text) => narrationSecondsFor(text, wordsPerMinute));
+  const totalNeeded = needed.reduce((sum, value) => sum + value, 0);
+
+  // Weight by need when there is any, otherwise split evenly.
+  const weights = totalNeeded > 0 ? needed : narrations.map(() => 1);
+  const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+
+  const raw = weights.map((weight) => (weight / weightTotal) * totalSeconds);
+  const rounded = raw.map((value) => Math.max(0.5, Math.round(value * 10) / 10));
+
+  // Rounding must not change the runtime, so the drift lands on the last beat.
+  const drift = totalSeconds - rounded.reduce((sum, value) => sum + value, 0);
+  rounded[rounded.length - 1] = Math.round((rounded[rounded.length - 1] + drift) * 10) / 10;
+
+  // Accumulate in TENTHS as integers. Summing 0.1 floats drifts within six
+  // beats — enough to make a window read 1.4000000000000004s and miss its own
+  // allocation by a picosecond.
+  const windows: { startSecond: number; endSecond: number }[] = [];
+  let cursorTenths = 0;
+  for (const span of rounded) {
+    const spanTenths = Math.round(span * 10);
+    windows.push({ startSecond: cursorTenths / 10, endSecond: (cursorTenths + spanTenths) / 10 });
+    cursorTenths += spanTenths;
+  }
+  return windows;
+}
+
+/**
+ * The authoring budget is STRICT. There is no tolerance here.
  *
- * The original failure this exists for was 36% over. It is caught.
+ * An earlier version borrowed the compositor's 1.25x allowance so that
+ * generation would reject exactly what rendering rejects. That was the wrong
+ * boundary to share. The compositor's tolerance is an EMERGENCY GUARD at the
+ * end of the pipeline — it holds the final visual for a small overshoot so a
+ * render does not die on a rounding error. Authoring is not an emergency, and
+ * borrowing an emergency allowance as a writing budget means every script may
+ * be written 25% too long by default.
+ *
+ * So: the copy must fit the clock it was given, and each beat must fit its
+ * own window. The compositor's allowance stays exactly where it was, doing
+ * exactly what it was for.
  */
 export function assertNarrationFitsDuration(
-  script: { platform: string; targetDurationSeconds: number; beats: readonly { purpose: string; narration: string }[] },
+  script: { platform: string; targetDurationSeconds: number; beats: readonly { purpose: string; narration: string; startSecond: number; endSecond: number }[] },
   wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
 ): void {
-  const needed = narrationSecondsFor(script.beats.map((beat) => beat.narration).join(" "), wordsPerMinute);
-  if (needed <= script.targetDurationSeconds * NARRATION_OVERRUN_TOLERANCE + 0.25) return;
-  const perBeat = script.beats
-    .map((beat) => `${beat.purpose} ${narrationSecondsFor(beat.narration, wordsPerMinute).toFixed(1)}s`)
-    .join(", ");
+  const problems: string[] = [];
+
+  const total = narrationSecondsFor(script.beats.map((beat) => beat.narration).join(" "), wordsPerMinute);
+  if (total > script.targetDurationSeconds) {
+    problems.push(
+      `total narration needs ${total.toFixed(1)}s but the script allots ${script.targetDurationSeconds}s`,
+    );
+  }
+
+  // PER BEAT, NOT JUST IN TOTAL. A script can fit overall while a single beat
+  // carries twice the words its window holds — the voice then drifts out of
+  // sync with the pictures and never recovers, which a total-only check
+  // cannot see.
+  for (const beat of script.beats) {
+    // Windows are quantised to a tenth of a second, so a beat can miss its
+    // own allocation by a rounding step without anything being wrong. Half a
+    // step is the tolerance for THAT — arithmetic, not authoring. It is not a
+    // writing allowance: 0.05s is a twentieth of a syllable.
+    const window = Math.round((beat.endSecond - beat.startSecond) * 10) / 10;
+    const needed = narrationSecondsFor(beat.narration, wordsPerMinute);
+    if (needed > window + 0.05) {
+      problems.push(`${beat.purpose} needs ${needed.toFixed(1)}s in a ${window}s window`);
+    }
+  }
+
+  if (problems.length === 0) return;
   throw new Error(
-    `${script.platform} narration needs ${needed.toFixed(1)}s at ${wordsPerMinute} wpm but the script allots `
-    + `${script.targetDurationSeconds}s. Shorten the copy; do not stretch the clock. Per beat: ${perBeat}.`,
+    `${script.platform} narration does not fit at ${wordsPerMinute} wpm. `
+    + "Shorten the copy; do not stretch the clock. "
+    + problems.join("; ") + ".",
   );
 }
 
@@ -124,7 +186,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 6,
       endSecond: 12,
       purpose: "evidence",
-      narration: `Verified inputs decide this, not the obvious answer.`,
+      narration: `Verified inputs decide it.`,
       visualDirection: `Reveal one verified input through the real ${idea.productConnection.feature} workflow. Every number shown must map to a required fact.`,
       onScreenText: "REAL SPECS • REAL PRICES • REAL RULES",
       factDependencies: factSlice(idea.requiredFacts, 1),
@@ -133,7 +195,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 12,
       endSecond: 18,
       purpose: "reversal",
-      narration: `The tradeoff that flips it: ${idea.angle}`,
+      narration: `The catch: ${idea.angle}`,
       visualDirection: `${idea.creativeDNA.patternInterrupt} Show the strongest counterpoint instead of racing straight to a predetermined winner.`,
       onScreenText: "BUT HERE'S THE CATCH",
       factDependencies: factSlice(idea.requiredFacts, 2),
@@ -159,6 +221,12 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
   ];
 }
 
+/** Re-times authored beats onto windows sized by what each one says. */
+function withAllocatedWindows(beats: StoryboardBeat[], totalSeconds: number): StoryboardBeat[] {
+  const windows = allocateBeatWindows(beats.map((beat) => beat.narration), totalSeconds);
+  return beats.map((beat, index) => ({ ...beat, ...windows[index] }));
+}
+
 function buildPlatformScript(
   idea: ContentIdea,
   contentPackage: ContentPackage,
@@ -175,7 +243,7 @@ function buildPlatformScript(
       : platform === "instagram-reels"
         ? "Tight and visually clean; narration supports the visual hierarchy instead of reading every stat."
         : "Fast explanatory challenge structure with a hard hook and clear product payoff.",
-    beats: buildBeats(idea, variant, duration),
+    beats: withAllocatedWindows(buildBeats(idea, variant, duration), duration),
     finalCta: variant.cta,
     factualGuardrails: [
       "Do not invent prices, compatibility, benchmark results, product specs, or measured FPS.",

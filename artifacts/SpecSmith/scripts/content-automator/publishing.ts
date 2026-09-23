@@ -23,6 +23,13 @@ export interface PublishingConfig {
   autoPublish?: boolean;
 }
 
+import {
+  assertPublishable,
+  type ApprovalRecord,
+  type ArtifactProvenance,
+  type NarrationIdentityConfig,
+} from "./publishGate.ts";
+
 export interface PublishingGateInput {
   /**
    * The QC verdict for this creative. Its `reviewedMediaSha256` is the digest
@@ -37,6 +44,23 @@ export interface PublishingGateInput {
    * likewise a fact about the registry rather than an assertion by the caller.
    */
   assetBundle: PublicationAssetBundleResult;
+  /**
+   * What every artifact in the master actually IS. REQUIRED.
+   *
+   * The QC verdict and the rights bundle both answer questions ABOUT a
+   * finished master — was it reviewed, are its assets cleared — and neither
+   * asks what it is made of. A render built entirely from fixtures can hold a
+   * passing QC verdict and a clean rights bundle, because a fixture is a
+   * perfectly legitimate asset to own. This closes that: nothing may ship
+   * without an account of its own origin.
+   */
+  artifactProvenance: readonly ArtifactProvenance[];
+  /** The Liam voice id narration is verified against. Blank refuses. */
+  narrationIdentity: NarrationIdentityConfig;
+  /** The recorded human inspection of the reviewed bytes. REQUIRED. */
+  inspection: ApprovalRecord & { approved: boolean };
+  /** Required when any artifact declares approved paid spend. */
+  paidProviderApproval?: ApprovalRecord;
 }
 
 export interface MetricoolPublishingRequest {
@@ -301,6 +325,7 @@ function assertPublishGate(
   if (!gate.qualityReview.publishable || gate.qualityReview.decision !== "pass") {
     throw new Error(`Publication blocked: quality review did not pass for ${fingerprint.creativeId}.`);
   }
+
   if (!gate.assetBundle.publishable) {
     const failures = [
       ...gate.assetBundle.missingAssetIds.map((id) => `missing:${id}`),
@@ -345,6 +370,21 @@ function assertPublishGate(
       `Publication blocked: reviewed media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
     );
   }
+  // THE ARTIFACT GATE, BEFORE ANY REQUEST EXISTS.
+  //
+  // Bound to `qualityReview.reviewedMediaSha256` rather than to a digest the
+  // caller passes in, for the same reason the surrounding function reads its
+  // media reference from the registry: a caller-supplied hash proves nothing
+  // about what was reviewed. `assertPublishable` throws with every refusal
+  // listed, so a blocked publish names the whole distance to publishable.
+  assertPublishable({
+    artifacts: gate.artifactProvenance,
+    reviewedMasterSha256: gate.qualityReview.reviewedMediaSha256,
+    narrationIdentity: gate.narrationIdentity,
+    inspection: gate.inspection,
+    paidProviderApproval: gate.paidProviderApproval,
+  });
+
   return { mediaUrl: mediaUrl.toString(), digest };
 }
 
