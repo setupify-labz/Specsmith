@@ -143,72 +143,20 @@ export function measureStoryboardTiming(
  * defect is fixed, instead of having no draft at all.
  */
 /**
- * Scales every clock in a plan so the narration it wrote actually fits.
+ * The timeline is NOT rescaled to fit over-long narration any more.
  *
- * EVERY WINDOW SCALES BY THE SAME FACTOR, so the storyboard's proportions and
- * the visual/voice sync survive intact — beat three still occupies the same
- * share of the video it was written to occupy. Nothing is trimmed, reordered
- * or rewritten.
+ * It was, briefly. A storyboard that wrote 90 words for a 24-second target
+ * had every window stretched by 1.36x so a draft could be watched, which
+ * turned a 24-second short into a 34-second one without anybody choosing
+ * that length. The clock was never the thing that was wrong.
  *
- * It has to reach into `compositorState` and `captionRenderState` because
- * that is where the real clocks live. `plan.targetDurationSeconds` is a
- * headline; the compositor validates against `compositorState.durationSeconds`
- * and its `visualTimeline`, and the caption renderer against its own cues.
- * Scaling only the headline would leave the compositor rejecting the same
- * mismatch while the plan claimed to have fixed it.
- *
- * This is NOT a way around the compositor's voice-overrun guard. That guard
- * exists to stop a mismatch being HIDDEN behind a long freeze-frame, and this
- * mismatch is not hidden: `measureStoryboardTiming` reports it, the CLI leads
- * with it, and the review packet records both clocks. What this does is let a
- * reviewer watch the draft the storyboard actually describes while the copy
- * defect is fixed, instead of having no draft at all.
+ * `assertNarrationFitsDuration` in scriptStoryboard.ts now refuses to emit a
+ * script whose words cannot be spoken in its own runtime, so an overrun is
+ * caught where the copy is written rather than accommodated three stages
+ * later. `measureStoryboardTiming` stays because the review packet still
+ * reports the margin — how close a script runs to its budget is worth
+ * seeing even when it fits.
  */
-export function fitPlanToNarration(
-  plan: PlatformProductionPlan,
-  fit: StoryboardTimingFit,
-): { plan: PlatformProductionPlan; scale: number } {
-  if (!fit.overruns) return { plan, scale: 1 };
-  const scale = fit.narrationSeconds / fit.targetSeconds;
-  const seconds = (value: unknown): number =>
-    typeof value === "number" && Number.isFinite(value) ? Number((value * scale).toFixed(3)) : 0;
-
-  const scaleWindows = (entries: unknown): unknown => {
-    if (!Array.isArray(entries)) return entries;
-    return entries.map((entry) => {
-      const window = entry as { startSecond?: unknown; endSecond?: unknown };
-      return { ...(entry as object), startSecond: seconds(window.startSecond), endSecond: seconds(window.endSecond) };
-    });
-  };
-
-  const tasks = plan.tasks.map((task) => {
-    const carrier = task as typeof task & { compositorState?: unknown; captionRenderState?: unknown };
-    const next = { ...task } as typeof carrier;
-
-    if (carrier.compositorState && typeof carrier.compositorState === "object") {
-      const state = carrier.compositorState as { durationSeconds?: unknown; visualTimeline?: unknown };
-      next.compositorState = {
-        ...state,
-        durationSeconds: seconds(state.durationSeconds),
-        visualTimeline: scaleWindows(state.visualTimeline),
-      };
-    }
-    if (carrier.captionRenderState && typeof carrier.captionRenderState === "object") {
-      const state = carrier.captionRenderState as { durationSeconds?: unknown; cues?: unknown };
-      next.captionRenderState = {
-        ...state,
-        durationSeconds: seconds(state.durationSeconds),
-        cues: scaleWindows(state.cues),
-      };
-    }
-    return next as typeof task;
-  });
-
-  return {
-    plan: { ...plan, targetDurationSeconds: Math.ceil(fit.narrationSeconds), tasks },
-    scale,
-  };
-}
 
 export interface StoryboardRenderOptions {
   idea?: ContentIdea;
@@ -245,7 +193,7 @@ export interface StoryboardRenderResult {
   plan: PlatformProductionPlan;
   /** The storyboard's own clock versus what its narration needs. */
   timing: StoryboardTimingFit;
-  /** Factor the clock was stretched by so the narration fits. 1 = untouched. */
+  /** Always 1. Kept so the packet can state that nothing was stretched. */
   timingScale: number;
   render: PlatformRenderResult;
   master: RenderArtifact;
@@ -338,8 +286,11 @@ export async function renderGeneratedStoryboard(
   const script = storyboard.scripts.find((entry) => entry.platform === platform);
   if (!script) throw new Error(`The generated storyboard has no ${platform} script.`);
 
+  // Throws if the copy cannot be spoken in the runtime it claims. The plan is
+  // rendered exactly as generated — no clock is adjusted to accommodate it.
   const timing = measureStoryboardTiming(script);
-  const { plan, scale: timingScale } = fitPlanToNarration(generatedPlan, timing);
+  const plan = generatedPlan;
+  const timingScale = 1;
 
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });

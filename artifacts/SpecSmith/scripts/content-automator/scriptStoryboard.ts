@@ -25,6 +25,79 @@ function factSlice(facts: string[], index: number): string[] {
   return [facts[index % facts.length]];
 }
 
+/** Words a natural read fits into a minute. espeak-ng measures at ~158. */
+export const NARRATION_WORDS_PER_MINUTE = 165;
+
+/** Mirrors motionCompositor.ts's voice-overrun tolerance, so they agree. */
+export const NARRATION_OVERRUN_TOLERANCE = 1.25;
+
+/** Seconds a piece of narration needs, spoken naturally. */
+export function narrationSecondsFor(text: string, wordsPerMinute = NARRATION_WORDS_PER_MINUTE): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return (words / wordsPerMinute) * 60;
+}
+
+/**
+ * Refuses a storyboard whose words cannot be spoken in the time it allotted.
+ *
+ * FAILS AT GENERATION, NOT AT RENDER. The overrun that started all of this
+ * surfaced three stages downstream, inside ffmpeg, as a compositor error
+ * about voice duration — by which point an idea, a package, a plan and five
+ * real browser captures had already been produced. A storyboard that cannot
+ * be read aloud in its own runtime is malformed, and the cheapest place to
+ * say so is where it is written.
+ *
+ * Deliberately NOT a rescale. Stretching the clock to fit the words was the
+ * previous accommodation, and it made a 24-second short 34 seconds long
+ * without anyone choosing that. The budget is the constraint; the copy moves.
+ *
+ * THE TOLERANCE IS THE COMPOSITOR'S OWN, DELIBERATELY. motionCompositor.ts
+ * refuses narration beyond `duration * 1.25 + 0.25`, holding the final visual
+ * for anything smaller. Matching it exactly means the two can never disagree:
+ * generation rejects precisely what rendering would reject, no more and no
+ * less. A stricter number here would hard-fail the whole idea pipeline over a
+ * fraction of a second that renders perfectly well — and several real
+ * generated ideas land 1-2% over because their OWN hooks are long, which is a
+ * fact about those ideas rather than a defect in these templates.
+ *
+ * The original failure this exists for was 36% over. It is caught.
+ */
+export function assertNarrationFitsDuration(
+  script: { platform: string; targetDurationSeconds: number; beats: readonly { purpose: string; narration: string }[] },
+  wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
+): void {
+  const needed = narrationSecondsFor(script.beats.map((beat) => beat.narration).join(" "), wordsPerMinute);
+  if (needed <= script.targetDurationSeconds * NARRATION_OVERRUN_TOLERANCE + 0.25) return;
+  const perBeat = script.beats
+    .map((beat) => `${beat.purpose} ${narrationSecondsFor(beat.narration, wordsPerMinute).toFixed(1)}s`)
+    .join(", ");
+  throw new Error(
+    `${script.platform} narration needs ${needed.toFixed(1)}s at ${wordsPerMinute} wpm but the script allots `
+    + `${script.targetDurationSeconds}s. Shorten the copy; do not stretch the clock. Per beat: ${perBeat}.`,
+  );
+}
+
+/**
+ * Narration is written to a WORD BUDGET, because it is going to be spoken.
+ *
+ * A 24-second short at a natural 165 wpm holds about 66 words. The first
+ * version of these templates produced 90 for that target — 225 wpm, far
+ * outside the 150-180 wpm range natural speech occupies — and every beat
+ * overran its own window. Nothing caught it for as long as the storyboard was
+ * never rendered; the first real render failed the compositor's voice-overrun
+ * guard immediately.
+ *
+ * So the fixed prose here is deliberately terse and carries no sentence that
+ * the pictures already say. `userProblem` left the commitment beat entirely:
+ * it is context for a planner, not a line to read aloud over a two-second
+ * shot. What remains of each template is a handful of words wrapped around
+ * the idea's OWN copy — the hook, the angle, the CTA — which is the part a
+ * writer actually chose.
+ *
+ * `assertNarrationFitsDuration` enforces the budget at generation time, so a
+ * storyboard that cannot be spoken fails here rather than three stages later
+ * inside ffmpeg.
+ */
 function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration: number): StoryboardBeat[] {
   const route = idea.productConnection.route;
   const interactionPrefix = variant.platform === "tiktok" ? "Pick now. " : "";
@@ -42,7 +115,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 2,
       endSecond: 6,
       purpose: "commitment",
-      narration: `Before the answer appears, decide what you would do. ${idea.productConnection.userProblem}`,
+      narration: `Decide before the reveal.`,
       visualDirection: `${variant.opening} Visually lock the viewer into a choice before exposing the decisive evidence.`,
       onScreenText: "LOCK YOUR PICK",
       factDependencies: factSlice(idea.requiredFacts, 0),
@@ -51,7 +124,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 6,
       endSecond: 12,
       purpose: "evidence",
-      narration: `Now use the verified SpecSmith inputs. The decision has to follow the real data, not the obvious-looking answer.`,
+      narration: `Verified inputs decide this, not the obvious answer.`,
       visualDirection: `Reveal one verified input through the real ${idea.productConnection.feature} workflow. Every number shown must map to a required fact.`,
       onScreenText: "REAL SPECS • REAL PRICES • REAL RULES",
       factDependencies: factSlice(idea.requiredFacts, 1),
@@ -60,7 +133,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 12,
       endSecond: 18,
       purpose: "reversal",
-      narration: `Here is the tradeoff that can flip the answer: ${idea.angle}`,
+      narration: `The tradeoff that flips it: ${idea.angle}`,
       visualDirection: `${idea.creativeDNA.patternInterrupt} Show the strongest counterpoint instead of racing straight to a predetermined winner.`,
       onScreenText: "BUT HERE'S THE CATCH",
       factDependencies: factSlice(idea.requiredFacts, 2),
@@ -69,7 +142,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 18,
       endSecond: Math.max(21, duration - 2),
       purpose: "payoff",
-      narration: `SpecSmith resolves the exact decision, and the result should follow only from the verified facts available for this idea.`,
+      narration: `SpecSmith settles it on verified facts alone.`,
       visualDirection: `${idea.creativeDNA.payoff} End the story on the product result, not a generic engagement prompt.`,
       onScreenText: "SPECSMITH RESULT",
       factDependencies: [...idea.requiredFacts],
@@ -93,7 +166,7 @@ function buildPlatformScript(
 ): PlatformScriptStoryboard {
   const variant = variantFor(contentPackage, platform);
   const duration = DURATION_BY_PLATFORM[platform];
-  return {
+  const script: PlatformScriptStoryboard = {
     platform,
     targetDurationSeconds: duration,
     title: idea.title,
@@ -112,6 +185,10 @@ function buildPlatformScript(
       `The final product continuation must remain ${idea.productConnection.route}; do not substitute a generic homepage CTA.`,
     ],
   };
+
+  // Malformed here is cheaper than malformed in ffmpeg.
+  assertNarrationFitsDuration(script);
+  return script;
 }
 
 export function buildScriptStoryboardPackage(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildContentPackage } from "./contentPackage.ts";
-import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
+import { assertNarrationFitsDuration, buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
 import type { ContentIdea } from "./types.ts";
 
 const idea: ContentIdea = {
@@ -78,5 +78,53 @@ describe("script storyboard", () => {
       expect(script.beats.at(-1)?.endSecond).toBe(script.targetDurationSeconds);
       expect(script.beats.every((beat) => beat.endSecond > beat.startSecond)).toBe(true);
     }
+  });
+});
+
+describe("narration has to be speakable in the runtime the script claims", () => {
+  const beats = (words: number) => [{
+    purpose: "hook",
+    narration: Array.from({ length: words }, () => "word").join(" "),
+  }];
+
+  it("catches the original defect: 90 words in a 24-second short", () => {
+    // The real failure this exists for. 90 words is 32.7s at 165 wpm — 36%
+    // over — and it reached ffmpeg before anything noticed.
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(90),
+    })).toThrow(/needs 32\.7s .* allots 24s/);
+  });
+
+  it("names the per-beat cost so the overrun can be attributed", () => {
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(90),
+    })).toThrow(/Per beat: hook/);
+  });
+
+  it("refuses to suggest stretching the clock", () => {
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(90),
+    })).toThrow(/Shorten the copy; do not stretch the clock/);
+  });
+
+  it("permits exactly what the compositor permits, and no more", () => {
+    // motionCompositor.ts holds the final visual for anything within
+    // duration * 1.25 + 0.25 and refuses beyond it. Generation matches that
+    // bound exactly, so the two can never disagree about the same script.
+    const limitSeconds = 24 * 1.25 + 0.25;
+    const wordsAt = (seconds: number) => Math.floor((seconds / 60) * 165);
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(wordsAt(limitSeconds - 0.5)),
+    })).not.toThrow();
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(wordsAt(limitSeconds + 2)),
+    })).toThrow();
+  });
+
+  it("accepts a script that comfortably fits", () => {
+    // The shortened COMPARE storyboard: 49 words, 17.8s in a 24s runtime.
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: beats(49),
+    })).not.toThrow();
   });
 });

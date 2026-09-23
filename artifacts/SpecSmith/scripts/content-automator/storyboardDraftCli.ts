@@ -4,6 +4,7 @@
 
 import { renderGeneratedStoryboard, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
 import { writeReviewPacket } from "./reviewPacket.ts";
+import { evaluatePublishGate } from "./publishGate.ts";
 
 async function main(): Promise<number> {
   const result = await renderGeneratedStoryboard();
@@ -47,6 +48,21 @@ async function main(): Promise<number> {
     console.log(`  - ${blocker.id}`);
     console.log(`      ${blocker.summary}`);
     console.log(`      NEEDS: ${blocker.needsHuman}`);
+  }
+
+  // THE GATE IS RUN, NOT DESCRIBED. Every artifact this render produced goes
+  // through it, so the refusal printed below is a real verdict on real
+  // metadata rather than a claim about what would happen.
+  const verdict = evaluatePublishGate({
+    masterSha256: packet.master.sha256,
+    artifacts: result.render.taskResults.flatMap((task) => task.artifacts),
+  });
+  console.log("\nPublish gate:");
+  if (verdict.allowed) {
+    console.log("  ALLOWED — every condition affirmatively met.");
+  } else {
+    console.log(`  REFUSED, for ${verdict.refusals.length} reasons:`);
+    for (const refusal of verdict.refusals) console.log(`    [${refusal.code}] ${refusal.detail}`);
   }
 
   console.log("\nStatus: DRAFT — awaiting human review, not publishable, not posted.");

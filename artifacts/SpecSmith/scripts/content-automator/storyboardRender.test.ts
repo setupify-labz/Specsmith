@@ -6,12 +6,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  fitPlanToNarration,
   measureStoryboardTiming,
   narrationSecondsFor,
   NARRATION_WORDS_PER_MINUTE,
 } from "./storyboardRender";
-import type { PlatformProductionPlan, ProductionTask } from "./types";
 
 const beat = (purpose: string, startSecond: number, endSecond: number, narration: string) =>
   ({ purpose, startSecond, endSecond, narration });
@@ -64,74 +62,19 @@ describe("measuring narration against the clock a storyboard gave itself", () =>
   });
 });
 
-const planWithClocks = (): PlatformProductionPlan => {
-  const compose = {
-    taskId: "youtube-shorts-compose",
-    capability: "motion-compositor",
-    sourceBeat: null,
-    purpose: "compose",
-    inputRequirements: [],
-    outputRequirements: [],
-  } as ProductionTask;
-  (compose as ProductionTask & { compositorState?: unknown }).compositorState = {
-    durationSeconds: 24,
-    fps: 30,
-    visualTimeline: [
-      { visualTaskId: "a", startSecond: 0, endSecond: 2 },
-      { visualTaskId: "b", startSecond: 2, endSecond: 24 },
-    ],
-  };
-  const captions = { ...compose, taskId: "youtube-shorts-captions", capability: "caption-render" } as ProductionTask;
-  delete (captions as ProductionTask & { compositorState?: unknown }).compositorState;
-  (captions as ProductionTask & { captionRenderState?: unknown }).captionRenderState = {
-    durationSeconds: 24,
-    cues: [{ text: "one", startSecond: 0, endSecond: 2 }],
-  };
-  return {
-    platform: "youtube-shorts",
-    targetDurationSeconds: 24,
-    tasks: [compose, captions],
-  } as PlatformProductionPlan;
-};
-
-describe("stretching the clock so the narration fits", () => {
-  it("scales the compositor's OWN clock, not just the headline", () => {
-    // The headline `targetDurationSeconds` is not what the compositor
-    // validates against — `compositorState.durationSeconds` and its
-    // visualTimeline are. Scaling only the headline left the render failing
-    // on the identical mismatch while the plan claimed to have fixed it.
-    const fit = measureStoryboardTiming(OVERRUNNING);
-    const { plan, scale } = fitPlanToNarration(planWithClocks(), fit);
-    const state = (plan.tasks[0] as ProductionTask & { compositorState: { durationSeconds: number; visualTimeline: { startSecond: number; endSecond: number }[] } }).compositorState;
-
-    expect(scale).toBeGreaterThan(1.3);
-    expect(state.durationSeconds).toBeCloseTo(24 * scale, 1);
-    expect(state.visualTimeline[1].endSecond).toBeCloseTo(24 * scale, 1);
+describe("the timeline is no longer stretched to fit over-long narration", () => {
+  it("exports no rescaling helper", async () => {
+    // `fitPlanToNarration` scaled every clock by 1.36x so a 90-word script
+    // could be watched, turning a 24-second short into a 34-second one that
+    // nobody chose. The copy was shortened instead, and the helper is gone so
+    // it cannot quietly come back.
+    const module = await import("./storyboardRender");
+    expect(Object.keys(module)).not.toContain("fitPlanToNarration");
   });
 
-  it("scales caption cues too, so words stay under the pictures", () => {
+  it("still measures the margin, because how close a script runs is worth seeing", () => {
     const fit = measureStoryboardTiming(OVERRUNNING);
-    const { plan, scale } = fitPlanToNarration(planWithClocks(), fit);
-    const state = (plan.tasks[1] as ProductionTask & { captionRenderState: { durationSeconds: number; cues: { endSecond: number }[] } }).captionRenderState;
-    expect(state.durationSeconds).toBeCloseTo(24 * scale, 1);
-    expect(state.cues[0].endSecond).toBeCloseTo(2 * scale, 1);
-  });
-
-  it("preserves every beat's SHARE of the video", () => {
-    // The point of scaling rather than padding: beat three still occupies the
-    // proportion of the runtime it was written to occupy.
-    const fit = measureStoryboardTiming(OVERRUNNING);
-    const { plan } = fitPlanToNarration(planWithClocks(), fit);
-    const state = (plan.tasks[0] as ProductionTask & { compositorState: { durationSeconds: number; visualTimeline: { startSecond: number; endSecond: number }[] } }).compositorState;
-    const firstShare = state.visualTimeline[0].endSecond / state.durationSeconds;
-    expect(firstShare).toBeCloseTo(2 / 24, 3);
-  });
-
-  it("leaves a storyboard that already fits completely untouched", () => {
-    const fits = measureStoryboardTiming({ targetDurationSeconds: 30, beats: [beat("hook", 0, 30, "short line")] });
-    const original = planWithClocks();
-    const { plan, scale } = fitPlanToNarration(original, fits);
-    expect(scale).toBe(1);
-    expect(plan).toBe(original);
+    expect(fit.narrationSeconds).toBeGreaterThan(0);
+    expect(fit.beats).toHaveLength(6);
   });
 });
