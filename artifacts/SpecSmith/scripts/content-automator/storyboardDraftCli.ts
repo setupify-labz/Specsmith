@@ -3,6 +3,7 @@
 // touches the publication ledger, or posts anywhere.
 
 import { renderGeneratedStoryboard, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
+import { writeReviewPacket } from "./reviewPacket.ts";
 
 async function main(): Promise<number> {
   const result = await renderGeneratedStoryboard();
@@ -37,7 +38,18 @@ async function main(): Promise<number> {
   const fixtures = result.beats.filter((beat) => beat.isFixture);
   console.log(`\n${result.beats.length - fixtures.length} of ${result.beats.length} beats are real SpecSmith captures.`);
   console.log(`Narration is an offline espeak-ng stand-in for ${INTENDED_VOICE_NAME}; no paid provider was called.`);
-  console.log("Status: DRAFT — not reviewed, not publishable, not posted.");
+
+  const { packet, path } = await writeReviewPacket(result);
+  console.log(`\nReview packet: ${path}`);
+  console.log(`Master sha256: ${packet.master.sha256}`);
+  console.log(`\nBlockers a human has to clear (${packet.blockers.length}):`);
+  for (const blocker of packet.blockers) {
+    console.log(`  - ${blocker.id}`);
+    console.log(`      ${blocker.summary}`);
+    console.log(`      NEEDS: ${blocker.needsHuman}`);
+  }
+
+  console.log("\nStatus: DRAFT — awaiting human review, not publishable, not posted.");
   return 0;
 }
 

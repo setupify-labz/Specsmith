@@ -1,40 +1,42 @@
 # SpecSmith Content Automator — Creative + Logical V1
 
-This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, multi-platform audio-trend discovery, rendering orchestration, and automated quality-review contracts. The renderer can execute end-to-end in dry-run mode now; real external media providers are still plugged in later through adapters. It does **not** post videos yet.
+This isolated subsystem turns SpecSmith product surfaces and trusted hardware data into a daily batch of **five high-tier content plans**, then carries those ideas through platform packaging, script/storyboard planning, production planning, multi-platform audio-trend discovery, rendering orchestration, and automated quality-review contracts.
+
+**The generated storyboard now renders.** `content:e2e:storyboard` takes a real idea through content package, six-beat storyboard and production plan, and renders THAT plan to a real 1080x1920 H.264/AAC MP4 with burned-in captions — five of its six beats real Playwright captures of the live SpecSmith Compare page. It emits a human-review packet and stops. It does **not** post videos, and it does **not** pass a quality gate: a fresh render has no committed inspection record to match, which is the correct fail-closed outcome.
 
 ## Run one real end-to-end render right now (no paid credentials required)
 
 ```bash
-# 1. ffmpeg/ffprobe and a Chromium build must be on PATH (or pointed to via env,
-#    see below). Playwright's own `playwright install chromium` works in a
-#    normal CI/dev box; see the note at the end of this section for sandboxes
-#    where that download host is blocked.
+# 1. ffmpeg, ffprobe and espeak-ng on PATH, plus a Chromium build (or point
+#    SPECSMITH_RENDER_CHROMIUM at one; see the sandbox note at the end).
 pnpm --dir artifacts/SpecSmith exec playwright install --with-deps chromium
 
-# 2. Build once and serve it locally — the deterministic UI-render adapter
-#    captures real product UI from a running SpecSmith instance.
+# 2. Build once and serve it — the deterministic UI adapter captures real
+#    product UI from a running SpecSmith instance, so there has to be one.
 pnpm --dir artifacts/SpecSmith build
 npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
 
-# 3. Run the full offline pipeline: real idea -> real content package/script
-#    /storyboard/production-plan CONTRACT (built from the real generated
-#    storyboard, but only used to shape the quality-review request — it is
-#    NOT what gets rendered; see below) -> one real 1080x1920 MP4 from a
-#    separate, already-proven, hand-authored render timeline (real
-#    Playwright capture of the live Compare page, offline espeak-ng
-#    narration, real burned-in .ass captions, real ffmpeg compose) -> an
-#    evidence-bound quality-review verdict (the render's actual sha256 must
-#    match a committed, previously-inspected evidence record, or the run
-#    stops before publishing) -> a rights-approved asset bundle -> a
-#    tracked, draft-only Metricool-ready publishing request -> a durable
-#    ledger that stops at qc-passed (never "scheduled" — nothing here calls
-#    Metricool) and fails closed on a duplicate publish. Nothing is posted
-#    anywhere. Wiring the actual generated storyboard through to a real
-#    render remains separate, tracked future work — this proves the chain of
-#    custody from a real render onward, not full automatic
-#    idea->storyboard->render automation.
+# 3a. THE GENERATED STORYBOARD, RENDERED. Real idea -> real content package
+#     -> real six-beat storyboard -> real production plan -> that plan
+#     rendered to a real 1080x1920 H.264/AAC MP4 (five real Playwright
+#     captures of the live Compare page, one typographic card for the hook
+#     beat that productionPlan.ts assigns to paid video-generation, offline
+#     espeak-ng narration, silent music bed, real burned-in .ass captions,
+#     real ffmpeg compose) -> a human-review packet naming every blocker.
+#     Stops there. No quality gate passes, no ledger is touched, nothing is
+#     posted.
 SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
-  pnpm --dir artifacts/SpecSmith exec tsx scripts/content-automator/endToEndOfflinePipeline.ts
+  pnpm --dir artifacts/SpecSmith content:e2e:storyboard
+
+# 3b. THE PUBLISHING CHAIN, from an already-inspected render onward. This is
+#     the older path: it builds the same real storyboard but renders a
+#     separate hand-authored timeline, then carries that master through the
+#     rights gate, the sha256-bound quality gate, a draft-only
+#     Metricool-ready request and a fail-closed ledger. Use it to exercise
+#     everything DOWNSTREAM of a render; use 3a to exercise everything
+#     upstream of one.
+SPECSMITH_RENDER_BASE_URL=http://localhost:5178 \
+  pnpm --dir artifacts/SpecSmith content:e2e:offline
 ```
 
 Just the render, without the rights/publishing wiring:
