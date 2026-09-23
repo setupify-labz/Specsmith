@@ -122,39 +122,14 @@ jobs:
           set -o pipefail
           pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/e2e/install.log"
 
-      - name: Typecheck
-        run: |
-          set -o pipefail
-          pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/e2e/typecheck.log"
-
-      - name: Run the content-automator test suite (targeted)
-        working-directory: artifacts/SpecSmith
-        run: |
-          set -o pipefail
-          pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
-
-      - name: Run the full test suite
-        working-directory: artifacts/SpecSmith
-        run: |
-          set -o pipefail
-          pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
-
-      - name: Build the production application
-        working-directory: artifacts/SpecSmith
-        run: |
-          set -o pipefail
-          pnpm run build 2>&1 | tee "${RUNNER_TEMP}/e2e/build.log"
-
-      # No API key, no account, no paid provider — just a browser binary, the
-      # same way any other Playwright-based test in this repo would get one.
-      - name: Install Playwright Chromium
-        working-directory: artifacts/SpecSmith
-        run: |
-          set -o pipefail
-          pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
-
-      # ffmpeg/ffprobe compose the real MP4; espeak-ng is the offline TTS
-      # fixture (see localFixtureTts.ts) — neither needs a credential.
+      # MOVED AHEAD OF THE TESTS, NOT JUST AHEAD OF THE RENDER.
+      #
+      # offlineBeatFixtures.test.ts and renderManifest.test.ts invoke the real
+      # offline adapters — they shell out to ffmpeg and espeak-ng on purpose,
+      # because a fixture adapter that only passes against a mock is the thing
+      # this subsystem keeps getting wrong. With the install further down the
+      # job they failed with `spawn ffmpeg ENOENT` before the render step was
+      # ever reached.
       #
       # PINNED BY CAPABILITY, NOT BY VERSION STRING. Pinning an exact Ubuntu
       # package version breaks the moment the runner image rebuilds and that
@@ -196,6 +171,37 @@ jobs:
           espeak-ng -q --stdout "capability check" > /dev/null \
             || { echo "::error::espeak-ng cannot synthesise; the offline narration fixture will fail."; exit 1; }
           echo "ffmpeg/ffprobe/espeak-ng have every capability this pipeline needs."
+
+      - name: Typecheck
+        run: |
+          set -o pipefail
+          pnpm typecheck 2>&1 | tee "${RUNNER_TEMP}/e2e/typecheck.log"
+
+      - name: Run the content-automator test suite (targeted)
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -o pipefail
+          pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
+
+      - name: Run the full test suite
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -o pipefail
+          pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
+
+      - name: Build the production application
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -o pipefail
+          pnpm run build 2>&1 | tee "${RUNNER_TEMP}/e2e/build.log"
+
+      # No API key, no account, no paid provider — just a browser binary, the
+      # same way any other Playwright-based test in this repo would get one.
+      - name: Install Playwright Chromium
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -o pipefail
+          pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
 
       - name: Serve the built application
         working-directory: artifacts/SpecSmith

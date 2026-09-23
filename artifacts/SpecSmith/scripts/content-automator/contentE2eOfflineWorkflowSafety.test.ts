@@ -89,6 +89,31 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     expect(body).not.toMatch(/ELEVENLABS|GEMINI|MESHY|YOUTUBE_DATA_API_KEY|TIKTOK_BUSINESS/);
   });
 
+  it('installs ffmpeg and espeak-ng BEFORE any step that shells out to them', () => {
+    // Real CI failure, run 35932312150: the install step sat at position 12,
+    // below the test steps at 7 and 8. `offlineBeatFixtures.test.ts` and
+    // `renderManifest.test.ts` drive the real offline adapters on purpose —
+    // a fixture adapter that only passes against a mock is precisely the
+    // defect this subsystem keeps reproducing — so they spawned the binaries
+    // directly and died with `spawn ffmpeg ENOENT` / `spawn espeak-ng ENOENT`
+    // (9 failed / 372 passed) long before the render step was reached. Step
+    // ORDER is load-bearing here, not just step presence, so assert it.
+    const names = [...body.matchAll(/^\s*- name:\s*(.+)$/gm)].map((match) => match[1].trim());
+    const installIndex = names.findIndex((name) => /ffmpeg and espeak-ng/i.test(name));
+    expect(installIndex, 'no ffmpeg/espeak-ng install step').toBeGreaterThan(-1);
+
+    // Every step whose body invokes the binaries, or runs the suites that do.
+    const steps = body.split(/\n(?=\s*- name:)/).filter((step) => /- name:/.test(step));
+    const consumers = steps
+      .map((step, index) => ({ index, step }))
+      .filter(({ step }) => /\bffmpeg\b|\bffprobe\b|\bespeak-ng\b|vitest run/.test(step))
+      .filter(({ index }) => index !== installIndex);
+    expect(consumers.length, 'no step consumes ffmpeg/espeak-ng').toBeGreaterThan(0);
+    for (const { index } of consumers) {
+      expect(index, `"${names[index]}" runs before the install step`).toBeGreaterThan(installIndex);
+    }
+  });
+
   it('serves the built app locally rather than depending on any external host', () => {
     expect(body).toContain('npx --yes serve dist/public');
     expect(body).toContain('SPECSMITH_RENDER_BASE_URL: http://localhost:5178');
