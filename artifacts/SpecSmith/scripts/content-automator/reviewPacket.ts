@@ -122,6 +122,20 @@ export function standingBlockers(result: StoryboardRenderResult): ReviewPacketBl
     },
   ];
 
+  const overlong = overlongOnScreenText(
+    result.beats.map((beat) => ({ index: beat.beatIndex, purpose: beat.purpose, onScreenText: beat.onScreenText })),
+  );
+  if (overlong.length > 0) {
+    blockers.push({
+      id: "on-screen-text-needs-more-than-two-caption-lines",
+      summary:
+        `${overlong.length} beat(s) carry on-screen text too long for the two caption lines the style reserves: `
+        + overlong.map((beat) => `beat ${beat.index} (${beat.purpose}, ${beat.lines} lines)`).join(", ")
+        + ". It no longer overflows the frame, but a third line starts covering the product UI the beat exists to show.",
+      needsHuman: "Shorten the onScreenText in scriptStoryboard.ts, or accept captions covering more of the capture.",
+    });
+  }
+
   if (result.timing.overruns) {
     blockers.unshift({
       id: "storyboard-narration-overruns-its-own-clock",
@@ -208,4 +222,33 @@ export async function writeReviewPacket(
   const path = join(outputDir, "review-packet.json");
   await writeFile(path, `${JSON.stringify(packet, null, 2)}\n`, "utf-8");
   return { packet, path };
+}
+
+/**
+ * On-screen text long enough to need more than two caption lines.
+ *
+ * The caption style reserves two lines for a reason: a third starts covering
+ * the product UI the beat exists to show. Wrapping now honours whatever the
+ * copy needs rather than overflowing the frame, so an over-long line is no
+ * longer clipped — but it is still over-long, and that is a writing problem
+ * the packet should name rather than absorb.
+ */
+export function overlongOnScreenText(
+  beats: readonly { index: number; purpose: string; onScreenText: string }[],
+  maxCharsPerLine = 28,
+  maxLines = 2,
+): { index: number; purpose: string; text: string; lines: number }[] {
+  return beats
+    .map((beat) => {
+      const words = beat.onScreenText.trim().split(/\s+/).filter(Boolean);
+      let lines = words.length ? 1 : 0;
+      let current = "";
+      for (const word of words) {
+        const next = current ? `${current} ${word}` : word;
+        if (next.length > maxCharsPerLine && current) { lines += 1; current = word; }
+        else current = next;
+      }
+      return { index: beat.index, purpose: beat.purpose, text: beat.onScreenText, lines };
+    })
+    .filter((beat) => beat.lines > maxLines);
 }

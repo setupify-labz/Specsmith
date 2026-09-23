@@ -94,12 +94,26 @@ export function wrapForCard(value: string, maxCharsPerLine = 22): string[] {
   return lines.slice(0, 6);
 }
 
+/**
+ * The text this card may draw — which is almost always none.
+ *
+ * AN EARLIER DRAFT FELL BACK TO `videoGenerationState.prompt`, AND THE FIRST
+ * VISUAL INSPECTION CAUGHT IT. `deriveVideoGenerationState` carries a prompt
+ * and no on-screen text, so the hook beat rendered with "Create one instantly
+ * understandable vertical short-form PC-hardware visual for this story: ..."
+ * burned across the frame — an internal instruction to a generation provider,
+ * shown to the viewer. It compiled, it rendered, every test passed, and it was
+ * only visible by looking at the frames.
+ *
+ * A generation prompt is never viewer-facing copy. The only thing this will
+ * draw is an EXPLICIT `onScreenText` field, and nothing in the current plan
+ * sets one — the beat's real on-screen words are burned in separately by the
+ * caption renderer, over this card and every other visual, so duplicating
+ * them here would double them on screen.
+ */
 function onScreenTextFor(context: RenderTaskContext): string {
-  const task = context.task as { onScreenText?: unknown; purpose?: unknown };
-  if (typeof task.onScreenText === "string" && task.onScreenText.trim()) return task.onScreenText.trim();
-  const state = context.task.videoGenerationState as { onScreenText?: unknown; prompt?: unknown } | undefined;
+  const state = context.task.videoGenerationState as { onScreenText?: unknown } | undefined;
   if (state && typeof state.onScreenText === "string" && state.onScreenText.trim()) return state.onScreenText.trim();
-  if (state && typeof state.prompt === "string" && state.prompt.trim()) return state.prompt.trim();
   return "";
 }
 

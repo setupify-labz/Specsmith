@@ -107,9 +107,28 @@ function wrapCaption(text: string, maxChars = 28): string {
     }
   }
   if (line) lines.push(line);
-  // Short-form captions should not become a paragraph. Two lines keeps the UI visible.
-  if (lines.length <= 2) return lines.join("\\N");
-  return `${lines[0]}\\N${lines.slice(1).join(" ")}`;
+  // Short-form captions should not become a paragraph, and two lines keeps the
+  // product UI visible. That is the intent; the previous implementation did
+  // the opposite of it.
+  //
+  // IT REJOINED EVERY LINE PAST THE FIRST BACK INTO ONE. `lines.slice(1).join(" ")`
+  // takes wrapping that had just been computed and undoes it, producing a
+  // single line of unbounded width — and the style below sets `WrapStyle: 2`,
+  // which tells libass to do no wrapping of its own. So a caption long enough
+  // to need three lines rendered as one line wider than the 1080px frame and
+  // was clipped at BOTH edges.
+  //
+  // Found by looking at the frames of the first render of a generated
+  // storyboard: "Pick the GPU before SpecSmith reveals the names: RTX 4080
+  // Super vs RTX 4080" came out as "...eveals the names: RTX 4080 Super" with
+  // the ends cut off. The hand-authored smoke timeline never caught it
+  // because its captions are short enough to fit two lines.
+  //
+  // Neither silently dropping the extra words nor silently overflowing is
+  // acceptable, so the wrap is simply honoured. A third line is a far smaller
+  // problem than a clipped one, and over-long on-screen copy is reported as a
+  // review blocker so it gets shortened at the source.
+  return lines.join("\\N");
 }
 
 export function buildAssDocument(state: CaptionRenderState): string {

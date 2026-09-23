@@ -114,6 +114,25 @@ describe("the hook beat's offline video fixture", () => {
     });
   }, 60_000);
 
+  it("NEVER draws the generation prompt, however tempting a fallback it is", async () => {
+    // A VISUAL INSPECTION CAUGHT THIS. deriveVideoGenerationState carries a
+    // prompt and no on-screen text, and an earlier draft fell back to it — so
+    // the hook rendered with "Create one instantly understandable vertical
+    // short-form PC-hardware visual for this story: ..." across the frame.
+    // An internal instruction to a provider, shown to the viewer. It compiled,
+    // it rendered, and every test passed.
+    const adapter = createOfflineCardVideoAdapter({ outputDir: join(workDir, "video-prompt") });
+    const [artifact] = await adapter.render(context({
+      task: task({
+        videoGenerationState: {
+          prompt: "Create one instantly understandable vertical short-form PC-hardware visual for this story",
+          durationSeconds: 2,
+        },
+      }),
+    }));
+    expect(artifact.metadata.textLines).toBe(0);
+  }, 60_000);
+
   it("renders a plain card rather than failing when the beat has no text", async () => {
     // A storyboard beat can legitimately carry no on-screen text. That is a
     // design choice, not a render error.
