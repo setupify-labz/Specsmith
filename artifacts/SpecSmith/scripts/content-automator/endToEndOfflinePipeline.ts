@@ -87,7 +87,8 @@ import {
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type PublishingConfig } from "./publishing.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
-import type { ContentIdea, VideoPlatform } from "./types.ts";
+import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import type { VideoPlatform } from "./types.ts";
 import {
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
@@ -97,7 +98,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // This demo/smoke script must never touch content-ideas/publishing-store —
 // that is the real, shared, durable publication ledger a production run
 // would use, and it holds every other creative's publication history.
-// Reusing the same hardcoded idea.id across repeated local runs of this
+// Reusing the same hardcoded COMPARE_IDEA.id across repeated local runs of this
 // script is a demo convenience, not a reason to delete production data, so
 // this run gets its own private, ephemeral store instead: a fresh directory
 // under content-ideas/.e2e-demo-store, namespaced by timestamp+random so
@@ -131,40 +132,9 @@ const renderEvidencePath = join(here, "fixtures", "mp4-smoke-offline-observation
 // not invented for this script. requiredFacts is deliberately just
 // ["comparison state"]: the one fact the actual rendered evidence (the live
 // Compare page, captured through a real browser) substantiates.
-const idea: ContentIdea = {
-  id: "compare-rtx4080s-rtx4080",
-  format: "comparison",
-  title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
-  angle: "Use Compare as the evidence and reveal.",
-  targetAudience: "PC builders",
-  requiredFacts: ["comparison state"],
-  subjectIds: ["rtx4080s", "rtx4080"],
-  productConnection: {
-    feature: "compare",
-    route: "/compare",
-    userProblem: "Buyers cannot tell which near-name GPU is the better choice.",
-    whySpecSmith: "SpecSmith Compare holds the rest of the build constant.",
-    continuationAction: "Open Compare and change the cards.",
-    sitePayoff: "The viewer can continue the exact comparison.",
-  },
-  creativeDNA: {
-    conceptName: "Blind Compare",
-    visualWorld: "real SpecSmith comparison",
-    narrativeEngine: "blind choice -> evidence -> reveal",
-    openingImage: "Two anonymous cards",
-    patternInterrupt: "Names hidden",
-    retentionBeats: ["1", "2", "3", "4", "5"],
-    payoff: "Reveal the winner",
-    audioDirection: "Tight",
-    originalityConstraint: "Compare is essential",
-    antiSlopRules: ["a", "b", "c", "d", "e", "f"],
-  },
-  scores: {
-    curiosity: 9, usefulness: 9, visualPotential: 9, purchaseIntent: 8, novelty: 8,
-    originality: 9, retentionPotential: 9, shareability: 8, productFit: 10, siteContinuation: 10, total: 9,
-  },
-};
+// The idea now lives in compareIdeaFixture.ts so the storyboard renderer
+// uses the SAME one rather than a second copy that can drift.
+
 
 const PLATFORM: VideoPlatform = OFFLINE_SMOKE_PLATFORM;
 
@@ -185,12 +155,12 @@ async function main(): Promise<void> {
   const generatedAt = new Date();
 
   section("1. Real idea -> real content package -> real script/storyboard -> real generated production-plan CONTRACT (not rendered through — see header comment)");
-  const content = buildContentPackage(idea, generatedAt);
-  const storyboard = buildScriptStoryboardPackage(idea, content);
+  const content = buildContentPackage(COMPARE_IDEA, generatedAt);
+  const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
   const production = buildProductionPlanPackage(storyboard);
   const script = storyboard.scripts.find((entry) => entry.platform === PLATFORM);
   if (!script) throw new Error(`No ${PLATFORM} script in the storyboard.`);
-  console.log(`Idea: ${idea.id} ("${idea.title}")`);
+  console.log(`Idea: ${COMPARE_IDEA.id} ("${COMPARE_IDEA.title}")`);
   console.log(`Content package: ${content.packageId} (campaign ${content.campaignId})`);
   console.log(`Storyboard for ${PLATFORM}: ${script.beats.length} beats, target ${script.targetDurationSeconds}s`);
   console.log(`CTA route: ${content.site.route}`);
@@ -323,7 +293,7 @@ async function main(): Promise<void> {
   });
 
   const fingerprint = buildCreativeFingerprint(
-    { rank: 1, idea, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
+    { rank: 1, idea: COMPARE_IDEA, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
     content,
     script,
     { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "deterministic-ui", uiProofRatio: 1, generatedVisualRatio: 0, exactProductAssetRatio: 1 },
@@ -340,7 +310,7 @@ async function main(): Promise<void> {
   };
   const publishAt = new Date(generatedAt.getTime() + 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "");
   const publishingRequest = buildMetricoolPublishingRequest(
-    idea,
+    COMPARE_IDEA,
     content,
     fingerprint,
     { qualityReview: review, assetBundle: assetBundleForPublishing },
@@ -392,7 +362,7 @@ async function main(): Promise<void> {
   // use is already the same key everything else above is bound to.
   const analyticsContext = {
     creativeId: fingerprint.creativeId,
-    ideaId: idea.id,
+    ideaId: COMPARE_IDEA.id,
     platform: PLATFORM,
     durationSeconds,
     fingerprintCampaignId: fingerprint.campaignId,
