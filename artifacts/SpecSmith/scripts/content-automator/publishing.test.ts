@@ -732,12 +732,51 @@ describe("the omission attack: shortening the list to make it clean", () => {
     expect(() => buildWith(attacked)).toThrow(/no hook-visual artifact is present/);
   });
 
-  it("refuses an EXTRA artifact smuggled in beside the real ones", () => {
+  it("refuses an EXTRA artifact that is not inside the master", () => {
+    // An earlier version of this test smuggled in an entry with
+    // `isFixture: true` and asserted /fixture-artifact/ — which it threw for
+    // the FIXTURE reason, proving nothing about extra artifacts at all. The
+    // real question is an entry that is clean in every respect except that
+    // the master does not contain it: provenance for bytes nobody shipped.
     const attacked = [...cleanEntries(), {
-      taskId: "smuggled", role: "evidence-visual" as const, renderer: "unknown-tool",
-      provider: "unknown-tool", isFixture: true, sha256: "9".repeat(64), inMaster: true,
+      taskId: "smuggled", role: "evidence-visual" as const,
+      renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium",
+      isFixture: false, sha256: "9".repeat(64), inMaster: false,
     }];
-    expect(() => buildWith(attacked)).toThrow(/fixture-artifact/);
+    expect(() => buildWith(attacked)).toThrow(/smuggled is not part of the master/);
+  });
+
+  it("refuses a DUPLICATED task id, resealed", () => {
+    // Listing one artifact twice is how a role count gets padded.
+    const attacked = [...cleanEntries(), {
+      ...cleanEntries()[1], role: "evidence-visual" as const, sha256: "8".repeat(64),
+    }];
+    expect(() => buildWith(attacked)).toThrow(/beat-2-visual appears more than once/);
+  });
+
+  it("refuses an UNHASHED artifact, resealed", () => {
+    // hashArtifactBytes returns "" when the bytes could not be read. An
+    // unreadable artifact must stop the publish, not sail through with an
+    // empty digest.
+    const attacked = cleanEntries().map((entry) =>
+      (entry.taskId === "captions" ? { ...entry, sha256: "" } : entry));
+    expect(() => buildWith(attacked)).toThrow(/captions is unhashed/);
+  });
+
+  it("refuses an artifact declaring an UNKNOWN role, resealed", () => {
+    // Deliberately ADDITIVE, and deliberately narrow. Relabelling an
+    // existing entry to a bogus role also drops that role's count to zero,
+    // so the required-role rule fires and the test passes whether or not
+    // the unknown-role rule exists at all — mutation-checked, and it did
+    // exactly that. Appending an unrecognised role instead leaves every
+    // required count intact, so nothing but the unknown-role rule can
+    // refuse it, and the message is asserted with no alternative.
+    const attacked = [...cleanEntries(), {
+      taskId: "watermark-overlay", role: "watermark" as ManifestEntry["role"],
+      renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor",
+      isFixture: false, sha256: "7".repeat(64), inMaster: true,
+    }];
+    expect(() => buildWith(attacked)).toThrow(/watermark-overlay declares unknown role "watermark"/);
   });
 
   it("refuses a tampered manifest whose seal was NOT recomputed", () => {

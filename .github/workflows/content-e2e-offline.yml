@@ -183,11 +183,36 @@ jobs:
           set -o pipefail
           pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
 
+      # THE VERDICT IS DEFERRED, NOT WEAKENED. Nothing here is skipped,
+      # allowlisted or retried: the whole suite runs, its exit code is
+      # recorded, and the LAST step in the job re-raises it, so a failure
+      # here still fails the job.
+      #
+      # The reason is that `main` currently carries 4 real failing tests —
+      # cpuAdmissionThroughGenerator.test.ts ("expected 'i5-13400f' to be
+      # null") and 3 in promotedImagesOnBuilder.test.tsx ("the fixture should
+      # have been processed"). Verified by checking out origin/main into a
+      # separate worktree and running those two files there: identical
+      # failures, so they are inherited, not caused by this branch.
+      #
+      # With the step failing in place, steps 11-15 were skipped and this
+      # workflow produced NO render, NO pipeline log and NO artifact-gate
+      # evidence — the entire reason it exists. Deferring the verdict lets
+      # the evidence be built while keeping the suite's answer binding.
+      #
+      # Do not "fix" this by filtering the retail tests out of the run.
       - name: Run the full test suite
         working-directory: artifacts/SpecSmith
         run: |
           set -o pipefail
+          set +e
           pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
+          code=$?
+          set -e
+          echo "${code}" > "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
+          if [ "${code}" -ne 0 ]; then
+            echo "::warning::The full suite failed (exit ${code}). The evidence steps will still run; the job is failed at the end by \"Re-raise the full test suite's verdict\"."
+          fi
 
       - name: Build the production application
         working-directory: artifacts/SpecSmith
@@ -325,3 +350,24 @@ jobs:
             exit 1
           fi
           echo "Working tree clean (aside from this run's own gitignored render/build/store output)."
+
+      # THE DEFERRED VERDICT, ENFORCED. Without this step the full suite
+      # above would be advisory — a gate that observes and never refuses,
+      # which is the exact defect this branch was opened to fix in the
+      # publishing path. It runs `if: always()` so it cannot be skipped by
+      # an earlier failure, and it is asserted by the workflow-safety test.
+      - name: Re-raise the full test suite's verdict
+        if: always()
+        run: |
+          set -euo pipefail
+          file="${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
+          if [ ! -f "${file}" ]; then
+            echo "::error::The full test suite never recorded an exit code; it did not run to completion."
+            exit 1
+          fi
+          code="$(cat "${file}")"
+          if [ "${code}" -ne 0 ]; then
+            echo "::error::The full test suite failed with exit ${code}. See test-full.log in the uploaded evidence."
+            exit "${code}"
+          fi
+          echo "The full test suite passed."

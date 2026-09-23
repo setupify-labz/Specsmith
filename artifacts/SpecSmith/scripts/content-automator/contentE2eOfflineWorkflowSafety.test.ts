@@ -135,6 +135,38 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     expect(body).toContain('exit "${code}"');
   });
 
+  it('defers the full suite\'s verdict but still re-raises it, so it never becomes advisory', () => {
+    // The full suite's failure was skipping steps 11-15, so the workflow
+    // produced no render, no pipeline log and no artifact-gate evidence at
+    // all — while main independently carries 4 failing retail tests. The fix
+    // records its exit code and re-raises it in a final `if: always()` step.
+    //
+    // WITHOUT THAT FINAL STEP THIS IS A GATE THAT OBSERVES AND NEVER
+    // REFUSES, which is precisely the defect this branch was opened to fix
+    // in the publishing path. Assert the re-raise exists, runs unskippable,
+    // and is the LAST step, so nothing it should be gating runs after it.
+    expect(body).toContain('full-suite-exit-code.txt');
+    const names = [...body.matchAll(/^\s*- name:\s*(.+)$/gm)].map((match) => match[1].trim());
+    const reRaiseIndex = names.findIndex((name) => /Re-raise the full test suite/i.test(name));
+    expect(reRaiseIndex, 'the full suite has no re-raise step').toBeGreaterThan(-1);
+    expect(reRaiseIndex, 'the re-raise must be the final step').toBe(names.length - 1);
+
+    const steps = body.split(/\n(?=\s*- name:)/).filter((step) => /- name:/.test(step));
+    const reRaise = steps[reRaiseIndex];
+    expect(reRaise).toMatch(/if:\s*always\(\)/);
+    expect(reRaise).toMatch(/exit "\$\{code\}"/);
+    // A missing file must fail rather than silently pass the job.
+    expect(reRaise).toMatch(/if \[ ! -f "\$\{file\}" \]/);
+  });
+
+  it('never filters the failing retail tests out of the full run', () => {
+    // The tempting shortcut for the 4 inherited main failures is to exclude
+    // them. That is deleting coverage to get a green tick, and it would also
+    // hide a genuine regression in those same files.
+    expect(body).not.toMatch(/--exclude|\.skip\b|--testNamePattern/);
+    expect(body).toMatch(/vitest run\s*2>&1/); // still untargeted
+  });
+
   it('uploads exactly the one evidence directory for one day, and does not commit or publish it', () => {
     expect(body).toContain('path: ${{ runner.temp }}/e2e');
     expect(body).toContain('retention-days: 1');
