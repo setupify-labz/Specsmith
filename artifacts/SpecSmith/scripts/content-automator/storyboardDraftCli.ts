@@ -2,9 +2,11 @@
 // per-beat provenance. Draft only: nothing here passes a quality gate,
 // touches the publication ledger, or posts anywhere.
 
-import { renderGeneratedStoryboard, buildSealedRenderManifest, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
+import { renderGeneratedStoryboard, INTENDED_VOICE_NAME } from "./storyboardRender.ts";
 import { writeReviewPacket } from "./reviewPacket.ts";
 import { evaluatePublishGate } from "./publishGate.ts";
+import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
+import { dependencyRecordFor } from "./renderManifest.ts";
 
 async function main(): Promise<number> {
   const result = await renderGeneratedStoryboard();
@@ -50,13 +52,17 @@ async function main(): Promise<number> {
     console.log(`      NEEDS: ${blocker.needsHuman}`);
   }
 
-  // THE GATE IS RUN, NOT DESCRIBED. Every artifact this render produced goes
-  // through it, so the refusal printed below is a real verdict on real
-  // metadata rather than a claim about what would happen.
-  const manifest = await buildSealedRenderManifest(result);
+  // THE GATE IS RUN, NOT DESCRIBED. It is handed the receipt the compositor
+  // issued for this master — the files it actually consumed — so the refusal
+  // printed below is a real verdict on real bytes and metadata. A draft has no
+  // QC verdict, rights evidence or inspection, so those bindings are empty and
+  // the gate refuses them too.
+  const receipt = result.master ? renderReceiptFor(result.master) : undefined;
   const verdict = evaluatePublishGate({
-    manifest,
-    reviewedMasterSha256: packet.master.sha256,
+    receipt: receipt as RenderReceipt,
+    dependencyRecord: receipt ? dependencyRecordFor(receipt) : { masterSha256: "", receiptDigest: "", dependencies: [] },
+    qualityReview: { masterSha256: "", receiptDigest: "" },
+    rightsEvidence: { masterSha256: "", receiptDigest: "" },
     narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
   });
   console.log("\nPublish gate:");

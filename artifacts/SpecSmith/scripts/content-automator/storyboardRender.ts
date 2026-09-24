@@ -37,14 +37,6 @@ import { createMotionCompositorAdapter } from "./motionCompositor.ts";
 import { createOfflineCardVideoAdapter, createOfflineSilentBedAdapter } from "./offlineBeatFixtures.ts";
 import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRenderAdapter.ts";
 import { RenderAdapterRegistry, renderPlatformPlan, type PlatformRenderResult, type RenderArtifact } from "./rendering.ts";
-import {
-  describeArtifact,
-  hashArtifactBytes,
-  sealRenderManifest,
-  type ArtifactRole,
-  type ManifestEntry,
-  type SealedRenderManifest,
-} from "./renderManifest.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import type {
   ContentPackage,
@@ -334,46 +326,4 @@ export async function renderGeneratedStoryboard(
     beats: describeRenderedBeats(plan, storyboard, platform, render, timingScale),
     outputDir,
   };
-}
-
-/**
- * Builds the sealed manifest for a finished render.
- *
- * ROLES COME FROM THE PLAN, NOT FROM GUESSWORK ABOUT FILENAMES. Each task in
- * the generated plan already knows which beat it serves and what capability
- * it satisfies, so the mapping is read from there. The hook is whichever beat
- * the storyboard marked `hook`; everything else visual is evidence.
- *
- * Every artifact is hashed from its own bytes. An artifact whose file cannot
- * be read gets an empty digest, which `manifestProblems` refuses as unhashed
- * rather than letting it through unmeasured.
- */
-export async function buildSealedRenderManifest(
-  result: StoryboardRenderResult,
-): Promise<SealedRenderManifest> {
-  const hookBeatIndex = result.beats.find((beat) => beat.purpose === "hook")?.beatIndex;
-  const hookTaskId = hookBeatIndex === undefined
-    ? null
-    : `${result.plan.platform}-beat-${hookBeatIndex + 1}-visual`;
-
-  const entries: ManifestEntry[] = [];
-  let masterSha256 = "";
-
-  for (const task of result.render.taskResults) {
-    for (const artifact of task.artifacts) {
-      let role: ArtifactRole;
-      if (artifact.mimeType === "video/mp4" && task.taskId.endsWith("-compose")) role = "master";
-      else if (task.taskId.endsWith("-voice")) role = "narration";
-      else if (task.taskId.endsWith("-audio")) role = "music-bed";
-      else if (task.taskId.endsWith("-captions")) role = "captions";
-      else if (hookTaskId !== null && task.taskId === hookTaskId) role = "hook-visual";
-      else role = "evidence-visual";
-
-      const sha256 = await hashArtifactBytes(artifact);
-      if (role === "master") masterSha256 = sha256;
-      entries.push(describeArtifact(artifact, role, sha256, true));
-    }
-  }
-
-  return sealRenderManifest(entries, masterSha256);
 }

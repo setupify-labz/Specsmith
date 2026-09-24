@@ -107,6 +107,14 @@ export interface QualityReviewResult {
    * hash the caller passes alongside.
    */
   reviewedMediaSha256: string;
+  /**
+   * Digest of the compositor render receipt this review covers.
+   *
+   * Optional in the type because the QC evidence schema does not record it
+   * yet; the publish gate REFUSES a review without it, so omitting it fails
+   * closed rather than open.
+   */
+  reviewedReceiptDigest?: string;
   decision: ReviewDecision;
   publishable: boolean;
   overallScore: number;

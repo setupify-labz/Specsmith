@@ -25,42 +25,42 @@ export interface PublishingConfig {
 
 import {
   assertPublishable,
-  type ApprovalRecord,
+  type BoundApproval,
   type NarrationIdentityConfig,
 } from "./publishGate.ts";
-import type { SealedRenderManifest } from "./renderManifest.ts";
+import type { RenderReceipt } from "./motionCompositor.ts";
+import type { DependencyRecord } from "./renderManifest.ts";
 
 export interface PublishingGateInput {
   /**
-   * The QC verdict for this creative. Its `reviewedMediaSha256` is the digest
-   * of the bytes a reviewer actually watched — the gate reads it from here
-   * rather than accepting a hash argument, because a caller-supplied digest
-   * proves nothing about what was reviewed.
+   * The QC verdict for this creative. Its `reviewedMediaSha256` and
+   * `reviewedReceiptDigest` are the exact master and receipt a reviewer
+   * watched; the gate reads them from here rather than accepting a hash
+   * argument, because a caller-supplied digest proves nothing about what was
+   * reviewed.
    */
   qualityReview: QualityReviewResult;
   /**
-   * The rights verdict for this creative. Its `approvedMasterSha256` is
-   * resolved from the asset registry's stored record for the master, so it is
-   * likewise a fact about the registry rather than an assertion by the caller.
+   * The rights verdict for this creative. Its `approvedMasterSha256` and
+   * `approvedReceiptDigest` are resolved from the asset registry's stored
+   * record for the master.
    */
   assetBundle: PublicationAssetBundleResult;
   /**
-   * What every artifact in the master actually IS. REQUIRED.
-   *
-   * The QC verdict and the rights bundle both answer questions ABOUT a
-   * finished master — was it reviewed, are its assets cleared — and neither
-   * asks what it is made of. A render built entirely from fixtures can hold a
-   * passing QC verdict and a clean rights bundle, because a fixture is a
-   * perfectly legitimate asset to own. This closes that: nothing may ship
-   * without an account of its own origin.
+   * The receipt the compositor issued for this master. REQUIRED, and only a
+   * genuine one is accepted — see the trust model in publishGate.ts. A
+   * fixture render can hold a passing QC verdict and a clean rights bundle;
+   * the receipt is what says what the master is made of.
    */
-  renderManifest: SealedRenderManifest;
+  renderReceipt: RenderReceipt;
+  /** The persisted claim of the master's inputs. Reconciled against the receipt. */
+  dependencyRecord: DependencyRecord;
   /** The Liam voice id narration is verified against. Blank refuses. */
   narrationIdentity: NarrationIdentityConfig;
-  /** The recorded human inspection of the reviewed bytes. REQUIRED. */
-  inspection: ApprovalRecord & { approved: boolean };
-  /** Required when any artifact declares approved paid spend. */
-  paidProviderApproval?: ApprovalRecord;
+  /** The recorded human inspection, bound to the exact master and receipt. REQUIRED. */
+  inspection: BoundApproval & { approved: boolean };
+  /** Required when any input came from a paid provider; bound likewise. */
+  paidProviderApproval?: BoundApproval;
 }
 
 export interface MetricoolPublishingRequest {
@@ -372,18 +372,30 @@ function assertPublishGate(
   }
   // THE ARTIFACT GATE, BEFORE ANY REQUEST EXISTS.
   //
-  // Bound to `qualityReview.reviewedMediaSha256` rather than to a digest the
-  // caller passes in, for the same reason the surrounding function reads its
-  // media reference from the registry: a caller-supplied hash proves nothing
-  // about what was reviewed. `assertPublishable` throws with every refusal
-  // listed, so a blocked publish names the whole distance to publishable.
-  assertPublishable({
-    manifest: gate.renderManifest,
-    reviewedMasterSha256: gate.qualityReview.reviewedMediaSha256,
+  // QC and rights are bound to the receipt's master AND the receipt itself,
+  // read from their own records rather than from arguments. The gate
+  // re-hashes the master and every consumed input from disk and throws with
+  // every refusal listed.
+  const verified = assertPublishable({
+    receipt: gate.renderReceipt,
+    dependencyRecord: gate.dependencyRecord,
+    qualityReview: {
+      masterSha256: gate.qualityReview.reviewedMediaSha256,
+      receiptDigest: gate.qualityReview.reviewedReceiptDigest ?? "",
+    },
+    rightsEvidence: {
+      masterSha256: gate.assetBundle.approvedMasterSha256 ?? "",
+      receiptDigest: gate.assetBundle.approvedReceiptDigest ?? "",
+    },
     narrationIdentity: gate.narrationIdentity,
     inspection: gate.inspection,
     paidProviderApproval: gate.paidProviderApproval,
   });
+  // The request carries the digest just re-hashed from disk, which the gate
+  // has proven equal to the reviewed and rights-approved digest.
+  if (verified.masterSha256 !== digest) {
+    throw new Error("Publication blocked: the verified master is not the reviewed master.");
+  }
 
   return { mediaUrl: mediaUrl.toString(), digest };
 }

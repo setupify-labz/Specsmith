@@ -139,6 +139,12 @@ export interface PublicationAssetBundleResult {
   approvedMasterSha256: string | null;
   /** URI of that same approved master, read from the registry. */
   approvedMasterUri: string | null;
+  /**
+   * Digest of the render receipt the rights evidence cleared. The registry
+   * does not record it yet, so it is optional here and the publish gate
+   * refuses its absence.
+   */
+  approvedReceiptDigest?: string | null;
 }
 
 /**

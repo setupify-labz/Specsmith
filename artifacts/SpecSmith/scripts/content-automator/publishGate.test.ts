@@ -1,9 +1,11 @@
-// Unit coverage for the gate's own logic. The tests that matter most for the
-// defect this closes live in publishing.test.ts, where they run against the
+// Unit coverage for the gate's own logic, called directly. The tests that
+// matter most live in publishBoundary.test.ts, where they run against the
 // REAL buildMetricoolPublishingRequest — a gate nobody calls passes its own
 // tests indefinitely.
 
-import { describe, expect, it } from "vitest";
+import { rm } from "node:fs/promises";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   approvalProblems,
@@ -11,29 +13,48 @@ import {
   evaluatePublishGate,
   type PublishGateInput,
 } from "./publishGate";
-import { ELEVENLABS_PROVIDER, sealRenderManifest, type ManifestEntry } from "./renderManifest";
+import type { RenderReceipt } from "./motionCompositor";
+import { dependencyRecordFor } from "./renderManifest";
+import { CONTROL_LIAM_VOICE_ID, renderControl, type ControlRender } from "./publishBoundary.testkit";
 
-const SHA = "e3a3d07fc5faad39a05f53a935e6aba35d90c19caeaf74ed21cded2b3e282148";
-const LIAM = "configured-liam-voice-id";
 const NOW = new Date("2026-09-23T12:00:00Z");
 
-const cleanEntries = (): ManifestEntry[] => [
-  { taskId: "hook", role: "hook-visual", renderer: "gemini-veo", provider: "google-gemini-api", isFixture: false, sha256: "1".repeat(64), inMaster: true },
-  { taskId: "evidence", role: "evidence-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: "2".repeat(64), inMaster: true },
-  { taskId: "voice", role: "narration", renderer: ELEVENLABS_PROVIDER, provider: ELEVENLABS_PROVIDER, isFixture: false, sha256: "3".repeat(64), inMaster: true, voiceId: LIAM },
-  { taskId: "captions", role: "captions", renderer: "specsmith-ass-captions", provider: "specsmith-ass-captions", isFixture: false, sha256: "4".repeat(64), inMaster: true },
-  { taskId: "music", role: "music-bed", renderer: "licensed-library", provider: "licensed-library", isFixture: false, sha256: "5".repeat(64), inMaster: true },
-  { taskId: "compose", role: "master", renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor", isFixture: false, sha256: SHA, inMaster: true },
-];
-
-const clean = (): PublishGateInput => ({
-  manifest: sealRenderManifest(cleanEntries(), SHA),
-  reviewedMasterSha256: SHA,
-  narrationIdentity: { liamVoiceId: LIAM },
-  inspection: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", approved: true },
-  paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z" },
-  now: NOW,
+const renders: ControlRender[] = [];
+let clean: ControlRender;
+let fixture: ControlRender;
+let selfCleared: ControlRender;
+beforeAll(async () => {
+  clean = await renderControl();
+  fixture = await renderControl({ fixtureNarration: true, fixtureMusic: true, fixtureHook: true });
+  // A known fixture renderer that declares isFixture: false about itself.
+  selfCleared = await renderControl({
+    evidenceMetadata: { renderer: "offline-card-video-fixture", provider: "ffmpeg-offline-fixture", isFixture: false },
+  });
+  renders.push(clean, fixture, selfCleared);
+}, 120_000);
+afterAll(async () => {
+  await Promise.all(renders.map((control) => rm(control.dir, { recursive: true, force: true })));
 });
+
+const signedOff = (receipt: RenderReceipt, over: Partial<PublishGateInput> = {}): PublishGateInput => {
+  const binding = { masterSha256: receipt.masterSha256, receiptDigest: receipt.digest };
+  return {
+    receipt,
+    dependencyRecord: dependencyRecordFor(receipt),
+    qualityReview: binding,
+    rightsEvidence: binding,
+    narrationIdentity: { liamVoiceId: CONTROL_LIAM_VOICE_ID },
+    inspection: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", approved: true, ...binding },
+    paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", ...binding },
+    now: NOW,
+    ...over,
+  };
+};
+
+const codes = (input: PublishGateInput): string[] => {
+  const verdict = evaluatePublishGate(input);
+  return verdict.allowed ? [] : verdict.refusals.map((refusal) => refusal.code);
+};
 
 describe("approval identity and timestamp validation", () => {
   it("accepts an approval with an identity and a past timestamp", () => {
@@ -67,82 +88,54 @@ describe("approval identity and timestamp validation", () => {
   });
 });
 
-describe("structural problems stop the gate before it draws conclusions", () => {
-  it("reports manifest problems and nothing derived from them", () => {
-    // Judgements about voice or digests read entries that did not validate,
-    // so reporting them alongside would be reporting guesses.
-    const input = clean();
-    input.manifest = sealRenderManifest([{ taskId: "voice", role: "narration" } as ManifestEntry], SHA);
-    const verdict = evaluatePublishGate(input);
-    expect(verdict.allowed).toBe(false);
-    if (!verdict.allowed) {
-      expect(new Set(verdict.refusals.map((refusal) => refusal.code))).toEqual(new Set(["malformed-manifest"]));
-    }
+describe("an untrusted receipt stops the gate before it draws conclusions", () => {
+  it("reports only untrusted-receipt for a receipt-shaped object", () => {
+    const verdict = evaluatePublishGate(signedOff({ ...clean.receipt }));
+    expect(verdict).toEqual({ allowed: false, refusals: [expect.objectContaining({ code: "untrusted-receipt" })] });
   });
 
-  it("refuses an absent manifest outright", () => {
-    const verdict = evaluatePublishGate({ ...clean(), manifest: undefined as never });
-    expect(verdict.allowed).toBe(false);
-    if (!verdict.allowed) expect(verdict.refusals[0].code).toBe("missing-manifest");
+  it("refuses an absent receipt outright", () => {
+    expect(codes(signedOff(clean.receipt, { receipt: undefined as unknown as RenderReceipt }))).toEqual(["untrusted-receipt"]);
   });
 
-  it("requires exactly one master", () => {
-    const entries = [...cleanEntries(), { ...cleanEntries()[5], taskId: "compose-2" }];
-    expect(() => assertPublishable({ ...clean(), manifest: sealRenderManifest(entries, SHA) }))
-      .toThrow(/master artifacts are present/);
+  it("allows the genuine receipt with every binding in place", () => {
+    expect(evaluatePublishGate(signedOff(clean.receipt))).toEqual({
+      allowed: true, masterSha256: clean.receipt.masterSha256, receiptDigest: clean.receipt.digest,
+    });
   });
 });
 
 describe("digests compare as digests, not as strings", () => {
   it("treats upper and lower case hex as the same bytes", () => {
-    // The surrounding publishing code has normalised case on both sides since
-    // before this gate existed; comparing raw strings reintroduced a mismatch
-    // it had already fixed.
-    const input = clean();
-    input.reviewedMasterSha256 = SHA.toUpperCase();
-    expect(evaluatePublishGate(input).allowed).toBe(true);
+    const upper = {
+      masterSha256: clean.receipt.masterSha256.toUpperCase(),
+      receiptDigest: clean.receipt.digest.toUpperCase(),
+    };
+    expect(codes(signedOff(clean.receipt, { qualityReview: upper, rightsEvidence: upper }))).toEqual([]);
   });
 
-  it("still refuses genuinely different bytes", () => {
-    const input = clean();
-    input.reviewedMasterSha256 = "f".repeat(64);
-    expect(() => assertPublishable(input)).toThrow(/master-sha-mismatch/);
+  it("refuses a binding that is not a digest at all", () => {
+    expect(codes(signedOff(clean.receipt, { qualityReview: { masterSha256: "not-a-digest", receiptDigest: clean.receipt.digest } })))
+      .toEqual(["stale-approval"]);
   });
 });
 
 describe("a fixture cannot declare its way out", () => {
-  it("recognises a known fixture renderer even when the entry says otherwise", () => {
-    // Resealing after flipping the flag costs an attacker nothing, so the
-    // gate recomputes rather than trusting what the entry claims.
-    const entries = cleanEntries().map((entry) =>
-      (entry.taskId === "music"
-        ? { ...entry, renderer: "offline-silent-bed-fixture", provider: "ffmpeg-offline-fixture", isFixture: false }
-        : entry));
-    expect(() => assertPublishable({ ...clean(), manifest: sealRenderManifest(entries, SHA) }))
-      .toThrow(/fixture-artifact/);
+  it("recognises a known fixture renderer even when the artifact says isFixture: false", () => {
+    expect(selfCleared.receipt.inputs.some((consumed) => consumed.renderer === "offline-card-video-fixture" && !consumed.declaredFixture))
+      .toBe(true);
+    expect(() => assertPublishable(signedOff(selfCleared.receipt))).toThrow(/fixture-artifact/);
   });
 });
 
 describe("every refusal is reported, not just the first", () => {
   it("names the whole distance to publishable in one pass", () => {
-    const entries = cleanEntries().map((entry) => {
-      if (entry.role === "hook-visual") return { ...entry, renderer: "offline-card-video-fixture", provider: "ffmpeg-offline-fixture", isFixture: true };
-      if (entry.role === "narration") return { ...entry, renderer: "local-espeak-tts-fixture", provider: "espeak-ng-offline-fixture", isFixture: true, voiceId: "en-us" };
-      if (entry.role === "music-bed") return { ...entry, renderer: "offline-silent-bed-fixture", provider: "ffmpeg-offline-fixture", isFixture: true };
-      return entry;
-    });
-    const input = { ...clean(), manifest: sealRenderManifest(entries, SHA) };
+    const input = signedOff(fixture.receipt);
     delete input.inspection;
-    const verdict = evaluatePublishGate(input);
-    expect(verdict.allowed).toBe(false);
-    if (!verdict.allowed) {
-      const codes = new Set(verdict.refusals.map((refusal) => refusal.code));
-      expect(codes).toContain("fixture-artifact");
-      expect(codes).toContain("placeholder-hook");
-      expect(codes).toContain("silent-music-bed");
-      expect(codes).toContain("narration-not-elevenlabs");
-      expect(codes).toContain("no-approval-record");
-      expect(verdict.refusals.length).toBeGreaterThanOrEqual(7);
+    const found = new Set(codes(input));
+    for (const code of ["fixture-artifact", "placeholder-hook", "silent-music-bed", "narration-not-elevenlabs", "narration-voice-not-liam", "no-approval-record"]) {
+      expect(found).toContain(code);
     }
+    expect(codes(input).length).toBeGreaterThanOrEqual(7);
   });
 });

@@ -86,7 +86,8 @@ import {
 } from "./productVisualAssets.ts";
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type MetricoolPublishingRequest, type PublishingConfig } from "./publishing.ts";
-import { sealRenderManifest, type ManifestEntry } from "./renderManifest.ts";
+import { dependencyRecordFor } from "./renderManifest.ts";
+import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import type { VideoPlatform } from "./types.ts";
@@ -310,25 +311,29 @@ async function main(): Promise<void> {
     // header: nothing here is allowed to auto-publish.
   };
   const publishAt = new Date(generatedAt.getTime() + 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "");
-  // A SEALED MANIFEST FOR THIS PIPELINE'S OWN RENDER.
+  // THE COMPOSITOR'S OWN RECEIPT FOR THIS RENDER.
   //
-  // Every artifact below is a fixture or an offline stand-in — that is what
-  // this script renders, and always was. Sealing it truthfully means the
-  // artifact gate refuses to build a publishing request from it, which is the
-  // correct outcome and was previously enforced nowhere: a QC pass and a clean
-  // rights bundle said nothing about what the master was made of.
+  // The previous version hand-typed six entries here and gave every one of
+  // them the MASTER's digest — so no input was ever actually hashed — and it
+  // listed a music bed this render never used while omitting its third
+  // visual. The receipt below is issued by the compositor from the files it
+  // actually opened: each input's own realpath and SHA-256, its role and its
+  // timeline slots. Nothing here can author or edit it.
   //
-  // Hashes are the real digests of the real files this run produced, so the
-  // manifest cannot be satisfied by describing a render that did not happen.
-  const offlineEntries: ManifestEntry[] = [
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-visual-1`, role: "hook-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: masterSha256, inMaster: true },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-visual-2`, role: "evidence-visual", renderer: "specsmith-deterministic-ui-render", provider: "playwright-chromium", isFixture: false, sha256: masterSha256, inMaster: true },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-voice`, role: "narration", renderer: "local-espeak-tts-fixture", provider: "espeak-ng-offline-fixture", isFixture: true, sha256: masterSha256, inMaster: true, voiceId: "en-us" },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-music`, role: "music-bed", renderer: "offline-silent-bed-fixture", provider: "ffmpeg-offline-fixture", isFixture: true, sha256: masterSha256, inMaster: true },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-captions`, role: "captions", renderer: "specsmith-ass-captions", provider: "specsmith-ass-captions", isFixture: false, sha256: masterSha256, inMaster: true },
-    { taskId: `${OFFLINE_SMOKE_PACKAGE_ID}-compose`, role: "master", renderer: "specsmith-ffmpeg-compositor", provider: "specsmith-ffmpeg-compositor", isFixture: false, sha256: masterSha256, inMaster: true },
-  ];
-  const offlineManifest = sealRenderManifest(offlineEntries, masterSha256);
+  // This render is built from fixtures (espeak narration, no licensed bed),
+  // so the artifact gate must refuse it. No human has inspected these bytes,
+  // so the inspection record says approved: false rather than inventing an
+  // approval, and the committed QC observation predates the receipt, so it
+  // carries no receipt digest. Both are additional, truthful refusals.
+  const offlineReceipt = renderReceiptFor(finalArtifact);
+  if (!offlineReceipt) throw new Error("The compositor issued no render receipt for the offline master.");
+  if (offlineReceipt.masterSha256 !== masterSha256) {
+    throw new Error("The compositor's receipt does not describe the master on disk.");
+  }
+  console.log(`Render receipt: ${offlineReceipt.digest} (${offlineReceipt.inputs.length} consumed inputs)`);
+  for (const consumed of offlineReceipt.inputs) {
+    console.log(`  ${consumed.role.padEnd(15)} ${consumed.taskId} ${consumed.sha256.slice(0, 16)}… ${consumed.renderer || consumed.provider}`);
+  }
 
   let publishingRequest: MetricoolPublishingRequest;
   try {
@@ -339,9 +344,16 @@ async function main(): Promise<void> {
       {
         qualityReview: review,
         assetBundle: assetBundleForPublishing,
-        renderManifest: offlineManifest,
+        renderReceipt: offlineReceipt as RenderReceipt,
+        dependencyRecord: dependencyRecordFor(offlineReceipt),
         narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
-        inspection: { approvedBy: "offline-pipeline", approvedAt: generatedAt.toISOString(), approved: true },
+        inspection: {
+          approvedBy: "offline-pipeline",
+          approvedAt: generatedAt.toISOString(),
+          approved: false,
+          masterSha256: offlineReceipt.masterSha256,
+          receiptDigest: offlineReceipt.digest,
+        },
       },
       publishingConfig,
       publishAt,

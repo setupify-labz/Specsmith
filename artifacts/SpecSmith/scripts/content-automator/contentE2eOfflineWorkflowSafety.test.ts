@@ -78,7 +78,7 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
   it('runs typecheck, the targeted content-automator tests, the full suite and a production build', () => {
     expect(body).toContain('pnpm typecheck');
     expect(body).toMatch(/vitest run scripts\/content-automator\s*2>&1/);
-    expect(body).toMatch(/vitest run\s*2>&1/); // the untargeted full-suite run
+    expect(body).toContain('scripts/ci/differentialFullSuite.mjs'); // the untargeted full-suite run, head and base
     expect(body).toContain('pnpm run build');
   });
 
@@ -197,8 +197,15 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     // The tempting shortcut for the 4 inherited main failures is to exclude
     // them. That is deleting coverage to get a green tick, and it would also
     // hide a genuine regression in those same files.
-    expect(body).not.toMatch(/--exclude|\.skip\b|--testNamePattern/);
-    expect(body).toMatch(/vitest run\s*2>&1/); // still untargeted
+    expect(body).not.toMatch(/--exclude|\.skip\b|--testNamePattern|continue-on-error/);
+    // The full run is the differential script, which runs the WHOLE suite at
+    // head and at base. Pin that it stays untargeted and has no allow-list or
+    // expected-failure count to hide behind.
+    const script = fs.readFileSync(path.join(here, '..', 'ci', 'differentialFullSuite.mjs'), 'utf-8');
+    expect(script).toContain('["exec", "vitest", "run", "--reporter=default", "--reporter=json"');
+    expect(script).not.toMatch(/--exclude|\.skip\b|--testNamePattern|--bail|allow|expected(Failures|Count)/i);
+    expect(script).toMatch(/introduced\.length === 0/);
+    expect(body).toMatch(/git merge-base HEAD origin\/main/);
   });
 
   it('uploads exactly the one evidence directory for one day, and does not commit or publish it', () => {

@@ -80,13 +80,16 @@ jobs:
   e2e:
     name: Typecheck, test, build and run the offline content pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Check out the exact selected commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
+          # Full history, so the target base (the merge-base with main) can
+          # be checked out in the same job for the differential full suite.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Report the commit under test
@@ -183,35 +186,47 @@ jobs:
           set -o pipefail
           pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
 
-      # THE VERDICT IS DEFERRED, NOT WEAKENED. Nothing here is skipped,
-      # allowlisted or retried: the whole suite runs, its exit code is
-      # recorded, and the LAST step in the job re-raises it, so a failure
-      # here still fails the job.
+      # THE FULL SUITE IS JUDGED DIFFERENTIALLY, AND THE VERDICT IS DEFERRED.
       #
-      # The reason is that `main` currently carries 4 real failing tests —
-      # cpuAdmissionThroughGenerator.test.ts ("expected 'i5-13400f' to be
-      # null") and 3 in promotedImagesOnBuilder.test.tsx ("the fixture should
-      # have been processed"). Verified by checking out origin/main into a
-      # separate worktree and running those two files there: identical
-      # failures, so they are inherited, not caused by this branch.
+      # `main` carries real failing tests that are not this branch's (at the
+      # time of writing: cpuAdmissionThroughGenerator.test.ts and three in
+      # promotedImagesOnBuilder.test.tsx). A plain pass/fail makes every
+      # branch red for them; an allow-list or an expected count would hide a
+      # regression in those same files. So the WHOLE suite — untargeted,
+      # nothing excluded, skipped or retried — runs at this head AND at its
+      # target base (the merge-base with main, checked out and installed in
+      # this job), and the exact failing-test identities are compared.
       #
-      # With the step failing in place, steps 11-15 were skipped and this
-      # workflow produced NO render, NO pipeline log and NO artifact-gate
-      # evidence — the entire reason it exists. Deferring the verdict lets
-      # the evidence be built while keeping the suite's answer binding.
-      #
-      # Do not "fix" this by filtering the retail tests out of the run.
-      - name: Run the full test suite
+      # The step records exit 0 only when every head failure also fails on
+      # the base; the inherited set is printed in full to the log and the job
+      # summary. Any failure the base does not have, or a missing report from
+      # either side, records exit 1. The final `if: always()` step re-raises
+      # it, so the evidence steps below still run while the verdict stays
+      # binding. The content-automator suite above, typecheck and the build
+      # remain hard, non-differential requirements.
+      - name: Check out and install the target base
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          base="$(git merge-base HEAD origin/main)"
+          echo "Target base (merge-base with origin/main): ${base}" | tee "${RUNNER_TEMP}/e2e/full-suite-base-sha.txt"
+          git worktree add --detach "${RUNNER_TEMP}/base" "${base}"
+          cd "${RUNNER_TEMP}/base"
+          pnpm install --frozen-lockfile 2>&1 | tail -5
+
+      - name: Run the full test suite at head and base, and compare failures
         working-directory: artifacts/SpecSmith
         run: |
           set -o pipefail
           set +e
-          pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
+          node scripts/ci/differentialFullSuite.mjs --base-dir "${RUNNER_TEMP}/base" --out "${RUNNER_TEMP}/e2e" 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
           code=$?
           set -e
-          echo "${code}" > "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
+          if [ ! -f "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt" ]; then
+            echo "${code}" > "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
+          fi
           if [ "${code}" -ne 0 ]; then
-            echo "::warning::The full suite failed (exit ${code}). The evidence steps will still run; the job is failed at the end by \"Re-raise the full test suite's verdict\"."
+            echo "::warning::The head introduced full-suite failures the base does not have (exit ${code}). The evidence steps will still run; the job is failed at the end by \"Re-raise the full test suite's verdict\"."
           fi
 
       - name: Build the production application
@@ -296,7 +311,7 @@ jobs:
           # THE POLARITY IS INVERTED NOW, AND DELIBERATELY.
           #
           # This pipeline's master is built from an espeak narration fixture
-          # and a silent bed, and it seals a manifest that says so. Reaching
+          # and a silent bed, and the compositor's receipt says so. Reaching
           # "Done" would mean the publishing path had built a Metricool
           # request out of stand-ins, which is precisely what the artifact
           # gate exists to prevent. A clean exit is therefore the failure.
@@ -378,7 +393,7 @@ jobs:
           fi
           code="$(cat "${file}")"
           if [ "${code}" -ne 0 ]; then
-            echo "::error::The full test suite failed with exit ${code}. See test-full.log in the uploaded evidence."
+            echo "::error::The head introduced full-suite failures the base does not have (exit ${code}). See full-suite-differential.md in the uploaded evidence."
             exit "${code}"
           fi
-          echo "The full test suite passed."
+          echo "No full-suite failures beyond the base's; the inherited set is listed in full-suite-differential.md."
