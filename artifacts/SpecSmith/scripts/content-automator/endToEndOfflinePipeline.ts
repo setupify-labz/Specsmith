@@ -51,12 +51,11 @@
 //   offlineCompositorSmoke.ts's estimated-FPS caption is now the FIRST cue,
 //   on screen from t=0) rather than scored around.
 // - The Metricool publishing request needs an https:// URL Metricool could
-//   fetch. This sandbox has nothing to upload the test render to, and
-//   nothing here should actually publish anything, so the "approved master
-//   URI" below is a clearly fake, non-resolving https://*.example placeholder
-//   — RFC 2606 reserves .example for exactly this. buildMetricoolPublishingRequest
-//   makes no network call of its own; it only returns a plain object shaped
-//   like a Metricool request, always with draft: true.
+//   fetch, and the builder accepts only one proven by uploadAndVerifyMaster
+//   (upload the verified master, download it back, compare bytes). This
+//   sandbox has no storage uploader or credentials, so no hosted master
+//   exists and the builder refuses before any network call. It never
+//   contacts Metricool and only ever returns a draft: true request object.
 // - No performance/engagement/analytics numbers are invented anywhere. The
 //   analytics-identity section only proves that the SAME creativeId a real
 //   snapshot would be filed under is the one already bound to the media hash,
@@ -88,6 +87,7 @@ import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type MetricoolPublishingRequest, type PublishingConfig } from "./publishing.ts";
 import { dependencyRecordFor } from "./renderManifest.ts";
 import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
+import type { HostedMaster } from "./hostedMaster.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import type { VideoPlatform } from "./types.ts";
@@ -176,6 +176,16 @@ async function main(): Promise<void> {
   const mp4Path = fileUriToPath(finalArtifact.uri);
   const masterSha256 = await sha256File(mp4Path);
   const durationSeconds = Number(finalArtifact.metadata?.durationSeconds ?? 0);
+  const offlineReceipt = renderReceiptFor(finalArtifact);
+  if (!offlineReceipt) throw new Error("The compositor issued no render receipt for the offline master.");
+  if (offlineReceipt.masterSha256 !== masterSha256) {
+    throw new Error("The compositor's receipt does not describe the master on disk.");
+  }
+  console.log(`Render receipt: ${offlineReceipt.digest} (${offlineReceipt.inputs.length} consumed inputs)`);
+  for (const consumed of offlineReceipt.inputs) {
+    console.log(`  ${consumed.role.padEnd(15)} ${consumed.taskId} ${consumed.sha256.slice(0, 16)}… ${consumed.renderer || consumed.provider}`);
+  }
+
   console.log(`Rendered MP4: ${mp4Path}`);
   console.log(`sha256: ${masterSha256}`);
   console.log(`duration: ${durationSeconds}s, ${finalArtifact.metadata?.width}x${finalArtifact.metadata?.height}, video=${finalArtifact.metadata?.videoCodec}, audio=${finalArtifact.metadata?.audioCodec}`);
@@ -213,7 +223,9 @@ async function main(): Promise<void> {
     durationSeconds,
     observedCtaRoute: content.site.route,
   };
-  const review = reviewRenderedVideo(reviewRequest, observation);
+  // Bound to the compositor's receipt for THIS render; the reviewer refuses a
+  // receipt whose master is not the observed master.
+  const review = reviewRenderedVideo(reviewRequest, observation, offlineReceipt);
   console.log(`Decision: ${review.decision} (publishable=${review.publishable}, overallScore=${review.overallScore}/10)`);
   console.log(`Issues: ${review.issues.length === 0 ? "none" : review.issues.map((i) => `${i.severity}:${i.code}`).join(", ")}`);
   if (!review.publishable) {
@@ -269,6 +281,7 @@ async function main(): Promise<void> {
   };
   const registry = buildProductVisualAssetRegistry([masterRecord]);
   const assetBundle = evaluatePublicationAssetBundle(registry, {
+    renderReceipt: offlineReceipt,
     usedAssetIds: [],
     expectedVisualAssetIds: [],
     masterAssetId,
@@ -279,20 +292,16 @@ async function main(): Promise<void> {
     throw new Error("Rights bundle did not approve the rendered master; stopping before publishing, as designed.");
   }
 
-  section("5. Tracked, draft-only Metricool-ready publishing request (no network call, never auto-publishes)");
-  // Metricool needs an https:// URL it could fetch. Nothing in this sandbox
-  // is uploaded anywhere reachable, and nothing here should ever cause a
-  // real publish — so this is a clearly fake, non-resolving *.example URL
-  // (RFC 2606) standing in for "wherever the approved master would actually
-  // be hosted." buildMetricoolPublishingRequest itself makes no network
-  // call; it only returns a plain, draft:true request object.
-  const placeholderHostedMasterUrl = `https://cdn.specsmithpc.example/render-output/${masterSha256}.mp4`;
-  const registryWithPlaceholderUri = buildProductVisualAssetRegistry([{ ...masterRecord, uri: placeholderHostedMasterUrl }]);
-  const assetBundleForPublishing = evaluatePublicationAssetBundle(registryWithPlaceholderUri, {
-    usedAssetIds: [],
-    expectedVisualAssetIds: [],
-    masterAssetId,
-  });
+  section("5. Tracked, draft-only Metricool-ready publishing request (never auto-publishes)");
+  // Metricool fetches an https URL, and the builder accepts only a
+  // HostedMaster from uploadAndVerifyMaster: the verified master uploaded to
+  // storage and downloaded back byte for byte. No storage uploader is
+  // configured in this offline pipeline (it would need credentials), so there
+  // is no hosted master and the gate refuses with hosted-master-unverified —
+  // in addition to the fixture refusals. The previous placeholder
+  // `https://cdn.specsmithpc.example/...` URL is gone: a URL nobody verified
+  // is exactly what the gate must not accept.
+  const assetBundleForPublishing = assetBundle;
 
   const fingerprint = buildCreativeFingerprint(
     { rank: 1, idea: COMPARE_IDEA, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
@@ -325,19 +334,9 @@ async function main(): Promise<void> {
   // so the inspection record says approved: false rather than inventing an
   // approval, and the committed QC observation predates the receipt, so it
   // carries no receipt digest. Both are additional, truthful refusals.
-  const offlineReceipt = renderReceiptFor(finalArtifact);
-  if (!offlineReceipt) throw new Error("The compositor issued no render receipt for the offline master.");
-  if (offlineReceipt.masterSha256 !== masterSha256) {
-    throw new Error("The compositor's receipt does not describe the master on disk.");
-  }
-  console.log(`Render receipt: ${offlineReceipt.digest} (${offlineReceipt.inputs.length} consumed inputs)`);
-  for (const consumed of offlineReceipt.inputs) {
-    console.log(`  ${consumed.role.padEnd(15)} ${consumed.taskId} ${consumed.sha256.slice(0, 16)}… ${consumed.renderer || consumed.provider}`);
-  }
-
   let publishingRequest: MetricoolPublishingRequest;
   try {
-    publishingRequest = buildMetricoolPublishingRequest(
+    publishingRequest = await buildMetricoolPublishingRequest(
       COMPARE_IDEA,
       content,
       fingerprint,
@@ -346,6 +345,7 @@ async function main(): Promise<void> {
         assetBundle: assetBundleForPublishing,
         renderReceipt: offlineReceipt as RenderReceipt,
         dependencyRecord: dependencyRecordFor(offlineReceipt),
+        hostedMaster: undefined as unknown as HostedMaster,
         narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
         inspection: {
           approvedBy: "offline-pipeline",

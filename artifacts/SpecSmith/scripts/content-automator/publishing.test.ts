@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+// MUST STAY FIRST, AND MUST STAY A SIDE-EFFECT IMPORT: it installs the fake
+// network before any adapter captures fetch. esbuild drops a named import
+// whose binding is unused, which silently reorders the install.
+import "./publishBoundary.fakeNetwork.ts";
+import { fakeNetwork } from "./publishBoundary.fakeNetwork.ts";
+
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { dependencyRecordFor } from "./renderManifest.ts";
 import {
@@ -16,6 +22,7 @@ import {
   contentPackage,
   dimensions,
   fingerprint,
+  hostControl,
   idea,
   renderControl,
 } from "./publishBoundary.testkit.ts";
@@ -25,6 +32,10 @@ import {
 // builder tests run against a genuine tiny render and its genuine receipt.
 // The bypass attempts against that receipt live in publishBoundary.test.ts.
 const control = await renderControl();
+// The controlled upload step: the verified master uploaded to the (fake)
+// host and downloaded back byte for byte. Its URI is the only media the
+// builder will put in a request.
+const hosted = await hostControl(control);
 
 /**
  * The one digest that ties the whole gate together: the bytes a reviewer
@@ -90,6 +101,7 @@ function gate(platform: VideoPlatform) {
     assetBundle: rights,
     renderReceipt: control.receipt,
     dependencyRecord: dependencyRecordFor(control.receipt),
+    hostedMaster: hosted,
     narrationIdentity: { liamVoiceId: LIAM_VOICE_ID },
     inspection: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z", approved: true, ...BOUND },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z", ...BOUND },
@@ -97,8 +109,8 @@ function gate(platform: VideoPlatform) {
 }
 
 describe("publishing", () => {
-  it("creates an attributed YouTube request with direct website link and hashtags", () => {
-    const result = buildMetricoolPublishingRequest(
+  it("creates an attributed YouTube request with direct website link and hashtags", async () => {
+    const result = await buildMetricoolPublishingRequest(
       idea,
       contentPackage,
       fingerprint("youtube-shorts"),
@@ -120,12 +132,12 @@ describe("publishing", () => {
     expect(url.searchParams.get("utm_content")).toBe("creative-youtube-shorts");
   });
 
-  it("uses profile-link CTA semantics for TikTok and Instagram", () => {
-    const tiktok = buildMetricoolPublishingRequest(
+  it("uses profile-link CTA semantics for TikTok and Instagram", async () => {
+    const tiktok = await buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
       networks(), "2026-08-24T18:00:00", NOW,
     );
-    const instagram = buildMetricoolPublishingRequest(
+    const instagram = await buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("instagram-reels"), gate("instagram-reels"),
       networks(), "2026-08-24T10:00:00", NOW,
     );
@@ -139,57 +151,60 @@ describe("publishing", () => {
     expect(instagram.websiteCtaMode).toBe("profile-link");
   });
 
-  it("fails closed on QC, rights, disconnected networks, media hashes, and guessed website bases", () => {
-    expect(() => buildMetricoolPublishingRequest(
+  it("fails closed on QC, rights, disconnected networks, media hashes, and guessed website bases", async () => {
+    await expect(buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), qualityReview: quality("tiktok", false) },
       networks(), "2026-08-24T18:00:00", NOW,
-    )).toThrow(/quality review/);
+    )).rejects.toThrow(/quality review/);
 
-    expect(() => buildMetricoolPublishingRequest(
+    await expect(buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), assetBundle: { ...rights, publishable: false, nonApprovedAssetIds: ["asset-x"] } },
       networks(), "2026-08-24T18:00:00", NOW,
-    )).toThrow(/asset-rights/);
+    )).rejects.toThrow(/asset-rights/);
 
-    expect(() => buildMetricoolPublishingRequest(
+    await expect(buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
       { ...config, connectedNetworks: ["youtube"] }, "2026-08-24T18:00:00", NOW,
-    )).toThrow(/not connected/);
+    )).rejects.toThrow(/not connected/);
 
-    expect(() => buildMetricoolPublishingRequest(
+    await expect(buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "bad" } },
       networks(), "2026-08-24T18:00:00", NOW,
-    )).toThrow(/SHA-256/);
+    )).rejects.toThrow(/SHA-256/);
 
     expect(() => buildTrackedWebsiteUrl(contentPackage, "creative-x", "tiktok", "http://not-secure.test"))
       .toThrow(/https/);
 
-    // Metricool cannot fetch a local artifact reference, even when that URI
-    // came from the approved registry record.
-    expect(() => buildMetricoolPublishingRequest(
+    // The registry's URI is never the media: not even a non-fetchable one
+    // changes the request, because only the verified hosted URI is used.
+    const ignoringRegistry = await buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"),
       { ...gate("tiktok"), assetBundle: { ...rights, approvedMasterUri: "artifact:final-v4.mp4" } },
       networks(), "2026-08-24T18:00:00", NOW,
-    )).toThrow(/https/);
+    );
+    expect(ignoringRegistry.media).toEqual([hosted.uri]);
   });
 
-  it("never emits an auto-publishing request unless autoPublish is explicit", () => {
-    const drafted = buildMetricoolPublishingRequest(
+  it("always emits a draft, and refuses autoPublish until approvals are authenticated", async () => {
+    const drafted = await buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
       networks(), "2026-08-24T18:00:00", NOW,
     );
     expect(drafted.draft).toBe(true);
 
-    const live = buildMetricoolPublishingRequest(
+    // Previously `autoPublish: true` produced draft:false. Sign-offs are
+    // digest-bound but their authors are not authenticated, so no request
+    // may skip a person promoting the draft.
+    await expect(buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
       { ...networks(), autoPublish: true }, "2026-08-24T18:00:00", NOW,
-    );
-    expect(live.draft).toBe(false);
+    )).rejects.toThrow(/autoPublish is disabled/);
   });
 
-  it("refuses a second publication of the same creative across separate ledgers", () => {
+  it("refuses a second publication of the same creative across separate ledgers", async () => {
     // A re-run mints a fresh ledger, so the per-ledger transition table cannot
     // see the earlier publish. This is the guard that can.
     const fp = fingerprint("tiktok");
@@ -202,7 +217,7 @@ describe("publishing", () => {
     expect(() => assertNotAlreadyPublished([first], "creative-other")).not.toThrow();
   });
 
-  it("keeps an auditable lifecycle and blocks impossible or duplicate publication transitions", () => {
+  it("keeps an auditable lifecycle and blocks impossible or duplicate publication transitions", async () => {
     const fp = fingerprint("tiktok");
     let ledger = startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z"));
     ledger = advancePublicationLedger(ledger, { status: "qc-passed", at: "2026-08-23T20:01:00Z" });
@@ -234,57 +249,57 @@ describe("the published bytes are bound to the reviewed and rights-approved mast
     );
   }
 
-  it("emits the digest recorded by the quality review", () => {
-    expect(build().finalMediaSha256).toBe(MASTER_SHA256);
+  it("emits the digest recorded by the quality review", async () => {
+    expect((await build()).finalMediaSha256).toBe(MASTER_SHA256);
   });
 
-  it("ignores a hash supplied by the caller", () => {
+  it("ignores a hash supplied by the caller", async () => {
     // The old field names are no longer part of PublishingGateInput. Passing
     // them anyway must change nothing: this is what proves the value is read
     // from the review rather than from the argument object.
     const forged = "9".repeat(64);
-    const result = build({ finalMediaSha256: forged, approvedMediaSha256: forged });
+    const result = await build({ finalMediaSha256: forged, approvedMediaSha256: forged });
     expect(result.finalMediaSha256).toBe(MASTER_SHA256);
     expect(result.finalMediaSha256).not.toBe(forged);
   });
 
-  it("uses the approved registry URI and ignores a caller-supplied media ref", () => {
-    const result = build({ finalMediaRef: "https://attacker.invalid/different.mp4" });
-    expect(result.media).toEqual([rights.approvedMasterUri]);
+  it("uses only the verified hosted URI, ignoring the registry URI and any caller media ref", async () => {
+    const result = await build({ finalMediaRef: "https://attacker.invalid/different.mp4" });
+    expect(result.media).toEqual([hosted.uri]);
+    expect(result.media).not.toContain(rights.approvedMasterUri);
+    expect(fakeNetwork.requests).toContain(`GET ${hosted.uri}`);
   });
 
-  it("refuses a review of bytes the rights registry did not approve", () => {
-    expect(() => build({
+  it("refuses a review of bytes the rights registry did not approve", async () => {
+    await expect(build({
       qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "c".repeat(64) },
-    })).toThrow(/not the rights-approved master/);
+    })).rejects.toThrow(/not the rights-approved master/);
   });
 
-  it("refuses a bundle that resolved no approved master hash", () => {
+  it("refuses a bundle that resolved no approved master hash", async () => {
     // publishable:true with a null hash is exactly the shape a registry
     // produces for a master registered without a digest.
-    expect(() => build({
+    await expect(build({
       assetBundle: { ...rights, approvedMasterSha256: null },
-    })).toThrow(/no approved master hash/);
+    })).rejects.toThrow(/no approved master hash/);
   });
 
-  it("refuses a bundle that resolved no approved master URI", () => {
-    expect(() => build({
-      assetBundle: { ...rights, approvedMasterUri: null },
-    })).toThrow(/approvedMasterUri/);
+  it("does not depend on the registry URI at all", async () => {
+    expect((await build({ assetBundle: { ...rights, approvedMasterUri: null } })).media).toEqual([hosted.uri]);
   });
 
-  it("normalises case on both sides rather than failing a real match", () => {
-    expect(build({
+  it("normalises case on both sides rather than failing a real match", async () => {
+    expect((await build({
       qualityReview: { ...quality("tiktok"), reviewedMediaSha256: MASTER_SHA256.toUpperCase() },
       assetBundle: { ...rights, approvedMasterSha256: MASTER_SHA256.toUpperCase() },
-    }).finalMediaSha256).toBe(MASTER_SHA256);
+    })).finalMediaSha256).toBe(MASTER_SHA256);
   });
 
-  it("rejects a malformed approved hash instead of matching it loosely", () => {
-    expect(() => build({
+  it("rejects a malformed approved hash instead of matching it loosely", async () => {
+    await expect(build({
       qualityReview: { ...quality("tiktok"), reviewedMediaSha256: "not-a-digest" },
       assetBundle: { ...rights, approvedMasterSha256: "not-a-digest" },
-    })).toThrow(/SHA-256/);
+    })).rejects.toThrow(/SHA-256/);
   });
 });
 
@@ -302,86 +317,89 @@ describe("publishAt is strictly future in the supplied timezone", () => {
   }
 
   // 18:00 in New York on 2026-08-24 (EDT, UTC-4) is 22:00:00Z.
-  it("accepts a slot one second in the future", () => {
-    expect(at("2026-08-24T18:00:00", "2026-08-24T21:59:59Z").date).toBe("2026-08-24T18:00:00");
+  it("accepts a slot one second in the future", async () => {
+    expect((await at("2026-08-24T18:00:00", "2026-08-24T21:59:59Z")).date).toBe("2026-08-24T18:00:00");
   });
 
-  it("refuses a slot at exactly the current instant", () => {
-    expect(() => at("2026-08-24T18:00:00", "2026-08-24T22:00:00Z")).toThrow(/not in the future/);
+  it("refuses a slot at exactly the current instant", async () => {
+    await expect(at("2026-08-24T18:00:00", "2026-08-24T22:00:00Z")).rejects.toThrow(/not in the future/);
   });
 
-  it("refuses a slot one second in the past", () => {
-    expect(() => at("2026-08-24T18:00:00", "2026-08-24T22:00:01Z")).toThrow(/not in the future/);
+  it("refuses a slot one second in the past", async () => {
+    await expect(at("2026-08-24T18:00:00", "2026-08-24T22:00:01Z")).rejects.toThrow(/not in the future/);
   });
 
-  it("no longer waves through a slot inside the old 24-hour grace window", () => {
+  it("no longer waves through a slot inside the old 24-hour grace window", async () => {
     // Two hours past. The previous implementation accepted this.
-    expect(() => at("2026-08-24T18:00:00", "2026-08-25T00:00:00Z")).toThrow(/not in the future/);
+    await expect(at("2026-08-24T18:00:00", "2026-08-25T00:00:00Z")).rejects.toThrow(/not in the future/);
   });
 
-  it("applies the zone's real offset rather than reading the wall clock as UTC", () => {
+  it("applies the zone's real offset rather than reading the wall clock as UTC", async () => {
     // The same wall-clock string, the same instant, two zones. Read as UTC,
     // 18:00 would be in the past for both. It is only future in Los Angeles
     // because that zone is seven hours behind, which is the whole point.
-    expect(() => at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "Europe/London")).toThrow(/not in the future/);
-    expect(at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "America/Los_Angeles").date).toBe("2026-08-24T18:00:00");
+    await expect(at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "Europe/London")).rejects.toThrow(/not in the future/);
+    expect((await at("2026-08-24T18:00:00", "2026-08-24T20:00:00Z", "America/Los_Angeles")).date).toBe("2026-08-24T18:00:00");
   });
 
-  it("uses the offset in force on the scheduled date, not today's", () => {
+  it("uses the offset in force on the scheduled date, not today's", async () => {
     // 2026-01-15 is EST (UTC-5), so noon local is 17:00:00Z — an hour later
     // than the same wall clock would be under the summer offset.
-    expect(at("2026-01-15T12:00:00", "2026-01-15T16:59:59Z").date).toBe("2026-01-15T12:00:00");
-    expect(() => at("2026-01-15T12:00:00", "2026-01-15T17:00:01Z")).toThrow(/not in the future/);
+    expect((await at("2026-01-15T12:00:00", "2026-01-15T16:59:59Z")).date).toBe("2026-01-15T12:00:00");
+    await expect(at("2026-01-15T12:00:00", "2026-01-15T17:00:01Z")).rejects.toThrow(/not in the future/);
   });
 
-  it("refuses a wall time inside the spring-forward gap", () => {
-    expect(() => at("2026-03-08T02:30:00", "2026-03-01T00:00:00Z"))
-      .toThrow(/does not exist/);
+  it("refuses a wall time inside the spring-forward gap", async () => {
+    await expect(at("2026-03-08T02:30:00", "2026-03-01T00:00:00Z"))
+      .rejects.toThrow(/does not exist/);
   });
 
-  it("refuses a wall time repeated by the fall-back overlap", () => {
-    expect(() => at("2026-11-01T01:30:00", "2026-10-01T00:00:00Z"))
-      .toThrow(/ambiguous/);
+  it("refuses a wall time repeated by the fall-back overlap", async () => {
+    await expect(at("2026-11-01T01:30:00", "2026-10-01T00:00:00Z"))
+      .rejects.toThrow(/ambiguous/);
   });
 
-  it("accepts an unambiguous wall time after the spring-forward jump", () => {
-    expect(at("2026-03-08T03:30:00", "2026-03-01T00:00:00Z").date)
+  it("accepts an unambiguous wall time after the spring-forward jump", async () => {
+    expect((await at("2026-03-08T03:30:00", "2026-03-01T00:00:00Z")).date)
       .toBe("2026-03-08T03:30:00");
   });
 
-  it("refuses a timezone that is not a real IANA identifier", () => {
-    expect(() => at("2026-08-24T18:00:00", "2026-08-23T00:00:00Z", "EST5EDT/Nope"))
-      .toThrow(/not a recognised IANA timezone/);
+  it("refuses a timezone that is not a real IANA identifier", async () => {
+    await expect(at("2026-08-24T18:00:00", "2026-08-23T00:00:00Z", "EST5EDT/Nope"))
+      .rejects.toThrow(/not a recognised IANA timezone/);
   });
 
-  it("still requires a local wall-clock string with no offset of its own", () => {
-    expect(() => at("2026-08-24T18:00:00Z", "2026-08-23T00:00:00Z")).toThrow(/YYYY-MM-DDTHH:mm:ss/);
+  it("still requires a local wall-clock string with no offset of its own", async () => {
+    await expect(at("2026-08-24T18:00:00Z", "2026-08-23T00:00:00Z")).rejects.toThrow(/YYYY-MM-DDTHH:mm:ss/);
   });
 });
 
 // REGRESSION (review item 5): TikTok captions are one run of text.
 describe("TikTok copy contains no line breaks", () => {
-  const tiktok = buildMetricoolPublishingRequest(
-    idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
-    networks(), "2026-08-24T18:00:00", NOW,
-  );
+  let tiktok: Awaited<ReturnType<typeof buildMetricoolPublishingRequest>>;
+  beforeAll(async () => {
+    tiktok = await buildMetricoolPublishingRequest(
+      idea, contentPackage, fingerprint("tiktok"), gate("tiktok"),
+      networks(), "2026-08-24T18:00:00", NOW,
+    );
+  });
 
-  it("emits a single-line caption", () => {
+  it("emits a single-line caption", async () => {
     expect(tiktok.text).not.toContain("\n");
     expect(tiktok.text).not.toContain("\r");
   });
 
-  it("keeps the CTA and hashtags that the line breaks used to separate", () => {
+  it("keeps the CTA and hashtags that the line breaks used to separate", async () => {
     expect(tiktok.text).toContain("link in bio");
     expect(tiktok.text).toContain("#SpecSmithPC");
   });
 
-  it("collapses the run of spaces rather than leaving a double gap", () => {
+  it("collapses the run of spaces rather than leaving a double gap", async () => {
     expect(tiktok.text).not.toMatch(/ {2}/);
   });
 
-  it("leaves the other platforms' multi-line copy alone", () => {
-    const youtube = buildMetricoolPublishingRequest(
+  it("leaves the other platforms' multi-line copy alone", async () => {
+    const youtube = await buildMetricoolPublishingRequest(
       idea, contentPackage, fingerprint("youtube-shorts"), gate("youtube-shorts"),
       networks(), "2026-08-24T16:00:00", NOW,
     );

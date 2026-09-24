@@ -1,3 +1,4 @@
+import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
 import {
   evaluateAssetRights,
   type AssetPolicyDecision,
@@ -112,6 +113,13 @@ export function selectApprovedProductVisualAsset(
 }
 
 export interface PublicationAssetBundleRequest {
+  /**
+   * The compositor's receipt for the master. When supplied and it describes
+   * the approved master record, its digest is recorded as
+   * `approvedReceiptDigest`; when supplied and it does not, the bundle is
+   * unpublishable. Absent, no digest is recorded and the publish gate refuses.
+   */
+  renderReceipt?: RenderReceipt;
   usedAssetIds: string[];
   /** Every externally sourced/generated visual that appears in the final master must be listed. */
   expectedVisualAssetIds: string[];
@@ -171,16 +179,31 @@ export function evaluatePublicationAssetBundle(
     ? master.uri.trim()
     : null;
 
+  // RECEIPT BINDING. Recorded only when the caller hands over a genuine
+  // compositor receipt whose master is exactly the approved master record.
+  // A supplied receipt that does not bind makes the bundle unpublishable
+  // rather than silently dropping the binding.
+  let approvedReceiptDigest: string | null = null;
+  let receiptBinds = true;
+  if (request.renderReceipt !== undefined) {
+    receiptBinds = isIssuedRenderReceipt(request.renderReceipt)
+      && approvedMasterSha256 !== null
+      && request.renderReceipt.masterSha256 === approvedMasterSha256;
+    if (receiptBinds) approvedReceiptDigest = request.renderReceipt.digest;
+  }
+
   return {
     publishable:
       missingAssetIds.length === 0 &&
       untrackedAssetIds.length === 0 &&
       nonApprovedAssetIds.length === 0 &&
-      approvedMasterSha256 !== null,
+      approvedMasterSha256 !== null &&
+      receiptBinds,
     missingAssetIds,
     untrackedAssetIds,
     nonApprovedAssetIds,
     approvedMasterSha256,
     approvedMasterUri,
+    approvedReceiptDigest,
   };
 }

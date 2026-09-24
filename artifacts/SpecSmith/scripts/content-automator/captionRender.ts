@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -139,6 +140,25 @@ export function buildAssDocument(state: CaptionRenderState): string {
   return `${header}${events.join("\n")}\n`;
 }
 
+/**
+ * Evidence that THIS adapter wrote a caption document, keyed on the artifact
+ * object it returned. Module-private and only readable; a caption file
+ * labelled `renderer: "specsmith-ass-captions"` by anyone else has none.
+ */
+export interface CaptionRenderEvidence {
+  readonly issuer: "specsmith-ass-captions";
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly cueCount: number;
+}
+
+const CAPTION_EVIDENCE = new WeakMap<object, CaptionRenderEvidence>();
+
+export function captionRenderEvidenceFor(artifact: RenderArtifact): CaptionRenderEvidence | undefined {
+  if (artifact === null || typeof artifact !== "object") return undefined;
+  return CAPTION_EVIDENCE.get(artifact);
+}
+
 export function createCaptionRenderAdapter(options: { outputDir: string }): RenderAdapter {
   return {
     name: "specsmith-ass-captions",
@@ -158,7 +178,7 @@ export function createCaptionRenderAdapter(options: { outputDir: string }): Rend
       const outputPath = resolve(options.outputDir, `${filename}.ass`);
       await writeFile(outputPath, document, "utf8");
       const bytes = Buffer.byteLength(document, "utf8");
-      return [{
+      const artifact: RenderArtifact = {
         artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-ass`,
         taskId: context.task.taskId,
         kind: "captions",
@@ -172,7 +192,14 @@ export function createCaptionRenderAdapter(options: { outputDir: string }): Rend
           width: 1080,
           height: 1920,
         },
-      }];
+      };
+      CAPTION_EVIDENCE.set(artifact, Object.freeze({
+        issuer: "specsmith-ass-captions",
+        sha256: createHash("sha256").update(document, "utf8").digest("hex"),
+        bytes,
+        cueCount: state.cues.length,
+      }));
+      return [artifact];
     },
   };
 }

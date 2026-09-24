@@ -35,31 +35,50 @@
 //  5. QC, rights evidence, human inspection and paid-spend approval must each
 //     be bound to BOTH the exact master digest and the exact receipt digest,
 //     so a sign-off for a previous render or a previous receipt is stale.
-//  6. Fixture sources, non-ElevenLabs or non-Liam narration, a silent bed and
-//     a placeholder hook are refused.
+//  6. Narration is accepted only with evidence the ElevenLabs adapter issued
+//     in its own private registry for that exact artifact object: a request
+//     to the official origin, made with the load-time global fetch (not an
+//     injected transport), whose response bytes hash to the consumed file,
+//     voiced with the configured Liam id. Captions likewise need evidence
+//     from the caption adapter. Metadata labels such as
+//     `provider: "elevenlabs"` grant nothing.
+//  7. Fixture sources, a silent bed and a placeholder hook are refused.
+//  8. The media Metricool will fetch must be a HostedMaster issued by
+//     hostedMaster.ts: the verified local master, uploaded under a
+//     content-addressed name, downloaded back and matched byte for byte,
+//     bound to this receipt. The builder downloads it again just before
+//     constructing the request.
 //
 // NOT ENFORCED — real limits, not caveats:
 //
-//  a. Adapter provenance is SELF-DECLARED. The receipt records the renderer,
-//     provider, fixture flag and voice id the producing adapter wrote into its
-//     artifact metadata. Freezing them stops later tampering; it cannot prove
-//     the adapter told the truth. An adapter registered in-process (or an
-//     injected HTTP transport) can declare itself "elevenlabs".
+//  a. Visual and music-bed provenance is still SELF-DECLARED metadata. No
+//     adapter issues evidence for them yet; they are refused when they name
+//     a fixture source, but a clean label is not proof. (Their rights are
+//     covered by the asset-rights bundle, which is not yet hash-bound to
+//     individual receipt inputs.) ElevenLabs evidence proves this adapter
+//     received those bytes from the official origin over the load-time
+//     fetch; it does not verify a provider signature, because ElevenLabs
+//     responses carry none. Code that replaces `globalThis.fetch` before the
+//     adapter module first loads can therefore forge it.
 //  b. Receipts do not survive the process. There is no persisted, signed
 //     receipt, so render and publish must happen in the same process. A
 //     cross-process design needs a signing key held outside this repository.
 //  c. Code that can edit this module's source, monkeypatch Node built-ins
 //     (fs, crypto) or reach module-private state is outside the model.
-//  d. The https copy Metricool will fetch (`approvedMasterUri`) is not
-//     re-downloaded or re-hashed; only the local master is.
+//  d. A host that serves Metricool different bytes than it serves this
+//     process, or changes them after the builder's final re-download, is
+//     not detectable here. Use immutable, content-addressed storage.
 //  e. Sign-off records (QC, rights, inspection) are data. Their digest
 //     binding is checked; the identity of whoever produced them is not
-//     authenticated.
+//     authenticated. Until it is tied to a trusted workflow or external
+//     identity, the builder refuses `autoPublish` outright: every request is
+//     a Metricool draft that a person must promote.
 // ---------------------------------------------------------------------------
 
 import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 
+import { isVerifiedHostedMaster, type HostedMaster } from "./hostedMaster.ts";
 import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
 import {
   ELEVENLABS_PROVIDER,
@@ -87,6 +106,8 @@ export type PublishRefusalCode =
   | "silent-music-bed"
   | "placeholder-hook"
   | "stale-approval"
+  | "hosted-master-unverified"
+  | "hosted-master-mismatch"
   | "no-approval-record"
   | "malformed-approval";
 
@@ -128,6 +149,8 @@ export interface PublishGateInput {
   receipt: RenderReceipt;
   /** The persisted claim of the master's inputs, reconciled against the receipt. */
   dependencyRecord: DependencyRecord;
+  /** The verified hosted copy Metricool will fetch. Only uploadAndVerifyMaster makes one. */
+  hostedMaster: HostedMaster;
   /** What QC reviewed. */
   qualityReview: DigestBinding;
   /** What the rights evidence cleared. */
@@ -337,6 +360,13 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
     if (consumed.role === "captions" && consumed.kind !== "captions") {
       refuse("unsupported-provenance", `${consumed.taskId} fills captions but is a ${consumed.kind}.`);
     }
+    if (consumed.role === "captions"
+        && !(consumed.evidence?.issuer === "specsmith-ass-captions" && consumed.evidence.sha256Matches)) {
+      refuse(
+        "unsupported-provenance",
+        `${consumed.taskId} has no caption-adapter evidence for these exact bytes; a caption label is not proof.`,
+      );
+    }
 
     // The declared flag is not the last word: known fixture sources are
     // recognised by name whatever the artifact claims about itself.
@@ -362,12 +392,22 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
       }
     }
 
-    // NARRATION IDENTITY: role AND the ElevenLabs provider AND the Liam id.
+    // NARRATION IDENTITY comes from adapter-issued evidence, never from
+    // metadata: the ElevenLabs adapter's own registry entry for this artifact,
+    // for these exact bytes, voiced with the configured Liam id.
     if (consumed.role === "narration") {
-      if (consumed.provider !== ELEVENLABS_PROVIDER && consumed.renderer !== ELEVENLABS_PROVIDER) {
+      const evidence = consumed.evidence;
+      if (evidence?.issuer !== "elevenlabs-tts") {
         refusals.push({
           code: "narration-not-elevenlabs",
-          detail: `${consumed.taskId} narration came from "${consumed.provider || consumed.renderer}", not ${ELEVENLABS_PROVIDER}.`,
+          detail:
+            `${consumed.taskId} carries no ElevenLabs adapter evidence (declared "${consumed.provider || consumed.renderer}"); `
+            + "a provider label is not proof.",
+        });
+      } else if (!evidence.sha256Matches) {
+        refusals.push({
+          code: "narration-not-elevenlabs",
+          detail: `${consumed.taskId}: the consumed file is not the audio ElevenLabs returned; it changed after the adapter wrote it.`,
         });
       }
       if (!isNonEmptyString(liamVoiceId)) {
@@ -375,16 +415,36 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
           code: "narration-voice-not-liam",
           detail: `${consumed.taskId}: no Liam voice id is configured (ELEVENLABS_VOICE_ID), so the voice cannot be verified.`,
         });
-      } else if (consumed.voiceId !== liamVoiceId) {
+      } else if (evidence?.issuer !== "elevenlabs-tts") {
         refusals.push({
           code: "narration-voice-not-liam",
-          detail: `${consumed.taskId} was voiced with "${consumed.voiceId}", not the configured Liam voice id.`,
+          detail: `${consumed.taskId}: without ElevenLabs adapter evidence the voice is unverifiable; a voiceId label is not proof.`,
+        });
+      } else if (evidence.voiceId !== liamVoiceId) {
+        refusals.push({
+          code: "narration-voice-not-liam",
+          detail: `${consumed.taskId} was requested with voice "${evidence.voiceId}", not the configured Liam voice id.`,
         });
       }
     }
   }
 
-  // 6. EVERY SIGN-OFF BOUND TO THESE BYTES AND THIS RECEIPT.
+  // 6. THE HOSTED COPY METRICOOL WILL FETCH.
+  const hosted = input.hostedMaster;
+  if (!isVerifiedHostedMaster(hosted)) {
+    refuse(
+      "hosted-master-unverified",
+      "No hosted master from uploadAndVerifyMaster was supplied; a URL and a digest from the caller prove nothing about the bytes it serves.",
+    );
+  } else if (hosted.sha256 !== receipt.masterSha256 || hosted.receiptDigest !== receipt.digest) {
+    refuse(
+      "hosted-master-mismatch",
+      `The hosted master ${hosted.uri} was verified for master ${short(hosted.sha256)} / receipt ${short(hosted.receiptDigest)}, `
+      + `not this master ${short(receipt.masterSha256)} / receipt ${short(receipt.digest)}.`,
+    );
+  }
+
+  // 7. EVERY SIGN-OFF BOUND TO THESE BYTES AND THIS RECEIPT.
   for (const problem of bindingProblems("qualityReview", input.qualityReview, receipt)) {
     refuse("stale-approval", problem);
   }
@@ -392,7 +452,11 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
     refuse("stale-approval", problem);
   }
 
-  const paid = receipt.inputs.filter((consumed) => PAID_PROVIDERS.has(consumed.provider) || PAID_PROVIDERS.has(consumed.renderer));
+  // A paid source is recognised by evidence OR by label: either one requires
+  // approval, so a label can only ever add a requirement, never remove one.
+  const paid = receipt.inputs.filter((consumed) =>
+    consumed.evidence?.issuer === "elevenlabs-tts"
+    || PAID_PROVIDERS.has(consumed.provider) || PAID_PROVIDERS.has(consumed.renderer));
   if (paid.length > 0) {
     const paidIds = paid.map((consumed) => consumed.taskId).join(", ");
     for (const problem of approvalProblems("paidProviderApproval", input.paidProviderApproval, now)) {

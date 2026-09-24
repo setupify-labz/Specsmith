@@ -3,6 +3,10 @@
 // REAL buildMetricoolPublishingRequest — a gate nobody calls passes its own
 // tests indefinitely.
 
+// MUST STAY FIRST, AND MUST STAY A SIDE-EFFECT IMPORT: it installs the fake
+// network before any adapter captures fetch.
+import "./publishBoundary.fakeNetwork";
+
 import { rm } from "node:fs/promises";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -15,11 +19,13 @@ import {
 } from "./publishGate";
 import type { RenderReceipt } from "./motionCompositor";
 import { dependencyRecordFor } from "./renderManifest";
-import { CONTROL_LIAM_VOICE_ID, renderControl, type ControlRender } from "./publishBoundary.testkit";
+import type { HostedMaster } from "./hostedMaster";
+import { CONTROL_LIAM_VOICE_ID, hostControl, renderControl, type ControlRender } from "./publishBoundary.testkit";
 
 const NOW = new Date("2026-09-23T12:00:00Z");
 
 const renders: ControlRender[] = [];
+const HOSTED = new WeakMap<RenderReceipt, HostedMaster>();
 let clean: ControlRender;
 let fixture: ControlRender;
 let selfCleared: ControlRender;
@@ -31,6 +37,7 @@ beforeAll(async () => {
     evidenceMetadata: { renderer: "offline-card-video-fixture", provider: "ffmpeg-offline-fixture", isFixture: false },
   });
   renders.push(clean, fixture, selfCleared);
+  for (const control of renders) HOSTED.set(control.receipt, await hostControl(control));
 }, 120_000);
 afterAll(async () => {
   await Promise.all(renders.map((control) => rm(control.dir, { recursive: true, force: true })));
@@ -41,6 +48,7 @@ const signedOff = (receipt: RenderReceipt, over: Partial<PublishGateInput> = {})
   return {
     receipt,
     dependencyRecord: dependencyRecordFor(receipt),
+    hostedMaster: HOSTED.get(receipt) as HostedMaster,
     qualityReview: binding,
     rightsEvidence: binding,
     narrationIdentity: { liamVoiceId: CONTROL_LIAM_VOICE_ID },
@@ -102,6 +110,20 @@ describe("an untrusted receipt stops the gate before it draws conclusions", () =
     expect(evaluatePublishGate(signedOff(clean.receipt))).toEqual({
       allowed: true, masterSha256: clean.receipt.masterSha256, receiptDigest: clean.receipt.digest,
     });
+  });
+});
+
+describe("the hosted master is checked by the gate itself, not only by the builder", () => {
+  // The builder's re-download also rejects an unissued record; this pins the
+  // gate's own check so neither layer silently depends on the other.
+  it("refuses a caller-built hosted record with the right URI and digests", () => {
+    const forged = Object.freeze({ ...HOSTED.get(clean.receipt)! }) as HostedMaster;
+    expect(codes(signedOff(clean.receipt, { hostedMaster: forged }))).toEqual(["hosted-master-unverified"]);
+  });
+
+  it("refuses a genuine hosted record for another render", () => {
+    expect(codes(signedOff(clean.receipt, { hostedMaster: HOSTED.get(fixture.receipt)! })))
+      .toEqual(["hosted-master-mismatch"]);
   });
 });
 

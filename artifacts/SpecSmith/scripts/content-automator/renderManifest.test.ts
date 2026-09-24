@@ -8,12 +8,15 @@
 // provenance is asserted. ElevenLabs cannot be invoked (paid, no credential),
 // so its metadata shape is pinned by reading the adapter's own source.
 
+// MUST STAY FIRST, AND MUST STAY A SIDE-EFFECT IMPORT: it installs the fake
+// network before any adapter captures fetch.
+import "./publishBoundary.fakeNetwork";
+
 import { readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import * as manifestModule from "./renderManifest";
 import { dependencyRecordFor, ELEVENLABS_PROVIDER, FIXTURE_SOURCES } from "./renderManifest";
 import { renderControl, type ControlRender } from "./publishBoundary.testkit";
 
@@ -83,7 +86,8 @@ describe("the dependency record is data, not trust", () => {
     expect(clean.receipt.inputs[0].sha256).not.toBe("0".repeat(64));
   });
 
-  it("exports no way to seal or mint provenance", () => {
+  it("exports no way to seal or mint provenance", async () => {
+    const manifestModule = await import("./renderManifest");
     expect(Object.keys(manifestModule).sort()).toEqual([
       "ELEVENLABS_PROVIDER", "FIXTURE_SOURCES", "RECEIPT_ROLES", "REQUIRED_ROLE_COUNTS", "dependencyRecordFor",
     ]);

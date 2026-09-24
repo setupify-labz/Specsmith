@@ -3,22 +3,31 @@
 // provenance.
 //
 // Every file here is written to a fresh temporary directory and every byte is
-// produced by ffmpeg, espeak-ng or the real caption/fixture adapters. The
-// "clean" inputs are CONSTRUCTED CONTROLS: ElevenLabs and a licensed music
-// library cannot be called here, so the narration and bed are ffmpeg tones
-// whose metadata mirrors the shape those adapters emit (elevenLabsTts.ts:
-// `provider: "elevenlabs"`, `voiceId`). They exist to prove the gate CAN be
-// satisfied — a gate nothing can pass gets loosened — and are never a claim
-// that a real production asset exists.
+// produced by ffmpeg, espeak-ng or the real caption/fixture/ElevenLabs
+// adapters. The clean narration goes through the REAL ElevenLabs adapter, but
+// against publishBoundary.fakeNetwork.ts, which answers for
+// api.elevenlabs.io with an ffmpeg tone: no paid provider is ever called.
+// The music bed is an ffmpeg tone with a clean label (no licensed-music
+// adapter exists to issue evidence for it). These are CONSTRUCTED CONTROLS
+// proving the gate CAN be satisfied — a gate nothing can pass gets loosened —
+// and never a claim that a real production asset exists.
+//
+// Test files using this kit must import ./publishBoundary.fakeNetwork.ts
+// FIRST, as a side-effect import (`import "./publishBoundary.fakeNetwork.ts"`):
+// esbuild drops a named import whose binding is unused. renderControl() verifies the clean control really obtained
+// ElevenLabs evidence and throws if the import order was wrong.
 
 import { execFile } from "node:child_process";
-import { appendFile, mkdtemp } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { createCaptionRenderAdapter } from "./captionRender.ts";
+import { createElevenLabsTtsAdapter, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
+import { uploadAndVerifyMaster, type HostedMaster, type MasterUploader } from "./hostedMaster.ts";
+import { CONTROL_HOST_ORIGIN, fakeNetwork } from "./publishBoundary.fakeNetwork.ts";
 import { createLocalFixtureTtsAdapter } from "./localFixtureTts.ts";
 import {
   createMotionCompositorAdapter,
@@ -53,8 +62,20 @@ export interface ControlOptions {
   fixtureMusic?: boolean;
   /** Hook from the real offline placeholder card adapter. */
   fixtureHook?: boolean;
-  /** Extra metadata merged onto the clean narration artifact. */
-  narrationMetadata?: Record<string, string | number | boolean>;
+  /**
+   * THE METADATA FORGERY: arbitrary ffmpeg audio, never seen by the ElevenLabs
+   * adapter, labelled exactly as that adapter labels its output
+   * (`provider: "elevenlabs"`, the Liam voice id, a model id).
+   */
+  forgedNarration?: boolean;
+  /** The real ElevenLabs adapter, but with an injected fetchImpl. */
+  injectedTransportNarration?: boolean;
+  /** The real ElevenLabs adapter, requesting this voice id instead of Liam's. */
+  narrationVoiceId?: string;
+  /** Runs after the narration artifact exists and before the compositor consumes it. */
+  afterNarration?: (artifact: RenderArtifact) => Promise<void>;
+  /** A caption file written by the caller and labelled as the caption adapter's. */
+  forgedCaptions?: boolean;
   /** Extra metadata merged onto the clean evidence visual. */
   evidenceMetadata?: Record<string, string | number | boolean>;
 }
@@ -108,6 +129,32 @@ async function tone(dir: string, name: string, frequency: number, seconds: numbe
   return path;
 }
 
+async function elevenLabsNarration(dir: string, options: ControlOptions): Promise<RenderArtifact> {
+  const mp3 = join(dir, "tts-source.mp3");
+  await ffmpeg(["-f", "lavfi", "-i", "sine=frequency=440:duration=1.5", "-c:a", "libmp3lame", "-b:a", "64k", mp3]);
+  fakeNetwork.ttsAudio = new Uint8Array(await readFile(mp3));
+  const config: ElevenLabsTtsConfig = {
+    apiKey: "control-no-real-key",
+    endpoint: "https://api.elevenlabs.io/v1/text-to-speech",
+    voiceId: options.narrationVoiceId ?? CONTROL_LIAM_VOICE_ID,
+    modelId: "eleven_multilingual_v2",
+    outputFormat: "mp3_44100_128",
+    timeoutMs: 10_000,
+  };
+  const adapter = createElevenLabsTtsAdapter({
+    config,
+    outputDir: join(dir, "elevenlabs"),
+    // An injected transport returns the very same bytes; only its provenance differs.
+    ...(options.injectedTransportNarration
+      ? { fetchImpl: async () => new Response(Buffer.from(fakeNetwork.ttsAudio), { status: 200, headers: { "content-type": "audio/mpeg" } }) }
+      : {}),
+  });
+  const [artifact] = await adapter.render(
+    context(task(CONTROL_TASKS.voice, { capability: "text-to-speech", inputRequirements: ["Faster card."] })),
+  );
+  return artifact;
+}
+
 /** Renders one master through the real compositor and returns its receipt. */
 export async function renderControl(options: ControlOptions = {}): Promise<ControlRender> {
   const dir = await mkdtemp(join(tmpdir(), "specsmith-publish-boundary-"));
@@ -125,12 +172,16 @@ export async function renderControl(options: ControlOptions = {}): Promise<Contr
     ? (await createLocalFixtureTtsAdapter({ outputDir: join(dir, "tts") }).render(
       context(task(CONTROL_TASKS.voice, { capability: "text-to-speech", inputRequirements: ["Faster card."] })),
     ))[0]
-    : fileArtifact(CONTROL_TASKS.voice, await tone(dir, "voice", 440, 1.5), "audio", "audio/wav", {
-      provider: "elevenlabs",
-      voiceId: CONTROL_LIAM_VOICE_ID,
-      modelId: "control-constructed",
-      ...options.narrationMetadata,
-    });
+    : options.forgedNarration
+      ? fileArtifact(CONTROL_TASKS.voice, await tone(dir, "voice", 330, 1.5), "audio", "audio/mpeg", {
+        provider: "elevenlabs",
+        voiceId: CONTROL_LIAM_VOICE_ID,
+        modelId: "eleven_multilingual_v2",
+        outputFormat: "mp3_44100_128",
+        requestId: "forged-request-id",
+      })
+      : await elevenLabsNarration(dir, options);
+  if (options.afterNarration) await options.afterNarration(voice);
 
   const music = options.fixtureMusic
     ? (await createOfflineSilentBedAdapter({ outputDir: join(dir, "bed") }).render(
@@ -141,12 +192,15 @@ export async function renderControl(options: ControlOptions = {}): Promise<Contr
       provider: "licensed-music-control",
     });
 
-  const [captions] = await createCaptionRenderAdapter({ outputDir: join(dir, "captions") }).render(
+  const [realCaptions] = await createCaptionRenderAdapter({ outputDir: join(dir, "captions") }).render(
     context(task(CONTROL_TASKS.captions, {
       capability: "caption-render",
       captionRenderState: { durationSeconds: DURATION, cues: [{ startSecond: 0, endSecond: 1.5, text: "Faster card" }] },
     })),
   );
+  // The forgery copies the adapter's own bytes and label exactly; only the
+  // artifact object (and therefore the adapter's evidence) differs.
+  const captions = options.forgedCaptions ? { ...realCaptions, metadata: { ...realCaptions.metadata } } : realCaptions;
 
   const dependencies = [hook, evidence, voice, captions, music, unused];
   const compose = task("compose", {
@@ -169,6 +223,14 @@ export async function renderControl(options: ControlOptions = {}): Promise<Contr
   const [master] = await compositor.render(context(compose, dependencies));
   const receipt = renderReceiptFor(master);
   if (!receipt) throw new Error("The compositor returned a master without a receipt.");
+  const narrationEvidence = receipt.inputs.find((consumed) => consumed.role === "narration")?.evidence;
+  const expectsEvidence = !options.fixtureNarration && !options.forgedNarration && !options.injectedTransportNarration;
+  if (expectsEvidence && narrationEvidence?.issuer !== "elevenlabs-tts") {
+    throw new Error(
+      "The clean control obtained no ElevenLabs evidence. Import ./publishBoundary.fakeNetwork.ts FIRST in the test file, "
+      + "before any module that loads elevenLabsTts.ts.",
+    );
+  }
 
   return {
     dir,
@@ -177,6 +239,35 @@ export async function renderControl(options: ControlOptions = {}): Promise<Contr
     artifacts: Object.fromEntries(dependencies.map((artifact) => [artifact.taskId, artifact])),
     unused,
   };
+}
+
+/** A controlled storage host: stores exactly the bytes it is given. */
+export const controlUploader: MasterUploader = {
+  async upload(request) {
+    const uri = `${CONTROL_HOST_ORIGIN}/masters/${request.objectName}`;
+    fakeNetwork.objects.set(uri, new Uint8Array(request.bytes));
+    return { uri };
+  },
+};
+
+/**
+ * A host that accepts the upload but serves different bytes at the URI. It
+ * uses its own path so it never overwrites the shared content-addressed
+ * object the controlled host serves for identical deterministic renders.
+ */
+export const substitutingUploader: MasterUploader = {
+  async upload(request) {
+    const uri = `${CONTROL_HOST_ORIGIN}/substituting/${request.objectName}`;
+    const other = new Uint8Array(request.bytes);
+    other[other.length - 1] ^= 0xff;
+    fakeNetwork.objects.set(uri, other);
+    return { uri };
+  },
+};
+
+/** Uploads a control master to the controlled host and verifies it. */
+export function hostControl(control: ControlRender): Promise<HostedMaster> {
+  return uploadAndVerifyMaster(control.receipt, controlUploader);
 }
 
 /** Writes a file's bytes again with one byte appended — a real on-disk edit. */

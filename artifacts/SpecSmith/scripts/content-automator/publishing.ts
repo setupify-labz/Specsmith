@@ -19,7 +19,11 @@ export interface PublishingConfig {
   siteBaseUrl: string;
   connectedNetworks: MetricoolNetwork[];
   youtubeMadeForKids?: boolean;
-  /** Opt out of draft only deliberately; omitted means draft. */
+  /**
+   * Must be absent or false. `true` is REFUSED by the builder until sign-offs
+   * are tied to a trusted workflow or external identity; every request is a
+   * Metricool draft that a person promotes.
+   */
   autoPublish?: boolean;
 }
 
@@ -28,6 +32,7 @@ import {
   type BoundApproval,
   type NarrationIdentityConfig,
 } from "./publishGate.ts";
+import { reverifyHostedMaster, type HostedMaster } from "./hostedMaster.ts";
 import type { RenderReceipt } from "./motionCompositor.ts";
 import type { DependencyRecord } from "./renderManifest.ts";
 
@@ -55,6 +60,11 @@ export interface PublishingGateInput {
   renderReceipt: RenderReceipt;
   /** The persisted claim of the master's inputs. Reconciled against the receipt. */
   dependencyRecord: DependencyRecord;
+  /**
+   * The hosted copy Metricool will fetch, from uploadAndVerifyMaster. REQUIRED.
+   * Its URI is the only media reference the request can carry.
+   */
+  hostedMaster: HostedMaster;
   /** The Liam voice id narration is verified against. Blank refuses. */
   narrationIdentity: NarrationIdentityConfig;
   /** The recorded human inspection, bound to the exact master and receipt. REQUIRED. */
@@ -334,16 +344,12 @@ function assertPublishGate(
     ];
     throw new Error(`Publication blocked by asset-rights bundle${failures.length ? ` (${failures.join(", ")})` : ""}.`);
   }
-  const mediaRef = nonEmpty("assetBundle.approvedMasterUri", gate.assetBundle.approvedMasterUri ?? "");
-  let mediaUrl: URL;
-  try {
-    mediaUrl = new URL(mediaRef);
-  } catch {
-    throw new Error("assetBundle.approvedMasterUri must be an absolute https URL that Metricool can fetch.");
-  }
-  if (mediaUrl.protocol !== "https:") {
-    throw new Error(`assetBundle.approvedMasterUri must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
-  }
+  // THE MEDIA URL IS NOT READ FROM THE REGISTRY OR THE CALLER. The rights
+  // registry's `approvedMasterUri` is data someone wrote; nothing proves the
+  // bytes it serves. The only media reference accepted is the HostedMaster
+  // that uploadAndVerifyMaster produced by uploading the verified local master
+  // and downloading it back — checked by the gate below and re-downloaded by
+  // the builder immediately before the request is constructed.
 
   // Both digests are DERIVED, never passed in. `reviewedMediaSha256` comes from
   // the observation a reviewer recorded while watching the file;
@@ -379,6 +385,7 @@ function assertPublishGate(
   const verified = assertPublishable({
     receipt: gate.renderReceipt,
     dependencyRecord: gate.dependencyRecord,
+    hostedMaster: gate.hostedMaster,
     qualityReview: {
       masterSha256: gate.qualityReview.reviewedMediaSha256,
       receiptDigest: gate.qualityReview.reviewedReceiptDigest ?? "",
@@ -397,10 +404,10 @@ function assertPublishGate(
     throw new Error("Publication blocked: the verified master is not the reviewed master.");
   }
 
-  return { mediaUrl: mediaUrl.toString(), digest };
+  return { mediaUrl: gate.hostedMaster.uri, digest };
 }
 
-export function buildMetricoolPublishingRequest(
+export async function buildMetricoolPublishingRequest(
   idea: ContentIdea,
   contentPackage: ContentPackage,
   fingerprint: CreativeFingerprint,
@@ -408,7 +415,17 @@ export function buildMetricoolPublishingRequest(
   config: PublishingConfig,
   publishAt: string,
   now: Date = new Date(),
-): MetricoolPublishingRequest {
+): Promise<MetricoolPublishingRequest> {
+  // NO UNATTENDED PUBLISHING. Sign-off records are digest-bound but their
+  // authors are not authenticated, so nothing may skip a person promoting
+  // the Metricool draft. Refused outright rather than defaulted, so a config
+  // that asks for it learns why instead of silently getting a draft.
+  if (config.autoPublish === true) {
+    throw new Error(
+      "Publication blocked: autoPublish is disabled until approvals are tied to a trusted workflow or external identity. "
+      + "Every request is a Metricool draft.",
+    );
+  }
   if (idea.id !== contentPackage.ideaId || idea.id !== fingerprint.ideaId) {
     throw new Error(`Publishing inputs do not refer to the same idea: ${idea.id}.`);
   }
@@ -416,6 +433,13 @@ export function buildMetricoolPublishingRequest(
     throw new Error(`Publishing fingerprint does not belong to ${contentPackage.packageId}.`);
   }
   const approvedMaster = assertPublishGate(contentPackage, fingerprint, gate);
+  // The hosted bytes are downloaded again NOW, not trusted from the upload:
+  // a host that changed what it serves since verification is refused here.
+  try {
+    await reverifyHostedMaster(gate.hostedMaster);
+  } catch (error) {
+    throw new Error(`Publication refused (1):\n  ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   const blogId = nonEmpty("blogId", config.blogId);
   const timezone = nonEmpty("timezone", config.timezone);
@@ -449,7 +473,7 @@ export function buildMetricoolPublishingRequest(
     websiteCtaMode: copy.websiteCtaMode,
     hashtagStrategy: variant.hashtagStrategy,
     hashtags: [...variant.hashtags],
-    draft: config.autoPublish !== true,
+    draft: true,
     finalMediaSha256: approvedMaster.digest,
   };
 

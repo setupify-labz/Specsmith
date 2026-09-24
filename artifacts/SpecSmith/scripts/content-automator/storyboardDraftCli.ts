@@ -7,6 +7,7 @@ import { writeReviewPacket } from "./reviewPacket.ts";
 import { evaluatePublishGate } from "./publishGate.ts";
 import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
 import { dependencyRecordFor } from "./renderManifest.ts";
+import type { HostedMaster } from "./hostedMaster.ts";
 
 async function main(): Promise<number> {
   const result = await renderGeneratedStoryboard();
@@ -61,6 +62,8 @@ async function main(): Promise<number> {
   const verdict = evaluatePublishGate({
     receipt: receipt as RenderReceipt,
     dependencyRecord: receipt ? dependencyRecordFor(receipt) : { masterSha256: "", receiptDigest: "", dependencies: [] },
+    // A draft is never uploaded, so there is no verified hosted copy.
+    hostedMaster: undefined as unknown as HostedMaster,
     qualityReview: { masterSha256: "", receiptDigest: "" },
     rightsEvidence: { masterSha256: "", receiptDigest: "" },
     narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },

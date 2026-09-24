@@ -4,6 +4,8 @@ import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
+import { captionRenderEvidenceFor } from "./captionRender.ts";
+import { elevenLabsTtsEvidenceFor } from "./elevenLabsTts.ts";
 
 export interface CompositorBeat {
   visualTaskId: string;
@@ -125,6 +127,22 @@ export interface RenderReceiptInput {
   readonly provider: string;
   readonly declaredFixture: boolean;
   readonly voiceId: string;
+  /**
+   * Evidence the PRODUCING ADAPTER issued in its own private registry for this
+   * exact artifact object, or null. Unlike the labels above, a caller cannot
+   * create it by writing metadata. `sha256Matches` says whether the adapter's
+   * recorded digest is the digest of the file the compositor consumed.
+   */
+  readonly evidence: ReceiptProviderEvidence | null;
+}
+
+export interface ReceiptProviderEvidence {
+  readonly issuer: string;
+  readonly sha256Matches: boolean;
+  readonly voiceId: string;
+  readonly modelId: string;
+  readonly endpointOrigin: string;
+  readonly requestId: string;
 }
 
 export interface RenderReceiptParameters {
@@ -190,6 +208,10 @@ function canonicalReceipt(receipt: Omit<RenderReceipt, "digest">): string {
       provider: input.provider,
       declaredFixture: input.declaredFixture,
       voiceId: input.voiceId,
+      evidence: input.evidence === null ? null : [
+        input.evidence.issuer, input.evidence.sha256Matches, input.evidence.voiceId,
+        input.evidence.modelId, input.evidence.endpointOrigin, input.evidence.requestId,
+      ],
     }))
     .sort((a, b) => (a.taskId < b.taskId ? -1 : a.taskId > b.taskId ? 1 : 0));
   const p = receipt.parameters;
@@ -269,6 +291,33 @@ function describeProvenance(artifact: RenderArtifact): Pick<RenderReceiptInput, 
   };
 }
 
+/** Looks up adapter-issued evidence for the exact artifact object consumed. */
+function issuedEvidence(artifact: RenderArtifact, consumedSha256: string): ReceiptProviderEvidence | null {
+  const tts = elevenLabsTtsEvidenceFor(artifact);
+  if (tts) {
+    return {
+      issuer: tts.issuer,
+      sha256Matches: tts.sha256 === consumedSha256,
+      voiceId: tts.voiceId,
+      modelId: tts.modelId,
+      endpointOrigin: tts.endpointOrigin,
+      requestId: tts.requestId,
+    };
+  }
+  const captions = captionRenderEvidenceFor(artifact);
+  if (captions) {
+    return {
+      issuer: captions.issuer,
+      sha256Matches: captions.sha256 === consumedSha256,
+      voiceId: "",
+      modelId: "",
+      endpointOrigin: "",
+      requestId: "",
+    };
+  }
+  return null;
+}
+
 /**
  * Hashes every consumed input — and every frame a sequence input lists — as
  * the bytes stand right now. Called before ffmpeg runs and again after, so a
@@ -302,6 +351,7 @@ async function measureConsumed(plans: readonly ConsumedPlan[]): Promise<RenderRe
       timeline: plan.timeline,
       frames,
       ...describeProvenance(plan.artifact),
+      evidence: issuedEvidence(plan.artifact, sha256),
     });
   }
   return inputs;

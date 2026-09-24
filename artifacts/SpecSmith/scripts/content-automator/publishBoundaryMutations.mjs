@@ -16,7 +16,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const DIR = "scripts/content-automator";
-const TESTS = ["publishBoundary.test.ts", "publishGate.test.ts", "publishing.test.ts", "renderManifest.test.ts"]
+const TESTS = [
+  "publishBoundary.test.ts", "publishGate.test.ts", "publishing.test.ts", "renderManifest.test.ts",
+  "qualityReviewer.test.ts", "productVisualAssets.test.ts",
+]
   .map((file) => `${DIR}/${file}`);
 
 /** Each mutation is one exact, unique text replacement (or a whole-file revert). */
@@ -114,6 +117,97 @@ const MUTATIONS = [
     file: "publishGate.ts",
     find: "        refuse(\"extra-claimed-dependency\", ",
     replace: "        void (",
+  },
+  {
+    id: "M7a",
+    defect: "provider evidence: ElevenLabs evidence issued for an injected transport",
+    file: "elevenLabsTts.ts",
+    find: "        && fetchImpl === BUILTIN_FETCH\n",
+    replace: "",
+  },
+  {
+    id: "M7b",
+    defect: "provider evidence: narration accepted on a provider LABEL",
+    file: "publishGate.ts",
+    find: "      if (evidence?.issuer !== \"elevenlabs-tts\") {",
+    replace: "      if (consumed.provider !== \"elevenlabs\" && evidence?.issuer !== \"elevenlabs-tts\") {",
+  },
+  {
+    id: "M7c",
+    defect: "provider evidence: voice accepted on a voiceId LABEL",
+    file: "publishGate.ts",
+    find: "      } else if (evidence?.issuer !== \"elevenlabs-tts\") {",
+    replace: "      } else if (evidence?.issuer !== \"elevenlabs-tts\" && consumed.voiceId !== liamVoiceId) {",
+  },
+  {
+    id: "M7d",
+    defect: "provider evidence: evidence accepted for bytes it does not describe",
+    file: "publishGate.ts",
+    find: "      } else if (!evidence.sha256Matches) {",
+    replace: "      } else if (false) {",
+  },
+  {
+    id: "M7e",
+    defect: "provider evidence: captions accepted on a renderer LABEL",
+    file: "publishGate.ts",
+    find: "        && !(consumed.evidence?.issuer === \"specsmith-ass-captions\" && consumed.evidence.sha256Matches)) {",
+    replace: "        && false) {",
+  },
+  {
+    id: "M8a",
+    defect: "hosting: upload not verified by downloading the hosted bytes",
+    file: "hostedMaster.ts",
+    find: "  if (hosted.sha256 !== receipt.masterSha256 || hosted.bytes !== local.byteLength) {",
+    replace: "  if (false) {",
+  },
+  {
+    id: "M8b",
+    defect: "hosting: builder does not re-download the hosted bytes",
+    file: "publishing.ts",
+    find: "    await reverifyHostedMaster(gate.hostedMaster);\n",
+    replace: "",
+  },
+  {
+    id: "M8c",
+    defect: "hosting: a caller-built hosted record is accepted",
+    file: "publishGate.ts",
+    find: "  if (!isVerifiedHostedMaster(hosted)) {",
+    replace: "  if (!hosted) {",
+  },
+  {
+    id: "M8d",
+    defect: "hosting: request media read from the registry URI (the original defect)",
+    file: "publishing.ts",
+    find: "  return { mediaUrl: gate.hostedMaster.uri, digest };",
+    replace: "  return { mediaUrl: gate.assetBundle.approvedMasterUri ?? \"\", digest };",
+  },
+  {
+    id: "M8e",
+    defect: "hosting: hosted evidence not bound to this receipt",
+    file: "publishGate.ts",
+    find: "  } else if (hosted.sha256 !== receipt.masterSha256 || hosted.receiptDigest !== receipt.digest) {",
+    replace: "  } else if (false) {",
+  },
+  {
+    id: "M9a",
+    defect: "producers: QC records a receipt digest for a master it did not watch",
+    file: "qualityReviewer.ts",
+    find: "    if (renderReceipt.masterSha256 !== requireSha256(observation.masterSha256, \"observation.masterSha256\")) {",
+    replace: "    if (false) {",
+  },
+  {
+    id: "M9b",
+    defect: "producers: rights records a receipt digest for a different master",
+    file: "productVisualAssets.ts",
+    find: "      && request.renderReceipt.masterSha256 === approvedMasterSha256;",
+    replace: ";",
+  },
+  {
+    id: "M10",
+    defect: "unattended publishing: autoPublish honoured",
+    file: "publishing.ts",
+    find: "  if (config.autoPublish === true) {",
+    replace: "  if (false) {",
   },
   {
     id: "M6",

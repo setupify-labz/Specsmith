@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -15,6 +16,55 @@ export interface ElevenLabsTtsConfig {
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 const DEFAULT_ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
+/** The only origin whose responses this adapter will vouch for. */
+const OFFICIAL_ORIGIN = "https://api.elevenlabs.io";
+
+// ---------------------------------------------------------------------------
+// ADAPTER-ISSUED PROVIDER EVIDENCE.
+//
+// Artifact metadata is a label anyone can write: arbitrary audio tagged
+// `provider: "elevenlabs"` with the Liam voice id looks identical to the real
+// thing. So this adapter also records, in a module-private registry, evidence
+// that IT produced an artifact from an ElevenLabs response. Nothing exported
+// can add to the registry; `elevenLabsTtsEvidenceFor` only reads it, and only
+// for the artifact object this adapter returned.
+//
+// Evidence is issued only when every one of these holds:
+//  - the request went to the official origin (a configured endpoint override
+//    is a proxy or a stub, and is not vouched for);
+//  - it was made with the `fetch` that was global WHEN THIS MODULE LOADED, not
+//    an injected `fetchImpl` (injection is for tests and gets no evidence);
+//  - the response was 2xx, non-empty and declared an audio content type.
+//
+// The evidence carries the SHA-256 of the exact bytes written, so the
+// compositor can prove the file it consumed is the file ElevenLabs returned.
+//
+// NOT DEFENDED: code that replaces `globalThis.fetch` before this module is
+// first imported, or edits this file. See the trust model in publishGate.ts.
+// ---------------------------------------------------------------------------
+
+export interface ElevenLabsTtsEvidence {
+  readonly issuer: "elevenlabs-tts";
+  readonly provider: "elevenlabs";
+  readonly endpointOrigin: string;
+  readonly voiceId: string;
+  readonly modelId: string;
+  readonly outputFormat: string;
+  readonly contentType: string;
+  readonly requestId: string;
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly issuedAt: string;
+}
+
+const BUILTIN_FETCH: unknown = globalThis.fetch;
+const EVIDENCE_BY_ARTIFACT = new WeakMap<object, ElevenLabsTtsEvidence>();
+
+/** The evidence this adapter issued for an artifact it returned, if any. */
+export function elevenLabsTtsEvidenceFor(artifact: RenderArtifact): ElevenLabsTtsEvidence | undefined {
+  if (artifact === null || typeof artifact !== "object") return undefined;
+  return EVIDENCE_BY_ARTIFACT.get(artifact);
+}
 const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George, used in ElevenLabs' current API quickstart.
 const DEFAULT_MODEL_ID = "eleven_multilingual_v2";
 const DEFAULT_OUTPUT_FORMAT = "mp3_44100_128";
@@ -77,7 +127,7 @@ async function requestSpeech(
   config: ElevenLabsTtsConfig,
   text: string,
   fetchImpl: FetchLike,
-): Promise<{ bytes: Uint8Array; requestId?: string; characterCost?: number }> {
+): Promise<{ bytes: Uint8Array; requestId?: string; characterCost?: number; contentType: string; origin: string }> {
   const url = new URL(`${config.endpoint.replace(/\/$/, "")}/${encodeURIComponent(config.voiceId)}`);
   url.searchParams.set("output_format", config.outputFormat);
 
@@ -114,6 +164,8 @@ async function requestSpeech(
   const parsedCost = characterCostRaw === null ? undefined : Number(characterCostRaw);
   return {
     bytes,
+    contentType: response.headers.get("content-type") ?? "",
+    origin: url.origin,
     requestId: response.headers.get("request-id") ?? undefined,
     characterCost: parsedCost !== undefined && Number.isFinite(parsedCost) ? parsedCost : undefined,
   };
@@ -154,14 +206,34 @@ export function createElevenLabsTtsAdapter(options: {
       if (generated.requestId) metadata.requestId = generated.requestId;
       if (generated.characterCost !== undefined) metadata.characterCost = generated.characterCost;
 
-      return [{
+      const artifact: RenderArtifact = {
         artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-elevenlabs`,
         taskId: context.task.taskId,
         kind: "audio",
         uri: pathToFileURL(outputPath).toString(),
         mimeType: mimeTypeForOutputFormat(config.outputFormat),
         metadata,
-      }];
+      };
+      const vouched = typeof BUILTIN_FETCH === "function"
+        && fetchImpl === BUILTIN_FETCH
+        && generated.origin === OFFICIAL_ORIGIN
+        && /^audio\//i.test(generated.contentType.trim());
+      if (vouched) {
+        EVIDENCE_BY_ARTIFACT.set(artifact, Object.freeze({
+          issuer: "elevenlabs-tts",
+          provider: "elevenlabs",
+          endpointOrigin: generated.origin,
+          voiceId: config.voiceId,
+          modelId: config.modelId,
+          outputFormat: config.outputFormat,
+          contentType: generated.contentType.trim(),
+          requestId: generated.requestId ?? "",
+          sha256: createHash("sha256").update(generated.bytes).digest("hex"),
+          bytes: generated.bytes.byteLength,
+          issuedAt: new Date().toISOString(),
+        }));
+      }
+      return [artifact];
     },
   };
 }
