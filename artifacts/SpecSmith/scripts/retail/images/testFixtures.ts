@@ -10,6 +10,7 @@
 // shadow.
 import { Buffer } from 'node:buffer';
 
+import jpeg from 'jpeg-js';
 import { PNG } from 'pngjs';
 
 export interface FixtureSpec {
@@ -150,3 +151,13 @@ export const alreadyTransparent = () =>
 
 /** A frame that is entirely product, edge to edge. Nothing to remove. */
 export const fullBleedProduct = () => fixture(() => [70, 72, 80, 255]);
+
+/**
+ * The same fixture re-encoded as a JPEG, for a source URL that declares .jpg.
+ * The decoder is chosen by the URL's extension, so PNG bytes behind a .jpg
+ * URL are (correctly) undecodable. Quality 100 keeps the flat backdrop flat.
+ */
+export function asJpeg(pngBytes: Buffer): Buffer {
+  const png = PNG.sync.read(pngBytes);
+  return Buffer.from(jpeg.encode({ data: png.data, width: png.width, height: png.height }, 100).data);
+}

@@ -46,13 +46,48 @@ const feedItem = (over: { sku?: string; title?: string; link?: string } = {}) =>
     </item></result>`),
   )[0];
 
+/**
+ * An INDEPENDENT raw Rakuten feed record for the reviewed processor, written
+ * out literally: Newegg product N82E16819118431, offer 9SIA4REKG24553. It is
+ * not read from `retail-parts.json`, so the admission result it produces is
+ * evidence about the generator, not an echo of the published data.
+ */
+const RAW_FEED_XML = `<result><item>
+  <mid>44583</mid>
+  <sku>9SIA4REKG24553</sku>
+  <productname>Intel Core i5-13400F Desktop Processor 10 cores (6 P-cores + 4 E-cores) 20MB Cache, up to 4.6 GHz - Box</productname>
+  <category><primary>Electronics</primary><secondary>Components~~Computer Processors</secondary></category>
+  <imageurl>https://c1.neweggimages.com/ProductImageCompressAll640/19-118-431-04.jpg</imageurl>
+  <linkurl>https://click.linksynergy.com/link?id=ptE95Z94djU&amp;offerid=1786142.4458312946026341861780320&amp;type=15&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fintel-core-i5-13th-gen-core-i5-13400f-raptor-lake-lga-1700-desktop-cpu-processor%2Fp%2FN82E16819118431%3Fitem%3D9SIA4REKG24553</linkurl>
+  <price currency="USD">199.99</price>
+  <saleprice currency="USD">0.00</saleprice>
+</item></result>`;
+
 const admit = (over = {}) =>
   admitAffiliatePart(feedItem(over), 'cpu', 'Computer Processors', '2026-09-08T08:12:42.395Z');
 
 describe('the generator admits the reviewed processor with verified identity', () => {
-  it('the real record exists and is currently unsupported in published data', () => {
+  it('admits an independent raw feed record as i5-13400f without exact-unit specs, and the published record agrees', () => {
+    // This used to assert the published record was UNBOUND (canonicalPartId
+    // null). That was true when #105 merged and stopped being true when the
+    // next scheduled refresh (aeb377e) ran this same admission path and
+    // published the binding. The lasting properties are checked instead,
+    // against a raw feed record written out literally below rather than
+    // rebuilt from the published JSON, so the two sides cannot agree merely
+    // because one was derived from the other.
+    const outcome: any = admitAffiliatePart(
+      findItems(parseProductSearchXml(RAW_FEED_XML))[0],
+      'cpu',
+      'Computer Processors',
+      '2026-09-08T08:12:42.395Z',
+    );
+    expect(outcome.status).toBe('accepted');
+    expect(outcome.part.category).toBe('cpu');
+    expect(outcome.part.canonicalPartId).toBe('i5-13400f');
+    expect(outcome.part.specsVerified).toBe(false);
+
     expect(real).toBeTruthy();
-    expect(real.canonicalPartId).toBeNull();
+    expect(real.canonicalPartId).toBe('i5-13400f');
     expect(real.specsVerified).toBe(false);
   });
 
