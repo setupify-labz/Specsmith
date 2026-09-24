@@ -20,13 +20,16 @@ jobs:
   verify:
     name: Tests, typecheck and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Check out the exact selected head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Full history, so the target base can be checked out in this job
+          # for the differential full suite below.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Prove the exact commit under test
@@ -52,12 +55,76 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # BEFORE ANY TEST. The content-automator suites drive real ffmpeg,
+      # ffprobe and espeak-ng on purpose (a fixture adapter that only passes
+      # against a mock is the defect that subsystem keeps reproducing). Without
+      # this step they fail with `spawn ffmpeg ENOENT`, as verify-pr run
+      # 36064271196 did. Same install and capability checks as
+      # content-e2e-offline.yml, which is proven on the same head: pinned by
+      # capability rather than by package version, because a binary that
+      # answers -version can still lack H.264, AAC, mp4 or .ass support.
+      # verifyPrWorkflowSafety.test.ts asserts this step precedes every test.
+      - name: Install and verify ffmpeg and espeak-ng
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+
+          echo "--- installed versions (recorded, not asserted) ---"
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          espeak-ng --version | head -1
+          dpkg-query -W -f='${Package} ${Version}\n' ffmpeg espeak-ng
+
+          echo "--- required capabilities ---"
+          ffmpeg -hide_banner -encoders | grep -q ' libx264 ' \
+            || { echo "::error::ffmpeg has no libx264 encoder; it cannot produce the H.264 master."; exit 1; }
+          ffmpeg -hide_banner -encoders | grep -qE '^ A....D aac ' \
+            || { echo "::error::ffmpeg has no aac encoder; it cannot produce the master's audio."; exit 1; }
+          ffmpeg -hide_banner -muxers | grep -qE ' mp4 ' \
+            || { echo "::error::ffmpeg has no mp4 muxer; it cannot produce the master container."; exit 1; }
+          ffmpeg -hide_banner -filters | grep -qE ' (ass|subtitles) ' \
+            || { echo "::error::ffmpeg cannot burn in .ass captions."; exit 1; }
+          espeak-ng -q --stdout "capability check" > /dev/null \
+            || { echo "::error::espeak-ng cannot synthesise; the offline narration fixture will fail."; exit 1; }
+          echo "ffmpeg/ffprobe/espeak-ng have every capability the tests need."
+
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Run full test suite
+      # Hard requirement, not differential: every content-automator test must
+      # pass at this head.
+      - name: Run the content-automator test suite (targeted)
         working-directory: artifacts/SpecSmith
-        run: pnpm exec vitest run
+        run: pnpm exec vitest run scripts/content-automator
+
+      - name: Check out and install the target base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/verify"
+          if [ -n "${BASE_SHA}" ]; then
+            base="$(git merge-base HEAD "${BASE_SHA}")"
+          else
+            git fetch --no-tags origin main
+            base="$(git merge-base HEAD origin/main)"
+          fi
+          echo "Target base (merge-base with the PR base): ${base}"
+          git worktree add --detach "${RUNNER_TEMP}/base" "${base}"
+          cd "${RUNNER_TEMP}/base"
+          pnpm install --frozen-lockfile 2>&1 | tail -5
+
+      # The WHOLE suite — untargeted, nothing excluded, skipped or retried —
+      # runs at this head and at the base, and the exact failing-test
+      # identities are compared. The step fails on any failure the base does
+      # not have, or on a missing report from either side; failures the base
+      # shares (currently four scripts/retail tests on main) are listed in the
+      # job summary. No exemption list, no expected count. When it fails, the
+      # build below is skipped: there is a new failure to fix first.
+      - name: Run the full test suite at head and base, and compare failures
+        working-directory: artifacts/SpecSmith
+        run: node scripts/ci/differentialFullSuite.mjs --base-dir "${RUNNER_TEMP}/base" --out "${RUNNER_TEMP}/verify"
 
       - name: Build and prerender production application
         working-directory: artifacts/SpecSmith
