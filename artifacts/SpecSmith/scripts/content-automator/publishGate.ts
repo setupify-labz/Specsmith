@@ -39,7 +39,9 @@
 //     in its own private registry for that exact artifact object: a request
 //     to the official origin, made with the load-time global fetch (not an
 //     injected transport), whose response bytes hash to the consumed file,
-//     voiced with the configured Liam id. Captions likewise need evidence
+//     voiced with the REVIEWED Liam id in liamVoice.ts (a source constant,
+//     not a caller-supplied value; the adapter refuses any other id, George
+//     included, before it makes a request). Captions likewise need evidence
 //     from the caption adapter. Metadata labels such as
 //     `provider: "elevenlabs"` grant nothing.
 //  7. Fixture sources, a silent bed and a placeholder hook are refused.
@@ -79,6 +81,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 
 import { isVerifiedHostedMaster, type HostedMaster } from "./hostedMaster.ts";
+import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
 import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
 import {
   ELEVENLABS_PROVIDER,
@@ -120,15 +123,6 @@ export type PublishVerdict =
   | { allowed: true; masterSha256: string; receiptDigest: string }
   | { allowed: false; refusals: PublishRefusal[] };
 
-/**
- * The Liam voice id, supplied by configuration and never hardcoded. An absent
- * or blank id means narration identity cannot be established: a refusal.
- */
-export interface NarrationIdentityConfig {
-  /** ELEVENLABS_VOICE_ID for Liam. Blank or absent refuses every narration. */
-  liamVoiceId: string;
-}
-
 /** The exact bytes and the exact receipt a sign-off covers. Both are required. */
 export interface DigestBinding {
   masterSha256: string;
@@ -155,7 +149,6 @@ export interface PublishGateInput {
   qualityReview: DigestBinding;
   /** What the rights evidence cleared. */
   rightsEvidence: DigestBinding;
-  narrationIdentity: NarrationIdentityConfig;
   /** Required. Absent refuses. */
   inspection?: BoundApproval & { approved: boolean };
   /** Required when any input came from a paid provider. */
@@ -348,7 +341,6 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
   }
 
   // 5. PROVENANCE OF EVERY CONSUMED INPUT.
-  const liamVoiceId = input.narrationIdentity?.liamVoiceId;
   for (const consumed of receipt.inputs) {
     if (!isNonEmptyString(consumed.renderer) && !isNonEmptyString(consumed.provider)) {
       refuse("unsupported-provenance", `${consumed.taskId} records neither a renderer nor a provider.`);
@@ -394,7 +386,7 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
 
     // NARRATION IDENTITY comes from adapter-issued evidence, never from
     // metadata: the ElevenLabs adapter's own registry entry for this artifact,
-    // for these exact bytes, voiced with the configured Liam id.
+    // for these exact bytes, voiced with the reviewed Liam id.
     if (consumed.role === "narration") {
       const evidence = consumed.evidence;
       if (evidence?.issuer !== "elevenlabs-tts") {
@@ -410,20 +402,19 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
           detail: `${consumed.taskId}: the consumed file is not the audio ElevenLabs returned; it changed after the adapter wrote it.`,
         });
       }
-      if (!isNonEmptyString(liamVoiceId)) {
-        refusals.push({
-          code: "narration-voice-not-liam",
-          detail: `${consumed.taskId}: no Liam voice id is configured (ELEVENLABS_VOICE_ID), so the voice cannot be verified.`,
-        });
-      } else if (evidence?.issuer !== "elevenlabs-tts") {
+      // The voice is judged against the REVIEWED constant in liamVoice.ts,
+      // never against an id the caller supplies and calls Liam.
+      if (evidence?.issuer !== "elevenlabs-tts") {
         refusals.push({
           code: "narration-voice-not-liam",
           detail: `${consumed.taskId}: without ElevenLabs adapter evidence the voice is unverifiable; a voiceId label is not proof.`,
         });
-      } else if (evidence.voiceId !== liamVoiceId) {
+      } else if (evidence.voiceId !== REVIEWED_LIAM_VOICE.voiceId) {
+        // Defence in depth: the adapter already refuses any other voice
+        // before calling ElevenLabs, so genuine evidence cannot reach here.
         refusals.push({
           code: "narration-voice-not-liam",
-          detail: `${consumed.taskId} was requested with voice "${evidence.voiceId}", not the configured Liam voice id.`,
+          detail: `${consumed.taskId} was requested with voice "${evidence.voiceId}", not the reviewed Liam voice id.`,
         });
       }
     }

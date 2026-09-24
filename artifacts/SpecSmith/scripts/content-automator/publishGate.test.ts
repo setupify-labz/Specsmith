@@ -51,7 +51,6 @@ const signedOff = (receipt: RenderReceipt, over: Partial<PublishGateInput> = {})
     hostedMaster: HOSTED.get(receipt) as HostedMaster,
     qualityReview: binding,
     rightsEvidence: binding,
-    narrationIdentity: { liamVoiceId: CONTROL_LIAM_VOICE_ID },
     inspection: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", approved: true, ...binding },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", ...binding },
     now: NOW,

@@ -30,7 +30,6 @@ export interface PublishingConfig {
 import {
   assertPublishable,
   type BoundApproval,
-  type NarrationIdentityConfig,
 } from "./publishGate.ts";
 import { reverifyHostedMaster, type HostedMaster } from "./hostedMaster.ts";
 import type { RenderReceipt } from "./motionCompositor.ts";
@@ -65,8 +64,6 @@ export interface PublishingGateInput {
    * Its URI is the only media reference the request can carry.
    */
   hostedMaster: HostedMaster;
-  /** The Liam voice id narration is verified against. Blank refuses. */
-  narrationIdentity: NarrationIdentityConfig;
   /** The recorded human inspection, bound to the exact master and receipt. REQUIRED. */
   inspection: BoundApproval & { approved: boolean };
   /** Required when any input came from a paid provider; bound likewise. */
@@ -394,7 +391,6 @@ function assertPublishGate(
       masterSha256: gate.assetBundle.approvedMasterSha256 ?? "",
       receiptDigest: gate.assetBundle.approvedReceiptDigest ?? "",
     },
-    narrationIdentity: gate.narrationIdentity,
     inspection: gate.inspection,
     paidProviderApproval: gate.paidProviderApproval,
   });

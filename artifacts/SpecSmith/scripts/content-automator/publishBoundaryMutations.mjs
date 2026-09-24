@@ -18,7 +18,7 @@ import { join } from "node:path";
 const DIR = "scripts/content-automator";
 const TESTS = [
   "publishBoundary.test.ts", "publishGate.test.ts", "publishing.test.ts", "renderManifest.test.ts",
-  "qualityReviewer.test.ts", "productVisualAssets.test.ts",
+  "qualityReviewer.test.ts", "productVisualAssets.test.ts", "elevenLabsTts.test.ts",
 ]
   .map((file) => `${DIR}/${file}`);
 
@@ -129,15 +129,15 @@ const MUTATIONS = [
     id: "M7b",
     defect: "provider evidence: narration accepted on a provider LABEL",
     file: "publishGate.ts",
-    find: "      if (evidence?.issuer !== \"elevenlabs-tts\") {",
-    replace: "      if (consumed.provider !== \"elevenlabs\" && evidence?.issuer !== \"elevenlabs-tts\") {",
+    find: "      if (evidence?.issuer !== \"elevenlabs-tts\") {\n        refusals.push({\n          code: \"narration-not-elevenlabs\",",
+    replace: "      if (consumed.provider !== \"elevenlabs\" && evidence?.issuer !== \"elevenlabs-tts\") {\n        refusals.push({\n          code: \"narration-not-elevenlabs\",",
   },
   {
     id: "M7c",
     defect: "provider evidence: voice accepted on a voiceId LABEL",
     file: "publishGate.ts",
-    find: "      } else if (evidence?.issuer !== \"elevenlabs-tts\") {",
-    replace: "      } else if (evidence?.issuer !== \"elevenlabs-tts\" && consumed.voiceId !== liamVoiceId) {",
+    find: "      if (evidence?.issuer !== \"elevenlabs-tts\") {\n        refusals.push({\n          code: \"narration-voice-not-liam\",",
+    replace: "      if (evidence?.issuer !== \"elevenlabs-tts\" && consumed.voiceId !== REVIEWED_LIAM_VOICE.voiceId) {\n        refusals.push({\n          code: \"narration-voice-not-liam\",",
   },
   {
     id: "M7d",
@@ -207,6 +207,34 @@ const MUTATIONS = [
     defect: "unattended publishing: autoPublish honoured",
     file: "publishing.ts",
     find: "  if (config.autoPublish === true) {",
+    replace: "  if (false) {",
+  },
+  {
+    id: "M11a",
+    defect: "voice: the George fallback restored when ELEVENLABS_VOICE_ID is unset",
+    file: "elevenLabsTts.ts",
+    find: "    voiceId: requireReviewedLiamVoiceId(env.ELEVENLABS_VOICE_ID, \"ELEVENLABS_VOICE_ID\"),",
+    replace: "    voiceId: env.ELEVENLABS_VOICE_ID?.trim() || \"JBFqnCBsd6RMkjVDRZzb\",",
+  },
+  {
+    id: "M11b",
+    defect: "voice: any non-blank id accepted as Liam (the caller declares it)",
+    file: "liamVoice.ts",
+    find: "  if (id !== REVIEWED_LIAM_VOICE.voiceId) {",
+    replace: "  if (false) {",
+  },
+  {
+    id: "M11c",
+    defect: "voice: the adapter accepts a configured voice without checking it",
+    file: "elevenLabsTts.ts",
+    find: "    voiceId: requireReviewedLiamVoiceId(options.config?.voiceId, \"config.voiceId\"),",
+    replace: "    voiceId: options.config?.voiceId,",
+  },
+  {
+    id: "M11d",
+    defect: "voice: George not recognised as George",
+    file: "liamVoice.ts",
+    find: "  if (id === GEORGE_VOICE_ID) {",
     replace: "  if (false) {",
   },
   {

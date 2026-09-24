@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
+import { requireReviewedLiamVoiceId } from "./liamVoice.ts";
 
 export interface ElevenLabsTtsConfig {
   apiKey: string;
@@ -65,7 +66,6 @@ export function elevenLabsTtsEvidenceFor(artifact: RenderArtifact): ElevenLabsTt
   if (artifact === null || typeof artifact !== "object") return undefined;
   return EVIDENCE_BY_ARTIFACT.get(artifact);
 }
-const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George, used in ElevenLabs' current API quickstart.
 const DEFAULT_MODEL_ID = "eleven_multilingual_v2";
 const DEFAULT_OUTPUT_FORMAT = "mp3_44100_128";
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -97,6 +97,12 @@ function mimeTypeForOutputFormat(outputFormat: string): string {
   return "application/octet-stream";
 }
 
+/**
+ * Reads the TTS configuration. Returns undefined when no API key is set (TTS
+ * is simply not configured). With a key, ELEVENLABS_VOICE_ID is REQUIRED and
+ * must be the reviewed Liam id — there is no fallback voice; a missing,
+ * blank, George or other id throws here, before any adapter exists.
+ */
 export function elevenLabsTtsConfigFromEnv(env: NodeJS.ProcessEnv = process.env): ElevenLabsTtsConfig | undefined {
   const apiKey = env.ELEVENLABS_API_KEY?.trim();
   if (!apiKey) return undefined;
@@ -104,7 +110,7 @@ export function elevenLabsTtsConfigFromEnv(env: NodeJS.ProcessEnv = process.env)
   return {
     apiKey,
     endpoint: env.ELEVENLABS_TTS_ENDPOINT?.trim() || DEFAULT_ENDPOINT,
-    voiceId: env.ELEVENLABS_VOICE_ID?.trim() || DEFAULT_VOICE_ID,
+    voiceId: requireReviewedLiamVoiceId(env.ELEVENLABS_VOICE_ID, "ELEVENLABS_VOICE_ID"),
     modelId: env.ELEVENLABS_MODEL_ID?.trim() || DEFAULT_MODEL_ID,
     outputFormat: env.ELEVENLABS_OUTPUT_FORMAT?.trim() || DEFAULT_OUTPUT_FORMAT,
     timeoutMs: boundedNumber(env.ELEVENLABS_TTS_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 1_000, 120_000),
@@ -176,7 +182,12 @@ export function createElevenLabsTtsAdapter(options: {
   outputDir: string;
   fetchImpl?: FetchLike;
 }): RenderAdapter {
-  const { config } = options;
+  // Snapshot and check the voice NOW, so a bad id fails at construction and
+  // a caller mutating its config object afterwards changes nothing.
+  const config: ElevenLabsTtsConfig = Object.freeze({
+    ...options.config,
+    voiceId: requireReviewedLiamVoiceId(options.config?.voiceId, "config.voiceId"),
+  });
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
   return {
@@ -184,6 +195,8 @@ export function createElevenLabsTtsAdapter(options: {
     capability: "text-to-speech",
     async render(context): Promise<RenderArtifact[]> {
       if (typeof fetchImpl !== "function") throw new Error("No fetch implementation is available for ElevenLabs TTS");
+      // Checked again immediately before the only provider request.
+      requireReviewedLiamVoiceId(config.voiceId, "config.voiceId");
       const text = narrationTextFromRenderContext(context);
       const generated = await requestSpeech(config, text, fetchImpl);
 

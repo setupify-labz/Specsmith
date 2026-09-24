@@ -102,7 +102,6 @@ function gate(platform: VideoPlatform) {
     renderReceipt: control.receipt,
     dependencyRecord: dependencyRecordFor(control.receipt),
     hostedMaster: hosted,
-    narrationIdentity: { liamVoiceId: LIAM_VOICE_ID },
     inspection: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z", approved: true, ...BOUND },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-20T10:00:00.000Z", ...BOUND },
   };

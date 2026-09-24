@@ -26,6 +26,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { isVerifiedHostedMaster, uploadAndVerifyMaster, type HostedMaster, type MasterUploader } from "./hostedMaster.ts";
 import { isIssuedRenderReceipt, renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
+import { GEORGE_VOICE_ID } from "./liamVoice.ts";
 import { buildMetricoolPublishingRequest, type PublishingGateInput } from "./publishing.ts";
 import { dependencyRecordFor, type DependencyRecord } from "./renderManifest.ts";
 import {
@@ -116,7 +117,6 @@ function gateFor(receipt: RenderReceipt, over: Partial<PublishingGateInput> = {}
     renderReceipt: receipt,
     dependencyRecord: dependencyRecordFor(receipt),
     hostedMaster: HOSTED.get(receipt) as HostedMaster,
-    narrationIdentity: { liamVoiceId: CONTROL_LIAM_VOICE_ID },
     inspection: { approvedBy: "aaron", approvedAt: APPROVED_AT, approved: true, ...bound(receipt) },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: APPROVED_AT, ...bound(receipt) },
     ...over,
@@ -476,12 +476,25 @@ describe("fixtures, stand-ins and unapproved assets remain refused", () => {
     expect(await refusalCodes(gateFor(control.receipt))).toEqual(["fixture-artifact"]);
   }, 60_000);
 
-  it("refuses narration merely NAMED Liam, or voiced with another id", async () => {
-    // The real ElevenLabs adapter, asked for a voice whose id is literally "Liam".
-    const named = await fresh({ narrationVoiceId: "Liam" });
-    expect(await refusalCodes(gateFor(named.receipt))).toEqual(["narration-voice-not-liam"]);
-    expect(await refusalCodes(gateFor(clean.receipt, { narrationIdentity: { liamVoiceId: "" } })))
-      .toEqual(["narration-voice-not-liam"]);
+  it("never asks ElevenLabs for any voice but the reviewed Liam, not even one NAMED Liam", async () => {
+    // The real adapter with its built-in fetch: a wrong voice must fail at
+    // construction, with ZERO requests on the (fake) network.
+    for (const voiceId of ["Liam", GEORGE_VOICE_ID, "", "some-other-voice"]) {
+      const before = fakeNetwork.requests.length;
+      await expect(fresh({ narrationVoiceId: voiceId })).rejects.toThrow(/voice-(not-liam|george|blank|missing)/);
+      expect(fakeNetwork.requests.length).toBe(before);
+    }
+  }, 60_000);
+
+  it("lets no caller declare which id is Liam", async () => {
+    // PublishingGateInput no longer carries a Liam id. A caller that still
+    // passes one — George, claimed to be Liam — changes nothing: the genuine
+    // Liam render builds and the forged narration stays refused.
+    const declared = { narrationIdentity: { liamVoiceId: GEORGE_VOICE_ID } } as unknown as Partial<PublishingGateInput>;
+    expect((await build(gateFor(clean.receipt, declared))).finalMediaSha256).toBe(clean.receipt.masterSha256);
+    const forged = await fresh({ forgedNarration: true });
+    expect(await refusalCodes(gateFor(forged.receipt, declared)))
+      .toEqual(["narration-not-elevenlabs", "narration-voice-not-liam"]);
   }, 60_000);
 
   it("refuses an input that records no provenance", async () => {

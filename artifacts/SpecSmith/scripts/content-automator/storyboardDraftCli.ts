@@ -66,7 +66,6 @@ async function main(): Promise<number> {
     hostedMaster: undefined as unknown as HostedMaster,
     qualityReview: { masterSha256: "", receiptDigest: "" },
     rightsEvidence: { masterSha256: "", receiptDigest: "" },
-    narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
   });
   console.log("\nPublish gate:");
   if (verdict.allowed) {

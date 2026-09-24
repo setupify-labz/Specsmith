@@ -27,6 +27,7 @@ import { promisify } from "node:util";
 import { createCaptionRenderAdapter } from "./captionRender.ts";
 import { createElevenLabsTtsAdapter, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
 import { uploadAndVerifyMaster, type HostedMaster, type MasterUploader } from "./hostedMaster.ts";
+import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
 import { CONTROL_HOST_ORIGIN, fakeNetwork } from "./publishBoundary.fakeNetwork.ts";
 import { createLocalFixtureTtsAdapter } from "./localFixtureTts.ts";
 import {
@@ -40,7 +41,8 @@ import type { ContentIdea, ContentPackage, CreativeFingerprint, ProductionTask, 
 
 const run = promisify(execFile);
 
-export const CONTROL_LIAM_VOICE_ID = "test-liam-voice-id";
+/** The reviewed Liam id: the only id the real ElevenLabs adapter will request. */
+export const CONTROL_LIAM_VOICE_ID = REVIEWED_LIAM_VOICE.voiceId;
 export const CONTROL_PACKAGE_ID = "pkg-ss-20260823-rtx-value";
 const WIDTH = 320;
 const HEIGHT = 568;

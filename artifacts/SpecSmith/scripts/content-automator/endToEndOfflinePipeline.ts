@@ -346,7 +346,6 @@ async function main(): Promise<void> {
         renderReceipt: offlineReceipt as RenderReceipt,
         dependencyRecord: dependencyRecordFor(offlineReceipt),
         hostedMaster: undefined as unknown as HostedMaster,
-        narrationIdentity: { liamVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "" },
         inspection: {
           approvedBy: "offline-pipeline",
           approvedAt: generatedAt.toISOString(),

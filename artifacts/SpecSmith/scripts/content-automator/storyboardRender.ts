@@ -55,13 +55,12 @@ export const STORYBOARD_RENDER_PLATFORM: VideoPlatform = "youtube-shorts";
  * The voice this draft is INTENDED to ship with, recorded as intent only.
  *
  * "Liam" is an ElevenLabs premade voice and reaching it costs a paid API
- * call, which is out of scope without explicit approval. The id is therefore
- * NOT hardcoded here: this environment has no ElevenLabs credential to
- * validate one against, and writing down an unverified voice id would be
- * exactly the kind of plausible-looking invention this repository's rules
- * forbid. Set ELEVENLABS_VOICE_ID (and ELEVENLABS_API_KEY) to render with it
- * for real; until then the name travels with the draft so the reviewer knows
- * what the narration is a stand-in FOR.
+ * call, which is out of scope without explicit approval. Its id is recorded
+ * once, as reviewed configuration confirmed by the repository owner, in
+ * liamVoice.ts; ELEVENLABS_VOICE_ID must equal it exactly or the adapter
+ * refuses before any request. Until a paid render is approved, the name
+ * travels with the draft so the reviewer knows what the narration is a
+ * stand-in FOR.
  */
 export const INTENDED_VOICE_NAME = "Liam";
 

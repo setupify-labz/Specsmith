@@ -18,6 +18,7 @@ import { rm } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { dependencyRecordFor, ELEVENLABS_PROVIDER, FIXTURE_SOURCES } from "./renderManifest";
+import { REVIEWED_LIAM_VOICE } from "./liamVoice";
 import { renderControl, type ControlRender } from "./publishBoundary.testkit";
 
 let clean: ControlRender;
@@ -59,7 +60,7 @@ describe("the receipt records provenance from what adapters ACTUALLY emit", () =
     const voice = input(clean, "narration");
     expect(voice.provider).toBe(ELEVENLABS_PROVIDER);
     expect(voice.renderer).toBe(ELEVENLABS_PROVIDER);
-    expect(voice.voiceId).toBe("test-liam-voice-id");
+    expect(voice.voiceId).toBe(REVIEWED_LIAM_VOICE.voiceId);
     expect(voice.declaredFixture).toBe(false);
   });
 
