@@ -8,7 +8,7 @@ const idea: ContentIdea = {
   id: "compare-blind-pick",
   format: "game",
   title: "Two GPUs. Pick one before SpecSmith reveals the names.",
-  hook: "You only get the prices and specs. Pick one now.",
+  hook: "You only get the specs. Pick one now.",
   angle: "Use Compare to turn a buyer decision into a blind-choice reveal.",
   targetAudience: "GPU buyers",
   requiredFacts: ["GPU A price", "GPU B price", "benchmark score difference"],

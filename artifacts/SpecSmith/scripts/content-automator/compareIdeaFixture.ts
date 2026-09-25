@@ -20,8 +20,14 @@ export const COMPARE_IDEA: ContentIdea = {
   id: "compare-rtx4080s-rtx4080",
   format: "comparison",
   title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
-  angle: "Use Compare as the evidence and reveal.",
+  // Compare estimates complete GPU + CPU builds and shows which BUILD has the
+  // higher estimate. It never says a card is faster, so the hook asks which
+  // build SpecSmith estimates higher (see #155).
+  hook: "Which build does SpecSmith estimate higher? Pick before the names show.",
+  // Read aloud as "The catch: …". The page says so itself: "Resolution and
+  // preset change the estimated FPS numbers shown", and the capture sequence
+  // steps through 1080p, 1440p, 4K and Ultra on screen while it is spoken.
+  angle: "resolution and quality change both builds' estimates.",
   targetAudience: "PC builders",
   requiredFacts: ["comparison state"],
   subjectIds: ["rtx4080s", "rtx4080"],
