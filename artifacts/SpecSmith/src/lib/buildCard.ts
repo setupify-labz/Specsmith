@@ -1,16 +1,23 @@
 import { estimateFpsForBuild, type BuildFpsGame } from './fps';
+import { summarizeSummaryPrices, type SummaryPrice } from './partPrice';
 import gamesData from '../data/games.json';
 
 export interface BuildCardPart {
   label: string;
   name: string;
-  price?: number;
+  /**
+   * The row's figure WITH its provenance (#156): a catalogue estimate, a
+   * price the shopper entered, or a catalogue part with no price. The card
+   * used to take a bare number and print "$X", or "Retailer price" for a
+   * missing one, so a downloaded or copied card lost exactly the distinction
+   * the Build Summary beside it makes.
+   */
+  price: SummaryPrice;
 }
 
 export interface BuildCardOptions {
   buildName?: string;
   parts: BuildCardPart[];
-  totalCost: number;
   gpu: { name: string; gpu_multiplier: number } | null;
   cpu: { name: string; cpu_multiplier: number } | null;
 }
@@ -122,6 +129,59 @@ function drawGradientBar(ctx: CanvasRenderingContext2D, y: number, h: number) {
   ctx.fillRect(0, y, W, h);
 }
 
+/**
+ * What the card prints for one row's figure.
+ *
+ * Kept to the card because the card has no room for a source line: each
+ * figure has to say what it is in a few characters, and a missing catalogue
+ * price is named as exactly that. It is not a retailer price, and there is no
+ * retailer on the card to send anyone to.
+ */
+export function buildCardPriceText(price: SummaryPrice): string {
+  if (price.kind === 'user-entered') return `$${price.amount.toLocaleString('en-US')} (your price)`;
+  const partPrice = price.price;
+  if (partPrice.provenance === 'editorial-estimate') return `Est. $${partPrice.amount.toLocaleString('en-US')}`;
+  return 'No catalogue price';
+}
+
+/**
+ * Everything the card says about money, from the SAME summary the Build
+ * Summary panel uses, so the image and the page cannot disagree.
+ */
+export function buildCardPriceSummary(parts: readonly BuildCardPart[]) {
+  const total = summarizeSummaryPrices(parts);
+  return {
+    total,
+    /** Header figure: the total as the panel shows it, or "Budget TBD" when nothing has a figure. */
+    headline: total.amount > 0 ? total.amountText : 'Budget TBD',
+    /** The total row's label, in the card's small-caps style. */
+    totalLabel: total.label.toUpperCase(),
+  };
+}
+
+/** Wraps `text` to at most `maxLines` lines of `maxWidth`, ellipsizing the last. */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (ctx.measureText(next).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length <= maxLines) return lines;
+  const kept = lines.slice(0, maxLines);
+  let last = `${kept[maxLines - 1]} ${lines.slice(maxLines).join(' ')}`;
+  while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+  kept[maxLines - 1] = `${last.trimEnd()}…`;
+  return kept;
+}
+
 function getFpsColor(fps: number): string {
   if (fps >= 144) return C.accent;
   if (fps >= 90)  return C.cyan;
@@ -131,8 +191,8 @@ function getFpsColor(fps: number): string {
 }
 
 export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasElement {
-  const { buildName, parts, totalCost, gpu, cpu } = options;
-  const hasUnknownPrices = parts.some((part) => part.price === undefined);
+  const { buildName, parts, gpu, cpu } = options;
+  const money = buildCardPriceSummary(parts);
   const canvas = document.createElement('canvas');
   canvas.width = W;
   canvas.height = H;
@@ -191,7 +251,7 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
   ctx.fillText(title, W - PAD, headerY + 10);
 
   // Total cost (right, below name)
-  const costStr = totalCost > 0 ? `$${totalCost.toLocaleString()}` : 'Budget TBD';
+  const costStr = money.headline;
   const costGrad = ctx.createLinearGradient(W - PAD - 120, 0, W - PAD, 0);
   costGrad.addColorStop(0, C.accent);
   costGrad.addColorStop(1, C.cyan);
@@ -261,7 +321,7 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
     ctx.font = '600 11px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = C.text2;
     ctx.textAlign = 'right';
-    ctx.fillText(part.price === undefined ? 'Retailer price' : `$${part.price.toLocaleString()}`, colDivX - 10, y + 24);
+    ctx.fillText(buildCardPriceText(part.price), colDivX - 10, y + 24);
     ctx.textAlign = 'left';
   });
 
@@ -277,12 +337,24 @@ export function generateBuildCardCanvas(options: BuildCardOptions): HTMLCanvasEl
   ctx.font = '600 11px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = C.text2;
   ctx.textAlign = 'left';
-  ctx.fillText(hasUnknownPrices ? 'KNOWN SUBTOTAL' : 'TOTAL', colLeft, totalY + 10);
+  ctx.fillText(money.totalLabel, colLeft, totalY + 10);
 
   ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = C.text;
   ctx.textAlign = 'right';
-  ctx.fillText(costStr, colDivX - 10, totalY + 12);
+  ctx.fillText(money.total.amountText, colDivX - 10, totalY + 12);
+
+  // What the total contains and leaves out: the same note the panel shows,
+  // so a card shared on its own still says it is an estimate, which figures
+  // the shopper typed in, and which parts have no price at all.
+  if (money.total.note) {
+    ctx.font = '500 10px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = C.text2;
+    ctx.textAlign = 'left';
+    wrapText(ctx, money.total.note, colDivX - 10 - colLeft, 2).forEach((line, index) => {
+      ctx.fillText(line, colLeft, totalY + 32 + index * 13);
+    });
+  }
 
   // ── Vertical divider ──────────────────────────────────────────────
   ctx.strokeStyle = C.border;

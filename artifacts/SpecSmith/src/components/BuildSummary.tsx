@@ -100,18 +100,11 @@ export default function BuildSummary({
     setCustomOpen(false);
   };
 
-  // The downloadable card still takes plain figures; it is outside this
-  // change (#156) and keeps exactly the numbers it was given before.
+  // The downloaded or copied card carries the same typed rows as this panel,
+  // so the image says what each figure is too (#156).
   const cardOptions = {
     buildName,
-    parts: parts.map((part) => ({
-      label: part.label,
-      name: part.name,
-      price: part.price.kind === 'user-entered'
-        ? part.price.amount
-        : part.price.price.provenance === 'editorial-estimate' ? part.price.price.amount : undefined,
-    })),
-    totalCost,
+    parts: parts.map((part) => ({ label: part.label, name: part.name, price: part.price })),
     gpu: gpu ? { name: gpu.name, gpu_multiplier: gpu.gpu_multiplier } : null,
     cpu: cpu ? { name: cpu.name, cpu_multiplier: cpu.cpu_multiplier } : null,
   };
