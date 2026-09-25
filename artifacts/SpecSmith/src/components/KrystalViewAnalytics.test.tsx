@@ -39,3 +39,23 @@ it('records only a coarse retailer and placement after consent', async () => {
   });
   link.remove();
 });
+
+// The choice panel covers the bottom of the viewport. It publishes how much,
+// so the mobile Builder's fixed "View build" bar and sheet can stand above it.
+it('publishes the space it covers while visible, and clears it once a choice is made', async () => {
+  render(<KrystalViewAnalytics />);
+  await screen.findByRole('dialog', { name: 'Analytics privacy choice' });
+  // jsdom has no layout, so the panel measures 0px: what remains is its 16px
+  // offset and 8px gap. A real browser adds the panel's rendered height.
+  expect(document.documentElement.style.getPropertyValue('--ff-bottom-overlay-height')).toBe('24px');
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Analytics privacy choice' })).toBeNull());
+  expect(document.documentElement.style.getPropertyValue('--ff-bottom-overlay-height')).toBe('');
+});
+
+it('never reserves space when a choice was already stored', async () => {
+  localStorage.setItem(ANALYTICS_CONSENT_KEY, 'declined');
+  render(<KrystalViewAnalytics />);
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Analytics privacy choice' })).toBeNull());
+  expect(document.documentElement.style.getPropertyValue('--ff-bottom-overlay-height')).toBe('');
+});
