@@ -17,11 +17,13 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import catalogData from '../../../public/data/retail-parts.json';
 import { parseAffiliatePartCatalog, type RetailPartCategory } from '../../lib/retail/partCatalog';
 import { PRICE_FRESHNESS_MS, STALE_PRICE_LABEL, formatAmount } from '../../lib/retail/partPricing';
 import RetailBuilder from './RetailBuilder';
+import { focusableWithin } from './dialogFocus';
 
 const parsed = parseAffiliatePartCatalog(catalogData);
 if (!parsed.ok) throw new Error(`fixture catalog invalid: ${parsed.problem}`);
@@ -112,6 +114,73 @@ describe('the build sheet', () => {
     const sheet = openSheet();
     expect(within(sheet).queryByTestId('summary-price-gpu')).toBeNull();
     expect(within(sheet).getByTestId('summary-stale-gpu').textContent).toContain(STALE_PRICE_LABEL);
+  });
+});
+
+describe('the sheet is a dialog for keyboard users', () => {
+  it('opens with focus inside, keeps Tab inside, closes on Escape and returns focus to View build', async () => {
+    const user = userEvent.setup();
+    renderBuilder({ cpu: LONG.id, gpu: GPU.id });
+    const viewBuild = screen.getByTestId('view-build');
+    expect(viewBuild.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(viewBuild.getAttribute('aria-expanded')).toBe('false');
+
+    // Open from the keyboard.
+    viewBuild.focus();
+    await user.keyboard('{Enter}');
+    const sheet = screen.getByRole('dialog', { name: 'Your build' });
+    expect(sheet).toBe(screen.getByTestId('build-sheet'));
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(document.activeElement).toBe(sheet);
+    expect(viewBuild.getAttribute('aria-expanded')).toBe('true');
+
+    // Tab walks the sheet's controls and wraps; it never reaches the page behind.
+    const controls = focusableWithin(sheet);
+    expect(controls.length).toBeGreaterThan(2);
+    await user.tab();
+    expect(document.activeElement).toBe(controls[0]);
+    for (let i = 1; i < controls.length; i += 1) {
+      await user.tab();
+      expect(document.activeElement).toBe(controls[i]);
+    }
+    await user.tab();
+    expect(document.activeElement).toBe(controls[0]);
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(controls[controls.length - 1]);
+
+    // Escape closes it and focus goes back to the button that opened it.
+    await user.keyboard('{Escape}');
+    expect(screen.queryByTestId('build-sheet')).toBeNull();
+    expect(document.activeElement).toBe(viewBuild);
+    expect(viewBuild.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('returns focus to View build when the backdrop closes it too', async () => {
+    const user = userEvent.setup();
+    renderBuilder({ gpu: GPU.id });
+    const viewBuild = screen.getByTestId('view-build');
+    viewBuild.focus();
+    await user.keyboard(' ');
+    expect(document.activeElement).toBe(screen.getByTestId('build-sheet'));
+    fireEvent.click(screen.getByTestId('close-build-summary'));
+    expect(screen.queryByTestId('build-sheet')).toBeNull();
+    expect(document.activeElement).toBe(viewBuild);
+  });
+
+  it('stops listening once closed: Escape on the page does nothing further', async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderBuilder({ gpu: GPU.id });
+    screen.getByTestId('view-build').focus();
+    await user.keyboard('{Enter}{Escape}');
+    await user.keyboard('{Escape}');
+    expect(screen.queryByTestId('build-sheet')).toBeNull();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('keeps the visual layout: only focus styling and ARIA were added to the sheet', () => {
+    renderBuilder({ gpu: GPU.id });
+    const sheet = openSheet();
+    expect(sheet.className).toBe('relative z-10 w-full overflow-y-auto p-3 outline-none');
   });
 });
 
