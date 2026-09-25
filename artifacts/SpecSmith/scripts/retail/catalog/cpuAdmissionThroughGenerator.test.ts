@@ -72,9 +72,9 @@ describe('the generator admits the reviewed processor with verified identity', (
     // null). That was true when #105 merged and stopped being true when the
     // next scheduled refresh (aeb377e) ran this same admission path and
     // published the binding. The lasting properties are checked instead,
-    // against a raw feed record written out literally below rather than
-    // rebuilt from the published JSON, so the two sides cannot agree merely
-    // because one was derived from the other.
+    // against RAW_FEED_XML (defined above), a record written out literally
+    // rather than rebuilt from the published JSON, so the two sides cannot
+    // agree merely because one was derived from the other.
     const outcome: any = admitAffiliatePart(
       findItems(parseProductSearchXml(RAW_FEED_XML))[0],
       'cpu',
