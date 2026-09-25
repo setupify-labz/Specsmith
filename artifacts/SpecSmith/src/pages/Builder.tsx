@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from '../components/MotionLite';
 import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
+import { editorialEstimatePrice, type PartPrice } from '../lib/partPrice';
+import { PRICES_UPDATED } from '../lib/prices';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import { useBuilder, type BuildState } from '../hooks/useBuilder';
@@ -52,6 +54,17 @@ type Preset = 'low' | 'medium' | 'high' | 'ultra';
 
 const VALID_RESOLUTIONS: Resolution[] = ['1080p', '1440p', '4k'];
 const VALID_PRESETS: Preset[] = ['low', 'medium', 'high', 'ultra'];
+
+/**
+ * The canonical fallback's price source, stated rather than guessed (#156).
+ *
+ * Every selector in the fallback is fed canonical catalogue records, whose
+ * `price_usd` is SpecSmith's editorial estimate (the same figure this page
+ * keeps as `estimatedPrice`). Never a retailer price: retailer listings are
+ * shown only by RetailBuilder, with their own "Price checked" time.
+ */
+const canonicalCatalogueEstimate = (part: { price_usd?: unknown }): PartPrice =>
+  editorialEstimatePrice(part.price_usd, PRICES_UPDATED);
 
 interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
@@ -708,7 +721,7 @@ export default function Builder() {
             <div className="lg:col-span-2 space-y-3">
               {/* GPU */}
               <div ref={gpuSectionRef}>
-                <PartSelector
+                <PartSelector getPrice={canonicalCatalogueEstimate}
                   openSignal={openSignalFor('gpu')} category="gpu" label="GPU — Graphics Card" defaultOpen
                   parts={builderGpus}
                   selectedId={build.gpu}
@@ -727,7 +740,7 @@ export default function Builder() {
               </div>
               {/* CPU */}
               <div ref={cpuSectionRef}>
-                <PartSelector
+                <PartSelector getPrice={canonicalCatalogueEstimate}
                   openSignal={openSignalFor('cpu')} category="cpu" label="CPU — Processor"
                   parts={builderCpus}
                   selectedId={build.cpu}
@@ -744,32 +757,32 @@ export default function Builder() {
                   }}
                 />
               </div>
-              <PartSelector openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
                 parts={builderMotherboards} selectedId={build.motherboard}
                 onSelect={id => selectPart('motherboard', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
               />
-              <PartSelector openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
                 parts={builderRam} selectedId={build.ram}
                 onSelect={id => selectPart('ram', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
               />
-              <PartSelector openSignal={openSignalFor('storage')} category="storage" label="Storage"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('storage')} category="storage" label="Storage"
                 parts={builderStorage} selectedId={build.storage}
                 onSelect={id => selectPart('storage', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
               />
-              <PartSelector openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
                 parts={builderPsus} selectedId={build.psu}
                 onSelect={id => selectPart('psu', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
               />
-              <PartSelector openSignal={openSignalFor('case')} category="case" label="Case"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('case')} category="case" label="Case"
                 parts={builderCases} selectedId={build.case}
                 onSelect={id => selectPart('case', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
               />
-              <PartSelector openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
+              <PartSelector getPrice={canonicalCatalogueEstimate} openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
                 parts={builderCoolers} selectedId={build.cooler}
                 onSelect={id => selectPart('cooler', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
@@ -826,22 +839,22 @@ export default function Builder() {
                       className="overflow-hidden"
                     >
                       <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
-                        <PartSelector category="monitor" label="Monitor"
+                        <PartSelector getPrice={canonicalCatalogueEstimate} category="monitor" label="Monitor"
                           parts={builderMonitors} selectedId={build.monitor}
                           onSelect={id => selectPart('monitor', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
                         />
-                        <PartSelector category="keyboard" label="Keyboard"
+                        <PartSelector getPrice={canonicalCatalogueEstimate} category="keyboard" label="Keyboard"
                           parts={builderKeyboards} selectedId={build.keyboard}
                           onSelect={id => selectPart('keyboard', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
                         />
-                        <PartSelector category="mouse" label="Mouse"
+                        <PartSelector getPrice={canonicalCatalogueEstimate} category="mouse" label="Mouse"
                           parts={builderMice} selectedId={build.mouse}
                           onSelect={id => selectPart('mouse', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
                         />
-                        <PartSelector category="headset" label="Headset"
+                        <PartSelector getPrice={canonicalCatalogueEstimate} category="headset" label="Headset"
                           parts={builderHeadsets} selectedId={build.headset}
                           onSelect={id => selectPart('headset', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
