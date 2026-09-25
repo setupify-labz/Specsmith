@@ -33,6 +33,7 @@ import {
   type PriceView,
 } from './retail/partPricing';
 import type { AffiliatePart } from './retail/partCatalog';
+import { CATALOGUE_PRICE_DATE, catalogueSourceOf } from './prices';
 
 export type PartPrice =
   | {
@@ -73,6 +74,17 @@ export function editorialEstimatePrice(amount: unknown, catalogueDate: string | 
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return UNKNOWN_PART_PRICE;
   if (catalogueDate !== null && (typeof catalogueDate !== 'string' || catalogueDate.trim() === '')) return UNKNOWN_PART_PRICE;
   return { provenance: 'editorial-estimate', amount, catalogueDate };
+}
+
+/**
+ * A catalogue estimate for a part in a Builder category, dated by the ONE
+ * source-to-date rule in prices.ts. An unrecognised category has no known
+ * source, so its figure is 'unknown' rather than an estimate of unknown origin.
+ */
+export function catalogueEstimatePrice(category: string, amount: unknown): PartPrice {
+  const source = catalogueSourceOf(category);
+  if (source === null) return UNKNOWN_PART_PRICE;
+  return editorialEstimatePrice(amount, CATALOGUE_PRICE_DATE[source]);
 }
 
 /** A retailer listing's price, judged fresh or stale at `now`. */
@@ -152,4 +164,107 @@ export function comparablePriceAmount(price: PartPrice | undefined): number | nu
   if (price.provenance === 'editorial-estimate') return price.amount;
   if (price.provenance === 'retailer-observation' && price.view.status === 'fresh') return price.view.displayAmount;
   return null;
+}
+
+/**
+ * A figure in a build summary: a catalogue price with its provenance, or a
+ * price the shopper typed in for a custom part. The two are kept apart so a
+ * total can say what it is made of.
+ */
+export type SummaryPrice =
+  | { kind: 'catalogue'; price: PartPrice }
+  | { kind: 'user-entered'; amount: number };
+
+const wholeDollars = (amount: number) => `$${amount.toLocaleString('en-US')}`;
+
+/** What one summary row shows for its figure. */
+export function describeSummaryPrice(price: SummaryPrice): { text: string; accessible: string } {
+  if (price.kind === 'user-entered') {
+    const amount = wholeDollars(price.amount);
+    return { text: `${amount} (your price)`, accessible: `${amount}, a price you entered` };
+  }
+  const label = describePartPrice(price.price);
+  return { text: label.primary, accessible: label.accessible };
+}
+
+export interface SummaryTotal {
+  /** The figure summed: included estimates plus entered prices. */
+  amount: number;
+  /** "Estimated total", "Known-price subtotal", "Total of your prices" or "Total". */
+  label: string;
+  /** The figure as shown, "Est. $X" whenever an estimate is in it. */
+  amountText: string;
+  /** What the figure contains and what it leaves out. Null when nothing is selected. */
+  note: string | null;
+  includesEstimates: boolean;
+}
+
+/**
+ * Totals a build summary honestly.
+ *
+ * - Catalogue estimates and entered prices are summed, and the label says
+ *   which kinds are in it. Any estimate makes the whole figure an estimate.
+ * - A date is given only when EVERY estimate in the sum is from a source that
+ *   date covers. One undated estimate in the sum and no date is claimed.
+ * - An item with no usable figure is excluded and named, never counted as
+ *   zero, and the label becomes a subtotal.
+ * - A retailer observation is never added to catalogue estimates. It is
+ *   excluded and named, so the two kinds of number cannot be blended.
+ */
+export function summarizeSummaryPrices(rows: readonly { label: string; price: SummaryPrice }[]): SummaryTotal {
+  let amount = 0;
+  let estimates = 0;
+  let entered = 0;
+  const dates = new Set<string | null>();
+  const missing: string[] = [];
+  const retailer: string[] = [];
+
+  for (const { label, price } of rows) {
+    if (price.kind === 'user-entered') {
+      amount += price.amount;
+      entered += 1;
+      continue;
+    }
+    const partPrice = price.price;
+    if (partPrice.provenance === 'editorial-estimate') {
+      amount += partPrice.amount;
+      estimates += 1;
+      dates.add(partPrice.catalogueDate);
+    } else if (partPrice.provenance === 'retailer-observation') {
+      retailer.push(label);
+    } else {
+      missing.push(label);
+    }
+  }
+
+  const excludedCount = missing.length + retailer.length;
+  if (rows.length === 0) {
+    return { amount: 0, label: 'Total', amountText: wholeDollars(0), note: null, includesEstimates: false };
+  }
+
+  const label = excludedCount > 0
+    ? 'Known-price subtotal'
+    : estimates > 0 ? 'Estimated total' : 'Total of your prices';
+  const amountText = estimates > 0 ? `Est. ${wholeDollars(amount)}` : wholeDollars(amount);
+
+  // What is IN the figure, then what is left out of it.
+  const included: string[] = [];
+  if (estimates > 0) {
+    const [only] = [...dates];
+    const dated = dates.size === 1 && only !== null ? ` · updated ${only}` : '';
+    included.push(`${estimates === 1 ? 'SpecSmith estimate' : 'SpecSmith estimates'}${dated}`);
+  }
+  if (entered > 0) included.push(`${entered} ${entered === 1 ? 'price' : 'prices'} you entered`);
+  const excluded: string[] = [];
+  if (missing.length > 0) excluded.push(`excludes ${missing.join(', ')} (no catalogue price)`);
+  if (retailer.length > 0) excluded.push(`excludes ${retailer.join(', ')} (retailer price, shown separately)`);
+  const note = [included.join(' + '), ...excluded].filter(Boolean).join('; ');
+
+  return {
+    amount: Number(amount.toFixed(2)),
+    label,
+    amountText,
+    note: note === '' ? null : note,
+    includesEstimates: estimates > 0,
+  };
 }

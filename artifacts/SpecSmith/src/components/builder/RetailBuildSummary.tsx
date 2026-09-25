@@ -12,7 +12,7 @@ import {
 import { CATEGORY_LABELS, confidenceOf, shortenTitle } from '../../lib/retail/retailShopping';
 import RetailEstimateAction from './RetailEstimateAction';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
-import { PRICES_UPDATED } from '../../lib/prices';
+import { catalogueEstimatePrice } from '../../lib/partPrice';
 import {
   CHOOSE_LISTING_LABEL,
   ESTIMATED_PREFIX,
@@ -316,6 +316,10 @@ function PlannedRow({
 }) {
   const { category, name, estimatedPrice } = recommendation;
   const categoryLabel = CATEGORY_LABELS[category as RetailPartCategory];
+  // The same source-to-date rule the Builder's cards use (prices.ts): a GPU or
+  // CPU estimate is dated, a component or peripheral estimate is not, because
+  // the July 16 refresh repriced only gpus.json and cpus.json.
+  const estimate = catalogueEstimatePrice(category, estimatedPrice);
   return (
     <li
       className="flex items-center gap-2 py-1"
@@ -352,16 +356,16 @@ function PlannedRow({
             {name}
           </span>
         </p>
-        {/* The estimate keeps its word and its date on the row, because a bare
-            number beside a retailer price is exactly the confusion the notice
-            above is trying to prevent. */}
+        {/* The estimate keeps its word on the row, and its date wherever the
+            date is true of it, because a bare number beside a retailer price
+            is exactly the confusion the notice above is trying to prevent. */}
         <p
           className="text-[10px] leading-none"
           style={{ color: 'var(--ff-text-3)' }}
           data-testid={`planned-price-${category}`}
         >
-          {typeof estimatedPrice === 'number'
-            ? `${ESTIMATED_PREFIX} ${formatAmount(estimatedPrice, 'USD')} · ${PRICES_UPDATED}`
+          {estimate.provenance === 'editorial-estimate'
+            ? `${ESTIMATED_PREFIX} ${formatAmount(estimate.amount, 'USD')}${estimate.catalogueDate === null ? '' : ` · ${estimate.catalogueDate}`}`
             : 'No estimate recorded'}
         </p>
       </div>

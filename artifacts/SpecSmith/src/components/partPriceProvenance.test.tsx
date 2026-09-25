@@ -23,14 +23,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PartCard from './PartCard';
 import PartSelector from './PartSelector';
 import {
+  catalogueEstimatePrice,
   describePartPrice,
+  describeSummaryPrice,
   editorialEstimatePrice,
+  summarizeSummaryPrices,
   NO_PRICE_LABEL,
   retailerObservationPrice,
   UNKNOWN_PART_PRICE,
   type PartPrice,
 } from '../lib/partPrice';
-import { PRICES_UPDATED } from '../lib/prices';
+import { CATALOGUE_PRICE_DATE, PRICES_UPDATED, catalogueSourceOf } from '../lib/prices';
+import publishedCatalog from '../../public/data/retail-parts.json';
+import gpuData from '../data/gpus.json';
+import componentData from '../data/components.json';
+import peripheralData from '../data/peripherals.json';
 import { PRICE_FRESHNESS_MS, STALE_PRICE_LABEL } from '../lib/retail/partPricing';
 import { rtx5070Listing } from '../lib/retail/__fixtures__/catalogFixture';
 import { AuthProvider } from '../context/AuthContext';
@@ -409,4 +416,206 @@ describe('the other non-Compare callers stay price-free', () => {
     expect(screen.queryAllByTestId('part-price')).toHaveLength(0);
     expect(screen.queryAllByTestId('selected-part-price')).toHaveLength(0);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Summaries (#156 review): the fallback's BuildSummary and the retail
+// builder's imported plan rows read the SAME source-to-date rule as the cards.
+// ---------------------------------------------------------------------------
+
+describe('one source-to-date rule for every Builder category', () => {
+  it('dates only gpus and cpus, and knows every category\'s source', () => {
+    expect(CATALOGUE_PRICE_DATE).toEqual({ gpus: PRICES_UPDATED, cpus: PRICES_UPDATED, components: null, peripherals: null });
+    const expected: Record<string, string> = {
+      gpu: 'gpus', cpu: 'cpus',
+      motherboard: 'components', ram: 'components', storage: 'components', psu: 'components', case: 'components', cooler: 'components',
+      monitor: 'peripherals', keyboard: 'peripherals', mouse: 'peripherals', headset: 'peripherals',
+    };
+    for (const [category, source] of Object.entries(expected)) expect(catalogueSourceOf(category), category).toBe(source);
+    expect(catalogueSourceOf('toaster')).toBeNull();
+    expect(catalogueSourceOf('constructor')).toBeNull();
+  });
+
+  it('catalogueEstimatePrice dates by category, and refuses an unknown one', () => {
+    expect(catalogueEstimatePrice('gpu', 500)).toEqual({ provenance: 'editorial-estimate', amount: 500, catalogueDate: PRICES_UPDATED });
+    expect(catalogueEstimatePrice('motherboard', 500)).toEqual({ provenance: 'editorial-estimate', amount: 500, catalogueDate: null });
+    expect(catalogueEstimatePrice('headset', 500)).toEqual({ provenance: 'editorial-estimate', amount: 500, catalogueDate: null });
+    expect(catalogueEstimatePrice('toaster', 500)).toEqual(UNKNOWN_PART_PRICE);
+  });
+});
+
+describe('summarizeSummaryPrices says what a total contains', () => {
+  const est = (category: string, amount: number) => ({ kind: 'catalogue' as const, price: catalogueEstimatePrice(category, amount) });
+  const row = (label: string, price: ReturnType<typeof est> | { kind: 'user-entered'; amount: number } | { kind: 'catalogue'; price: PartPrice }) => ({ label, price });
+
+  it('only dated estimates: an estimated total with the date', () => {
+    const total = summarizeSummaryPrices([row('GPU', est('gpu', 500)), row('CPU', est('cpu', 300))]);
+    expect(total).toMatchObject({ label: 'Estimated total', amountText: 'Est. $800', amount: 800, note: `SpecSmith estimates · updated ${PRICES_UPDATED}` });
+  });
+
+  it('a dated and an undated estimate: still an estimate, but no date is claimed', () => {
+    const total = summarizeSummaryPrices([row('GPU', est('gpu', 500)), row('Monitor', est('monitor', 299))]);
+    expect(total).toMatchObject({ label: 'Estimated total', amountText: 'Est. $799', note: 'SpecSmith estimates' });
+    expect(total.note).not.toMatch(/updated|2026/);
+  });
+
+  it('only undated estimates: no date', () => {
+    const total = summarizeSummaryPrices([row('Motherboard', est('motherboard', 629))]);
+    expect(total).toMatchObject({ label: 'Estimated total', amountText: 'Est. $629', note: 'SpecSmith estimate' });
+  });
+
+  it('estimates plus an entered price: says both', () => {
+    const total = summarizeSummaryPrices([row('GPU', est('gpu', 500)), row('Custom', { kind: 'user-entered', amount: 40 })]);
+    expect(total).toMatchObject({ label: 'Estimated total', amountText: 'Est. $540', note: `SpecSmith estimate · updated ${PRICES_UPDATED} + 1 price you entered` });
+  });
+
+  it('only entered prices: not an estimate, and says whose prices they are', () => {
+    const total = summarizeSummaryPrices([row('Custom', { kind: 'user-entered', amount: 40 }), row('Custom', { kind: 'user-entered', amount: 60 })]);
+    expect(total).toMatchObject({ label: 'Total of your prices', amountText: '$100', note: '2 prices you entered', includesEstimates: false });
+  });
+
+  it('an item with no figure is excluded, named, and makes it a subtotal', () => {
+    const total = summarizeSummaryPrices([row('GPU', est('gpu', 500)), row('Case', { kind: 'catalogue', price: UNKNOWN_PART_PRICE })]);
+    expect(total).toMatchObject({ label: 'Known-price subtotal', amountText: 'Est. $500', amount: 500, note: `SpecSmith estimate · updated ${PRICES_UPDATED}; excludes Case (no catalogue price)` });
+  });
+
+  it('a retailer observation is never blended into catalogue estimates', () => {
+    const total = summarizeSummaryPrices([row('GPU', est('gpu', 500)), row('Monitor', { kind: 'catalogue', price: FRESH })]);
+    expect(total.amount).toBe(500);
+    expect(total.label).toBe('Known-price subtotal');
+    expect(total.note).toContain('excludes Monitor (retailer price, shown separately)');
+  });
+
+  it('nothing selected: no note, no estimate claim', () => {
+    expect(summarizeSummaryPrices([])).toMatchObject({ label: 'Total', amountText: '$0', note: null, includesEstimates: false });
+  });
+
+  it('rows say "Est." for estimates and "your price" for entered figures', () => {
+    expect(describeSummaryPrice(est('monitor', 299)).text).toBe('Est. $299');
+    expect(describeSummaryPrice(est('monitor', 299)).accessible).toBe('estimated $299, a SpecSmith catalogue estimate, not a retailer price');
+    expect(describeSummaryPrice({ kind: 'user-entered', amount: 40 })).toEqual({ text: '$40 (your price)', accessible: '$40, a price you entered' });
+    expect(describeSummaryPrice({ kind: 'catalogue', price: UNKNOWN_PART_PRICE }).text).toBe(NO_PRICE_LABEL);
+  });
+});
+
+describe('the fallback BuildSummary, rendered', () => {
+  const gpu = (gpuData as { id: string; price_usd: number }[])[0];
+  const board = (componentData as unknown as { motherboards: { id: string; price_usd: number }[] }).motherboards[0];
+  const monitor = (peripheralData as unknown as { monitors: { id: string; price_usd: number }[] }).monitors[0];
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.stubGlobal('scrollTo', vi.fn());
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const openFallback = async (query: string) => {
+    render(
+      <MemoryRouter initialEntries={[`/builder?${query}`]}>
+        <ToastProvider>
+          <AuthProvider>
+            <Builder />
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    return screen.findByTestId('canonical-fallback', {}, { timeout: 10000 });
+  };
+  const rowFor = (fallback: HTMLElement, label: string) => {
+    const tag = within(fallback).getAllByText(label, { selector: 'span' }).find((el) => el.closest('[class*="justify-between"]')?.querySelector('[data-testid="summary-row-price"]'));
+    return tag!.closest('[class*="justify-between"]')!.querySelector<HTMLElement>('[data-testid="summary-row-price"]')!;
+  };
+
+  it('GPU only: an estimated total, dated, because every figure in it is covered', async () => {
+    const fallback = await openFallback(`gpu=${gpu.id}`);
+    const price = rowFor(fallback, 'GPU');
+    expect(price.textContent).toBe(`Est. $${gpu.price_usd.toLocaleString('en-US')}`);
+    expect(price.getAttribute('data-price-kind')).toBe('editorial-estimate');
+    expect(within(fallback).getByTestId('summary-total-label').textContent).toBe('Estimated total');
+    expect(within(fallback).getByTestId('summary-total-amount').textContent).toBe(`Est. $${gpu.price_usd.toLocaleString('en-US')}`);
+    expect(within(fallback).getByTestId('summary-total-note').textContent).toBe(`SpecSmith estimate · updated ${PRICES_UPDATED}`);
+  }, 30000);
+
+  it('GPU + component + peripheral + an entered part: every row qualified, no universal date', async () => {
+    const fallback = await openFallback(`gpu=${gpu.id}&motherboard=${board.id}&monitor=${monitor.id}`);
+
+    for (const [label, amount] of [['GPU', gpu.price_usd], ['Motherboard', board.price_usd], ['Monitor', monitor.price_usd]] as const) {
+      const price = rowFor(fallback, label);
+      expect(price.textContent, label).toBe(`Est. $${amount.toLocaleString('en-US')}`);
+      expect(price.getAttribute('aria-label'), label).toMatch(/^estimated \$[\d,]+, a SpecSmith catalogue estimate/);
+      if (label === 'GPU') expect(price.getAttribute('aria-label')).toContain(`updated ${PRICES_UPDATED}`);
+      else expect(price.getAttribute('aria-label'), label).not.toMatch(/updated/);
+    }
+
+    // The shopper adds a part of their own.
+    fireEvent.click(within(fallback).getByRole('button', { name: /Add custom part/ }));
+    fireEvent.change(within(fallback).getByPlaceholderText(/Part name/), { target: { value: 'Fan kit' } });
+    fireEvent.change(within(fallback).getByPlaceholderText('Price ($)'), { target: { value: '40' } });
+    fireEvent.click(within(fallback).getByRole('button', { name: 'Add' }));
+    const custom = await within(fallback).findByText('Fan kit');
+    const customPrice = custom.closest('[class*="justify-between"]')!.querySelector('[data-testid="summary-row-price"]')!;
+    expect(customPrice.textContent).toBe('$40 (your price)');
+    expect(customPrice.getAttribute('data-price-kind')).toBe('user-entered');
+
+    const sum = gpu.price_usd + board.price_usd + monitor.price_usd + 40;
+    expect(within(fallback).getByTestId('summary-total-label').textContent).toBe('Estimated total');
+    expect(within(fallback).getByTestId('summary-total-amount').textContent).toBe(`Est. $${sum.toLocaleString('en-US')}`);
+    const note = within(fallback).getByTestId('summary-total-note').textContent;
+    expect(note).toBe('SpecSmith estimates + 1 price you entered');
+    expect(note).not.toMatch(/updated|July|2026/);
+
+    // Nowhere in the fallback does the universal date sit beside this total,
+    // and no summary row is a bare figure.
+    expect(within(fallback).queryByText(/Est\. street pricing/)).toBeNull();
+    for (const node of within(fallback).getAllByTestId('summary-row-price')) {
+      expect(node.textContent).toMatch(/^Est\. \$|\(your price\)$/);
+    }
+
+    // Sales tax keeps the qualifier.
+    fireEvent.change(within(fallback).getByRole('textbox', { name: /Sales tax/ }), { target: { value: '10' } });
+    expect(within(fallback).getByText(/^With tax:/).textContent).toBe(`With tax: Est. $${Math.round(sum * 1.1).toLocaleString('en-US')}`);
+  }, 30000);
+});
+
+describe('imported recommendations, rendered in the retail builder', () => {
+  const published = publishedCatalog as unknown as { generatedAt: string };
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse(published.generatedAt));
+    vi.stubGlobal('scrollTo', vi.fn());
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+      String(url).includes('product-images.json')
+        ? ({ ok: false, json: async () => ({}) } as unknown as Response)
+        : ({ ok: true, json: async () => published } as unknown as Response)) as unknown as typeof fetch);
+  });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it('a peripheral recommendation is "Estimated" with no date; a GPU one keeps its date', async () => {
+    const gpu = (gpuData as { id: string; price_usd: number }[])[0];
+    const monitor = (peripheralData as unknown as { monitors: { id: string; price_usd: number }[] }).monitors[0];
+    const keyboard = (peripheralData as unknown as { keyboards: { id: string }[] }).keyboards[0];
+    render(
+      <MemoryRouter initialEntries={[`/builder?gpu=${gpu.id}&monitor=${monitor.id}&keyboard=${keyboard.id}`]}>
+        <ToastProvider>
+          <AuthProvider>
+            <Builder />
+          </AuthProvider>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByTestId('retail-builder', {}, { timeout: 10000 });
+    const summary = screen.getAllByTestId('build-summary')[0];
+    const monitorPrice = await within(summary).findByTestId('planned-price-monitor');
+    expect(monitorPrice.textContent).toBe(`Estimated $${monitor.price_usd.toFixed(2)}`);
+    expect(monitorPrice.textContent).not.toMatch(/July|2026|updated/);
+    expect(within(summary).getByTestId('planned-price-keyboard').textContent).toMatch(/^Estimated \$[\d,.]+$/);
+    expect(within(summary).getByTestId('planned-price-gpu').textContent)
+      .toBe(`Estimated $${gpu.price_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} · ${PRICES_UPDATED}`);
+    // The retailer subtotal is untouched by any of these estimates.
+    expect(within(summary).queryByTestId('retailer-subtotal')).toBeNull();
+  }, 30000);
 });

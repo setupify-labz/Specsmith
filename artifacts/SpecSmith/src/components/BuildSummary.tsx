@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from './MotionLite';
 import { ExternalLink, Zap, DollarSign, Save, Download, Copy, Check, PackageOpen, RotateCcw, FileDown, FileUp } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { downloadBuildFile, parseBuildFileContent, type ShareView, type SharedCustomPart } from '../lib/sharing';
-import { PRICES_UPDATED } from '../lib/prices';
+import { describeSummaryPrice, summarizeSummaryPrices, type SummaryPrice } from '../lib/partPrice';
 import { downloadBuildCard, copyBuildCardToClipboard } from '../lib/buildCard';
 import { useToast } from '../context/ToastContext';
 import BottleneckChecker from './BottleneckChecker';
@@ -13,7 +13,12 @@ import SaveBuildModal from './SaveBuildModal';
 interface SummaryPart {
   label: string;
   name: string;
-  price?: number;
+  /**
+   * Where this row's figure came from (#156): a catalogue estimate, dated
+   * only by its own source, or a price the shopper entered. Never a bare
+   * number, so the row and the total can say which it is.
+   */
+  price: SummaryPrice;
   affiliateUrl?: string;
   customId?: string;
 }
@@ -95,9 +100,17 @@ export default function BuildSummary({
     setCustomOpen(false);
   };
 
+  // The downloadable card still takes plain figures; it is outside this
+  // change (#156) and keeps exactly the numbers it was given before.
   const cardOptions = {
     buildName,
-    parts,
+    parts: parts.map((part) => ({
+      label: part.label,
+      name: part.name,
+      price: part.price.kind === 'user-entered'
+        ? part.price.amount
+        : part.price.price.provenance === 'editorial-estimate' ? part.price.price.amount : undefined,
+    })),
     totalCost,
     gpu: gpu ? { name: gpu.name, gpu_multiplier: gpu.gpu_multiplier } : null,
     cpu: cpu ? { name: cpu.name, cpu_multiplier: cpu.cpu_multiplier } : null,
@@ -127,7 +140,9 @@ export default function BuildSummary({
 
   const supportsClipboardWrite = typeof ClipboardItem !== 'undefined';
   const hasAffiliateParts = parts.some((part) => Boolean(part.affiliateUrl));
-  const hasUnknownPrices = parts.some((part) => part.price === undefined);
+  // The total is described from the rows themselves, so it can never claim
+  // more than they do.
+  const total = summarizeSummaryPrices(parts);
 
   return (
     <>
@@ -197,9 +212,20 @@ export default function BuildSummary({
                     )}
                   </div>
                 </div>
-                <span className="text-sm font-semibold whitespace-nowrap" style={{ color: 'var(--ff-text)' }}>
-                  {p.price === undefined ? 'Retailer price' : `$${p.price.toLocaleString()}`}
-                </span>
+                {(() => {
+                  const figure = describeSummaryPrice(p.price);
+                  return (
+                    <span
+                      className="text-sm font-semibold whitespace-nowrap"
+                      style={{ color: 'var(--ff-text)' }}
+                      data-testid="summary-row-price"
+                      data-price-kind={p.price.kind === 'user-entered' ? 'user-entered' : p.price.price.provenance}
+                      aria-label={figure.accessible}
+                    >
+                      {figure.text}
+                    </span>
+                  );
+                })()}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -256,12 +282,14 @@ export default function BuildSummary({
         {/* Total */}
         <div className="pt-4 mb-4" style={{ borderTop: '1px solid var(--ff-border)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }}>{hasUnknownPrices ? 'Known-price subtotal' : 'Total Cost'}</span>
-            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }}>${totalCost.toLocaleString()}</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--ff-text-2)' }} data-testid="summary-total-label">{total.label}</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--ff-text)' }} data-testid="summary-total-amount">{total.amountText}</span>
           </div>
-          <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }}>
-            {hasUnknownPrices ? 'Retailer-priced selections are excluded from this subtotal' : `Est. street pricing · updated ${PRICES_UPDATED}`}
-          </p>
+          {total.note && (
+            <p className="text-[10px] mt-1 text-right" style={{ color: 'var(--ff-text-3)' }} data-testid="summary-total-note">
+              {total.note}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2 mt-2">
             <label className="flex items-center gap-1.5 text-[10px]" style={{ color: 'var(--ff-text-3)' }}>
               Sales tax
@@ -277,7 +305,7 @@ export default function BuildSummary({
             </label>
             <span className="text-[10px]" style={{ color: taxValid ? 'var(--ff-text-2)' : 'var(--ff-text-3)' }}>
               {taxValid
-                ? `With tax: $${Math.round(totalCost * (1 + taxRate / 100)).toLocaleString()}`
+                ? `With tax: ${total.includesEstimates ? 'Est. ' : ''}$${Math.round(total.amount * (1 + taxRate / 100)).toLocaleString()}`
                 : 'Prices exclude sales tax'}
             </span>
           </div>

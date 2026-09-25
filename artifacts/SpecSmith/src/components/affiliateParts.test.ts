@@ -39,10 +39,18 @@ describe('affiliate catalog builder integration', () => {
   });
 
   it('labels unreported prices and excludes them from the displayed subtotal', () => {
+    // #156 moved the wording into one typed summary (partPrice.ts): a row with
+    // no usable figure says so, is named, and turns the total into a subtotal.
+    // The behaviour is rendered in partPriceProvenance.test.tsx; this pins
+    // that both surfaces still go through it.
     const summary = read('BuildSummary.tsx');
     const builder = read('../pages/Builder.tsx');
-    expect(summary).toContain("'Retailer price'");
-    expect(summary).toContain("'Known-price subtotal'");
-    expect(builder).toContain('(p.price ?? 0)');
+    const pricing = read('../lib/partPrice.ts');
+    expect(summary).toContain('describeSummaryPrice(p.price)');
+    expect(summary).toContain('summarizeSummaryPrices(parts)');
+    expect(builder).toContain('summarizeSummaryPrices(summaryParts).amount');
+    expect(pricing).toContain("'Known-price subtotal'");
+    expect(pricing).toContain("(no catalogue price)");
+    expect(pricing).toContain("export const NO_PRICE_LABEL = 'Price at retailer';");
   });
 });

@@ -2,8 +2,7 @@ import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from '../components/MotionLite';
 import { Link, useSearchParams } from 'react-router-dom';
 import PartSelector from '../components/PartSelector';
-import { editorialEstimatePrice, type PartPrice } from '../lib/partPrice';
-import { PRICES_UPDATED } from '../lib/prices';
+import { catalogueEstimatePrice, summarizeSummaryPrices, type PartPrice, type SummaryPrice } from '../lib/partPrice';
 import BuildSummary from '../components/BuildSummary';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import { useBuilder, type BuildState } from '../hooks/useBuilder';
@@ -56,37 +55,32 @@ const VALID_RESOLUTIONS: Resolution[] = ['1080p', '1440p', '4k'];
 const VALID_PRESETS: Preset[] = ['low', 'medium', 'high', 'ultra'];
 
 /**
- * The canonical fallback's price sources, stated rather than guessed (#156).
+ * The canonical fallback's price source, stated rather than guessed (#156).
  *
- * Every selector in the fallback is fed canonical catalogue records, whose
- * `price_usd` is SpecSmith's editorial estimate (the same figure this page
- * keeps as `estimatedPrice`). Never a retailer price: retailer listings are
- * shown only by RetailBuilder, with their own "Price checked" time.
- *
- * The revision date is per SOURCE, and only where one is supported:
- *  - gpus.json and cpus.json: PRICES_UPDATED. The July 16 refresh (8586087)
- *    repriced exactly these two files.
- *  - components.json: none. prices.ts names it, but the July 16 refresh did
- *    not touch it, its last repricing was July 13 (1d0fd2d), and 48 of its 90
- *    records were added after July 16 (220d3f2, 1d9f1f5, 07addc1).
- *  - peripherals.json: none documented anywhere.
- * An undated source still reads "Est." and "SpecSmith estimate"; it just
- * makes no claim about when.
+ * Every selector and summary row in the fallback is fed canonical catalogue
+ * records, whose `price_usd` is SpecSmith's editorial estimate (the same
+ * figure this page keeps as `estimatedPrice`). Never a retailer price:
+ * retailer listings are shown only by RetailBuilder, with their own "Price
+ * checked" time. WHICH date an estimate may carry is decided by the one
+ * source-to-date rule in prices.ts (CATALOGUE_PRICE_DATE), keyed on category.
  */
-const CATALOGUE_PRICE_DATE = {
-  gpus: PRICES_UPDATED,
-  cpus: PRICES_UPDATED,
-  components: null,
-  peripherals: null,
-} as const satisfies Record<string, string | null>;
+const catalogueEstimateFor = (category: string) =>
+  (part: { price_usd?: unknown }): PartPrice => catalogueEstimatePrice(category, part.price_usd);
 
-const catalogueEstimate = (source: keyof typeof CATALOGUE_PRICE_DATE) =>
-  (part: { price_usd?: unknown }): PartPrice => editorialEstimatePrice(part.price_usd, CATALOGUE_PRICE_DATE[source]);
-
-const gpuCatalogueEstimate = catalogueEstimate('gpus');
-const cpuCatalogueEstimate = catalogueEstimate('cpus');
-const componentCatalogueEstimate = catalogueEstimate('components');
-const peripheralCatalogueEstimate = catalogueEstimate('peripherals');
+const CATALOGUE_ESTIMATE = {
+  gpu: catalogueEstimateFor('gpu'),
+  cpu: catalogueEstimateFor('cpu'),
+  motherboard: catalogueEstimateFor('motherboard'),
+  ram: catalogueEstimateFor('ram'),
+  storage: catalogueEstimateFor('storage'),
+  psu: catalogueEstimateFor('psu'),
+  case: catalogueEstimateFor('case'),
+  cooler: catalogueEstimateFor('cooler'),
+  monitor: catalogueEstimateFor('monitor'),
+  keyboard: catalogueEstimateFor('keyboard'),
+  mouse: catalogueEstimateFor('mouse'),
+  headset: catalogueEstimateFor('headset'),
+} as const;
 
 interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
@@ -515,29 +509,31 @@ export default function Builder() {
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
   const corePartsList = [
-    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: selectedGpu.price_usd, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
-    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: selectedCpu.price_usd, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
-    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: selectedMb.price_usd, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
-    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: selectedRam.price_usd, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
-    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: selectedStorage.price_usd, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
-    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: selectedPsu.price_usd, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
-    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: selectedCase.price_usd, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
-    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: selectedCooler.price_usd, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price?: number; affiliateUrl?: string }[];
+    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.gpu(selectedGpu) } as SummaryPrice, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
+    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cpu(selectedCpu) } as SummaryPrice, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
+    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.motherboard(selectedMb) } as SummaryPrice, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
+    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.ram(selectedRam) } as SummaryPrice, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
+    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.storage(selectedStorage) } as SummaryPrice, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
+    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.psu(selectedPsu) } as SummaryPrice, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
+    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.case(selectedCase) } as SummaryPrice, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
+    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cooler(selectedCooler) } as SummaryPrice, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
 
   const peripheralPartsList = [
-    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: selectedMonitor.price_usd, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
-    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: selectedKeyboard.price_usd, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
-    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: selectedMouse.price_usd, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
-    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: selectedHeadset.price_usd, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price?: number; affiliateUrl?: string }[];
+    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.monitor(selectedMonitor) } as SummaryPrice, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
+    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.keyboard(selectedKeyboard) } as SummaryPrice, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
+    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.mouse(selectedMouse) } as SummaryPrice, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
+    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.headset(selectedHeadset) } as SummaryPrice, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
 
   const summaryParts = [
     ...corePartsList,
     ...peripheralPartsList,
-    ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: cp.price, customId: cp.id })),
+    ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: { kind: 'user-entered', amount: cp.price } as SummaryPrice, customId: cp.id })),
   ];
-  const totalCost = summaryParts.reduce((sum, p) => sum + (p.price ?? 0), 0);
+  // The same summary the panel shows, so the saved figure and the displayed
+  // one cannot differ.
+  const totalCost = summarizeSummaryPrices(summaryParts).amount;
   const canEstimate = Boolean(
     selectedGpu && selectedCpu &&
     typeof selectedGpu.gpu_multiplier === 'number' && Number.isFinite(selectedGpu.gpu_multiplier) &&
@@ -743,7 +739,7 @@ export default function Builder() {
             <div className="lg:col-span-2 space-y-3">
               {/* GPU */}
               <div ref={gpuSectionRef}>
-                <PartSelector getPrice={gpuCatalogueEstimate}
+                <PartSelector getPrice={CATALOGUE_ESTIMATE.gpu}
                   openSignal={openSignalFor('gpu')} category="gpu" label="GPU — Graphics Card" defaultOpen
                   parts={builderGpus}
                   selectedId={build.gpu}
@@ -762,7 +758,7 @@ export default function Builder() {
               </div>
               {/* CPU */}
               <div ref={cpuSectionRef}>
-                <PartSelector getPrice={cpuCatalogueEstimate}
+                <PartSelector getPrice={CATALOGUE_ESTIMATE.cpu}
                   openSignal={openSignalFor('cpu')} category="cpu" label="CPU — Processor"
                   parts={builderCpus}
                   selectedId={build.cpu}
@@ -779,32 +775,32 @@ export default function Builder() {
                   }}
                 />
               </div>
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.motherboard} openSignal={openSignalFor('motherboard')} category="motherboard" label="Motherboard"
                 parts={builderMotherboards} selectedId={build.motherboard}
                 onSelect={id => selectPart('motherboard', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Motherboard; return [{ label: 'Socket', value: m.socket }, { label: 'RAM', value: m.supported_ram.join(' / ') }, { label: 'Form Factor', value: m.form_factor }]; }}
               />
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.ram} openSignal={openSignalFor('ram')} category="ram" label="RAM — Memory"
                 parts={builderRam} selectedId={build.ram}
                 onSelect={id => selectPart('ram', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const r = p as RAM; return [{ label: 'Type', value: r.type }, { label: 'Capacity', value: `${r.capacity_gb}GB` }, { label: 'Speed', value: `${r.speed_mhz}MHz` }]; }}
               />
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('storage')} category="storage" label="Storage"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.storage} openSignal={openSignalFor('storage')} category="storage" label="Storage"
                 parts={builderStorage} selectedId={build.storage}
                 onSelect={id => selectPart('storage', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const s = p as Storage; return [{ label: 'Type', value: s.type }, { label: 'Capacity', value: `${s.capacity_tb}TB` }, { label: 'Speed', value: `${s.speed_mbs}MB/s` }]; }}
               />
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.psu} openSignal={openSignalFor('psu')} category="psu" label="PSU — Power Supply"
                 parts={builderPsus} selectedId={build.psu}
                 onSelect={id => selectPart('psu', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const psu = p as PSU; return [{ label: 'Wattage', value: `${psu.wattage}W` }, { label: 'Rating', value: psu.rating }]; }}
               />
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('case')} category="case" label="Case"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.case} openSignal={openSignalFor('case')} category="case" label="Case"
                 parts={builderCases} selectedId={build.case}
                 onSelect={id => selectPart('case', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Case; return [{ label: 'Form Factor', value: c.form_factor }, { label: 'Supports', value: c.motherboard_support.join(', ') }]; }}
               />
-              <PartSelector getPrice={componentCatalogueEstimate} openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
+              <PartSelector getPrice={CATALOGUE_ESTIMATE.cooler} openSignal={openSignalFor('cooler')} category="cooler" label="CPU Cooler"
                 parts={builderCoolers} selectedId={build.cooler}
                 onSelect={id => selectPart('cooler', id)}
                 getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const c = p as Cooler; return [{ label: 'Type', value: c.type }, { label: 'Max TDP', value: `${c.max_tdp_watts}W` }]; }}
@@ -861,22 +857,22 @@ export default function Builder() {
                       className="overflow-hidden"
                     >
                       <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--ff-border)', backgroundColor: 'var(--ff-bg)' }}>
-                        <PartSelector getPrice={peripheralCatalogueEstimate} category="monitor" label="Monitor"
+                        <PartSelector getPrice={CATALOGUE_ESTIMATE.monitor} category="monitor" label="Monitor"
                           parts={builderMonitors} selectedId={build.monitor}
                           onSelect={id => selectPart('monitor', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Monitor; return [{ label: 'Resolution', value: m.resolution }, { label: 'Refresh Rate', value: `${m.refresh_rate_hz}Hz` }, { label: 'Panel', value: m.panel_type }]; }}
                         />
-                        <PartSelector getPrice={peripheralCatalogueEstimate} category="keyboard" label="Keyboard"
+                        <PartSelector getPrice={CATALOGUE_ESTIMATE.keyboard} category="keyboard" label="Keyboard"
                           parts={builderKeyboards} selectedId={build.keyboard}
                           onSelect={id => selectPart('keyboard', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const k = p as Keyboard; return [{ label: 'Switch', value: k.switch_type }, { label: 'Form', value: k.form_factor }, { label: 'Wireless', value: k.wireless ? 'Yes' : 'No' }]; }}
                         />
-                        <PartSelector getPrice={peripheralCatalogueEstimate} category="mouse" label="Mouse"
+                        <PartSelector getPrice={CATALOGUE_ESTIMATE.mouse} category="mouse" label="Mouse"
                           parts={builderMice} selectedId={build.mouse}
                           onSelect={id => selectPart('mouse', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const m = p as Mouse; return [{ label: 'DPI', value: `${m.dpi_max.toLocaleString()}` }, { label: 'Weight', value: `${m.weight_grams}g` }, { label: 'Wireless', value: m.wireless ? 'Yes' : 'No' }]; }}
                         />
-                        <PartSelector getPrice={peripheralCatalogueEstimate} category="headset" label="Headset"
+                        <PartSelector getPrice={CATALOGUE_ESTIMATE.headset} category="headset" label="Headset"
                           parts={builderHeadsets} selectedId={build.headset}
                           onSelect={id => selectPart('headset', id)}
                           getSpecs={p => { if (p.specsVerified === false) return [{ label: 'Specs', value: 'Not verified' }]; const h = p as Headset; return [{ label: 'Driver', value: `${h.driver_mm}mm` }, { label: 'Surround', value: h.surround_sound }, { label: 'Wireless', value: h.wireless ? 'Yes' : 'No' }]; }}
