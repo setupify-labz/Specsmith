@@ -20,16 +20,13 @@ jobs:
   verify:
     name: Tests, typecheck and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Check out the exact selected head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          # Full history, so the target base can be checked out in this job
-          # for the differential full suite below.
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Prove the exact commit under test
@@ -92,39 +89,18 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # Hard requirement, not differential: every content-automator test must
-      # pass at this head.
+      # The content-automator suite first, so a media-pipeline failure is
+      # reported on its own before the full run below.
       - name: Run the content-automator test suite (targeted)
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run scripts/content-automator
 
-      - name: Check out and install the target base
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-        run: |
-          set -euo pipefail
-          mkdir -p "${RUNNER_TEMP}/verify"
-          if [ -n "${BASE_SHA}" ]; then
-            base="$(git merge-base HEAD "${BASE_SHA}")"
-          else
-            git fetch --no-tags origin main
-            base="$(git merge-base HEAD origin/main)"
-          fi
-          echo "Target base (merge-base with the PR base): ${base}"
-          git worktree add --detach "${RUNNER_TEMP}/base" "${base}"
-          cd "${RUNNER_TEMP}/base"
-          pnpm install --frozen-lockfile 2>&1 | tail -5
-
-      # The WHOLE suite — untargeted, nothing excluded, skipped or retried —
-      # runs at this head and at the base, and the exact failing-test
-      # identities are compared. The step fails on any failure the base does
-      # not have, or on a missing report from either side; failures the base
-      # shares (currently four scripts/retail tests on main) are listed in the
-      # job summary. No exemption list, no expected count. When it fails, the
-      # build below is skipped: there is a new failure to fix first.
-      - name: Run the full test suite at head and base, and compare failures
+      # STRICT. The whole suite, untargeted: nothing excluded, skipped,
+      # retried or compared against another commit. Any failure fails the
+      # job here, and the build below does not run.
+      - name: Run full test suite
         working-directory: artifacts/SpecSmith
-        run: node scripts/ci/differentialFullSuite.mjs --base-dir "${RUNNER_TEMP}/base" --out "${RUNNER_TEMP}/verify"
+        run: pnpm exec vitest run
 
       - name: Build and prerender production application
         working-directory: artifacts/SpecSmith

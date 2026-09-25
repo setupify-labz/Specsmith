@@ -3,10 +3,13 @@
 // REAL CI FAILURE, verify-pr run 36064271196 (PR #153, head 56c7f68): six
 // content-automator tests failed with `spawn ffmpeg ENOENT` because this
 // workflow ran the suite without installing ffmpeg or espeak-ng, and the
-// build was then skipped. content-e2e-offline.yml passed on the same head
-// because it provisions them first. Step ORDER is what matters, so it is
-// asserted, together with the capability checks and the differential
-// full-suite verdict that must still fail on every new head failure.
+// build was then skipped. Step ORDER is what matters, so it is asserted.
+//
+// The full suite is STRICT: one untargeted `vitest run` whose failure fails
+// the job in place. An interim revision compared failures against the
+// merge-base to tolerate four failures inherited from main; that let a new
+// defect inside an already-failing test pass as "inherited", so it was
+// removed once #154 repaired those tests on main. These checks keep it out.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,14 +21,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..', '..', '..');
 const body = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'verify-pr.yml'), 'utf-8');
 
-// Comment lines are dropped: a comment above a step is split into the
-// PREVIOUS step's text, and one that merely mentions ffmpeg is not a consumer.
-const steps = body
-  .split(/\n(?=\s*- name:)/)
-  .filter((step) => /- name:/.test(step))
-  .map((step) => step.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n'));
+/** The workflow with every comment line removed: comments are not behaviour. */
+const code = body.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+// A comment above a step is split into the PREVIOUS step's text, so steps are
+// cut from the comment-free text.
+const steps = code.split(/\n(?=\s*- name:)/).filter((step) => /- name:/.test(step));
 const names = steps.map((step) => step.match(/- name:\s*(.+)/)![1].trim());
 const indexOf = (pattern: RegExp): number => names.findIndex((name) => pattern.test(name));
+const stepNamed = (pattern: RegExp): string => {
+  const index = indexOf(pattern);
+  expect(index, `no step matching ${pattern}`).toBeGreaterThan(-1);
+  return steps[index];
+};
 
 describe('verify-pr provisions the media tools before any test runs', () => {
   const installIndex = indexOf(/ffmpeg and espeak-ng/i);
@@ -56,42 +63,56 @@ describe('verify-pr provisions the media tools before any test runs', () => {
     const consumers = steps
       .map((step, index) => ({ index, step }))
       .filter(({ index }) => index !== installIndex)
-      .filter(({ step }) => /vitest|differentialFullSuite|\bffmpeg\b|\bffprobe\b|\bespeak-ng\b/.test(step));
-    expect(consumers.length, 'no step runs the tests').toBeGreaterThan(1);
+      .filter(({ step }) => /vitest|\bffmpeg\b|\bffprobe\b|\bespeak-ng\b/.test(step));
+    expect(consumers.length, 'no step runs the tests').toBeGreaterThan(0);
     for (const { index } of consumers) {
       expect(index, `"${names[index]}" runs before the media tools are installed`).toBeGreaterThan(installIndex);
     }
   });
 });
 
-describe('verify-pr keeps full coverage and a binding verdict', () => {
-  it('runs the content-automator suite as a hard, non-differential step', () => {
-    const targeted = steps[indexOf(/content-automator test suite/i)];
-    expect(targeted).toMatch(/vitest run scripts\/content-automator\s*$/m);
-    expect(targeted).not.toMatch(/continue-on-error|\|\|\s*true|set \+e/);
+describe('verify-pr runs the complete suite strictly', () => {
+  it('runs the whole suite, untargeted, as its own step', () => {
+    const full = stepNamed(/^Run full test suite$/);
+    expect(full).toMatch(/working-directory: artifacts\/SpecSmith/);
+    expect(full).toMatch(/run: pnpm exec vitest run\s*$/m);
   });
 
-  it('judges the whole suite with the base-versus-head differential runner, and lets it fail the job', () => {
-    const differential = steps[indexOf(/full test suite at head and base/i)];
-    expect(differential).toContain('node scripts/ci/differentialFullSuite.mjs --base-dir');
-    expect(differential).not.toMatch(/continue-on-error|\|\|\s*true|set \+e/);
-    expect(body).toMatch(/git merge-base HEAD/);
-    expect(body).toMatch(/fetch-depth: 0/);
+  it('lets a failing suite fail the job in place', () => {
+    for (const pattern of [/^Run full test suite$/, /content-automator test suite/i]) {
+      const step = stepNamed(pattern);
+      expect(step, `${pattern} must not mask failure`).not.toMatch(/continue-on-error|\|\|\s*true|set \+e|if:/);
+    }
   });
 
-  it('never narrows the run to get a green tick', () => {
-    expect(body).not.toMatch(/--exclude|\.skip\b|--testNamePattern|continue-on-error|--passWithNoTests/);
+  it('has no exclusion, skip, narrowing or differential allowance anywhere', () => {
+    expect(code).not.toMatch(/--exclude|\.skip\b|--testNamePattern|--passWithNoTests|--bail|continue-on-error/);
+    expect(code).not.toMatch(/differentialFullSuite|merge-base|--base-dir|worktree add/);
+    expect(code).not.toMatch(/\|\|\s*true/);
   });
 
-  it('builds after the tests, and only when they pass', () => {
+  it('builds only after the tests, and only when they pass', () => {
     const buildIndex = indexOf(/Build and prerender/i);
-    expect(buildIndex).toBeGreaterThan(indexOf(/full test suite at head and base/i));
+    expect(buildIndex).toBeGreaterThan(indexOf(/^Run full test suite$/));
+    expect(buildIndex).toBeGreaterThan(indexOf(/content-automator test suite/i));
     expect(steps[buildIndex]).toContain('pnpm run build');
-    expect(steps[buildIndex]).not.toMatch(/if:\s*always\(\)/);
+    expect(steps[buildIndex]).not.toMatch(/if:/);
+  });
+});
+
+describe('verify-pr still proves the exact head and a clean tree', () => {
+  it('checks out and proves the exact PR head without persisting credentials', () => {
+    const checkout = stepNamed(/Check out the exact selected head/i);
+    expect(checkout).toContain('ref: ${{ github.event.pull_request.head.sha || github.sha }}');
+    expect(checkout).toContain('persist-credentials: false');
+    const proof = stepNamed(/Prove the exact commit under test/i);
+    expect(proof).toMatch(/test "\$\{actual\}" = "\$\{EXPECTED_HEAD\}"/);
+    expect(indexOf(/Prove the exact commit under test/i)).toBeLessThan(indexOf(/^Run full test suite$/));
   });
 
-  it('still proves the exact head and a clean tree', () => {
-    expect(indexOf(/Prove the exact commit under test/i)).toBeGreaterThan(-1);
-    expect(steps[indexOf(/did not modify the repository/i)]).toMatch(/if:\s*always\(\)/);
+  it('confirms the tree is clean even when an earlier step failed', () => {
+    const clean = stepNamed(/did not modify the repository/i);
+    expect(clean).toMatch(/if:\s*always\(\)/);
+    expect(clean).toContain('git status --porcelain');
   });
 });

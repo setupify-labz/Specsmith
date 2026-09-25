@@ -87,9 +87,6 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
-          # Full history, so the target base (the merge-base with main) can
-          # be checked out in the same job for the differential full suite.
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Report the commit under test
@@ -186,48 +183,17 @@ jobs:
           set -o pipefail
           pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
 
-      # THE FULL SUITE IS JUDGED DIFFERENTIALLY, AND THE VERDICT IS DEFERRED.
-      #
-      # `main` carries real failing tests that are not this branch's (at the
-      # time of writing: cpuAdmissionThroughGenerator.test.ts and three in
-      # promotedImagesOnBuilder.test.tsx). A plain pass/fail makes every
-      # branch red for them; an allow-list or an expected count would hide a
-      # regression in those same files. So the WHOLE suite — untargeted,
-      # nothing excluded, skipped or retried — runs at this head AND at its
-      # target base (the merge-base with main, checked out and installed in
-      # this job), and the exact failing-test identities are compared.
-      #
-      # The step records exit 0 only when every head failure also fails on
-      # the base; the inherited set is printed in full to the log and the job
-      # summary. Any failure the base does not have, or a missing report from
-      # either side, records exit 1. The final `if: always()` step re-raises
-      # it, so the evidence steps below still run while the verdict stays
-      # binding. The content-automator suite above, typecheck and the build
-      # remain hard, non-differential requirements.
-      - name: Check out and install the target base
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin main
-          base="$(git merge-base HEAD origin/main)"
-          echo "Target base (merge-base with origin/main): ${base}" | tee "${RUNNER_TEMP}/e2e/full-suite-base-sha.txt"
-          git worktree add --detach "${RUNNER_TEMP}/base" "${base}"
-          cd "${RUNNER_TEMP}/base"
-          pnpm install --frozen-lockfile 2>&1 | tail -5
-
-      - name: Run the full test suite at head and base, and compare failures
+      # STRICT, AND IN PLACE. The whole suite, untargeted: nothing excluded,
+      # skipped, retried or compared against another commit. Any failure
+      # fails this step and the job, and the build and evidence steps after
+      # it do not run. (An earlier revision judged this step against the
+      # merge-base to tolerate four failures inherited from main; #154
+      # repaired them on main, so no allowance remains.)
+      - name: Run the full test suite
         working-directory: artifacts/SpecSmith
         run: |
           set -o pipefail
-          set +e
-          node scripts/ci/differentialFullSuite.mjs --base-dir "${RUNNER_TEMP}/base" --out "${RUNNER_TEMP}/e2e" 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
-          code=$?
-          set -e
-          if [ ! -f "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt" ]; then
-            echo "${code}" > "${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
-          fi
-          if [ "${code}" -ne 0 ]; then
-            echo "::warning::The head introduced full-suite failures the base does not have (exit ${code}). The evidence steps will still run; the job is failed at the end by \"Re-raise the full test suite's verdict\"."
-          fi
+          pnpm exec vitest run 2>&1 | tee "${RUNNER_TEMP}/e2e/test-full.log"
 
       - name: Build the production application
         working-directory: artifacts/SpecSmith
@@ -376,24 +342,3 @@ jobs:
             exit 1
           fi
           echo "Working tree clean (aside from this run's own gitignored render/build/store output)."
-
-      # THE DEFERRED VERDICT, ENFORCED. Without this step the full suite
-      # above would be advisory — a gate that observes and never refuses,
-      # which is the exact defect this branch was opened to fix in the
-      # publishing path. It runs `if: always()` so it cannot be skipped by
-      # an earlier failure, and it is asserted by the workflow-safety test.
-      - name: Re-raise the full test suite's verdict
-        if: always()
-        run: |
-          set -euo pipefail
-          file="${RUNNER_TEMP}/e2e/full-suite-exit-code.txt"
-          if [ ! -f "${file}" ]; then
-            echo "::error::The full test suite never recorded an exit code; it did not run to completion."
-            exit 1
-          fi
-          code="$(cat "${file}")"
-          if [ "${code}" -ne 0 ]; then
-            echo "::error::The head introduced full-suite failures the base does not have (exit ${code}). See full-suite-differential.md in the uploaded evidence."
-            exit "${code}"
-          fi
-          echo "No full-suite failures beyond the base's; the inherited set is listed in full-suite-differential.md."

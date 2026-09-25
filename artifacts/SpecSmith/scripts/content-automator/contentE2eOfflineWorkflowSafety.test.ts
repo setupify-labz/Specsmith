@@ -78,7 +78,7 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
   it('runs typecheck, the targeted content-automator tests, the full suite and a production build', () => {
     expect(body).toContain('pnpm typecheck');
     expect(body).toMatch(/vitest run scripts\/content-automator\s*2>&1/);
-    expect(body).toContain('scripts/ci/differentialFullSuite.mjs'); // the untargeted full-suite run, head and base
+    expect(body).toMatch(/pnpm exec vitest run 2>&1/); // the untargeted full-suite run
     expect(body).toContain('pnpm run build');
   });
 
@@ -169,43 +169,47 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     expect(body).toContain('exit "${code}"');
   });
 
-  it('defers the full suite\'s verdict but still re-raises it, so it never becomes advisory', () => {
-    // The full suite's failure was skipping steps 11-15, so the workflow
-    // produced no render, no pipeline log and no artifact-gate evidence at
-    // all — while main independently carries 4 failing retail tests. The fix
-    // records its exit code and re-raises it in a final `if: always()` step.
-    //
-    // WITHOUT THAT FINAL STEP THIS IS A GATE THAT OBSERVES AND NEVER
-    // REFUSES, which is precisely the defect this branch was opened to fix
-    // in the publishing path. Assert the re-raise exists, runs unskippable,
-    // and is the LAST step, so nothing it should be gating runs after it.
-    expect(body).toContain('full-suite-exit-code.txt');
-    const names = [...body.matchAll(/^\s*- name:\s*(.+)$/gm)].map((match) => match[1].trim());
-    const reRaiseIndex = names.findIndex((name) => /Re-raise the full test suite/i.test(name));
-    expect(reRaiseIndex, 'the full suite has no re-raise step').toBeGreaterThan(-1);
-    expect(reRaiseIndex, 'the re-raise must be the final step').toBe(names.length - 1);
+  // STRICT FULL SUITE. An interim revision deferred this step's verdict and
+  // judged it against the merge-base, to tolerate four failures inherited
+  // from main. A new defect inside an already-failing test kept the same
+  // identity and passed as "inherited", so once #154 repaired those tests on
+  // main the allowance was removed. These tests keep it removed.
+  const codeOnly = body.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+  const codeSteps = codeOnly.split(/\n(?=\s*- name:)/).filter((step) => /- name:/.test(step));
+  const codeNames = codeSteps.map((step) => step.match(/- name:\s*(.+)/)![1].trim());
+  const stepIndex = (pattern: RegExp) => codeNames.findIndex((name) => pattern.test(name));
 
-    const steps = body.split(/\n(?=\s*- name:)/).filter((step) => /- name:/.test(step));
-    const reRaise = steps[reRaiseIndex];
-    expect(reRaise).toMatch(/if:\s*always\(\)/);
-    expect(reRaise).toMatch(/exit "\$\{code\}"/);
-    // A missing file must fail rather than silently pass the job.
-    expect(reRaise).toMatch(/if \[ ! -f "\$\{file\}" \]/);
+  it('runs the complete suite strictly, failing the job in place', () => {
+    const fullIndex = stepIndex(/^Run the full test suite$/);
+    expect(fullIndex, 'no strict full-suite step').toBeGreaterThan(-1);
+    const full = codeSteps[fullIndex];
+    expect(full).toMatch(/working-directory: artifacts\/SpecSmith/);
+    expect(full).toMatch(/set -o pipefail\s*\n\s*pnpm exec vitest run 2>&1 \| tee/);
+    expect(full).not.toMatch(/continue-on-error|set \+e|\|\|\s*true|if:|exit-code|code=\$\?/);
+    const targeted = codeSteps[stepIndex(/content-automator test suite \(targeted\)/i)];
+    expect(targeted).not.toMatch(/continue-on-error|set \+e|\|\|\s*true|if:/);
   });
 
-  it('never filters the failing retail tests out of the full run', () => {
-    // The tempting shortcut for the 4 inherited main failures is to exclude
-    // them. That is deleting coverage to get a green tick, and it would also
-    // hide a genuine regression in those same files.
-    expect(body).not.toMatch(/--exclude|\.skip\b|--testNamePattern|continue-on-error/);
-    // The full run is the differential script, which runs the WHOLE suite at
-    // head and at base. Pin that it stays untargeted and has no allow-list or
-    // expected-failure count to hide behind.
-    const script = fs.readFileSync(path.join(here, '..', 'ci', 'differentialFullSuite.mjs'), 'utf-8');
-    expect(script).toContain('["exec", "vitest", "run", "--reporter=default", "--reporter=json"');
-    expect(script).not.toMatch(/--exclude|\.skip\b|--testNamePattern|--bail|allow|expected(Failures|Count)/i);
-    expect(script).toMatch(/introduced\.length === 0/);
-    expect(body).toMatch(/git merge-base HEAD origin\/main/);
+  it('builds only after the full suite has passed', () => {
+    const buildIndex = stepIndex(/Build the production application/i);
+    expect(buildIndex).toBeGreaterThan(stepIndex(/^Run the full test suite$/));
+    expect(codeSteps[buildIndex]).toContain('pnpm run build');
+    expect(codeSteps[buildIndex]).not.toMatch(/if:/);
+  });
+
+  it('has no exclusion, narrowing, deferred verdict or differential allowance', () => {
+    // Deleting coverage to get a green tick would also hide a genuine
+    // regression in the excluded files.
+    expect(codeOnly).not.toMatch(/--exclude|\.skip\b|--testNamePattern|--passWithNoTests|--bail|continue-on-error/);
+    expect(codeOnly).not.toMatch(/differentialFullSuite|merge-base|--base-dir|worktree add|full-suite-exit-code|Re-raise/);
+    expect(fs.existsSync(path.join(here, '..', 'ci', 'differentialFullSuite.mjs'))).toBe(false);
+  });
+
+  it('checks out and reports the exact commit under test', () => {
+    const checkout = codeSteps[stepIndex(/Check out the exact selected commit/i)];
+    expect(checkout).toContain('ref: ${{ github.sha }}');
+    expect(checkout).toContain('persist-credentials: false');
+    expect(codeSteps[stepIndex(/Report the commit under test/i)]).toContain('Running commit ${GITHUB_SHA}');
   });
 
   it('uploads exactly the one evidence directory for one day, and does not commit or publish it', () => {
@@ -246,6 +250,7 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
 
   it('confirms the checkout stayed clean, ignoring only this run\'s own gitignored output', () => {
     expect(body).toContain('git status --porcelain');
+    expect(body).toMatch(/- name: Confirm the repository was not modified\s*\n\s*if:\s*always\(\)/);
     // The pipeline's own render/store output is real, gitignored, generated
     // content — asserting the checkout is clean must not choke on it.
     expect(body).toContain("':!artifacts/SpecSmith/render-output'");
