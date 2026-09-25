@@ -84,17 +84,20 @@ export function buildStrategyBatch(gpus: HardwareItem[], cpus: HardwareItem[], n
 
   for (let i = 0; i < Math.min(6, byPerf.length - 1); i++) {
     const a = byPerf[i]; const b = byPerf[i + 1];
+    // The price gap still ranks the idea, but it is never SAID: Compare shows
+    // no prices, only modelled FPS estimates, so a video built on it cannot
+    // claim a dollar figure or what money buys (see #155).
     const gap = Math.abs(a.price_usd - b.price_usd);
     push({
       id: `compare-${a.id}-${b.id}`,
       format: i % 2 === 0 ? "game" : "comparison",
-      title: i % 2 === 0 ? `Pick the GPU before SpecSmith reveals the names: ${a.name} vs ${b.name}` : `${a.name} vs ${b.name}: where does the extra $${Math.round(gap)} actually go?`,
-      hook: i % 2 === 0 ? "Two GPUs. Names hidden. Pick one before SpecSmith reveals what your money actually buys." : `These GPUs are $${Math.round(gap)} apart. Is the expensive one actually the smarter choice?`,
+      title: i % 2 === 0 ? `Pick the GPU before SpecSmith reveals the names: ${a.name} vs ${b.name}` : `${a.name} vs ${b.name}: how far apart are SpecSmith's estimates?`,
+      hook: i % 2 === 0 ? "Two GPUs. Names hidden. Pick one before SpecSmith shows its FPS estimates." : "Neighbouring GPUs. Which one does SpecSmith estimate higher, and by how much?",
       angle: "Turn the Compare feature into the actual decision game.",
       targetAudience: "PC buyers choosing between nearby GPU tiers",
-      requiredFacts: [`${a.name} verified SpecSmith price`, `${b.name} verified SpecSmith price`, "benchmark-score difference", "current comparison data"],
+      requiredFacts: [`${a.name} modelled FPS estimate`, `${b.name} modelled FPS estimate`, "modelled game leads", "current comparison data"],
       subjectIds: [a.id, b.id],
-      productConnection: connection("compare", "Choose between two GPUs without getting lost in specs.", "SpecSmith provides the side-by-side comparison and verified decision inputs.", "Open the exact comparison and change the parts yourself.", "The final reveal lands on the actual SpecSmith comparison rather than an arbitrary creator opinion."),
+      productConnection: connection("compare", "Choose between two GPUs without getting lost in specs.", "SpecSmith Compare shows both builds' modelled FPS estimates side by side.", "Open the exact comparison and change the parts yourself.", "The final reveal lands on the actual SpecSmith comparison rather than an arbitrary creator opinion."),
     }, gap > 250 ? 1 : 0);
   }
 

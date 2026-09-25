@@ -140,6 +140,122 @@ export function assertNarrationFitsDuration(
 }
 
 /**
+ * The words the evidence and payoff beats put on screen and read aloud.
+ *
+ * THIS USED TO SAY "REAL SPECS • REAL PRICES • REAL RULES" on every surface,
+ * with "Verified inputs decide it." and "SpecSmith settles it on verified facts
+ * alone." read over it. On Compare, which is the surface this pipeline actually
+ * captures, none of that is true. The page shows no prices ("This page does not
+ * use editorial part prices…"), no compatibility check, and FPS figures it
+ * labels itself as "SpecSmith model estimates, not measured benchmarks".
+ *
+ * So each Compare line now repeats something the rendered page says, and
+ * `backedBy` names the exact page text. storyboardCompareClaims.test.tsx renders
+ * Compare at the captured state and fails if any of that text disappears, so
+ * the storyboard cannot drift from the page without a red test.
+ *
+ * Every other surface gets claim-free wording until someone verifies its page
+ * the same way. "See it in SpecSmith" is true of any surface; "real prices" was
+ * true of none of them.
+ */
+export interface BeatCopy {
+  narration: string;
+  onScreenText: string;
+  /** Text the rendered page must contain for this copy to be true. */
+  backedBy: readonly string[];
+}
+
+export const COMPARE_BEAT_COPY: { evidence: BeatCopy; payoff: BeatCopy } = Object.freeze({
+  evidence: Object.freeze({
+    narration: "These are model estimates, not benchmarks.",
+    onScreenText: "MODEL ESTIMATES, NOT BENCHMARKS",
+    backedBy: Object.freeze(["model estimates, not measured benchmarks"]),
+  }),
+  payoff: Object.freeze({
+    narration: "Count the modelled game leads.",
+    onScreenText: "MODELLED GAME LEADS",
+    backedBy: Object.freeze(["Modelled Game Leads"]),
+  }),
+});
+
+export const UNVERIFIED_SURFACE_BEAT_COPY: { evidence: BeatCopy; payoff: BeatCopy } = Object.freeze({
+  evidence: Object.freeze({
+    narration: "Here is what SpecSmith shows.",
+    onScreenText: "SEE IT IN SPECSMITH",
+    backedBy: Object.freeze([]),
+  }),
+  payoff: Object.freeze({
+    narration: "That is the SpecSmith result.",
+    onScreenText: "SPECSMITH RESULT",
+    backedBy: Object.freeze([]),
+  }),
+});
+
+export function beatCopyFor(feature: ContentIdea["productConnection"]["feature"]): { evidence: BeatCopy; payoff: BeatCopy } {
+  return feature === "compare" ? COMPARE_BEAT_COPY : UNVERIFIED_SURFACE_BEAT_COPY;
+}
+
+/**
+ * Claims the captured Compare page cannot support, in anything a viewer sees
+ * or hears: the idea's own title, hook and angle as well as the template.
+ *
+ * Compare renders no price, runs no compatibility check and measures nothing,
+ * so money, compatibility, "verified" and "measured"/benchmark wording are all
+ * unsupported there, and so is calling a card faster when the page only
+ * shows the higher estimate. The page's own disclaimer, "not (measured) benchmarks",
+ * is the one benchmark phrase allowed, because it says what the numbers are
+ * NOT.
+ */
+const UNSUPPORTED_ON_COMPARE: readonly { label: string; pattern: RegExp }[] = [
+  { label: "a dollar amount", pattern: /\$\s?\d/ },
+  { label: "price or cost wording", pattern: /\b(prices?|priced|pricing|costs?|cheap\w*|money|budget|deals?|msrp)\b/i },
+  { label: "compatibility wording", pattern: /\bcompatib\w*/i },
+  { label: "verification wording", pattern: /\b(verified|verify|verifies|confirmed)\b/i },
+  { label: "measurement or benchmark wording", pattern: /\b(measured|benchmark\w*|tested|real[- ]world)\b/i },
+  { label: "live or real data wording", pattern: /\b(real|live|actual|current)\s+(specs?|prices?|fps|rules|results?|data|numbers?)\b/i },
+  // The page shows which build has the higher ESTIMATE; it never shows that a
+  // card is faster.
+  { label: "performance stated as fact", pattern: /\b(faster|fastest|slower|slowest|outperforms?|outperformed)\b/i },
+];
+
+/** The page's own caveat, removed before checking so it is not read as a claim. */
+const COMPARE_DISCLAIMER = /\bnot\s+(measured\s+)?benchmarks?\b/gi;
+
+/** Every unsupported claim in `text`, as "label: matched text". Empty when clean. */
+export function unsupportedCompareClaims(text: string): string[] {
+  const checked = text.replace(COMPARE_DISCLAIMER, " ");
+  const found: string[] = [];
+  for (const { label, pattern } of UNSUPPORTED_ON_COMPARE) {
+    const match = checked.match(pattern);
+    if (match) found.push(`${label}: "${match[0]}"`);
+  }
+  return found;
+}
+
+/**
+ * Refuses a Compare storyboard whose visible or spoken copy claims something
+ * the captured page does not show. Checked at generation time, like the word
+ * budget, so the claim never reaches a render.
+ */
+export function assertCompareCopyIsSupported(script: PlatformScriptStoryboard): void {
+  const problems: string[] = [];
+  const check = (where: string, text: string) => {
+    for (const claim of unsupportedCompareClaims(text)) problems.push(`${where} — ${claim}`);
+  };
+  check("title", script.title);
+  check("final CTA", script.finalCta);
+  for (const beat of script.beats) {
+    check(`${beat.purpose} on-screen text`, beat.onScreenText);
+    check(`${beat.purpose} narration`, beat.narration);
+  }
+  if (problems.length === 0) return;
+  throw new Error(
+    `${script.platform} Compare storyboard makes claims the Compare page does not support: `
+    + problems.join("; ") + ".",
+  );
+}
+
+/**
  * Narration is written to a WORD BUDGET, because it is going to be spoken.
  *
  * A 24-second short at a natural 165 wpm holds about 66 words. The first
@@ -162,6 +278,7 @@ export function assertNarrationFitsDuration(
  */
 function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration: number): StoryboardBeat[] {
   const route = idea.productConnection.route;
+  const copy = beatCopyFor(idea.productConnection.feature);
   const interactionPrefix = variant.platform === "tiktok" ? "Pick now. " : "";
   return [
     {
@@ -186,9 +303,9 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 6,
       endSecond: 12,
       purpose: "evidence",
-      narration: `Verified inputs decide it.`,
-      visualDirection: `Reveal one verified input through the real ${idea.productConnection.feature} workflow. Every number shown must map to a required fact.`,
-      onScreenText: "REAL SPECS • REAL PRICES • REAL RULES",
+      narration: copy.evidence.narration,
+      visualDirection: `Show the real ${idea.productConnection.feature} page state. Every number shown must map to a required fact and keep the page's own labels.`,
+      onScreenText: copy.evidence.onScreenText,
       factDependencies: factSlice(idea.requiredFacts, 1),
     },
     {
@@ -204,9 +321,9 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 18,
       endSecond: Math.max(21, duration - 2),
       purpose: "payoff",
-      narration: `SpecSmith settles it on verified facts alone.`,
+      narration: copy.payoff.narration,
       visualDirection: `${idea.creativeDNA.payoff} End the story on the product result, not a generic engagement prompt.`,
-      onScreenText: "SPECSMITH RESULT",
+      onScreenText: copy.payoff.onScreenText,
       factDependencies: [...idea.requiredFacts],
     },
     {
@@ -256,6 +373,7 @@ function buildPlatformScript(
 
   // Malformed here is cheaper than malformed in ffmpeg.
   assertNarrationFitsDuration(script);
+  if (idea.productConnection.feature === "compare") assertCompareCopyIsSupported(script);
   return script;
 }
 

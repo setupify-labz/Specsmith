@@ -20,7 +20,9 @@ export const COMPARE_IDEA: ContentIdea = {
   id: "compare-rtx4080s-rtx4080",
   format: "comparison",
   title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
+  // Compare shows which build has the higher ESTIMATE, not which card is
+  // faster, so the hook asks about the estimate (see #155).
+  hook: "Which card does SpecSmith estimate higher? Pick before the names show.",
   angle: "Use Compare as the evidence and reveal.",
   targetAudience: "PC builders",
   requiredFacts: ["comparison state"],
