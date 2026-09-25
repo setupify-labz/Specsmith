@@ -110,9 +110,18 @@ describe('describePartPrice: wording comes from provenance alone', () => {
     expect(editorialEstimatePrice(amount, PRICES_UPDATED)).toEqual(UNKNOWN_PART_PRICE);
   });
 
-  it('an estimate with no catalogue date is unknown, not an undated estimate', () => {
+  it('an explicitly undated source is still an estimate, with no date claimed', () => {
+    const label = describePartPrice(editorialEstimatePrice(669, null));
+    expect(label.primary).toBe('Est. $669');
+    expect(label.detail).toBe('SpecSmith estimate');
+    expect(label.accessible).toBe('estimated $669, a SpecSmith catalogue estimate, not a retailer price');
+    for (const text of [label.detail!, label.accessible]) expect(text).not.toMatch(/updated|\d{4}/);
+  });
+
+  it('a blank or missing date is a caller bug and shows no figure, not an undated estimate', () => {
     expect(editorialEstimatePrice(669, '')).toEqual(UNKNOWN_PART_PRICE);
     expect(editorialEstimatePrice(669, '   ')).toEqual(UNKNOWN_PART_PRICE);
+    expect(editorialEstimatePrice(669, undefined as unknown as null)).toEqual(UNKNOWN_PART_PRICE);
   });
 });
 
@@ -286,39 +295,88 @@ describe('the real caller: Builder\'s offline fallback', () => {
     </MemoryRouter>,
   );
 
-  it('labels every canonical price as a dated SpecSmith estimate, visibly and accessibly', async () => {
+  // Which catalogue each fallback selector reads, and the ONLY revision date
+  // that source supports. The July 16 refresh (8586087) repriced gpus.json
+  // and cpus.json alone. components.json was last repriced July 13 and gained
+  // 48 of its 90 records after July 16; peripherals.json has no documented
+  // date. See CATALOGUE_PRICE_DATE in Builder.tsx.
+  const SOURCE_OF: Record<string, 'gpus' | 'cpus' | 'components' | 'peripherals'> = {
+    gpu: 'gpus', cpu: 'cpus',
+    motherboard: 'components', ram: 'components', storage: 'components', psu: 'components', case: 'components', cooler: 'components',
+    monitor: 'peripherals', keyboard: 'peripherals', mouse: 'peripherals', headset: 'peripherals',
+  };
+  const DATED = new Set(['gpus', 'cpus']);
+  const expectedDetail = (category: string) =>
+    DATED.has(SOURCE_OF[category]) ? `SpecSmith estimate · updated ${PRICES_UPDATED}` : 'SpecSmith estimate';
+
+  it('labels each source correctly: dated where the date is supported, undated elsewhere', async () => {
     stubFetch({ ok: false, body: {} });
     renderBuilder();
     const fallback = await screen.findByTestId('canonical-fallback', {}, { timeout: 10000 });
-    // The four peripheral selectors sit behind a collapsed panel; open it so
-    // all twelve categories are checked.
+    // The four peripheral selectors sit behind a collapsed panel.
     fireEvent.click(within(fallback).getByRole('button', { name: /Peripherals/ }));
     await within(fallback).findByText('Headset');
-    const prices = within(fallback).getAllByTestId('part-price');
-    expect(prices.length).toBeGreaterThan(10);
-    for (const price of prices) {
-      const provenance = price.getAttribute('data-price-provenance');
-      expect(['editorial-estimate', 'unknown']).toContain(provenance);
-      if (provenance === 'editorial-estimate') {
-        expect(price.textContent).toMatch(new RegExp(`^Est\\. \\$[\\d,.]+SpecSmith estimate · updated ${PRICES_UPDATED}$`));
-      } else {
-        expect(price.textContent).toBe(NO_PRICE_LABEL);
-      }
-    }
-    expect(prices.some((p) => p.getAttribute('data-price-provenance') === 'editorial-estimate')).toBe(true);
-    // No part selector in the fallback states a bare catalogue figure, in
-    // its text or in any card's accessible name. (BuildSummary's own total,
-    // outside the selectors, carries its "Est. street pricing" line.)
-    const sections = fallback.querySelectorAll<HTMLElement>('[data-part-section]');
-    expect(sections.length).toBe(12);
+
+    const sections = [...fallback.querySelectorAll<HTMLElement>('[data-part-section]')];
+    expect(sections.map((section) => section.getAttribute('data-part-section')).sort())
+      .toEqual(Object.keys(SOURCE_OF).sort());
+
+    const checked: Record<string, number> = {};
     for (const section of sections) {
-      expect(within(section).queryAllByText(/^\$\d[\d,.]*$/)).toHaveLength(0);
-      for (const button of within(section).queryAllByRole('button', { pressed: false })) {
-        const name = button.getAttribute('aria-label') ?? '';
-        if (/\$\d/.test(name)) expect(name).toMatch(/estimated \$[\d,.]+, a SpecSmith catalogue estimate/);
+      const category = section.getAttribute('data-part-section')!;
+      // Only the GPU selector starts open. Open every other one, or its cards
+      // are never rendered and never checked.
+      if (within(section).queryAllByTestId('part-price').length === 0) {
+        fireEvent.click(section.querySelector('button')!);
       }
+      const prices = await within(section).findAllByTestId('part-price');
+      const detail = expectedDetail(category);
+      let estimates = 0;
+      for (const price of prices) {
+        const provenance = price.getAttribute('data-price-provenance');
+        if (provenance === 'unknown') {
+          expect(price.textContent).toBe(NO_PRICE_LABEL);
+          continue;
+        }
+        expect(provenance, `${category}`).toBe('editorial-estimate');
+        expect(price.textContent, `${category}`).toMatch(/^Est\. \$[\d,.]+SpecSmith estimate/);
+        expect(price.textContent!.replace(/^Est\. \$[\d,.]+/, ''), `${category}`).toBe(detail);
+        estimates += 1;
+      }
+      expect(estimates, `${category} shows no estimates at all`).toBeGreaterThan(0);
+      checked[category] = estimates;
+
+      // Accessible names say the same thing, with the date only where supported.
+      for (const button of within(section).getAllByRole('button', { pressed: false })) {
+        const name = button.getAttribute('aria-label') ?? '';
+        if (!/\$\d/.test(name)) continue;
+        expect(name, `${category}`).toMatch(/estimated \$[\d,.]+, a SpecSmith catalogue estimate/);
+        if (DATED.has(SOURCE_OF[category])) expect(name).toContain(`updated ${PRICES_UPDATED}`);
+        else expect(name, `${category}`).not.toMatch(/updated/);
+      }
+      // No bare catalogue figure anywhere in the selector. (BuildSummary's own
+      // total, outside the selectors, carries its "Est. street pricing" line.)
+      expect(within(section).queryAllByText(/^\$\d[\d,.]*$/)).toHaveLength(0);
     }
-  }, 30000);
+    expect(Object.keys(checked).sort()).toEqual(Object.keys(SOURCE_OF).sort());
+  }, 60000);
+
+  it('the selected-part header uses the same per-source wording', async () => {
+    stubFetch({ ok: false, body: {} });
+    renderBuilder();
+    const fallback = await screen.findByTestId('canonical-fallback', {}, { timeout: 10000 });
+    fireEvent.click(within(fallback).getByRole('button', { name: /Peripherals/ }));
+    await within(fallback).findByText('Headset');
+    for (const category of ['gpu', 'motherboard', 'monitor']) {
+      const section = fallback.querySelector<HTMLElement>(`[data-part-section="${category}"]`)!;
+      if (within(section).queryAllByTestId('part-price').length === 0) fireEvent.click(section.querySelector('button')!);
+      const cards = await within(section).findAllByRole('button', { pressed: false });
+      const card = cards.find((b) => /estimated \$/.test(b.getAttribute('aria-label') ?? ''))!;
+      fireEvent.click(card);
+      const header = await within(section).findByTestId('selected-part-price');
+      expect(header.textContent, category).toMatch(new RegExp(`^Est\\. \\$[\\d,.]+, ${expectedDetail(category).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+    }
+  }, 60000);
 
   it('while the retailer catalogue is loading, no part card claims any price', async () => {
     stubFetch('hang');

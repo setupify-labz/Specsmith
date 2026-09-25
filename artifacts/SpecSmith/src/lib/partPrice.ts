@@ -39,8 +39,13 @@ export type PartPrice =
       provenance: 'editorial-estimate';
       /** US dollars, from the SpecSmith catalogue. */
       amount: number;
-      /** When the catalogue's prices were last revised, e.g. PRICES_UPDATED. */
-      catalogueDate: string;
+      /**
+       * When this source's prices were last revised, or null when no revision
+       * date is documented for it. Null is an explicit "undated", not a
+       * missing value: the label then says "SpecSmith estimate" and makes no
+       * claim about when.
+       */
+      catalogueDate: string | null;
     }
   | {
       provenance: 'retailer-observation';
@@ -57,12 +62,16 @@ export const NO_PRICE_LABEL = 'Price at retailer';
 
 /**
  * A SpecSmith catalogue estimate, or 'unknown' when the record cannot support
- * one. A missing, non-finite or non-positive amount, or a missing catalogue
- * date, is malformed data, not a free part, and shows no figure.
+ * one. A missing, non-finite or non-positive amount is malformed data, not a
+ * free part, and shows no figure.
+ *
+ * `catalogueDate` is the source's documented revision date, or null for a
+ * source with none. Anything else (undefined, a blank string, a non-string)
+ * is a caller bug, and it is refused rather than read as either.
  */
-export function editorialEstimatePrice(amount: unknown, catalogueDate: string): PartPrice {
+export function editorialEstimatePrice(amount: unknown, catalogueDate: string | null): PartPrice {
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) return UNKNOWN_PART_PRICE;
-  if (typeof catalogueDate !== 'string' || catalogueDate.trim() === '') return UNKNOWN_PART_PRICE;
+  if (catalogueDate !== null && (typeof catalogueDate !== 'string' || catalogueDate.trim() === '')) return UNKNOWN_PART_PRICE;
   return { provenance: 'editorial-estimate', amount, catalogueDate };
 }
 
@@ -101,8 +110,10 @@ export function describePartPrice(price: PartPrice | undefined): PartPriceLabel 
     const amount = estimateAmount(price.amount);
     return {
       primary: `Est. ${amount}`,
-      detail: `SpecSmith estimate · updated ${price.catalogueDate}`,
-      accessible: `estimated ${amount}, a SpecSmith catalogue estimate updated ${price.catalogueDate}, not a retailer price`,
+      detail: price.catalogueDate === null ? 'SpecSmith estimate' : `SpecSmith estimate · updated ${price.catalogueDate}`,
+      accessible: price.catalogueDate === null
+        ? `estimated ${amount}, a SpecSmith catalogue estimate, not a retailer price`
+        : `estimated ${amount}, a SpecSmith catalogue estimate updated ${price.catalogueDate}, not a retailer price`,
       showsAmount: true,
       provenance: 'editorial-estimate',
     };
