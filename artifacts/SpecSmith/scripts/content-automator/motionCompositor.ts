@@ -1,8 +1,11 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
+import { captionRenderEvidenceFor } from "./captionRender.ts";
+import { elevenLabsTtsEvidenceFor } from "./elevenLabsTts.ts";
 
 export interface CompositorBeat {
   visualTaskId: string;
@@ -57,6 +60,305 @@ interface ProbeResult {
   videoCodec?: string;
   audioCodec?: string;
 }
+
+// ---------------------------------------------------------------------------
+// THE RENDER RECEIPT
+//
+// An account of exactly what this compositor consumed to make one master,
+// produced BY the compositor while it consumed it. Nothing outside this file
+// can make one.
+//
+// WHY IT LIVES HERE AND NOWHERE ELSE. Provenance used to be a list any caller
+// could assemble and pass to `sealRenderManifest`, which hashed whatever it was
+// given. The seal proved the list had not changed since it was sealed; it said
+// nothing about whether the list was TRUE, because the caller wrote both. The
+// only party that knows which files went into a master is the code that fed
+// them to ffmpeg, so that is the only party allowed to write the record.
+//
+// WHAT MAKES ONE GENUINE. Two module-private objects:
+//
+//   ISSUED_RECEIPTS     every receipt this module has created
+//   RECEIPT_BY_MASTER   the master artifact each was created for
+//
+// Neither is exported, and no function that adds to them is exported. A
+// receipt-shaped object built anywhere else — by hand, by spreading a genuine
+// receipt, by JSON round-trip — is not in ISSUED_RECEIPTS and is refused.
+// Genuine receipts are deep-frozen, so they cannot be edited in place either.
+//
+// WHAT THIS IS NOT. It is an in-process runtime invariant, not a signature. See
+// the trust model in publishGate.ts for what it does and does not defend.
+// ---------------------------------------------------------------------------
+
+/** The role an input played in the master. Assigned from compositorState, never guessed. */
+export type ReceiptRole = "hook-visual" | "evidence-visual" | "narration" | "captions" | "music-bed";
+
+export interface ReceiptTimelineUse {
+  readonly index: number;
+  readonly startSecond: number;
+  readonly endSecond: number;
+}
+
+export interface ReceiptFrame {
+  readonly resolvedPath: string;
+  readonly sha256: string;
+}
+
+export interface RenderReceiptInput {
+  readonly taskId: string;
+  readonly role: ReceiptRole;
+  /** realpath of the file ffmpeg read, so a symlink is recorded as its target. */
+  readonly resolvedPath: string;
+  /** SHA-256 of those bytes, taken before ffmpeg ran and re-checked after. */
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly kind: string;
+  readonly mimeType: string;
+  /** Visuals only: every timeline slot this input filled. Empty otherwise. */
+  readonly timeline: readonly ReceiptTimelineUse[];
+  /** Sequence visuals only: the frame files ffmpeg actually read. */
+  readonly frames: readonly ReceiptFrame[];
+  /**
+   * Provenance AS THE PRODUCING ADAPTER DECLARED IT, captured at consumption.
+   *
+   * Recorded, not authenticated. The receipt freezes these values so nothing
+   * downstream can change them; it cannot prove the adapter told the truth.
+   */
+  readonly renderer: string;
+  readonly provider: string;
+  readonly declaredFixture: boolean;
+  readonly voiceId: string;
+  /**
+   * Evidence the PRODUCING ADAPTER issued in its own private registry for this
+   * exact artifact object, or null. Unlike the labels above, a caller cannot
+   * create it by writing metadata. `sha256Matches` says whether the adapter's
+   * recorded digest is the digest of the file the compositor consumed.
+   */
+  readonly evidence: ReceiptProviderEvidence | null;
+}
+
+export interface ReceiptProviderEvidence {
+  readonly issuer: string;
+  readonly sha256Matches: boolean;
+  readonly voiceId: string;
+  readonly modelId: string;
+  readonly endpointOrigin: string;
+  readonly requestId: string;
+}
+
+export interface RenderReceiptParameters {
+  readonly width: number;
+  readonly height: number;
+  readonly fps: number;
+  readonly crf: number;
+  readonly preset: string;
+  readonly plannedDurationSeconds: number;
+  readonly finalDurationSeconds: number;
+  readonly captionsBurnedIn: boolean;
+  readonly musicIncluded: boolean;
+  readonly voiceGain: number;
+  readonly musicGain: number;
+  readonly ffmpegPath: string;
+  readonly ffprobePath: string;
+}
+
+export interface RenderReceipt {
+  readonly version: 1;
+  readonly packageId: string;
+  readonly platform: string;
+  readonly composeTaskId: string;
+  readonly masterPath: string;
+  readonly masterSha256: string;
+  readonly masterBytes: number;
+  readonly parameters: RenderReceiptParameters;
+  readonly inputs: readonly RenderReceiptInput[];
+  /** SHA-256 over the canonical form of every field above. */
+  readonly digest: string;
+}
+
+const ISSUED_RECEIPTS = new WeakSet<object>();
+const RECEIPT_BY_MASTER = new WeakMap<object, RenderReceipt>();
+
+const VOICE_GAIN = 1.0;
+const MUSIC_GAIN = 0.14;
+
+const sha256Hex = (bytes: Buffer | string): string => createHash("sha256").update(bytes).digest("hex");
+
+async function hashFile(path: string): Promise<{ sha256: string; bytes: number }> {
+  const buffer = await readFile(path);
+  return { sha256: sha256Hex(buffer), bytes: buffer.length };
+}
+
+/**
+ * The receipt's canonical form. Field and input order are fixed, so the same
+ * render always digests identically however the object was assembled.
+ */
+function canonicalReceipt(receipt: Omit<RenderReceipt, "digest">): string {
+  const inputs = [...receipt.inputs]
+    .map((input) => ({
+      taskId: input.taskId,
+      role: input.role,
+      resolvedPath: input.resolvedPath,
+      sha256: input.sha256,
+      bytes: input.bytes,
+      kind: input.kind,
+      mimeType: input.mimeType,
+      timeline: input.timeline.map((use) => [use.index, use.startSecond, use.endSecond]),
+      frames: input.frames.map((frame) => [frame.resolvedPath, frame.sha256]),
+      renderer: input.renderer,
+      provider: input.provider,
+      declaredFixture: input.declaredFixture,
+      voiceId: input.voiceId,
+      evidence: input.evidence === null ? null : [
+        input.evidence.issuer, input.evidence.sha256Matches, input.evidence.voiceId,
+        input.evidence.modelId, input.evidence.endpointOrigin, input.evidence.requestId,
+      ],
+    }))
+    .sort((a, b) => (a.taskId < b.taskId ? -1 : a.taskId > b.taskId ? 1 : 0));
+  const p = receipt.parameters;
+  return JSON.stringify({
+    version: receipt.version,
+    packageId: receipt.packageId,
+    platform: receipt.platform,
+    composeTaskId: receipt.composeTaskId,
+    masterPath: receipt.masterPath,
+    masterSha256: receipt.masterSha256,
+    masterBytes: receipt.masterBytes,
+    parameters: [
+      p.width, p.height, p.fps, p.crf, p.preset, p.plannedDurationSeconds, p.finalDurationSeconds,
+      p.captionsBurnedIn, p.musicIncluded, p.voiceGain, p.musicGain, p.ffmpegPath, p.ffprobePath,
+    ],
+    inputs,
+  });
+}
+
+function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const key of Object.keys(value as object)) deepFreeze((value as Record<string, unknown>)[key]);
+  }
+  return value;
+}
+
+/**
+ * Whether `value` is a receipt THIS MODULE issued, unaltered.
+ *
+ * Three checks, all required: it is in the private issued set; it is frozen;
+ * and its digest still matches its own contents. The last is redundant while
+ * freezing holds and is kept so that a future regression in freezing fails
+ * closed instead of quietly trusting an edited receipt.
+ */
+export function isIssuedRenderReceipt(value: unknown): value is RenderReceipt {
+  if (value === null || typeof value !== "object") return false;
+  if (!ISSUED_RECEIPTS.has(value)) return false;
+  if (!Object.isFrozen(value)) return false;
+  const receipt = value as RenderReceipt;
+  const { digest, ...rest } = receipt;
+  return typeof digest === "string" && digest === sha256Hex(canonicalReceipt(rest));
+}
+
+/**
+ * The receipt this compositor issued for a master artifact it returned, if any.
+ *
+ * Keyed on the artifact OBJECT the adapter returned. A copy of that artifact —
+ * spread, cloned, parsed from JSON — has no receipt, by design.
+ */
+export function renderReceiptFor(master: RenderArtifact): RenderReceipt | undefined {
+  if (master === null || typeof master !== "object") return undefined;
+  return RECEIPT_BY_MASTER.get(master);
+}
+
+interface ConsumedPlan {
+  artifact: RenderArtifact;
+  role: ReceiptRole;
+  path: string;
+  timeline: ReceiptTimelineUse[];
+}
+
+function describeProvenance(artifact: RenderArtifact): Pick<RenderReceiptInput, "renderer" | "provider" | "declaredFixture" | "voiceId"> {
+  const metadata = (artifact.metadata ?? {}) as Record<string, unknown>;
+  const first = (...keys: string[]): string => {
+    for (const key of keys) {
+      const raw = metadata[key];
+      if (typeof raw === "string" && raw.trim()) return raw.trim();
+    }
+    return "";
+  };
+  return {
+    renderer: first("renderer", "provider"),
+    provider: first("provider", "renderer"),
+    declaredFixture: metadata.isFixture === true,
+    voiceId: first("voiceId", "voice"),
+  };
+}
+
+/** Looks up adapter-issued evidence for the exact artifact object consumed. */
+function issuedEvidence(artifact: RenderArtifact, consumedSha256: string): ReceiptProviderEvidence | null {
+  const tts = elevenLabsTtsEvidenceFor(artifact);
+  if (tts) {
+    return {
+      issuer: tts.issuer,
+      sha256Matches: tts.sha256 === consumedSha256,
+      voiceId: tts.voiceId,
+      modelId: tts.modelId,
+      endpointOrigin: tts.endpointOrigin,
+      requestId: tts.requestId,
+    };
+  }
+  const captions = captionRenderEvidenceFor(artifact);
+  if (captions) {
+    return {
+      issuer: captions.issuer,
+      sha256Matches: captions.sha256 === consumedSha256,
+      voiceId: "",
+      modelId: "",
+      endpointOrigin: "",
+      requestId: "",
+    };
+  }
+  return null;
+}
+
+/**
+ * Hashes every consumed input — and every frame a sequence input lists — as
+ * the bytes stand right now. Called before ffmpeg runs and again after, so a
+ * file changed DURING the render is caught rather than recorded.
+ */
+async function measureConsumed(plans: readonly ConsumedPlan[]): Promise<RenderReceiptInput[]> {
+  const inputs: RenderReceiptInput[] = [];
+  for (const plan of plans) {
+    const resolvedPath = await realpath(plan.path).catch(() => {
+      throw new MotionCompositorError("missing-input", `Consumed file does not exist: ${plan.path}`);
+    });
+    const { sha256, bytes } = await hashFile(resolvedPath);
+    const frames: ReceiptFrame[] = [];
+    if (plan.artifact.mimeType === "application/json") {
+      const sequence = await readSequenceManifest(resolvedPath);
+      for (const frame of sequence.frames) {
+        const framePath = await realpath(frame.file).catch(() => {
+          throw new MotionCompositorError("missing-frame", `Sequence frame does not exist: ${frame.file}`);
+        });
+        frames.push({ resolvedPath: framePath, sha256: (await hashFile(framePath)).sha256 });
+      }
+    }
+    inputs.push({
+      taskId: plan.artifact.taskId,
+      role: plan.role,
+      resolvedPath,
+      sha256,
+      bytes,
+      kind: plan.artifact.kind,
+      mimeType: plan.artifact.mimeType,
+      timeline: plan.timeline,
+      frames,
+      ...describeProvenance(plan.artifact),
+      evidence: issuedEvidence(plan.artifact, sha256),
+    });
+  }
+  return inputs;
+}
+
+const inputFingerprint = (inputs: readonly RenderReceiptInput[]): string =>
+  JSON.stringify(inputs.map((input) => [input.taskId, input.resolvedPath, input.sha256, input.frames]));
 
 const DEFAULT_WIDTH = 1080;
 const DEFAULT_HEIGHT = 1920;
@@ -450,8 +752,8 @@ async function muxFinal(options: {
   const videoMap = options.captionPath ? "[vout]" : "0:v:0";
   if (options.captionPath) filters.push(`[0:v]ass='${filterPath(options.captionPath)}'[vout]`);
   if (options.musicPath) {
-    filters.push("[1:a]volume=1.0[voice]");
-    filters.push("[2:a]volume=0.14[music]");
+    filters.push(`[1:a]volume=${VOICE_GAIN.toFixed(2)}[voice]`);
+    filters.push(`[2:a]volume=${MUSIC_GAIN.toFixed(2)}[music]`);
     filters.push("[voice][music]amix=inputs=2:duration=first:normalize=0,apad[aout]");
   } else {
     filters.push("[1:a]apad[aout]");
@@ -526,6 +828,39 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
       const finalDuration = Math.max(state.durationSeconds, voiceProbe.durationSeconds + 0.05);
       const extension = finalDuration - state.durationSeconds;
 
+      // THE CONSUMPTION PLAN. Exactly the files the ffmpeg calls below read,
+      // with the role compositorState gives each one. The first timeline
+      // visual is the hook; every other visual is evidence. A task asked to
+      // play two roles is refused rather than recorded under either.
+      const plans = new Map<string, ConsumedPlan>();
+      const addPlan = (artifact: RenderArtifact, role: ReceiptRole, use?: ReceiptTimelineUse): void => {
+        const existing = plans.get(artifact.taskId);
+        if (existing) {
+          if (existing.role !== role) {
+            throw new MotionCompositorError(
+              "role-conflict",
+              `Task ${artifact.taskId} is used as both ${existing.role} and ${role}; one input cannot fill two roles.`,
+            );
+          }
+          if (use) existing.timeline.push(use);
+          return;
+        }
+        plans.set(artifact.taskId, { artifact, role, path: filePathFromArtifact(artifact), timeline: use ? [use] : [] });
+      };
+      const hookTaskId = state.visualTimeline[0]?.visualTaskId;
+      for (const [index, beat] of state.visualTimeline.entries()) {
+        addPlan(
+          artifactForTask(context, beat.visualTaskId),
+          beat.visualTaskId === hookTaskId ? "hook-visual" : "evidence-visual",
+          { index, startSecond: beat.startSecond, endSecond: beat.endSecond },
+        );
+      }
+      addPlan(voiceArtifact, "narration");
+      if (state.captionTaskId) addPlan(artifactForTask(context, state.captionTaskId), "captions");
+      if (state.musicTaskId) addPlan(artifactForTask(context, state.musicTaskId), "music-bed");
+      const consumedPlans = [...plans.values()];
+      const consumedBefore = await measureConsumed(consumedPlans);
+
       const workDir = await mkdtemp(join(resolve(config.outputDir), ".compose-"));
       try {
         const segments: string[] = [];
@@ -587,9 +922,47 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
             `Final MP4 duration ${probe.durationSeconds.toFixed(2)}s does not match planned ${finalDuration.toFixed(2)}s.`,
           );
         }
+        // Re-hash every input now that ffmpeg is done. If any byte changed
+        // while it ran, the master is of unknown origin and is not receipted.
+        const consumedAfter = await measureConsumed(consumedPlans);
+        if (inputFingerprint(consumedAfter) !== inputFingerprint(consumedBefore)) {
+          throw new MotionCompositorError(
+            "input-changed-during-render",
+            "A consumed input changed while the master was being rendered; refusing to issue a receipt for it.",
+          );
+        }
+        const masterPath = await realpath(outputPath);
+        const master = await hashFile(masterPath);
         const { size } = await stat(outputPath);
         const visualTaskIds = state.visualTimeline.map((beat) => beat.visualTaskId).join(",");
-        return [{
+        const unsigned: Omit<RenderReceipt, "digest"> = {
+          version: 1,
+          packageId: context.packageId,
+          platform: context.platform,
+          composeTaskId: context.task.taskId,
+          masterPath,
+          masterSha256: master.sha256,
+          masterBytes: master.bytes,
+          parameters: {
+            width,
+            height,
+            fps: state.fps,
+            crf,
+            preset,
+            plannedDurationSeconds: state.durationSeconds,
+            finalDurationSeconds: finalDuration,
+            captionsBurnedIn: Boolean(captionPath),
+            musicIncluded: Boolean(musicPath),
+            voiceGain: VOICE_GAIN,
+            musicGain: musicPath ? MUSIC_GAIN : 0,
+            ffmpegPath,
+            ffprobePath,
+          },
+          inputs: consumedBefore,
+        };
+        const receipt = deepFreeze({ ...unsigned, digest: sha256Hex(canonicalReceipt(unsigned)) }) as RenderReceipt;
+        ISSUED_RECEIPTS.add(receipt);
+        const masterArtifact: RenderArtifact = {
           artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-mp4`,
           taskId: context.task.taskId,
           kind: "video",
@@ -610,8 +983,12 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
             visualTaskIds,
             captionsBurnedIn: Boolean(captionPath),
             musicIncluded: Boolean(musicPath),
+            sha256: master.sha256,
+            renderReceiptDigest: receipt.digest,
           },
-        }];
+        };
+        RECEIPT_BY_MASTER.set(masterArtifact, receipt);
+        return [masterArtifact];
       } finally {
         await rm(workDir, { recursive: true, force: true }).catch(() => undefined);
       }

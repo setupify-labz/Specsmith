@@ -19,24 +19,55 @@ export interface PublishingConfig {
   siteBaseUrl: string;
   connectedNetworks: MetricoolNetwork[];
   youtubeMadeForKids?: boolean;
-  /** Opt out of draft only deliberately; omitted means draft. */
+  /**
+   * Must be absent or false. `true` is REFUSED by the builder until sign-offs
+   * are tied to a trusted workflow or external identity; every request is a
+   * Metricool draft that a person promotes.
+   */
   autoPublish?: boolean;
 }
 
+import {
+  assertPublishable,
+  type BoundApproval,
+} from "./publishGate.ts";
+import { reverifyHostedMaster, type HostedMaster } from "./hostedMaster.ts";
+import type { RenderReceipt } from "./motionCompositor.ts";
+import type { DependencyRecord } from "./renderManifest.ts";
+
 export interface PublishingGateInput {
   /**
-   * The QC verdict for this creative. Its `reviewedMediaSha256` is the digest
-   * of the bytes a reviewer actually watched — the gate reads it from here
-   * rather than accepting a hash argument, because a caller-supplied digest
-   * proves nothing about what was reviewed.
+   * The QC verdict for this creative. Its `reviewedMediaSha256` and
+   * `reviewedReceiptDigest` are the exact master and receipt a reviewer
+   * watched; the gate reads them from here rather than accepting a hash
+   * argument, because a caller-supplied digest proves nothing about what was
+   * reviewed.
    */
   qualityReview: QualityReviewResult;
   /**
-   * The rights verdict for this creative. Its `approvedMasterSha256` is
-   * resolved from the asset registry's stored record for the master, so it is
-   * likewise a fact about the registry rather than an assertion by the caller.
+   * The rights verdict for this creative. Its `approvedMasterSha256` and
+   * `approvedReceiptDigest` are resolved from the asset registry's stored
+   * record for the master.
    */
   assetBundle: PublicationAssetBundleResult;
+  /**
+   * The receipt the compositor issued for this master. REQUIRED, and only a
+   * genuine one is accepted — see the trust model in publishGate.ts. A
+   * fixture render can hold a passing QC verdict and a clean rights bundle;
+   * the receipt is what says what the master is made of.
+   */
+  renderReceipt: RenderReceipt;
+  /** The persisted claim of the master's inputs. Reconciled against the receipt. */
+  dependencyRecord: DependencyRecord;
+  /**
+   * The hosted copy Metricool will fetch, from uploadAndVerifyMaster. REQUIRED.
+   * Its URI is the only media reference the request can carry.
+   */
+  hostedMaster: HostedMaster;
+  /** The recorded human inspection, bound to the exact master and receipt. REQUIRED. */
+  inspection: BoundApproval & { approved: boolean };
+  /** Required when any input came from a paid provider; bound likewise. */
+  paidProviderApproval?: BoundApproval;
 }
 
 export interface MetricoolPublishingRequest {
@@ -301,6 +332,7 @@ function assertPublishGate(
   if (!gate.qualityReview.publishable || gate.qualityReview.decision !== "pass") {
     throw new Error(`Publication blocked: quality review did not pass for ${fingerprint.creativeId}.`);
   }
+
   if (!gate.assetBundle.publishable) {
     const failures = [
       ...gate.assetBundle.missingAssetIds.map((id) => `missing:${id}`),
@@ -309,16 +341,12 @@ function assertPublishGate(
     ];
     throw new Error(`Publication blocked by asset-rights bundle${failures.length ? ` (${failures.join(", ")})` : ""}.`);
   }
-  const mediaRef = nonEmpty("assetBundle.approvedMasterUri", gate.assetBundle.approvedMasterUri ?? "");
-  let mediaUrl: URL;
-  try {
-    mediaUrl = new URL(mediaRef);
-  } catch {
-    throw new Error("assetBundle.approvedMasterUri must be an absolute https URL that Metricool can fetch.");
-  }
-  if (mediaUrl.protocol !== "https:") {
-    throw new Error(`assetBundle.approvedMasterUri must use https; Metricool cannot fetch ${mediaUrl.protocol}// media.`);
-  }
+  // THE MEDIA URL IS NOT READ FROM THE REGISTRY OR THE CALLER. The rights
+  // registry's `approvedMasterUri` is data someone wrote; nothing proves the
+  // bytes it serves. The only media reference accepted is the HostedMaster
+  // that uploadAndVerifyMaster produced by uploading the verified local master
+  // and downloading it back — checked by the gate below and re-downloaded by
+  // the builder immediately before the request is constructed.
 
   // Both digests are DERIVED, never passed in. `reviewedMediaSha256` comes from
   // the observation a reviewer recorded while watching the file;
@@ -345,10 +373,37 @@ function assertPublishGate(
       `Publication blocked: reviewed media ${digest} is not the rights-approved master ${approved}. QC and rights clearance do not transfer across renders.`,
     );
   }
-  return { mediaUrl: mediaUrl.toString(), digest };
+  // THE ARTIFACT GATE, BEFORE ANY REQUEST EXISTS.
+  //
+  // QC and rights are bound to the receipt's master AND the receipt itself,
+  // read from their own records rather than from arguments. The gate
+  // re-hashes the master and every consumed input from disk and throws with
+  // every refusal listed.
+  const verified = assertPublishable({
+    receipt: gate.renderReceipt,
+    dependencyRecord: gate.dependencyRecord,
+    hostedMaster: gate.hostedMaster,
+    qualityReview: {
+      masterSha256: gate.qualityReview.reviewedMediaSha256,
+      receiptDigest: gate.qualityReview.reviewedReceiptDigest ?? "",
+    },
+    rightsEvidence: {
+      masterSha256: gate.assetBundle.approvedMasterSha256 ?? "",
+      receiptDigest: gate.assetBundle.approvedReceiptDigest ?? "",
+    },
+    inspection: gate.inspection,
+    paidProviderApproval: gate.paidProviderApproval,
+  });
+  // The request carries the digest just re-hashed from disk, which the gate
+  // has proven equal to the reviewed and rights-approved digest.
+  if (verified.masterSha256 !== digest) {
+    throw new Error("Publication blocked: the verified master is not the reviewed master.");
+  }
+
+  return { mediaUrl: gate.hostedMaster.uri, digest };
 }
 
-export function buildMetricoolPublishingRequest(
+export async function buildMetricoolPublishingRequest(
   idea: ContentIdea,
   contentPackage: ContentPackage,
   fingerprint: CreativeFingerprint,
@@ -356,7 +411,17 @@ export function buildMetricoolPublishingRequest(
   config: PublishingConfig,
   publishAt: string,
   now: Date = new Date(),
-): MetricoolPublishingRequest {
+): Promise<MetricoolPublishingRequest> {
+  // NO UNATTENDED PUBLISHING. Sign-off records are digest-bound but their
+  // authors are not authenticated, so nothing may skip a person promoting
+  // the Metricool draft. Refused outright rather than defaulted, so a config
+  // that asks for it learns why instead of silently getting a draft.
+  if (config.autoPublish === true) {
+    throw new Error(
+      "Publication blocked: autoPublish is disabled until approvals are tied to a trusted workflow or external identity. "
+      + "Every request is a Metricool draft.",
+    );
+  }
   if (idea.id !== contentPackage.ideaId || idea.id !== fingerprint.ideaId) {
     throw new Error(`Publishing inputs do not refer to the same idea: ${idea.id}.`);
   }
@@ -364,6 +429,13 @@ export function buildMetricoolPublishingRequest(
     throw new Error(`Publishing fingerprint does not belong to ${contentPackage.packageId}.`);
   }
   const approvedMaster = assertPublishGate(contentPackage, fingerprint, gate);
+  // The hosted bytes are downloaded again NOW, not trusted from the upload:
+  // a host that changed what it serves since verification is refused here.
+  try {
+    await reverifyHostedMaster(gate.hostedMaster);
+  } catch (error) {
+    throw new Error(`Publication refused (1):\n  ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   const blogId = nonEmpty("blogId", config.blogId);
   const timezone = nonEmpty("timezone", config.timezone);
@@ -397,7 +469,7 @@ export function buildMetricoolPublishingRequest(
     websiteCtaMode: copy.websiteCtaMode,
     hashtagStrategy: variant.hashtagStrategy,
     hashtags: [...variant.hashtags],
-    draft: config.autoPublish !== true,
+    draft: true,
     finalMediaSha256: approvedMaster.digest,
   };
 

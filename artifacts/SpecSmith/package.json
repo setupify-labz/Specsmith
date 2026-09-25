@@ -27,7 +27,8 @@
     "content:render:mp4-smoke:offline": "tsx scripts/content-automator/offlineCompositorSmoke.ts",
     "content:meshy:ingest": "tsx scripts/content-automator/meshyIngestCli.ts",
     "content:e2e:offline": "tsx scripts/content-automator/endToEndOfflinePipeline.ts",
-    "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts"
+    "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts",
+    "content:e2e:storyboard": "tsx scripts/content-automator/storyboardDraftCli.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

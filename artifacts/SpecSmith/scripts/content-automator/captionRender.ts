@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -107,9 +108,28 @@ function wrapCaption(text: string, maxChars = 28): string {
     }
   }
   if (line) lines.push(line);
-  // Short-form captions should not become a paragraph. Two lines keeps the UI visible.
-  if (lines.length <= 2) return lines.join("\\N");
-  return `${lines[0]}\\N${lines.slice(1).join(" ")}`;
+  // Short-form captions should not become a paragraph, and two lines keeps the
+  // product UI visible. That is the intent; the previous implementation did
+  // the opposite of it.
+  //
+  // IT REJOINED EVERY LINE PAST THE FIRST BACK INTO ONE. `lines.slice(1).join(" ")`
+  // takes wrapping that had just been computed and undoes it, producing a
+  // single line of unbounded width — and the style below sets `WrapStyle: 2`,
+  // which tells libass to do no wrapping of its own. So a caption long enough
+  // to need three lines rendered as one line wider than the 1080px frame and
+  // was clipped at BOTH edges.
+  //
+  // Found by looking at the frames of the first render of a generated
+  // storyboard: "Pick the GPU before SpecSmith reveals the names: RTX 4080
+  // Super vs RTX 4080" came out as "...eveals the names: RTX 4080 Super" with
+  // the ends cut off. The hand-authored smoke timeline never caught it
+  // because its captions are short enough to fit two lines.
+  //
+  // Neither silently dropping the extra words nor silently overflowing is
+  // acceptable, so the wrap is simply honoured. A third line is a far smaller
+  // problem than a clipped one, and over-long on-screen copy is reported as a
+  // review blocker so it gets shortened at the source.
+  return lines.join("\\N");
 }
 
 export function buildAssDocument(state: CaptionRenderState): string {
@@ -118,6 +138,25 @@ export function buildAssDocument(state: CaptionRenderState): string {
     `Dialogue: 0,${assTime(cue.startSecond)},${assTime(cue.endSecond)},SpecSmith,,0,0,0,,${wrapCaption(cue.text)}`,
   );
   return `${header}${events.join("\n")}\n`;
+}
+
+/**
+ * Evidence that THIS adapter wrote a caption document, keyed on the artifact
+ * object it returned. Module-private and only readable; a caption file
+ * labelled `renderer: "specsmith-ass-captions"` by anyone else has none.
+ */
+export interface CaptionRenderEvidence {
+  readonly issuer: "specsmith-ass-captions";
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly cueCount: number;
+}
+
+const CAPTION_EVIDENCE = new WeakMap<object, CaptionRenderEvidence>();
+
+export function captionRenderEvidenceFor(artifact: RenderArtifact): CaptionRenderEvidence | undefined {
+  if (artifact === null || typeof artifact !== "object") return undefined;
+  return CAPTION_EVIDENCE.get(artifact);
 }
 
 export function createCaptionRenderAdapter(options: { outputDir: string }): RenderAdapter {
@@ -139,7 +178,7 @@ export function createCaptionRenderAdapter(options: { outputDir: string }): Rend
       const outputPath = resolve(options.outputDir, `${filename}.ass`);
       await writeFile(outputPath, document, "utf8");
       const bytes = Buffer.byteLength(document, "utf8");
-      return [{
+      const artifact: RenderArtifact = {
         artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-ass`,
         taskId: context.task.taskId,
         kind: "captions",
@@ -153,7 +192,14 @@ export function createCaptionRenderAdapter(options: { outputDir: string }): Rend
           width: 1080,
           height: 1920,
         },
-      }];
+      };
+      CAPTION_EVIDENCE.set(artifact, Object.freeze({
+        issuer: "specsmith-ass-captions",
+        sha256: createHash("sha256").update(document, "utf8").digest("hex"),
+        bytes,
+        cueCount: state.cues.length,
+      }));
+      return [artifact];
     },
   };
 }

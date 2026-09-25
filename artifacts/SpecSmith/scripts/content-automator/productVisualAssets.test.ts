@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rm } from "node:fs/promises";
+import type { RenderReceipt } from "./motionCompositor.ts";
+import { renderControl, type ControlRender } from "./publishBoundary.testkit.ts";
 import { cleanRestrictedFeatureReview, type AssetRightsManifest } from "./assetRights.ts";
 import {
   buildProductVisualAssetRegistry,
@@ -215,5 +218,46 @@ describe("the approved master hash is derived from the registry", () => {
     expect(result.approvedMasterSha256).toBeNull();
     expect(result.approvedMasterUri).toBeNull();
     expect(result.publishable).toBe(false);
+  });
+});
+
+// RIGHTS EVIDENCE BINDS TO THE COMPOSITOR'S RECEIPT, OR TO NOTHING.
+describe("the rights bundle is bound to the genuine render receipt", () => {
+  let control: ControlRender;
+  let other: ControlRender;
+  beforeAll(async () => {
+    control = await renderControl({ fixtureNarration: true });
+    other = await renderControl({ fixtureNarration: true, fixtureHook: true });
+  }, 120_000);
+  afterAll(async () => {
+    for (const render of [control, other]) if (render) await rm(render.dir, { recursive: true, force: true });
+  });
+
+  const bundle = (sha256: string, renderReceipt?: RenderReceipt) => evaluatePublicationAssetBundle(
+    buildProductVisualAssetRegistry([master({ sha256 })]),
+    { renderReceipt, usedAssetIds: [], expectedVisualAssetIds: [], masterAssetId: "master" },
+  );
+
+  it("records the receipt digest when the receipt's master is the approved master", () => {
+    const result = bundle(control.receipt.masterSha256, control.receipt);
+    expect(result.publishable).toBe(true);
+    expect(result.approvedReceiptDigest).toBe(control.receipt.digest);
+  });
+
+  it("records no receipt digest without a receipt, leaving the gate to refuse", () => {
+    const result = bundle(control.receipt.masterSha256);
+    expect(result.approvedReceiptDigest ?? null).toBeNull();
+  });
+
+  it("is unpublishable when the supplied receipt describes a different master", () => {
+    const result = bundle(control.receipt.masterSha256, other.receipt);
+    expect(result.publishable).toBe(false);
+    expect(result.approvedReceiptDigest).toBeNull();
+  });
+
+  it("is unpublishable when the supplied receipt is a copy", () => {
+    const result = bundle(control.receipt.masterSha256, { ...control.receipt } as RenderReceipt);
+    expect(result.publishable).toBe(false);
+    expect(result.approvedReceiptDigest).toBeNull();
   });
 });

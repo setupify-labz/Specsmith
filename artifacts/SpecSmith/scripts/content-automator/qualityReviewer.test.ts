@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { rm } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,8 @@ import {
   type RecordedRenderEvidence,
 } from "./qualityReviewer.ts";
 import type { ContentIdea } from "./types.ts";
+import type { RenderReceipt } from "./motionCompositor.ts";
+import { renderControl, type ControlRender } from "./publishBoundary.testkit.ts";
 
 const idea: ContentIdea = {
   id: "builder-budget-challenge",
@@ -307,5 +310,46 @@ describe("recorded render evidence binds an observation to one exact render's by
       const framePath = join(here, "fixtures", ref);
       expect(existsSync(framePath), `missing committed frame: ${ref}`).toBe(true);
     }
+  });
+});
+
+// QC BINDS TO THE COMPOSITOR'S RECEIPT, OR TO NOTHING. The reviewer records a
+// receipt digest only from a genuine compositor receipt describing exactly the
+// master it watched; otherwise the result carries none and the publish gate
+// refuses it. It never copies a digest from a caller.
+describe("the review verdict is bound to the genuine render receipt", () => {
+  let control: ControlRender;
+  let other: ControlRender;
+  beforeAll(async () => {
+    // Fixture renders are enough: this is about binding, not provenance.
+    control = await renderControl({ fixtureNarration: true });
+    other = await renderControl({ fixtureNarration: true, fixtureHook: true });
+  }, 120_000);
+  afterAll(async () => {
+    for (const render of [control, other]) if (render) await rm(render.dir, { recursive: true, force: true });
+  });
+
+  it("records the receipt digest when the receipt's master is the observed master", () => {
+    const result = reviewRenderedVideo(request, cleanObservation({ masterSha256: control.receipt.masterSha256 }), control.receipt);
+    expect(result.reviewedReceiptDigest).toBe(control.receipt.digest);
+    expect(result.reviewedMediaSha256).toBe(control.receipt.masterSha256);
+  });
+
+  it("records no receipt digest when no receipt is supplied", () => {
+    const result = reviewRenderedVideo(request, cleanObservation({ masterSha256: control.receipt.masterSha256 }));
+    expect(result.reviewedReceiptDigest).toBeUndefined();
+  });
+
+  it("refuses a receipt for a master the reviewer did not watch", () => {
+    expect(() => reviewRenderedVideo(request, cleanObservation({ masterSha256: control.receipt.masterSha256 }), other.receipt))
+      .toThrow(/did not watch/);
+  });
+
+  it("refuses a copied receipt", () => {
+    expect(() => reviewRenderedVideo(
+      request,
+      cleanObservation({ masterSha256: control.receipt.masterSha256 }),
+      { ...control.receipt } as RenderReceipt,
+    )).toThrow(/did not issue/);
   });
 });

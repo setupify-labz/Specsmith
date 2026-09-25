@@ -1,3 +1,4 @@
+import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
 import type {
   ContentPackage,
   PlatformProductionPlan,
@@ -107,6 +108,14 @@ export interface QualityReviewResult {
    * hash the caller passes alongside.
    */
   reviewedMediaSha256: string;
+  /**
+   * Digest of the compositor render receipt this review covers.
+   *
+   * Optional in the type because the QC evidence schema does not record it
+   * yet; the publish gate REFUSES a review without it, so omitting it fails
+   * closed rather than open.
+   */
+  reviewedReceiptDigest?: string;
   decision: ReviewDecision;
   publishable: boolean;
   overallScore: number;
@@ -393,12 +402,35 @@ function checkClaims(request: QualityReviewRequest, observation: RenderedVideoOb
   }
 }
 
+/**
+ * Reviews an observed render.
+ *
+ * Pass the compositor's receipt for the master that was watched to bind the
+ * verdict to it: the receipt must be a genuine compositor-issued receipt and
+ * describe the exact master the observation names, and its digest is then
+ * recorded as `reviewedReceiptDigest`. Without a receipt the result carries
+ * none, and the publish gate refuses it — never a guessed or copied digest.
+ */
 export function reviewRenderedVideo(
   request: QualityReviewRequest,
   observation: RenderedVideoObservation,
+  renderReceipt?: RenderReceipt,
 ): QualityReviewResult {
   if (request.packageId !== observation.packageId || request.platform !== observation.platform) {
     throw new Error(`Observation does not match review request ${request.packageId}/${request.platform}`);
+  }
+  let reviewedReceiptDigest: string | undefined;
+  if (renderReceipt !== undefined) {
+    if (!isIssuedRenderReceipt(renderReceipt)) {
+      throw new Error("Quality review was given a render receipt the compositor did not issue.");
+    }
+    if (renderReceipt.masterSha256 !== requireSha256(observation.masterSha256, "observation.masterSha256")) {
+      throw new Error(
+        `The observed master ${observation.masterSha256} is not the receipt's master ${renderReceipt.masterSha256}; `
+        + "a review cannot be bound to a render it did not watch.",
+      );
+    }
+    reviewedReceiptDigest = renderReceipt.digest;
   }
 
   const issues: ReviewIssue[] = [];
@@ -569,6 +601,7 @@ export function reviewRenderedVideo(
     packageId: request.packageId,
     platform: request.platform,
     reviewedMediaSha256: requireSha256(observation.masterSha256, "observation.masterSha256"),
+    ...(reviewedReceiptDigest === undefined ? {} : { reviewedReceiptDigest }),
     decision,
     publishable: decision === "pass",
     overallScore,

@@ -51,12 +51,11 @@
 //   offlineCompositorSmoke.ts's estimated-FPS caption is now the FIRST cue,
 //   on screen from t=0) rather than scored around.
 // - The Metricool publishing request needs an https:// URL Metricool could
-//   fetch. This sandbox has nothing to upload the test render to, and
-//   nothing here should actually publish anything, so the "approved master
-//   URI" below is a clearly fake, non-resolving https://*.example placeholder
-//   — RFC 2606 reserves .example for exactly this. buildMetricoolPublishingRequest
-//   makes no network call of its own; it only returns a plain object shaped
-//   like a Metricool request, always with draft: true.
+//   fetch, and the builder accepts only one proven by uploadAndVerifyMaster
+//   (upload the verified master, download it back, compare bytes). This
+//   sandbox has no storage uploader or credentials, so no hosted master
+//   exists and the builder refuses before any network call. It never
+//   contacts Metricool and only ever returns a draft: true request object.
 // - No performance/engagement/analytics numbers are invented anywhere. The
 //   analytics-identity section only proves that the SAME creativeId a real
 //   snapshot would be filed under is the one already bound to the media hash,
@@ -85,10 +84,14 @@ import {
   type ProductVisualAssetRecord,
 } from "./productVisualAssets.ts";
 import { cleanRestrictedFeatureReview } from "./assetRights.ts";
-import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type PublishingConfig } from "./publishing.ts";
+import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type MetricoolPublishingRequest, type PublishingConfig } from "./publishing.ts";
+import { dependencyRecordFor } from "./renderManifest.ts";
+import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
+import type { HostedMaster } from "./hostedMaster.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
-import type { ContentIdea, VideoPlatform } from "./types.ts";
-import {
+import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import type { VideoPlatform } from "./types.ts";
+import { OFFLINE_SMOKE_PACKAGE_ID,
   runOfflineCompositorSmoke,
   OFFLINE_SMOKE_PLATFORM,
 } from "./offlineCompositorSmoke.ts";
@@ -97,7 +100,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // This demo/smoke script must never touch content-ideas/publishing-store —
 // that is the real, shared, durable publication ledger a production run
 // would use, and it holds every other creative's publication history.
-// Reusing the same hardcoded idea.id across repeated local runs of this
+// Reusing the same hardcoded COMPARE_IDEA.id across repeated local runs of this
 // script is a demo convenience, not a reason to delete production data, so
 // this run gets its own private, ephemeral store instead: a fresh directory
 // under content-ideas/.e2e-demo-store, namespaced by timestamp+random so
@@ -131,40 +134,9 @@ const renderEvidencePath = join(here, "fixtures", "mp4-smoke-offline-observation
 // not invented for this script. requiredFacts is deliberately just
 // ["comparison state"]: the one fact the actual rendered evidence (the live
 // Compare page, captured through a real browser) substantiates.
-const idea: ContentIdea = {
-  id: "compare-rtx4080s-rtx4080",
-  format: "comparison",
-  title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
-  hook: "Can you pick the faster card before the names show?",
-  angle: "Use Compare as the evidence and reveal.",
-  targetAudience: "PC builders",
-  requiredFacts: ["comparison state"],
-  subjectIds: ["rtx4080s", "rtx4080"],
-  productConnection: {
-    feature: "compare",
-    route: "/compare",
-    userProblem: "Buyers cannot tell which near-name GPU is the better choice.",
-    whySpecSmith: "SpecSmith Compare holds the rest of the build constant.",
-    continuationAction: "Open Compare and change the cards.",
-    sitePayoff: "The viewer can continue the exact comparison.",
-  },
-  creativeDNA: {
-    conceptName: "Blind Compare",
-    visualWorld: "real SpecSmith comparison",
-    narrativeEngine: "blind choice -> evidence -> reveal",
-    openingImage: "Two anonymous cards",
-    patternInterrupt: "Names hidden",
-    retentionBeats: ["1", "2", "3", "4", "5"],
-    payoff: "Reveal the winner",
-    audioDirection: "Tight",
-    originalityConstraint: "Compare is essential",
-    antiSlopRules: ["a", "b", "c", "d", "e", "f"],
-  },
-  scores: {
-    curiosity: 9, usefulness: 9, visualPotential: 9, purchaseIntent: 8, novelty: 8,
-    originality: 9, retentionPotential: 9, shareability: 8, productFit: 10, siteContinuation: 10, total: 9,
-  },
-};
+// The idea now lives in compareIdeaFixture.ts so the storyboard renderer
+// uses the SAME one rather than a second copy that can drift.
+
 
 const PLATFORM: VideoPlatform = OFFLINE_SMOKE_PLATFORM;
 
@@ -185,12 +157,12 @@ async function main(): Promise<void> {
   const generatedAt = new Date();
 
   section("1. Real idea -> real content package -> real script/storyboard -> real generated production-plan CONTRACT (not rendered through — see header comment)");
-  const content = buildContentPackage(idea, generatedAt);
-  const storyboard = buildScriptStoryboardPackage(idea, content);
+  const content = buildContentPackage(COMPARE_IDEA, generatedAt);
+  const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
   const production = buildProductionPlanPackage(storyboard);
   const script = storyboard.scripts.find((entry) => entry.platform === PLATFORM);
   if (!script) throw new Error(`No ${PLATFORM} script in the storyboard.`);
-  console.log(`Idea: ${idea.id} ("${idea.title}")`);
+  console.log(`Idea: ${COMPARE_IDEA.id} ("${COMPARE_IDEA.title}")`);
   console.log(`Content package: ${content.packageId} (campaign ${content.campaignId})`);
   console.log(`Storyboard for ${PLATFORM}: ${script.beats.length} beats, target ${script.targetDurationSeconds}s`);
   console.log(`CTA route: ${content.site.route}`);
@@ -204,6 +176,16 @@ async function main(): Promise<void> {
   const mp4Path = fileUriToPath(finalArtifact.uri);
   const masterSha256 = await sha256File(mp4Path);
   const durationSeconds = Number(finalArtifact.metadata?.durationSeconds ?? 0);
+  const offlineReceipt = renderReceiptFor(finalArtifact);
+  if (!offlineReceipt) throw new Error("The compositor issued no render receipt for the offline master.");
+  if (offlineReceipt.masterSha256 !== masterSha256) {
+    throw new Error("The compositor's receipt does not describe the master on disk.");
+  }
+  console.log(`Render receipt: ${offlineReceipt.digest} (${offlineReceipt.inputs.length} consumed inputs)`);
+  for (const consumed of offlineReceipt.inputs) {
+    console.log(`  ${consumed.role.padEnd(15)} ${consumed.taskId} ${consumed.sha256.slice(0, 16)}… ${consumed.renderer || consumed.provider}`);
+  }
+
   console.log(`Rendered MP4: ${mp4Path}`);
   console.log(`sha256: ${masterSha256}`);
   console.log(`duration: ${durationSeconds}s, ${finalArtifact.metadata?.width}x${finalArtifact.metadata?.height}, video=${finalArtifact.metadata?.videoCodec}, audio=${finalArtifact.metadata?.audioCodec}`);
@@ -241,7 +223,9 @@ async function main(): Promise<void> {
     durationSeconds,
     observedCtaRoute: content.site.route,
   };
-  const review = reviewRenderedVideo(reviewRequest, observation);
+  // Bound to the compositor's receipt for THIS render; the reviewer refuses a
+  // receipt whose master is not the observed master.
+  const review = reviewRenderedVideo(reviewRequest, observation, offlineReceipt);
   console.log(`Decision: ${review.decision} (publishable=${review.publishable}, overallScore=${review.overallScore}/10)`);
   console.log(`Issues: ${review.issues.length === 0 ? "none" : review.issues.map((i) => `${i.severity}:${i.code}`).join(", ")}`);
   if (!review.publishable) {
@@ -297,6 +281,7 @@ async function main(): Promise<void> {
   };
   const registry = buildProductVisualAssetRegistry([masterRecord]);
   const assetBundle = evaluatePublicationAssetBundle(registry, {
+    renderReceipt: offlineReceipt,
     usedAssetIds: [],
     expectedVisualAssetIds: [],
     masterAssetId,
@@ -307,23 +292,19 @@ async function main(): Promise<void> {
     throw new Error("Rights bundle did not approve the rendered master; stopping before publishing, as designed.");
   }
 
-  section("5. Tracked, draft-only Metricool-ready publishing request (no network call, never auto-publishes)");
-  // Metricool needs an https:// URL it could fetch. Nothing in this sandbox
-  // is uploaded anywhere reachable, and nothing here should ever cause a
-  // real publish — so this is a clearly fake, non-resolving *.example URL
-  // (RFC 2606) standing in for "wherever the approved master would actually
-  // be hosted." buildMetricoolPublishingRequest itself makes no network
-  // call; it only returns a plain, draft:true request object.
-  const placeholderHostedMasterUrl = `https://cdn.specsmithpc.example/render-output/${masterSha256}.mp4`;
-  const registryWithPlaceholderUri = buildProductVisualAssetRegistry([{ ...masterRecord, uri: placeholderHostedMasterUrl }]);
-  const assetBundleForPublishing = evaluatePublicationAssetBundle(registryWithPlaceholderUri, {
-    usedAssetIds: [],
-    expectedVisualAssetIds: [],
-    masterAssetId,
-  });
+  section("5. Tracked, draft-only Metricool-ready publishing request (never auto-publishes)");
+  // Metricool fetches an https URL, and the builder accepts only a
+  // HostedMaster from uploadAndVerifyMaster: the verified master uploaded to
+  // storage and downloaded back byte for byte. No storage uploader is
+  // configured in this offline pipeline (it would need credentials), so there
+  // is no hosted master and the gate refuses with hosted-master-unverified —
+  // in addition to the fixture refusals. The previous placeholder
+  // `https://cdn.specsmithpc.example/...` URL is gone: a URL nobody verified
+  // is exactly what the gate must not accept.
+  const assetBundleForPublishing = assetBundle;
 
   const fingerprint = buildCreativeFingerprint(
-    { rank: 1, idea, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
+    { rank: 1, idea: COMPARE_IDEA, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
     content,
     script,
     { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "deterministic-ui", uiProofRatio: 1, generatedVisualRatio: 0, exactProductAssetRatio: 1 },
@@ -339,15 +320,54 @@ async function main(): Promise<void> {
     // header: nothing here is allowed to auto-publish.
   };
   const publishAt = new Date(generatedAt.getTime() + 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "");
-  const publishingRequest = buildMetricoolPublishingRequest(
-    idea,
-    content,
-    fingerprint,
-    { qualityReview: review, assetBundle: assetBundleForPublishing },
-    publishingConfig,
-    publishAt,
-    generatedAt,
-  );
+  // THE COMPOSITOR'S OWN RECEIPT FOR THIS RENDER.
+  //
+  // The previous version hand-typed six entries here and gave every one of
+  // them the MASTER's digest — so no input was ever actually hashed — and it
+  // listed a music bed this render never used while omitting its third
+  // visual. The receipt below is issued by the compositor from the files it
+  // actually opened: each input's own realpath and SHA-256, its role and its
+  // timeline slots. Nothing here can author or edit it.
+  //
+  // This render is built from fixtures (espeak narration, no licensed bed),
+  // so the artifact gate must refuse it. No human has inspected these bytes,
+  // so the inspection record says approved: false rather than inventing an
+  // approval, and the committed QC observation predates the receipt, so it
+  // carries no receipt digest. Both are additional, truthful refusals.
+  let publishingRequest: MetricoolPublishingRequest;
+  try {
+    publishingRequest = await buildMetricoolPublishingRequest(
+      COMPARE_IDEA,
+      content,
+      fingerprint,
+      {
+        qualityReview: review,
+        assetBundle: assetBundleForPublishing,
+        renderReceipt: offlineReceipt as RenderReceipt,
+        dependencyRecord: dependencyRecordFor(offlineReceipt),
+        hostedMaster: undefined as unknown as HostedMaster,
+        inspection: {
+          approvedBy: "offline-pipeline",
+          approvedAt: generatedAt.toISOString(),
+          approved: false,
+          masterSha256: offlineReceipt.masterSha256,
+          receiptDigest: offlineReceipt.digest,
+        },
+      },
+      publishingConfig,
+      publishAt,
+      generatedAt,
+    );
+  } catch (error) {
+    // Expected here. The offline render is built from a fixture narration, so
+    // the artifact gate refuses it however clean the QC and rights verdicts
+    // are. Reported and re-thrown rather than swallowed: a run that cannot
+    // build a request has not proven the publishing path, and must not look
+    // like it did.
+    console.error("\nArtifact publish gate REFUSED this offline render, as it must:");
+    console.error(error instanceof Error ? error.message : String(error));
+    throw error;
+  }
   console.log(`Metricool request id: ${publishingRequest.requestId} (draft=${publishingRequest.draft})`);
   console.log(`finalMediaSha256: ${publishingRequest.finalMediaSha256}`);
   console.log(`Tracked website URL (utm_content=creativeId): ${publishingRequest.trackedWebsiteUrl}`);
@@ -392,7 +412,7 @@ async function main(): Promise<void> {
   // use is already the same key everything else above is bound to.
   const analyticsContext = {
     creativeId: fingerprint.creativeId,
-    ideaId: idea.id,
+    ideaId: COMPARE_IDEA.id,
     platform: PLATFORM,
     durationSeconds,
     fingerprintCampaignId: fingerprint.campaignId,

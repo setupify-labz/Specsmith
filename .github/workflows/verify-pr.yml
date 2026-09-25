@@ -52,9 +52,52 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # BEFORE ANY TEST. The content-automator suites drive real ffmpeg,
+      # ffprobe and espeak-ng on purpose (a fixture adapter that only passes
+      # against a mock is the defect that subsystem keeps reproducing). Without
+      # this step they fail with `spawn ffmpeg ENOENT`, as verify-pr run
+      # 36064271196 did. Same install and capability checks as
+      # content-e2e-offline.yml, which is proven on the same head: pinned by
+      # capability rather than by package version, because a binary that
+      # answers -version can still lack H.264, AAC, mp4 or .ass support.
+      # verifyPrWorkflowSafety.test.ts asserts this step precedes every test.
+      - name: Install and verify ffmpeg and espeak-ng
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+
+          echo "--- installed versions (recorded, not asserted) ---"
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          espeak-ng --version | head -1
+          dpkg-query -W -f='${Package} ${Version}\n' ffmpeg espeak-ng
+
+          echo "--- required capabilities ---"
+          ffmpeg -hide_banner -encoders | grep -q ' libx264 ' \
+            || { echo "::error::ffmpeg has no libx264 encoder; it cannot produce the H.264 master."; exit 1; }
+          ffmpeg -hide_banner -encoders | grep -qE '^ A....D aac ' \
+            || { echo "::error::ffmpeg has no aac encoder; it cannot produce the master's audio."; exit 1; }
+          ffmpeg -hide_banner -muxers | grep -qE ' mp4 ' \
+            || { echo "::error::ffmpeg has no mp4 muxer; it cannot produce the master container."; exit 1; }
+          ffmpeg -hide_banner -filters | grep -qE ' (ass|subtitles) ' \
+            || { echo "::error::ffmpeg cannot burn in .ass captions."; exit 1; }
+          espeak-ng -q --stdout "capability check" > /dev/null \
+            || { echo "::error::espeak-ng cannot synthesise; the offline narration fixture will fail."; exit 1; }
+          echo "ffmpeg/ffprobe/espeak-ng have every capability the tests need."
+
       - name: Typecheck
         run: pnpm typecheck
 
+      # The content-automator suite first, so a media-pipeline failure is
+      # reported on its own before the full run below.
+      - name: Run the content-automator test suite (targeted)
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec vitest run scripts/content-automator
+
+      # STRICT. The whole suite, untargeted: nothing excluded, skipped,
+      # retried or compared against another commit. Any failure fails the
+      # job here, and the build below does not run.
       - name: Run full test suite
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run

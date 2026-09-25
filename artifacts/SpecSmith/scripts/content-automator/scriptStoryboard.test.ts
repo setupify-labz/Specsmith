@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildContentPackage } from "./contentPackage.ts";
-import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
+import { allocateBeatWindows, assertNarrationFitsDuration, buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
+import { COMPARE_IDEA as COMPARE_IDEA_FOR_TEST } from "./compareIdeaFixture.ts";
 import type { ContentIdea } from "./types.ts";
 
 const idea: ContentIdea = {
@@ -78,5 +79,110 @@ describe("script storyboard", () => {
       expect(script.beats.at(-1)?.endSecond).toBe(script.targetDurationSeconds);
       expect(script.beats.every((beat) => beat.endSecond > beat.startSecond)).toBe(true);
     }
+  });
+});
+
+describe("narration has to be speakable in the window it was given", () => {
+  const beat = (purpose: string, words: number, startSecond: number, endSecond: number) => ({
+    purpose,
+    narration: Array.from({ length: words }, () => "word").join(" "),
+    startSecond,
+    endSecond,
+  });
+
+  it("catches the original defect: 90 words in a 24-second short", () => {
+    // The real failure this exists for. 90 words is 32.7s at 165 wpm, and it
+    // reached ffmpeg before anything noticed.
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: [beat("hook", 90, 0, 24)],
+    })).toThrow(/total narration needs 32\.7s but the script allots 24s/);
+  });
+
+  it("refuses to suggest stretching the clock", () => {
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: [beat("hook", 90, 0, 24)],
+    })).toThrow(/Shorten the copy; do not stretch the clock/);
+  });
+
+  it("catches a beat that overruns its OWN window even when the total fits", () => {
+    // The check a total-only budget cannot make. 30 words is 10.9s; the whole
+    // script fits 24s comfortably, but the hook carries three times what its
+    // window holds and the voice never re-syncs with the pictures.
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts",
+      targetDurationSeconds: 24,
+      beats: [beat("hook", 30, 0, 3), beat("cta", 5, 3, 24)],
+    })).toThrow(/hook needs 10\.9s in a 3s window/);
+  });
+
+  it("has NO authoring tolerance — a second over is over", () => {
+    // An earlier version borrowed the compositor's 1.25x allowance as a
+    // writing budget, which let every script be authored 25% too long by
+    // default. The compositor's allowance is an emergency rendering guard and
+    // stays where it was.
+    const wordsFor = (seconds: number) => Math.round((seconds / 60) * 165);
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: [beat("hook", wordsFor(25), 0, 24)],
+    })).toThrow(/total narration needs/);
+  });
+
+  it("tolerates only the tenth-of-a-second the window grid is quantised to", () => {
+    // 0.05s is arithmetic, not authoring: a twentieth of a syllable.
+    expect(() => assertNarrationFitsDuration({
+      platform: "youtube-shorts", targetDurationSeconds: 24, beats: [beat("hook", 11, 0, 4)],
+    })).not.toThrow();
+  });
+
+  it("accepts the shortened COMPARE storyboard", () => {
+    const script = buildScriptStoryboardPackage(COMPARE_IDEA_FOR_TEST, buildContentPackage(COMPARE_IDEA_FOR_TEST, new Date("2026-09-23T00:00:00Z")))
+      .scripts.find((entry) => entry.platform === "youtube-shorts");
+    expect(script).toBeDefined();
+    expect(() => assertNarrationFitsDuration(script!)).not.toThrow();
+  });
+});
+
+describe("beat windows are sized by what each beat says", () => {
+  it("gives the hook room for a hook line instead of a fixed two seconds", () => {
+    // The fixed 2/4/6/6/4/2 layout gave the hook 2s and the CTA 2s, and both
+    // carry idea-supplied copy of eight to fourteen words. Two seconds holds
+    // about five. No hook ever fitted its own window.
+    const windows = allocateBeatWindows(
+      ["a ".repeat(14).trim(), "b ".repeat(4).trim(), "c ".repeat(4).trim()],
+      24,
+    );
+    expect(windows[0].endSecond - windows[0].startSecond).toBeGreaterThan(2);
+  });
+
+  it("keeps the total runtime exactly what the platform asked for", () => {
+    // This is the difference from the rescaling that was removed: the budget
+    // is divided, never extended.
+    for (const total of [24, 26, 30]) {
+      const windows = allocateBeatWindows(["one two three", "four", "five six", "seven eight nine ten"], total);
+      expect(windows[windows.length - 1].endSecond).toBeCloseTo(total, 6);
+    }
+  });
+
+  it("keeps the timeline contiguous and in order", () => {
+    const windows = allocateBeatWindows(["a", "b b b", "c c", "d"], 24);
+    expect(windows[0].startSecond).toBe(0);
+    for (let index = 1; index < windows.length; index += 1) {
+      expect(windows[index].startSecond).toBe(windows[index - 1].endSecond);
+      expect(windows[index].endSecond).toBeGreaterThan(windows[index].startSecond);
+    }
+  });
+
+  it("produces windows on a clean tenth-of-a-second grid", () => {
+    // Accumulating 0.1 floats drifts within six beats — enough to make a
+    // window read 1.4000000000000004s and miss its own allocation.
+    const windows = allocateBeatWindows(["a", "b b", "c c c", "d", "e e", "f"], 24);
+    for (const window of windows) {
+      expect(Number.isInteger(Math.round(window.startSecond * 10))).toBe(true);
+      expect(window.endSecond * 10).toBeCloseTo(Math.round(window.endSecond * 10), 9);
+    }
+  });
+
+  it("splits evenly when nothing has anything to say", () => {
+    const windows = allocateBeatWindows(["", "", ""], 24);
+    expect(windows[windows.length - 1].endSecond).toBeCloseTo(24, 6);
   });
 });

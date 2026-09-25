@@ -80,7 +80,7 @@ jobs:
   e2e:
     name: Typecheck, test, build and run the offline content pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
       - name: Check out the exact selected commit
@@ -122,6 +122,56 @@ jobs:
           set -o pipefail
           pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/e2e/install.log"
 
+      # MOVED AHEAD OF THE TESTS, NOT JUST AHEAD OF THE RENDER.
+      #
+      # offlineBeatFixtures.test.ts and renderManifest.test.ts invoke the real
+      # offline adapters — they shell out to ffmpeg and espeak-ng on purpose,
+      # because a fixture adapter that only passes against a mock is the thing
+      # this subsystem keeps getting wrong. With the install further down the
+      # job they failed with `spawn ffmpeg ENOENT` before the render step was
+      # ever reached.
+      #
+      # PINNED BY CAPABILITY, NOT BY VERSION STRING. Pinning an exact Ubuntu
+      # package version breaks the moment the runner image rebuilds and that
+      # version leaves the archive, which fails the run for a reason that has
+      # nothing to do with the code. What actually matters is that ffmpeg can
+      # produce the master this pipeline claims to produce, so the assertions
+      # below check for the encoders and muxer by name.
+      #
+      # That is not hypothetical. The sandbox this was developed in ships
+      # Playwright's own ffmpeg, which is built --disable-everything with only
+      # VP8/webm/mjpeg/png — no H.264, no AAC, no mp4 muxer. It is on PATH, it
+      # answers -version, and it cannot make an MP4. A presence check would
+      # have passed and the compose step would have failed much later with a
+      # confusing error.
+      #
+      # `apt-get update` is not optional: a stale package index 404s on the
+      # exact .deb files this needs, which is how it fails on a cold runner.
+      - name: Install and verify ffmpeg and espeak-ng
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+
+          echo "--- installed versions (recorded, not asserted) ---"
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          espeak-ng --version | head -1
+          dpkg-query -W -f='${Package} ${Version}\n' ffmpeg espeak-ng
+
+          echo "--- required capabilities ---"
+          ffmpeg -hide_banner -encoders | grep -q ' libx264 ' \
+            || { echo "::error::ffmpeg has no libx264 encoder; it cannot produce the H.264 master."; exit 1; }
+          ffmpeg -hide_banner -encoders | grep -qE '^ A....D aac ' \
+            || { echo "::error::ffmpeg has no aac encoder; it cannot produce the master's audio."; exit 1; }
+          ffmpeg -hide_banner -muxers | grep -qE ' mp4 ' \
+            || { echo "::error::ffmpeg has no mp4 muxer; it cannot produce the master container."; exit 1; }
+          ffmpeg -hide_banner -filters | grep -qE ' (ass|subtitles) ' \
+            || { echo "::error::ffmpeg cannot burn in .ass captions."; exit 1; }
+          espeak-ng -q --stdout "capability check" > /dev/null \
+            || { echo "::error::espeak-ng cannot synthesise; the offline narration fixture will fail."; exit 1; }
+          echo "ffmpeg/ffprobe/espeak-ng have every capability this pipeline needs."
+
       - name: Typecheck
         run: |
           set -o pipefail
@@ -133,6 +183,12 @@ jobs:
           set -o pipefail
           pnpm exec vitest run scripts/content-automator 2>&1 | tee "${RUNNER_TEMP}/e2e/test-targeted.log"
 
+      # STRICT, AND IN PLACE. The whole suite, untargeted: nothing excluded,
+      # skipped, retried or compared against another commit. Any failure
+      # fails this step and the job, and the build and evidence steps after
+      # it do not run. (An earlier revision judged this step against the
+      # merge-base to tolerate four failures inherited from main; #154
+      # repaired them on main, so no allowance remains.)
       - name: Run the full test suite
         working-directory: artifacts/SpecSmith
         run: |
@@ -153,14 +209,6 @@ jobs:
           set -o pipefail
           pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
 
-      # ffmpeg/ffprobe compose the real MP4; espeak-ng is the offline TTS
-      # fixture (see localFixtureTts.ts) — neither needs a credential.
-      - name: Install ffmpeg and espeak-ng
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
-
       - name: Serve the built application
         working-directory: artifacts/SpecSmith
         run: |
@@ -179,7 +227,41 @@ jobs:
 
       # See this file's own header for why a nonzero exit here is not
       # automatically a workflow failure.
-      - name: Run the offline end-to-end content pipeline
+      - name: Render the generated storyboard and prove it cannot be published
+        working-directory: artifacts/SpecSmith
+        env:
+          SPECSMITH_RENDER_BASE_URL: http://localhost:5178
+        run: |
+          set -euo pipefail
+          # Renders the plan the pipeline GENERATES (not a hand-authored
+          # timeline) to a real MP4, writes the review packet, and runs the
+          # publish gate over the artifacts it actually produced.
+          pnpm content:e2e:storyboard 2>&1 | tee "${RUNNER_TEMP}/e2e/storyboard-draft.log"
+
+          # The draft is built from fixtures, so the gate MUST refuse it. A run
+          # where this render becomes publishable without anyone approving a
+          # voice, a track and an inspection is the failure this asserts
+          # against — a green pipeline quietly clearing a stand-in is worse
+          # than a red one.
+          grep -q "REFUSED" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not refuse a fixture-built draft."; exit 1; }
+          grep -q "fixture-artifact" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the fixture artifacts."; exit 1; }
+          # NOT "non-liam-narration". That code does not exist and never did
+          # on this branch — publishGate.ts emits narration-not-elevenlabs and
+          # narration-voice-not-liam. The stale string made this assertion
+          # unsatisfiable, so it failed the job in CI run 35933143796 while
+          # the gate underneath was working perfectly, refusing for all 8
+          # expected reasons. A test now checks every gate code grepped here
+          # against the codes publishGate.ts can actually emit.
+          grep -qE "narration-not-elevenlabs|narration-voice-not-liam" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the stand-in narration."; exit 1; }
+          grep -q "silent-music-bed" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the silent stand-in bed."; exit 1; }
+          grep -q "placeholder-hook" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not detect the placeholder hook card."; exit 1; }
+
+      - name: Run the offline end-to-end content pipeline (a refusal is the pass)
         working-directory: artifacts/SpecSmith
         env:
           SPECSMITH_RENDER_BASE_URL: http://localhost:5178
@@ -191,15 +273,41 @@ jobs:
           set -e
           echo "exit code: ${code}" | tee "${RUNNER_TEMP}/e2e/pipeline-exit-code.txt"
           cat "${RUNNER_TEMP}/e2e/pipeline.log"
+
+          # THE POLARITY IS INVERTED NOW, AND DELIBERATELY.
+          #
+          # This pipeline's master is built from an espeak narration fixture
+          # and a silent bed, and the compositor's receipt says so. Reaching
+          # "Done" would mean the publishing path had built a Metricool
+          # request out of stand-ins, which is precisely what the artifact
+          # gate exists to prevent. A clean exit is therefore the failure.
           if [ "${code}" -eq 0 ]; then
-            echo "Pipeline reached Done — this run's render matched the committed evidence file's sha256."
-            exit 0
+            echo "::error::The pipeline built a publishing request from a fixture render. The artifact gate did not hold."
+            exit 1
           fi
+
+          # TWO DOCUMENTED STOPS, EITHER OF WHICH IS CORRECT.
+          #
+          #  1. The sha256-bound quality gate. A freshly rendered master has
+          #     no committed inspection covering those exact bytes, and the
+          #     render is not byte-reproducible across machines — see this
+          #     file's header. This stop comes FIRST, so on most runners the
+          #     publishing step is never reached at all.
+          #  2. The artifact gate refusing to build a request from fixtures.
+          #
+          # An earlier draft of this step demanded (2) specifically, and would
+          # have failed the job on the perfectly correct (1).
           if grep -q "Evidence check: NO MATCH" "${RUNNER_TEMP}/e2e/pipeline.log"; then
-            echo "Pipeline stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner — see this workflow file's header for why the render is not byte-reproducible across machines. This is the fail-closed gate working, not a regression."
+            echo "Stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner. The fail-closed gate is working."
             exit 0
           fi
-          echo "Pipeline failed for a reason OTHER than the expected evidence mismatch — treating this as a real failure."
+          if grep -q "Artifact publish gate REFUSED this offline render" "${RUNNER_TEMP}/e2e/pipeline.log"; then
+            grep -qE "fixture-artifact|narration-not-elevenlabs" "${RUNNER_TEMP}/e2e/pipeline.log" \
+              || { echo "::error::The artifact gate refused, but not for the expected fixture reasons."; exit 1; }
+            echo "The artifact gate refused a fixture-built master: EXPECTED, and the point of the gate."
+            exit 0
+          fi
+          echo "Pipeline failed for a reason OTHER than the two documented stops — treating this as a real failure."
           exit "${code}"
 
       - name: Extract two frames from the rendered MP4, if one was produced
