@@ -86,16 +86,18 @@ export function buildStrategyBatch(gpus: HardwareItem[], cpus: HardwareItem[], n
     const a = byPerf[i]; const b = byPerf[i + 1];
     // The price gap still ranks the idea, but it is never SAID: Compare shows
     // no prices, only modelled FPS estimates, so a video built on it cannot
-    // claim a dollar figure or what money buys (see #155).
+    // claim a dollar figure or what money buys. And the estimates belong to
+    // complete GPU + CPU builds, not to either card alone, so every line that
+    // mentions an estimate names the build (see #155).
     const gap = Math.abs(a.price_usd - b.price_usd);
     push({
       id: `compare-${a.id}-${b.id}`,
       format: i % 2 === 0 ? "game" : "comparison",
-      title: i % 2 === 0 ? `Pick the GPU before SpecSmith reveals the names: ${a.name} vs ${b.name}` : `${a.name} vs ${b.name}: how far apart are SpecSmith's estimates?`,
-      hook: i % 2 === 0 ? "Two GPUs. Names hidden. Pick one before SpecSmith shows its FPS estimates." : "Neighbouring GPUs. Which one does SpecSmith estimate higher, and by how much?",
+      title: i % 2 === 0 ? `Pick the GPU before SpecSmith reveals the names: ${a.name} vs ${b.name}` : `${a.name} vs ${b.name} builds: how far apart are SpecSmith's estimates?`,
+      hook: i % 2 === 0 ? "Two builds. Names hidden. Pick one before SpecSmith estimates both builds." : "Two builds, different GPUs. Which build does SpecSmith estimate higher?",
       angle: "Turn the Compare feature into the actual decision game.",
       targetAudience: "PC buyers choosing between nearby GPU tiers",
-      requiredFacts: [`${a.name} modelled FPS estimate`, `${b.name} modelled FPS estimate`, "modelled game leads", "current comparison data"],
+      requiredFacts: [`modelled FPS estimate for the ${a.name} build`, `modelled FPS estimate for the ${b.name} build`, "each build's modelled game leads", "current comparison data"],
       subjectIds: [a.id, b.id],
       productConnection: connection("compare", "Choose between two GPUs without getting lost in specs.", "SpecSmith Compare shows both builds' modelled FPS estimates side by side.", "Open the exact comparison and change the parts yourself.", "The final reveal lands on the actual SpecSmith comparison rather than an arbitrary creator opinion."),
     }, gap > 250 ? 1 : 0);

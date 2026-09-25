@@ -147,12 +147,22 @@ export function assertNarrationFitsDuration(
  * alone." read over it. On Compare, which is the surface this pipeline actually
  * captures, none of that is true. The page shows no prices ("This page does not
  * use editorial part prices…"), no compatibility check, and FPS figures it
- * labels itself as "SpecSmith model estimates, not measured benchmarks".
+ * labels itself as "SpecSmith model estimates, not measured benchmarks of
+ * these exact systems".
  *
  * So each Compare line now repeats something the rendered page says, and
  * `backedBy` names the exact page text. storyboardCompareClaims.test.tsx renders
  * Compare at the captured state and fails if any of that text disappears, so
  * the storyboard cannot drift from the page without a red test.
+ *
+ * Two things the page is careful about, the copy must be careful about too:
+ *  - WHAT is estimated. Compare estimates complete GPU + CPU builds, not a card
+ *    on its own, so every estimate line names the build or system.
+ *  - WHAT the numbers are not. The disclosure is "not measured benchmarks of
+ *    these exact systems", not the broader "not benchmarks": the numbers come
+ *    from benchmark-derived data, but nobody measured these two systems. Both
+ *    "measured" and "these exact systems" stay. The on-screen form is worded
+ *    to wrap onto the caption's two 28-character lines without losing either.
  *
  * Every other surface gets claim-free wording until someone verifies its page
  * the same way. "See it in SpecSmith" is true of any surface; "real prices" was
@@ -167,12 +177,12 @@ export interface BeatCopy {
 
 export const COMPARE_BEAT_COPY: { evidence: BeatCopy; payoff: BeatCopy } = Object.freeze({
   evidence: Object.freeze({
-    narration: "These are model estimates, not benchmarks.",
-    onScreenText: "MODEL ESTIMATES, NOT BENCHMARKS",
-    backedBy: Object.freeze(["model estimates, not measured benchmarks"]),
+    narration: "Model estimates, not measured benchmarks of these exact systems.",
+    onScreenText: "MODELLED FPS, NOT MEASURED ON THESE EXACT SYSTEMS",
+    backedBy: Object.freeze(["model estimates, not measured benchmarks of these exact systems"]),
   }),
   payoff: Object.freeze({
-    narration: "Count the modelled game leads.",
+    narration: "Count each build's modelled game leads.",
     onScreenText: "MODELLED GAME LEADS",
     backedBy: Object.freeze(["Modelled Game Leads"]),
   }),
@@ -202,9 +212,7 @@ export function beatCopyFor(feature: ContentIdea["productConnection"]["feature"]
  * Compare renders no price, runs no compatibility check and measures nothing,
  * so money, compatibility, "verified" and "measured"/benchmark wording are all
  * unsupported there, and so is calling a card faster when the page only
- * shows the higher estimate. The page's own disclaimer, "not (measured) benchmarks",
- * is the one benchmark phrase allowed, because it says what the numbers are
- * NOT.
+ * shows the higher estimate.
  */
 const UNSUPPORTED_ON_COMPARE: readonly { label: string; pattern: RegExp }[] = [
   { label: "a dollar amount", pattern: /\$\s?\d/ },
@@ -218,12 +226,26 @@ const UNSUPPORTED_ON_COMPARE: readonly { label: string; pattern: RegExp }[] = [
   { label: "performance stated as fact", pattern: /\b(faster|fastest|slower|slowest|outperforms?|outperformed)\b/i },
 ];
 
-/** The page's own caveat, removed before checking so it is not read as a claim. */
-const COMPARE_DISCLAIMER = /\bnot\s+(measured\s+)?benchmarks?\b/gi;
+/**
+ * The page's own caveat in full: "not measured benchmarks of these exact
+ * systems", or its caption form "not measured on these exact systems". It is
+ * the ONE place "measured"/"benchmark" may appear, because it says what the
+ * numbers are not.
+ *
+ * Only the complete qualifier is exempt. A shortened "not benchmarks" or
+ * "not measured benchmarks" says something broader or vaguer than the page
+ * does, so it is left in place and refused as benchmark wording.
+ */
+const EXACT_SYSTEM_DISCLOSURE = /\bnot\s+measured\s+(?:benchmarks\s+of|on)\s+these\s+exact\s+systems\b/i;
+
+/** Whether `text` carries the full "not measured … these exact systems" disclosure. */
+export function hasExactSystemDisclosure(text: string): boolean {
+  return EXACT_SYSTEM_DISCLOSURE.test(text);
+}
 
 /** Every unsupported claim in `text`, as "label: matched text". Empty when clean. */
 export function unsupportedCompareClaims(text: string): string[] {
-  const checked = text.replace(COMPARE_DISCLAIMER, " ");
+  const checked = text.replace(new RegExp(EXACT_SYSTEM_DISCLOSURE.source, "gi"), " ");
   const found: string[] = [];
   for (const { label, pattern } of UNSUPPORTED_ON_COMPARE) {
     const match = checked.match(pattern);
@@ -232,21 +254,53 @@ export function unsupportedCompareClaims(text: string): string[] {
   return found;
 }
 
+/** Sentences, split where a viewer hears a stop. A title's colon does not end one. */
+function sentences(text: string): string[] {
+  return text.split(/[.?!•]+/).map((part) => part.trim()).filter(Boolean);
+}
+
+/**
+ * Sentences that attribute an estimate to something other than a build.
+ *
+ * Compare's numbers belong to a complete GPU + CPU build: "Build A Est. FPS",
+ * "Modelled Game Leads" per build. "Which card does SpecSmith estimate
+ * higher?" credits the estimate to the card alone, which the page never does.
+ * So a sentence that talks about an estimate must name the build or system
+ * it belongs to, and must not name a bare card or GPU in its place.
+ */
+export function estimatesNotAttributedToBuilds(text: string): string[] {
+  return sentences(text).filter((sentence) =>
+    /\bestimat\w*/i.test(sentence)
+    && (!/\b(builds?|systems?)\b/i.test(sentence) || /\b(cards?|gpus?|graphics cards?)\b/i.test(sentence)));
+}
+
 /**
  * Refuses a Compare storyboard whose visible or spoken copy claims something
- * the captured page does not show. Checked at generation time, like the word
- * budget, so the claim never reaches a render.
+ * the captured page does not show, credits an estimate to a card instead of a
+ * build, or drops the exact-system disclosure from the evidence beat. Checked
+ * at generation time, like the word budget, so none of it reaches a render.
  */
 export function assertCompareCopyIsSupported(script: PlatformScriptStoryboard): void {
   const problems: string[] = [];
   const check = (where: string, text: string) => {
     for (const claim of unsupportedCompareClaims(text)) problems.push(`${where} — ${claim}`);
+    for (const sentence of estimatesNotAttributedToBuilds(text)) {
+      problems.push(`${where} — estimate not attributed to a build: "${sentence}"`);
+    }
   };
   check("title", script.title);
   check("final CTA", script.finalCta);
   for (const beat of script.beats) {
     check(`${beat.purpose} on-screen text`, beat.onScreenText);
     check(`${beat.purpose} narration`, beat.narration);
+    if (beat.purpose === "evidence") {
+      if (!hasExactSystemDisclosure(beat.onScreenText)) {
+        problems.push("evidence on-screen text — missing the \"not measured … these exact systems\" disclosure");
+      }
+      if (!hasExactSystemDisclosure(beat.narration)) {
+        problems.push("evidence narration — missing the \"not measured … these exact systems\" disclosure");
+      }
+    }
   }
   if (problems.length === 0) return;
   throw new Error(

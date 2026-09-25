@@ -5,7 +5,8 @@
 // and the narration said "Verified inputs decide it." and "SpecSmith settles it
 // on verified facts alone." Compare shows no prices, runs no compatibility
 // check, and labels its FPS figures "SpecSmith model estimates, not measured
-// benchmarks".
+// benchmarks of these exact systems". Its estimates belong to complete GPU +
+// CPU builds, never to a card on its own.
 //
 // These tests hold the storyboard to what the page actually RENDERS. Compare is
 // rendered here at the exact route the capture pipeline plans for the proven
@@ -22,11 +23,14 @@ import gpuData from '../../src/data/gpus.json';
 import cpuData from '../../src/data/cpus.json';
 import { COMPARE_IDEA } from './compareIdeaFixture.ts';
 import { buildContentPackage } from './contentPackage.ts';
+import { buildAssDocument } from './captionRender.ts';
 import {
   assertCompareCopyIsSupported,
   beatCopyFor,
   buildScriptStoryboardPackage,
   COMPARE_BEAT_COPY,
+  estimatesNotAttributedToBuilds,
+  hasExactSystemDisclosure,
   unsupportedCompareClaims,
 } from './scriptStoryboard.ts';
 import { buildStrategyBatch } from './strategist.ts';
@@ -111,6 +115,15 @@ describe('the Compare storyboard says only what the captured Compare page shows'
     }
   });
 
+  it.each(capturedStates())('the page at $label backs the proven idea\'s spoken "catch"', ({ route }) => {
+    // Read aloud as "The catch: resolution and quality change both builds'
+    // estimates." The page's own FAQ says it, and both controls are on screen.
+    const text = renderedText(route);
+    expect(text).toMatch(/Resolution and preset change the estimated FPS numbers shown/);
+    expect(text).toContain('Resolution');
+    expect(text).toContain('Quality');
+  });
+
   it.each(capturedStates())('the page at $label has no price, compatibility or verification to claim', ({ route }) => {
     const text = renderedText(route);
     // If one of these ever appears, the claim guard may be too strict. That is
@@ -118,7 +131,10 @@ describe('the Compare storyboard says only what the captured Compare page shows'
     expect(text).not.toMatch(/\$\s?\d/);
     expect(text).not.toMatch(/compatib/i);
     expect(text).not.toMatch(/\bverified\b/i);
-    expect(text).toMatch(/model estimates, not measured benchmarks/i);
+    expect(text).toMatch(/model estimates, not measured benchmarks of these exact systems/i);
+    // The page attributes every estimate to a build.
+    expect(text).toContain('Build A Est. FPS');
+    expect(text).toContain('Build B Est. FPS');
   });
 
   it('the capture really is the proven idea\'s two GPUs', () => {
@@ -141,6 +157,7 @@ describe('the Compare storyboard says only what the captured Compare page shows'
       expect(payoff.narration).toBe(COMPARE_BEAT_COPY.payoff.narration);
       for (const line of viewerCopy(script)) {
         expect(unsupportedCompareClaims(line), `${script.platform}: "${line}"`).toEqual([]);
+        expect(estimatesNotAttributedToBuilds(line), `${script.platform}: "${line}"`).toEqual([]);
       }
       expect(viewerCopy(script).join(' ')).not.toMatch(/REAL PRICES/i);
     }
@@ -155,10 +172,14 @@ describe('the Compare storyboard says only what the captured Compare page shows'
     // Both title and hook variants must be covered, not just the first.
     expect(new Set(compareIdeas.map((idea) => idea.format)).size).toBe(2);
     for (const idea of compareIdeas) {
+      for (const fact of idea.requiredFacts) {
+        expect(estimatesNotAttributedToBuilds(fact), `${idea.id} required fact "${fact}"`).toEqual([]);
+      }
       const storyboard = buildScriptStoryboardPackage(idea, buildContentPackage(idea, GENERATED_AT));
       for (const script of storyboard.scripts) {
         for (const line of viewerCopy(script)) {
           expect(unsupportedCompareClaims(line), `${idea.id} ${script.platform}: "${line}"`).toEqual([]);
+          expect(estimatesNotAttributedToBuilds(line), `${idea.id} ${script.platform}: "${line}"`).toEqual([]);
         }
       }
     }
@@ -191,15 +212,137 @@ describe('unsupported claims cannot come back', () => {
     COMPARE_BEAT_COPY.payoff.onScreenText,
     COMPARE_BEAT_COPY.payoff.narration,
     'FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.',
-    'Which card does SpecSmith estimate higher? Pick before the names show.',
+    'Which build does SpecSmith estimate higher? Pick before the names show.',
   ])('accepts the page-backed line "%s"', (line) => {
     expect(unsupportedCompareClaims(line)).toEqual([]);
+    expect(estimatesNotAttributedToBuilds(line)).toEqual([]);
+  });
+});
+
+describe('estimates belong to builds, never to a bare card or GPU', () => {
+  // The first revision of #159 and the strategist output it produced.
+  it.each([
+    'Which card does SpecSmith estimate higher? Pick before the names show.',
+    'Neighbouring GPUs. Which one does SpecSmith estimate higher, and by how much?',
+    'Two GPUs. Names hidden. Pick one before SpecSmith shows its FPS estimates.',
+    "RTX 4080 Super vs RTX 4080: how far apart are SpecSmith's estimates?",
+    'SpecSmith estimates the RTX 4080 Super higher.',
+    'Which GPU does SpecSmith estimate higher in this build?',
+    'RTX 4080 Super modelled FPS estimate',
+  ])('refuses "%s"', (line) => {
+    expect(estimatesNotAttributedToBuilds(line).length, `"${line}" was accepted`).toBeGreaterThan(0);
   });
 
+  it.each([
+    'Which build does SpecSmith estimate higher? Pick before the names show.',
+    'Two builds. Names hidden. Pick one before SpecSmith estimates both builds.',
+    'Two builds, different GPUs. Which build does SpecSmith estimate higher?',
+    "RTX 4080 Super vs RTX 4080 builds: how far apart are SpecSmith's estimates?",
+    "The catch: resolution and quality change both builds' estimates.",
+    'modelled FPS estimate for the RTX 4080 Super build',
+    'Model estimates, not measured benchmarks of these exact systems.',
+    // No estimate mentioned, so nothing to attribute.
+    'Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080',
+  ])('accepts "%s"', (line) => {
+    expect(estimatesNotAttributedToBuilds(line)).toEqual([]);
+  });
+
+  it('checks each spoken sentence on its own, so a build elsewhere cannot excuse a card', () => {
+    expect(estimatesNotAttributedToBuilds('Two builds. Which card does SpecSmith estimate higher?'))
+      .toEqual(['Which card does SpecSmith estimate higher']);
+  });
+
+  it('refuses to generate a Compare storyboard whose hook credits the estimate to a card', () => {
+    const idea: ContentIdea = { ...COMPARE_IDEA, hook: 'Which card does SpecSmith estimate higher? Pick before the names show.' };
+    expect(() => buildScriptStoryboardPackage(idea, buildContentPackage(idea, GENERATED_AT)))
+      .toThrow(/hook narration — estimate not attributed to a build/);
+  });
+});
+
+describe('the disclosure keeps "measured" and "these exact systems"', () => {
+  it('both evidence lines carry the full qualifier', () => {
+    expect(hasExactSystemDisclosure(COMPARE_BEAT_COPY.evidence.onScreenText)).toBe(true);
+    expect(hasExactSystemDisclosure(COMPARE_BEAT_COPY.evidence.narration)).toBe(true);
+  });
+
+  it.each([
+    // The first revision of #159.
+    ['MODEL ESTIMATES, NOT BENCHMARKS'],
+    ['These are model estimates, not benchmarks.'],
+    // Keeps "measured" but loses the exact systems.
+    ['Model estimates, not measured benchmarks.'],
+    // Keeps the systems but loses "measured".
+    ['Model estimates, not benchmarks of these exact systems.'],
+    ['Model estimates for these systems.'],
+  ])('refuses the shortened "%s"', (line) => {
+    expect(hasExactSystemDisclosure(line)).toBe(false);
+  });
+
+  it.each([
+    ['MODEL ESTIMATES, NOT BENCHMARKS'],
+    ['These are model estimates, not benchmarks.'],
+    ['Model estimates, not measured benchmarks.'],
+    ['Model estimates, not benchmarks of these exact systems.'],
+  ])('treats the shortened "%s" as a benchmark claim, not a disclosure', (line) => {
+    expect(unsupportedCompareClaims(line).join('; ')).toMatch(/measurement or benchmark/);
+  });
+
+  it('refuses to generate a Compare storyboard whose evidence beat drops the qualifier', () => {
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
+    const script = storyboard.scripts[0];
+    const shortened: PlatformScriptStoryboard = {
+      ...script,
+      beats: script.beats.map((beat) => beat.purpose === 'evidence'
+        ? { ...beat, onScreenText: 'MODEL ESTIMATES', narration: 'These are model estimates.' }
+        : beat),
+    };
+    expect(() => assertCompareCopyIsSupported(shortened)).toThrow(/evidence on-screen text — missing the "not measured … these exact systems" disclosure/);
+    expect(() => assertCompareCopyIsSupported(shortened)).toThrow(/evidence narration — missing/);
+  });
+
+  it('the on-screen disclosure fits the caption\'s two lines with both halves intact', () => {
+    const ass = buildAssDocument({
+      durationSeconds: 2,
+      cues: [{ startSecond: 0, endSecond: 2, text: COMPARE_BEAT_COPY.evidence.onScreenText }],
+    });
+    const dialogue = ass.split('\n').find((line) => line.startsWith('Dialogue:'))!;
+    const lines = dialogue.slice(dialogue.lastIndexOf(',,') + 2).split('\\N');
+    expect(lines.length).toBeLessThanOrEqual(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(28);
+    expect(lines.join(' ')).toBe(COMPARE_BEAT_COPY.evidence.onScreenText);
+  });
+});
+
+describe('the proven idea, as a viewer hears it', () => {
+  it('reads these exact lines on YouTube Shorts', () => {
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
+    const youtube = storyboard.scripts.find((script) => script.platform === 'youtube-shorts')!;
+    expect(youtube.beats.map((beat) => [beat.purpose, beat.narration])).toEqual([
+      ['hook', 'Which build does SpecSmith estimate higher? Pick before the names show.'],
+      ['commitment', 'Decide before the reveal.'],
+      ['evidence', 'Model estimates, not measured benchmarks of these exact systems.'],
+      ['reversal', "The catch: resolution and quality change both builds' estimates."],
+      ['payoff', "Count each build's modelled game leads."],
+      ['cta', 'Continue this exact decision in SpecSmithPC at /compare.'],
+    ]);
+  });
+
+  it('no longer says "The catch: Use Compare as the evidence and reveal."', () => {
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
+    for (const script of storyboard.scripts) {
+      const reversal = script.beats.find((beat) => beat.purpose === 'reversal')!;
+      expect(reversal.narration).not.toMatch(/Use Compare as the evidence/);
+    }
+  });
+});
+
+describe('the guard still catches what it caught before', () => {
   it('allows the page\'s own disclaimer but not a benchmark claim beside it', () => {
-    expect(unsupportedCompareClaims('Model estimates, not measured benchmarks.')).toEqual([]);
-    expect(unsupportedCompareClaims('Model estimates, not benchmarks. Benchmarked on real hardware.').join(' '))
-      .toMatch(/measurement/);
+    expect(unsupportedCompareClaims('Model estimates, not measured benchmarks of these exact systems.')).toEqual([]);
+    expect(unsupportedCompareClaims('MODELLED FPS, NOT MEASURED ON THESE EXACT SYSTEMS')).toEqual([]);
+    expect(unsupportedCompareClaims(
+      'Model estimates, not measured benchmarks of these exact systems. Benchmarked on real hardware.',
+    ).join(' ')).toMatch(/measurement/);
   });
 
   it('refuses to generate a Compare storyboard whose idea copy claims prices', () => {
