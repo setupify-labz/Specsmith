@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import PartCard from './PartCard';
 import { buildPartQuery } from '../lib/fps';
+import { comparablePriceAmount, describePartPrice, type PartPrice } from '../lib/partPrice';
 
 type SortKey = 'price' | 'performance' | 'value';
 
@@ -60,6 +61,13 @@ interface PartSelectorProps {
   /** Hide prices, value sorting, badges and retailer links when this selector
    * is choosing a comparison subject rather than a product to shop for. */
   showShopping?: boolean;
+  /**
+   * Says where each part's price came from (#156). The caller knows its data
+   * source; this component does not, so it never turns `price_usd` into a
+   * displayed price on its own. Without it, no figure is shown and nothing is
+   * sorted or ranked by price.
+   */
+  getPrice?: (part: Part) => PartPrice;
 }
 
 /**
@@ -73,8 +81,10 @@ const SCROLL_ATTEMPT_FRAMES = 30;
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, recommendedIds = [], openSignal, showShopping = true,
+  defaultOpen = false, recommendedIds = [], openSignal, showShopping = true, getPrice,
 }: PartSelectorProps) {
+  const priceOf = (part: Part): PartPrice | undefined => (showShopping && getPrice ? getPrice(part) : undefined);
+  const amountOf = (part: Part): number | null => comparablePriceAmount(priceOf(part));
   const [open, setOpen] = useState(defaultOpen);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -140,11 +150,13 @@ export default function PartSelector({
 
   const filtered = useMemo(() => {
     let result = parts.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    if (showShopping && sort === 'price') result.sort((a, b) => (a.price_usd ?? Number.POSITIVE_INFINITY) - (b.price_usd ?? Number.POSITIVE_INFINITY));
+    if (showShopping && sort === 'price') result.sort((a, b) => (amountOf(a) ?? Number.POSITIVE_INFINITY) - (amountOf(b) ?? Number.POSITIVE_INFINITY));
     else if (sort === 'performance') result.sort((a, b) => (b.benchmark_score ?? b.tier ?? 0) - (a.benchmark_score ?? a.tier ?? 0));
     else if (showShopping && sort === 'value') result.sort((a, b) => {
-      const aValue = a.price_usd && a.price_usd > 0 ? (a.benchmark_score ?? a.tier ?? 0) / a.price_usd : -1;
-      const bValue = b.price_usd && b.price_usd > 0 ? (b.benchmark_score ?? b.tier ?? 0) / b.price_usd : -1;
+      const aAmount = amountOf(a);
+      const bAmount = amountOf(b);
+      const aValue = aAmount && aAmount > 0 ? (a.benchmark_score ?? a.tier ?? 0) / aAmount : -1;
+      const bValue = bAmount && bAmount > 0 ? (b.benchmark_score ?? b.tier ?? 0) / bAmount : -1;
       return bValue - aValue;
     });
     // Recommended first when present
@@ -155,26 +167,30 @@ export default function PartSelector({
       ];
     }
     return result;
-  }, [parts, search, sort, recommendedIds, showShopping]);
+  }, [parts, search, sort, recommendedIds, showShopping, getPrice]);
 
   // "Best Value" (highest benchmark-score/price ratio) and "Best Performance"
   // (highest raw benchmark score) — one of each per category, GPU/CPU only.
   const { bestValueId, bestPerformanceId } = useMemo(() => {
     if (!showShopping || (category !== 'gpu' && category !== 'cpu')) return { bestValueId: null, bestPerformanceId: null };
-    const withScores = parts.filter((p): p is Part & { benchmark_score: number; price_usd: number } =>
-      typeof p.benchmark_score === 'number' && typeof p.price_usd === 'number' && p.price_usd > 0,
-    );
+    const withScores = parts
+      .map((p) => ({ part: p, amount: amountOf(p) }))
+      .filter((entry): entry is { part: Part & { benchmark_score: number }; amount: number } =>
+        typeof entry.part.benchmark_score === 'number' && entry.amount !== null && entry.amount > 0,
+      );
     if (withScores.length === 0) return { bestValueId: null, bestPerformanceId: null };
-    const bestValue = withScores.reduce((best, p) =>
-      (p.benchmark_score / p.price_usd) > (best.benchmark_score / best.price_usd) ? p : best
-    );
-    const bestPerformance = withScores.reduce((best, p) =>
+    const bestValue = withScores.reduce((best, entry) =>
+      (entry.part.benchmark_score / entry.amount) > (best.part.benchmark_score / best.amount) ? entry : best
+    ).part;
+    const scored = withScores.map((entry) => entry.part);
+    const bestPerformance = scored.reduce((best, p) =>
       p.benchmark_score > best.benchmark_score ? p : best
     );
     return { bestValueId: bestValue.id, bestPerformanceId: bestPerformance.id };
-  }, [parts, category, showShopping]);
+  }, [parts, category, showShopping, getPrice]);
 
   const selectedPart = parts.find(p => p.id === selectedId);
+  const selectedPrice = selectedPart && showShopping ? describePartPrice(priceOf(selectedPart)) : null;
   const Icon = CATEGORY_ICONS[category] ?? Box;
 
   return (
@@ -217,9 +233,16 @@ export default function PartSelector({
           </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
-          {selectedPart && showShopping && (
-            <span className="text-sm font-bold" style={{ color: 'var(--ff-accent-text)' }}>
-              {selectedPart.price_usd === undefined ? 'Retailer price' : `$${selectedPart.price_usd.toLocaleString()}`}
+          {selectedPrice && (
+            <span
+              className="text-sm font-bold"
+              style={{ color: 'var(--ff-accent-text)' }}
+              data-testid="selected-part-price"
+              data-price-provenance={selectedPrice.provenance}
+            >
+              {selectedPrice.primary}
+              {/* The source line does not fit the header; screen readers get it. */}
+              {selectedPrice.detail && <span className="sr-only">, {selectedPrice.detail}</span>}
             </span>
           )}
           {open
@@ -297,7 +320,7 @@ export default function PartSelector({
                       name={part.name}
                       image={part.image}
                       searchQuery={buildPartQuery(part.name, part.brand as string | undefined, category)}
-                      price_usd={showShopping ? part.price_usd : undefined}
+                      price={priceOf(part)}
                       affiliateUrl={part.affiliateUrl}
                       selected={part.id === selectedId}
                       sponsored={part.sponsored}

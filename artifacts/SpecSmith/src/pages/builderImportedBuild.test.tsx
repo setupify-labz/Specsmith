@@ -378,16 +378,24 @@ describe('the estimate carries its date', () => {
     expect(price.textContent).toMatch(/estimated/i);
   }, 30000);
 
-  it('carries it on every priced recommendation, not just the first', async () => {
+  it('carries it on every recommendation the date is true of, and on no other', async () => {
+    // #156: the July 16 refresh (8586087) repriced gpus.json and cpus.json
+    // only. A component or peripheral estimate is still "Estimated", but
+    // carries no date it cannot support. The rule lives in prices.ts.
     await openAt(`/builder?${queryFor(fullTwelve)}`);
     await waitFor(() => expect(recommendations()).toHaveLength(12));
 
     const priced = [...document.querySelectorAll('[data-testid^="planned-price-"]')].filter(
       (node) => /Estimated\s*\$/.test(node.textContent ?? ''),
     );
-    expect(priced.length).toBeGreaterThan(1);
+    expect(priced.length).toBe(12);
     for (const node of priced) {
-      expect(node.textContent, node.getAttribute('data-testid') ?? '').toContain(PRICES_UPDATED);
+      const category = (node.getAttribute('data-testid') ?? '').replace('planned-price-', '');
+      if (category === 'gpu' || category === 'cpu') {
+        expect(node.textContent, category).toContain(PRICES_UPDATED);
+      } else {
+        expect(node.textContent, category).toMatch(/^Estimated \$[\d,.]+$/);
+      }
     }
   }, 30000);
 });

@@ -1,13 +1,19 @@
 import { motion } from './MotionLite';
 import { Check, ExternalLink } from 'lucide-react';
 import { getAffiliateUrl, getNeweggUrl } from '../lib/fps';
+import { describePartPrice, type PartPrice } from '../lib/partPrice';
 
 interface PartCardProps {
   id: string;
   name: string;
   image?: string;
   searchQuery?: string;
-  price_usd?: number;
+  /**
+   * Where the price came from, not just the number (#156). A card cannot tell
+   * a catalogue estimate from a retailer's price by looking at a figure, so it
+   * is never handed one. Absent means no figure is shown.
+   */
+  price?: PartPrice;
   affiliateUrl?: string;
   selected: boolean;
   sponsored?: boolean;
@@ -54,10 +60,11 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price_usd, affiliateUrl, selected, sponsored, recommended, badge, specs, tier,
+  id, name, image, searchQuery, price, affiliateUrl, selected, sponsored, recommended, badge, specs, tier,
   showShopping = true, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
+  const priceLabel = showShopping ? describePartPrice(price) : null;
   return (
     <motion.div
       layout
@@ -88,7 +95,7 @@ export default function PartCard({
         style={{ zIndex: 0 }}
         onClick={() => onSelect(id)}
         aria-pressed={selected}
-        aria-label={`${name}${price_usd === undefined ? '' : `, $${price_usd.toLocaleString()}`}${selected ? ', selected' : ''}`}
+        aria-label={`${name}${priceLabel ? `, ${priceLabel.accessible}` : ''}${selected ? ', selected' : ''}`}
       />
 
       <div className="relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
@@ -167,9 +174,19 @@ export default function PartCard({
             entire block: an editorial price must not quietly become shopping
             or value evidence on a performance-comparison surface. */}
         {showShopping && <div className="flex items-center justify-between pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
-          <span className="text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
-            {price_usd === undefined ? 'Price at retailer' : `$${price_usd.toLocaleString()}`}
-          </span>
+          {/* The qualifier is in the words, not the colour: "Est." and the
+              source line say what kind of number this is, and the button's
+              accessible name above carries the same statement. */}
+          <div className="min-w-0" data-testid="part-price" data-price-provenance={priceLabel?.provenance}>
+            <span className="block whitespace-nowrap text-lg font-bold" style={{ color: 'var(--ff-text)' }}>
+              {priceLabel?.primary}
+            </span>
+            {priceLabel?.detail && (
+              <span className="block text-[10px] leading-tight" style={{ color: 'var(--ff-text-2)' }}>
+                {priceLabel.detail}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5" style={{ pointerEvents: 'auto' }}>
             {!affiliateUrl && (
               <a
