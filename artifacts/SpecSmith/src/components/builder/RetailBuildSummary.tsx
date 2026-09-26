@@ -24,6 +24,13 @@ import {
 import { useResolvedProductImage } from '../../hooks/useResolvedProductImage';
 
 interface Props {
+  /**
+   * Where the summary is shown. 'column' is the desktop sidebar and is the
+   * default, unchanged. 'sheet' is the mobile drawer, which has the full
+   * screen width for a name: there the whole merchant title is shown, wrapped
+   * to at most three lines, and each remove control is a 40px touch target.
+   */
+  layout?: 'column' | 'sheet';
   selectedParts: { category: RetailPartCategory; part: AffiliatePart }[];
   now: number;
   collapsed: boolean;
@@ -83,6 +90,7 @@ interface Props {
 const PLAN_ROWS_MAX_HEIGHT_PX = 276;
 
 export default function RetailBuildSummary({
+  layout = 'column',
   selectedParts,
   now,
   collapsed,
@@ -177,14 +185,18 @@ export default function RetailBuildSummary({
                         {CATEGORY_LABELS[category]}
                       </p>
                       {/* The EXACT selected SKU, by its own merchant title. */}
+                      {/* Sheet: the WHOLE title, clipped by CSS to three lines, so
+                          the words shown are the start of the real name rather
+                          than a string cut mid-word at 44 characters. Column:
+                          unchanged. */}
                       <p
-                        className="text-xs leading-snug"
+                        className={layout === 'sheet' ? 'line-clamp-3 break-words text-[13px] leading-snug' : 'text-xs leading-snug'}
                         style={{ color: 'var(--ff-text)' }}
                         title={part.name}
                         aria-label={part.name}
                         data-testid={`summary-title-${category}`}
                       >
-                        {shortenTitle(part.name, 44)}
+                        {layout === 'sheet' ? part.name : shortenTitle(part.name, 44)}
                       </p>
                       {view.status === 'fresh' ? (
                         <p className="text-xs font-semibold" style={{ color: 'var(--ff-text)' }} data-testid={`summary-price-${category}`}>
@@ -214,10 +226,13 @@ export default function RetailBuildSummary({
                       type="button"
                       onClick={() => onRemove(category)}
                       aria-label={`Remove ${CATEGORY_LABELS[category]}`}
-                      className="self-start p-1"
+                      data-testid={`summary-remove-${category}`}
+                      className={layout === 'sheet'
+                        ? '-mr-2 -mt-2 flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-lg'
+                        : 'self-start p-1'}
                       style={{ color: 'var(--ff-text-3)' }}
                     >
-                      <Trash2 size={13} aria-hidden="true" />
+                      <Trash2 size={layout === 'sheet' ? 15 : 13} aria-hidden="true" />
                     </button>
                   </li>
                 );

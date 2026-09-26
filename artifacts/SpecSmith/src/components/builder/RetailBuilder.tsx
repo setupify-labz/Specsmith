@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, ShoppingCart } from 'lucide-react';
 
 import type { AffiliatePart, RetailPartCategory } from '../../lib/retail/partCatalog';
@@ -7,6 +7,7 @@ import { WHITE_COLLECTION_NOTE, whiteBuildParts, whiteParts } from '../../lib/re
 import { CategoryChips, CategoryRail } from './CategoryNav';
 import RetailBuildSummary from './RetailBuildSummary';
 import RetailCatalog from './RetailCatalog';
+import { trapTab } from './dialogFocus';
 import type { ProductImageEntry } from '../../lib/retail/processedImages';
 import type { ImportedRecommendation } from '../../lib/retail/importedBuild';
 
@@ -67,6 +68,39 @@ export default function RetailBuilder({
   }, [requestToken, requestedCategory]);
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+
+  /**
+   * THE SHEET IS A DIALOG, for a keyboard as well as a finger.
+   *
+   * It covers the page, including the "View build" button that opened it, yet
+   * focus used to stay on that covered button: Tab walked on through the
+   * products underneath, Escape did nothing, and closing left focus wherever
+   * it happened to be. Opening now moves focus onto the sheet, Tab and
+   * Shift+Tab stay inside it, Escape closes it, and closing puts focus back on
+   * "View build", except when "choose current listing" closed it: that path
+   * sends focus to the category the shopper was taken to (focusAfterChoose).
+   */
+  const viewBuildRef = useRef<HTMLButtonElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusOnClose = useRef(true);
+  useEffect(() => {
+    if (!mobileSummaryOpen) return;
+    returnFocusOnClose.current = true;
+    sheetRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMobileSummaryOpen(false);
+      } else if (event.key === 'Tab') {
+        trapTab(event, sheetRef.current);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (returnFocusOnClose.current) viewBuildRef.current?.focus();
+    };
+  }, [mobileSummaryOpen]);
 
   /**
    * Where focus goes after a planned row sends the shopper to a category.
@@ -139,8 +173,9 @@ export default function RetailBuilder({
     [selection, byId],
   );
 
-  const summary = (
+  const renderSummary = (layout: 'column' | 'sheet') => (
     <RetailBuildSummary
+      layout={layout}
       selectedParts={selectedParts}
       now={clock}
       collapsed={summaryCollapsed}
@@ -160,6 +195,7 @@ export default function RetailBuilder({
       // listing" mean anything on the width where most of them will tap it.
       onChooseListing={(category) => {
         setActive(category as RetailPartCategory);
+        returnFocusOnClose.current = false;
         setMobileSummaryOpen(false);
         setFocusAfterChoose(category as RetailPartCategory);
       }}
@@ -272,16 +308,30 @@ export default function RetailBuilder({
         {/* 320px, widening to 360px — the review's 320-380 band. It was 288px,
             which cropped the longer merchant titles in the summary. */}
         <div className="hidden w-80 shrink-0 xl:block 2xl:w-[360px]">
-          <div className="sticky top-20">{summary}</div>
+          <div className="sticky top-20">{renderSummary('column')}</div>
         </div>
       </div>
 
-      {/* Mobile / tablet: the summary opens over the page from a sticky button,
-          so the build is always one tap away without stealing vertical space
-          from the products. */}
+      {/* Mobile / tablet: the summary opens over the page from a button fixed
+          to the bottom of the screen, so the build is always one tap away
+          without stealing vertical space from the products.
+
+          IT WAS NOT ACTUALLY ON SCREEN. The bar was \`sticky bottom-0\` inside a
+          wrapper holding nothing but the bar, so it had no room to stick and
+          sat after the last product, some 12,000px down at 390px. And the
+          analytics choice panel (fixed, bottom, z-100) covered the bottom of
+          the page and of the open sheet whenever it showed. The bar is now
+          fixed, and both the bar and the sheet stand on
+          --ff-bottom-overlay-height, which the panel publishes while it is
+          visible, so neither is ever underneath it. */}
       <div className="xl:hidden">
+        {/* Room for the fixed bar, so the last product can scroll clear of it. */}
+        <div aria-hidden="true" style={{ height: 'calc(76px + var(--ff-bottom-overlay-height, 0px))' }} />
         {mobileSummaryOpen && (
-          <div className="fixed inset-0 z-40 flex items-end" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div
+            className="fixed inset-x-0 top-0 z-40 flex items-end"
+            style={{ bottom: 'var(--ff-bottom-overlay-height, 0px)', background: 'rgba(0,0,0,0.55)' }}
+          >
             <button
               type="button"
               aria-label="Close build summary"
@@ -289,15 +339,38 @@ export default function RetailBuilder({
               className="absolute inset-0"
               onClick={() => setMobileSummaryOpen(false)}
             />
-            <div className="relative z-10 max-h-[80vh] w-full overflow-y-auto p-3">{summary}</div>
+            {/* Never taller than the room between the site header (64px, plus a 48px
+                strip of backdrop to tap) and whatever the bottom overlay
+                leaves: a sheet that grows under the header hides its own
+                "Your build" toggle and leaves nothing to tap to close it. */}
+            <div
+              ref={sheetRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Your build"
+              tabIndex={-1}
+              className="relative z-10 w-full overflow-y-auto p-3 outline-none"
+              data-testid="build-sheet"
+              style={{ maxHeight: 'min(80vh, calc(100dvh - 112px - var(--ff-bottom-overlay-height, 0px)))' }}
+            >
+              {renderSummary('sheet')}
+            </div>
           </div>
         )}
         <div
-          className="sticky bottom-0 z-30 -mx-4 mt-6 px-4 py-3"
-          style={{ background: 'var(--ff-nav-bg)', borderTop: '1px solid var(--ff-border)' }}
+          className="fixed inset-x-0 z-30 px-4 py-3"
+          data-testid="view-build-bar"
+          style={{
+            bottom: 'var(--ff-bottom-overlay-height, 0px)',
+            background: 'var(--ff-nav-bg)',
+            borderTop: '1px solid var(--ff-border)',
+          }}
         >
           <button
+            ref={viewBuildRef}
             type="button"
+            aria-haspopup="dialog"
+            aria-expanded={mobileSummaryOpen}
             onClick={() => setMobileSummaryOpen((open) => !open)}
             data-testid="view-build"
             className="ff-accent-control flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ANALYTICS_CONSENT_KEY,
   ANALYTICS_CONSENT_RESET_EVENT,
@@ -54,6 +54,30 @@ function sendTrackedError(payload: Record<string, unknown>) {
 export default function KrystalViewAnalytics() {
   const [consent, setConsent] = useState<Consent | 'loading'>('loading');
   const [lastProductEvent, setLastProductEvent] = useState<ProductEventDetail | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * While the choice panel is on screen it covers the bottom of the viewport.
+   * It says so: --ff-bottom-overlay-height on <html> is the space it takes up
+   * (its height, its 16px offset and an 8px gap), so anything fixed to the
+   * bottom — the mobile Builder's "View build" bar and build sheet — can stand
+   * above it instead of underneath it. Cleared the moment the panel goes.
+   */
+  useEffect(() => {
+    const panel = panelRef.current;
+    const root = document.documentElement;
+    if (consent !== null || !panel) return;
+    const publish = () => root.style.setProperty('--ff-bottom-overlay-height', `${Math.ceil(panel.getBoundingClientRect().height) + 24}px`);
+    publish();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish);
+    observer?.observe(panel);
+    window.addEventListener('resize', publish);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', publish);
+      root.style.removeProperty('--ff-bottom-overlay-height');
+    };
+  }, [consent]);
 
   useEffect(() => {
     try {
@@ -188,6 +212,7 @@ export default function KrystalViewAnalytics() {
 
   return (
     <div
+      ref={panelRef}
       role="dialog"
       aria-label="Analytics privacy choice"
       aria-live="polite"
