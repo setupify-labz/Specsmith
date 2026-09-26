@@ -56,8 +56,8 @@ async function main(): Promise<number> {
   // THE GATE IS RUN, NOT DESCRIBED. It is handed the receipt the compositor
   // issued for this master — the files it actually consumed — so the refusal
   // printed below is a real verdict on real bytes and metadata. A draft has no
-  // QC verdict, rights evidence or inspection, so those bindings are empty and
-  // the gate refuses them too.
+  // QC verdict, rights evidence, listening record or inspection, so those are
+  // empty or absent and the gate refuses them too.
   const receipt = result.master ? renderReceiptFor(result.master) : undefined;
   const verdict = evaluatePublishGate({
     receipt: receipt as RenderReceipt,

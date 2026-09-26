@@ -260,6 +260,9 @@ jobs:
             || { echo "::error::The publish gate did not detect the silent stand-in bed."; exit 1; }
           grep -q "placeholder-hook" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
             || { echo "::error::The publish gate did not detect the placeholder hook card."; exit 1; }
+          # No one has listened to a draft, so the gate must say so (#157).
+          grep -q "audio-not-listened" "${RUNNER_TEMP}/e2e/storyboard-draft.log" \
+            || { echo "::error::The publish gate did not refuse a draft no one has listened to."; exit 1; }
 
       - name: Run the offline end-to-end content pipeline (a refusal is the pass)
         working-directory: artifacts/SpecSmith
@@ -286,19 +289,27 @@ jobs:
             exit 1
           fi
 
-          # TWO DOCUMENTED STOPS, EITHER OF WHICH IS CORRECT.
+          # THREE DOCUMENTED STOPS, ANY OF WHICH IS CORRECT.
           #
           #  1. The sha256-bound quality gate. A freshly rendered master has
           #     no committed inspection covering those exact bytes, and the
           #     render is not byte-reproducible across machines — see this
           #     file's header. This stop comes FIRST, so on most runners the
           #     publishing step is never reached at all.
-          #  2. The artifact gate refusing to build a request from fixtures.
+          #  2. The quality review holding a render that DOES match, because
+          #     the committed evidence records no full listen of it (#157).
+          #  3. The artifact gate refusing to build a request from fixtures.
           #
           # An earlier draft of this step demanded (2) specifically, and would
           # have failed the job on the perfectly correct (1).
           if grep -q "Evidence check: NO MATCH" "${RUNNER_TEMP}/e2e/pipeline.log"; then
             echo "Stopped at the evidence-binding gate (awaiting-review): EXPECTED on this runner. The fail-closed gate is working."
+            exit 0
+          fi
+          if grep -q "Quality review did not pass" "${RUNNER_TEMP}/e2e/pipeline.log"; then
+            grep -q "audio-not-listened" "${RUNNER_TEMP}/e2e/pipeline.log" \
+              || { echo "::error::The quality review held, but not because no one has listened."; exit 1; }
+            echo "The quality review held a matching render no one has listened to: EXPECTED."
             exit 0
           fi
           if grep -q "Artifact publish gate REFUSED this offline render" "${RUNNER_TEMP}/e2e/pipeline.log"; then
@@ -307,7 +318,7 @@ jobs:
             echo "The artifact gate refused a fixture-built master: EXPECTED, and the point of the gate."
             exit 0
           fi
-          echo "Pipeline failed for a reason OTHER than the two documented stops — treating this as a real failure."
+          echo "Pipeline failed for a reason OTHER than the three documented stops — treating this as a real failure."
           exit "${code}"
 
       - name: Extract two frames from the rendered MP4, if one was produced

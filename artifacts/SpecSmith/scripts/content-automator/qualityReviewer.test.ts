@@ -14,10 +14,13 @@ import {
   RecordedRenderEvidenceError,
   type RenderedVideoObservation,
   type RecordedRenderEvidence,
+  type ReviewOptions,
 } from "./qualityReviewer.ts";
 import type { ContentIdea } from "./types.ts";
 import type { RenderReceipt } from "./motionCompositor.ts";
-import { renderControl, type ControlRender } from "./publishBoundary.testkit.ts";
+import { constructedTestListen, renderControl, type ControlRender } from "./publishBoundary.testkit.ts";
+import { isIssuedListeningReview, ListeningReviewError, recordListeningReview } from "./listeningReview.ts";
+import { PRICE_FRESHNESS_MS } from "../../src/lib/retail/partPricing.ts";
 
 const idea: ContentIdea = {
   id: "builder-budget-challenge",
@@ -68,8 +71,26 @@ const scripts = buildScriptStoryboardPackage(idea, content);
 const production = buildProductionPlanPackage(scripts);
 const request = buildQualityReviewRequest(content, scripts, production, "youtube-shorts");
 
-/** Stand-in digest for the reviewed master; only its shape matters here. */
-const MASTER_SHA256 = "b".repeat(64);
+/**
+ * THE REVIEWED MASTER IS A REAL RENDER. A pass now needs a listening record
+ * bound to a genuine compositor receipt, so the clean path reviews a tiny
+ * fixture render (QC judges what was watched and heard; the publish gate, not
+ * QC, refuses fixtures). Its listen is `constructedTestListen`: built for the
+ * test, in memory, and says so. No one listened.
+ */
+const REVIEWED: ControlRender = await renderControl({ fixtureNarration: true });
+afterAll(async () => { await rm(REVIEWED.dir, { recursive: true, force: true }); });
+const MASTER_SHA256 = REVIEWED.receipt.masterSha256;
+const NOW = new Date("2026-09-20T12:00:00.000Z");
+
+/** Reviews against the real receipt with a bound full listen, unless overridden. */
+function review(observation: RenderedVideoObservation, options: ReviewOptions = {}) {
+  return reviewRenderedVideo(request, observation, REVIEWED.receipt, {
+    listeningReview: constructedTestListen(REVIEWED.receipt),
+    now: NOW,
+    ...options,
+  });
+}
 
 function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): RenderedVideoObservation {
   return {
@@ -91,10 +112,12 @@ function cleanObservation(overrides: Partial<RenderedVideoObservation> = {}): Re
     observedCtaRoute: "/builder",
     claims: [
       {
-        text: "The current build price shown is verified from the Builder state.",
+        text: "The build total shown is SpecSmith's catalogue estimate from the Builder state.",
         kind: "price",
         verification: "verified",
         evidenceRefs: ["builder-state:build-1"],
+        displayLabel: "Est. $1,249",
+        priceProvenance: { kind: "catalogue-estimate" },
       },
       {
         text: "The upgrade option is compatible with the selected build.",
@@ -123,7 +146,7 @@ describe("automated quality reviewer", () => {
   });
 
   it("passes a strong render and marks it publishable", () => {
-    const result = reviewRenderedVideo(request, cleanObservation());
+    const result = review(cleanObservation());
     expect(result.decision).toBe("pass");
     expect(result.publishable).toBe(true);
     expect(result.overallScore).toBeGreaterThanOrEqual(8.5);
@@ -131,7 +154,7 @@ describe("automated quality reviewer", () => {
   });
 
   it("holds uncertain factual claims instead of guessing or auto-publishing", () => {
-    const result = reviewRenderedVideo(request, cleanObservation({
+    const result = review(cleanObservation({
       claims: [{
         text: "This upgrade is 17% faster.",
         kind: "other",
@@ -145,7 +168,7 @@ describe("automated quality reviewer", () => {
   });
 
   it("forces a full regeneration for fake SpecSmith UI, wrong CTA, or dangerous FPS labeling", () => {
-    const result = reviewRenderedVideo(request, cleanObservation({
+    const result = review(cleanObservation({
       observedCtaRoute: "/",
       claims: [{
         text: "Expected game performance",
@@ -164,7 +187,7 @@ describe("automated quality reviewer", () => {
   });
 
   it("targets only repairable caption/audio tasks when the rest of the video is strong", () => {
-    const result = reviewRenderedVideo(request, cleanObservation({
+    const result = review(cleanObservation({
       captionsLegibilityScore: 6.5,
       captionSafeAreaRatio: 0.88,
       audioClarityScore: 7,
@@ -177,13 +200,13 @@ describe("automated quality reviewer", () => {
   });
 
   it("rejects AI-slop-dominant visuals even if the other numeric scores look good", () => {
-    const result = reviewRenderedVideo(request, cleanObservation({ genericAiBrollRatio: 0.75 }));
+    const result = review(cleanObservation({ genericAiBrollRatio: 0.75 }));
     expect(result.decision).toBe("regenerate-full");
     expect(result.issues.some((issue) => issue.code === "ai-slop-dominant")).toBe(true);
   });
 
   it("prevents an internal SpecSmith score from masquerading as measured game FPS", () => {
-    const result = reviewRenderedVideo(request, cleanObservation({
+    const result = review(cleanObservation({
       claims: [{
         text: "SpecSmith benchmark score 285",
         kind: "specsmith-score",
@@ -230,7 +253,7 @@ describe("recorded render evidence binds an observation to one exact render's by
     // The downstream review gate then runs exactly as it would with any
     // other observation — evidence-binding only decides whether the
     // observation may be used at all, not how it is scored.
-    const result = reviewRenderedVideo(request, { ...match.observation, packageId: content.packageId, platform: "youtube-shorts" });
+    const result = review({ ...match.observation, packageId: content.packageId, platform: "youtube-shorts" });
     expect(result.publishable).toBe(true);
   });
 
@@ -351,5 +374,245 @@ describe("the review verdict is bound to the genuine render receipt", () => {
       cleanObservation({ masterSha256: control.receipt.masterSha256 }),
       { ...control.receipt } as RenderReceipt,
     )).toThrow(/did not issue/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #157: PRICE PROVENANCE. Every price on screen says what kind of number it
+// is, and its on-screen wording must be one that kind supports. Wording is
+// judged on the display label only, never the reviewer's prose.
+// ---------------------------------------------------------------------------
+describe("price claims carry a provenance, and the label must match it", () => {
+  const OBSERVED_AT = new Date(NOW.getTime() - 60 * 60 * 1000).toISOString();
+  const price = (over: Partial<RenderedVideoObservation["claims"][number]>) => ({
+    text: "The RTX 4070 SUPER price shown.",
+    kind: "price" as const,
+    verification: "verified" as const,
+    evidenceRefs: ["retail-parts:newegg-rtx-4070-super"],
+    ...over,
+  });
+  const observation = (claim: RenderedVideoObservation["claims"][number]) => ({
+    ...cleanObservation(),
+    claims: [claim],
+  });
+  const codes = (claim: RenderedVideoObservation["claims"][number]) =>
+    review(observation(claim)).issues.map((issue) => issue.code);
+  const RETAILER = {
+    kind: "retailer-observation" as const,
+    retailer: "Newegg",
+    observedAt: OBSERVED_AT,
+    evidenceRef: "retail-parts:newegg-rtx-4070-super",
+  };
+
+  it("holds a price claim with no provenance, however verified it looks", () => {
+    const result = review(observation(price({ displayLabel: "$599" })));
+    expect(result.issues.map((issue) => issue.code)).toContain("price-provenance-missing");
+    expect(result.decision).toBe("hold-for-human-review");
+    expect(result.publishable).toBe(false);
+  });
+
+  it("holds a provenance outside the closed set, MSRP included", () => {
+    const claim = price({ displayLabel: "MSRP $599", priceProvenance: { kind: "manufacturer-msrp" } as never });
+    expect(codes(claim)).toContain("price-provenance-missing");
+  });
+
+  it("blocks a catalogue estimate shown without an estimate label", () => {
+    const result = review(observation(price({ displayLabel: "$599", priceProvenance: { kind: "catalogue-estimate" } })));
+    expect(result.issues.map((issue) => issue.code)).toContain("price-estimate-unlabeled");
+    expect(result.publishable).toBe(false);
+  });
+
+  it("passes a catalogue estimate labelled the way the site labels it", () => {
+    for (const label of ["Est. $599", "Estimated price: $599", "SpecSmith estimate $599"]) {
+      const result = review(observation(price({ displayLabel: label, priceProvenance: { kind: "catalogue-estimate" } })));
+      expect(result.issues.filter((issue) => issue.code.startsWith("price")), label).toEqual([]);
+      expect(result.publishable, label).toBe(true);
+    }
+  });
+
+  it("never lets an estimate be called live, real or current", () => {
+    for (const label of ["Est. live price $599", "Est. real price $599", "Est. current price $599", "Est. today's price $599"]) {
+      const claim = price({ displayLabel: label, priceProvenance: { kind: "catalogue-estimate" } });
+      expect(codes(claim), label).toContain("price-live-wording-not-observed");
+    }
+  });
+
+  it("judges wording on the on-screen label, not the reviewer's accurate prose (the #92 lesson)", () => {
+    const claim = price({
+      text: "SpecSmith catalogue estimate; not live or verified current retailer prices.",
+      displayLabel: "Est. $599",
+      priceProvenance: { kind: "catalogue-estimate" },
+    });
+    expect(codes(claim).filter((code) => code.startsWith("price"))).toEqual([]);
+  });
+
+  it("blocks an unlabelled fixture price, and never publishes a labelled one", () => {
+    expect(codes(price({ displayLabel: "$599", priceProvenance: { kind: "fixture" } })))
+      .toEqual(expect.arrayContaining(["price-fixture-unlabeled", "fixture-price"]));
+    const labelled = review(observation(price({ displayLabel: "Sample price $599", priceProvenance: { kind: "fixture" } })));
+    const labelledCodes = labelled.issues.map((issue) => issue.code);
+    expect(labelledCodes).toContain("fixture-price");
+    expect(labelledCodes).not.toContain("price-fixture-unlabeled");
+    expect(labelled.publishable).toBe(false);
+  });
+
+  it("never lets a fixture be called live", () => {
+    expect(codes(price({ displayLabel: "Sample live price $599", priceProvenance: { kind: "fixture" } })))
+      .toContain("price-live-wording-not-observed");
+  });
+
+  it("lets a complete, fresh retailer observation be called live", () => {
+    const result = review(observation(price({ displayLabel: "Live at Newegg: $599", priceProvenance: RETAILER })));
+    expect(result.issues.filter((issue) => issue.code.startsWith("price") || issue.code.includes("stale"))).toEqual([]);
+    expect(result.publishable).toBe(true);
+  });
+
+  it("holds a retailer observation missing its retailer, time or evidence", () => {
+    const incomplete = [
+      { ...RETAILER, retailer: "" },
+      { ...RETAILER, observedAt: "" },
+      { ...RETAILER, observedAt: "yesterday" },
+      { ...RETAILER, observedAt: new Date(NOW.getTime() + 60 * 60 * 1000).toISOString() },
+      { ...RETAILER, evidenceRef: "" },
+      { ...RETAILER, evidenceRef: "retail-parts:some-other-listing" },
+    ];
+    for (const provenance of incomplete) {
+      const result = review(observation(price({ displayLabel: "$599 at Newegg", priceProvenance: provenance })));
+      expect(result.issues.map((issue) => issue.code), JSON.stringify(provenance)).toContain("price-observation-incomplete");
+      expect(result.decision).toBe("hold-for-human-review");
+    }
+  });
+
+  it("blocks a stale observation described as live, and allows it without live wording", () => {
+    const stale = { ...RETAILER, observedAt: new Date(NOW.getTime() - PRICE_FRESHNESS_MS - 60_000).toISOString() };
+    expect(codes(price({ displayLabel: "Live at Newegg: $599", priceProvenance: stale }))).toContain("stale-price-presented-as-live");
+    const dated = review(observation(price({ displayLabel: "$599 at Newegg on Sep 18", priceProvenance: stale })));
+    expect(dated.issues.filter((issue) => issue.code.startsWith("price") || issue.code.includes("stale"))).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #157: HOW THE AUDIO WAS REVIEWED. A passing audio verdict needs an issued
+// record that someone listened to the whole of these exact bytes under this
+// exact receipt. A score or signal statistics hold; they never pass.
+// ---------------------------------------------------------------------------
+describe("audio passes only with a full listen bound to this receipt and master", () => {
+  let other: ControlRender;
+  beforeAll(async () => {
+    other = await renderControl({ fixtureNarration: true, fixtureHook: true });
+  }, 120_000);
+  afterAll(async () => {
+    if (other) await rm(other.dir, { recursive: true, force: true });
+  });
+
+  const bound = (receipt: RenderReceipt, over: Record<string, unknown> = {}) => ({
+    method: "listened-full",
+    reviewedBy: "constructed-test-control (no one listened)",
+    reviewedAt: "2026-09-20T10:00:00.000Z",
+    masterSha256: receipt.masterSha256,
+    receiptDigest: receipt.digest,
+    notes: ["CONSTRUCTED FOR A TEST: no one listened to these temporary bytes."],
+    ...over,
+  });
+
+  it("holds a render with perfect audio scores when no one has listened", () => {
+    const result = review(cleanObservation({ audioClarityScore: 10 }), { listeningReview: undefined });
+    expect(result.issues.map((issue) => issue.code)).toContain("audio-not-listened");
+    expect(result.decision).toBe("hold-for-human-review");
+    expect(result.publishable).toBe(false);
+    expect(result.audioReview).toBeUndefined();
+  });
+
+  it("holds signal-analysis-only and not-reviewed; neither counts as a listen", () => {
+    for (const method of ["signal-analysis-only", "not-reviewed"] as const) {
+      const result = review(cleanObservation({ audioClarityScore: 10 }), {
+        listeningReview: constructedTestListen(REVIEWED.receipt, method),
+      });
+      expect(result.issues.map((issue) => issue.code), method).toContain("audio-not-listened");
+      expect(result.decision, method).toBe("hold-for-human-review");
+      expect(result.publishable, method).toBe(false);
+    }
+  });
+
+  it("records the bound listen on the verdict for the publish gate to re-check", () => {
+    const listen = constructedTestListen(REVIEWED.receipt);
+    const result = review(cleanObservation(), { listeningReview: listen });
+    expect(result.audioReview).toBe(listen);
+    expect(result.publishable).toBe(true);
+  });
+
+  it("refuses a listen to another render's bytes (a replayed approval)", () => {
+    const result = review(cleanObservation(), { listeningReview: constructedTestListen(other.receipt) });
+    expect(result.issues.map((issue) => issue.code)).toContain("stale-audio-review");
+    expect(result.publishable).toBe(false);
+    expect(result.audioReview).toBeUndefined();
+  });
+
+  it("refuses a listen when the review is bound to no receipt at all", () => {
+    const result = reviewRenderedVideo(request, cleanObservation(), undefined, {
+      listeningReview: constructedTestListen(REVIEWED.receipt), now: NOW,
+    });
+    expect(result.issues.map((issue) => issue.code)).toContain("stale-audio-review");
+    expect(result.publishable).toBe(false);
+  });
+
+  it("refuses a hand-written listening record outright", () => {
+    const forged = { ...constructedTestListen(REVIEWED.receipt) };
+    expect(() => review(cleanObservation(), { listeningReview: forged as never })).toThrow(/did not issue/);
+  });
+
+  it("will not issue a listen for another master, another receipt, or a copied receipt", () => {
+    const receipt = REVIEWED.receipt;
+    expect(() => recordListeningReview(receipt, bound(receipt, { masterSha256: other.receipt.masterSha256 }), NOW))
+      .toThrow(/not this master/);
+    expect(() => recordListeningReview(receipt, bound(receipt, { receiptDigest: other.receipt.digest }), NOW))
+      .toThrow(/not this receipt/);
+    expect(() => recordListeningReview({ ...receipt } as RenderReceipt, bound(receipt), NOW))
+      .toThrow(/compositor issued/);
+  });
+
+  it("will not issue a malformed listen", () => {
+    const receipt = REVIEWED.receipt;
+    const malformed: Array<[Record<string, unknown>, RegExp]> = [
+      [bound(receipt, { method: "listened-partly" }), /not one of/],
+      [bound(receipt, { method: undefined }), /not one of/],
+      [bound(receipt, { reviewedBy: " " }), /reviewedBy/],
+      [bound(receipt, { reviewedAt: "soon" }), /reviewedAt/],
+      [bound(receipt, { reviewedAt: "2026-12-01T00:00:00.000Z" }), /future/],
+      [bound(receipt, { notes: [] }), /what was heard/],
+      [bound(receipt, { notes: "listened" }), /notes/],
+      [bound(receipt, { masterSha256: "not-a-digest" }), /masterSha256/],
+    ];
+    for (const [record, message] of malformed) {
+      expect(() => recordListeningReview(receipt, record, NOW), JSON.stringify(record)).toThrow(ListeningReviewError);
+      expect(() => recordListeningReview(receipt, record, NOW)).toThrow(message);
+    }
+  });
+
+  it("an issued listen is frozen and cannot be edited into a full listen", () => {
+    const listen = constructedTestListen(REVIEWED.receipt, "signal-analysis-only");
+    expect(Object.isFrozen(listen)).toBe(true);
+    expect(() => { (listen as { method: string }).method = "listened-full"; }).toThrow();
+    expect(isIssuedListeningReview(listen)).toBe(true);
+    expect(isIssuedListeningReview(JSON.parse(JSON.stringify(listen)))).toBe(false);
+  });
+
+  it("the committed offline evidence records no listen, so even a matching render would hold", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const raw = JSON.parse(readFileSync(join(here, "fixtures", "mp4-smoke-offline-observation.json"), "utf8"));
+    const evidence = parseRecordedRenderEvidence(raw);
+    // Its notes describe the narration, but no full listen of those bytes is
+    // recorded, and none is invented here.
+    expect(evidence.audioReview).toBeUndefined();
+  });
+
+  it("parses a recorded listen's shape and refuses a non-object", () => {
+    const base = {
+      masterSha256: MASTER_SHA256, reviewedBy: "x", reviewedAt: "2026-09-02T18:05:00.000Z", notes: [],
+      observation: cleanObservation(),
+    };
+    expect(parseRecordedRenderEvidence({ ...base, audioReview: bound(REVIEWED.receipt) }).audioReview?.method).toBe("listened-full");
+    expect(() => parseRecordedRenderEvidence({ ...base, audioReview: "listened-full" })).toThrow(/audioReview/);
+    expect(() => parseRecordedRenderEvidence({ ...base, audioReview: null })).toThrow(/audioReview/);
   });
 });

@@ -391,6 +391,9 @@ function assertPublishGate(
       masterSha256: gate.assetBundle.approvedMasterSha256 ?? "",
       receiptDigest: gate.assetBundle.approvedReceiptDigest ?? "",
     },
+    // Read from the QC verdict, which recorded the issued listen it was given;
+    // never a separate argument a caller could fill in.
+    audioReview: gate.qualityReview.audioReview,
     inspection: gate.inspection,
     paidProviderApproval: gate.paidProviderApproval,
   });

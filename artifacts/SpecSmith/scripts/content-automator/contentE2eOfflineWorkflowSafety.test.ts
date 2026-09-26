@@ -127,7 +127,11 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     // `grep -v` or a negated check would have failed OPEN and quietly waved
     // a fixture render through. Pin the strings to the source.
     const gateSource = fs.readFileSync(path.join(here, 'publishGate.ts'), 'utf-8');
-    const emitted = new Set([...gateSource.matchAll(/code:\s*"([a-z-]+)"/g)].map((match) => match[1]));
+    // Both ways the gate emits a code: a `{ code: "..." }` literal and its
+    // `refuse("...", detail)` helper.
+    const emitted = new Set(
+      [...gateSource.matchAll(/(?:code:\s*|\brefuse\(\s*)"([a-z-]+)"/g)].map((match) => match[1]),
+    );
     expect(emitted.size, 'no refusal codes found in publishGate.ts').toBeGreaterThan(5);
 
     // Only greps aimed at a log file this workflow writes — not the ffmpeg
