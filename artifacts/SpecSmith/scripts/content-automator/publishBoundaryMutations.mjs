@@ -288,17 +288,10 @@ const MUTATIONS = [
   },
   {
     id: "P2d",
-    defect: "#157 price: an observation without an evidence reference is complete",
+    defect: "#157 price: an observation with no evidence reference, or one the claim does not cite, is complete",
     file: "qualityReviewer.ts",
-    find: "    if (!isNonEmptyString(known.evidenceRef)) problems.push(\"no evidence reference\");\n    else if",
-    replace: "    if (false) problems.push(\"no evidence reference\");\n    else if",
-  },
-  {
-    id: "P2e",
-    defect: "#157 price: an observation citing evidence the claim does not carry is complete",
-    file: "qualityReviewer.ts",
-    find: "    else if (!claim.evidenceRefs.includes(known.evidenceRef)) problems.push(\"an evidence reference the claim does not cite\");\n",
-    replace: "",
+    find: "    if (!isNonEmptyString(known.evidenceRef) || !claim.evidenceRefs.includes(known.evidenceRef)) {",
+    replace: "    if (false) {",
   },
   {
     id: "P3",

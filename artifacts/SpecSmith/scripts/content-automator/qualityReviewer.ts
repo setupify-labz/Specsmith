@@ -421,8 +421,10 @@ function checkPriceClaim(claim: ObservedClaim, now: Date, taskIds: string[], iss
     const observedAt = isNonEmptyString(known.observedAt) ? new Date(known.observedAt) : undefined;
     if (!observedAt || Number.isNaN(observedAt.getTime())) problems.push("no valid observation time");
     else if (observedAt.getTime() > now.getTime() + 60_000) problems.push("an observation time in the future");
-    if (!isNonEmptyString(known.evidenceRef)) problems.push("no evidence reference");
-    else if (!claim.evidenceRefs.includes(known.evidenceRef)) problems.push("an evidence reference the claim does not cite");
+    // One check covers both: an absent reference is never one the claim cites.
+    if (!isNonEmptyString(known.evidenceRef) || !claim.evidenceRefs.includes(known.evidenceRef)) {
+      problems.push("no evidence reference the claim itself cites");
+    }
     if (problems.length > 0) {
       addIssue(issues, PRICE_ISSUE(
         "price-observation-incomplete", "error",
