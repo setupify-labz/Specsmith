@@ -19,6 +19,7 @@ import type { PublicationAssetBundleResult } from "./productVisualAssets.ts";
 import type { VideoPlatform } from "./types.ts";
 import {
   CONTROL_LIAM_VOICE_ID,
+  constructedTestListen,
   contentPackage,
   dimensions,
   fingerprint,
@@ -59,6 +60,7 @@ function quality(platform: VideoPlatform, publishable = true): QualityReviewResu
     regenerateTaskIds: [],
     reviewedMediaSha256: MASTER_SHA256,
     reviewedReceiptDigest: RECEIPT_DIGEST,
+    audioReview: constructedTestListen(control.receipt),
   };
 }
 

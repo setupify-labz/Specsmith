@@ -28,6 +28,7 @@ import { createCaptionRenderAdapter } from "./captionRender.ts";
 import { createElevenLabsTtsAdapter, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
 import { uploadAndVerifyMaster, type HostedMaster, type MasterUploader } from "./hostedMaster.ts";
 import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
+import { recordListeningReview, type ListeningReview } from "./listeningReview.ts";
 import { CONTROL_HOST_ORIGIN, fakeNetwork } from "./publishBoundary.fakeNetwork.ts";
 import { createLocalFixtureTtsAdapter } from "./localFixtureTts.ts";
 import {
@@ -268,6 +269,26 @@ export const substitutingUploader: MasterUploader = {
 };
 
 /** Uploads a control master to the controlled host and verifies it. */
+/**
+ * A listening record CONSTRUCTED for a test, never a real one.
+ *
+ * No one listened. The bytes are a temporary test render, deleted when the
+ * suite ends, and this record exists only in memory. It is here to prove the
+ * gate CAN be satisfied by an issued, bound full listen, the same way the
+ * constructed inspection records in these suites do. It is never written to
+ * disk, and a record like it must never be committed for a real master.
+ */
+export function constructedTestListen(receipt: RenderReceipt, method: ListeningReview["method"] = "listened-full"): ListeningReview {
+  return recordListeningReview(receipt, {
+    method,
+    reviewedBy: "constructed-test-control (no one listened)",
+    reviewedAt: "2026-09-20T10:00:00.000Z",
+    masterSha256: receipt.masterSha256,
+    receiptDigest: receipt.digest,
+    notes: ["CONSTRUCTED FOR A TEST: no one listened to these temporary bytes."],
+  }, new Date("2026-09-20T10:05:00.000Z"));
+}
+
 export function hostControl(control: ControlRender): Promise<HostedMaster> {
   return uploadAndVerifyMaster(control.receipt, controlUploader);
 }

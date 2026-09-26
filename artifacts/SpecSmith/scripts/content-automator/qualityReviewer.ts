@@ -1,4 +1,6 @@
 import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
+import { isIssuedListeningReview, type ListeningReview, type ListeningReviewRecord } from "./listeningReview.ts";
+import { PRICE_FRESHNESS_MS } from "../../src/lib/retail/partPricing.ts";
 import type {
   ContentPackage,
   PlatformProductionPlan,
@@ -58,12 +60,56 @@ export interface QualityReviewRequest {
   hardBlockers: string[];
 }
 
+/**
+ * WHAT KIND OF NUMBER A PRICE ON SCREEN IS (#157). A closed set, one entry per
+ * source of prices SpecSmith actually has:
+ *
+ *  - "retailer-observation": a merchant's listing read at a recorded instant.
+ *    public/data/retail-parts.json carries exactly this for every listing
+ *    (merchant, fetchedAt, salePrice/retailPrice). The ONLY kind that may be
+ *    called live, real or current, and only while it is within the retail
+ *    builder's own freshness window (PRICE_FRESHNESS_MS). It must name the
+ *    retailer, when it was observed, and the evidence it came from.
+ *  - "catalogue-estimate": SpecSmith's editorial figure, the `price_usd` in
+ *    src/data/{gpus,cpus,components,peripherals}.json. The site shows these as
+ *    "Est. $X" (src/lib/partPrice.ts); a video must label them the same way.
+ *  - "fixture": a stand-in value from an offline or test render. It must say
+ *    so on screen, and it never publishes.
+ *
+ * Deliberately NOT in the set: a manufacturer MSRP. No data source in this
+ * repository records one, so there is nothing to justify the category; a claim
+ * that says "MSRP" has no provenance here and is held, like any other price
+ * whose provenance is missing. Add the kind together with its source.
+ */
+export const PRICE_PROVENANCE_KINDS = ["retailer-observation", "catalogue-estimate", "fixture"] as const;
+export type PriceProvenanceKind = (typeof PRICE_PROVENANCE_KINDS)[number];
+
+export type PriceProvenance =
+  | {
+      kind: "retailer-observation";
+      /** The merchant whose listing was read. */
+      retailer: string;
+      /** ISO-8601 time the listing was read. */
+      observedAt: string;
+      /** The evidence the figure came from; must also be one of the claim's evidenceRefs. */
+      evidenceRef: string;
+    }
+  | { kind: "catalogue-estimate" }
+  | { kind: "fixture" };
+
 export interface ObservedClaim {
   text: string;
   kind: ClaimKind;
   verification: "verified" | "unverified" | "contradicted";
   evidenceRefs: string[];
+  /**
+   * The words shown on screen with the claim. Wording rules are judged on this
+   * label ONLY, never on `text`: `text` is the reviewer's description, which
+   * may accurately say "not a live price" without the video saying anything.
+   */
   displayLabel?: string;
+  /** Required for every `kind: "price"` claim. Missing or unknown holds. */
+  priceProvenance?: PriceProvenance;
 }
 
 export interface ObservedUiShot {
@@ -116,6 +162,12 @@ export interface QualityReviewResult {
    * closed rather than open.
    */
   reviewedReceiptDigest?: string;
+  /**
+   * The issued listening record for this master and receipt, when one was
+   * supplied and bound. The publish gate re-checks it: it must be issued,
+   * say "listened-full", and name the exact master and receipt.
+   */
+  audioReview?: ListeningReview;
   decision: ReviewDecision;
   publishable: boolean;
   overallScore: number;
@@ -155,6 +207,12 @@ export interface RecordedRenderEvidence {
   notes: string[];
   /** The observation that inspection produced. */
   observation: RenderedVideoObservation;
+  /**
+   * How the audio was reviewed, when it was recorded. It is only a claim until
+   * `recordListeningReview` binds it to the genuine receipt for this master;
+   * absent means no one is recorded as having listened.
+   */
+  audioReview?: ListeningReviewRecord;
 }
 
 export type RenderEvidenceMatch =
@@ -236,12 +294,18 @@ export function parseRecordedRenderEvidence(input: unknown): RecordedRenderEvide
   if (!isNonEmptyString(observation.masterSha256)) {
     throw new RecordedRenderEvidenceError("Recorded render evidence's observation is missing masterSha256.");
   }
+  // Only its shape is checked here. Whether it is a real listen to THESE
+  // bytes is decided by recordListeningReview against the genuine receipt.
+  if (raw.audioReview !== undefined && (raw.audioReview === null || typeof raw.audioReview !== "object")) {
+    throw new RecordedRenderEvidenceError("Recorded render evidence audioReview must be an object when present.");
+  }
   return {
     masterSha256: requireSha256(raw.masterSha256, "evidence.masterSha256"),
     reviewedBy: raw.reviewedBy,
     reviewedAt: raw.reviewedAt,
     notes: raw.notes as string[],
     observation: raw.observation as RenderedVideoObservation,
+    ...(raw.audioReview === undefined ? {} : { audioReview: raw.audioReview as ListeningReviewRecord }),
   };
 }
 
@@ -322,8 +386,100 @@ function addIssue(issues: ReviewIssue[], issue: ReviewIssue): void {
   issues.push(issue);
 }
 
-function checkClaims(request: QualityReviewRequest, observation: RenderedVideoObservation, issues: ReviewIssue[]): void {
+/** Wording that tells a viewer a price is live. Judged on the on-screen label only. */
+const LIVE_PRICE_WORDING = /\b(live|real|actual|current|currently|today'?s|up[- ]to[- ]date|right now)\b/i;
+/** "Est. $499", "Estimated price", "SpecSmith estimate". */
+const ESTIMATE_LABEL = /\best(?:\.|imated?\b)/i;
+const FIXTURE_LABEL = /\b(fixture|sample|example|placeholder)\b/i;
+
+const PRICE_ISSUE = (code: string, severity: ReviewSeverity, message: string, taskIds: string[]): ReviewIssue => ({
+  code, severity, dimension: "factual-accuracy", message, taskIds,
+});
+
+/**
+ * Fails closed on every price claim whose on-screen wording its provenance
+ * does not support. Returns nothing; every problem becomes an issue.
+ */
+function checkPriceClaim(claim: ObservedClaim, now: Date, taskIds: string[], issues: ReviewIssue[]): void {
+  const provenance = claim.priceProvenance as { kind?: unknown } | undefined;
+  const label = claim.displayLabel ?? "";
+  if (!provenance || typeof provenance !== "object"
+      || !(PRICE_PROVENANCE_KINDS as readonly unknown[]).includes(provenance.kind)) {
+    addIssue(issues, PRICE_ISSUE(
+      "price-provenance-missing", "error",
+      `Price claim has no known provenance (retailer observation, catalogue estimate or fixture); it cannot say what kind of number it is: ${claim.text}`,
+      taskIds,
+    ));
+    return;
+  }
+  const live = LIVE_PRICE_WORDING.test(label);
+  const known = claim.priceProvenance as PriceProvenance;
+
+  if (known.kind === "retailer-observation") {
+    const problems: string[] = [];
+    if (!isNonEmptyString(known.retailer)) problems.push("no retailer");
+    const observedAt = isNonEmptyString(known.observedAt) ? new Date(known.observedAt) : undefined;
+    if (!observedAt || Number.isNaN(observedAt.getTime())) problems.push("no valid observation time");
+    else if (observedAt.getTime() > now.getTime() + 60_000) problems.push("an observation time in the future");
+    if (!isNonEmptyString(known.evidenceRef)) problems.push("no evidence reference");
+    else if (!claim.evidenceRefs.includes(known.evidenceRef)) problems.push("an evidence reference the claim does not cite");
+    if (problems.length > 0) {
+      addIssue(issues, PRICE_ISSUE(
+        "price-observation-incomplete", "error",
+        `Retailer price observation has ${problems.join(", ")}: ${claim.text}`,
+        taskIds,
+      ));
+    } else if (live && now.getTime() - (observedAt as Date).getTime() > PRICE_FRESHNESS_MS) {
+      addIssue(issues, PRICE_ISSUE(
+        "stale-price-presented-as-live", "critical",
+        `"${label}" calls a price live, but ${known.retailer} was observed at ${known.observedAt}, outside the freshness window: ${claim.text}`,
+        taskIds,
+      ));
+    }
+    return;
+  }
+
+  // Everything below is not a retailer observation, so it may never be
+  // described as live, real or current.
+  if (live) {
+    addIssue(issues, PRICE_ISSUE(
+      "price-live-wording-not-observed", "critical",
+      `"${label}" describes a ${known.kind} as live; only a verified retailer observation may be: ${claim.text}`,
+      taskIds,
+    ));
+  }
+  if (known.kind === "catalogue-estimate" && !ESTIMATE_LABEL.test(label)) {
+    addIssue(issues, PRICE_ISSUE(
+      "price-estimate-unlabeled", "critical",
+      `A SpecSmith catalogue estimate appeared without an "Est." or "estimate" label: ${claim.text}`,
+      taskIds,
+    ));
+  }
+  if (known.kind === "fixture") {
+    if (!FIXTURE_LABEL.test(label)) {
+      addIssue(issues, PRICE_ISSUE(
+        "price-fixture-unlabeled", "critical",
+        `A fixture price appeared without saying it is a fixture or sample: ${claim.text}`,
+        taskIds,
+      ));
+    }
+    addIssue(issues, PRICE_ISSUE(
+      "fixture-price", "critical",
+      `A fixture price is a stand-in, not a price; it never publishes: ${claim.text}`,
+      taskIds,
+    ));
+  }
+}
+
+function checkClaims(
+  request: QualityReviewRequest,
+  observation: RenderedVideoObservation,
+  now: Date,
+  issues: ReviewIssue[],
+): void {
   for (const claim of observation.claims) {
+    if (claim.kind === "price") checkPriceClaim(claim, now, [...observation.failedTaskIds], issues);
+
     if (claim.verification === "contradicted") {
       addIssue(issues, {
         code: "contradicted-claim",
@@ -402,6 +558,16 @@ function checkClaims(request: QualityReviewRequest, observation: RenderedVideoOb
   }
 }
 
+export interface ReviewOptions {
+  /**
+   * The issued listening record for this master, from recordListeningReview.
+   * Without one, audio cannot pass: the review holds for a person to listen.
+   */
+  listeningReview?: ListeningReview;
+  /** Clock injection for tests; judges price freshness and future dates. */
+  now?: Date;
+}
+
 /**
  * Reviews an observed render.
  *
@@ -410,12 +576,24 @@ function checkClaims(request: QualityReviewRequest, observation: RenderedVideoOb
  * describe the exact master the observation names, and its digest is then
  * recorded as `reviewedReceiptDigest`. Without a receipt the result carries
  * none, and the publish gate refuses it — never a guessed or copied digest.
+ *
+ * Audio passes only with an issued listening record that says "listened-full"
+ * for this receipt and master. A clarity score, or signal statistics, alone
+ * hold for human review; they never pass.
  */
 export function reviewRenderedVideo(
   request: QualityReviewRequest,
   observation: RenderedVideoObservation,
   renderReceipt?: RenderReceipt,
+  options: ReviewOptions = {},
 ): QualityReviewResult {
+  const now = options.now ?? new Date();
+  const listening = options.listeningReview;
+  if (listening !== undefined && !isIssuedListeningReview(listening)) {
+    throw new Error(
+      "Quality review was given a listening record recordListeningReview did not issue; a hand-written listen is not evidence.",
+    );
+  }
   if (request.packageId !== observation.packageId || request.platform !== observation.platform) {
     throw new Error(`Observation does not match review request ${request.packageId}/${request.platform}`);
   }
@@ -434,7 +612,46 @@ export function reviewRenderedVideo(
   }
 
   const issues: ReviewIssue[] = [];
-  checkClaims(request, observation, issues);
+  checkClaims(request, observation, now, issues);
+
+  // HOW THE AUDIO WAS REVIEWED. A clarity score is not a listen.
+  const audioTaskIds = taskIdsForCapability(request, "voice").concat(taskIdsForCapability(request, "audio"), taskIdsForCapability(request, "compose"));
+  let audioReview: ListeningReview | undefined;
+  if (listening === undefined) {
+    addIssue(issues, {
+      code: "audio-not-listened",
+      severity: "error",
+      dimension: "audio-quality",
+      message:
+        "No one is recorded as having listened to this exact master. A clarity score or signal statistics "
+        + "(silence, volume, loudness) cannot certify intelligibility, pronunciation, sync or truncation.",
+      taskIds: audioTaskIds,
+    });
+  } else if (listening.receiptDigest !== reviewedReceiptDigest) {
+    // The receipt digest is the whole binding: recordListeningReview issued
+    // this listen only for a receipt AND its master, and the observed master
+    // was proven to be this receipt's master above. No receipt, no binding.
+    addIssue(issues, {
+      code: "stale-audio-review",
+      severity: "error",
+      dimension: "audio-quality",
+      message:
+        `The listening record covers master ${listening.masterSha256.slice(0, 16)}… / receipt ${listening.receiptDigest.slice(0, 16)}…, `
+        + "not the master and receipt under review; a listen does not transfer between renders.",
+      taskIds: audioTaskIds,
+    });
+  } else {
+    audioReview = listening;
+    if (listening.method !== "listened-full") {
+      addIssue(issues, {
+        code: "audio-not-listened",
+        severity: "error",
+        dimension: "audio-quality",
+        message: `The audio was reviewed by "${listening.method}", not by listening to the whole master.`,
+        taskIds: audioTaskIds,
+      });
+    }
+  }
 
   for (const uiShot of observation.uiShots) {
     if (uiShot.presentedAsRealSpecSmithUi && uiShot.source !== "deterministic") {
@@ -581,7 +798,12 @@ export function reviewRenderedVideo(
   );
 
   const hasCritical = issues.some((issue) => issue.severity === "critical");
-  const hasUncertainFacts = issues.some((issue) => issue.code === "unverified-claim" || issue.code === "missing-claim-evidence" || issue.code === "missing-required-facts" || issue.code === "review-input-mismatch");
+  // A person has to act on these; regenerating the render cannot fix them.
+  const HUMAN_REVIEW_CODES = new Set([
+    "unverified-claim", "missing-claim-evidence", "missing-required-facts", "review-input-mismatch",
+    "price-provenance-missing", "price-observation-incomplete", "audio-not-listened", "stale-audio-review",
+  ]);
+  const hasUncertainFacts = issues.some((issue) => HUMAN_REVIEW_CODES.has(issue.code));
   const errorIssues = issues.filter((issue) => issue.severity === "error");
   const targetedTaskIds = [...new Set(issues.flatMap((issue) => issue.taskIds).filter(Boolean))];
   const canTargetRepair = errorIssues.length > 0 && errorIssues.every((issue) => issue.taskIds.length > 0);
@@ -602,6 +824,7 @@ export function reviewRenderedVideo(
     platform: request.platform,
     reviewedMediaSha256: requireSha256(observation.masterSha256, "observation.masterSha256"),
     ...(reviewedReceiptDigest === undefined ? {} : { reviewedReceiptDigest }),
+    ...(audioReview === undefined ? {} : { audioReview }),
     decision,
     publishable: decision === "pass",
     overallScore,

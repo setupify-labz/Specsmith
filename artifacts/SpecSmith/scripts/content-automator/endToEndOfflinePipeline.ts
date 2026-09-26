@@ -50,6 +50,12 @@
 //   fixed in this repository (capture.ts now suppresses the consent banner;
 //   offlineCompositorSmoke.ts's estimated-FPS caption is now the FIRST cue,
 //   on screen from t=0) rather than scored around.
+// - Audio passes QC only with a listening record bound to this render's
+//   receipt and master (listeningReview.ts, #157). The committed evidence file
+//   records no listen, so even a render that matches it holds for human
+//   review (audio-not-listened). Its notes describe the narration, but a
+//   description in a note is not a recorded full listen of these bytes, and
+//   none is invented here.
 // - The Metricool publishing request needs an https:// URL Metricool could
 //   fetch, and the builder accepts only one proven by uploadAndVerifyMaster
 //   (upload the verified master, download it back, compare bytes). This
@@ -73,6 +79,7 @@ import { buildProductionPlanPackage } from "./productionPlan.ts";
 import {
   buildQualityReviewRequest,
   reviewRenderedVideo,
+  type RecordedRenderEvidence,
   matchRenderToRecordedEvidence,
   parseRecordedRenderEvidence,
   type RenderedVideoObservation,
@@ -87,6 +94,7 @@ import { cleanRestrictedFeatureReview } from "./assetRights.ts";
 import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type MetricoolPublishingRequest, type PublishingConfig } from "./publishing.ts";
 import { dependencyRecordFor } from "./renderManifest.ts";
 import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
+import { recordListeningReview } from "./listeningReview.ts";
 import type { HostedMaster } from "./hostedMaster.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
@@ -139,6 +147,14 @@ const renderEvidencePath = join(here, "fixtures", "mp4-smoke-offline-observation
 
 
 const PLATFORM: VideoPlatform = OFFLINE_SMOKE_PLATFORM;
+
+/** What the committed record says about how its audio was reviewed. */
+function describeAudioReview(evidence: RecordedRenderEvidence): string {
+  if (evidence.audioReview === undefined) {
+    return "NOT RECORDED — no one is recorded as having listened to the whole master, so even a matching render holds for human review (audio-not-listened).";
+  }
+  return `${evidence.audioReview.method} by ${evidence.audioReview.reviewedBy} at ${evidence.audioReview.reviewedAt}.`;
+}
 
 function section(title: string): void {
   console.log(`\n=== ${title} ===`);
@@ -208,6 +224,7 @@ async function main(): Promise<void> {
   const rawEvidence = JSON.parse(await readFile(renderEvidencePath, "utf8"));
   const evidence = parseRecordedRenderEvidence(rawEvidence);
   const evidenceMatch = matchRenderToRecordedEvidence(masterSha256, evidence);
+  console.log(`Audio review: ${describeAudioReview(evidence)}`);
   if (!evidenceMatch.matched) {
     console.log(`Evidence check: NO MATCH — ${evidenceMatch.reason}`);
     console.log(`Committed evidence file: ${renderEvidencePath}`);
@@ -224,8 +241,13 @@ async function main(): Promise<void> {
     observedCtaRoute: content.site.route,
   };
   // Bound to the compositor's receipt for THIS render; the reviewer refuses a
-  // receipt whose master is not the observed master.
-  const review = reviewRenderedVideo(reviewRequest, observation, offlineReceipt);
+  // receipt whose master is not the observed master. The committed record's
+  // listen, if it has one, counts only once recordListeningReview has bound it
+  // to this receipt and master; without one the audio holds for a person.
+  const listeningReview = evidence.audioReview === undefined
+    ? undefined
+    : recordListeningReview(offlineReceipt, evidence.audioReview);
+  const review = reviewRenderedVideo(reviewRequest, observation, offlineReceipt, { listeningReview });
   console.log(`Decision: ${review.decision} (publishable=${review.publishable}, overallScore=${review.overallScore}/10)`);
   console.log(`Issues: ${review.issues.length === 0 ? "none" : review.issues.map((i) => `${i.severity}:${i.code}`).join(", ")}`);
   if (!review.publishable) {

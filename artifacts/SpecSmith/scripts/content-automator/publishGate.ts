@@ -32,9 +32,12 @@
 //     master contains — must name this receipt and master, and must match the
 //     receipt's inputs exactly: no extra claimed file, no omitted consumed
 //     file, no duplicated role, no edited path or digest.
-//  5. QC, rights evidence, human inspection and paid-spend approval must each
-//     be bound to BOTH the exact master digest and the exact receipt digest,
-//     so a sign-off for a previous render or a previous receipt is stale.
+//  5. QC, rights evidence, the listening record, human inspection and
+//     paid-spend approval must each be bound to BOTH the exact master digest
+//     and the exact receipt digest, so a sign-off for a previous render or a
+//     previous receipt is stale. The listening record must also be one
+//     recordListeningReview issued (listeningReview.ts) and say
+//     "listened-full": signal statistics alone are not a listen.
 //  6. Narration is accepted only with evidence the ElevenLabs adapter issued
 //     in its own private registry for that exact artifact object: a request
 //     to the official origin, made with the load-time global fetch (not an
@@ -82,6 +85,7 @@ import { readFileSync, realpathSync } from "node:fs";
 
 import { isVerifiedHostedMaster, type HostedMaster } from "./hostedMaster.ts";
 import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
+import { isIssuedListeningReview, type ListeningReview } from "./listeningReview.ts";
 import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor.ts";
 import {
   ELEVENLABS_PROVIDER,
@@ -112,7 +116,8 @@ export type PublishRefusalCode =
   | "hosted-master-unverified"
   | "hosted-master-mismatch"
   | "no-approval-record"
-  | "malformed-approval";
+  | "malformed-approval"
+  | "audio-not-listened";
 
 export interface PublishRefusal {
   code: PublishRefusalCode;
@@ -149,6 +154,11 @@ export interface PublishGateInput {
   qualityReview: DigestBinding;
   /** What the rights evidence cleared. */
   rightsEvidence: DigestBinding;
+  /**
+   * The issued record that someone listened to the whole of these bytes.
+   * Required. Absent, hand-built or anything but "listened-full" refuses.
+   */
+  audioReview?: ListeningReview;
   /** Required. Absent refuses. */
   inspection?: BoundApproval & { approved: boolean };
   /** Required when any input came from a paid provider. */
@@ -441,6 +451,23 @@ export function evaluatePublishGate(input: PublishGateInput): PublishVerdict {
   }
   for (const problem of bindingProblems("rightsEvidence", input.rightsEvidence, receipt)) {
     refuse("stale-approval", problem);
+  }
+
+  // THE LISTEN. Issued by recordListeningReview, a full listen, to these bytes
+  // under this receipt. A score, signal statistics or a hand-written record
+  // never stand in for it.
+  const audio = input.audioReview;
+  if (audio === undefined || audio === null) {
+    refuse("audio-not-listened", "No one is recorded as having listened to these bytes.");
+  } else if (!isIssuedListeningReview(audio)) {
+    refuse("audio-not-listened", "The listening record was not issued by recordListeningReview; a hand-written listen is not evidence.");
+  } else {
+    if (audio.method !== "listened-full") {
+      refuse("audio-not-listened", `The audio was reviewed by "${audio.method}", not by listening to the whole master.`);
+    }
+    for (const problem of bindingProblems("audioReview", audio, receipt)) {
+      refuse("stale-approval", problem);
+    }
   }
 
   // A paid source is recognised by evidence OR by label: either one requires

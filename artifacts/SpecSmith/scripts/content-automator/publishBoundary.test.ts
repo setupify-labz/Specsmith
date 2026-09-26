@@ -32,6 +32,7 @@ import { dependencyRecordFor, type DependencyRecord } from "./renderManifest.ts"
 import {
   appendByte,
   CONTROL_LIAM_VOICE_ID,
+  constructedTestListen,
   controlUploader,
   hostControl,
   substitutingUploader,
@@ -104,6 +105,7 @@ function gateFor(receipt: RenderReceipt, over: Partial<PublishingGateInput> = {}
       regenerateTaskIds: [],
       reviewedMediaSha256: receipt.masterSha256,
       reviewedReceiptDigest: receipt.digest,
+      audioReview: constructedTestListen(receipt),
     },
     assetBundle: {
       publishable: true,
@@ -214,6 +216,7 @@ describe("callers cannot import or invoke a trusted seal operation", () => {
       elevenLabsModule: await import("./elevenLabsTts.ts"),
       captionModule: await import("./captionRender.ts"),
       hostedModule: await import("./hostedMaster.ts"),
+      listeningModule: await import("./listeningReview.ts"),
     };
     const offenders: string[] = [];
     for (const [name, module] of Object.entries(modules)) {
@@ -235,6 +238,7 @@ describe("callers cannot import or invoke a trusted seal operation", () => {
     }
     expect(Object.keys(modules.captionModule)).not.toContain("CAPTION_EVIDENCE");
     expect(Object.keys(modules.hostedModule)).not.toContain("ISSUED_HOSTED");
+    expect(Object.keys(modules.listeningModule)).not.toContain("ISSUED_LISTENING_REVIEWS");
   });
 
   it("refuses copies of a genuine receipt, however faithful", async () => {
@@ -434,6 +438,27 @@ describe("approval for a previous receipt or master fails", () => {
     const gate = gateFor(clean.receipt);
     gate.assetBundle = { ...gate.assetBundle, approvedReceiptDigest: previous.receipt.digest };
     expect(await refusalCodes(gate)).toEqual(["stale-approval"]);
+  });
+
+  it("refuses QC whose verdict records no listen at all (#157)", async () => {
+    const gate = gateFor(clean.receipt);
+    gate.qualityReview = { ...gate.qualityReview, audioReview: undefined };
+    expect(await refusalCodes(gate)).toEqual(["audio-not-listened"]);
+  });
+
+  it("refuses a listen replayed from the previous render (#157)", async () => {
+    const gate = gateFor(clean.receipt);
+    gate.qualityReview = { ...gate.qualityReview, audioReview: constructedTestListen(previous.receipt) };
+    // Same bytes, another receipt: the receipt binding alone refuses it.
+    const codes = await refusalCodes(gate);
+    expect(codes.length).toBeGreaterThan(0);
+    expect(codes.every((code) => code === "stale-approval")).toBe(true);
+  });
+
+  it("refuses a hand-written listen on the verdict (#157)", async () => {
+    const gate = gateFor(clean.receipt);
+    gate.qualityReview = { ...gate.qualityReview, audioReview: { ...constructedTestListen(clean.receipt) } };
+    expect(await refusalCodes(gate)).toEqual(["audio-not-listened"]);
   });
 
   it("refuses paid-spend approval recorded against the previous receipt", async () => {

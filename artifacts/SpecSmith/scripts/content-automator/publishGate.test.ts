@@ -17,10 +17,10 @@ import {
   evaluatePublishGate,
   type PublishGateInput,
 } from "./publishGate";
-import type { RenderReceipt } from "./motionCompositor";
+import { isIssuedRenderReceipt, type RenderReceipt } from "./motionCompositor";
 import { dependencyRecordFor } from "./renderManifest";
 import type { HostedMaster } from "./hostedMaster";
-import { CONTROL_LIAM_VOICE_ID, hostControl, renderControl, type ControlRender } from "./publishBoundary.testkit";
+import { CONTROL_LIAM_VOICE_ID, constructedTestListen, hostControl, renderControl, type ControlRender } from "./publishBoundary.testkit";
 
 const NOW = new Date("2026-09-23T12:00:00Z");
 
@@ -51,6 +51,8 @@ const signedOff = (receipt: RenderReceipt, over: Partial<PublishGateInput> = {})
     hostedMaster: HOSTED.get(receipt) as HostedMaster,
     qualityReview: binding,
     rightsEvidence: binding,
+    // A copied receipt cannot be listened against; the gate stops at it first.
+    audioReview: isIssuedRenderReceipt(receipt) ? constructedTestListen(receipt) : undefined,
     inspection: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", approved: true, ...binding },
     paidProviderApproval: { approvedBy: "aaron", approvedAt: "2026-09-23T10:00:00Z", ...binding },
     now: NOW,
@@ -158,5 +160,36 @@ describe("every refusal is reported, not just the first", () => {
       expect(found).toContain(code);
     }
     expect(codes(input).length).toBeGreaterThanOrEqual(7);
+  });
+});
+
+// #157: the listen is a sign-off like QC and rights: issued, a full listen,
+// and bound to exactly these bytes and this receipt.
+describe("someone must have listened to these exact bytes", () => {
+  it("refuses a render no one is recorded as having listened to", () => {
+    expect(codes(signedOff(clean.receipt, { audioReview: undefined }))).toEqual(["audio-not-listened"]);
+  });
+
+  it("refuses a hand-written listening record with every right field", () => {
+    const forged = Object.freeze({ ...constructedTestListen(clean.receipt) });
+    expect(codes(signedOff(clean.receipt, { audioReview: forged }))).toEqual(["audio-not-listened"]);
+  });
+
+  it("refuses signal-only and not-reviewed methods, even issued and bound", () => {
+    for (const method of ["signal-analysis-only", "not-reviewed"] as const) {
+      expect(codes(signedOff(clean.receipt, { audioReview: constructedTestListen(clean.receipt, method) })), method)
+        .toEqual(["audio-not-listened"]);
+    }
+  });
+
+  it("refuses a genuine listen to another render (stale or replayed)", () => {
+    const found = codes(signedOff(clean.receipt, { audioReview: constructedTestListen(fixture.receipt) }));
+    expect(found).toEqual(["stale-approval", "stale-approval"]);
+  });
+
+  it("keeps a fixture render blocked even with a bound full listen", () => {
+    const found = codes(signedOff(fixture.receipt));
+    expect(found).toContain("fixture-artifact");
+    expect(found).not.toContain("audio-not-listened");
   });
 });
