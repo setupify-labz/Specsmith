@@ -15,15 +15,9 @@
 #
 # WHY push-on-one-branch, NOT a generic pull_request trigger
 # -------------------------------------------------------------
-# GitHub only lets workflow_dispatch be triggered via the API for a workflow
-# file already present on the repository's DEFAULT branch — this file cannot
-# be, until this PR merges. audit-retailer-links.yml solves the same
-# "evidence for one specific implementation branch, before merge" problem the
-# same way: `push` scoped to the one branch by name, not a generic
-# `pull_request` trigger that would start running on every fork PR. That
-# pattern is reused here rather than introduced fresh. `workflow_dispatch`
-# stays too, for a rerun once this lands on main and the branch trigger no
-# longer applies.
+# The implementation branch receives exact-head evidence on push, without
+# running this relatively expensive offline render on every unrelated PR.
+# workflow_dispatch remains available for later manual reruns.
 #
 # WHY THE PIPELINE STEP CAN EXIT NONZERO WITHOUT FAILING THE JOB
 # -------------------------------------------------------------------
@@ -49,8 +43,8 @@
 # WHAT THE UPLOADED ARTIFACT CONTAINS
 # -------------------------------------
 # The commit under test, install/typecheck/test/build logs, the pipeline's
-# own console log and exit code, the rendered MP4, and two extracted frame
-# PNGs (for a human to glance at without downloading the video) — no
+# own console log and exit code, both the offline smoke MP4 and the generated
+# storyboard draft, its review packet, SHA-256, probe and six sampled frames — no
 # benchmark, price, or analytics data beyond what scripts/content-automator's
 # own tests already cover, and the render is this repository's own UI, not
 # third-party content — so it gets the same short one-day retention as the
@@ -61,7 +55,7 @@ name: Content automator offline end-to-end
 on:
   push:
     branches:
-      - claude/intelligent-bohr-naord4
+      - codex/content-draft-89
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
@@ -333,6 +327,35 @@ jobs:
           else
             echo "No rendered MP4 was produced; nothing to extract."
           fi
+
+      - name: Preserve the generated storyboard draft for human review
+        if: always()
+        run: |
+          set -euo pipefail
+          draft_dir="artifacts/SpecSmith/render-output/storyboard-draft"
+          if [ ! -f "${RUNNER_TEMP}/e2e/storyboard-draft.log" ]; then
+            echo "Storyboard render did not run; no draft to preserve."
+            exit 0
+          fi
+          mapfile -t masters < <(find "${draft_dir}" -maxdepth 1 -type f -name '*.mp4' | sort)
+          if [ "${#masters[@]}" -ne 1 ]; then
+            echo "::error::Expected one generated storyboard MP4; found ${#masters[@]}."
+            exit 1
+          fi
+          packet="${draft_dir}/review-packet/review-packet.json"
+          if [ ! -f "${packet}" ]; then
+            echo "::error::Generated storyboard review packet is missing."
+            exit 1
+          fi
+          cp "${masters[0]}" "${RUNNER_TEMP}/e2e/storyboard-draft.mp4"
+          cp "${packet}" "${RUNNER_TEMP}/e2e/storyboard-review-packet.json"
+          sha256sum "${RUNNER_TEMP}/e2e/storyboard-draft.mp4" | tee "${RUNNER_TEMP}/e2e/storyboard-master.sha256"
+          ffprobe -v error -show_entries format=duration -show_entries stream=codec_name,width,height -of json \
+            "${RUNNER_TEMP}/e2e/storyboard-draft.mp4" > "${RUNNER_TEMP}/e2e/storyboard-ffprobe.json"
+          for second in 0.5 5 10 15 20 23; do
+            ffmpeg -v error -y -ss "${second}" -i "${RUNNER_TEMP}/e2e/storyboard-draft.mp4" \
+              -frames:v 1 -update 1 "${RUNNER_TEMP}/e2e/storyboard-frame-${second}.png"
+          done
 
       - name: Upload the evidence for review
         if: always()

@@ -34,7 +34,7 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     // validate-retail-snapshot.yml already use for the same reason) is what
     // actually produces pre-merge evidence.
     expect(body).toMatch(/on:\s*\n\s*push:/);
-    expect(body).toContain('claude/intelligent-bohr-naord4');
+    expect(body).toContain('codex/content-draft-89');
     expect(body).toContain('workflow_dispatch:');
   });
 
@@ -223,6 +223,20 @@ describe('the content-automator offline e2e workflow is manual, credential-free 
     for (const forbidden of ['git add', 'git commit', 'git push', 'ELEVENLABS_API_KEY']) {
       expect(body, forbidden).not.toContain(forbidden);
     }
+  });
+
+  it('uploads the generated storyboard master, its SHA, packet and frames after rendering', () => {
+    const renderIndex = stepIndex(/Render the generated storyboard and prove it cannot be published/i);
+    const preserveIndex = stepIndex(/Preserve the generated storyboard draft for human review/i);
+    const uploadIndex = stepIndex(/Upload the evidence for review/i);
+    expect(preserveIndex).toBeGreaterThan(renderIndex);
+    expect(uploadIndex).toBeGreaterThan(preserveIndex);
+    const preserve = codeSteps[preserveIndex];
+    expect(preserve).toContain('if [ "${#masters[@]}" -ne 1 ]');
+    expect(preserve).toContain('storyboard-draft.mp4');
+    expect(preserve).toContain('storyboard-review-packet.json');
+    expect(preserve).toContain('storyboard-master.sha256');
+    expect(preserve).toContain('storyboard-frame-${second}.png');
   });
 
   it('every step piping a command through `tee` sets pipefail first, so a real failure cannot report green', () => {
