@@ -12,18 +12,37 @@ migrateLegacyStorage();
   } catch {}
 })();
 
+import { useEffect, useState, type ComponentType } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import App from "./App";
-import KrystalViewAnalytics from "./components/KrystalViewAnalytics";
 import "./index.css";
 
 // The analytics component renders nothing until the client reads the saved
 // consent choice, so it does not change the prerendered HTML or hydration
 // boundary. Recording is loaded only after the visitor explicitly accepts.
+//
+// ITS CODE IS NOT PART OF THE SHARED SHELL. It was imported here statically,
+// about 2.4 KB gzip of every page's initial JavaScript, for a panel that
+// cannot show anything before an effect has run. It is fetched once the app
+// has mounted instead. The first render is still null, exactly as before, so
+// hydration is untouched; the consent panel appears when the chunk arrives.
+function DeferredAnalytics() {
+  const [Analytics, setAnalytics] = useState<ComponentType | null>(null);
+  useEffect(() => {
+    let active = true;
+    import("./components/KrystalViewAnalytics")
+      .then((module) => { if (active) setAnalytics(() => module.default); })
+      // Analytics must never interfere with the site if its chunk fails to load.
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+  return Analytics ? <Analytics /> : null;
+}
+
 const app = (
   <>
     <App />
-    <KrystalViewAnalytics />
+    <DeferredAnalytics />
   </>
 );
 
