@@ -348,9 +348,9 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 2,
       endSecond: 6,
       purpose: "commitment",
-      narration: `Decide before the reveal.`,
+      narration: idea.id === "compare-rtx4080s-rtx4080" ? "Start with the same CPU on both builds." : "Decide before the reveal.",
       visualDirection: `${variant.opening} Visually lock the viewer into a choice before exposing the decisive evidence.`,
-      onScreenText: "LOCK YOUR PICK",
+      onScreenText: idea.id === "compare-rtx4080s-rtx4080" ? "SAME CPU. TWO BUILDS." : "LOCK YOUR PICK",
       factDependencies: factSlice(idea.requiredFacts, 0),
     },
     {
@@ -386,7 +386,7 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       purpose: "cta",
       narration: variant.cta,
       visualDirection: `Show the exact continuation destination ${route} and the next product action: ${idea.productConnection.continuationAction}`,
-      onScreenText: `CONTINUE IN SPECSMITH → ${route}`,
+      onScreenText: `OPEN SPECSMITH ${route}`,
       factDependencies: [],
     },
   ];

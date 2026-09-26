@@ -3,6 +3,8 @@ import { buildContentPackage } from "./contentPackage.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
 import { buildProductionPlanPackage } from "./productionPlan.ts";
 import type { ContentIdea } from "./types.ts";
+import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import type { UiRenderRequest } from "./uiRender/uiRenderState.ts";
 
 const idea: ContentIdea = {
   id: "builder-budget-challenge",
@@ -49,6 +51,18 @@ const idea: ContentIdea = {
 };
 
 describe("production plan", () => {
+  it("captures distinct real Compare settings across the proven idea's five UI beats", () => {
+    const content = buildContentPackage(COMPARE_IDEA, new Date("2026-09-26T00:00:00Z"));
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
+    const plan = buildProductionPlanPackage(storyboard).platforms.find((p) => p.platform === "youtube-shorts")!;
+    const states = plan.tasks.filter((t) => t.capability === "deterministic-ui-render")
+      .map((t) => (t.uiRenderState as UiRenderRequest).state);
+    expect(states).toHaveLength(5);
+    expect(states.map((s) => s.surface === "compare" ? `${s.resolution}/${s.preset}` : "wrong surface"))
+      .toEqual(["1080p/high", "1440p/high", "4k/high", "4k/ultra", "1440p/high"]);
+    const pairs = states.map((s) => s.surface === "compare" ? [s.gpuA, s.cpuA, s.gpuB, s.cpuB] : []);
+    expect(pairs.every((pair) => JSON.stringify(pair) === JSON.stringify(pairs[0]))).toBe(true);
+  });
   it("routes evidence, payoff, and CTA visuals to deterministic SpecSmith rendering", () => {
     const content = buildContentPackage(idea, new Date("2026-08-22T18:00:00Z"));
     const scripts = buildScriptStoryboardPackage(idea, content);

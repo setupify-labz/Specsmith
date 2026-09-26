@@ -318,8 +318,8 @@ describe('the proven idea, as a viewer hears it', () => {
     const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
     const youtube = storyboard.scripts.find((script) => script.platform === 'youtube-shorts')!;
     expect(youtube.beats.map((beat) => [beat.purpose, beat.narration])).toEqual([
-      ['hook', 'Which build does SpecSmith estimate higher? Pick before the names show.'],
-      ['commitment', 'Decide before the reveal.'],
+      ['hook', 'RTX 4080 Super versus RTX 4080: how different are their build estimates?'],
+      ['commitment', 'Start with the same CPU on both builds.'],
       ['evidence', 'Model estimates, not measured benchmarks of these exact systems.'],
       ['reversal', "The catch: resolution and quality change both builds' estimates."],
       ['payoff', "Count each build's modelled game leads."],
