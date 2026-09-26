@@ -37,6 +37,13 @@ import {
   type UiRenderRequest,
 } from "./uiRenderState.ts";
 
+/**
+ * The renderer name this adapter stamps on every capture of SpecSmith's own
+ * UI. offlineProvenance.ts credits exactly this name as UI proof, so the two
+ * cannot drift apart.
+ */
+export const DETERMINISTIC_UI_RENDERER = "specsmith-deterministic-ui-render";
+
 export interface UiRenderAdapterOptions {
   /** Origin of a running SpecSmith instance, e.g. http://localhost:4173 */
   baseUrl: string;
@@ -83,7 +90,7 @@ function buildMetadata(
 ): Record<string, string | number | boolean> {
   const viewport = request.viewport ?? VERTICAL_1080x1920;
   return {
-    renderer: "specsmith-deterministic-ui-render",
+    renderer: DETERMINISTIC_UI_RENDERER,
     provider: "playwright-chromium",
     feature: request.state.surface,
     route,
