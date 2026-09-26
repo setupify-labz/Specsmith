@@ -95,6 +95,7 @@ import { buildMetricoolPublishingRequest, buildTrackedWebsiteUrl, type Metricool
 import { dependencyRecordFor } from "./renderManifest.ts";
 import { renderReceiptFor, type RenderReceipt } from "./motionCompositor.ts";
 import { recordListeningReview } from "./listeningReview.ts";
+import { qcPassedLedgerNote, visualMixFromReceipt } from "./offlineProvenance.ts";
 import type { HostedMaster } from "./hostedMaster.ts";
 import { createStoredPublicationLedger, advanceStoredPublicationLedger } from "./publishingStore.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
@@ -329,7 +330,11 @@ async function main(): Promise<void> {
     { rank: 1, idea: COMPARE_IDEA, qualityScore: review.overallScore, learningAdjustment: 0, experiment: { hypothesis: "Real UI evidence out-converts generic B-roll for near-name GPU comparisons.", primaryMetric: "site-clicks", holdConstant: ["cpu", "resolution-ladder"] } },
     content,
     script,
-    { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "deterministic-ui", uiProofRatio: 1, generatedVisualRatio: 0, exactProductAssetRatio: 1 },
+    // The visual mix is read from the compositor's receipt for THIS render,
+    // not typed in. All three visuals are captures of SpecSmith's own Compare
+    // page, so exactProductAssetRatio is 0: no product photography or
+    // manufacturer asset was used (#158).
+    { voiceName: "local-espeak-tts-fixture (offline, not production voice)", firstVisualType: "deterministic-ui", ...visualMixFromReceipt(offlineReceipt) },
   );
   console.log(`Creative id: ${fingerprint.creativeId}`);
 
@@ -352,10 +357,9 @@ async function main(): Promise<void> {
   // timeline slots. Nothing here can author or edit it.
   //
   // This render is built from fixtures (espeak narration, no licensed bed),
-  // so the artifact gate must refuse it. No human has inspected these bytes,
-  // so the inspection record says approved: false rather than inventing an
-  // approval, and the committed QC observation predates the receipt, so it
-  // carries no receipt digest. Both are additional, truthful refusals.
+  // so the artifact gate must refuse it. No human has approved these bytes
+  // for publication, so the inspection record says approved: false rather
+  // than inventing an approval: an additional, truthful refusal.
   let publishingRequest: MetricoolPublishingRequest;
   try {
     publishingRequest = await buildMetricoolPublishingRequest(
@@ -402,15 +406,16 @@ async function main(): Promise<void> {
   console.log(`Ledger created for ${ledger.creativeId}, state: ${ledger.events.at(-1)?.status}`);
   const advanced = await advanceStoredPublicationLedger(publishingStoreRoot, fingerprint.creativeId, {
     status: "qc-passed",
-    note: `Passed automated review at ${review.overallScore}/10.`,
+    // The score came from a recorded manual inspection matched to these bytes,
+    // not from an automated scorer; the note says exactly that (#158).
+    note: qcPassedLedgerNote(review, evidence, "fixtures/mp4-smoke-offline-observation.json"),
   });
   console.log(`Ledger advanced to: ${advanced.events.at(-1)?.status}`);
   // Deliberately stops here. "scheduled" is a real production status other
   // code treats as meaning Metricool actually accepted a schedule slot for
   // this creative — and nothing in this pipeline ever calls Metricool (see
-  // step 5's header): the "approved master URI" fed into the publishing
-  // request above is a non-resolving *.example placeholder, not a real
-  // hosted file Metricool (or anyone) could fetch. Advancing to "scheduled"
+  // step 5's header), and no hosted master exists for Metricool (or anyone)
+  // to fetch. Advancing to "scheduled"
   // without a real Metricool API call accepting a slot would be a false
   // status on a real production ledger field. A genuinely "scheduled" state
   // requires an actual Metricool API call, which is out of scope for this
