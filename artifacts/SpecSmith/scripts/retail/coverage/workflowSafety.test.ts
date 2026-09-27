@@ -320,37 +320,14 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(offenders).toEqual([]);
   });
 
-  /**
-   * A workflow may not invoke a script that is not in the repository.
-   *
-   * ONE DOCUMENTED EXCEPTION. `elevenlabs-voice-sample.yml` was merged in #134
-   * ahead of its script on purpose — registering the file is what makes the
-   * manual dispatch button exist in the GitHub UI, and the entrypoint arrives
-   * with the rest of the MASTER #6 work. The run fails at the generate step
-   * with a module-resolution error, BEFORE any request to the provider, so a
-   * stray dispatch costs nothing. When that script lands, delete the exception
-   * rather than the test.
-   */
-  const PENDING_ENTRYPOINTS = new Set(['scripts/content-automator/elevenLabsVoiceSample.ts']);
-
   it('invokes only scripts that exist', () => {
     const missing: string[] = [];
     for (const { name, body: text } of eachWorkflow()) {
       for (const [, script] of text.matchAll(/(?:pnpm exec tsx|node(?:\s+--import(?:=|\s+)tsx)?)\s+(\S+\.(?:ts|mjs|js))/g)) {
-        if (PENDING_ENTRYPOINTS.has(script)) continue;
         if (!fs.existsSync(path.join(repoRoot, 'artifacts', 'SpecSmith', script))) missing.push(`${name}: ${script}`);
       }
     }
     expect(missing).toEqual([]);
-  });
-
-  it('keeps the pending entrypoint list honest', () => {
-    // If a pending script has landed, the exception is stale and the line
-    // above is now hiding a real check. Fails when that happens.
-    const stillPending = [...PENDING_ENTRYPOINTS].filter(
-      (script) => !fs.existsSync(path.join(repoRoot, 'artifacts', 'SpecSmith', script)),
-    );
-    expect(stillPending).toEqual([...PENDING_ENTRYPOINTS]);
   });
 
   it('the live sweep no longer runs on every change under scripts/retail', () => {

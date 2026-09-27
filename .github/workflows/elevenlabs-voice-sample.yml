@@ -1,11 +1,11 @@
-# Opt-in ElevenLabs voice sample — MANUAL TRIGGER ONLY.
+# Opt-in exact Compare narration with Liam — MANUAL TRIGGER ONLY.
 #
 # This is the only workflow in this repository that spends a paid provider's
 # credits, so it is deliberately hard to run by accident:
 #
 #   - `workflow_dispatch` only. No push, pull_request, or schedule trigger.
 #   - The operator must type the word `generate` to confirm.
-#   - It generates ONE short sample (capped at 200 characters) and stops.
+#   - It generates ONE approved Compare narration (capped at 260 characters) and stops.
 #   - The script reads the subscription first and refuses if the sample would
 #     exceed the included allowance, or if the account can extend its limit
 #     (which would turn an overage into a bill).
@@ -16,7 +16,7 @@
 # Every action is pinned to a commit SHA rather than a moving tag, as in every
 # other workflow here. A tag can be repointed by whoever controls the action's
 # repository, and this job holds a paid API key while it runs.
-name: ElevenLabs voice sample (manual)
+name: Compare Liam narration (manual)
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  # One audition at a time. Overlapping runs would spend credits twice for the
+  # One narration at a time. Overlapping runs would spend credits twice for the
   # same decision.
   group: elevenlabs-voice-sample
   cancel-in-progress: false
@@ -39,7 +39,7 @@ jobs:
   sample:
     runs-on: ubuntu-latest
     # A stuck run on the one workflow that spends a provider's credits should
-    # end by itself. Install plus one short sample is minutes, not tens.
+    # end by itself. Install plus one short narration is minutes, not tens.
     timeout-minutes: 10
     steps:
       - name: Require explicit confirmation
@@ -78,21 +78,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate one voice sample
+      - name: Generate the exact Compare narration with Liam
         working-directory: artifacts/SpecSmith
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
           # Optional overrides; all have safe defaults in the adapter.
           ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
           ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
         run: pnpm exec tsx scripts/content-automator/elevenLabsVoiceSample.ts
 
-      - name: Upload the sample for approval
+      - name: Upload the narration for review
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: specsmith-voice-sample
+          name: specsmith-compare-liam-narration
           path: |
-            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.mp3
-            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.json
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-compare-liam.mp3
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-compare-liam.json
           if-no-files-found: error
           retention-days: 14
