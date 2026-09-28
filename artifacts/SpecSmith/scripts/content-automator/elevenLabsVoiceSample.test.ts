@@ -20,11 +20,22 @@ import {
   resolveVoice,
   SAMPLE_TEXT,
   redactTokens,
+  REVIEWED_COMPARE_BUILDS,
+  REVIEWED_COMPARE_FIGURES,
   verifyVoiceSampleAccess,
   VoiceSampleError,
 } from "./elevenLabsVoiceSample.ts";
 import { elevenLabsTtsConfigFromEnv } from "./elevenLabsTts.ts";
 import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
+import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import { buildContentPackage } from "./contentPackage.ts";
+import { buildProductionPlanPackage } from "./productionPlan.ts";
+import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
+import { estimateFpsForBuild } from "../../src/lib/fps.ts";
+import { getAverageFps } from "../../src/lib/compareValue.ts";
+import gpus from "../../src/data/gpus.json" with { type: "json" };
+import cpus from "../../src/data/cpus.json" with { type: "json" };
+import games from "../../src/data/games.json" with { type: "json" };
 
 const ENV = { ELEVENLABS_API_KEY: "test-key-not-a-real-credential", ELEVENLABS_VOICE_ID: REVIEWED_LIAM_VOICE.voiceId } as NodeJS.ProcessEnv;
 const CONFIG = elevenLabsTtsConfigFromEnv(ENV)!;
@@ -109,10 +120,15 @@ describe("the sample stays inside the included allowance", () => {
     expect(SAMPLE_TEXT.length).toBeLessThanOrEqual(MAX_SAMPLE_CHARACTERS);
   });
 
-  it("pins the exact factual script to the current Compare model before any paid request", async () => {
+  it("pins the exact reviewed script, and it passes its factual check before any paid request", async () => {
     await expect(assertReviewedCompareFacts()).resolves.toBeUndefined();
     expect(SAMPLE_TEXT).toBe(
-      "Which parts suit your games? It depends on which games. In Cyberpunk 2077, the model estimates Build A ahead: 69 to 66. In Valorant, it estimates Build B ahead: 282 to 266. Two selected examples — model estimates, not measured results.",
+      "RTX 4080 Super versus RTX 4080: how different are their build estimates? "
+      + "Start with the same CPU on both builds. "
+      + "Model estimates, not measured benchmarks of these exact systems. "
+      + "The catch: resolution and quality change both builds' estimates. "
+      + "Count each build's modelled game leads. "
+      + "Continue this exact decision in SpecSmithPC at /compare.",
     );
   });
 
@@ -589,5 +605,78 @@ describe("voice name parsing", () => {
   it("leaves a hyphenated or multi-word name intact", () => {
     expect(baseVoiceName("Mary-Jane")).toBe("Mary-Jane");
     expect(baseVoiceName("Liam Smith")).toBe("Liam Smith");
+  });
+});
+
+// The Liam script used to narrate a different comparison (RTX 5060 Ti + i3 vs
+// RTX 4060 Ti + i5, Cyberpunk and Valorant) from the video it was for. These
+// tie it to the video the storyboard actually renders, computed here
+// independently of the script's own check.
+describe("the Liam script narrates the video this branch renders", () => {
+  const content = buildContentPackage(COMPARE_IDEA, new Date("2026-09-28T00:00:00Z"));
+  const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
+  const production = buildProductionPlanPackage(storyboard);
+  const script = storyboard.scripts.find((entry) => entry.platform === "youtube-shorts")!;
+  const plan = production.platforms.find((entry) => entry.platform === "youtube-shorts")!;
+  type State = { surface: string; gpuA: string; cpuA: string; gpuB: string; cpuB: string; resolution: string; preset: string };
+  const captures = plan.tasks
+    .map((task) => (task as { uiRenderState?: { state: State } }).uiRenderState?.state)
+    .filter((state): state is State => state !== undefined);
+
+  it("is the video's six beat narrations, verbatim and in order", () => {
+    expect(script.beats).toHaveLength(6);
+    expect(script.targetDurationSeconds).toBe(24);
+    expect(SAMPLE_TEXT).toBe(script.beats.map((beat) => beat.narration).join(" "));
+  });
+
+  it("the video's Compare captures show the reviewed builds, same CPU, at the reviewed settings", () => {
+    expect(captures.map((state) => `${state.resolution} ${state.preset}`))
+      .toEqual(["1080p high", "1440p high", "4k high", "4k ultra", "1440p high"]);
+    for (const state of captures) {
+      expect(state).toMatchObject({
+        surface: "compare",
+        gpuA: REVIEWED_COMPARE_BUILDS.a.gpu, cpuA: REVIEWED_COMPARE_BUILDS.a.cpu,
+        gpuB: REVIEWED_COMPARE_BUILDS.b.gpu, cpuB: REVIEWED_COMPARE_BUILDS.b.cpu,
+      });
+    }
+    expect(REVIEWED_COMPARE_BUILDS).toEqual({
+      a: { gpu: "rtx4080s", cpu: "r9-9950x3d" },
+      b: { gpu: "rtx4080", cpu: "r9-9950x3d" },
+    });
+    expect(SAMPLE_TEXT).toContain("RTX 4080 Super versus RTX 4080");
+  });
+
+  it("the reviewed figures are what Compare shows for those builds at each setting", () => {
+    const part = (rows: { id: string }[], id: string) => rows.find((row) => row.id === id)!;
+    const a = [part(gpus, "rtx4080s"), part(cpus, "r9-9950x3d")];
+    const b = [part(gpus, "rtx4080"), part(cpus, "r9-9950x3d")];
+    const recomputed = REVIEWED_COMPARE_FIGURES.map(({ resolution, preset }) => {
+      const pairs = games.map((game) => [
+        estimateFpsForBuild(a[0] as never, a[1] as never, game as never, resolution, preset).estimated,
+        estimateFpsForBuild(b[0] as never, b[1] as never, game as never, resolution, preset).estimated,
+      ]);
+      return {
+        resolution, preset,
+        avgA: getAverageFps(pairs.map(([x]) => x)), avgB: getAverageFps(pairs.map(([, y]) => y)),
+        leadsA: pairs.filter(([x, y]) => x >= y).length, leadsB: pairs.filter(([x, y]) => x < y).length,
+      };
+    });
+    expect(recomputed).toEqual(REVIEWED_COMPARE_FIGURES);
+    // Every captured setting has a reviewed row.
+    for (const state of captures) {
+      expect(REVIEWED_COMPARE_FIGURES.some((row) => row.resolution === state.resolution && row.preset === state.preset)).toBe(true);
+    }
+  });
+
+  it("its claims hold on those figures: estimates change with settings, for both builds", () => {
+    expect(new Set(REVIEWED_COMPARE_FIGURES.map((row) => row.avgA)).size).toBe(4);
+    expect(new Set(REVIEWED_COMPARE_FIGURES.map((row) => row.avgB)).size).toBe(4);
+  });
+
+  it("speaks no figure and no part the video does not show", () => {
+    expect(SAMPLE_TEXT).not.toMatch(/\b(?!4080\b)\d{2,}\b/);
+    for (const stale of ["5060", "4060", "i3", "i5", "Cyberpunk", "Valorant", "Build A", "Build B"]) {
+      expect(SAMPLE_TEXT).not.toContain(stale);
+    }
   });
 });

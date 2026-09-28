@@ -27,7 +27,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { elevenLabsTtsConfigFromEnv, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
 import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
+import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import { buildContentPackage } from "./contentPackage.ts";
+import { buildProductionPlanPackage } from "./productionPlan.ts";
+import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
 import { estimateFpsForBuild } from "../../src/lib/fps.ts";
+import { getAverageFps } from "../../src/lib/compareValue.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -37,14 +42,25 @@ export const VOICE_SAMPLE_OUTPUT_DIR = join(here, "..", "..", "render-output", "
 export const PREFERRED_VOICE_NAME = "Liam";
 
 /**
- * The exact script for the 17-second visual review. Its model facts are
- * recalculated from current catalogue data before any provider call.
+ * The narration of the Compare storyboard draft this branch renders: the
+ * 24-second RTX 4080 Super vs RTX 4080 video, both builds on a Ryzen 9
+ * 9950X3D, captured at 1080p High, 1440p High, 4K High, 4K Ultra and 1440p
+ * High. It is that video's six beat lines, verbatim and in order, so Liam can
+ * replace the espeak track without changing a word, a caption or a beat
+ * window. It speaks no figures: those beats are 2.8 to 5.5 seconds long, and
+ * the figures are on screen. Every claim it makes is checked against the
+ * figures below before any provider call.
  */
 export const SAMPLE_TEXT =
-  "Which parts suit your games? It depends on which games. In Cyberpunk 2077, the model estimates Build A ahead: 69 to 66. In Valorant, it estimates Build B ahead: 282 to 266. Two selected examples — model estimates, not measured results.";
+  "RTX 4080 Super versus RTX 4080: how different are their build estimates? " +
+  "Start with the same CPU on both builds. " +
+  "Model estimates, not measured benchmarks of these exact systems. " +
+  "The catch: resolution and quality change both builds' estimates. " +
+  "Count each build's modelled game leads. " +
+  "Continue this exact decision in SpecSmithPC at /compare.";
 
 /** One reviewed narration, not an arbitrary script supplied at dispatch time. */
-export const MAX_SAMPLE_CHARACTERS = 260;
+export const MAX_SAMPLE_CHARACTERS = 360;
 
 function assertMp3Output(config: ElevenLabsTtsConfig): void {
   if (!config.outputFormat.startsWith("mp3_")) {
@@ -52,28 +68,106 @@ function assertMp3Output(config: ElevenLabsTtsConfig): void {
   }
 }
 
-/** Refuse stale hard-coded model numbers before reading account data or spending credits. */
+/** The builds the video's Compare captures show. */
+export const REVIEWED_COMPARE_BUILDS = {
+  a: { gpu: "rtx4080s", cpu: "r9-9950x3d" },
+  b: { gpu: "rtx4080", cpu: "r9-9950x3d" },
+} as const;
+
+/**
+ * What Compare showed for those builds at each captured setting when this
+ * narration was reviewed: its "Est. Avg FPS" for each build and its game-lead
+ * tally (a tie counts for Build A, as on the page). Recomputed from the
+ * catalogue with the page's own functions before every run; any difference
+ * refuses.
+ */
+export const REVIEWED_COMPARE_FIGURES = [
+  { resolution: "1080p", preset: "high", avgA: 190, avgB: 185, leadsA: 20, leadsB: 0 },
+  { resolution: "1440p", preset: "high", avgA: 164, avgB: 160, leadsA: 20, leadsB: 0 },
+  { resolution: "4k", preset: "high", avgA: 107, avgB: 104, leadsA: 20, leadsB: 0 },
+  { resolution: "4k", preset: "ultra", avgA: 79, avgB: 77, leadsA: 20, leadsB: 0 },
+] as const;
+
+type Row = Record<string, unknown>;
+
+/** The video's youtube-shorts storyboard and plan, generated exactly as the render generates them. */
+function generatedCompareVideo() {
+  const content = buildContentPackage(COMPARE_IDEA, new Date("2026-09-28T00:00:00Z"));
+  const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
+  const production = buildProductionPlanPackage(storyboard);
+  const script = storyboard.scripts.find((entry) => entry.platform === "youtube-shorts");
+  const plan = production.platforms.find((entry) => entry.platform === "youtube-shorts");
+  if (!script || !plan) throw new VoiceSampleError("The Compare storyboard no longer has a youtube-shorts video.");
+  return { script, plan };
+}
+
+/**
+ * Refuse, before reading account data or spending credits, unless this
+ * narration still narrates the video and its claims still hold:
+ *
+ *  - the text is the video's beat narration, verbatim;
+ *  - every Compare capture shows the reviewed builds at a reviewed setting;
+ *  - both builds really share one CPU ("the same CPU on both builds");
+ *  - the page's figures at every captured setting are the reviewed ones;
+ *  - both builds' estimates really change with the setting ("resolution and
+ *    quality change both builds' estimates").
+ */
 export async function assertReviewedCompareFacts(): Promise<void> {
+  const { script, plan } = generatedCompareVideo();
+  const spoken = script.beats.map((beat) => beat.narration).join(" ");
+  if (spoken !== SAMPLE_TEXT) {
+    throw new VoiceSampleError("The video's narration no longer matches this reviewed Liam script. Refusing to narrate a different video.");
+  }
+
+  const captures = plan.tasks
+    .map((task) => (task as { uiRenderState?: { state?: Row } }).uiRenderState?.state)
+    .filter((state): state is Row => state !== undefined);
+  if (captures.length === 0) throw new VoiceSampleError("The video captures no Compare state to narrate.");
+  const { a, b } = REVIEWED_COMPARE_BUILDS;
+  for (const state of captures) {
+    const reviewed = REVIEWED_COMPARE_FIGURES.some((row) => row.resolution === state.resolution && row.preset === state.preset);
+    if (state.surface !== "compare" || state.gpuA !== a.gpu || state.cpuA !== a.cpu || state.gpuB !== b.gpu
+        || state.cpuB !== b.cpu || !reviewed) {
+      throw new VoiceSampleError(`A Compare capture shows ${JSON.stringify(state)}, not the reviewed builds and settings.`);
+    }
+  }
+  if (a.cpu !== b.cpu) throw new VoiceSampleError("The narration says both builds share a CPU; the reviewed builds do not.");
+
   const [gpus, cpus, games] = await Promise.all([
     readFile(join(here, "..", "..", "src", "data", "gpus.json"), "utf8").then(JSON.parse),
     readFile(join(here, "..", "..", "src", "data", "cpus.json"), "utf8").then(JSON.parse),
     readFile(join(here, "..", "..", "src", "data", "games.json"), "utf8").then(JSON.parse),
-  ]) as [Record<string, unknown>[], Record<string, unknown>[], Record<string, unknown>[]];
-  const item = (rows: Record<string, unknown>[], key: string, value: string) => rows.find((row) => row[key] === value);
-  const gpuA = item(gpus, "id", "rtx5060ti");
-  const cpuA = item(cpus, "id", "i3-13100f");
-  const gpuB = item(gpus, "id", "rtx4060ti");
-  const cpuB = item(cpus, "id", "i5-14600k");
-  const cyberpunk = item(games, "name", "Cyberpunk 2077");
-  const valorant = item(games, "name", "Valorant");
-  if (!gpuA || !cpuA || !gpuB || !cpuB || !cyberpunk || !valorant) {
+  ]) as [Row[], Row[], Row[]];
+  const find = (rows: Row[], id: string) => rows.find((row) => row.id === id);
+  const gpuA = find(gpus, a.gpu);
+  const cpuA = find(cpus, a.cpu);
+  const gpuB = find(gpus, b.gpu);
+  const cpuB = find(cpus, b.cpu);
+  if (!gpuA || !cpuA || !gpuB || !cpuB || games.length === 0) {
     throw new VoiceSampleError("The reviewed Compare parts or games are missing. Refusing stale narration.");
   }
-  const fps = (gpu: Record<string, unknown>, cpu: Record<string, unknown>, game: Record<string, unknown>) =>
-    estimateFpsForBuild(gpu as never, cpu as never, game as never, "1440p", "high").estimated;
-  const observed = [fps(gpuA, cpuA, cyberpunk), fps(gpuB, cpuB, cyberpunk), fps(gpuA, cpuA, valorant), fps(gpuB, cpuB, valorant)];
-  if (observed.join(",") !== "69,66,266,282") {
-    throw new VoiceSampleError(`The Compare estimates changed (${observed.join(",")}). Refusing the old 69/66 and 266/282 narration.`);
+
+  for (const row of REVIEWED_COMPARE_FIGURES) {
+    const pairs = games.map((game) => [
+      estimateFpsForBuild(gpuA as never, cpuA as never, game as never, row.resolution, row.preset).estimated,
+      estimateFpsForBuild(gpuB as never, cpuB as never, game as never, row.resolution, row.preset).estimated,
+    ]);
+    const observed = {
+      avgA: getAverageFps(pairs.map(([fpsA]) => fpsA)),
+      avgB: getAverageFps(pairs.map(([, fpsB]) => fpsB)),
+      leadsA: pairs.filter(([fpsA, fpsB]) => fpsA >= fpsB).length,
+      leadsB: pairs.filter(([fpsA, fpsB]) => fpsA < fpsB).length,
+    };
+    const expected = { avgA: row.avgA, avgB: row.avgB, leadsA: row.leadsA, leadsB: row.leadsB };
+    if (JSON.stringify(observed) !== JSON.stringify(expected)) {
+      throw new VoiceSampleError(
+        `Compare's ${row.resolution} ${row.preset} figures changed (${JSON.stringify(observed)}, reviewed ${JSON.stringify(expected)}). Refusing stale narration.`,
+      );
+    }
+  }
+  const distinct = (key: "avgA" | "avgB") => new Set(REVIEWED_COMPARE_FIGURES.map((row) => row[key])).size;
+  if (distinct("avgA") < 2 || distinct("avgB") < 2) {
+    throw new VoiceSampleError("The narration says settings change both builds' estimates; the figures do not.");
   }
 }
 
@@ -451,7 +545,7 @@ export async function generateVoiceSample(options: {
     toppedUp: false,
     upgraded: false,
     note:
-      "Exact 17-second Compare visual review narration. Not a publish approval. The espeak-ng fixture remains " +
+      "Exact narration of the 24-second Compare storyboard draft (RTX 4080 Super vs RTX 4080). Not a publish approval. The espeak-ng fixture remains " +
       "for offline tests only and must never substitute for this voice.",
   };
   const manifestPath = join(outputDir, "specsmith-compare-liam.json");
