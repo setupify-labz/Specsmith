@@ -38,7 +38,7 @@ import type { ContentIdea, HardwareItem, PlatformScriptStoryboard, SiteFeature }
 import { deriveUiRenderState } from './uiRender/planUiRenderState.ts';
 import { COMPARE_VIDEO_BEATS, COMPARE_VIDEO_NARRATION } from './compareVideoScript.ts';
 import { buildProductionPlanPackage } from './productionPlan.ts';
-import { spokenWordCount } from './spokenWords.ts';
+import { spokenFigure, spokenFigures, spokenWordCount } from './spokenWords.ts';
 import { planSurface } from './uiRender/surfaces.ts';
 
 beforeAll(() => {
@@ -326,20 +326,20 @@ describe('the proven idea, as a viewer hears it', () => {
     const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
     const youtube = storyboard.scripts.find((script) => script.platform === 'youtube-shorts')!;
     expect(youtube.beats.map((beat) => [beat.purpose, beat.narration])).toEqual([
-      ['hook', '4080 Super, or plain 4080?'],
-      ['commitment', 'Same CPU. The Super build takes all 20 modelled game leads.'],
+      ['hook', 'Forty-eighty Super, or plain forty-eighty?'],
+      ['commitment', 'Same CPU. Super build: twenty of twenty modelled leads.'],
       ['evidence', 'Model estimates, not measured benchmarks of these exact systems.'],
-      ['reversal', 'The catch: just 164 to 160 at 1440p High.'],
-      ['payoff', '4K Ultra: 79 to 77.'],
-      ['cta', 'A few frames apart, so try your games in SpecSmith Compare.'],
+      ['reversal', 'The catch: one sixty-four to one sixty at fourteen-forty.'],
+      ['payoff', 'Four-K Ultra: seventy-nine to seventy-seven.'],
+      ['cta', 'A few frames apart. Try your games in SpecSmith Compare.'],
     ]);
     expect(youtube.beats.map((beat) => beat.onScreenText)).toEqual([
       'RTX 4080 SUPER OR RTX 4080?',
       'SUPER BUILD: 20 OF 20 MODELLED GAME LEADS',
       'MODELLED FPS, NOT MEASURED ON THESE EXACT SYSTEMS',
-      '1440p HIGH: 164 vs 160 EST. FPS',
-      '4K ULTRA: 79 vs 77 EST. FPS',
-      'TRY YOUR GAMES IN SPECSMITH COMPARE',
+      '1440p HIGH: EST. 164 vs 160',
+      '4K ULTRA: EST. 79 vs 77',
+      'TRY IT IN SPECSMITH COMPARE',
     ]);
   });
 
@@ -472,12 +472,23 @@ describe('every figure the Compare video states is what the rendered page shows'
   it('says and shows no number that is not a declared, page-backed figure', () => {
     for (const beat of COMPARE_VIDEO_BEATS) {
       const declared = beat.figures ? Object.entries(beat.figures).filter(([, v]) => typeof v === 'number').map(([, v]) => v as number) : [];
-      for (const line of [beat.narration, beat.onScreenText]) {
-        for (const number of statedNumbers(line)) {
-          expect(declared, `${beat.purpose}: "${line}" states ${number}`).toContain(number);
-        }
+      for (const number of spokenFigures(beat.narration)) {
+        expect(declared, `${beat.purpose}: "${beat.narration}" says ${number}`).toContain(number);
+      }
+      for (const number of statedNumbers(beat.onScreenText)) {
+        expect(declared, `${beat.purpose}: "${beat.onScreenText}" shows ${number}`).toContain(number);
       }
     }
+  });
+
+  it('writes every spoken figure as it is said, with no digit left for a voice to read its own way', () => {
+    for (const beat of COMPARE_VIDEO_BEATS) expect(beat.narration, beat.purpose).not.toMatch(/\d/);
+    const says = (purpose: string) => spokenFigures(COMPARE_VIDEO_BEATS.find((beat) => beat.purpose === purpose)!.narration);
+    expect(says('commitment')).toEqual([20, 20]);
+    expect(says('reversal')).toEqual([164, 160]);
+    expect(says('payoff')).toEqual([79, 77]);
+    expect(spokenFigure(164)).toBe('one sixty-four');
+    expect(spokenFigure(79)).toBe('seventy-nine');
   });
 
   it('every stated average and lead is also shown in the beat\'s caption, labelled as an estimate', () => {
@@ -486,7 +497,7 @@ describe('every figure the Compare video states is what the rendered page shows'
       for (const value of [beat.figures!.avgA, beat.figures!.avgB, beat.figures!.leadsA].filter((v) => v !== undefined && v > 0)) {
         expect(statedNumbers(caption), `${beat.purpose} caption`).toContain(value);
       }
-      expect(caption, `${beat.purpose} caption`).toMatch(/EST\. FPS|MODELLED/);
+      expect(caption, `${beat.purpose} caption`).toMatch(/\bEST\.|MODELLED/);
     }
   });
 
@@ -509,7 +520,7 @@ describe('every figure the Compare video states is what the rendered page shows'
 
   it('speaks no URL, and ends on a call to action', () => {
     expect(COMPARE_VIDEO_NARRATION).not.toMatch(/\/|\.com|https?:/i);
-    expect(COMPARE_VIDEO_BEATS.at(-1)!.narration).toMatch(/try your games in SpecSmith Compare/);
+    expect(COMPARE_VIDEO_BEATS.at(-1)!.narration).toMatch(/Try your games in SpecSmith Compare/);
   });
 
   it('every beat fits its window, counted as spoken', () => {
@@ -531,6 +542,8 @@ describe('every figure the Compare video states is what the rendered page shows'
       const lines = dialogue.slice(dialogue.lastIndexOf(',,') + 2).split('\\N');
       expect(lines.length, beat.onScreenText).toBeLessThanOrEqual(2);
       for (const line of lines) expect(line.length, beat.onScreenText).toBeLessThanOrEqual(28);
+      // No word stranded on a line of its own ("EST." / "FPS").
+      if (lines.length > 1) for (const line of lines) expect(line.split(' ').length, beat.onScreenText).toBeGreaterThan(1);
     }
   });
 });

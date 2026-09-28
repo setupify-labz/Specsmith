@@ -16,9 +16,14 @@
 // what the page shows; elevenLabsVoiceSample recomputes them with the page's
 // own functions before any paid request.
 //
-// EVERY FIGURE IS LABELLED A MODEL ESTIMATE. Captions say "EST. FPS" or
+// EVERY FIGURE IS LABELLED A MODEL ESTIMATE. Captions say "EST." or
 // "MODELLED", and the evidence beat says the page's own caveat aloud before
 // any per-setting figure is spoken.
+//
+// FIGURES ARE WRITTEN AS THEY ARE SAID. The narration contains no digit: a
+// voice left to read "164" says "one hundred and sixty-four", which is longer
+// than the beat was sized for and not how the figure is said. Captions keep
+// the digits; spokenWords.ts reads the spoken figures back for checking.
 
 export const COMPARE_VIDEO_IDEA_ID = "compare-rtx4080s-rtx4080";
 
@@ -44,6 +49,8 @@ export interface CompareBeatFigures extends CompareSetting {
   leadsA?: number;
   leadsB?: number;
   ties?: number;
+  /** Games on the page's per-game table ("twenty of twenty"). */
+  games?: number;
 }
 
 export interface CompareVideoBeat {
@@ -59,16 +66,16 @@ export interface CompareVideoBeat {
 export const COMPARE_VIDEO_BEATS: readonly CompareVideoBeat[] = Object.freeze([
   {
     purpose: "hook",
-    narration: "4080 Super, or plain 4080?",
+    narration: "Forty-eighty Super, or plain forty-eighty?",
     onScreenText: "RTX 4080 SUPER OR RTX 4080?",
     capture: null,
   },
   {
     purpose: "commitment",
-    narration: "Same CPU. The Super build takes all 20 modelled game leads.",
+    narration: "Same CPU. Super build: twenty of twenty modelled leads.",
     onScreenText: "SUPER BUILD: 20 OF 20 MODELLED GAME LEADS",
     capture: { resolution: "1080p", preset: "high" },
-    figures: { resolution: "1080p", preset: "high", leadsA: 20, leadsB: 0, ties: 0 },
+    figures: { resolution: "1080p", preset: "high", leadsA: 20, leadsB: 0, ties: 0, games: 20 },
   },
   {
     purpose: "evidence",
@@ -78,22 +85,22 @@ export const COMPARE_VIDEO_BEATS: readonly CompareVideoBeat[] = Object.freeze([
   },
   {
     purpose: "reversal",
-    narration: "The catch: just 164 to 160 at 1440p High.",
-    onScreenText: "1440p HIGH: 164 vs 160 EST. FPS",
+    narration: "The catch: one sixty-four to one sixty at fourteen-forty.",
+    onScreenText: "1440p HIGH: EST. 164 vs 160",
     capture: { resolution: "1440p", preset: "high" },
     figures: { resolution: "1440p", preset: "high", avgA: 164, avgB: 160 },
   },
   {
     purpose: "payoff",
-    narration: "4K Ultra: 79 to 77.",
-    onScreenText: "4K ULTRA: 79 vs 77 EST. FPS",
+    narration: "Four-K Ultra: seventy-nine to seventy-seven.",
+    onScreenText: "4K ULTRA: EST. 79 vs 77",
     capture: { resolution: "4k", preset: "ultra" },
     figures: { resolution: "4k", preset: "ultra", avgA: 79, avgB: 77 },
   },
   {
     purpose: "cta",
-    narration: "A few frames apart, so try your games in SpecSmith Compare.",
-    onScreenText: "TRY YOUR GAMES IN SPECSMITH COMPARE",
+    narration: "A few frames apart. Try your games in SpecSmith Compare.",
+    onScreenText: "TRY IT IN SPECSMITH COMPARE",
     capture: { resolution: "1080p", preset: "high" },
   },
 ] satisfies CompareVideoBeat[]);

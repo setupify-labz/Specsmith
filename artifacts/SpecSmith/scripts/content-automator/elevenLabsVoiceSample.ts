@@ -28,6 +28,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { elevenLabsTtsConfigFromEnv, type ElevenLabsTtsConfig } from "./elevenLabsTts.ts";
 import { REVIEWED_LIAM_VOICE } from "./liamVoice.ts";
 import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
+import { spokenFigures } from "./spokenWords.ts";
 import {
   COMPARE_VIDEO_BEATS,
   COMPARE_VIDEO_BUILDS,
@@ -58,12 +59,12 @@ export const PREFERRED_VOICE_NAME = "Liam";
  * video's script, its captures or any figure it states has moved away from it.
  */
 export const SAMPLE_TEXT =
-  "4080 Super, or plain 4080? " +
-  "Same CPU. The Super build takes all 20 modelled game leads. " +
+  "Forty-eighty Super, or plain forty-eighty? " +
+  "Same CPU. Super build: twenty of twenty modelled leads. " +
   "Model estimates, not measured benchmarks of these exact systems. " +
-  "The catch: just 164 to 160 at 1440p High. " +
-  "4K Ultra: 79 to 77. " +
-  "A few frames apart, so try your games in SpecSmith Compare.";
+  "The catch: one sixty-four to one sixty at fourteen-forty. " +
+  "Four-K Ultra: seventy-nine to seventy-seven. " +
+  "A few frames apart. Try your games in SpecSmith Compare.";
 
 /** One reviewed narration, not an arbitrary script supplied at dispatch time. */
 export const MAX_SAMPLE_CHARACTERS = 360;
@@ -114,6 +115,7 @@ export async function compareFiguresAt(resolution: string, preset: string): Prom
     leadsA: pairs.filter(([fpsA, fpsB]) => fpsA >= fpsB).length,
     leadsB: pairs.filter(([fpsA, fpsB]) => fpsA < fpsB).length,
     ties: pairs.filter(([fpsA, fpsB]) => fpsA === fpsB).length,
+    games: pairs.length,
   };
 }
 
@@ -151,6 +153,19 @@ export async function assertReviewedCompareFacts(): Promise<void> {
   if (a.cpu !== b.cpu) throw new VoiceSampleError("The narration says \"Same CPU\"; the video's builds do not share one.");
 
   for (const beat of COMPARE_VIDEO_BEATS) {
+    // What the voice will SAY: no digit left for it to read its own way, and
+    // every spoken figure one the beat declares.
+    if (/\d/.test(beat.narration)) {
+      throw new VoiceSampleError(`The ${beat.purpose} line contains a digit; figures must be written as they are said.`);
+    }
+    const declared = beat.figures
+      ? Object.values(beat.figures).filter((value): value is number => typeof value === "number")
+      : [];
+    for (const figure of spokenFigures(beat.narration)) {
+      if (!declared.includes(figure)) {
+        throw new VoiceSampleError(`The ${beat.purpose} line says ${figure}, which the beat does not declare. Refusing.`);
+      }
+    }
     if (!beat.figures) continue;
     const { resolution, preset, ...stated } = beat.figures;
     if (beat.capture?.resolution !== resolution || beat.capture?.preset !== preset) {

@@ -118,12 +118,12 @@ describe("the sample stays inside the included allowance", () => {
   it("pins the exact reviewed script, and it passes its factual check before any paid request", async () => {
     await expect(assertReviewedCompareFacts()).resolves.toBeUndefined();
     expect(SAMPLE_TEXT).toBe(
-      "4080 Super, or plain 4080? "
-      + "Same CPU. The Super build takes all 20 modelled game leads. "
+      "Forty-eighty Super, or plain forty-eighty? "
+      + "Same CPU. Super build: twenty of twenty modelled leads. "
       + "Model estimates, not measured benchmarks of these exact systems. "
-      + "The catch: just 164 to 160 at 1440p High. "
-      + "4K Ultra: 79 to 77. "
-      + "A few frames apart, so try your games in SpecSmith Compare.",
+      + "The catch: one sixty-four to one sixty at fourteen-forty. "
+      + "Four-K Ultra: seventy-nine to seventy-seven. "
+      + "A few frames apart. Try your games in SpecSmith Compare.",
     );
   });
 
