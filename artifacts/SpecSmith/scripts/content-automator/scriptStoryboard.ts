@@ -7,6 +7,8 @@ import type {
   StoryboardBeat,
   VideoPlatform,
 } from "./types.ts";
+import { COMPARE_VIDEO_BEATS, COMPARE_VIDEO_IDEA_ID } from "./compareVideoScript.ts";
+import { spokenWordCount } from "./spokenWords.ts";
 
 const DURATION_BY_PLATFORM: Record<VideoPlatform, number> = {
   "youtube-shorts": 24,
@@ -28,10 +30,25 @@ function factSlice(facts: string[], index: number): string[] {
 /** Words a natural read fits into a minute. espeak-ng measures at ~158. */
 export const NARRATION_WORDS_PER_MINUTE = 165;
 
-/** Seconds a piece of narration needs, spoken naturally. */
-export function narrationSecondsFor(text: string, wordsPerMinute = NARRATION_WORDS_PER_MINUTE): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  return (words / wordsPerMinute) * 60;
+/** How a line's length is counted: written words, or words as spoken. */
+export type WordCounter = (text: string) => number;
+
+/** Whitespace-separated words, as written. */
+export const writtenWordCount: WordCounter = (text) => text.trim().split(/\s+/).filter(Boolean).length;
+
+/**
+ * Seconds a piece of narration needs, spoken naturally.
+ *
+ * Written words by default. The scripted Compare video states figures, and
+ * "164 to 160 at 1440p" is ten words aloud, not five, so its storyboard is
+ * sized and checked with `spokenWordCount` instead (see buildPlatformScript).
+ */
+export function narrationSecondsFor(
+  text: string,
+  wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
+  countWords: WordCounter = writtenWordCount,
+): number {
+  return (countWords(text) / wordsPerMinute) * 60;
 }
 
 /**
@@ -58,9 +75,10 @@ export function allocateBeatWindows(
   narrations: readonly string[],
   totalSeconds: number,
   wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
+  countWords: WordCounter = writtenWordCount,
 ): { startSecond: number; endSecond: number }[] {
   if (narrations.length === 0) return [];
-  const needed = narrations.map((text) => narrationSecondsFor(text, wordsPerMinute));
+  const needed = narrations.map((text) => narrationSecondsFor(text, wordsPerMinute, countWords));
   const totalNeeded = needed.reduce((sum, value) => sum + value, 0);
 
   // Weight by need when there is any, otherwise split evenly.
@@ -105,10 +123,11 @@ export function allocateBeatWindows(
 export function assertNarrationFitsDuration(
   script: { platform: string; targetDurationSeconds: number; beats: readonly { purpose: string; narration: string; startSecond: number; endSecond: number }[] },
   wordsPerMinute = NARRATION_WORDS_PER_MINUTE,
+  countWords: WordCounter = writtenWordCount,
 ): void {
   const problems: string[] = [];
 
-  const total = narrationSecondsFor(script.beats.map((beat) => beat.narration).join(" "), wordsPerMinute);
+  const total = narrationSecondsFor(script.beats.map((beat) => beat.narration).join(" "), wordsPerMinute, countWords);
   if (total > script.targetDurationSeconds) {
     problems.push(
       `total narration needs ${total.toFixed(1)}s but the script allots ${script.targetDurationSeconds}s`,
@@ -125,7 +144,7 @@ export function assertNarrationFitsDuration(
     // step is the tolerance for THAT — arithmetic, not authoring. It is not a
     // writing allowance: 0.05s is a twentieth of a syllable.
     const window = Math.round((beat.endSecond - beat.startSecond) * 10) / 10;
-    const needed = narrationSecondsFor(beat.narration, wordsPerMinute);
+    const needed = narrationSecondsFor(beat.narration, wordsPerMinute, countWords);
     if (needed > window + 0.05) {
       problems.push(`${beat.purpose} needs ${needed.toFixed(1)}s in a ${window}s window`);
     }
@@ -331,6 +350,26 @@ export function assertCompareCopyIsSupported(script: PlatformScriptStoryboard): 
  * inside ffmpeg.
  */
 function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration: number): StoryboardBeat[] {
+  const beats = templateBeats(idea, variant, duration);
+  if (idea.id !== COMPARE_VIDEO_IDEA_ID) return beats;
+  // The proven Compare video has a written script whose every figure is the
+  // Compare page's own (compareVideoScript.ts). Its lines and captions replace
+  // the template's; a platform's interaction prefix is kept on the hook.
+  const interactionPrefix = variant.platform === "tiktok" ? "Pick now. " : "";
+  return beats.map((beat, index) => {
+    const scripted = COMPARE_VIDEO_BEATS[index];
+    if (!scripted || scripted.purpose !== beat.purpose) {
+      throw new Error(`The Compare video script does not line up with the storyboard at beat ${index}.`);
+    }
+    return {
+      ...beat,
+      narration: index === 0 ? `${interactionPrefix}${scripted.narration}` : scripted.narration,
+      onScreenText: scripted.onScreenText,
+    };
+  });
+}
+
+function templateBeats(idea: ContentIdea, variant: PlatformContentVariant, duration: number): StoryboardBeat[] {
   const route = idea.productConnection.route;
   const copy = beatCopyFor(idea.productConnection.feature);
   const interactionPrefix = variant.platform === "tiktok" ? "Pick now. " : "";
@@ -348,9 +387,9 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
       startSecond: 2,
       endSecond: 6,
       purpose: "commitment",
-      narration: idea.id === "compare-rtx4080s-rtx4080" ? "Start with the same CPU on both builds." : "Decide before the reveal.",
+      narration: "Decide before the reveal.",
       visualDirection: `${variant.opening} Visually lock the viewer into a choice before exposing the decisive evidence.`,
-      onScreenText: idea.id === "compare-rtx4080s-rtx4080" ? "SAME CPU. TWO BUILDS." : "LOCK YOUR PICK",
+      onScreenText: "LOCK YOUR PICK",
       factDependencies: factSlice(idea.requiredFacts, 0),
     },
     {
@@ -393,8 +432,8 @@ function buildBeats(idea: ContentIdea, variant: PlatformContentVariant, duration
 }
 
 /** Re-times authored beats onto windows sized by what each one says. */
-function withAllocatedWindows(beats: StoryboardBeat[], totalSeconds: number): StoryboardBeat[] {
-  const windows = allocateBeatWindows(beats.map((beat) => beat.narration), totalSeconds);
+function withAllocatedWindows(beats: StoryboardBeat[], totalSeconds: number, countWords: WordCounter): StoryboardBeat[] {
+  const windows = allocateBeatWindows(beats.map((beat) => beat.narration), totalSeconds, NARRATION_WORDS_PER_MINUTE, countWords);
   return beats.map((beat, index) => ({ ...beat, ...windows[index] }));
 }
 
@@ -405,6 +444,8 @@ function buildPlatformScript(
 ): PlatformScriptStoryboard {
   const variant = variantFor(contentPackage, platform);
   const duration = DURATION_BY_PLATFORM[platform];
+  // The scripted Compare video states figures; size and check it as spoken.
+  const countWords: WordCounter = idea.id === COMPARE_VIDEO_IDEA_ID ? spokenWordCount : writtenWordCount;
   const script: PlatformScriptStoryboard = {
     platform,
     targetDurationSeconds: duration,
@@ -414,7 +455,7 @@ function buildPlatformScript(
       : platform === "instagram-reels"
         ? "Tight and visually clean; narration supports the visual hierarchy instead of reading every stat."
         : "Fast explanatory challenge structure with a hard hook and clear product payoff.",
-    beats: withAllocatedWindows(buildBeats(idea, variant, duration), duration),
+    beats: withAllocatedWindows(buildBeats(idea, variant, duration), duration, countWords),
     finalCta: variant.cta,
     factualGuardrails: [
       "Do not invent prices, compatibility, benchmark results, product specs, or measured FPS.",
@@ -426,7 +467,7 @@ function buildPlatformScript(
   };
 
   // Malformed here is cheaper than malformed in ffmpeg.
-  assertNarrationFitsDuration(script);
+  assertNarrationFitsDuration(script, NARRATION_WORDS_PER_MINUTE, countWords);
   if (idea.productConnection.feature === "compare") assertCompareCopyIsSupported(script);
   return script;
 }

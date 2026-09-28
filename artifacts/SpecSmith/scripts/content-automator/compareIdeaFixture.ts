@@ -24,9 +24,9 @@ export const COMPARE_IDEA: ContentIdea = {
   // higher estimate. It never says a card is faster, so the hook asks which
   // build SpecSmith estimates higher (see #155).
   hook: "RTX 4080 Super versus RTX 4080: how different are their build estimates?",
-  // Read aloud as "The catch: …". The page says so itself: "Resolution and
-  // preset change the estimated FPS numbers shown", and the capture sequence
-  // steps through 1080p, 1440p, 4K and Ultra on screen while it is spoken.
+  // The video's spoken lines and captions do NOT come from the hook and angle
+  // any more: this idea has a written script, compareVideoScript.ts, whose
+  // every figure is the Compare page's. These remain the idea's metadata.
   angle: "resolution and quality change both builds' estimates.",
   targetAudience: "PC builders",
   requiredFacts: ["comparison state"],

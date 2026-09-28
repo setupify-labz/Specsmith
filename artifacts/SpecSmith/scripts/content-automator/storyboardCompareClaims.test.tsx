@@ -36,6 +36,9 @@ import {
 import { buildStrategyBatch } from './strategist.ts';
 import type { ContentIdea, HardwareItem, PlatformScriptStoryboard, SiteFeature } from './types.ts';
 import { deriveUiRenderState } from './uiRender/planUiRenderState.ts';
+import { COMPARE_VIDEO_BEATS, COMPARE_VIDEO_NARRATION } from './compareVideoScript.ts';
+import { buildProductionPlanPackage } from './productionPlan.ts';
+import { spokenWordCount } from './spokenWords.ts';
 import { planSurface } from './uiRender/surfaces.ts';
 
 beforeAll(() => {
@@ -150,11 +153,15 @@ describe('the Compare storyboard says only what the captured Compare page shows'
     expect(storyboard.scripts).toHaveLength(3);
     for (const script of storyboard.scripts) {
       const evidence = script.beats.find((beat) => beat.purpose === 'evidence')!;
-      const payoff = script.beats.find((beat) => beat.purpose === 'payoff')!;
+      // The evidence beat keeps the page's own caveat, word for word.
       expect(evidence.onScreenText).toBe(COMPARE_BEAT_COPY.evidence.onScreenText);
       expect(evidence.narration).toBe(COMPARE_BEAT_COPY.evidence.narration);
-      expect(payoff.onScreenText).toBe(COMPARE_BEAT_COPY.payoff.onScreenText);
-      expect(payoff.narration).toBe(COMPARE_BEAT_COPY.payoff.narration);
+      // Every beat's line and caption is the Compare video script's.
+      script.beats.forEach((beat, index) => {
+        const prefix = index === 0 && script.platform === 'tiktok' ? 'Pick now. ' : '';
+        expect(beat.narration).toBe(`${prefix}${COMPARE_VIDEO_BEATS[index].narration}`);
+        expect(beat.onScreenText).toBe(COMPARE_VIDEO_BEATS[index].onScreenText);
+      });
       for (const line of viewerCopy(script)) {
         expect(unsupportedCompareClaims(line), `${script.platform}: "${line}"`).toEqual([]);
         expect(estimatesNotAttributedToBuilds(line), `${script.platform}: "${line}"`).toEqual([]);
@@ -253,7 +260,8 @@ describe('estimates belong to builds, never to a bare card or GPU', () => {
   });
 
   it('refuses to generate a Compare storyboard whose hook credits the estimate to a card', () => {
-    const idea: ContentIdea = { ...COMPARE_IDEA, hook: 'Which card does SpecSmith estimate higher? Pick before the names show.' };
+    // A Compare idea without a written script, so its own hook is spoken.
+    const idea: ContentIdea = { ...COMPARE_IDEA, id: 'compare-guard-probe', hook: 'Which card does SpecSmith estimate higher? Pick before the names show.' };
     expect(() => buildScriptStoryboardPackage(idea, buildContentPackage(idea, GENERATED_AT)))
       .toThrow(/hook narration — estimate not attributed to a build/);
   });
@@ -318,12 +326,20 @@ describe('the proven idea, as a viewer hears it', () => {
     const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
     const youtube = storyboard.scripts.find((script) => script.platform === 'youtube-shorts')!;
     expect(youtube.beats.map((beat) => [beat.purpose, beat.narration])).toEqual([
-      ['hook', 'RTX 4080 Super versus RTX 4080: how different are their build estimates?'],
-      ['commitment', 'Start with the same CPU on both builds.'],
+      ['hook', '4080 Super, or plain 4080?'],
+      ['commitment', 'Same CPU. The Super build takes all 20 modelled game leads.'],
       ['evidence', 'Model estimates, not measured benchmarks of these exact systems.'],
-      ['reversal', "The catch: resolution and quality change both builds' estimates."],
-      ['payoff', "Count each build's modelled game leads."],
-      ['cta', 'Continue this exact decision in SpecSmithPC at /compare.'],
+      ['reversal', 'The catch: just 164 to 160 at 1440p High.'],
+      ['payoff', '4K Ultra: 79 to 77.'],
+      ['cta', 'A few frames apart, so try your games in SpecSmith Compare.'],
+    ]);
+    expect(youtube.beats.map((beat) => beat.onScreenText)).toEqual([
+      'RTX 4080 SUPER OR RTX 4080?',
+      'SUPER BUILD: 20 OF 20 MODELLED GAME LEADS',
+      'MODELLED FPS, NOT MEASURED ON THESE EXACT SYSTEMS',
+      '1440p HIGH: 164 vs 160 EST. FPS',
+      '4K ULTRA: 79 vs 77 EST. FPS',
+      'TRY YOUR GAMES IN SPECSMITH COMPARE',
     ]);
   });
 
@@ -346,7 +362,8 @@ describe('the guard still catches what it caught before', () => {
   });
 
   it('refuses to generate a Compare storyboard whose idea copy claims prices', () => {
-    const idea: ContentIdea = { ...COMPARE_IDEA, hook: 'Real prices, real specs. Pick one.' };
+    // A Compare idea without a written script, so its own hook is spoken.
+    const idea: ContentIdea = { ...COMPARE_IDEA, id: 'compare-guard-probe', hook: 'Real prices, real specs. Pick one.' };
     expect(() => buildScriptStoryboardPackage(idea, buildContentPackage(idea, GENERATED_AT)))
       .toThrow(/claims the Compare page does not support: hook narration/);
   });
@@ -379,6 +396,141 @@ describe('surfaces nobody has verified get claim-free wording', () => {
     expect(copy).not.toBe(COMPARE_BEAT_COPY);
     for (const line of [copy.evidence.onScreenText, copy.evidence.narration, copy.payoff.onScreenText, copy.payoff.narration]) {
       expect(unsupportedCompareClaims(line), `${feature}: "${line}"`).toEqual([]);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The Compare video states figures. Every one is read back from the RENDERED
+// Compare page at the setting captured behind its beat: the two "Est. Avg FPS"
+// values, the two "Modelled Game Leads", and ties counted from the page's
+// per-game table (the page itself counts a tie as a lead for Build A).
+// ---------------------------------------------------------------------------
+
+interface PageFigures { avgA: number; avgB: number; leadsA: number; leadsB: number; ties: number; games: number }
+
+function renderedFigures(resolution: string, preset: string): PageFigures {
+  const base = capturedCompareRoute();
+  const [path, query = ''] = base.split('?');
+  const params = new URLSearchParams(query);
+  params.set('res', resolution);
+  params.set('preset', preset);
+  const { container } = render(
+    <MemoryRouter initialEntries={[`${path}?${params.toString()}`]}>
+      <ToastProvider>
+        <Compare />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  const text = (container.textContent ?? '').replace(/\s+/g, ' ');
+  const avg = [...text.matchAll(/Est\. Avg FPS: (\d+)/g)].map((match) => Number(match[1]));
+  const leads = [...text.matchAll(/(\d+)\s*Modelled Game Leads/g)].map((match) => Number(match[1]));
+  const rows = [...container.querySelectorAll('tbody tr')].map((row) => {
+    const cells = [...row.querySelectorAll('td')].map((cell) => (cell.textContent ?? '').trim());
+    return [Number(cells[1]), Number(cells[2])];
+  });
+  cleanup();
+  expect(avg, 'the page shows one Est. Avg FPS per build').toHaveLength(2);
+  expect(leads, 'the page shows Modelled Game Leads per build').toHaveLength(2);
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.flat().every(Number.isFinite)).toBe(true);
+  return {
+    avgA: avg[0], avgB: avg[1], leadsA: leads[0], leadsB: leads[1],
+    ties: rows.filter(([a, b]) => a === b).length, games: rows.length,
+  };
+}
+
+/** Numbers in `text` that are figures, not the names of parts or settings. */
+function statedNumbers(text: string): number[] {
+  return [...text.replace(/\b(4080|1080p|1440p|4k)\b/gi, ' ').matchAll(/\b\d+\b/g)].map((match) => Number(match[0]));
+}
+
+describe('every figure the Compare video states is what the rendered page shows', () => {
+  const figured = COMPARE_VIDEO_BEATS.filter((beat) => beat.figures);
+
+  it('the script states figures, and names the setting each is at', () => {
+    expect(figured.map((beat) => beat.purpose)).toEqual(['commitment', 'reversal', 'payoff']);
+    for (const beat of figured) expect(beat.capture).toEqual({ resolution: beat.figures!.resolution, preset: beat.figures!.preset });
+  });
+
+  it.each(figured.map((beat) => [beat.purpose, beat] as const))('the %s beat\'s figures are on the rendered page', (_purpose, beat) => {
+    const { resolution, preset, ...stated } = beat.figures!;
+    const page = renderedFigures(resolution, preset);
+    for (const [key, value] of Object.entries(stated)) {
+      expect(page[key as keyof PageFigures], `${beat.purpose}: ${key} at ${resolution} ${preset}`).toBe(value);
+    }
+  });
+
+  it('"all 20 modelled game leads" is every game on the page, with no ties', () => {
+    const page = renderedFigures('1080p', 'high');
+    expect(page.games).toBe(20);
+    expect(page.leadsA).toBe(20);
+    expect(page.leadsB).toBe(0);
+    expect(page.ties).toBe(0);
+  });
+
+  it('says and shows no number that is not a declared, page-backed figure', () => {
+    for (const beat of COMPARE_VIDEO_BEATS) {
+      const declared = beat.figures ? Object.entries(beat.figures).filter(([, v]) => typeof v === 'number').map(([, v]) => v as number) : [];
+      for (const line of [beat.narration, beat.onScreenText]) {
+        for (const number of statedNumbers(line)) {
+          expect(declared, `${beat.purpose}: "${line}" states ${number}`).toContain(number);
+        }
+      }
+    }
+  });
+
+  it('every stated average and lead is also shown in the beat\'s caption, labelled as an estimate', () => {
+    for (const beat of figured) {
+      const caption = beat.onScreenText;
+      for (const value of [beat.figures!.avgA, beat.figures!.avgB, beat.figures!.leadsA].filter((v) => v !== undefined && v > 0)) {
+        expect(statedNumbers(caption), `${beat.purpose} caption`).toContain(value);
+      }
+      expect(caption, `${beat.purpose} caption`).toMatch(/EST\. FPS|MODELLED/);
+    }
+  });
+
+  it('the evidence caveat is spoken before any per-setting FPS figure', () => {
+    const evidence = COMPARE_VIDEO_BEATS.findIndex((beat) => beat.purpose === 'evidence');
+    const firstFps = COMPARE_VIDEO_BEATS.findIndex((beat) => beat.figures?.avgA !== undefined);
+    expect(evidence).toBeGreaterThan(-1);
+    expect(firstFps).toBeGreaterThan(evidence);
+  });
+
+  it('each beat captures the setting its script names, behind every caption', () => {
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
+    const plan = buildProductionPlanPackage(storyboard).platforms.find((entry) => entry.platform === 'youtube-shorts')!;
+    const states = plan.tasks
+      .map((task) => (task as { uiRenderState?: { state: { resolution: string; preset: string } } }).uiRenderState?.state)
+      .filter((state): state is { resolution: string; preset: string } => state !== undefined);
+    expect(states.map(({ resolution, preset }) => ({ resolution, preset })))
+      .toEqual(COMPARE_VIDEO_BEATS.slice(1).map((beat) => beat.capture));
+  });
+
+  it('speaks no URL, and ends on a call to action', () => {
+    expect(COMPARE_VIDEO_NARRATION).not.toMatch(/\/|\.com|https?:/i);
+    expect(COMPARE_VIDEO_BEATS.at(-1)!.narration).toMatch(/try your games in SpecSmith Compare/);
+  });
+
+  it('every beat fits its window, counted as spoken', () => {
+    const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, buildContentPackage(COMPARE_IDEA, GENERATED_AT));
+    const youtube = storyboard.scripts.find((script) => script.platform === 'youtube-shorts')!;
+    let total = 0;
+    for (const beat of youtube.beats) {
+      const needs = (spokenWordCount(beat.narration) / 165) * 60;
+      total += needs;
+      expect(needs, `${beat.purpose}`).toBeLessThanOrEqual(beat.endSecond - beat.startSecond + 0.05);
+    }
+    expect(total).toBeLessThanOrEqual(youtube.targetDurationSeconds);
+  });
+
+  it('every caption fits the caption renderer\'s two 28-character lines', () => {
+    for (const beat of COMPARE_VIDEO_BEATS) {
+      const ass = buildAssDocument({ durationSeconds: 2, cues: [{ startSecond: 0, endSecond: 2, text: beat.onScreenText }] });
+      const dialogue = ass.split('\n').find((line) => line.startsWith('Dialogue:'))!;
+      const lines = dialogue.slice(dialogue.lastIndexOf(',,') + 2).split('\\N');
+      expect(lines.length, beat.onScreenText).toBeLessThanOrEqual(2);
+      for (const line of lines) expect(line.length, beat.onScreenText).toBeLessThanOrEqual(28);
     }
   });
 });

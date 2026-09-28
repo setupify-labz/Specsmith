@@ -51,7 +51,7 @@ const idea: ContentIdea = {
 };
 
 describe("production plan", () => {
-  it("captures distinct real Compare settings across the proven idea's five UI beats", () => {
+  it("captures the Compare setting each beat of the proven idea's script names", () => {
     const content = buildContentPackage(COMPARE_IDEA, new Date("2026-09-26T00:00:00Z"));
     const storyboard = buildScriptStoryboardPackage(COMPARE_IDEA, content);
     const plan = buildProductionPlanPackage(storyboard).platforms.find((p) => p.platform === "youtube-shorts")!;
@@ -59,7 +59,10 @@ describe("production plan", () => {
       .map((t) => (t.uiRenderState as UiRenderRequest).state);
     expect(states).toHaveLength(5);
     expect(states.map((s) => s.surface === "compare" ? `${s.resolution}/${s.preset}` : "wrong surface"))
-      .toEqual(["1080p/high", "1440p/high", "4k/high", "4k/ultra", "1440p/high"]);
+      .toEqual(["1080p/high", "4k/high", "1440p/high", "4k/ultra", "1080p/high"]);
+    // No two consecutive beats hold the same screen.
+    const labels = states.map((s) => s.surface === "compare" ? `${s.resolution}/${s.preset}` : "");
+    for (let i = 1; i < labels.length; i += 1) expect(labels[i]).not.toBe(labels[i - 1]);
     const pairs = states.map((s) => s.surface === "compare" ? [s.gpuA, s.cpuA, s.gpuB, s.cpuB] : []);
     expect(pairs.every((pair) => JSON.stringify(pair) === JSON.stringify(pairs[0]))).toBe(true);
   });

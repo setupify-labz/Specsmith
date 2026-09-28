@@ -46,6 +46,7 @@ import type {
   ScriptStoryboardPackage,
   VideoPlatform,
 } from "./types.ts";
+import { spokenWordCount } from "./spokenWords.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -76,8 +77,8 @@ export const NARRATION_WORDS_PER_MINUTE = 165;
 
 /** Seconds a piece of narration needs at a natural speaking rate. */
 export function narrationSecondsFor(text: string, wordsPerMinute = NARRATION_WORDS_PER_MINUTE): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  return (words / wordsPerMinute) * 60;
+  // Counted as spoken: "164 to 160 at 1440p" is ten words aloud, not five.
+  return (spokenWordCount(text) / wordsPerMinute) * 60;
 }
 
 export interface StoryboardTimingFit {

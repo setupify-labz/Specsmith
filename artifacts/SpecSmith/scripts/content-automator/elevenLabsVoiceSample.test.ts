@@ -20,8 +20,7 @@ import {
   resolveVoice,
   SAMPLE_TEXT,
   redactTokens,
-  REVIEWED_COMPARE_BUILDS,
-  REVIEWED_COMPARE_FIGURES,
+  compareFiguresAt,
   verifyVoiceSampleAccess,
   VoiceSampleError,
 } from "./elevenLabsVoiceSample.ts";
@@ -31,11 +30,7 @@ import { COMPARE_IDEA } from "./compareIdeaFixture.ts";
 import { buildContentPackage } from "./contentPackage.ts";
 import { buildProductionPlanPackage } from "./productionPlan.ts";
 import { buildScriptStoryboardPackage } from "./scriptStoryboard.ts";
-import { estimateFpsForBuild } from "../../src/lib/fps.ts";
-import { getAverageFps } from "../../src/lib/compareValue.ts";
-import gpus from "../../src/data/gpus.json" with { type: "json" };
-import cpus from "../../src/data/cpus.json" with { type: "json" };
-import games from "../../src/data/games.json" with { type: "json" };
+import { COMPARE_VIDEO_BEATS, COMPARE_VIDEO_BUILDS, COMPARE_VIDEO_NARRATION } from "./compareVideoScript.ts";
 
 const ENV = { ELEVENLABS_API_KEY: "test-key-not-a-real-credential", ELEVENLABS_VOICE_ID: REVIEWED_LIAM_VOICE.voiceId } as NodeJS.ProcessEnv;
 const CONFIG = elevenLabsTtsConfigFromEnv(ENV)!;
@@ -123,12 +118,12 @@ describe("the sample stays inside the included allowance", () => {
   it("pins the exact reviewed script, and it passes its factual check before any paid request", async () => {
     await expect(assertReviewedCompareFacts()).resolves.toBeUndefined();
     expect(SAMPLE_TEXT).toBe(
-      "RTX 4080 Super versus RTX 4080: how different are their build estimates? "
-      + "Start with the same CPU on both builds. "
+      "4080 Super, or plain 4080? "
+      + "Same CPU. The Super build takes all 20 modelled game leads. "
       + "Model estimates, not measured benchmarks of these exact systems. "
-      + "The catch: resolution and quality change both builds' estimates. "
-      + "Count each build's modelled game leads. "
-      + "Continue this exact decision in SpecSmithPC at /compare.",
+      + "The catch: just 164 to 160 at 1440p High. "
+      + "4K Ultra: 79 to 77. "
+      + "A few frames apart, so try your games in SpecSmith Compare.",
     );
   });
 
@@ -623,59 +618,40 @@ describe("the Liam script narrates the video this branch renders", () => {
     .map((task) => (task as { uiRenderState?: { state: State } }).uiRenderState?.state)
     .filter((state): state is State => state !== undefined);
 
-  it("is the video's six beat narrations, verbatim and in order", () => {
+  it("is the video's six beat narrations, verbatim and in order, and the shared script's", () => {
     expect(script.beats).toHaveLength(6);
     expect(script.targetDurationSeconds).toBe(24);
     expect(SAMPLE_TEXT).toBe(script.beats.map((beat) => beat.narration).join(" "));
+    expect(SAMPLE_TEXT).toBe(COMPARE_VIDEO_NARRATION);
+    expect(SAMPLE_TEXT.length).toBeLessThanOrEqual(MAX_SAMPLE_CHARACTERS);
   });
 
-  it("the video's Compare captures show the reviewed builds, same CPU, at the reviewed settings", () => {
+  it("the video's Compare captures show the video's builds, same CPU, at each beat's setting", () => {
     expect(captures.map((state) => `${state.resolution} ${state.preset}`))
-      .toEqual(["1080p high", "1440p high", "4k high", "4k ultra", "1440p high"]);
+      .toEqual(["1080p high", "4k high", "1440p high", "4k ultra", "1080p high"]);
     for (const state of captures) {
       expect(state).toMatchObject({
         surface: "compare",
-        gpuA: REVIEWED_COMPARE_BUILDS.a.gpu, cpuA: REVIEWED_COMPARE_BUILDS.a.cpu,
-        gpuB: REVIEWED_COMPARE_BUILDS.b.gpu, cpuB: REVIEWED_COMPARE_BUILDS.b.cpu,
+        gpuA: "rtx4080s", cpuA: "r9-9950x3d", gpuB: "rtx4080", cpuB: "r9-9950x3d",
       });
     }
-    expect(REVIEWED_COMPARE_BUILDS).toEqual({
-      a: { gpu: "rtx4080s", cpu: "r9-9950x3d" },
-      b: { gpu: "rtx4080", cpu: "r9-9950x3d" },
-    });
-    expect(SAMPLE_TEXT).toContain("RTX 4080 Super versus RTX 4080");
+    expect(COMPARE_VIDEO_BUILDS.a.cpu).toBe(COMPARE_VIDEO_BUILDS.b.cpu);
   });
 
-  it("the reviewed figures are what Compare shows for those builds at each setting", () => {
-    const part = (rows: { id: string }[], id: string) => rows.find((row) => row.id === id)!;
-    const a = [part(gpus, "rtx4080s"), part(cpus, "r9-9950x3d")];
-    const b = [part(gpus, "rtx4080"), part(cpus, "r9-9950x3d")];
-    const recomputed = REVIEWED_COMPARE_FIGURES.map(({ resolution, preset }) => {
-      const pairs = games.map((game) => [
-        estimateFpsForBuild(a[0] as never, a[1] as never, game as never, resolution, preset).estimated,
-        estimateFpsForBuild(b[0] as never, b[1] as never, game as never, resolution, preset).estimated,
-      ]);
-      return {
-        resolution, preset,
-        avgA: getAverageFps(pairs.map(([x]) => x)), avgB: getAverageFps(pairs.map(([, y]) => y)),
-        leadsA: pairs.filter(([x, y]) => x >= y).length, leadsB: pairs.filter(([x, y]) => x < y).length,
-      };
-    });
-    expect(recomputed).toEqual(REVIEWED_COMPARE_FIGURES);
-    // Every captured setting has a reviewed row.
-    for (const state of captures) {
-      expect(REVIEWED_COMPARE_FIGURES.some((row) => row.resolution === state.resolution && row.preset === state.preset)).toBe(true);
+  it("every figure a beat states is what Compare's own functions compute", async () => {
+    const figured = COMPARE_VIDEO_BEATS.filter((beat) => beat.figures);
+    expect(figured.length).toBe(3);
+    for (const beat of figured) {
+      const { resolution, preset, ...stated } = beat.figures!;
+      const actual = await compareFiguresAt(resolution, preset);
+      for (const [key, value] of Object.entries(stated)) {
+        expect(actual[key as keyof typeof actual], `${beat.purpose} ${key}`).toBe(value);
+      }
     }
   });
 
-  it("its claims hold on those figures: estimates change with settings, for both builds", () => {
-    expect(new Set(REVIEWED_COMPARE_FIGURES.map((row) => row.avgA)).size).toBe(4);
-    expect(new Set(REVIEWED_COMPARE_FIGURES.map((row) => row.avgB)).size).toBe(4);
-  });
-
-  it("speaks no figure and no part the video does not show", () => {
-    expect(SAMPLE_TEXT).not.toMatch(/\b(?!4080\b)\d{2,}\b/);
-    for (const stale of ["5060", "4060", "i3", "i5", "Cyberpunk", "Valorant", "Build A", "Build B"]) {
+  it("speaks no stale part, game or URL", () => {
+    for (const stale of ["5060", "4060", "i3", "i5", "Cyberpunk", "Valorant", "/compare", "SpecSmithPC"]) {
       expect(SAMPLE_TEXT).not.toContain(stale);
     }
   });
