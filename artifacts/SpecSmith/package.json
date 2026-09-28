@@ -28,7 +28,8 @@
     "content:meshy:ingest": "tsx scripts/content-automator/meshyIngestCli.ts",
     "content:e2e:offline": "tsx scripts/content-automator/endToEndOfflinePipeline.ts",
     "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts",
-    "content:e2e:storyboard": "tsx scripts/content-automator/storyboardDraftCli.ts"
+    "content:e2e:storyboard": "tsx scripts/content-automator/storyboardDraftCli.ts",
+    "content:preview:result-cards": "tsx scripts/content-automator/resultCards/previewCli.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
