@@ -97,17 +97,32 @@ export function partName(data: CompareData, kind: "gpu" | "cpu", id: string): st
   return row.name;
 }
 
-export function compareFiguresFor(data: CompareData, builds: CompareBuildPair, setting: CompareSetting): CompareFigures {
+/** One row of the page's per-game table: each build's estimated FPS in one game. */
+export interface CompareGameRow {
+  id: string;
+  name: string;
+  fpsA: number;
+  fpsB: number;
+}
+
+export function compareGamesFor(data: CompareData, builds: CompareBuildPair, setting: CompareSetting): CompareGameRow[] {
   if (data.games.length === 0) throw new CompareFiguresError("Compare has no games to model.");
   const gpuA = part(data.gpus, builds.a.gpu, "GPU");
   const cpuA = part(data.cpus, builds.a.cpu, "CPU");
   const gpuB = part(data.gpus, builds.b.gpu, "GPU");
   const cpuB = part(data.cpus, builds.b.cpu, "CPU");
   const { resolution, preset } = setting;
-  const pairs = data.games.map((game) => [
-    estimateFpsForBuild(gpuA as never, cpuA as never, game as never, resolution as never, preset as never).estimated,
-    estimateFpsForBuild(gpuB as never, cpuB as never, game as never, resolution as never, preset as never).estimated,
-  ]);
+  return data.games.map((game) => ({
+    id: game.id,
+    name: String(game.name ?? game.id),
+    fpsA: estimateFpsForBuild(gpuA as never, cpuA as never, game as never, resolution as never, preset as never).estimated,
+    fpsB: estimateFpsForBuild(gpuB as never, cpuB as never, game as never, resolution as never, preset as never).estimated,
+  }));
+}
+
+export function compareFiguresFor(data: CompareData, builds: CompareBuildPair, setting: CompareSetting): CompareFigures {
+  const { resolution, preset } = setting;
+  const pairs = compareGamesFor(data, builds, setting).map((row) => [row.fpsA, row.fpsB]);
   return {
     resolution,
     preset,
