@@ -1,23 +1,30 @@
-// The 8-second GPU race proof of concept, as one timeline.
+// The GPU race draft (12-15 s, narrated), as one timeline.
 //
-// THE METAPHOR, AND WHY IT IS HONEST. Each GPU travels at its modelled
-// average FPS, so at every moment the distances are in the ratio avgA : avgB.
-// At 1440p High that is 164 : 160, and the RTX 4080 has covered 97.6% of the
-// Super's distance at every frame. A game tile flips when the build that leads
-// that game in Compare's per-game table passes it. Nothing is animated that the
-// figures do not say.
+// THE METAPHOR, AND WHY IT IS HONEST. Both GPUs share one clock and each
+// covers distance at its modelled average FPS, so in every frame the RTX 4080
+// has covered exactly avgB/avgA of the Super's distance, even while the clock
+// slows for a spotlight. A game tile sits where the build that leads that game
+// in Compare's per-game table is when its flip lands, so a tile flips as its
+// leader passes it. The counter counts flipped tiles, nothing else.
 //
-// ONE TIMELINE FOR PICTURE AND SOUND. Every frame's camera, positions and
-// tile states, and every sound cue, is computed here. The page only draws
-// what it is given and the audio only plays what is listed, so a flip's
-// tick lands on its flip.
+// CUTS FOLLOW THE VOICE. Every beat is placed from the measured length of the
+// narration lines: the race starts as the hook line ends, the leads line ends
+// as the counter reaches its total, the pull-back starts as that line ends,
+// and the reveal lands with the lines that say it. A different voice (the
+// intended Liam take) re-times the whole cut from its own measured lines.
+//
+// ONE TIMELINE FOR PICTURE AND SOUND. Camera, positions, tile states, counter,
+// sound cues and line start times are all computed here; the page and the
+// mixer only use what they are given.
 
 import type { CompareFigures, CompareGameRow } from "../resultCards/compareFigures.ts";
+import { spokenFigure } from "../spokenWords.ts";
 
 export const FPS = 30;
-export const DURATION_SECONDS = 8;
 export const WIDTH = 1080;
 export const HEIGHT = 1920;
+export const MIN_DURATION_SECONDS = 12;
+export const MAX_DURATION_SECONDS = 15;
 
 /** World units from start line to finish line. */
 export const TRACK_LENGTH = 3000;
@@ -25,37 +32,61 @@ export const TRACK_LENGTH = 3000;
 export const LANE_X = { a: -170, b: 170 } as const;
 /** A GPU card, nose at its y, body trailing behind. */
 export const GPU_SIZE = { width: 130, length: 240 } as const;
+/** Tile edge in world units: small enough that the closest two never touch. */
+export const TILE_SIZE = 58;
 
-const RACE_START = 0.6;
-const RACE_END = 6.2;
-const ACCELERATION_SHARE = 0.15;
-const PULLBACK_START = 4.95;
-const PULLBACK_END = 6.3;
-/** Tiles line the first 70% of the track, so every flip lands before the pull-back. */
-const TILE_FIRST_Y = 260;
-const TILE_LAST_Y = TRACK_LENGTH * 0.7;
-const FLIP_SECONDS = 0.28;
+/** Games that get a named pause, in flip order. Every one must be a Build A lead. */
+export const SPOTLIGHT_GAME_IDS = ["cyberpunk2077", "warzone", "bg3"] as const;
+
+/** Seconds the flip section lasts, first flip to last. */
+const FLIP_SECTION_SECONDS = 5.5;
+/** Seconds each spotlight holds its game's name. */
+const SPOTLIGHT_SECONDS = 1.0;
+/** Race-clock speed during a spotlight: a slow-motion pass. */
+const SPOTLIGHT_SPEED = 0.16;
+const FLIP_SECONDS = 0.3;
+const PULLBACK_SECONDS = 1.3;
+const END_HOLD_SECONDS = 1.0;
 
 const clamp = (value: number, low = 0, high = 1) => Math.max(low, Math.min(high, value));
 const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u ** 3 : 1 - (-2 * u + 2) ** 3 / 2);
 const lerp = (from: number, to: number, u: number) => from + (to - from) * u;
+const smooth = (edge0: number, edge1: number, x: number) => {
+  const u = clamp((x - edge0) / (edge1 - edge0));
+  return u * u * (3 - 2 * u);
+};
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** Share of the leader's full distance covered at time t: quick launch, then a steady run. */
-export function raceProgress(t: number): number {
-  const u = clamp((t - RACE_START) / (RACE_END - RACE_START));
-  const a = ACCELERATION_SHARE;
-  const covered = u < a ? (u * u) / (2 * a) : u - a / 2;
-  return covered / (1 - a / 2);
+export type LineId = "matchup" | "flips" | "leads" | "average" | "gap";
+
+export interface NarrationLine {
+  id: LineId;
+  text: string;
+}
+
+/**
+ * The narration, with every figure written from the figures as it is said.
+ * "Forty-eighty" is the part name, not a figure (spokenWords.ts skips it).
+ */
+export function narrationLines(figures: CompareFigures): NarrationLine[] {
+  const outright = figures.leadsA - figures.ties;
+  return [
+    { id: "matchup", text: "Forty-eighty Super versus forty-eighty." },
+    { id: "flips", text: "Game after game, the Super takes the lead." },
+    { id: "leads", text: `${capitalise(spokenFigure(outright))} of ${spokenFigure(figures.games)} modelled leads.` },
+    { id: "average", text: `Yet on average, ${spokenFigure(figures.avgA)} to ${spokenFigure(figures.avgB)}.` },
+    { id: "gap", text: `Just ${spokenFigure(figures.avgA - figures.avgB)} FPS apart.` },
+  ];
 }
 
 export interface RaceTile {
   id: string;
-  initials: string;
+  name: string;
   y: number;
   /** Who leads this game in the per-game table. Compare counts a tie as Build A's; the tile shows it as a tie. */
   leader: "a" | "b" | "tie";
-  /** When the leading build passes the tile. */
   flipAt: number;
+  spotlight: boolean;
 }
 
 export interface CameraState {
@@ -75,22 +106,37 @@ export interface FrameState {
   camera: CameraState;
   yA: number;
   yB: number;
-  /** 0..1 fan spin speed, for blur and exhaust. */
+  /** 0..1 how fast the race clock runs, for blur, trails and fans. */
   speed: number;
-  /** Per tile: 0 = face up, 1 = flipped to the leader's side. */
+  /** Per tile: 0 = face down, 1 = flipped to the leader's side. */
   flip: number[];
-  stamp: number;
+  /** Leads shown on the counter: tiles past half-flip whose leader is Build A. */
+  count: number;
+  /** 0..1 pop after the counter last changed. */
+  countPop: number;
+  /** Index of the tile whose name is on screen, and 0..1 how far in. */
+  spotlight: { tile: number; amount: number } | null;
+  /** 0..1 counter reaching its total and settling into the result. */
+  complete: number;
   pullback: number;
+  /** 0..1 the lens and the averages. */
   reveal: number;
+  /** 0..1 the "yet only N FPS apart" line. */
+  verdict: number;
 }
 
-export type CueKind = "rev" | "engine-start" | "flip" | "stamp" | "whoosh" | "reveal";
+export type CueKind = "engine-start" | "flip" | "spotlight" | "complete" | "whoosh" | "reveal" | "verdict";
 
 export interface SoundCue {
   kind: CueKind;
   at: number;
-  /** For flips: which tile, so pitch can climb. */
+  /** For flips: which tile, so the pitch can climb. */
   index?: number;
+}
+
+export interface PlacedLine extends NarrationLine {
+  start: number;
+  seconds: number;
 }
 
 export interface RaceTimeline {
@@ -99,90 +145,181 @@ export interface RaceTimeline {
   tiles: RaceTile[];
   frames: FrameState[];
   cues: SoundCue[];
+  lines: PlacedLine[];
+  durationSeconds: number;
   /** Distance ratio avgB / avgA the picture holds at every frame. */
   distanceRatio: number;
 }
 
-/** Up to three initials: "Red Dead Redemption 2" is "RDR", "CS2 (Counter-Strike 2)" is "CS2". */
-export function initialsFor(name: string): string {
-  const head = name.replace(/\(.*?\)/g, " ").trim();
-  const words = head.split(/[\s:]+/).filter(Boolean);
-  if (words.length === 1) return words[0].replace(/[^\p{L}\p{N}]/gu, "").slice(0, 3).toUpperCase();
-  return words.map((word) => word.replace(/[^\p{L}\p{N}]/gu, "")[0] ?? "").join("").slice(0, 3).toUpperCase();
-}
-
-/** The time the build at `ratio` of the leader's pace reaches world y. */
-function timeToReach(y: number, ratio: number): number {
-  let low = RACE_START;
-  let high = RACE_END;
-  for (let step = 0; step < 50; step += 1) {
-    const mid = (low + high) / 2;
-    if (raceProgress(mid) * TRACK_LENGTH * ratio < y) low = mid;
-    else high = mid;
+export class RaceTimelineError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RaceTimelineError";
   }
-  return high;
 }
 
-export function buildRaceTimeline(figures: CompareFigures, rows: CompareGameRow[], names: { a: string; b: string }): RaceTimeline {
-  if (figures.avgA <= figures.avgB) throw new Error(`Build A must lead on average to race in lane A (${figures.avgA} vs ${figures.avgB}).`);
-  if (rows.length !== figures.games) throw new Error("The per-game rows do not match the figures' game count.");
+/** Flip times: evenly spaced, except that a spotlighted flip holds for SPOTLIGHT_SECONDS. */
+function flipSchedule(count: number, spotlit: Set<number>, start: number): number[] {
+  const normalGaps = count - 1 - [...spotlit].filter((index) => index < count - 1).length;
+  const holds = [...spotlit].filter((index) => index < count - 1).length * SPOTLIGHT_SECONDS;
+  const gap = (FLIP_SECTION_SECONDS - holds) / Math.max(1, normalGaps);
+  if (gap < 0.12) throw new RaceTimelineError("The flip section is too short for its spotlights.");
+  const times = [start];
+  for (let index = 1; index < count; index += 1) times.push(times[index - 1] + (spotlit.has(index - 1) ? SPOTLIGHT_SECONDS : gap));
+  return times;
+}
+
+export function buildRaceTimeline(
+  figures: CompareFigures,
+  rows: CompareGameRow[],
+  names: { a: string; b: string },
+  lineSeconds: Record<LineId, number>,
+): RaceTimeline {
+  if (figures.avgA <= figures.avgB) throw new RaceTimelineError(`Build A must lead on average to race in lane A (${figures.avgA} vs ${figures.avgB}).`);
+  if (rows.length !== figures.games) throw new RaceTimelineError("The per-game rows do not match the figures' game count.");
   const distanceRatio = figures.avgB / figures.avgA;
+  const leaderOf = (row: CompareGameRow) => (row.fpsA > row.fpsB ? "a" : row.fpsA < row.fpsB ? "b" : "tie") as RaceTile["leader"];
+
+  const spotlit = new Set<number>();
+  for (const id of SPOTLIGHT_GAME_IDS) {
+    const index = rows.findIndex((row) => row.id === id);
+    if (index < 0) throw new RaceTimelineError(`Spotlight game "${id}" is not in Compare's games.`);
+    if (leaderOf(rows[index]) !== "a") throw new RaceTimelineError(`Spotlight game "${id}" is not a ${names.a} lead; its card would say otherwise.`);
+    spotlit.add(index);
+  }
+
+  // Beats placed from the voice.
+  const lines = narrationLines(figures);
+  const seconds = (id: LineId) => {
+    const value = lineSeconds[id];
+    if (!(value > 0)) throw new RaceTimelineError(`No measured length for the "${id}" line.`);
+    return value;
+  };
+  const place: PlacedLine[] = [];
+  const matchupStart = 0.25;
+  const raceStart = matchupStart + seconds("matchup") - 0.2;
+  const firstFlip = raceStart + 0.55;
+  const flipAt = flipSchedule(rows.length, spotlit, firstFlip);
+  const lastFlip = flipAt.at(-1)!;
+  const countComplete = lastFlip + FLIP_SECONDS / 2;
+  const flipsStart = firstFlip + 0.1;
+  // The leads line ends as the counter reaches its total.
+  const leadsStart = countComplete - seconds("leads");
+  if (leadsStart < flipsStart + seconds("flips") + 0.1) {
+    throw new RaceTimelineError("The flips and leads lines overlap; the flip section is too short for this voice.");
+  }
+  const pullStart = countComplete + 0.35;
+  const pullEnd = pullStart + PULLBACK_SECONDS;
+  const averageStart = pullStart + 0.25;
+  const gapStart = Math.max(averageStart + seconds("average") + 0.15, pullEnd + 0.4);
+  const durationSeconds = Number((gapStart + seconds("gap") + END_HOLD_SECONDS).toFixed(3));
+  place.push(
+    { ...lines[0], start: matchupStart, seconds: seconds("matchup") },
+    { ...lines[1], start: flipsStart, seconds: seconds("flips") },
+    { ...lines[2], start: leadsStart, seconds: seconds("leads") },
+    { ...lines[3], start: averageStart, seconds: seconds("average") },
+    { ...lines[4], start: gapStart, seconds: seconds("gap") },
+  );
+  if (durationSeconds < MIN_DURATION_SECONDS || durationSeconds > MAX_DURATION_SECONDS) {
+    throw new RaceTimelineError(`This voice makes a ${durationSeconds.toFixed(2)}s cut; the draft must run ${MIN_DURATION_SECONDS}-${MAX_DURATION_SECONDS}s.`);
+  }
+  // The averages appear as they are said: after "Yet on average," (three of the line's words).
+  const averagesShown = averageStart + seconds("average") * (3 / lines[3].text.split(/\s+/).length);
+  const raceEnd = pullEnd - 0.1;
+
+  // The race clock: full speed, slowed through each spotlight. Both GPUs run on it.
+  const speedAt = (t: number) => {
+    if (t < raceStart) return 0;
+    let speed = smooth(raceStart, raceStart + 0.6, t);
+    for (const index of spotlit) {
+      const at = flipAt[index];
+      // Slows from the flip itself, so the tile before it keeps its full spacing.
+      const into = smooth(at - 0.02, at + 0.2, t) * (1 - smooth(at + SPOTLIGHT_SECONDS - 0.25, at + SPOTLIGHT_SECONDS - 0.05, t));
+      speed *= 1 - (1 - SPOTLIGHT_SPEED) * into;
+    }
+    return t > raceEnd ? 0 : speed;
+  };
+  const step = 1 / 1200;
+  const clock: number[] = [0];
+  for (let i = 1; i * step <= durationSeconds + step; i += 1) clock.push(clock[i - 1] + speedAt((i - 0.5) * step) * step);
+  const clockAt = (t: number) => {
+    const exact = clamp(t, 0, durationSeconds) / step;
+    const low = Math.floor(exact);
+    return lerp(clock[low], clock[Math.min(low + 1, clock.length - 1)], exact - low);
+  };
+  const total = clockAt(raceEnd);
+  const leaderY = (t: number) => (clockAt(t) / total) * TRACK_LENGTH;
 
   const tiles: RaceTile[] = rows.map((row, index) => {
-    const y = lerp(TILE_FIRST_Y, TILE_LAST_Y, rows.length === 1 ? 0 : index / (rows.length - 1));
-    const leader = row.fpsA > row.fpsB ? "a" : row.fpsA < row.fpsB ? "b" : "tie";
-    // The tile flips when the game's leader passes it; a tie flips as both pass.
-    const flipAt = timeToReach(y, leader === "a" ? 1 : distanceRatio);
-    return { id: row.id, initials: initialsFor(row.name), y, leader, flipAt };
+    const leader = leaderOf(row);
+    // The tile sits where its leader is when it flips; a tie sits at Build B, which is level at that moment only in the tile's sense.
+    const y = leaderY(flipAt[index]) * (leader === "a" ? 1 : distanceRatio);
+    return { id: row.id, name: row.name, y, leader, flipAt: flipAt[index], spotlight: spotlit.has(index) };
   });
+  for (let index = 1; index < tiles.length; index += 1) {
+    if (Math.abs(tiles[index].y - tiles[index - 1].y) < TILE_SIZE * 1.05) {
+      throw new RaceTimelineError(`Tiles ${index - 1} and ${index} would overlap on the track.`);
+    }
+  }
 
+  const frameCount = Math.round(durationSeconds * FPS);
   const frames: FrameState[] = [];
-  for (let frame = 0; frame < FPS * DURATION_SECONDS; frame += 1) {
+  for (let frame = 0; frame < frameCount; frame += 1) {
     const t = frame / FPS;
-    const progress = raceProgress(t);
-    const yA = progress * TRACK_LENGTH;
+    const yA = leaderY(t);
     const yB = yA * distanceRatio;
-    const speed = t < RACE_START ? t / RACE_START * 0.35 : t < RACE_END ? 1 : Math.max(0, 1 - (t - RACE_END) / 0.8);
+    const speed = speedAt(t);
+    const flip = tiles.map((tile) => clamp((t - tile.flipAt) / FLIP_SECONDS));
+    const flipped = tiles.filter((tile, index) => flip[index] >= 0.5);
+    const count = flipped.filter((tile) => tile.leader === "a").length;
+    const lastChange = flipped.length ? Math.max(...flipped.map((tile) => tile.flipAt + FLIP_SECONDS / 2)) : -1;
+    const lit = tiles.findIndex((tile) => tile.spotlight && t >= tile.flipAt - 0.1 && t < tile.flipAt + SPOTLIGHT_SECONDS - 0.05);
+    const spotAmount = lit < 0 ? 0 : Math.min(smooth(tiles[lit].flipAt - 0.1, tiles[lit].flipAt + 0.15, t),
+      1 - smooth(tiles[lit].flipAt + SPOTLIGHT_SECONDS - 0.3, tiles[lit].flipAt + SPOTLIGHT_SECONDS - 0.05, t));
 
-    // Close on the pair (they sit low in frame, tiles come at them from above),
-    // then an exponential pull-back to the whole track.
-    const intro = easeInOutCubic(clamp(t / 0.9));
-    const raceScale = lerp(2.2, 1.6, intro);
-    const followY = (yA + yB) / 2 + 250 / raceScale;
-    const pullback = easeInOutCubic(clamp((t - PULLBACK_START) / (PULLBACK_END - PULLBACK_START)));
+    // Close on the pair, noses at the anchor, tiles coming at them from above;
+    // a push-in through each spotlight; then an exponential pull-back.
+    const intro = easeInOutCubic(clamp(t / 1.2));
+    const raceScale = lerp(2.2, 1.6, intro) * (1 + 0.18 * spotAmount);
+    const followY = (yA + yB) / 2 - 40 / raceScale;
+    const pullback = easeInOutCubic(clamp((t - pullStart) / PULLBACK_SECONDS));
     const wholeScale = 1080 / (TRACK_LENGTH + 260);
-    const settle = clamp((t - PULLBACK_END) / (DURATION_SECONDS - PULLBACK_END));
-    const scale = Math.exp(lerp(Math.log(raceScale), Math.log(wholeScale), pullback)) * (1 + 0.035 * settle);
-    const wholeY = TRACK_LENGTH / 2 - 60;
-    const shake = speed * (1 - pullback) * 6;
+    const settle = clamp((t - pullEnd) / (durationSeconds - pullEnd));
+    const scale = Math.exp(lerp(Math.log(raceScale), Math.log(wholeScale), pullback)) * (1 + 0.03 * settle);
+    const shake = speed * (1 - pullback) * 5;
     frames.push({
       t,
       camera: {
         scale,
-        y: lerp(followY, wholeY, pullback),
+        y: lerp(followY, TRACK_LENGTH / 2 - 60, pullback),
         offsetX: lerp(0, 250, pullback),
-        tilt: lerp(-4 * intro, 0, pullback),
+        tilt: lerp(-4 * intro * (1 - spotAmount), 0, pullback),
         shakeX: Math.sin(t * 37.1) * shake,
         shakeY: Math.sin(t * 29.3 + 1.7) * shake,
       },
       yA,
       yB,
       speed,
-      flip: tiles.map((tile) => clamp((t - tile.flipAt) / FLIP_SECONDS)),
-      stamp: clamp((t - 4.72) / 0.35),
+      flip,
+      count,
+      countPop: lastChange < 0 ? 0 : 1 - clamp((t - lastChange) / 0.25),
+      spotlight: lit < 0 || spotAmount <= 0 ? null : { tile: lit, amount: spotAmount },
+      complete: clamp((t - countComplete) / 0.4),
       pullback,
-      reveal: clamp((t - PULLBACK_END) / 0.5),
+      reveal: clamp((t - averagesShown) / 0.45),
+      verdict: clamp((t - gapStart) / 0.45),
     });
   }
 
   const cues = ([
-    { kind: "rev", at: 0 },
-    { kind: "engine-start", at: RACE_START },
+    { kind: "engine-start", at: raceStart },
     ...tiles.map((tile, index): SoundCue => ({ kind: "flip", at: tile.flipAt, index })),
-    { kind: "stamp", at: 4.72 },
-    { kind: "whoosh", at: PULLBACK_START },
-    { kind: "reveal", at: PULLBACK_END },
+    ...tiles.filter((tile) => tile.spotlight).map((tile): SoundCue => ({ kind: "spotlight", at: tile.flipAt - 0.1 })),
+    { kind: "complete", at: countComplete },
+    { kind: "whoosh", at: pullStart },
+    { kind: "reveal", at: averagesShown },
+    { kind: "verdict", at: gapStart },
   ] satisfies SoundCue[] as SoundCue[]).sort((x, y) => x.at - y.at);
 
-  return { figures, names, tiles, frames, cues, distanceRatio };
+  return { figures, names, tiles, frames, cues, lines: place, durationSeconds, distanceRatio };
 }

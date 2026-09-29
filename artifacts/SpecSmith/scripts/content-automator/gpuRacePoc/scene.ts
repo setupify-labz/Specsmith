@@ -6,7 +6,7 @@
 // camera. The label, the setting and the result text are drawn in screen
 // space after it, so the camera never moves, shrinks or covers them.
 
-import { GPU_SIZE, HEIGHT, LANE_X, TRACK_LENGTH, WIDTH, type RaceTimeline } from "./timeline.ts";
+import { GPU_SIZE, HEIGHT, LANE_X, TILE_SIZE, TRACK_LENGTH, WIDTH, type RaceTimeline } from "./timeline.ts";
 
 export const MODEL_ESTIMATE_LABEL = "Model estimates, not measured results";
 
@@ -15,10 +15,14 @@ export interface SceneText {
   setting: string;
   nameA: string;
   nameB: string;
-  leadsValue: string;
-  leadsCaption: string;
+  /** "/20": the counter's denominator. */
+  countTotal: string;
+  countCaption: string;
+  /** Under a spotlighted game's name. */
+  spotlightCaption: string;
+  verdictLead: string;
   gapValue: string;
-  gapCaption: string;
+  verdictTail: string;
   avgA: string;
   versus: string;
   avgB: string;
@@ -27,7 +31,7 @@ export interface SceneText {
 
 export function sceneHtml(timeline: RaceTimeline, text: SceneText): string {
   const data = {
-    W: WIDTH, H: HEIGHT, L: TRACK_LENGTH, LANE: LANE_X, GPU: GPU_SIZE,
+    W: WIDTH, H: HEIGHT, L: TRACK_LENGTH, LANE: LANE_X, GPU: GPU_SIZE, TILE: TILE_SIZE,
     tiles: timeline.tiles, frames: timeline.frames, text,
   };
   return `<!doctype html>
@@ -89,26 +93,25 @@ function drawWorld(f, Y, cam = f.camera) {
   for (let i = 0; i < 27; i += 1) for (let j = 0; j < 2; j += 1) {
     ctx.fillStyle = (i + j) % 2 ? "#eeeef8" : "#0b0b10"; ctx.fillRect(-270 + i * 20, Y(D.L) - (j + 1) * 20, 20, 20);
   }
-  // Game tiles down the median.
+  // Game tiles down the median: face down until their leader passes.
   D.tiles.forEach((tile, k) => {
     const flip = f.flip[k];
-    const size = 104, sx = Math.abs(Math.cos(Math.PI * flip)), pop = 1 + 0.22 * Math.sin(Math.PI * flip);
+    const size = D.TILE, sx = Math.abs(Math.cos(Math.PI * flip)), pop = 1 + 0.35 * Math.sin(Math.PI * flip);
     const back = flip >= 0.5;
     ctx.save(); ctx.translate(0, Y(tile.y)); ctx.scale(Math.max(sx, 0.02) * pop, pop);
-    if (back) { ctx.shadowColor = COLOR[tile.leader]; ctx.shadowBlur = 30; }
+    if (back) { ctx.shadowColor = COLOR[tile.leader]; ctx.shadowBlur = 24; }
     ctx.fillStyle = back ? COLOR[tile.leader] : "#1c1c26";
-    roundRect(-size / 2, -size / 2, size, size, 20); ctx.fill(); ctx.shadowBlur = 0;
+    roundRect(-size / 2, -size / 2, size, size, 12); ctx.fill(); ctx.shadowBlur = 0;
     if (!back) {
-      ctx.strokeStyle = "#3a3a4d"; ctx.lineWidth = 4; roundRect(-size / 2, -size / 2, size, size, 20); ctx.stroke();
-      ctx.fillStyle = COLOR.text; ctx.font = "800 34px " + FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(tile.initials, 0, 2);
+      // A small controller mark: this is a game, not yet decided.
+      ctx.strokeStyle = "#3a3a4d"; ctx.lineWidth = 3; roundRect(-size / 2, -size / 2, size, size, 12); ctx.stroke();
+      ctx.fillStyle = "#4a4a60"; roundRect(-17, -8, 34, 16, 8); ctx.fill();
     } else if (tile.leader === "tie") {
-      ctx.fillStyle = "#0b0b10"; ctx.fillRect(-26, -6, 52, 12);
+      ctx.fillStyle = "#0b0b10"; ctx.fillRect(-14, -3, 28, 6);
     } else {
-      // A chevron toward the leader's lane.
       const dir = tile.leader === "a" ? -1 : 1;
       ctx.fillStyle = "#0b0b10"; ctx.beginPath();
-      ctx.moveTo(dir * 30, 0); ctx.lineTo(-dir * 12, -30); ctx.lineTo(-dir * 12, 30); ctx.closePath(); ctx.fill();
+      ctx.moveTo(dir * 16, 0); ctx.lineTo(-dir * 7, -16); ctx.lineTo(-dir * 7, 16); ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   });
@@ -151,45 +154,82 @@ function pill(text, x, y, font, fg, bg, border, alpha = 1) {
   ctx.fillStyle = fg; ctx.fillText(text, x, y + 2); ctx.restore();
 }
 
+function text(str, x, y, font, color, align = "left", alpha = 1) {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
+  ctx.fillText(str, x, y); ctx.restore();
+}
+
 function drawOverlay(f) {
   const cam = f.camera, T = D.text;
-  // GPU names ride with the GPUs through the race, then give way to the result.
-  const nameAlpha = clamp(1 - f.pullback * 2.5) * clamp(f.t / 0.4);
+  // Scrim under the top band, so the race never shows through the label, setting or counter.
+  // It shrinks as the camera pulls back, so the finish line is never dimmed.
+  const scrimH = 640 - 300 * f.pullback;
+  const scrim = ctx.createLinearGradient(0, 0, 0, scrimH);
+  scrim.addColorStop(0, "rgba(11,11,16,0.97)"); scrim.addColorStop(0.72, "rgba(11,11,16,0.88)"); scrim.addColorStop(1, "rgba(11,11,16,0)");
+  ctx.fillStyle = scrim; ctx.fillRect(0, 0, D.W, scrimH);
+
+  // GPU names ride just ahead of each GPU through the race, then give way to the result.
+  const nameAlpha = clamp(1 - f.pullback * 2.5) * clamp(f.t / 0.4) * (1 - (f.spotlight ? easeOut(f.spotlight.amount) : 0));
   if (nameAlpha > 0) {
     for (const lane of ["a", "b"]) {
-      const [x, y] = screenPoint(cam, D.LANE[lane], (lane === "a" ? f.yA : f.yB) - D.GPU.length - 50);
-      pill(lane === "a" ? T.nameA : T.nameB, clamp(x, 250, D.W - 250), Math.min(y, 1340), "800 40px " + FONT,
+      const [x, y] = screenPoint(cam, D.LANE[lane], lane === "a" ? f.yA : f.yB);
+      pill(lane === "a" ? T.nameA : T.nameB, clamp(x, 240, D.W - 240), clamp(y - 70, 680, 1330), "800 40px " + FONT,
         "#0b0b10", COLOR[lane], null, nameAlpha);
     }
   }
-  // The leads stamp slams in, then settles into the result block.
-  if (f.stamp > 0) {
-    const s = easeOutBack(f.stamp), settle = f.pullback;
-    const x = 540 + (392 - 540) * settle, y = 820 + (1322 - 820) * settle, scale = (1 + (0.45 - 1) * settle) * s;
-    ctx.save(); ctx.translate(x, y); ctx.rotate((1 - s) * -0.25 * (1 - settle)); ctx.scale(scale, scale);
-    ctx.globalAlpha = clamp(f.stamp * 3);
-    ctx.fillStyle = "rgba(11,11,16,0.86)"; roundRect(-330, -150, 660, 300, 48); ctx.fill();
-    ctx.strokeStyle = COLOR.a; ctx.lineWidth = 6; roundRect(-330, -150, 660, 300, 48); ctx.stroke();
-    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = COLOR.text; ctx.font = "800 170px " + FONT; ctx.fillText(T.leadsValue, 0, 50);
-    ctx.fillStyle = COLOR.a; ctx.font = "800 44px " + FONT; ctx.fillText(T.leadsCaption, 0, 118);
+
+  // A spotlighted game: its full name, above the tile that just flipped.
+  if (f.spotlight) {
+    const tile = D.tiles[f.spotlight.tile], u = easeOut(f.spotlight.amount), k = 0.85 + 0.15 * u;
+    ctx.save(); ctx.globalAlpha = u; ctx.translate(540, 760); ctx.scale(k, k);
+    ctx.font = "800 42px " + FONT; const captionW = ctx.measureText(T.spotlightCaption).width;
+    ctx.font = "800 72px " + FONT; const w = Math.max(ctx.measureText(tile.name).width, captionW) + 96;
+    ctx.fillStyle = "rgba(20,19,32,0.95)"; roundRect(-w / 2, -100, w, 190, 36); ctx.fill();
+    ctx.strokeStyle = COLOR[tile.leader]; ctx.lineWidth = 5; roundRect(-w / 2, -100, w, 190, 36); ctx.stroke();
+    ctx.textAlign = "center"; ctx.fillStyle = COLOR.text; ctx.fillText(tile.name, 0, -8);
+    ctx.font = "800 42px " + FONT; ctx.fillStyle = COLOR[tile.leader]; ctx.fillText(T.spotlightCaption, 0, 56);
     ctx.restore();
   }
-  // The reveal: a lens on the finish line, where the gap is big enough to see, and what it is worth.
+
+  // The counter: large while it climbs, then it settles into the result column.
+  {
+    // Clears the track's path before the track arrives.
+    const settle = easeOut(clamp(f.pullback * 1.8)), pop = 1 + 0.12 * f.countPop + 0.1 * Math.sin(Math.PI * clamp(f.complete));
+    const x = 540 + (72 - 540) * settle, y = 520 + (500 - 520) * settle, size = 190 - 70 * settle;
+    const align = settle > 0.5 ? "left" : "center";
+    ctx.save(); ctx.translate(x, y); ctx.scale(pop, pop);
+    ctx.textBaseline = "alphabetic"; ctx.textAlign = align;
+    ctx.font = "800 " + size + "px " + FONT;
+    const countText = String(f.count), totalText = T.countTotal;
+    const countW = ctx.measureText(countText).width;
+    ctx.font = "800 " + Math.round(size * 0.55) + "px " + FONT; const totalW = ctx.measureText(totalText).width;
+    const start = align === "center" ? -(countW + totalW) / 2 : 0;
+    ctx.textAlign = "left";
+    if (f.complete > 0) { ctx.shadowColor = COLOR.a; ctx.shadowBlur = 40 * clamp(f.complete); }
+    ctx.font = "800 " + size + "px " + FONT; ctx.fillStyle = f.count ? COLOR.text : COLOR.muted; ctx.fillText(countText, start, 0);
+    ctx.shadowBlur = 0;
+    ctx.font = "800 " + Math.round(size * 0.55) + "px " + FONT; ctx.fillStyle = COLOR.muted; ctx.fillText(totalText, start + countW + 8, 0);
+    ctx.font = "800 " + Math.round(40 - 6 * settle) + "px " + FONT; ctx.fillStyle = COLOR.a;
+    ctx.textAlign = align; ctx.fillText(T.countCaption, align === "center" ? 0 : 0, Math.round(58 - 14 * settle));
+    ctx.restore();
+  }
+
+  // The reveal: a lens on the finish line, where the gap is big enough to see, and the averages.
   if (f.reveal > 0) {
     const r = easeOut(f.reveal);
-    const lens = { x: 300, y: 866, radius: 200 * r };
+    const lens = { x: 300, y: 1050, radius: 175 * r };
     const [fx, fy] = screenPoint(cam, 0, (f.yA + f.yB) / 2);
     ctx.save(); ctx.globalAlpha = r; ctx.strokeStyle = COLOR.cyan; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(fx, fy, 26, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(fx - 26, fy + 8); ctx.lineTo(lens.x + lens.radius * 0.72, lens.y - lens.radius * 0.72); ctx.stroke();
+    // An elbow down the channel between the text column and the track, so it crosses no words.
+    const channel = 610;
+    ctx.beginPath(); ctx.moveTo(fx - 26, fy); ctx.lineTo(channel, fy); ctx.lineTo(channel, lens.y); ctx.lineTo(lens.x + lens.radius, lens.y); ctx.stroke();
     ctx.restore();
     if (lens.radius > 1) {
       ctx.save(); ctx.beginPath(); ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2); ctx.clip();
       ctx.fillStyle = "#0b0b10"; ctx.fillRect(lens.x - lens.radius, lens.y - lens.radius, lens.radius * 2, lens.radius * 2);
-      const lensCam = { scale: 0.85, y: (f.yA + f.yB) / 2 - 60, offsetX: lens.x - D.W / 2, anchor: lens.y, tilt: 0, shakeX: 0, shakeY: 0 };
+      const lensCam = { scale: 0.8, y: (f.yA + f.yB) / 2 - 60, offsetX: lens.x - D.W / 2, anchor: lens.y, tilt: 0, shakeX: 0, shakeY: 0 };
       withCamera(lensCam, (Y) => drawWorld({ ...f, speed: 0, pullback: 1 }, Y, lensCam));
-      // The gap itself: a line at each nose, and the span between them.
       const [, yA] = screenPoint(lensCam, 0, f.yA), [, yB] = screenPoint(lensCam, 0, f.yB);
       ctx.strokeStyle = COLOR.cyan; ctx.lineWidth = 4; ctx.setLineDash([12, 10]);
       for (const y of [yA, yB]) { ctx.beginPath(); ctx.moveTo(lens.x - lens.radius, y); ctx.lineTo(lens.x + lens.radius, y); ctx.stroke(); }
@@ -202,21 +242,26 @@ function drawOverlay(f) {
       ctx.save(); ctx.globalAlpha = r; ctx.strokeStyle = COLOR.cyan; ctx.lineWidth = 6;
       ctx.beginPath(); ctx.arc(lens.x, lens.y, lens.radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
     }
-    const x0 = 72, lift = (1 - r) * 40;
-    ctx.save(); ctx.globalAlpha = r; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    ctx.fillStyle = COLOR.cyan; ctx.font = "800 150px " + FONT; ctx.fillText(T.gapValue, x0, 540 + lift);
-    ctx.fillStyle = COLOR.text; ctx.font = "800 54px " + FONT; ctx.fillText(T.gapCaption, x0, 612 + lift);
-    ctx.font = "800 64px " + FONT; let x = x0;
+    const lift = (1 - r) * 30;
+    ctx.save(); ctx.globalAlpha = r; ctx.font = "800 64px " + FONT; ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+    let x = 72;
     for (const [part, color] of [[T.avgA, COLOR.a], [T.versus, COLOR.muted], [T.avgB, COLOR.b]]) {
-      ctx.fillStyle = color; ctx.fillText(part, x, 1148 - lift); x += ctx.measureText(part).width;
+      ctx.fillStyle = color; ctx.fillText(part, x, 1300 - lift); x += ctx.measureText(part).width;
     }
-    ctx.fillStyle = COLOR.muted; ctx.font = "700 40px " + FONT; ctx.fillText(T.avgCaption, x0, 1198 - lift);
     ctx.restore();
+    text(T.avgCaption, 72, 1350 - lift, "700 40px " + FONT, COLOR.muted, "left", r);
   }
-  // Always on top, never moved by the camera, over a scrim so the race never shows through around it.
-  const scrim = ctx.createLinearGradient(0, 0, 0, 380);
-  scrim.addColorStop(0, "rgba(11,11,16,0.96)"); scrim.addColorStop(0.75, "rgba(11,11,16,0.85)"); scrim.addColorStop(1, "rgba(11,11,16,0)");
-  ctx.fillStyle = scrim; ctx.fillRect(0, 0, D.W, 380);
+
+  // The verdict lands last, with the line that says it, and holds.
+  if (f.verdict > 0) {
+    const v = easeOutBack(clamp(f.verdict)), a = clamp(f.verdict * 2);
+    text(T.verdictLead, 72, 640, "800 52px " + FONT, COLOR.text, "left", a);
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(72, 770); ctx.scale(v, v);
+    text(T.gapValue, 0, 0, "800 132px " + FONT, COLOR.cyan); ctx.restore();
+    text(T.verdictTail, 72, 830, "800 52px " + FONT, COLOR.text, "left", a);
+  }
+
+  // Always on top, never moved by the camera.
   pill(T.setting, 540, 290, "800 40px " + FONT, COLOR.cyan, "rgba(11,11,16,0.85)", "rgba(0,212,255,0.55)");
   ctx.save(); ctx.font = "700 38px " + FONT;
   const w = ctx.measureText(T.label).width + 110;
