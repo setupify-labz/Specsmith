@@ -16,6 +16,13 @@ import { GPU_SIZE, HEIGHT, LANE_X, TILE_SIZE, TRACK_LENGTH, WIDTH, type RaceTime
  */
 export const CAPTION_BAND = { top: 244, bottom: 340, maxWidth: 936 } as const;
 
+/**
+ * The call to action during the final hold: the caption band, taller for two
+ * lines once the captions are done. It stays under the label and ends above
+ * the settled 20/20 counter, whose digits start at about y=414.
+ */
+export const CTA_BOX = { top: 236, bottom: 398, maxWidth: 936 } as const;
+
 export const MODEL_ESTIMATE_LABEL = "Model estimates, not measured results";
 
 export interface SceneText {
@@ -31,6 +38,9 @@ export interface SceneText {
   verdictLead: string;
   gapValue: string;
   verdictTail: string;
+  /** Call to action, two lines: the ask, then the site. */
+  ctaLead: string;
+  ctaSite: string;
   avgA: string;
   versus: string;
   avgB: string;
@@ -40,7 +50,7 @@ export interface SceneText {
 export function sceneHtml(timeline: RaceTimeline, text: SceneText): string {
   const data = {
     W: WIDTH, H: HEIGHT, L: TRACK_LENGTH, LANE: LANE_X, GPU: GPU_SIZE, TILE: TILE_SIZE,
-    tiles: timeline.tiles, frames: timeline.frames, captions: timeline.captions, text, CAPTION_BAND,
+    tiles: timeline.tiles, frames: timeline.frames, captions: timeline.captions, text, CAPTION_BAND, CTA_BOX, cta: timeline.cta,
   };
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>gpu-race-poc</title>
@@ -167,6 +177,13 @@ function text(str, x, y, font, color, align = "left", alpha = 1) {
   ctx.fillText(str, x, y); ctx.restore();
 }
 
+/** The call-to-action card's width: its wider line, padded. */
+function ctaWidth() {
+  ctx.save(); ctx.font = "800 44px " + FONT; const lead = ctx.measureText(D.text.ctaLead).width;
+  ctx.font = "800 64px " + FONT; const site = ctx.measureText(D.text.ctaSite).width; ctx.restore();
+  return Math.max(lead, site) + 96;
+}
+
 function drawOverlay(f) {
   const cam = f.camera, T = D.text;
   // Scrim under the top band, so the race never shows through the label, setting or counter.
@@ -273,6 +290,18 @@ function drawOverlay(f) {
   }
 
   // Always on top, never moved by the camera.
+  // The call to action, in the final hold only.
+  if (f.t >= D.cta.start) {
+    const u = easeOut((f.t - D.cta.start) / 0.2), mid = (D.CTA_BOX.top + D.CTA_BOX.bottom) / 2, h = D.CTA_BOX.bottom - D.CTA_BOX.top;
+    ctx.save(); ctx.globalAlpha = clamp((f.t - D.cta.start) / 0.12); ctx.translate(540, mid); ctx.scale(0.94 + 0.06 * u, 0.94 + 0.06 * u);
+    const w = ctaWidth();
+    ctx.fillStyle = "rgba(11,11,16,0.96)"; roundRect(-w / 2, -h / 2, w, h, 30); ctx.fill();
+    ctx.strokeStyle = COLOR.cyan; ctx.lineWidth = 5; roundRect(-w / 2, -h / 2, w, h, 30); ctx.stroke();
+    ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    ctx.font = "800 44px " + FONT; ctx.fillStyle = COLOR.text; ctx.fillText(T.ctaLead, 0, -14);
+    ctx.font = "800 64px " + FONT; ctx.fillStyle = COLOR.cyan; ctx.fillText(T.ctaSite, 0, 56);
+    ctx.restore();
+  }
   // The caption for whatever is being said, in its band.
   const caption = D.captions.find((entry) => f.t >= entry.start && f.t < entry.end);
   if (caption) {
@@ -304,6 +333,7 @@ window.__draw = (index) => {
 };
 window.__frames = D.frames.length;
 // The widest caption as drawn, so the render can refuse one that would not fit its band.
+window.__ctaWidth = () => ctaWidth();
 window.__captionWidths = () => { ctx.save(); ctx.font = "800 50px " + FONT;
   const widths = D.captions.map((entry) => ctx.measureText(entry.text).width + 64); ctx.restore(); return widths; };
 window.__draw(0);

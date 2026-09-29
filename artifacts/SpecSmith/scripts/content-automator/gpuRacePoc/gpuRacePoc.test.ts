@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { spokenFigures } from "../spokenWords.ts";
 import { mixDraft, SAMPLE_RATE, synthesizeCues } from "./audio.ts";
 import { keyFrameTimes, raceData, sceneText } from "./render.ts";
-import { CAPTION_BAND, MODEL_ESTIMATE_LABEL, sceneHtml } from "./scene.ts";
+import { CAPTION_BAND, CTA_BOX, MODEL_ESTIMATE_LABEL, sceneHtml } from "./scene.ts";
 import {
   buildRaceTimeline,
   captionTexts,
@@ -167,6 +167,36 @@ describe("captions", () => {
   });
 });
 
+describe("call to action", () => {
+  it("fills the existing final hold without adding time", () => {
+    const gapEnd = line("gap").start + line("gap").seconds;
+    expect(timeline.cta.start).toBeCloseTo(gapEnd, 3);
+    expect(timeline.cta.end).toBe(timeline.durationSeconds);
+    // The hold is what it was before the call to action: one second after the last line.
+    expect(timeline.durationSeconds - gapEnd).toBeCloseTo(1.0, 3);
+  });
+
+  it("never shares its band with a caption, or a frame with a line being spoken", () => {
+    for (const caption of timeline.captions) expect(caption.end).toBeLessThanOrEqual(timeline.cta.start + 0.05 + 1e-9);
+    for (const entry of timeline.lines) expect(entry.start + entry.seconds).toBeLessThanOrEqual(timeline.cta.start + 1e-9);
+  });
+
+  it("names the site, and sits under the label and above the settled 20/20", () => {
+    expect(sceneText(timeline)).toMatchObject({ ctaLead: "Compare your games at", ctaSite: "SpecSmithPC.com" });
+    expect(CTA_BOX.top).toBeGreaterThanOrEqual(222);
+    // The settled counter's digits start at about y=414 (120px type on a y=500 baseline).
+    expect(CTA_BOX.bottom).toBeLessThan(414);
+  });
+
+  it("leaves the reveal alone: 20/20 and the verdict are fully shown throughout the hold", () => {
+    for (const frame of timeline.frames.filter((entry) => entry.t >= timeline.cta.start)) {
+      expect(frame.count).toBe(20);
+      expect(frame.verdict).toBe(1);
+      expect(frame.reveal).toBe(1);
+    }
+  });
+});
+
 describe("sound", () => {
   it("puts one tick on each flip and a swell on each spotlight", () => {
     expect(timeline.cues.filter((cue) => cue.kind === "flip").map((cue) => cue.at)).toEqual(timeline.tiles.map((tile) => tile.flipAt));
@@ -209,7 +239,7 @@ describe("the picture", () => {
   it("pulls key frames at each beat, inside the cut", () => {
     const times = keyFrameTimes(timeline);
     expect(times.map((time) => time.label)).toEqual([
-      "opening", "first-flip", "spotlight-1", "spotlight-2", "counter-climbing", "spotlight-3", "count-complete", "pull-back", "averages", "verdict",
+      "opening", "first-flip", "spotlight-1", "spotlight-2", "counter-climbing", "spotlight-3", "count-complete", "pull-back", "averages", "verdict", "call-to-action",
     ]);
     for (const time of times) expect(time.second).toBeLessThan(timeline.durationSeconds);
   });

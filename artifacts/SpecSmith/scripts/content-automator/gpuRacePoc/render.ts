@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { launchBrowser } from "../uiRender/capture.ts";
 import { compareFiguresFor, compareGamesFor, loadCompareData, partName, type CompareBuildPair, type CompareSetting } from "../resultCards/compareFigures.ts";
 import { mixDraft, placedVoice, PLACEHOLDER_VOICE, SAMPLE_RATE, speakPlaceholder, synthesizeCues, wavBytes } from "./audio.ts";
-import { CAPTION_BAND, MODEL_ESTIMATE_LABEL, sceneHtml, type SceneText } from "./scene.ts";
+import { CAPTION_BAND, CTA_BOX, MODEL_ESTIMATE_LABEL, sceneHtml, type SceneText } from "./scene.ts";
 import { buildRaceTimeline, FPS, HEIGHT, narrationLines, WIDTH, type LineId, type RaceTimeline } from "./timeline.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,7 +44,8 @@ export function keyFrameTimes(timeline: RaceTimeline): { label: string; second: 
     { label: "count-complete", second: (frameOf((frame) => frame.complete >= 1) ?? 0) },
     { label: "pull-back", second: frameOf((frame) => frame.pullback >= 0.5) ?? 0 },
     { label: "averages", second: (frameOf((frame) => frame.reveal >= 1) ?? 0) + 0.2 },
-    { label: "verdict", second: timeline.durationSeconds - 0.1 },
+    { label: "verdict", second: timeline.cta.start - 0.1 },
+    { label: "call-to-action", second: timeline.durationSeconds - 0.1 },
   ];
   return times.map((time) => ({ ...time, second: Number(time.second.toFixed(2)) })).sort((a, b) => a.second - b.second);
 }
@@ -85,6 +86,8 @@ export function sceneText(timeline: RaceTimeline): SceneText {
     verdictLead: "yet only",
     gapValue: `${figures.avgA - figures.avgB} FPS`,
     verdictTail: "apart on average",
+    ctaLead: "Compare your games at",
+    ctaSite: "SpecSmithPC.com",
     avgA: String(figures.avgA),
     versus: " vs ",
     avgB: String(figures.avgB),
@@ -112,6 +115,8 @@ async function main(): Promise<void> {
     const widths = (await page.evaluate("window.__captionWidths()")) as number[];
     const tooWide = timeline.captions.filter((_, index) => widths[index] > CAPTION_BAND.maxWidth);
     if (tooWide.length) throw new Error(`Captions wider than their band: ${tooWide.map((entry) => entry.text).join(" | ")}`);
+    const ctaWidth = (await page.evaluate("window.__ctaWidth()")) as number;
+    if (ctaWidth > CTA_BOX.maxWidth) throw new Error(`The call to action is ${Math.round(ctaWidth)}px wide; its box allows ${CTA_BOX.maxWidth}px.`);
     const canvas = page.locator("#c");
     for (let frame = 0; frame < timeline.frames.length; frame += 1) {
       await page.evaluate(`window.__draw(${frame})`);
@@ -162,6 +167,7 @@ async function main(): Promise<void> {
     distanceRatio: timeline.distanceRatio,
     narration: { voice: PLACEHOLDER_VOICE, intendedVoice: "Liam (not generated)", lines: timeline.lines },
     captions: timeline.captions,
+    callToAction: { text: `${text.ctaLead} ${text.ctaSite}`, ...timeline.cta },
     durationSeconds: timeline.durationSeconds,
     tiles: timeline.tiles,
     cues: timeline.cues,

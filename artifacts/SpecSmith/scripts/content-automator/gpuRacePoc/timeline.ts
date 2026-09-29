@@ -177,6 +177,8 @@ export interface RaceTimeline {
   cues: SoundCue[];
   lines: PlacedLine[];
   captions: Caption[];
+  /** The call to action: the final hold, from the end of the last line to the end of the cut. */
+  cta: { start: number; end: number };
   durationSeconds: number;
   /** Distance ratio avgB / avgA the picture holds at every frame. */
   distanceRatio: number;
@@ -247,6 +249,8 @@ export function buildRaceTimeline(
   const averageStart = Math.max(pullStart + 0.25, leadsEnd + 0.15);
   const gapStart = Math.max(averageStart + seconds("average") + 0.15, pullEnd + 0.4);
   const durationSeconds = Number((gapStart + seconds("gap") + END_HOLD_SECONDS).toFixed(3));
+  // The call to action fills the existing final hold; it adds no time.
+  const cta = { start: Number((gapStart + seconds("gap")).toFixed(3)), end: durationSeconds };
   place.push(
     { ...lines[0], start: matchupStart, seconds: seconds("matchup") },
     { ...lines[1], start: flipsStart, seconds: seconds("flips") },
@@ -364,7 +368,8 @@ export function buildRaceTimeline(
     const chunks = texts[entry.id].split(/,\s*/).map((chunk, at, all) => (at < all.length - 1 ? `${chunk},` : chunk));
     const words = chunks.map((chunk) => chunk.split(/\s+/).length);
     const total = words.reduce((sum, count) => sum + count, 0);
-    const nextLine = place[index + 1]?.start ?? durationSeconds;
+    // The last caption gives its band to the call to action as the hold begins.
+    const nextLine = place[index + 1]?.start ?? cta.start + 0.05;
     let before = 0;
     chunks.forEach((chunk, at) => {
       if (chunk.length > MAX_CAPTION_CHARACTERS) throw new RaceTimelineError(`Caption "${chunk}" is longer than one line.`);
@@ -375,5 +380,5 @@ export function buildRaceTimeline(
     });
   });
 
-  return { figures, names, tiles, frames, cues, lines: place, captions, durationSeconds, distanceRatio };
+  return { figures, names, tiles, frames, cues, lines: place, captions, cta, durationSeconds, distanceRatio };
 }
