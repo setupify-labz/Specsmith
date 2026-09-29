@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { launchBrowser } from "../uiRender/capture.ts";
 import { compareFiguresFor, compareGamesFor, loadCompareData, partName, type CompareBuildPair, type CompareSetting } from "../resultCards/compareFigures.ts";
 import { mixDraft, placedVoice, PLACEHOLDER_VOICE, SAMPLE_RATE, speakPlaceholder, synthesizeCues, wavBytes } from "./audio.ts";
-import { MODEL_ESTIMATE_LABEL, sceneHtml, type SceneText } from "./scene.ts";
+import { CAPTION_BAND, MODEL_ESTIMATE_LABEL, sceneHtml, type SceneText } from "./scene.ts";
 import { buildRaceTimeline, FPS, HEIGHT, narrationLines, WIDTH, type LineId, type RaceTimeline } from "./timeline.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -37,7 +37,8 @@ export function keyFrameTimes(timeline: RaceTimeline): { label: string; second: 
   const spot = timeline.tiles.filter((tile) => tile.spotlight);
   const frameOf = (predicate: (frame: RaceTimeline["frames"][number]) => boolean) => timeline.frames.find(predicate)?.t;
   const times = [
-    { label: "matchup", second: 1.0 },
+    { label: "opening", second: 0.3 },
+    { label: "first-flip", second: 1.0 },
     ...spot.map((tile, index) => ({ label: `spotlight-${index + 1}`, second: tile.flipAt + 0.45 })),
     { label: "counter-climbing", second: frameOf((frame) => frame.count >= 12) ?? 0 },
     { label: "count-complete", second: (frameOf((frame) => frame.complete >= 1) ?? 0) },
@@ -108,6 +109,9 @@ async function main(): Promise<void> {
     const page = await session.context.newPage();
     await page.setContent(sceneHtml(timeline, text), { waitUntil: "load" });
     await page.evaluate("document.fonts.ready");
+    const widths = (await page.evaluate("window.__captionWidths()")) as number[];
+    const tooWide = timeline.captions.filter((_, index) => widths[index] > CAPTION_BAND.maxWidth);
+    if (tooWide.length) throw new Error(`Captions wider than their band: ${tooWide.map((entry) => entry.text).join(" | ")}`);
     const canvas = page.locator("#c");
     for (let frame = 0; frame < timeline.frames.length; frame += 1) {
       await page.evaluate(`window.__draw(${frame})`);
@@ -157,6 +161,7 @@ async function main(): Promise<void> {
     dataSources: sources,
     distanceRatio: timeline.distanceRatio,
     narration: { voice: PLACEHOLDER_VOICE, intendedVoice: "Liam (not generated)", lines: timeline.lines },
+    captions: timeline.captions,
     durationSeconds: timeline.durationSeconds,
     tiles: timeline.tiles,
     cues: timeline.cues,
@@ -170,6 +175,7 @@ async function main(): Promise<void> {
   console.log(`key frames: ${sheet}`);
   console.log(`figures:    ${JSON.stringify(timeline.figures)}`);
   for (const line of timeline.lines) console.log(`  ${line.start.toFixed(2).padStart(5)}-${(line.start + line.seconds).toFixed(2).padEnd(5)}s  ${line.text}`);
+  for (const caption of timeline.captions) console.log(`  caption ${caption.start.toFixed(2).padStart(5)}-${caption.end.toFixed(2).padEnd(5)}s  ${caption.text}`);
   for (const frame of keyFrames) console.log(`  key ${frame.second.toFixed(2).padStart(5)}s ${frame.label}`);
 }
 

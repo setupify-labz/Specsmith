@@ -6,10 +6,12 @@ import { describe, expect, it } from "vitest";
 import { spokenFigures } from "../spokenWords.ts";
 import { mixDraft, SAMPLE_RATE, synthesizeCues } from "./audio.ts";
 import { keyFrameTimes, raceData, sceneText } from "./render.ts";
-import { MODEL_ESTIMATE_LABEL, sceneHtml } from "./scene.ts";
+import { CAPTION_BAND, MODEL_ESTIMATE_LABEL, sceneHtml } from "./scene.ts";
 import {
   buildRaceTimeline,
+  captionTexts,
   FPS,
+  MAX_CAPTION_CHARACTERS,
   MAX_DURATION_SECONDS,
   MIN_DURATION_SECONDS,
   narrationLines,
@@ -88,13 +90,19 @@ describe("the cut follows the voice", () => {
     expect(timeline.frames).toHaveLength(Math.round(timeline.durationSeconds * FPS));
   });
 
+  it("is moving from the start: the first flip counts inside the first second", () => {
+    expect(firstFrame((frame) => frame.speed > 0)).toBeLessThan(0.2);
+    expect(firstFrame((frame) => frame.count >= 1)).toBeLessThan(1);
+  });
+
   it("lands each beat on its line", () => {
     const complete = firstFrame((frame) => frame.count === 20);
-    // "Twenty of twenty modelled leads" ends as the counter reaches 20.
-    expect(Math.abs(line("leads").start + line("leads").seconds - complete)).toBeLessThan(0.1);
-    // The race starts as the hook line ends, and the pull-back after the leads line.
-    expect(firstFrame((frame) => frame.speed > 0)).toBeLessThan(line("matchup").start + line("matchup").seconds);
-    expect(firstFrame((frame) => frame.pullback > 0)).toBeGreaterThanOrEqual(line("leads").start + line("leads").seconds);
+    // "Twenty of twenty modelled leads" starts as the counter reaches 20, never before.
+    expect(line("leads").start).toBeGreaterThanOrEqual(complete - 1 / FPS);
+    expect(line("leads").start - complete).toBeLessThan(0.15);
+    // The flips keep coming while "game after game" is said; the pull-back comes as the leads line finishes.
+    expect(complete).toBeGreaterThan(line("flips").start + line("flips").seconds);
+    expect(firstFrame((frame) => frame.pullback > 0)).toBeGreaterThanOrEqual(line("leads").start + line("leads").seconds - 0.3 - 1 / FPS);
     // The averages appear while "one sixty-four to one sixty" is said; the verdict with "just four FPS apart".
     const averages = firstFrame((frame) => frame.reveal > 0);
     expect(averages).toBeGreaterThan(line("average").start);
@@ -110,13 +118,52 @@ describe("the cut follows the voice", () => {
     const slower = buildRaceTimeline(figures, rows, names, { ...PLACEHOLDER_SECONDS, average: 3.2 });
     expect(slower.durationSeconds).toBeGreaterThan(timeline.durationSeconds);
     expect(() => buildRaceTimeline(figures, rows, names, { ...PLACEHOLDER_SECONDS, gap: 3.5 })).toThrow(/must run 12-15s/);
-    expect(() => buildRaceTimeline(figures, rows, names, { ...PLACEHOLDER_SECONDS, leads: 4 })).toThrow(/overlap/);
+    expect(() => buildRaceTimeline(figures, rows, names, { ...PLACEHOLDER_SECONDS, flips: 4.5 })).toThrow(/must run 12-15s/);
   });
 
   it("refuses a story the figures do not support", () => {
     expect(() => buildRaceTimeline({ ...figures, avgA: 160, avgB: 164 }, rows, names, PLACEHOLDER_SECONDS)).toThrow(/must lead/);
     const flipped = rows.map((row) => (row.id === "warzone" ? { ...row, fpsA: row.fpsB - 1 } : row));
     expect(() => buildRaceTimeline(figures, flipped, names, PLACEHOLDER_SECONDS)).toThrow(RaceTimelineError);
+  });
+});
+
+describe("captions", () => {
+  it("caption every line, in short chunks, inside its line's time", () => {
+    expect(new Set(timeline.captions.map((caption) => caption.line))).toEqual(new Set(timeline.lines.map((entry) => entry.id)));
+    for (const caption of timeline.captions) {
+      const spoken = line(caption.line);
+      expect(caption.text.length).toBeLessThanOrEqual(MAX_CAPTION_CHARACTERS);
+      expect(caption.start).toBeGreaterThanOrEqual(spoken.start - 1e-9);
+      expect(caption.end).toBeLessThanOrEqual(spoken.start + spoken.seconds + 0.35 + 1e-9);
+      expect(caption.end).toBeGreaterThan(caption.start + 0.8);
+    }
+    timeline.captions.slice(1).forEach((caption, index) => expect(caption.start).toBeGreaterThanOrEqual(timeline.captions[index].end));
+  });
+
+  it("show the figures the voice says, as digits", () => {
+    const texts = captionTexts(figures, names);
+    for (const entry of narrationLines(figures)) {
+      const digits = (texts[entry.id].replace(names.a, "").replace(names.b, "").match(/\d+/g) ?? []).map(Number);
+      expect(digits, entry.id).toEqual(spokenFigures(entry.text));
+    }
+  });
+
+  it("never claim more leads than the counter shows", () => {
+    for (const caption of timeline.captions.filter((entry) => entry.line === "leads")) {
+      for (const frame of timeline.frames.filter((entry) => entry.t >= caption.start && entry.t < caption.end)) {
+        expect(frame.count).toBe(20);
+      }
+    }
+  });
+
+  it("sit in their own band, under the label and above everything else", () => {
+    const html = sceneHtml(timeline, sceneText(timeline));
+    // The label pill ends at y=222 and the counter's digits start below y=380.
+    expect(CAPTION_BAND.top).toBeGreaterThanOrEqual(222);
+    expect(CAPTION_BAND.bottom).toBeLessThanOrEqual(360);
+    // Nothing else is drawn at the band's old occupant: the setting now sits under the counter.
+    expect(html).not.toContain("pill(T.setting");
   });
 });
 
@@ -162,7 +209,7 @@ describe("the picture", () => {
   it("pulls key frames at each beat, inside the cut", () => {
     const times = keyFrameTimes(timeline);
     expect(times.map((time) => time.label)).toEqual([
-      "matchup", "spotlight-1", "spotlight-2", "counter-climbing", "spotlight-3", "count-complete", "pull-back", "averages", "verdict",
+      "opening", "first-flip", "spotlight-1", "spotlight-2", "counter-climbing", "spotlight-3", "count-complete", "pull-back", "averages", "verdict",
     ]);
     for (const time of times) expect(time.second).toBeLessThan(timeline.durationSeconds);
   });

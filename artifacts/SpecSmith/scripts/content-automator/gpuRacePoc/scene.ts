@@ -8,6 +8,14 @@
 
 import { GPU_SIZE, HEIGHT, LANE_X, TILE_SIZE, TRACK_LENGTH, WIDTH, type RaceTimeline } from "./timeline.ts";
 
+/**
+ * Where narration captions sit: the full-width band under the label. Nothing
+ * else is drawn there in any frame (the GPUs, tiles, name cards, counter and
+ * reveal all sit below it), and it is well clear of the platform buttons and
+ * caption bar at the bottom and right of a vertical video.
+ */
+export const CAPTION_BAND = { top: 244, bottom: 340, maxWidth: 936 } as const;
+
 export const MODEL_ESTIMATE_LABEL = "Model estimates, not measured results";
 
 export interface SceneText {
@@ -32,7 +40,7 @@ export interface SceneText {
 export function sceneHtml(timeline: RaceTimeline, text: SceneText): string {
   const data = {
     W: WIDTH, H: HEIGHT, L: TRACK_LENGTH, LANE: LANE_X, GPU: GPU_SIZE, TILE: TILE_SIZE,
-    tiles: timeline.tiles, frames: timeline.frames, text,
+    tiles: timeline.tiles, frames: timeline.frames, captions: timeline.captions, text, CAPTION_BAND,
   };
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>gpu-race-poc</title>
@@ -210,7 +218,10 @@ function drawOverlay(f) {
     ctx.shadowBlur = 0;
     ctx.font = "800 " + Math.round(size * 0.55) + "px " + FONT; ctx.fillStyle = COLOR.muted; ctx.fillText(totalText, start + countW + 8, 0);
     ctx.font = "800 " + Math.round(40 - 6 * settle) + "px " + FONT; ctx.fillStyle = COLOR.a;
-    ctx.textAlign = align; ctx.fillText(T.countCaption, align === "center" ? 0 : 0, Math.round(58 - 14 * settle));
+    ctx.textAlign = align; ctx.fillText(T.countCaption, 0, Math.round(58 - 14 * settle));
+    // The setting the counter counts at.
+    ctx.font = "700 " + Math.round(34 - 6 * settle) + "px " + FONT; ctx.fillStyle = COLOR.cyan;
+    ctx.fillText(T.setting, 0, Math.round(104 - 26 * settle));
     ctx.restore();
   }
 
@@ -262,7 +273,17 @@ function drawOverlay(f) {
   }
 
   // Always on top, never moved by the camera.
-  pill(T.setting, 540, 290, "800 40px " + FONT, COLOR.cyan, "rgba(11,11,16,0.85)", "rgba(0,212,255,0.55)");
+  // The caption for whatever is being said, in its band.
+  const caption = D.captions.find((entry) => f.t >= entry.start && f.t < entry.end);
+  if (caption) {
+    const fade = clamp(Math.min((f.t - caption.start) / 0.1, (caption.end - f.t) / 0.1));
+    const mid = (D.CAPTION_BAND.top + D.CAPTION_BAND.bottom) / 2;
+    ctx.save(); ctx.globalAlpha = fade; ctx.font = "800 50px " + FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const w = ctx.measureText(caption.text).width + 64, h = D.CAPTION_BAND.bottom - D.CAPTION_BAND.top - 12;
+    ctx.fillStyle = "rgba(0,0,0,0.78)"; roundRect(540 - w / 2, mid - h / 2, w, h, 22); ctx.fill();
+    ctx.fillStyle = "#ffffff"; ctx.fillText(caption.text, 540, mid + 2);
+    ctx.restore();
+  }
   ctx.save(); ctx.font = "700 38px " + FONT;
   const w = ctx.measureText(T.label).width + 110;
   ctx.fillStyle = "rgba(24,18,4,0.94)"; roundRect(540 - w / 2, 132, w, 90, 45); ctx.fill();
@@ -282,6 +303,9 @@ window.__draw = (index) => {
   drawOverlay(f);
 };
 window.__frames = D.frames.length;
+// The widest caption as drawn, so the render can refuse one that would not fit its band.
+window.__captionWidths = () => { ctx.save(); ctx.font = "800 50px " + FONT;
+  const widths = D.captions.map((entry) => ctx.measureText(entry.text).width + 64); ctx.restore(); return widths; };
 window.__draw(0);
 </script></body></html>
 `;

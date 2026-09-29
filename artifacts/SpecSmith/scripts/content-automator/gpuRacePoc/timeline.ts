@@ -36,10 +36,13 @@ export const GPU_SIZE = { width: 130, length: 240 } as const;
 export const TILE_SIZE = 58;
 
 /** Games that get a named pause, in flip order. Every one must be a Build A lead. */
-export const SPOTLIGHT_GAME_IDS = ["cyberpunk2077", "warzone", "bg3"] as const;
+export const SPOTLIGHT_GAME_IDS = ["fortnite", "warzone", "bg3"] as const;
 
-/** Seconds the flip section lasts, first flip to last. */
-const FLIP_SECTION_SECONDS = 5.5;
+/** The first flip lands this early, so the hook is already moving. */
+export const FIRST_FLIP_AT = 0.7;
+
+/** The shortest the flip section may be, first flip to last. It stretches to fit the voice. */
+const MIN_FLIP_SECTION_SECONDS = 5.2;
 /** Seconds each spotlight holds its game's name. */
 const SPOTLIGHT_SECONDS = 1.0;
 /** Race-clock speed during a spotlight: a slow-motion pass. */
@@ -78,6 +81,33 @@ export function narrationLines(figures: CompareFigures): NarrationLine[] {
     { id: "gap", text: `Just ${spokenFigure(figures.avgA - figures.avgB)} FPS apart.` },
   ];
 }
+
+/**
+ * What a caption shows for each line: the same words, with figures as digits
+ * so they read at a glance. Every figure comes from the figures, as the
+ * narration's do. Each comma starts a new caption chunk.
+ */
+export function captionTexts(figures: CompareFigures, names: { a: string; b: string }): Record<LineId, string> {
+  const outright = figures.leadsA - figures.ties;
+  return {
+    matchup: `${names.a} vs ${names.b}`,
+    flips: "Game after game, the Super takes the lead",
+    leads: `${outright} of ${figures.games} modelled leads`,
+    average: `Yet on average, ${figures.avgA} to ${figures.avgB}`,
+    gap: `Just ${figures.avgA - figures.avgB} FPS apart`,
+  };
+}
+
+/** One on-screen caption chunk and when it shows. */
+export interface Caption {
+  line: LineId;
+  text: string;
+  start: number;
+  end: number;
+}
+
+/** Longest caption chunk, in characters: one line at caption size on a 1080-wide frame. */
+export const MAX_CAPTION_CHARACTERS = 30;
 
 export interface RaceTile {
   id: string;
@@ -146,6 +176,7 @@ export interface RaceTimeline {
   frames: FrameState[];
   cues: SoundCue[];
   lines: PlacedLine[];
+  captions: Caption[];
   durationSeconds: number;
   /** Distance ratio avgB / avgA the picture holds at every frame. */
   distanceRatio: number;
@@ -159,10 +190,10 @@ export class RaceTimelineError extends Error {
 }
 
 /** Flip times: evenly spaced, except that a spotlighted flip holds for SPOTLIGHT_SECONDS. */
-function flipSchedule(count: number, spotlit: Set<number>, start: number): number[] {
+function flipSchedule(count: number, spotlit: Set<number>, start: number, sectionSeconds: number): number[] {
   const normalGaps = count - 1 - [...spotlit].filter((index) => index < count - 1).length;
   const holds = [...spotlit].filter((index) => index < count - 1).length * SPOTLIGHT_SECONDS;
-  const gap = (FLIP_SECTION_SECONDS - holds) / Math.max(1, normalGaps);
+  const gap = (sectionSeconds - holds) / Math.max(1, normalGaps);
   if (gap < 0.12) throw new RaceTimelineError("The flip section is too short for its spotlights.");
   const times = [start];
   for (let index = 1; index < count; index += 1) times.push(times[index - 1] + (spotlit.has(index - 1) ? SPOTLIGHT_SECONDS : gap));
@@ -197,20 +228,23 @@ export function buildRaceTimeline(
   };
   const place: PlacedLine[] = [];
   const matchupStart = 0.25;
-  const raceStart = matchupStart + seconds("matchup") - 0.2;
-  const firstFlip = raceStart + 0.55;
-  const flipAt = flipSchedule(rows.length, spotlit, firstFlip);
+  // The race is under way from the first frame and the first flip lands inside a
+  // second; the hook line plays over it.
+  const raceStart = 0.1;
+  const firstFlip = FIRST_FLIP_AT;
+  const flipsStart = matchupStart + seconds("matchup") + 0.15;
+  // The flips keep coming until the flips line has been said; the leads line
+  // starts as the counter reaches its total, so nothing says 20 before the counter does.
+  const sectionSeconds = Math.max(MIN_FLIP_SECTION_SECONDS, flipsStart + seconds("flips") + 0.1 - FLIP_SECONDS / 2 - firstFlip);
+  const flipAt = flipSchedule(rows.length, spotlit, firstFlip, sectionSeconds);
   const lastFlip = flipAt.at(-1)!;
   const countComplete = lastFlip + FLIP_SECONDS / 2;
-  const flipsStart = firstFlip + 0.1;
-  // The leads line ends as the counter reaches its total.
-  const leadsStart = countComplete - seconds("leads");
-  if (leadsStart < flipsStart + seconds("flips") + 0.1) {
-    throw new RaceTimelineError("The flips and leads lines overlap; the flip section is too short for this voice.");
-  }
-  const pullStart = countComplete + 0.35;
+  const leadsStart = countComplete + 0.05;
+  const leadsEnd = leadsStart + seconds("leads");
+  // The pull-back begins as the leads line finishes; the next line waits for both.
+  const pullStart = Math.max(countComplete + 0.35, leadsEnd - 0.3);
   const pullEnd = pullStart + PULLBACK_SECONDS;
-  const averageStart = pullStart + 0.25;
+  const averageStart = Math.max(pullStart + 0.25, leadsEnd + 0.15);
   const gapStart = Math.max(averageStart + seconds("average") + 0.15, pullEnd + 0.4);
   const durationSeconds = Number((gapStart + seconds("gap") + END_HOLD_SECONDS).toFixed(3));
   place.push(
@@ -321,5 +355,25 @@ export function buildRaceTimeline(
     { kind: "verdict", at: gapStart },
   ] satisfies SoundCue[] as SoundCue[]).sort((x, y) => x.at - y.at);
 
-  return { figures, names, tiles, frames, cues, lines: place, durationSeconds, distanceRatio };
+  // Captions: each line split at its commas, each chunk shown from where its
+  // words start in the line (by share of words) until the next chunk, or a
+  // beat after the line ends.
+  const texts = captionTexts(figures, names);
+  const captions: Caption[] = [];
+  place.forEach((entry, index) => {
+    const chunks = texts[entry.id].split(/,\s*/).map((chunk, at, all) => (at < all.length - 1 ? `${chunk},` : chunk));
+    const words = chunks.map((chunk) => chunk.split(/\s+/).length);
+    const total = words.reduce((sum, count) => sum + count, 0);
+    const nextLine = place[index + 1]?.start ?? durationSeconds;
+    let before = 0;
+    chunks.forEach((chunk, at) => {
+      if (chunk.length > MAX_CAPTION_CHARACTERS) throw new RaceTimelineError(`Caption "${chunk}" is longer than one line.`);
+      const start = entry.start + entry.seconds * (before / total);
+      before += words[at];
+      const end = at < chunks.length - 1 ? entry.start + entry.seconds * (before / total) : Math.min(entry.start + entry.seconds + 0.35, nextLine - 0.05);
+      captions.push({ line: entry.id, text: chunk, start: Number(start.toFixed(3)), end: Number(end.toFixed(3)) });
+    });
+  });
+
+  return { figures, names, tiles, frames, cues, lines: place, captions, durationSeconds, distanceRatio };
 }
