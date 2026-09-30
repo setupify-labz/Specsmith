@@ -22,6 +22,9 @@ import { fileURLToPath } from "node:url";
 import type { ResearchCreativeContract } from "./v2/research/creativeContract.ts";
 import { runCreativeFileWorkflow } from "./v2/creative/fileWorkflowPass.ts";
 import type { CreativeMissionInput } from "./v2/creative/proposalPass.ts";
+import { formatContentCreativeReport } from "./v2/contentCreativeReport.ts";
+import { buildConceptHandoff, buildHandoffCreativeReport } from "./v2/handoff/conceptHandoff.ts";
+import { verifyRenderedMedia } from "./v2/mediaVerification.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -121,12 +124,33 @@ export const DEMO_MISSION: Omit<CreativeMissionInput, "concepts"> = {
   platform: "youtube-shorts",
 };
 
+/**
+ * `handoff <directory> <conceptId> [mediaPath]`: hand one reviewed concept to a
+ * MASTER #1 creative report. It re-runs every workflow check, verifies the
+ * media file from its bytes when one is given, and prints what still blocks
+ * publishing. It writes nothing and approves nothing.
+ */
+async function handoffCommand(directory: string, conceptId: string | undefined, mediaPath: string | undefined): Promise<void> {
+  if (!conceptId) throw new Error("Usage: handoff <directory> <conceptId> [mediaPath]");
+  const handoff = await buildConceptHandoff({ directory, mission: DEMO_MISSION, conceptId });
+  const media = mediaPath === undefined ? null : verifyRenderedMedia(resolve(mediaPath));
+  const report = buildHandoffCreativeReport({ handoff, media });
+  console.log(`Handoff status: ${handoff.status} (approved: ${handoff.approved})`);
+  console.log(JSON.stringify(handoff.identities, null, 2));
+  console.log("");
+  console.log(formatContentCreativeReport(report));
+}
+
 async function main(): Promise<void> {
-  const [command = "review", directoryArgument] = process.argv.slice(2);
+  const [command = "review", directoryArgument, ...rest] = process.argv.slice(2);
   const directory = directoryArgument === undefined ? DEMO_WORKFLOW_DIRECTORY : resolve(directoryArgument);
 
+  if (command === "handoff") {
+    await handoffCommand(directory, rest[0], rest[1]);
+    return;
+  }
   if (command !== "brief" && command !== "review") {
-    throw new Error(`Unknown command "${command}". Use "brief" or "review".`);
+    throw new Error(`Unknown command "${command}". Use "brief", "review" or "handoff".`);
   }
 
   const result = await runCreativeFileWorkflow(directory, DEMO_MISSION, { exportOnly: command === "brief" });

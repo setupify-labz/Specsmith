@@ -11,12 +11,17 @@
 // THE RULE THIS FILE ENFORCES
 // ----------------------------
 // `publishReady` is false unless every outstanding human gate is closed by a
-// real recorded human decision. There is no code path that lets a high
+// real recorded human decision FROM A TRUSTED APPROVAL RECORD, and the media is
+// bytes that were actually read and hashed. This repository has no trusted
+// approval record (no authenticated reviewer, no signed decision), so a
+// caller-supplied name and timestamp is recorded but never closes a gate:
+// typing "approved" does not prove a person watched or listened. There is no code path that lets a high
 // production-quality score close a human gate. A machine measuring caption
 // characters-per-second has learned nothing about whether a voice sounds
 // natural, and this report says so in the artifact rather than in a comment.
 
 import type { CreativeFingerprint } from "../types.ts";
+import { isVerifiedMedia, recheckMedia, type VerifiedMedia } from "./mediaVerification.ts";
 import { HUMAN_ONLY_DIMENSIONS, type CreativeQualityReview } from "./creativeQualityReview.ts";
 import type { RepairResult, RevisionLineage } from "./beatRepair.ts";
 
@@ -47,14 +52,20 @@ export interface ContentCreativeReport {
     readonly creativeId: string;
     readonly parentCreativeId: string | null;
     readonly packageId: string;
-    readonly ideaId: string;
-    readonly campaignId: string;
+    readonly ideaId: string | null;
+    readonly campaignId: string | null;
     readonly platform: string;
-    /** The exact bytes, or null when nothing has been rendered. */
+    /** The digest of the media file, computed from its bytes, or null when nothing verified was supplied. */
     readonly mediaSha256: string | null;
+    /** True only when the file was read and still holds those bytes as this report was built. */
+    readonly mediaVerified: boolean;
   };
 
-  readonly fingerprint: CreativeFingerprint;
+  /** Null when the creative did not come through the planning path that builds fingerprints (e.g. the MASTER #6 handoff). */
+  readonly fingerprint: CreativeFingerprint | null;
+
+  /** Upstream identities the creative carries (research, mission, batch, concept, storyboard), when supplied. */
+  readonly provenance: Readonly<Record<string, unknown>> | null;
 
   readonly quality: {
     /** Construction evidence only. Never performance. */
@@ -85,18 +96,31 @@ export interface ContentCreativeReport {
   };
 
   readonly humanGates: readonly HumanGate[];
-  /** True only when every gate above carries a recorded approval and no known machine fix remains unresolved. */
+  /**
+   * True only when every gate above is closed by a trusted approval record, the
+   * media was verified from its bytes and bound to the review, and no known
+   * machine fix remains. With no trusted approval record in this repository, it
+   * cannot currently be true.
+   */
   readonly publishReady: boolean;
   readonly blockedBy: readonly string[];
 }
 
-const SHA256_HEX = /^[0-9a-f]{64}$/;
+/** Why a recorded decision cannot close a gate here. Stated in the artifact, not only in a comment. */
+export const NO_TRUSTED_APPROVAL_RECORD =
+  "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate";
 
 export interface ReportInput {
   readonly review: CreativeQualityReview;
-  readonly fingerprint: CreativeFingerprint;
+  readonly fingerprint: CreativeFingerprint | null;
   readonly repair?: RepairResult;
-  readonly mediaSha256?: string | null;
+  /** Media verified from its bytes by `verifyRenderedMedia`. A bare digest string is not accepted. */
+  readonly media?: VerifiedMedia | null;
+  readonly provenance?: Readonly<Record<string, unknown>> | null;
+  /** Further gates only a person can close, e.g. those an upstream stage left outstanding. */
+  readonly additionalHumanGates?: readonly { readonly gate: string; readonly why: string }[];
+  /** Further machine-known blockers from an upstream stage. */
+  readonly additionalBlockers?: readonly string[];
   readonly parentCreativeId?: string | null;
   /** Recorded human decisions, keyed by gate name. Absent means undecided. */
   readonly recordedHumanDecisions?: Readonly<Record<string, HumanGate["decision"]>>;
@@ -122,6 +146,10 @@ function humanGatesFor(input: ReportInput): HumanGate[] {
     why: "A person must listen to the rendered narration end to end. Loudness and peak measurements describe the signal, not the performance.",
     decision: recorded["audio-listening-review"] ?? null,
   });
+  for (const extra of input.additionalHumanGates ?? []) {
+    if (gates.some((gate) => gate.gate === extra.gate)) continue;
+    gates.push({ gate: extra.gate, why: extra.why, decision: recorded[extra.gate] ?? null });
+  }
   return gates;
 }
 
@@ -145,16 +173,29 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
   for (const fix of unresolvedFixes) {
     blockedBy.push(`Unresolved creative fix: ${fix.dimension} — ${fix.issue}`);
   }
-  // Rendered media is a real digest or it is nothing. Any other string
-  // ("pending", "rendered") would otherwise stand in for bytes that do not exist.
-  const media = input.mediaSha256 ?? null;
-  const mediaIsDigest = media !== null && SHA256_HEX.test(media);
-  if (!media) blockedBy.push("No rendered media: nothing exists to publish.");
-  else if (!mediaIsDigest) blockedBy.push(`Rendered media "${media}" is not a SHA-256 digest: nothing verifiable exists to publish.`);
-  if (mediaIsDigest && review.mediaSha256 !== null && review.mediaSha256 !== media) {
-    blockedBy.push("The quality review measured other media than the media being reported; re-review these exact bytes.");
+  for (const blocker of input.additionalBlockers ?? []) blockedBy.push(blocker);
+
+  // Rendered media is bytes that were read and hashed, still unchanged, or it
+  // is nothing. A 64-character string is only shaped like a digest.
+  const media = input.media ?? null;
+  let verifiedSha: string | null = null;
+  if (media === null) {
+    blockedBy.push("No rendered media: nothing exists to publish.");
+  } else if (!isVerifiedMedia(media)) {
+    blockedBy.push("The media record was not produced by verifyRenderedMedia: no file was read, so its digest proves nothing.");
+  } else {
+    const recheck = recheckMedia(media);
+    if (!recheck.ok) blockedBy.push(`Rendered media no longer verifies: ${recheck.reason}`);
+    else verifiedSha = recheck.sha256;
   }
-  // Every approval must be a real, dated decision about these exact bytes.
+  // The quality review must have measured these exact bytes.
+  if (review.mediaSha256 === null) {
+    blockedBy.push("The quality review has no media binding: it was not made about any rendered bytes.");
+  } else if (verifiedSha !== null && review.mediaSha256 !== verifiedSha) {
+    blockedBy.push("The quality review measured other media than the verified file; re-review these exact bytes.");
+  }
+  // Recorded approvals are checked for what they claim, and then refused as
+  // proof: nothing here can confirm a person made them.
   for (const gate of gates) {
     const decision = gate.decision;
     if (decision === null || decision.outcome !== "approved") continue;
@@ -163,9 +204,10 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
     if (!Number.isFinite(at) || at > (input.now ?? new Date()).getTime()) {
       blockedBy.push(`Human gate ${gate.gate}: the approval's time is missing, invalid or in the future.`);
     }
-    if (!mediaIsDigest || decision.mediaSha256 !== media) {
+    if (verifiedSha === null || decision.mediaSha256 !== verifiedSha) {
       blockedBy.push(`Human gate ${gate.gate}: the approval was made about other media (or names none); approve these exact bytes.`);
     }
+    blockedBy.push(`Human gate ${gate.gate}: ${NO_TRUSTED_APPROVAL_RECORD}.`);
   }
 
   return {
@@ -175,12 +217,14 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
       creativeId: input.repair?.finalCreativeId ?? review.creativeId,
       parentCreativeId: input.parentCreativeId ?? (lineage.length ? lineage[0].parentCreativeId : null),
       packageId: review.packageId,
-      ideaId: fingerprint.ideaId,
-      campaignId: fingerprint.campaignId,
+      ideaId: fingerprint?.ideaId ?? null,
+      campaignId: fingerprint?.campaignId ?? null,
       platform: review.platform,
-      mediaSha256: input.mediaSha256 ?? null,
+      mediaSha256: isVerifiedMedia(media) ? media.sha256 : null,
+      mediaVerified: verifiedSha !== null,
     },
     fingerprint,
+    provenance: input.provenance ?? null,
     quality: {
       productionQualityScore: review.productionQualityScore,
       confidence: review.confidence,
@@ -216,7 +260,7 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
 export function formatContentCreativeReport(report: ContentCreativeReport): string {
   const lines: string[] = [];
   lines.push(`CONTENT_CREATIVE_REPORT ${report.identity.creativeId} (${report.identity.platform})`);
-  lines.push(`  media sha256:        ${report.identity.mediaSha256 ?? "(nothing rendered)"}`);
+  lines.push(`  media sha256:        ${report.identity.mediaSha256 ?? "(nothing verified)"}${report.identity.mediaSha256 ? ` (${report.identity.mediaVerified ? "verified from file" : "NOT verified"})` : ""}`);
   lines.push(`  production quality:  ${report.quality.productionQualityScore}/10 from ${report.quality.measuredDimensions} measured dimension(s), confidence ${report.quality.confidence}`);
   lines.push(`  not machine-assessed: ${report.quality.notAssessedDimensions} dimension(s)`);
   lines.push(`  performance:         ${report.performance.status} — ${report.performance.why}`);

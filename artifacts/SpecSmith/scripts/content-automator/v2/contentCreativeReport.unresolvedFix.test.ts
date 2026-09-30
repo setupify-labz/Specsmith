@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { verifyRenderedMedia } from "./mediaVerification.ts";
 
 import { buildContentCreativeReport, type HumanGate } from "./contentCreativeReport.ts";
 import { HUMAN_ONLY_DIMENSIONS, reviewCreativeQuality } from "./creativeQualityReview.ts";
@@ -6,7 +11,11 @@ import type { CaptionCue } from "../captionRender.ts";
 import type { CreativeFingerprint, PlatformScriptStoryboard, StoryboardBeat } from "../types.ts";
 
 const NOW = new Date("2026-09-14T00:00:00.000Z");
-const SHA = "d".repeat(64);
+/** A real file on disk, hashed from its bytes: rendered media is bytes, not a digest-shaped string. */
+const MEDIA_FILE = join(mkdtempSync(join(tmpdir(), "unresolved-fix-test-")), "render.mp4");
+writeFileSync(MEDIA_FILE, "stand-in rendered bytes for unresolved-fix-test");
+const SHA = createHash("sha256").update("stand-in rendered bytes for unresolved-fix-test").digest("hex");
+const MEDIA = verifyRenderedMedia(MEDIA_FILE);
 
 function beat(overrides: Partial<StoryboardBeat> & Pick<StoryboardBeat, "startSecond" | "endSecond" | "purpose">): StoryboardBeat {
   return {
@@ -74,7 +83,7 @@ describe("CONTENT_CREATIVE_REPORT unresolved-fix gate", () => {
     const report = buildContentCreativeReport({
       review,
       fingerprint,
-      mediaSha256: SHA,
+      media: MEDIA,
       recordedHumanDecisions: approvals,
       now: NOW,
     });
