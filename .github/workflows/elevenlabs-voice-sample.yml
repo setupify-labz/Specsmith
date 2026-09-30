@@ -9,6 +9,9 @@
 #     (`script: compare-video`, the default) or the GPU race draft's five lines
 #     (`script: gpu-race`). Each refuses before any spend unless its text is the
 #     approved script and Compare still computes the figures it states.
+#     `list-voices` lists the account's voices and spends nothing;
+#     `voice-audition` reads the race's last three approved lines once in each
+#     of two named voices, for choosing by ear (never as approved narration).
 #   - The script reads the subscription first and refuses if the sample would
 #     exceed the included allowance, or if the account can extend its limit
 #     (which would turn an overage into a bill).
@@ -39,6 +42,12 @@ on:
         options:
           - compare-video
           - gpu-race
+          - list-voices
+          - voice-audition
+      audition_voice_ids:
+        description: 'voice-audition only: exactly two voice ids, comma separated (list-voices prints them)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -119,6 +128,35 @@ jobs:
         with:
           name: specsmith-gpu-race-liam-take
           path: artifacts/SpecSmith/render-output/liam-take/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: List the account's voices (no audio, no spend)
+        if: inputs.script == 'list-voices'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/voiceAuditions.ts list
+
+      - name: Generate one audition per chosen voice
+        if: inputs.script == 'voice-audition'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+          # Passed as data, never interpolated into the shell; the script validates each id.
+          AUDITION_VOICE_IDS: ${{ inputs.audition_voice_ids }}
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/voiceAuditions.ts
+
+      - name: Upload the auditions
+        if: inputs.script == 'voice-audition'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-voice-auditions
+          path: artifacts/SpecSmith/render-output/voice-auditions/
           if-no-files-found: error
           retention-days: 14
 
