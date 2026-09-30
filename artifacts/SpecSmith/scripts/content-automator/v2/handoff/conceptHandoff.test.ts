@@ -3,7 +3,7 @@
 // upstream identity, and "ready for human review" never becomes approved or
 // publish ready by inference.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
@@ -22,18 +22,30 @@ import {
   SYNTHETIC_RESEARCH_BLOCKER,
 } from "./conceptHandoff.ts";
 
+// These tests exercise the handoff and the report built from it. MASTER #1's
+// storyboard gate is stubbed to report nothing, because no compare concept can
+// pass it today (the required disclosure lines overflow the caption, and one
+// capture repeats on every beat), so without the stub no handoff could be issued
+// and this stage would be untested. The report still runs #1's review itself. The real gate is tested, unstubbed, in
+// ../creative/storyboardQualityGate.test.ts.
+vi.mock("../creative/storyboardQualityGate.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../creative/storyboardQualityGate.ts")>();
+  return { ...actual, storyboardQualityFindings: (input: Parameters<typeof actual.storyboardQualityFindings>[0]) =>
+    ({ ...actual.storyboardQualityFindings(input), required: [], blockedOutsideAuthor: [] }) };
+});
+
 const NOW = new Date("2026-09-30T12:00:00.000Z");
 const CHOSEN = "claude-batch-three-checks";
 const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 const scratch = () => { const dir = mkdtempSync(join(tmpdir(), "handoff-")); dirs.push(dir); return dir; };
-/** A copy of the committed workflow directory, whose latest batch (attempt 3) passes every machine check. */
+/** A copy of the committed workflow directory. Its latest batch (attempt 4) passes every #6 check; #1's gate is stubbed above. */
 const workflow = () => { const dir = scratch(); cpSync(DEMO_WORKFLOW_DIRECTORY, dir, { recursive: true }); return dir; };
 const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const fakeRender = (bytes = "stand-in bytes, not a render of anything") => { const path = join(scratch(), "render.mp4"); writeFileSync(path, bytes); return path; };
 const handoff = (directory = workflow()) => buildConceptHandoff({ directory, mission: DEMO_MISSION, conceptId: CHOSEN, now: NOW });
 
-describe("a legitimate concept reaches human review and stops there", () => {
+describe("with #1's gate stubbed, a concept that passed #6 reaches human review and stops there", () => {
   it("carries every identity, recomputed rather than read from the packet", async () => {
     const result = await handoff();
     expect(isConceptHandoff(result)).toBe(true);
@@ -43,7 +55,7 @@ describe("a legitimate concept reaches human review and stops there", () => {
     expect(id.researchContractSha256).toBe(sha(DEMO_MISSION.research));
     expect(id.missionId).toBe(DEMO_MISSION.missionId);
     expect(id.syntheticResearch).toBe(true);
-    expect(id.batch.attempt).toBe(3);
+    expect(id.batch.attempt).toBe(4);
     // The committed packet's batch hash: the same bytes the workflow reviewed.
     expect(id.batch.batchHash).toBe(JSON.parse(readFileSync(join(DEMO_WORKFLOW_DIRECTORY, "review-packet.json"), "utf8")).batchHash);
     expect(id.concept.conceptId).toBe(CHOSEN);
@@ -70,8 +82,7 @@ describe("a legitimate concept reaches human review and stops there", () => {
 describe("the handoff refuses what the workflow did not establish", () => {
   it("refuses a batch that is not ready for human review", async () => {
     const dir = workflow();
-    rmSync(join(dir, "batches", "attempt-2"), { recursive: true });
-    rmSync(join(dir, "batches", "attempt-3"), { recursive: true });
+    for (const attempt of [2, 3, 4]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
     await expect(handoff(dir)).rejects.toThrow(/not ready for human review/);
   });
 
@@ -91,7 +102,7 @@ describe("the handoff refuses what the workflow did not establish", () => {
 
   it("does not trust a hand-edited review packet", async () => {
     const dir = workflow();
-    rmSync(join(dir, "batches", "attempt-3"), { recursive: true });
+    for (const attempt of [3, 4]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
     const packetPath = join(dir, "review-packet.json");
     writeFileSync(packetPath, JSON.stringify({ ...JSON.parse(readFileSync(packetPath, "utf8")), humanReviewReady: true, machineChecksPassed: true }));
     await expect(handoff(dir)).rejects.toThrow(/not ready for human review/);

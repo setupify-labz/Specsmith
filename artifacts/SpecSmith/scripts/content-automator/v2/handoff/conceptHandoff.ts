@@ -29,6 +29,7 @@
 
 import { createHash } from "node:crypto";
 
+import { captionCuesForScript } from "../../productionPlan.ts";
 import { buildContentCreativeReport, type ContentCreativeReport, type HumanGate } from "../contentCreativeReport.ts";
 import { reviewCreativeQuality } from "../creativeQualityReview.ts";
 import { isVerifiedMedia, type VerifiedMedia } from "../mediaVerification.ts";
@@ -122,8 +123,8 @@ export async function buildConceptHandoff(input: {
   const { packet, pass } = evaluation;
   if (!packet.humanReviewReady) {
     throw new ConceptHandoffError(
-      `Attempt ${evaluation.attempts} is not ready for human review (${packet.status}); ` +
-        `${evaluation.feedback?.nextStep ?? "no batch has been authored"}. Only a batch that passed every machine check can be handed off.`,
+      `Attempt ${evaluation.attempts} is not ready for human review (the proposal pass alone reported "${packet.status}"). ` +
+        `${evaluation.feedback?.nextStep ?? "No batch has been authored."} Only a batch that passed every machine check can be handed off.`,
     );
   }
   if (packet.batchHash === null) throw new ConceptHandoffError("The checked batch has no hash; nothing identifies what was reviewed.");
@@ -184,7 +185,8 @@ export function buildHandoffCreativeReport(input: {
     creativeId: `${handoff.identities.missionId}/${handoff.identities.concept.conceptId}`,
     packageId: handoff.identities.briefHash,
     storyboard: handoff.storyboard,
-    captionCues: handoff.storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, text: beat.onScreenText })),
+    // The cues the renderer burns in, as the MASTER #6 storyboard gate measured them.
+    captionCues: captionCuesForScript(handoff.storyboard),
     ctaRoute: handoff.ctaRoute,
     // Only bytes that were read and hashed can bind the review.
     mediaSha256: isVerifiedMedia(input.media) ? input.media.sha256 : null,

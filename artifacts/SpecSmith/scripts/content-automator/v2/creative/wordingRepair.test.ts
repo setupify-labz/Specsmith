@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -8,6 +8,18 @@ import { runCreativeFileWorkflow } from "./fileWorkflowPass.ts";
 import { checkRenderDeliverability } from "./renderDeliverability.ts";
 import type { CreativeConcept } from "./concept.ts";
 import type { CreativeMissionInput } from "./proposalPass.ts";
+
+// These tests exercise MASTER #6's own checks. MASTER #1's storyboard gate is
+// stubbed to report nothing, because no compare concept can pass it today (the
+// required disclosure lines overflow the caption, and one capture repeats on
+// every beat), so without the stub no batch here could ever reach readiness and
+// #6's positive path would be untested. The real gate is tested, unstubbed, in
+// storyboardQualityGate.test.ts.
+vi.mock("./storyboardQualityGate.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./storyboardQualityGate.ts")>();
+  return { ...actual, storyboardQualityFindings: (input: Parameters<typeof actual.storyboardQualityFindings>[0]) =>
+    ({ ...actual.storyboardQualityFindings(input), required: [], blockedOutsideAuthor: [] }) };
+});
 
 const PRICE_ID = "SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal";
 async function probe(edit: (concepts: CreativeConcept[]) => void,

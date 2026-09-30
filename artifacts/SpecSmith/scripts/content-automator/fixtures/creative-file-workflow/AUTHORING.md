@@ -11,7 +11,7 @@ This is a local, file-based workflow. Nothing here calls a provider, spends mone
 
 ## The viewer's question
 
-> Same price, different parts. What does this comparison page actually settle?
+> Different parts. What do these model estimates actually establish?
 
 ## What you may state
 

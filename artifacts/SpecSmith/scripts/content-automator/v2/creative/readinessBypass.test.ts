@@ -34,10 +34,16 @@ const attempt3 = (): CreativeConcept[] => {
 const asProduction = { researchSynthetic: false, allowSynthetic: false, retrieval: { ...DEMO_MISSION.retrieval, allowSynthetic: false } };
 
 describe("synthetic research cannot be relabelled as production", () => {
-  it("the committed synthetic mission still reaches human review, labelled synthetic", async () => {
+  it("the committed synthetic mission is accepted as synthetic, and blocked only by MASTER #1's storyboard review", async () => {
     const result = await runCreativeFileWorkflow(workflowCopy(), DEMO_MISSION);
-    expect(result.packet.humanReviewReady).toBe(true);
     expect(result.packet.syntheticResearch).toBe(true);
+    // Nothing about the synthetic label blocks it: every outstanding item is a
+    // MASTER #1 storyboard-review failure (see storyboardQualityGate.test.ts).
+    const items = result.feedback[0].concepts.flatMap((concept) => [...concept.required, ...concept.missionBlockers, ...concept.blockedOutsideAuthor]);
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.filter((item) => !item.startsWith("MASTER #1 storyboard review"))).toEqual([]);
+    expect(result.feedback[0].setFindings).toEqual([]);
+    expect(result.packet.humanReviewReady).toBe(false);
     expect(result.packet.approved).toBe(false);
   });
 
