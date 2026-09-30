@@ -39,7 +39,7 @@ const CHOSEN = "claude-batch-three-checks";
 const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
 const scratch = () => { const dir = mkdtempSync(join(tmpdir(), "handoff-")); dirs.push(dir); return dir; };
-/** A copy of the committed workflow directory. Its latest batch (attempt 4) passes every #6 check; #1's gate is stubbed above. */
+/** A copy of the committed workflow directory. Its latest batch (attempt 5) passes every #6 check; #1's gate is stubbed above. */
 const workflow = () => { const dir = scratch(); cpSync(DEMO_WORKFLOW_DIRECTORY, dir, { recursive: true }); return dir; };
 const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const fakeRender = (bytes = "stand-in bytes, not a render of anything") => { const path = join(scratch(), "render.mp4"); writeFileSync(path, bytes); return path; };
@@ -55,7 +55,7 @@ describe("with #1's gate stubbed, a concept that passed #6 reaches human review 
     expect(id.researchContractSha256).toBe(sha(DEMO_MISSION.research));
     expect(id.missionId).toBe(DEMO_MISSION.missionId);
     expect(id.syntheticResearch).toBe(true);
-    expect(id.batch.attempt).toBe(4);
+    expect(id.batch.attempt).toBe(5);
     // The committed packet's batch hash: the same bytes the workflow reviewed.
     expect(id.batch.batchHash).toBe(JSON.parse(readFileSync(join(DEMO_WORKFLOW_DIRECTORY, "review-packet.json"), "utf8")).batchHash);
     expect(id.concept.conceptId).toBe(CHOSEN);
@@ -82,7 +82,7 @@ describe("with #1's gate stubbed, a concept that passed #6 reaches human review 
 describe("the handoff refuses what the workflow did not establish", () => {
   it("refuses a batch that is not ready for human review", async () => {
     const dir = workflow();
-    for (const attempt of [2, 3, 4]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
+    for (const attempt of [2, 3, 4, 5]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
     await expect(handoff(dir)).rejects.toThrow(/not ready for human review/);
   });
 
@@ -102,7 +102,7 @@ describe("the handoff refuses what the workflow did not establish", () => {
 
   it("does not trust a hand-edited review packet", async () => {
     const dir = workflow();
-    for (const attempt of [3, 4]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
+    for (const attempt of [3, 4, 5]) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
     const packetPath = join(dir, "review-packet.json");
     writeFileSync(packetPath, JSON.stringify({ ...JSON.parse(readFileSync(packetPath, "utf8")), humanReviewReady: true, machineChecksPassed: true }));
     await expect(handoff(dir)).rejects.toThrow(/not ready for human review/);

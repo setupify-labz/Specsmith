@@ -122,6 +122,14 @@ export const DEMO_MISSION: Omit<CreativeMissionInput, "concepts"> = {
   memory: [],
   retrieval: { kind: "explanatory-structure", allowSynthetic: true },
   platform: "youtube-shorts",
+  // Further validated views of the same pair. Each is a real Compare state the
+  // model re-estimates, so beats can change picture without leaving the
+  // product. The research claims hold for the primary 1440p High view only.
+  additionalViews: [
+    { resolution: "1080p", preset: "high" },
+    { resolution: "4k", preset: "ultra" },
+    { resolution: "1080p", preset: "low" },
+  ],
 };
 
 /**

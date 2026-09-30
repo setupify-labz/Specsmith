@@ -496,7 +496,9 @@ describe("readiness accounts for checks the proposal pass does not know about", 
     writeBatch(1, batch);
     const result = await runCreativeFileWorkflow(directory, mission());
 
-    expect(result.status).toBe("awaiting-human-review");
+    // The generation pass's own status no longer claims review-readiness while
+    // the workflow's checks refuse the batch.
+    expect(result.status).toBe("blocked-revision");
     expect(result.workflowStatus).toBe("revision-required");
     expect(result.packet.machineChecksPassed).toBe(false);
     expect(result.packet.humanReviewReady).toBe(false);
@@ -515,7 +517,7 @@ describe("readiness accounts for checks the proposal pass does not know about", 
     });
     writeBatch(1, batch);
     const result = await runCreativeFileWorkflow(directory, mission());
-    expect(result.workflowReason).toMatch(/does not account for this workflow's own checks/);
+    expect(result.workflowReason).toMatch(/generation pass reported "blocked-revision": it applies this workflow's checks/);
   });
 
   it("reports ready only when nothing at all is outstanding", async () => {

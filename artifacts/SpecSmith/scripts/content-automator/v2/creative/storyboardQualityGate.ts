@@ -13,12 +13,17 @@
 // ---------
 // - Every recommended fix blocks. The review's scores are never read, so no
 //   score can outweigh a fix that is still open.
-// - Captions are measured as the renderer burns them in (captionCuesForScript),
-//   which for a #6 storyboard includes the required disclosure lines.
-// - A fix is routed to the author only when the author's own text causes it.
-//   A failure caused by the mandated disclosure text, or by the mission
-//   allowing only one capture, is reported as a blocker outside the author's
-//   control. It still blocks; it is only addressed to whoever can fix it.
+// - Captions are measured as the renderer burns them in (captionCuesForScript).
+//   They are the author's own text: required disclosures are a separate
+//   persistent overlay (storyboard.persistentDisclosures), verified in the
+//   rendered frames rather than here.
+// - Picture variety is measured on what is on screen, not on labels. Each
+//   beat's visual direction is replaced by the identity of the pictures it
+//   shows (captureViews.pictureIdentity), so two visual ids naming one capture
+//   state count as one picture.
+// - A fix goes to the author unless no rewrite could make it. That is the
+//   case only when the mission permits a single picture, so every beat must
+//   repeat it. Such a fix still blocks; it is only addressed to someone else.
 //
 // WHAT PASSING PROVES
 // -------------------
@@ -29,15 +34,14 @@
 import { captionCuesForScript } from "../../productionPlan.ts";
 import { reviewCreativeQuality, type CreativeQualityReview, type RecommendedFix } from "../creativeQualityReview.ts";
 import type { PlatformScriptStoryboard } from "../../types.ts";
-import type { CreativeConcept } from "./concept.ts";
+import { persistentDisclosuresOf, type CreativeConcept } from "./concept.ts";
+import { pictureIdentity } from "./captureViews.ts";
 
-/** Caption dimensions whose cause may be the disclosure text rather than the author's caption. */
-const CAPTION_DIMENSIONS = new Set(["caption-density", "caption-readability"]);
-/** Dimensions a concept cannot change when every beat must show the same single capture. */
+/** Dimensions no concept can change when every beat must show the same single picture. */
 const SINGLE_PICTURE_DIMENSIONS = new Set(["shot-uniqueness", "visual-repetition"]);
 
 export interface StoryboardQualityFindings {
-  /** Fixes the author can make by changing their own text or timing. */
+  /** Fixes the author can make by changing their own text, timing or views. */
   readonly required: readonly string[];
   /** Fixes no rewrite of the concept can make. Blocking all the same. */
   readonly blockedOutsideAuthor: readonly string[];
@@ -63,6 +67,18 @@ export function reviewStoryboard(input: {
   });
 }
 
+/** The storyboard with each beat's visual direction replaced by what it actually shows. */
+export function withPictureDirections(concept: CreativeConcept, storyboard: PlatformScriptStoryboard): PlatformScriptStoryboard {
+  const identityOf = new Map(concept.visuals.map((visual) => [visual.visualId, pictureIdentity(visual)] as const));
+  return {
+    ...storyboard,
+    beats: storyboard.beats.map((beat, index) => {
+      const shown = [...new Set((concept.beats[index]?.visualIds ?? []).map((id) => identityOf.get(id) ?? `undeclared:${id}`))].sort();
+      return { ...beat, visualDirection: shown.join(" + ") };
+    }),
+  };
+}
+
 const beatList = (fix: RecommendedFix) =>
   fix.beats.length === 0 ? "the whole storyboard" : `beat ${fix.beats.map((index) => index + 1).join(", beat ")}`;
 
@@ -70,60 +86,43 @@ export function storyboardQualityFindings(input: {
   readonly concept: CreativeConcept;
   readonly storyboard: PlatformScriptStoryboard;
   readonly ctaRoute: string;
+  /** How many distinct pictures the mission lets a concept show. */
+  readonly permittedPictures: number;
 }): StoryboardQualityFindings {
-  const { concept, storyboard } = input;
+  const { concept } = input;
+  const storyboard = withPictureDirections(concept, input.storyboard);
   const review = reviewStoryboard({ reviewId: concept.conceptId, storyboard, ctaRoute: input.ctaRoute });
-
-  // The same storyboard with only the author's own caption text: what the
-  // captions would measure if no disclosure rode along with them.
-  const authorOnly = reviewStoryboard({
-    reviewId: concept.conceptId,
-    ctaRoute: input.ctaRoute,
-    storyboard: { ...storyboard, beats: storyboard.beats.map((beat, index) => ({ ...beat, onScreenText: concept.beats[index]?.onScreenText ?? beat.onScreenText })) },
-  });
-  const authorFix = (dimension: string) => authorOnly.recommendedFixes.find((fix) => fix.dimension === dimension);
-  // And with only the disclosure lines, so a caption failure the author must
-  // fix is not hiding one they cannot: both are reported at once.
-  const disclosureOnly = reviewStoryboard({
-    reviewId: concept.conceptId,
-    ctaRoute: input.ctaRoute,
-    storyboard: { ...storyboard, beats: storyboard.beats.map((beat, index) => ({ ...beat, onScreenText: (concept.disclosureTextByBeat?.[index] ?? []).join("\n") })) },
-  });
-  const disclosureFix = (dimension: string) => disclosureOnly.recommendedFixes.find((fix) => fix.dimension === dimension);
-
-  // Every beat shows one and the same picture when the concept declares a
-  // single capture state and nothing else, which is all this mission permits.
-  const pictures = new Set(concept.visuals.map((visual) =>
-    visual.kind === "real-product-capture" ? `capture:${visual.surface}:${visual.stateIdentifier}` : `${visual.kind}:${visual.visualId}`));
-  const singleCapture = pictures.size === 1 && concept.visuals.every((visual) => visual.kind === "real-product-capture");
 
   const required: string[] = [];
   const blockedOutsideAuthor: string[] = [];
   for (const fix of review.recommendedFixes) {
     const label = `MASTER #1 storyboard review [${fix.dimension}] at ${beatList(fix)}`;
-    if (CAPTION_DIMENSIONS.has(fix.dimension)) {
-      const own = authorFix(fix.dimension);
-      const disclosure = disclosureFix(fix.dimension);
-      if (own) required.push(`${label}: ${own.issue} ${own.fix}`);
-      if (disclosure) {
-        blockedOutsideAuthor.push(
-          `${label}: ${disclosure.issue} The required disclosure lines are burned into the same caption and on their own exceed ` +
-            "its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen " +
-            "needs a rendering decision and disclosure sign-off.",
-        );
-      }
-      if (!own && !disclosure) {
-        // Neither fails alone; together they do. The author's part is the one they can shorten.
-        required.push(`${label}: ${fix.issue} Your caption and the required disclosure lines share one caption; shorten yours, or give the beat more time.`);
-      }
-    } else if (SINGLE_PICTURE_DIMENSIONS.has(fix.dimension) && singleCapture) {
+    if (SINGLE_PICTURE_DIMENSIONS.has(fix.dimension) && input.permittedPictures <= 1) {
       blockedOutsideAuthor.push(
-        `${label}: ${fix.issue} Every beat must show the one validated capture this mission permits, so every beat shows the ` +
-          "same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.",
+        `${label}: ${fix.issue} The mission permits one validated view, so every beat shows the same picture. No rewrite ` +
+          "of the concept can fix this; the mission must list further validated views.",
+      );
+    } else if (SINGLE_PICTURE_DIMENSIONS.has(fix.dimension)) {
+      required.push(
+        `${label}: ${fix.issue} Show a different validated view from the brief on these beats. The same view under ` +
+          "another visual id is the same picture and does not count.",
       );
     } else {
       required.push(`${label}: ${fix.issue} ${fix.fix}`);
     }
+  }
+
+  // Disclosures leave the captions only because the overlay carries them. A
+  // storyboard that dropped them would pass every caption check by deleting
+  // the disclosure, so their absence is a blocker in its own right.
+  const needed = persistentDisclosuresOf(concept);
+  const carried = new Set(input.storyboard.persistentDisclosures ?? []);
+  const missing = needed.filter((text) => !carried.has(text));
+  if (missing.length > 0) {
+    blockedOutsideAuthor.push(
+      `Required disclosure(s) not carried for the persistent overlay: ${missing.map((text) => `"${text}"`).join(", ")}. ` +
+        "This is a defect in the storyboard conversion, not in the concept.",
+    );
   }
   return { required, blockedOutsideAuthor, review };
 }

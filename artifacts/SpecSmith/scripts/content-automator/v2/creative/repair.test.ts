@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -6,7 +6,7 @@ import { recordCreativeDecision, retrieveCreativeMemory, type CreativeEvidenceSo
 import { CreativeMemoryStore } from "./memoryStore.ts";
 import { runCreativeProposalPass, buildCreativeProposalProductionPlan } from "./proposalPass.ts";
 import { runCreativeGenerationPass } from "./generationPass.ts";
-import { assessConcept, CREATIVE_DISCLOSURES, toStoryboardBeats } from "./concept.ts";
+import { assessConcept, CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats } from "./concept.ts";
 import { PACKAGE_CROSSOVER, AVAILABLE_CAPABILITIES } from "./sectionOnePackages.ts";
 import { runExperimentPass } from "../experiment/experimentPass.ts";
 import { registerExperiment } from "../experiment/registry.ts";
@@ -17,6 +17,16 @@ import { fixtureCleanExperiment, fixtureControlAnalytics, fixtureVariantAnalytic
 import { surveySeparability } from "./separability.ts";
 import { assessDivergence } from "./divergence.ts";
 import type { ResearchCreativeContract } from "../research/creativeContract.ts";
+
+// These tests exercise generation lineage, memory and evidence. MASTER #1's
+// storyboard gate is stubbed to report nothing, because the scaffold concepts
+// used here were never paced for it; the generation pass's refusal of a batch
+// the gate fails is tested, unstubbed, in storyboardQualityGate.test.ts.
+vi.mock("./storyboardQualityGate.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./storyboardQualityGate.ts")>();
+  return { ...actual, storyboardQualityFindings: (input: Parameters<typeof actual.storyboardQualityFindings>[0]) =>
+    ({ ...actual.storyboardQualityFindings(input), required: [], blockedOutsideAuthor: [] }) };
+});
 
 const NOW = new Date("2026-09-15T12:00:00Z");
 function source(): CreativeEvidenceSource {
@@ -160,7 +170,9 @@ describe("MASTER #6 independent repair", () => {
     expect(assessConcept(input).producible).toBe(false);
     expect(assessConcept({ ...input, guaranteedDisclosureIds: Object.keys(CREATIVE_DISCLOSURES),
       concept: { ...PACKAGE_CROSSOVER, disclosureTextByBeat: { 5: Object.values(CREATIVE_DISCLOSURES) } } }).producible).toBe(false);
-    expect(toStoryboardBeats(PACKAGE_CROSSOVER)[0].onScreenText).toContain(CREATIVE_DISCLOSURES["disclosure.fps-estimate"]);
+    // Carried verbatim for the whole video as a persistent overlay, never inside a timed caption.
+    expect(persistentDisclosuresOf(PACKAGE_CROSSOVER)).toContain(CREATIVE_DISCLOSURES["disclosure.fps-estimate"]);
+    expect(toStoryboardBeats(PACKAGE_CROSSOVER)[0].onScreenText).not.toContain(CREATIVE_DISCLOSURES["disclosure.fps-estimate"]);
   });
   it("empty-memory new missions generate structurally different, evidence-gated storyboards", () => {
     const result = runCreativeProposalPass(mission());

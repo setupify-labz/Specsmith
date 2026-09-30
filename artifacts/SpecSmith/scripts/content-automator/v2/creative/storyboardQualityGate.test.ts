@@ -1,9 +1,10 @@
-// MASTER #1's storyboard review now runs on every MASTER #6 concept before a
-// batch may be called ready for human review. Unstubbed: this is the real gate
-// on the committed demo batches.
+// MASTER #1's storyboard review runs on every MASTER #6 concept before a batch
+// may be called ready for human review, and the generation pass's own status
+// follows the same verdict. Unstubbed: this is the real gate on the committed
+// demo batches.
 
 import { afterEach, describe, expect, it } from "vitest";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -11,122 +12,178 @@ import { DEMO_MISSION, DEMO_WORKFLOW_DIRECTORY } from "../../creativeFileWorkflo
 import { buildConceptHandoff } from "../handoff/conceptHandoff.ts";
 import { buildReviewPacket, OUTSTANDING_HUMAN_APPROVALS, type ConceptFeedback } from "./fileWorkflow.ts";
 import { evaluateAuthoredBatch } from "./fileWorkflowPass.ts";
+import { runCreativeGenerationPass } from "./generationPass.ts";
 import { reviewStoryboard } from "./storyboardQualityGate.ts";
-import type { CreativeConcept } from "./concept.ts";
+import { CREATIVE_DISCLOSURES, type CreativeConcept } from "./concept.ts";
 
 const REVISED = "claude-batch-three-checks";
-/** What no rewrite of a concept can fix while disclosures ride in the caption and one capture is allowed. */
-const OUTSIDE_AUTHOR = ["caption-density", "caption-readability", "shot-uniqueness", "visual-repetition"];
+const LATEST = 5;
+const PRIMARY = "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2";
 
 const dirs: string[] = [];
 afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }); });
-function workflow(options: { dropAttempt4?: boolean } = {}): string {
+/** A scratch copy of the committed workflow, cut back to `latest` attempts. */
+function workflow(latest = LATEST): string {
   const dir = mkdtempSync(join(tmpdir(), "quality-gate-"));
   dirs.push(dir);
   cpSync(DEMO_WORKFLOW_DIRECTORY, dir, { recursive: true });
-  if (options.dropAttempt4) rmSync(join(dir, "batches", "attempt-4"), { recursive: true });
+  for (let attempt = latest + 1; attempt <= LATEST; attempt += 1) rmSync(join(dir, "batches", `attempt-${attempt}`), { recursive: true });
   return dir;
 }
-const revisedPath = (dir: string) => join(dir, "batches", "attempt-4", "02-three-checks.json");
+const revisedPath = (dir: string) => join(dir, "batches", `attempt-${LATEST}`, "02-three-checks.json");
+const readRevised = (dir: string) => JSON.parse(readFileSync(revisedPath(dir), "utf8")) as CreativeConcept;
 const editRevised = (dir: string, edit: (concept: CreativeConcept) => CreativeConcept) =>
-  writeFileSync(revisedPath(dir), JSON.stringify(edit(JSON.parse(readFileSync(revisedPath(dir), "utf8")) as CreativeConcept)));
+  writeFileSync(revisedPath(dir), JSON.stringify(edit(readRevised(dir))));
+const withBeat = (index: number, change: Partial<CreativeConcept["beats"][number]>) => (concept: CreativeConcept): CreativeConcept =>
+  ({ ...concept, beats: concept.beats.map((beat, at) => at === index ? { ...beat, ...change } : beat) });
 const dimensions = (items: readonly string[]) =>
   items.filter((item) => item.startsWith("MASTER #1 storyboard review")).map((item) => /\[([^\]]+)\]/.exec(item)![1]).sort();
-async function evaluate(dir: string) {
-  const evaluation = await evaluateAuthoredBatch(dir, DEMO_MISSION);
+async function evaluate(dir: string, mission = DEMO_MISSION) {
+  const evaluation = await evaluateAuthoredBatch(dir, mission);
   const concept = (id: string): ConceptFeedback => evaluation.feedback!.concepts.find((entry) => entry.conceptId === id)!;
   return { ...evaluation, concept };
 }
 
-describe("the concept #6 passed is refused until #1's fixes are made", () => {
-  it("returns the old concept's #1 failures to the author, and does not mark the batch ready", async () => {
-    const result = await evaluate(workflow({ dropAttempt4: true }));
-    expect(result.attempts).toBe(3);
-    const old = result.concept(REVISED);
-    // It passed every #6 check...
+describe("concepts that passed #6 are refused until #1's fixes are made", () => {
+  it("returns the attempt-3 concept's #1 failures to its author", async () => {
+    const old = (await evaluate(workflow(3))).concept(REVISED);
     expect(old.contractEligible).toBe(true);
-    expect(old.required.filter((item) => !item.startsWith("MASTER #1"))).toEqual([]);
-    // ...and fails eight #1 checks: four its author can fix, four no one authoring can.
-    expect(dimensions(old.required)).toEqual(["beat-duration", "cta-clarity", "hook-duration", "visual-change-frequency"]);
-    expect(dimensions(old.blockedOutsideAuthor)).toEqual(OUTSIDE_AUTHOR);
+    expect(dimensions(old.required)).toEqual(["beat-duration", "cta-clarity", "hook-duration", "shot-uniqueness", "visual-change-frequency", "visual-repetition"]);
     expect(old.required.join("\n")).toMatch(/Hook is 5s against a 3s envelope/);
-    expect(result.packet.machineChecksPassed).toBe(false);
+    // Captions are the author's own now; the disclosures no longer overflow them.
+    expect(dimensions(old.required)).not.toContain("caption-density");
+    expect(old.blockedOutsideAuthor).toEqual([]);
+  });
+
+  it("refuses attempt 4, which fixed the timing but still shows one view on every beat", async () => {
+    const result = await evaluate(workflow(4));
+    const attempt4 = result.concept(REVISED);
+    expect(dimensions(attempt4.required)).toEqual(["shot-uniqueness", "visual-repetition"]);
+    // The mission now lists more validated views, so this is the author's to fix.
+    expect(attempt4.required.join("\n")).toMatch(/Show a different validated view/);
     expect(result.packet.humanReviewReady).toBe(false);
-    expect(result.packet.approved).toBe(false);
-    expect(result.feedback!.nextStep).toMatch(/Author a revised batch in batches\/attempt-4\//);
   });
 });
 
-describe("the revised concept", () => {
-  it("clears every #1 fix its author can make, and passes #6", async () => {
+describe("the revised concept passes both #6 and #1", () => {
+  it("has no finding of any kind, and is contract eligible", async () => {
     const result = await evaluate(workflow());
-    expect(result.attempts).toBe(4);
+    expect(result.attempts).toBe(LATEST);
     const revised = result.concept(REVISED);
     expect(revised.contractEligible).toBe(true);
     expect(revised.required).toEqual([]);
     expect(revised.missionBlockers).toEqual([]);
-    // Measured on the author's own captions, #1's only remaining fixes are the
-    // two that come from showing one capture on every beat.
+    expect(revised.blockedOutsideAuthor).toEqual([]);
     const proposal = result.pass.result.proposals.find((entry) => entry.concept.conceptId === REVISED)!;
-    const ownText = { ...proposal.storyboard, beats: proposal.storyboard.beats.map((beat, index) => ({ ...beat, onScreenText: proposal.concept.beats[index].onScreenText })) };
-    const fixes = reviewStoryboard({ reviewId: REVISED, storyboard: ownText, ctaRoute: DEMO_MISSION.productDestination }).recommendedFixes;
-    expect(fixes.map((fix) => fix.dimension).sort()).toEqual(["shot-uniqueness", "visual-repetition"]);
+    // The disclosures ride in the persistent overlay, verbatim, not in any caption.
+    expect(proposal.storyboard.persistentDisclosures).toEqual([CREATIVE_DISCLOSURES["disclosure.fps-estimate"], CREATIVE_DISCLOSURES["disclosure.model-range"]]);
+    for (const beat of proposal.storyboard.beats) expect(beat.onScreenText).not.toMatch(/model convention|measured benchmarks/);
+    // The claim beat shows the view the claim was established for.
+    const claimBeat = proposal.concept.beats.findIndex((beat) => beat.factDependencies.length > 0);
+    const shown = proposal.concept.visuals.find((visual) => visual.visualId === proposal.concept.beats[claimBeat].visualIds[0]);
+    expect(shown).toMatchObject({ stateIdentifier: PRIMARY });
   });
 
-  it("still is not ready: the failures no rewrite can fix keep blocking, and are named", async () => {
+  it("the batch is still not ready: the other two concepts have their own #1 fixes", async () => {
     const result = await evaluate(workflow());
-    const revised = result.concept(REVISED);
-    expect(dimensions(revised.blockedOutsideAuthor)).toEqual(OUTSIDE_AUTHOR);
-    expect(revised.blockedOutsideAuthor.join("\n")).toMatch(/required disclosure lines are burned into the same caption/);
-    expect(revised.blockedOutsideAuthor.join("\n")).toMatch(/one validated capture this mission permits/);
+    for (const id of ["claude-batch-commit-first", "claude-batch-vanishing-gap"]) {
+      expect(dimensions(result.concept(id).required)).toContain("hook-duration");
+    }
     expect(result.packet.machineChecksPassed).toBe(false);
     expect(result.packet.humanReviewReady).toBe(false);
     expect(result.packet.approved).toBe(false);
+    await expect(buildConceptHandoff({ directory: workflow(), mission: DEMO_MISSION, conceptId: REVISED })).rejects.toThrow(/not ready for human review/);
+  });
+});
+
+describe("controls", () => {
+  it("repeated visual: one capture under four visual ids is still one picture", async () => {
+    const dir = workflow();
+    editRevised(dir, (concept) => ({ ...concept, visuals: concept.visuals.map((visual) => ({ ...visual, stateIdentifier: PRIMARY })) }));
+    const revised = (await evaluate(dir)).concept(REVISED);
+    expect(dimensions(revised.required)).toEqual(expect.arrayContaining(["shot-uniqueness"]));
   });
 
-  it("blocks readiness even when the failures no rewrite can fix are the only ones left in the batch", async () => {
-    const result = await evaluate(workflow());
-    // The batch as it would stand once every author had cleared every item.
+  it("a claim over a view it was not established for is refused", async () => {
+    const dir = workflow();
+    // The range claim was established at 1440p High. It happens to hold at 4K Ultra as well, but nothing
+    // checked that, and at 4K High one game's gap equals the declared half-range: the rule is the view, not luck.
+    editRevised(dir, withBeat(2, { visualIds: ["checklist-4k-ultra"] }));
+    const result = await evaluate(dir);
+    const revised = result.concept(REVISED);
+    expect(revised.contractEligible).toBe(false);
+    expect(revised.required.join("\n")).toMatch(/Beat 3 states a claim while showing a view other than the primary one/);
+  });
+
+  it("a view the mission did not validate is refused", async () => {
+    const dir = workflow();
+    editRevised(dir, (concept) => ({ ...concept, visuals: concept.visuals.map((visual) =>
+      visual.visualId === "checklist-1080p-low" ? { ...visual, stateIdentifier: PRIMARY.replace("1440p_high", "4k_low") } : visual) }));
+    const revised = (await evaluate(dir)).concept(REVISED);
+    expect(revised.contractEligible).toBe(false);
+    expect(revised.required.join("\n")).toMatch(/one of the brief's validated views/);
+  });
+
+  it("with a single validated view, the repetition is the mission's to fix, and still blocks", async () => {
+    const singleView = { ...DEMO_MISSION, additionalViews: [] };
+    const dir = workflow(4);
+    const result = await evaluate(dir, singleView);
+    const attempt4 = result.concept(REVISED);
+    expect(dimensions(attempt4.blockedOutsideAuthor)).toEqual(["shot-uniqueness", "visual-repetition"]);
+    expect(attempt4.blockedOutsideAuthor.join("\n")).toMatch(/mission must list further validated views/);
+    // The same packet with every other item cleared is still not ready.
     const feedback = { ...result.feedback!, concepts: result.feedback!.concepts.map((concept) => ({ ...concept, required: [], missionBlockers: [] })) };
-    expect(feedback.concepts.every((concept) => concept.blockedOutsideAuthor.length > 0)).toBe(true);
-    const packet = buildReviewPacket({ brief: result.brief, attempt: result.attempts, generatorName: "local-file-authored-batch",
-      status: "awaiting-human-review", result: result.pass.result, batchHash: result.packet.batchHash, feedback });
-    expect(packet.machineChecksPassed).toBe(false);
-    expect(packet.humanReviewReady).toBe(false);
-    // Control: with nothing outstanding the same packet is ready, so the blockers are what refused it.
-    const clean = { ...feedback, concepts: feedback.concepts.map((concept) => ({ ...concept, blockedOutsideAuthor: [] })) };
-    expect(buildReviewPacket({ brief: result.brief, attempt: result.attempts, generatorName: "local-file-authored-batch",
-      status: "awaiting-human-review", result: result.pass.result, batchHash: result.packet.batchHash, feedback: clean }).humanReviewReady).toBe(true);
+    const packet = (feedbackIn: typeof feedback) => buildReviewPacket({ brief: result.brief, attempt: result.attempts, generatorName: "local-file-authored-batch",
+      status: "awaiting-human-review", result: result.pass.result, batchHash: result.packet.batchHash, feedback: feedbackIn });
+    expect(packet(feedback).humanReviewReady).toBe(false);
+    expect(packet({ ...feedback, concepts: feedback.concepts.map((concept) => ({ ...concept, blockedOutsideAuthor: [] })) }).humanReviewReady).toBe(true);
   });
 
   it("no score outweighs an open fix: a strong review with one fix still blocks", async () => {
     const dir = workflow();
-    editRevised(dir, (concept) => ({ ...concept, beats: concept.beats.map((beat, index) => index === 4 ? { ...beat, narration: "Open the comparison and run all three checks.", onScreenText: "Run the three checks" } : beat) }));
+    editRevised(dir, withBeat(4, { narration: "Open the comparison and run all three checks.", onScreenText: "Run the three checks" }));
     const result = await evaluate(dir);
     const proposal = result.pass.result.proposals.find((entry) => entry.concept.conceptId === REVISED)!;
-    const review = reviewStoryboard({ reviewId: REVISED, storyboard: proposal.storyboard, ctaRoute: DEMO_MISSION.productDestination });
-    expect(review.productionQualityScore).toBeGreaterThanOrEqual(7);
+    expect(reviewStoryboard({ reviewId: REVISED, storyboard: proposal.storyboard, ctaRoute: "/compare" }).productionQualityScore).toBeGreaterThanOrEqual(7);
     expect(dimensions(result.concept(REVISED).required)).toEqual(["cta-clarity"]);
-    expect(result.packet.machineChecksPassed).toBe(false);
   });
 });
 
 describe("a newly introduced #1 failure is caught", () => {
   it.each([
-    ["a hook stretched past the envelope", "hook-duration", (concept: CreativeConcept) => ({ ...concept, beats: concept.beats.map((beat, index) =>
-      index === 0 ? { ...beat, endSecond: 5 } : index === 1 ? { ...beat, startSecond: 5 } : beat) })],
-    ["a caption too long for two rendered lines", "caption-density", (concept: CreativeConcept) => ({ ...concept, beats: concept.beats.map((beat, index) =>
-      index === 2 ? { ...beat, onScreenText: "Is the per-game gap on this page bigger than the range the model declares for its own estimates?" } : beat) })],
-    ["narration too dense to follow", "information-density", (concept: CreativeConcept) => ({ ...concept, beats: concept.beats.map((beat, index) =>
-      index === 1 ? { ...beat, narration: `${beat.narration} Write it down now, then hold yourself to it when the bars appear on the screen in front of you.` } : beat) })],
+    ["a hook stretched past the envelope", "hook-duration", (concept: CreativeConcept) => withBeat(1, { startSecond: 5 })(withBeat(0, { endSecond: 5 })(concept))],
+    ["a caption too long for two rendered lines", "caption-density", withBeat(2, { onScreenText: "Is the per-game gap on this page bigger than the range the model declares for its own estimates?" })],
+    ["narration too dense to follow", "information-density", withBeat(1, { narration: "First, set the resolution you actually play at. Here the page is switched to 1080p, so write it down now and hold yourself to it when the bars appear." })],
   ])("%s", async (_label, dimension, edit) => {
     const dir = workflow();
     editRevised(dir, edit);
     const result = await evaluate(dir);
-    const revised = result.concept(REVISED);
-    expect(dimensions(revised.required)).toContain(dimension);
+    expect(dimensions(result.concept(REVISED).required)).toContain(dimension);
     expect(result.packet.machineChecksPassed).toBe(false);
-    expect(result.packet.humanReviewReady).toBe(false);
+  });
+});
+
+describe("the generation pass's own status", () => {
+  const batch = (attempt: number) => {
+    const directory = join(DEMO_WORKFLOW_DIRECTORY, "batches", `attempt-${attempt}`);
+    return readdirSync(directory).filter((name) => name.endsWith(".json")).sort()
+      .map((name) => JSON.parse(readFileSync(join(directory, name), "utf8")) as CreativeConcept);
+  };
+
+  it("never claims awaiting-human-review for a batch the combined checks refuse", async () => {
+    // Attempt 3 is contract eligible under #6's proposal pass, and fails #1.
+    const result = await runCreativeGenerationPass(DEMO_MISSION, { name: "attempt-3-replay", async generate() { return batch(3); } }, { maxAttempts: 1 });
+    expect(result.result.proposals.every((proposal) => proposal.contractEligible)).toBe(true);
+    expect(result.status).not.toBe("awaiting-human-review");
+    expect(result.status).toBe("blocked-revision");
+    expect(result.history[0].feedback.join("\n")).toMatch(/MASTER #1 storyboard review \[hook-duration\]/);
+  });
+
+  it("feeds the combined findings back to the generator on the next attempt", async () => {
+    const seen: string[][] = [];
+    await runCreativeGenerationPass(DEMO_MISSION, { name: "replay", async generate(request) { seen.push([...request.feedback]); return batch(LATEST); } }, { maxAttempts: 2 });
+    expect(seen[1].join("\n")).toMatch(/claude-batch-commit-first: MASTER #1 storyboard review/);
+    expect(seen[1].join("\n")).not.toMatch(/claude-batch-three-checks: MASTER #1/);
   });
 });
 
@@ -135,15 +192,11 @@ describe("honest limits", () => {
     const result = await evaluate(workflow());
     expect(result.packet.notes.join(" ")).toMatch(/does not show that a rendered video looks or sounds good/);
     expect(result.packet.outstandingApprovals).toEqual(OUTSTANDING_HUMAN_APPROVALS);
+    expect(result.packet.syntheticResearch).toBe(true);
     const review = reviewStoryboard({ reviewId: REVISED, storyboard: result.pass.result.proposals[1].storyboard, ctaRoute: "/compare" });
     expect(review.mediaSha256).toBeNull();
     for (const dimension of ["composition-quality", "visual-polish", "voice-naturalness", "overall-perceived-production-quality"]) {
       expect(review.overall.find((score) => score.dimension === dimension)?.provenance).toBe("not-assessed");
     }
-  });
-
-  it("the handoff refuses the committed batch rather than carrying unresolved #1 fixes into a report", async () => {
-    await expect(buildConceptHandoff({ directory: workflow(), mission: DEMO_MISSION, conceptId: REVISED }))
-      .rejects.toThrow(/not ready for human review/);
   });
 });

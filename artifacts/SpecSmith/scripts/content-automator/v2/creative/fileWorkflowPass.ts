@@ -14,6 +14,7 @@ import {
   buildCreativeBrief,
   buildReviewPacket,
   buildRevisionFeedback,
+  feedbackExpectationsFor,
   createFileConceptGenerator,
   exportCreativeBrief,
   importAuthoredBatch,
@@ -78,15 +79,7 @@ export async function evaluateAuthoredBatch(
   const attempts = latestAuthoredAttempt(directory);
 
   const feedback = attempts > 0
-    ? buildRevisionFeedback(attempts, brief.briefHash, pass.status, pass.reason, pass.result, {
-      approvedClaimIds: brief.approvedClaims.map((claim) => claim.claimId),
-      requiredWordingByClaimId: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording])),
-      claimPropositionsById: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.proposition])),
-      captureStateIdentifier: brief.captureStateIdentifier,
-      productDestination: brief.productDestination,
-      surface: brief.captureSurface,
-      captureType: brief.captureType,
-    })
+    ? buildRevisionFeedback(attempts, brief.briefHash, pass.status, pass.reason, pass.result, feedbackExpectationsFor(brief))
     : null;
 
   // The hash of the concepts the pass actually CHECKED, when it checked a
@@ -165,7 +158,7 @@ export async function runCreativeFileWorkflow(
       ? "Every machine check in this workflow passed for every treatment. Ready for human review, and NOT approved."
       : workflowStatus === "blocked"
         ? pass.reason
-        : `${feedback[0]?.nextStep ?? "Revise the batch."} The upstream proposal pass reported "${pass.status}", which does not account for this workflow's own checks.`;
+        : `${feedback[0]?.nextStep ?? "Revise the batch."} The generation pass reported "${pass.status}": it applies this workflow's checks and MASTER #1's storyboard review too, so it no longer reports a batch these checks refuse as awaiting review.`;
 
   return {
     brief: exported.brief,

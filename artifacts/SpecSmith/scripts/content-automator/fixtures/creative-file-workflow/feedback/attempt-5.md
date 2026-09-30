@@ -1,4 +1,4 @@
-# Revision feedback — attempt 3
+# Revision feedback — attempt 5
 
 Status: `blocked-revision`
 
@@ -20,13 +20,7 @@ Required:
 
 Contract eligible: yes
 
-Required:
-- MASTER #1 storyboard review [hook-duration] at beat 1: Hook is 5s against a 3s envelope. Shorten beat 1 to the envelope, moving any setup into beat 2.
-- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
-- MASTER #1 storyboard review [cta-clarity] at beat 5: The CTA beat does not state the exact route. Name the SpecSmith route explicitly in the final beat.
-- MASTER #1 storyboard review [beat-duration] at the whole storyboard: beat-duration scored 5/10. No automated repair rule exists for this dimension; regenerate the creative upstream.
-- MASTER #1 storyboard review [visual-change-frequency] at the whole storyboard: visual-change-frequency scored 5.7/10. No automated repair rule exists for this dimension; regenerate the creative upstream.
-- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
+No findings.
 
 ## claude-batch-vanishing-gap
 
@@ -41,4 +35,4 @@ Required:
 
 ## Next step
 
-Author a revised batch in batches/attempt-4/ addressing every "required" item above.
+Author a revised batch in batches/attempt-6/ addressing every "required" item above.

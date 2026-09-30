@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
+import { parseBandedLayout, type BandedLayout } from "./bandedLayout.ts";
 
 export interface CompositorBeat {
   visualTaskId: string;
@@ -17,6 +18,13 @@ export interface MotionCompositorState {
   voiceTaskId: string;
   captionTaskId?: string;
   musicTaskId?: string;
+  /**
+   * A banded frame (bandedLayout.ts): visuals fill the story band only, and
+   * the disclosure task's panel is overlaid, unchanged, in the disclosure band
+   * for the whole video. Absent means the full-frame layout.
+   */
+  layout?: BandedLayout;
+  disclosureTaskId?: string;
 }
 
 export interface MotionCompositorConfig {
@@ -125,7 +133,19 @@ export function parseMotionCompositorState(input: unknown): MotionCompositorStat
   const musicTaskId = typeof raw.musicTaskId === "string" && raw.musicTaskId.trim() ? raw.musicTaskId.trim() : undefined;
   if (!voiceTaskId) throw new MotionCompositorError("malformed-state", "voiceTaskId is required; narration will not be guessed.");
 
-  return { durationSeconds, fps, visualTimeline, voiceTaskId, captionTaskId, musicTaskId };
+  const disclosureTaskId = typeof raw.disclosureTaskId === "string" && raw.disclosureTaskId.trim() ? raw.disclosureTaskId.trim() : undefined;
+  if ((raw.layout === undefined) !== (disclosureTaskId === undefined)) {
+    throw new MotionCompositorError("malformed-state", "A banded layout and its disclosureTaskId come together; one without the other would drop the disclosure or leave it nowhere to go.");
+  }
+  let layout: BandedLayout | undefined;
+  if (raw.layout !== undefined) {
+    try {
+      layout = parseBandedLayout(raw.layout);
+    } catch (error) {
+      throw new MotionCompositorError("bad-layout", error instanceof Error ? error.message : String(error));
+    }
+  }
+  return { durationSeconds, fps, visualTimeline, voiceTaskId, captionTaskId, musicTaskId, ...(layout ? { layout, disclosureTaskId } : {}) };
 }
 
 function safeFilePart(value: string): string {
@@ -236,8 +256,11 @@ async function probeMedia(ffprobePath: string, path: string, timeoutMs: number):
   };
 }
 
-function scaleFilter(width: number, height: number): string {
-  return `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1`;
+/** Fits a visual into the frame, or with a band into the story band only, leaving the other bands black. */
+function scaleFilter(width: number, height: number, band?: { y: number; height: number }): string {
+  if (!band) return `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1`;
+  return `scale=${width}:${band.height}:force_original_aspect_ratio=decrease,pad=${width}:${band.height}:(ow-iw)/2:(oh-ih)/2:black,` +
+    `pad=${width}:${height}:0:${band.y}:black,setsar=1`;
 }
 
 async function renderStaticImageSegment(options: {
@@ -251,6 +274,7 @@ async function renderStaticImageSegment(options: {
   crf: number;
   preset: string;
   timeoutMs: number;
+  band?: { y: number; height: number };
 }): Promise<void> {
   await runProcess(options.ffmpegPath, [
     "-y",
@@ -258,7 +282,7 @@ async function renderStaticImageSegment(options: {
     "-framerate", String(options.fps),
     "-i", options.inputPath,
     "-t", options.durationSeconds.toFixed(3),
-    "-vf", scaleFilter(options.width, options.height),
+    "-vf", scaleFilter(options.width, options.height, options.band),
     "-an",
     "-r", String(options.fps),
     "-c:v", "libx264",
@@ -280,13 +304,14 @@ async function renderVideoSegment(options: {
   crf: number;
   preset: string;
   timeoutMs: number;
+  band?: { y: number; height: number };
 }): Promise<void> {
   await runProcess(options.ffmpegPath, [
     "-y",
     "-stream_loop", "-1",
     "-i", options.inputPath,
     "-t", options.durationSeconds.toFixed(3),
-    "-vf", scaleFilter(options.width, options.height),
+    "-vf", scaleFilter(options.width, options.height, options.band),
     "-an",
     "-r", String(options.fps),
     "-c:v", "libx264",
@@ -337,6 +362,7 @@ async function renderSequenceSegment(options: {
   crf: number;
   preset: string;
   timeoutMs: number;
+  band?: { y: number; height: number };
 }): Promise<void> {
   const manifest = await readSequenceManifest(options.manifestPath);
   const weights = frameWeights(manifest.frames);
@@ -359,7 +385,7 @@ async function renderSequenceSegment(options: {
     "-safe", "0",
     "-i", listPath,
     "-t", options.durationSeconds.toFixed(3),
-    "-vf", scaleFilter(options.width, options.height),
+    "-vf", scaleFilter(options.width, options.height, options.band),
     "-an",
     "-r", String(options.fps),
     "-c:v", "libx264",
@@ -382,6 +408,7 @@ async function renderVisualSegment(options: {
   crf: number;
   preset: string;
   timeoutMs: number;
+  band?: { y: number; height: number };
 }): Promise<void> {
   const inputPath = filePathFromArtifact(options.artifact);
   await stat(inputPath).catch(() => {
@@ -397,6 +424,7 @@ async function renderVisualSegment(options: {
     crf: options.crf,
     preset: options.preset,
     timeoutMs: options.timeoutMs,
+    band: options.band,
   };
   if (options.artifact.mimeType === "application/json") {
     await renderSequenceSegment({ ...shared, manifestPath: inputPath, workDir: options.workDir });
@@ -437,6 +465,8 @@ async function muxFinal(options: {
   voicePath: string;
   captionPath?: string;
   musicPath?: string;
+  /** Overlaid unchanged at (0, y) for the whole video. */
+  disclosure?: { path: string; y: number };
   outputPath: string;
   durationSeconds: number;
   crf: number;
@@ -445,10 +475,20 @@ async function muxFinal(options: {
 }): Promise<void> {
   const args = ["-y", "-i", options.baseVideoPath, "-i", options.voicePath];
   if (options.musicPath) args.push("-stream_loop", "-1", "-i", options.musicPath);
+  const disclosureInput = options.musicPath ? 3 : 2;
+  if (options.disclosure) args.push("-loop", "1", "-i", options.disclosure.path);
 
   const filters: string[] = [];
-  const videoMap = options.captionPath ? "[vout]" : "0:v:0";
-  if (options.captionPath) filters.push(`[0:v]ass='${filterPath(options.captionPath)}'[vout]`);
+  let video = "[0:v]";
+  if (options.disclosure) {
+    filters.push(`${video}[${disclosureInput}:v]overlay=0:${options.disclosure.y}:shortest=1[vdisc]`);
+    video = "[vdisc]";
+  }
+  if (options.captionPath) {
+    filters.push(`${video}ass='${filterPath(options.captionPath)}'[vout]`);
+    video = "[vout]";
+  }
+  const videoMap = video === "[0:v]" ? "0:v:0" : video;
   if (options.musicPath) {
     filters.push("[1:a]volume=1.0[voice]");
     filters.push("[2:a]volume=0.14[music]");
@@ -514,6 +554,28 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
         ? filePathFromArtifact(artifactForTask(context, state.musicTaskId))
         : undefined;
 
+      let disclosure: { path: string; y: number } | undefined;
+      if (state.layout && state.disclosureTaskId) {
+        if (state.layout.width !== width || state.layout.height !== height) {
+          throw new MotionCompositorError("bad-layout", `Layout is ${state.layout.width}x${state.layout.height}; this compositor renders ${width}x${height}.`);
+        }
+        const artifact = artifactForTask(context, state.disclosureTaskId);
+        if (artifact.kind !== "image" || artifact.mimeType !== "image/png") {
+          throw new MotionCompositorError("bad-disclosure", `Disclosure task ${state.disclosureTaskId} did not produce a PNG panel.`);
+        }
+        const path = filePathFromArtifact(artifact);
+        const probe = await probeMedia(ffprobePath, path, timeoutMs);
+        // Exact size, never scaled: a stretched or squashed panel is not the
+        // panel whose readability was checked.
+        if (probe.width !== width || probe.height !== state.layout.disclosure.height) {
+          throw new MotionCompositorError(
+            "bad-disclosure",
+            `Disclosure panel is ${probe.width ?? "?"}x${probe.height ?? "?"}; the band is ${width}x${state.layout.disclosure.height}.`,
+          );
+        }
+        disclosure = { path, y: state.layout.disclosure.y };
+      }
+
       // Never clip narration. If the generated voice runs slightly long, hold
       // the final visual instead. A large overrun is a TTS/planning failure and
       // should be regenerated rather than hidden by a very long freeze-frame.
@@ -546,6 +608,7 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
             crf,
             preset,
             timeoutMs,
+            band: state.layout?.story,
           });
           segments.push(segmentPath);
         }
@@ -561,6 +624,7 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
           voicePath,
           captionPath,
           musicPath,
+          disclosure,
           outputPath,
           durationSeconds: finalDuration,
           crf,
@@ -610,6 +674,8 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
             visualTaskIds,
             captionsBurnedIn: Boolean(captionPath),
             musicIncluded: Boolean(musicPath),
+            layout: state.layout ? "banded" : "full-frame",
+            disclosureTaskId: state.disclosureTaskId ?? "",
           },
         }];
       } finally {

@@ -12,7 +12,16 @@ export interface CaptionCue {
 export interface CaptionRenderState {
   durationSeconds: number;
   cues: CaptionCue[];
+  /**
+   * "overlay" (default) burns captions over the lower frame. "caption-band"
+   * sets them inside the bottom band of a banded layout (bandedLayout.ts), off
+   * the product capture.
+   */
+  placement?: "overlay" | "caption-band";
 }
+
+/** Bottom margin per placement, in the 1920px frame. */
+const CAPTION_MARGIN_V = { overlay: 290, "caption-band": 70 } as const;
 
 export class CaptionRenderStateError extends Error {
   readonly code: string;
@@ -69,7 +78,11 @@ export function parseCaptionRenderState(input: unknown): CaptionRenderState {
       );
     }
   }
-  return { durationSeconds, cues };
+  const placement = raw.placement ?? "overlay";
+  if (placement !== "overlay" && placement !== "caption-band") {
+    throw new CaptionRenderStateError("malformed", `placement must be "overlay" or "caption-band", got ${JSON.stringify(placement)}.`);
+  }
+  return placement === "overlay" ? { durationSeconds, cues } : { durationSeconds, cues, placement };
 }
 
 function safeFilePart(value: string): string {
@@ -129,7 +142,7 @@ function wrapCaption(text: string, maxChars = CAPTION_LINE_MAX_CHARS): string {
 }
 
 export function buildAssDocument(state: CaptionRenderState): string {
-  const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: SpecSmith,Arial,72,&H00FFFFFF,&H00FFFFFF,&HC0000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,0,2,90,90,290,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
+  const header = `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: SpecSmith,Arial,72,&H00FFFFFF,&H00FFFFFF,&HC0000000,&H80000000,-1,0,0,0,100,100,0,0,1,5,0,2,90,90,${CAPTION_MARGIN_V[state.placement ?? "overlay"]},1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n`;
   const events = state.cues.map((cue) =>
     `Dialogue: 0,${assTime(cue.startSecond)},${assTime(cue.endSecond)},SpecSmith,,0,0,0,,${wrapCaption(cue.text)}`,
   );

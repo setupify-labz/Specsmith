@@ -30,7 +30,8 @@
     "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts",
     "content:creative:brief": "tsx scripts/content-automator/creativeFileWorkflowCli.ts brief",
     "content:creative:review": "tsx scripts/content-automator/creativeFileWorkflowCli.ts review",
-    "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff"
+    "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff",
+    "content:creative:render": "tsx scripts/content-automator/master6OfflineRender.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
