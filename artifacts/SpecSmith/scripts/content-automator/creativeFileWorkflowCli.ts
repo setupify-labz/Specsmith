@@ -170,6 +170,7 @@ async function main(): Promise<void> {
       console.log(`  ${concept.conceptId}: contract eligible ${concept.contractEligible}`);
       for (const item of concept.missionBlockers) console.log(`    MISSION   ${item}`);
       for (const item of concept.required) console.log(`    REQUIRED  ${item}`);
+      for (const item of concept.blockedOutsideAuthor) console.log(`    BLOCKED   ${item}`);
       for (const item of concept.advisory) console.log(`    advisory  ${item}`);
     }
     console.log(`  next step: ${entry.nextStep}`);

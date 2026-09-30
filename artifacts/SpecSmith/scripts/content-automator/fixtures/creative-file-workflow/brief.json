@@ -1,7 +1,7 @@
 {
   "version": "creative-file-workflow-v1",
   "missionId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
-  "viewerQuestion": "Same price, different parts. What does this comparison page actually settle?",
+  "viewerQuestion": "Different parts. What do these model estimates actually establish?",
   "platform": "youtube-shorts",
   "productDestination": "/compare",
   "captureStateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2",
@@ -105,5 +105,5 @@
     "Passing every check makes a batch ready for human review. It does not approve it, render it, or permit publishing."
   ],
   "syntheticResearch": true,
-  "briefHash": "7db1a289ccedb7f7688e1482e760c3c0cb61fe626d2cb5394a470e573d4e9765"
+  "briefHash": "2f22b1c7e92cbf59954390552a746a9118d3ae59046a90ad0e48cf82102c5283"
 }

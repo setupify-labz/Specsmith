@@ -39,6 +39,7 @@ import { contractDeclaresSynthetic } from "../research/creativeContract.ts";
 import { normalizeForMatching } from "../research/claimMention.ts";
 import { assessDivergence } from "./divergence.ts";
 import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
+import { storyboardQualityFindings } from "./storyboardQualityGate.ts";
 import { stateIdentifier, parseUiRenderRequest } from "../../uiRender/uiRenderState.ts";
 import {
   AUDIENCE_EXPERIENCES,
@@ -673,6 +674,13 @@ export interface ConceptFeedback {
    * and they will either give up or start editing beats at random.
    */
   readonly missionBlockers: readonly string[];
+  /**
+   * MASTER #1 storyboard-review failures no rewrite of this concept can fix:
+   * the required disclosure lines overflowing the caption they are burned
+   * into, or one permitted capture shown on every beat. They block readiness
+   * exactly as `required` does; they are only addressed to someone else.
+   */
+  readonly blockedOutsideAuthor: readonly string[];
 }
 
 export interface RevisionFeedback {
@@ -876,17 +884,30 @@ export function buildRevisionFeedback(
       }
     }
 
+    // MASTER #1's storyboard review, on the storyboard as it would be
+    // rendered. Every fix it recommends blocks; its scores are never read.
+    // Run after the eligibility explanation above, which only speaks when
+    // nothing else is required and must not be silenced by these findings.
+    const quality = storyboardQualityFindings({
+      concept: proposal.concept,
+      storyboard: proposal.storyboard,
+      ctaRoute: expectations.productDestination,
+    });
+    required.push(...quality.required);
+
     return {
       conceptId: proposal.concept.conceptId,
       contractEligible: proposal.contractEligible,
       required,
       advisory,
       missionBlockers,
+      blockedOutsideAuthor: [...quality.blockedOutsideAuthor],
     };
   });
 
   const blocking = concepts.filter((concept) => concept.required.length > 0);
   const missionBlocked = concepts.some((concept) => concept.missionBlockers.length > 0);
+  const outsideAuthor = concepts.reduce((total, concept) => total + concept.blockedOutsideAuthor.length, 0);
   const setBlocked = setFindings.length > 0;
   const nextStep =
     result.proposals.length === 0
@@ -894,9 +915,14 @@ export function buildRevisionFeedback(
       : missionBlocked
         ? "This mission cannot be authored as specified: its own viewer question is rejected by the evidence gate. " +
           "Re-specify the mission before asking anyone to write against it. Authoring cannot fix this."
-        : blocking.length === 0 && !setBlocked
+        : blocking.length === 0 && !setBlocked && outsideAuthor === 0
           ? "All three treatments passed the machine checks. This batch is ready for human review. It is NOT approved."
-          : `Author a revised batch in batches/attempt-${attempt + 1}/ addressing every "required" item above.`;
+          : blocking.length === 0 && !setBlocked
+            ? `Every finding an author can fix is fixed, but ${outsideAuthor} MASTER #1 storyboard-review failure(s) remain that no rewrite ` +
+              "can fix (see \"Blocked outside the author's control\"). This batch is NOT ready for human review and NOT approved " +
+              "until the disclosure display and capture capability they name are resolved."
+            : `Author a revised batch in batches/attempt-${attempt + 1}/ addressing every "required" item above.` +
+              (outsideAuthor > 0 ? ` ${outsideAuthor} further failure(s) cannot be fixed by authoring and will still block; see "Blocked outside the author's control".` : "");
 
   return {
     version: FILE_WORKFLOW_VERSION,
@@ -933,12 +959,17 @@ export function formatRevisionFeedback(feedback: RevisionFeedback): string {
       for (const item of concept.required) lines.push(`- ${item}`);
       lines.push("");
     }
+    if (concept.blockedOutsideAuthor.length > 0) {
+      lines.push("Blocked outside the author's control (still blocking):");
+      for (const item of concept.blockedOutsideAuthor) lines.push(`- ${item}`);
+      lines.push("");
+    }
     if (concept.advisory.length > 0) {
       lines.push("Advisory:");
       for (const item of concept.advisory) lines.push(`- ${item}`);
       lines.push("");
     }
-    if (concept.required.length === 0 && concept.advisory.length === 0 && concept.missionBlockers.length === 0) {
+    if (concept.required.length === 0 && concept.advisory.length === 0 && concept.missionBlockers.length === 0 && concept.blockedOutsideAuthor.length === 0) {
       lines.push("No findings.");
       lines.push("");
     }
@@ -1033,7 +1064,7 @@ export function buildReviewPacket(input: PacketInput): CreativeReviewPacket {
       ? 0
       : input.feedback.setFindings.length +
         input.feedback.concepts.reduce(
-          (total, concept) => total + concept.required.length + concept.missionBlockers.length,
+          (total, concept) => total + concept.required.length + concept.missionBlockers.length + concept.blockedOutsideAuthor.length,
           0,
         );
 
@@ -1044,7 +1075,8 @@ export function buildReviewPacket(input: PacketInput): CreativeReviewPacket {
     outstanding === 0;
 
   const notes = [
-    "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value, factual completeness or readability.",
+    "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value or factual completeness.",
+    "MASTER #1's storyboard review measures caption length and speed, pacing, narration density and the CTA route from the storyboard's text and timing. Passing it does not show that a rendered video looks or sounds good: nothing has been rendered, seen or heard.",
     "Authorship by a model is not evidence. These concepts passed the same gates a provider's output would.",
     "No network call, credential, paid service, rendering, scheduling or publishing occurred in producing this packet.",
   ];

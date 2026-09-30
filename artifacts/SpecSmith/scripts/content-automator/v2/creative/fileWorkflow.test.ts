@@ -7,7 +7,7 @@
 //
 // A third thing must hold no matter what passes: readiness is not approval.
 
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -23,6 +23,18 @@ import {
 } from "./fileWorkflow.ts";
 import { runCreativeFileWorkflow } from "./fileWorkflowPass.ts";
 import type { CreativeMissionInput } from "./proposalPass.ts";
+
+// These tests exercise MASTER #6's own checks. MASTER #1's storyboard gate is
+// stubbed to report nothing, because no compare concept can pass it today (the
+// required disclosure lines overflow the caption, and one capture repeats on
+// every beat), so without the stub no batch here could ever reach readiness and
+// #6's positive path would be untested. The real gate is tested, unstubbed, in
+// storyboardQualityGate.test.ts.
+vi.mock("./storyboardQualityGate.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./storyboardQualityGate.ts")>();
+  return { ...actual, storyboardQualityFindings: (input: Parameters<typeof actual.storyboardQualityFindings>[0]) =>
+    ({ ...actual.storyboardQualityFindings(input), required: [], blockedOutsideAuthor: [] }) };
+});
 
 const STATE = "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2";
 const CLAIM = "SYNTHETIC_TEST_FIXTURE-range-limit";

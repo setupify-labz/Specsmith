@@ -1,0 +1,112 @@
+{
+  "conceptId": "claude-batch-three-checks",
+  "axes": {
+    "audienceExperience": "investigator",
+    "explanatoryStructure": "question-evidence-boundary",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Same price, different parts. What does this comparison page actually settle?",
+  "viewerTakeaway": "I can apply a repeatable check to any comparison page and know when its numbers are too close to act on.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate",
+    "disclosure.model-range"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "Three checks for any comparison page.",
+      "onScreenText": "Three checks",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 3,
+      "endSecond": 9,
+      "narration": "First, decide what would actually answer your question, before you look at any bar.",
+      "onScreenText": "1. What would answer it?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9,
+      "endSecond": 17,
+      "narration": "Second: every per-game gap on this page is smaller than the range the model declares for its own estimates. These are model estimates.",
+      "onScreenText": "2. Is the gap real?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 17,
+      "endSecond": 25,
+      "narration": "Third, check what the price covers. Here it is an editorial CPU-and-GPU parts subtotal, not a complete build and not a live retail price.",
+      "onScreenText": "3. What does price cover?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-editorial-parts-subtotal"
+      ]
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 25,
+      "endSecond": 30,
+      "narration": "Open /compare and run all three checks on your own pair.",
+      "onScreenText": "Run it at /compare",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
+      "The range shown is a model convention, not measured or calibrated uncertainty."
+    ]
+  }
+}
