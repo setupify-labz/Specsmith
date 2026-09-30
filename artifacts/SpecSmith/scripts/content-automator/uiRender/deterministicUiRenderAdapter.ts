@@ -145,7 +145,7 @@ export function createDeterministicUiRenderAdapter(options: UiRenderAdapterOptio
         // would silently produce a capture of whatever happened to be at the
         // top, which for Compare is an expanded part picker.
         if (plan.focusText) {
-          const framed = await focusOn(page, plan.focusText);
+          const framed = await focusOn(page, plan.focusText, plan.focusFraction);
           if (!framed) {
             throw new UiCaptureError(
               "framing-failed",

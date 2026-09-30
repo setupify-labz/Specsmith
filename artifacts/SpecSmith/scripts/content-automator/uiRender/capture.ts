@@ -196,7 +196,7 @@ export async function pageText(page: Page): Promise<string> {
  * Returns false when the anchor is not found, so the caller can decide; this
  * never silently captures the wrong region.
  */
-export async function focusOn(page: Page, needle: string): Promise<boolean> {
+export async function focusOn(page: Page, needle: string, fraction = 0.34): Promise<boolean> {
   // Matches on textContent and picks the DEEPEST element whose text contains
   // the needle. Three things this has to get right:
   //
@@ -239,7 +239,7 @@ export async function focusOn(page: Page, needle: string): Promise<boolean> {
 
     var rect = best.getBoundingClientRect();
     var scroller = document.scrollingElement || root;
-    var target = window.innerHeight * 0.34;
+    var target = window.innerHeight * ${fraction};
     scroller.scrollTop = scroller.scrollTop + (rect.top - target);
 
     var after = best.getBoundingClientRect();

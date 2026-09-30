@@ -1,10 +1,10 @@
 {
   "version": "creative-file-workflow-v1",
   "missionId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
-  "briefHash": "2f22b1c7e92cbf59954390552a746a9118d3ae59046a90ad0e48cf82102c5283",
-  "attempt": 4,
+  "briefHash": "d090f021ab4330bf076617c7fd314268c3559f2cd74441b4a8a0b7bd6cd1de67",
+  "attempt": 5,
   "generatorName": "local-file-authored-batch",
-  "status": "awaiting-human-review",
+  "status": "blocked-revision",
   "machineChecksPassed": false,
   "humanReviewReady": false,
   "approved": false,
@@ -22,7 +22,7 @@
     "claude-batch-three-checks",
     "claude-batch-vanishing-gap"
   ],
-  "batchHash": "292d07b35a82d7983572c738272b4e6ae848b8072488c60146f8143768f87516",
+  "batchHash": "f8d4a3a59939574a469445156fd383acafb4005764d1bad52eb5761a044aaa5e",
   "notes": [
     "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value or factual completeness.",
     "MASTER #1's storyboard review measures caption length and speed, pacing, narration density and the CTA route from the storyboard's text and timing. Passing it does not show that a rendered video looks or sounds good: nothing has been rendered, seen or heard.",

@@ -161,6 +161,13 @@ export interface UiRenderRequest {
   durationSeconds?: number;
   /** Sequence only: frames per second to sample. */
   fps?: number;
+  /**
+   * Compare only. "result" (default) frames the comparison itself. "settings"
+   * frames the active Resolution and Quality controls above it, so a cut to
+   * another setting visibly shows which setting is on. Framing changes where
+   * the capture is cropped, never the application state.
+   */
+  framing?: "result" | "settings";
 }
 
 /**
@@ -343,7 +350,16 @@ export function parseUiRenderRequest(input: unknown): UiRenderRequest {
       throw new UiRenderStateError("unknown-surface", `Unhandled surface ${surface}.`);
   }
 
-  return { state, captureType, viewport, durationSeconds, fps };
+  const framing = raw.framing ?? "result";
+  if (framing !== "result" && framing !== "settings") {
+    throw new UiRenderStateError("malformed", `framing must be "result" or "settings", got ${JSON.stringify(framing)}.`);
+  }
+  if (framing === "settings" && state.surface !== "compare") {
+    throw new UiRenderStateError("malformed", "Settings framing exists for the Compare surface only.");
+  }
+  return framing === "settings"
+    ? { state, captureType, viewport, durationSeconds, fps, framing }
+    : { state, captureType, viewport, durationSeconds, fps };
 }
 
 /**

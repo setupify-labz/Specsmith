@@ -6,7 +6,7 @@ import {
   UiRenderStateError,
   VERTICAL_1080x1920,
 } from "./uiRenderState.ts";
-import { planSurface } from "./surfaces.ts";
+import { compareAverageFpsText, planSurface } from "./surfaces.ts";
 import { createDeterministicUiRenderAdapter } from "./deterministicUiRenderAdapter.ts";
 import { RenderAdapterRegistry, createDryRunAdapter, createFullDryRunRegistry } from "../rendering.ts";
 import type { ProductionTask } from "../types.ts";
@@ -144,8 +144,21 @@ describe("deterministic state behaviour", () => {
     // would pass no matter which GPU was actually selected; the "A + B"
     // composite is rendered only for the selected pair.
     const plan = planSurface(parseUiRenderRequest(compare));
-    expect(plan.expectedText).toEqual(["RTX 5090 + Ryzen 7 9800X3D", "RTX 4090 + Ryzen 7 7800X3D"]);
-    for (const text of plan.expectedText) expect(text).toContain(" + ");
+    const pairs = plan.expectedText.slice(0, 2);
+    expect(pairs).toEqual(["RTX 5090 + Ryzen 7 9800X3D", "RTX 4090 + Ryzen 7 7800X3D"]);
+    for (const text of pairs) expect(text).toContain(" + ");
+  });
+
+  it("also requires the model's averages for the requested setting, which the pair names cannot prove", () => {
+    // Compare falls back to 1080p / High on an unrecognised setting. Only the
+    // setting-specific estimates distinguish the requested view from that fallback.
+    const at = (resolution: string, preset: string) =>
+      planSurface(parseUiRenderRequest({ ...compare, state: { ...compare.state, resolution, preset } })).expectedText.slice(2);
+    const averages = at("4k", "ultra");
+    expect(averages.length).toBeGreaterThan(0);
+    for (const text of averages) expect(text).toMatch(/^Est\. Avg FPS: \d+$/);
+    expect(averages).not.toEqual(at("1080p", "high"));
+    expect(averages).toEqual(compareAverageFpsText({ ...compare.state, resolution: "4k", preset: "ultra" }));
   });
 
   it("maps each surface to its real SpecSmith route", () => {

@@ -259,6 +259,11 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
  * Visual ids are carried into `visualDirection` so that the honesty
  * classification survives into the storyboard rather than being lost the moment
  * the concept becomes prose.
+ *
+ * `onScreenText` is the author's caption only. Disclosures are NOT appended:
+ * they are carried by `persistentDisclosuresOf` and rendered as their own
+ * overlay for the whole video. Appended here they became timed captions that
+ * overflowed two lines and changed every beat.
  */
 export function toStoryboardBeats(concept: CreativeConcept): StoryboardBeat[] {
   return concept.beats.map((beat) => {
@@ -272,10 +277,25 @@ export function toStoryboardBeats(concept: CreativeConcept): StoryboardBeat[] {
       purpose: beat.purpose,
       narration: beat.narration,
       visualDirection: direction,
-      onScreenText: [beat.onScreenText, ...(concept.disclosureTextByBeat?.[concept.beats.indexOf(beat)] ?? [])].join("\n"),
+      onScreenText: beat.onScreenText,
       factDependencies: [...beat.factDependencies],
     };
   });
+}
+
+/**
+ * Every disclosure any beat requires, verbatim and in first-seen order.
+ *
+ * Shown for the whole video rather than per beat: a disclosure that is on
+ * screen throughout covers every beat that needs it, and never flickers in and
+ * out between cuts.
+ */
+export function persistentDisclosuresOf(concept: CreativeConcept): string[] {
+  const seen = new Set<string>();
+  concept.beats.forEach((_, index) => {
+    for (const text of concept.disclosureTextByBeat?.[index] ?? []) seen.add(text);
+  });
+  return [...seen];
 }
 
 function describeVisual(visual: DeclaredVisual): string {

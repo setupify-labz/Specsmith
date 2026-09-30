@@ -1,8 +1,8 @@
 # Revision feedback — attempt 4
 
-Status: `awaiting-human-review`
+Status: `blocked-revision`
 
-Three generator-authored treatments passed machine checks; no creative score, rendered-media approval or publishing permission is inferred.
+Bounded revision budget exhausted; unresolved concepts preserved for review, not approved.
 
 ## claude-batch-commit-first
 
@@ -10,25 +10,19 @@ Contract eligible: yes
 
 Required:
 - MASTER #1 storyboard review [hook-duration] at beat 1: Hook is 6s against a 3s envelope. Shorten beat 1 to the envelope, moving any setup into beat 2.
+- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
 - MASTER #1 storyboard review [information-density] at the whole storyboard: Narration peaks at 5 words per second. Cut the densest beat's narration to the single idea it needs, or lengthen the beat.
 - MASTER #1 storyboard review [cta-clarity] at beat 5: The CTA beat does not state the exact route. Name the SpecSmith route explicitly in the final beat.
 - MASTER #1 storyboard review [visual-change-frequency] at the whole storyboard: visual-change-frequency scored 6/10. No automated repair rule exists for this dimension; regenerate the creative upstream.
-
-Blocked outside the author's control (still blocking):
-- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
-- MASTER #1 storyboard review [caption-density] at the whole storyboard: 5 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [caption-readability] at the whole storyboard: Fastest caption runs at 28 characters per second against a comfortable 20. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
+- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
 
 ## claude-batch-three-checks
 
 Contract eligible: yes
 
-Blocked outside the author's control (still blocking):
-- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
-- MASTER #1 storyboard review [caption-density] at the whole storyboard: 5 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [caption-readability] at the whole storyboard: Fastest caption runs at 56 characters per second against a comfortable 20. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
+Required:
+- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
+- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
 
 ## claude-batch-vanishing-gap
 
@@ -36,15 +30,11 @@ Contract eligible: yes
 
 Required:
 - MASTER #1 storyboard review [hook-duration] at beat 1: Hook is 5s against a 3s envelope. Shorten beat 1 to the envelope, moving any setup into beat 2.
+- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
 - MASTER #1 storyboard review [cta-clarity] at beat 5: The CTA beat does not state the exact route. Name the SpecSmith route explicitly in the final beat.
 - MASTER #1 storyboard review [visual-change-frequency] at the whole storyboard: visual-change-frequency scored 6/10. No automated repair rule exists for this dimension; regenerate the creative upstream.
-
-Blocked outside the author's control (still blocking):
-- MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
-- MASTER #1 storyboard review [caption-density] at the whole storyboard: 5 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [caption-readability] at the whole storyboard: Fastest caption runs at 33.6 characters per second against a comfortable 20. The required disclosure lines are burned into the same caption and on their own exceed its limits. No rewrite of the concept can fix this: the disclosure wording is fixed, and how it is shown on screen needs a rendering decision and disclosure sign-off.
-- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Every beat must show the one validated capture this mission permits, so every beat shows the same picture. No rewrite of the concept can fix this; varying the picture needs a capture capability this workflow does not have.
+- MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 2/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.
 
 ## Next step
 
-Author a revised batch in batches/attempt-5/ addressing every "required" item above. 12 further failure(s) cannot be fixed by authoring and will still block; see "Blocked outside the author's control".
+Author a revised batch in batches/attempt-5/ addressing every "required" item above.

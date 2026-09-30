@@ -49,11 +49,10 @@ import {
   type ConceptBeatPlan,
   type CreativeConcept,
 } from "./concept.ts";
-import {
-  CREATIVE_GENERATOR_INSTRUCTIONS,
-  type CreativeGenerator,
-  type CreativeGeneratorRequest,
-} from "./generationPass.ts";
+import type { CreativeGenerator, CreativeGeneratorRequest } from "./generationPass.ts";
+import { CREATIVE_GENERATOR_INSTRUCTIONS } from "./instructions.ts";
+import { missionCaptureViews } from "./captureViews.ts";
+import { claimBeatsOffPrimaryView } from "./proposalPass.ts";
 import type { CreativeMissionInput, runCreativeProposalPass } from "./proposalPass.ts";
 
 export const FILE_WORKFLOW_VERSION = "creative-file-workflow-v1";
@@ -97,6 +96,17 @@ export interface ExportedBrief {
   /** What it will NOT, so the copy cannot point at something absent. */
   readonly captureDoesNotShow: readonly string[];
   readonly renderRequest: unknown;
+  /**
+   * Every validated view a visual may name, the primary one first. Claims may
+   * be stated only over the primary view: the research established them there.
+   */
+  readonly captureViews: readonly {
+    readonly stateIdentifier: string;
+    readonly resolution: string;
+    readonly preset: string;
+    readonly primary: boolean;
+    readonly claimsMayBeStated: boolean;
+  }[];
   /**
    * Only claims the research layer has actually approved for creative use.
    * An author may state nothing beyond these, and each factual beat must bind
@@ -165,6 +175,13 @@ export function buildCreativeBrief(
       (entry) => `${entry.element} (${entry.verifiedAt})`,
     ),
     renderRequest: input.renderRequest,
+    captureViews: missionCaptureViews(input.renderRequest, input.additionalViews ?? []).map((view) => ({
+      stateIdentifier: view.stateIdentifier,
+      resolution: view.resolution,
+      preset: view.preset,
+      primary: view.primary,
+      claimsMayBeStated: view.primary,
+    })),
     approvedClaims: approved.map((claim) => ({
       claimId: claim.claimId,
       proposition: claim.proposition,
@@ -675,10 +692,9 @@ export interface ConceptFeedback {
    */
   readonly missionBlockers: readonly string[];
   /**
-   * MASTER #1 storyboard-review failures no rewrite of this concept can fix:
-   * the required disclosure lines overflowing the caption they are burned
-   * into, or one permitted capture shown on every beat. They block readiness
-   * exactly as `required` does; they are only addressed to someone else.
+   * MASTER #1 storyboard-review failures no rewrite of this concept can fix,
+   * such as the one permitted view repeating on every beat. They block
+   * readiness exactly as `required` does; they are only addressed to someone else.
    */
   readonly blockedOutsideAuthor: readonly string[];
 }
@@ -716,6 +732,8 @@ export interface FeedbackExpectations {
   readonly requiredWordingByClaimId: Readonly<Record<string, readonly string[]>>;
   readonly claimPropositionsById: Readonly<Record<string, string>>;
   readonly captureStateIdentifier: string;
+  /** Every view a visual may name; `captureStateIdentifier` is the primary one. */
+  readonly captureViewIds: readonly string[];
   readonly productDestination: string;
   /** The surface and capture type the mission's render request declares. */
   readonly surface: string;
@@ -742,6 +760,29 @@ function actionFor(code: string, detail: string): string {
     default:
       return detail;
   }
+}
+
+/** What the brief requires, in the form the feedback checks it. */
+export function feedbackExpectationsFor(brief: ExportedBrief): FeedbackExpectations {
+  return {
+    approvedClaimIds: brief.approvedClaims.map((claim) => claim.claimId),
+    requiredWordingByClaimId: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording])),
+    claimPropositionsById: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.proposition])),
+    captureStateIdentifier: brief.captureStateIdentifier,
+    captureViewIds: brief.captureViews.map((view) => view.stateIdentifier),
+    productDestination: brief.productDestination,
+    surface: brief.captureSurface,
+    captureType: brief.captureType,
+  };
+}
+
+/** Every blocking item in a feedback: what keeps a batch from human review. */
+export function outstandingFindings(feedback: RevisionFeedback): number {
+  return feedback.setFindings.length +
+    feedback.concepts.reduce(
+      (total, concept) => total + concept.required.length + concept.missionBlockers.length + concept.blockedOutsideAuthor.length,
+      0,
+    );
 }
 
 export function buildRevisionFeedback(
@@ -839,6 +880,12 @@ export function buildRevisionFeedback(
         required.push(text);
       }
     }
+    for (const beat of claimBeatsOffPrimaryView(proposal.concept, expectations.captureStateIdentifier)) {
+      required.push(
+        `Beat ${beat} states a claim while showing a view other than the primary one (${expectations.captureStateIdentifier}). ` +
+          "The claim was established for that view only; at other settings the model's numbers differ. Show the primary view on this beat, or move the claim.",
+      );
+    }
     // "Not contract eligible" on its own is four different problems wearing one
     // label. Say which one it actually is.
     if (!proposal.contractEligible && required.length === 0 && missionBlockers.length === 0) {
@@ -849,7 +896,7 @@ export function buildRevisionFeedback(
       );
       const wrongState = concept.visuals.filter(
         (visual) =>
-          visual.kind !== "real-product-capture" || visual.stateIdentifier !== expectations.captureStateIdentifier,
+          visual.kind !== "real-product-capture" || !expectations.captureViewIds.includes(visual.stateIdentifier),
       );
 
       if (!bound) {
@@ -863,8 +910,8 @@ export function buildRevisionFeedback(
       }
       for (const visual of wrongState) {
         required.push(
-          `Visual "${visual.visualId}" must be a real-product-capture of the exact validated state ` +
-            `${expectations.captureStateIdentifier}.`,
+          `Visual "${visual.visualId}" must be a real-product-capture of one of the brief's validated views: ` +
+            `${expectations.captureViewIds.join(", ")}.`,
         );
       }
       if (concept.productDestination !== expectations.productDestination) {
@@ -892,6 +939,7 @@ export function buildRevisionFeedback(
       concept: proposal.concept,
       storyboard: proposal.storyboard,
       ctaRoute: expectations.productDestination,
+      permittedPictures: expectations.captureViewIds.length,
     });
     required.push(...quality.required);
 
@@ -920,7 +968,7 @@ export function buildRevisionFeedback(
           : blocking.length === 0 && !setBlocked
             ? `Every finding an author can fix is fixed, but ${outsideAuthor} MASTER #1 storyboard-review failure(s) remain that no rewrite ` +
               "can fix (see \"Blocked outside the author's control\"). This batch is NOT ready for human review and NOT approved " +
-              "until the disclosure display and capture capability they name are resolved."
+              "until what they name is resolved."
             : `Author a revised batch in batches/attempt-${attempt + 1}/ addressing every "required" item above.` +
               (outsideAuthor > 0 ? ` ${outsideAuthor} further failure(s) cannot be fixed by authoring and will still block; see "Blocked outside the author's control".` : "");
 
@@ -1059,14 +1107,7 @@ export interface PacketInput {
 }
 
 export function buildReviewPacket(input: PacketInput): CreativeReviewPacket {
-  const outstanding =
-    input.feedback === null
-      ? 0
-      : input.feedback.setFindings.length +
-        input.feedback.concepts.reduce(
-          (total, concept) => total + concept.required.length + concept.missionBlockers.length + concept.blockedOutsideAuthor.length,
-          0,
-        );
+  const outstanding = input.feedback === null ? 0 : outstandingFindings(input.feedback);
 
   const machineChecksPassed =
     input.status === "awaiting-human-review" &&

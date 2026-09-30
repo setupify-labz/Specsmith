@@ -18,6 +18,11 @@
 // an open part-picker listing the whole catalog and would pass no matter what
 // was selected.
 
+import gpus from "../../../src/data/gpus.json" with { type: "json" };
+import cpus from "../../../src/data/cpus.json" with { type: "json" };
+import games from "../../../src/data/games.json" with { type: "json" };
+import { estimateFpsForBuild, type BuildFpsCpu, type BuildFpsGame, type BuildFpsGpu } from "../../../src/lib/fps.ts";
+import { getAverageFps } from "../../../src/lib/compareValue.ts";
 import { predictCrate } from "./crateSeed.ts";
 import {
   BUILDER_COMPONENT_SLOTS,
@@ -62,6 +67,8 @@ export interface SurfacePlan {
    * expanded part picker rather than the comparison itself.
    */
   focusText?: string;
+  /** Where in the frame the focus text lands, as a fraction of its height. Default 0.34. */
+  focusFraction?: number;
   /**
    * Text that only appears AFTER a sequence has driven the UI.
    *
@@ -86,6 +93,24 @@ const CRATE_REVEAL_ORDER = [
 ] as const;
 
 const CRATE_FIRST_BUTTON_TEXT = `Open ${CRATE_REVEAL_ORDER[0].label} Crate`;
+
+/**
+ * The "Est. Avg FPS" figures Compare must show for this exact state, computed
+ * with the app's own model and data.
+ *
+ * Compare fails OPEN on its settings too: an unrecognised `res` or `preset`
+ * quietly falls back to 1080p / High. The pair names cannot catch that, so the
+ * capture must also find the averages the model gives at the REQUESTED
+ * setting. A capture of the wrong setting shows different numbers and times
+ * out instead of being accepted.
+ */
+export function compareAverageFpsText(state: { gpuA: string; cpuA: string; gpuB: string; cpuB: string; resolution?: string; preset?: string }): string[] {
+  const gpu = (id: string) => (gpus as BuildFpsGpu[]).find((entry) => (entry as { id?: string }).id === id)!;
+  const cpu = (id: string) => (cpus as BuildFpsCpu[]).find((entry) => (entry as { id?: string }).id === id)!;
+  const average = (gpuId: string, cpuId: string) => getAverageFps((games as BuildFpsGame[]).map((game) =>
+    estimateFpsForBuild(gpu(gpuId), cpu(cpuId), game, state.resolution ?? "1440p", state.preset ?? "high").estimated));
+  return [...new Set([`Est. Avg FPS: ${average(state.gpuA, state.cpuA)}`, `Est. Avg FPS: ${average(state.gpuB, state.cpuB)}`])];
+}
 
 function q(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
@@ -116,10 +141,13 @@ export function planSurface(request: UiRenderRequest): SurfacePlan {
           preset: state.preset,
         })}`,
         subjectIds: [state.gpuA, state.cpuA, state.gpuB, state.cpuB],
-        expectedText: [sideA, sideB],
+        expectedText: [sideA, sideB, ...compareAverageFpsText(state)],
         // The composite string is rendered in the results section, so framing
         // on it lands the crop on the actual comparison.
-        focusText: sideA,
+        // "Share Comparison" sits directly under the Resolution and Quality
+        // controls and appears once, so landing it just under mid-frame keeps
+        // the active settings above it and the averages below it in shot.
+        ...(request.framing === "settings" ? { focusText: "Share Comparison", focusFraction: 0.4 } : { focusText: sideA }),
         // Each frame is a DIFFERENT application state: the resolution and
         // quality toggles are real controls that re-run the FPS estimate, so
         // the captured numbers actually change between frames.
