@@ -159,6 +159,25 @@ function requiredWordingFor(
  * Note the direction of the test: a claim must REACH the state its risk demands.
  * Nothing here asks whether a claim has been disproven.
  */
+/** The limitation a contract carries when any of its evidence is synthetic. */
+export const SYNTHETIC_EVIDENCE_LIMITATION = "Some evidence in this pass is synthetic engineering fixture data and is marked as such.";
+
+/**
+ * Whether a contract says, anywhere, that it rests on synthetic evidence.
+ *
+ * The contract has no structured provenance field, so this reads the two ways
+ * synthetic research marks itself: the limitation this module writes, and the
+ * SYNTHETIC_ENGINEERING_FIXTURE naming the engineering fixtures use. A contract
+ * that declares itself synthetic is synthetic whatever a caller says; absence
+ * of a marker does not prove the research is production.
+ */
+export function contractDeclaresSynthetic(contract: ResearchCreativeContract): boolean {
+  const marker = /SYNTHETIC[ _-]ENGINEERING[ _-]FIXTURE/i;
+  return contract.limitations.includes(SYNTHETIC_EVIDENCE_LIMITATION) ||
+    [contract.questionId, ...contract.limitations, ...contract.safeClaims.map((claim) => claim.claimId),
+      ...contract.safeClaims.flatMap((claim) => claim.supportingSnapshotIds)].some((text) => marker.test(text));
+}
+
 export function buildResearchCreativeContract(input: ContractInput): ResearchCreativeContract {
   const safeClaims: SafeClaim[] = [];
   const unsafeClaims: UnsafeClaim[] = [];
@@ -211,7 +230,7 @@ export function buildResearchCreativeContract(input: ContractInput): ResearchCre
   }
 
   if (input.snapshots.some((snapshot) => snapshot.provenance.synthetic)) {
-    limitations.push("Some evidence in this pass is synthetic engineering fixture data and is marked as such.");
+    limitations.push(SYNTHETIC_EVIDENCE_LIMITATION);
   }
   if (unsafeClaims.length > 0) {
     limitations.push(`${unsafeClaims.length} claim(s) are not usable; see unsafeClaims for the specific evidence each one lacks.`);

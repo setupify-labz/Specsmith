@@ -24,8 +24,19 @@ import type { RepairResult, RevisionLineage } from "./beatRepair.ts";
 export interface HumanGate {
   readonly gate: string;
   readonly why: string;
-  /** The recorded decision, or null when nobody has decided. Never inferred. */
-  readonly decision: { readonly by: string; readonly at: string; readonly outcome: "approved" | "rejected" } | null;
+  /**
+   * The recorded decision, or null when nobody has decided. Never inferred.
+   *
+   * `mediaSha256` names the exact rendered bytes the person saw or heard. A
+   * decision about one render is not a decision about the next one, so a
+   * decision naming other bytes (or none) does not close the gate.
+   */
+  readonly decision: {
+    readonly by: string;
+    readonly at: string;
+    readonly outcome: "approved" | "rejected";
+    readonly mediaSha256?: string;
+  } | null;
 }
 
 export interface ContentCreativeReport {
@@ -78,6 +89,8 @@ export interface ContentCreativeReport {
   readonly publishReady: boolean;
   readonly blockedBy: readonly string[];
 }
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 export interface ReportInput {
   readonly review: CreativeQualityReview;
@@ -132,7 +145,28 @@ export function buildContentCreativeReport(input: ReportInput): ContentCreativeR
   for (const fix of unresolvedFixes) {
     blockedBy.push(`Unresolved creative fix: ${fix.dimension} — ${fix.issue}`);
   }
-  if (!input.mediaSha256) blockedBy.push("No rendered media: nothing exists to publish.");
+  // Rendered media is a real digest or it is nothing. Any other string
+  // ("pending", "rendered") would otherwise stand in for bytes that do not exist.
+  const media = input.mediaSha256 ?? null;
+  const mediaIsDigest = media !== null && SHA256_HEX.test(media);
+  if (!media) blockedBy.push("No rendered media: nothing exists to publish.");
+  else if (!mediaIsDigest) blockedBy.push(`Rendered media "${media}" is not a SHA-256 digest: nothing verifiable exists to publish.`);
+  if (mediaIsDigest && review.mediaSha256 !== null && review.mediaSha256 !== media) {
+    blockedBy.push("The quality review measured other media than the media being reported; re-review these exact bytes.");
+  }
+  // Every approval must be a real, dated decision about these exact bytes.
+  for (const gate of gates) {
+    const decision = gate.decision;
+    if (decision === null || decision.outcome !== "approved") continue;
+    const at = Date.parse(decision.at);
+    if (!decision.by.trim()) blockedBy.push(`Human gate ${gate.gate}: the approval names no reviewer.`);
+    if (!Number.isFinite(at) || at > (input.now ?? new Date()).getTime()) {
+      blockedBy.push(`Human gate ${gate.gate}: the approval's time is missing, invalid or in the future.`);
+    }
+    if (!mediaIsDigest || decision.mediaSha256 !== media) {
+      blockedBy.push(`Human gate ${gate.gate}: the approval was made about other media (or names none); approve these exact bytes.`);
+    }
+  }
 
   return {
     version: "content-creative-report-v1",

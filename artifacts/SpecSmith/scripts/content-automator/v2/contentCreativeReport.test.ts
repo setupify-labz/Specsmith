@@ -80,7 +80,8 @@ const reviewOf = (board: PlatformScriptStoryboard) =>
 
 const approvals = (outcome: HumanGate["decision"] extends null ? never : "approved" | "rejected") =>
   Object.fromEntries(
-    [...HUMAN_ONLY_DIMENSIONS, "audio-listening-review"].map((gate) => [gate, { by: "aaron", at: NOW.toISOString(), outcome }]),
+    // Each decision names the exact rendered bytes it was made about.
+    [...HUMAN_ONLY_DIMENSIONS, "audio-listening-review"].map((gate) => [gate, { by: "aaron", at: NOW.toISOString(), outcome, mediaSha256: SHA }]),
   );
 
 describe("buildContentCreativeReport human gates", () => {

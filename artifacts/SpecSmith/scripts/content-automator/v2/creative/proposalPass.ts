@@ -1,7 +1,7 @@
 /** Mission-driven, deterministic concept planning. This is an editorial scaffold,
  * not an LLM, a proven originality judge or a rendered-video generator. */
 import type { PlatformScriptStoryboard } from "../../types.ts";
-import type { ResearchCreativeContract } from "../research/creativeContract.ts";
+import { contractDeclaresSynthetic, type ResearchCreativeContract } from "../research/creativeContract.ts";
 import { checkScriptAgainstResearchStrict } from "../research/strictEvidenceGate.ts";
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
 import { parseUiRenderRequest, stateIdentifier } from "../../uiRender/uiRenderState.ts";
@@ -30,6 +30,11 @@ export interface CreativeMissionInput {
 export function runCreativeProposalPass(input: CreativeMissionInput) {
   if (!input.missionId.trim() || !input.viewerQuestion.trim() || input.productDestination.split("?")[0] !== "/compare") throw new Error("A concrete mission and compare destination/state are required.");
   if (input.researchSynthetic && !input.allowSynthetic) throw new Error("Synthetic research is permitted only in the engineering proposal path.");
+  // The mission's label is a claim about the research, not a fact about it. A
+  // contract that declares synthetic evidence cannot be presented as production.
+  if (!input.researchSynthetic && contractDeclaresSynthetic(input.research)) {
+    throw new Error("The research contract declares synthetic evidence, but the mission declares production research. Label the mission synthetic or supply production research.");
+  }
   if (input.retrieval.allowSynthetic && !input.allowSynthetic) throw new Error("Production proposals cannot retrieve synthetic creative memory.");
   const renderRequest = parseUiRenderRequest(input.renderRequest);
   if (renderRequest.state.surface !== "compare") throw new Error("This editorial planner supports Compare missions only.");
