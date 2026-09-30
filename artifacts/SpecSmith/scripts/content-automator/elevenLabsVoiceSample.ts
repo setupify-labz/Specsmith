@@ -69,7 +69,7 @@ export const SAMPLE_TEXT =
 /** One reviewed narration, not an arbitrary script supplied at dispatch time. */
 export const MAX_SAMPLE_CHARACTERS = 360;
 
-function assertMp3Output(config: ElevenLabsTtsConfig): void {
+export function assertMp3Output(config: ElevenLabsTtsConfig): void {
   if (!config.outputFormat.startsWith("mp3_")) {
     throw new VoiceSampleError("This review writes an .mp3 artifact and requires an mp3_* ElevenLabs output format.");
   }
@@ -189,7 +189,7 @@ export class VoiceSampleError extends Error {
   }
 }
 
-interface SubscriptionInfo {
+export interface SubscriptionInfo {
   readonly tier: string;
   readonly characterCount: number;
   readonly characterLimit: number;
@@ -202,7 +202,7 @@ interface SubscriptionInfo {
   readonly canExtend: false;
 }
 
-type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 /**
  * Strip anything token-shaped out of provider text before it is logged.
@@ -216,13 +216,13 @@ export function redactTokens(text: string): string {
 }
 
 /** The provider's own explanation, trimmed and redacted, or "" when absent. */
-async function failureDetail(response: Response): Promise<string> {
+export async function failureDetail(response: Response): Promise<string> {
   const body = await response.text().catch(() => "");
   if (body.trim() === "") return "";
   return ` Provider said: ${redactTokens(body.slice(0, 400))}`;
 }
 
-function apiBase(config: ElevenLabsTtsConfig): string {
+export function apiBase(config: ElevenLabsTtsConfig): string {
   // Derive the API root from the configured TTS endpoint so a self-hosted or
   // proxied endpoint stays consistent across both calls.
   return config.endpoint.replace(/\/v1\/text-to-speech\/?$/, "").replace(/\/$/, "");

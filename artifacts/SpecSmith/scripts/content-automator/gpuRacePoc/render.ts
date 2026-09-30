@@ -1,14 +1,16 @@
-// Renders the GPU race DRAFT: a 12-15 second MP4 with placeholder narration
-// and synthesized sound cues, key frames taken from that MP4, a contact sheet
-// and a manifest.
+// Renders the GPU race DRAFT: a 12-15 second MP4 with narration and
+// synthesized sound cues, key frames taken from that MP4, a contact sheet and
+// a manifest.
 //
 // A DRAFT FOR REVIEW. Not a pipeline, not publishable: the manifest says so,
-// nothing reads it as a publish candidate, no provider is called, and the
-// narration is the offline espeak-ng placeholder, not the intended Liam read.
-// The cut is timed from the placeholder's measured lines; a Liam take would
-// re-time it from its own.
+// nothing reads it as a publish candidate, and this script calls no provider.
+// The cut is timed from the narration it is given, line by line:
 //
-//   pnpm content:poc:gpu-race
+//   pnpm content:poc:gpu-race                        offline espeak-ng placeholder
+//   pnpm content:poc:gpu-race --liam-take <dir>      a generated Liam take (liamTake.ts)
+//   pnpm content:poc:gpu-race --line-seconds <json>  the picture for given line lengths, silent
+//
+// A take that cannot fit the 12-15 second cut is refused before any frame is drawn.
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -18,19 +20,19 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { launchBrowser } from "../uiRender/capture.ts";
-import { compareFiguresFor, compareGamesFor, loadCompareData, partName, type CompareBuildPair, type CompareSetting } from "../resultCards/compareFigures.ts";
+import { RACE_BUILDS, RACE_SETTING, raceData } from "./raceData.ts";
+
+export { RACE_BUILDS, RACE_SETTING, raceData };
 import { mixDraft, placedVoice, PLACEHOLDER_VOICE, SAMPLE_RATE, speakPlaceholder, synthesizeCues, wavBytes } from "./audio.ts";
 import { CAPTION_BAND, CTA_BOX, MODEL_ESTIMATE_LABEL, sceneHtml, type SceneText } from "./scene.ts";
+import { loadLiamTake } from "./takeVoice.ts";
 import { buildRaceTimeline, FPS, HEIGHT, narrationLines, WIDTH, type LineId, type RaceTimeline } from "./timeline.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = join(here, "..", "..", "..", "render-output", "gpu-race-draft");
-
-export const RACE_BUILDS: CompareBuildPair = {
-  a: { gpu: "rtx4080s", cpu: "r9-9950x3d" },
-  b: { gpu: "rtx4080", cpu: "r9-9950x3d" },
-};
-export const RACE_SETTING: CompareSetting = { resolution: "1440p", preset: "high" };
+const OUTPUT_ROOT = join(here, "..", "..", "..", "render-output");
+const PLACEHOLDER_OUT_DIR = join(OUTPUT_ROOT, "gpu-race-draft");
+const LIAM_OUT_DIR = join(OUTPUT_ROOT, "gpu-race-liam");
+const PICTURE_OUT_DIR = join(OUTPUT_ROOT, "gpu-race-picture");
 
 /** Key moments to pull as frames, from the timeline's own events. */
 export function keyFrameTimes(timeline: RaceTimeline): { label: string; second: number }[] {
@@ -64,15 +66,6 @@ function run(command: string, args: string[]): Promise<string> {
   });
 }
 
-export async function raceData() {
-  const data = await loadCompareData();
-  if (RACE_BUILDS.a.cpu !== RACE_BUILDS.b.cpu) throw new Error("The race credits the GPU; both builds must share a CPU.");
-  const figures = compareFiguresFor(data, RACE_BUILDS, RACE_SETTING);
-  const rows = compareGamesFor(data, RACE_BUILDS, RACE_SETTING);
-  const names = { a: partName(data, "gpu", RACE_BUILDS.a.gpu), b: partName(data, "gpu", RACE_BUILDS.b.gpu) };
-  return { figures, rows, names, sources: data.sources };
-}
-
 export function sceneText(timeline: RaceTimeline): SceneText {
   const { figures, names } = timeline;
   return {
@@ -95,12 +88,36 @@ export function sceneText(timeline: RaceTimeline): SceneText {
   };
 }
 
+function argValue(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag);
+  return index > 0 ? process.argv[index + 1] : undefined;
+}
+
 async function main(): Promise<void> {
   const { figures, rows, names, sources } = await raceData();
-  // Speak each line first: the cut is timed from what the voice actually takes.
+  const takeDir = argValue("--liam-take");
+  const givenSeconds = argValue("--line-seconds");
+  // The voice first: the cut is timed from what it actually takes to say each line.
   const voice = new Map<string, Float32Array>();
-  for (const line of narrationLines(figures)) voice.set(line.id, await speakPlaceholder(line.text));
+  let narration: Record<string, unknown>;
+  let OUT_DIR = PLACEHOLDER_OUT_DIR;
+  if (takeDir) {
+    const take = await loadLiamTake(takeDir);
+    for (const [id, samples] of take.lines) voice.set(id, samples);
+    narration = { voice: "Liam (ElevenLabs, one take)", ...take.provenance, cuts: take.cuts };
+    OUT_DIR = LIAM_OUT_DIR;
+  } else if (givenSeconds) {
+    const seconds = JSON.parse(givenSeconds) as Record<LineId, number>;
+    for (const line of narrationLines(figures)) voice.set(line.id, new Float32Array(Math.round(seconds[line.id] * SAMPLE_RATE)));
+    narration = { voice: "none (silent picture check)", lineSeconds: seconds };
+    OUT_DIR = PICTURE_OUT_DIR;
+  } else {
+    for (const line of narrationLines(figures)) voice.set(line.id, await speakPlaceholder(line.text));
+    narration = { voice: PLACEHOLDER_VOICE, intendedVoice: "Liam (not generated)" };
+  }
   const lineSeconds = Object.fromEntries([...voice].map(([id, samples]) => [id, samples.length / SAMPLE_RATE])) as Record<LineId, number>;
+  console.log(`line seconds: ${JSON.stringify(lineSeconds)}`);
+  // Refuses a voice that cannot fit the cut, before a single frame is drawn.
   const timeline = buildRaceTimeline(figures, rows, names, lineSeconds);
   const text = sceneText(timeline);
   await rm(OUT_DIR, { recursive: true, force: true });
@@ -157,7 +174,9 @@ async function main(): Promise<void> {
   await writeFile(join(OUT_DIR, "gpu-race-draft.json"), `${JSON.stringify({
     kind: "gpu-race-narrated-draft",
     publishable: false,
-    note: "Draft for review. Narration is the offline espeak-ng placeholder, not Liam; effects are synthesized offline. No provider was called. Not a publish candidate.",
+    note: takeDir
+      ? "Draft for review with one Liam take, retimed to Liam's delivery. Effects are synthesized offline. Nothing was listened to by automation. Not a publish candidate."
+      : "Draft for review. Narration is not Liam (offline placeholder or silent); effects are synthesized offline. No provider was called. Not a publish candidate.",
     label: text.label,
     setting: RACE_SETTING,
     builds: RACE_BUILDS,
@@ -165,7 +184,7 @@ async function main(): Promise<void> {
     figureSource: "estimateFpsForBuild + getAverageFps (the Compare page's own functions)",
     dataSources: sources,
     distanceRatio: timeline.distanceRatio,
-    narration: { voice: PLACEHOLDER_VOICE, intendedVoice: "Liam (not generated)", lines: timeline.lines },
+    narration: { ...narration, lineSeconds, lines: timeline.lines },
     captions: timeline.captions,
     callToAction: { text: `${text.ctaLead} ${text.ctaSite}`, ...timeline.cta },
     durationSeconds: timeline.durationSeconds,
