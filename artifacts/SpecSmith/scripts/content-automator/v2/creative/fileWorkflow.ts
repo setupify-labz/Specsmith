@@ -35,6 +35,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
+import { contractDeclaresSynthetic } from "../research/creativeContract.ts";
 import { normalizeForMatching } from "../research/claimMention.ts";
 import { assessDivergence } from "./divergence.ts";
 import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
@@ -137,6 +138,12 @@ export function buildCreativeBrief(
   input: Omit<CreativeMissionInput, "concepts">,
   memoryObservations: readonly string[],
 ): ExportedBrief {
+  // Refuse before anything is written: a brief that calls marked-synthetic
+  // research production would tell the author the opposite of the truth, and
+  // would drop the synthetic warning from AUTHORING.md.
+  if (!input.researchSynthetic && contractDeclaresSynthetic(input.research)) {
+    throw new Error("The research contract declares synthetic evidence, but the mission declares production research. Label the mission synthetic or supply production research.");
+  }
   const renderRequest = parseUiRenderRequest(input.renderRequest);
   const approved = input.research.safeClaims.filter(
     (claim) => !UNSAFE_FOR_CREATIVE.includes(claim.state) && claim.supportingSnapshotIds.length > 0,

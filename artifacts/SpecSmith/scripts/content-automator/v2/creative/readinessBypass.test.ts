@@ -41,8 +41,12 @@ describe("synthetic research cannot be relabelled as production", () => {
     expect(result.packet.approved).toBe(false);
   });
 
-  it("refuses the same synthetic contract when the mission declares it production research", async () => {
-    await expect(runCreativeFileWorkflow(workflowCopy(), { ...DEMO_MISSION, ...asProduction })).rejects.toThrow(/declares synthetic evidence/);
+  it("refuses the same synthetic contract when the mission declares it production research, and writes nothing", async () => {
+    const dir = workflowCopy();
+    const before = ["brief.json", "AUTHORING.md", "review-packet.json"].map((name) => readFileSync(join(dir, name), "utf8"));
+    await expect(runCreativeFileWorkflow(dir, { ...DEMO_MISSION, ...asProduction })).rejects.toThrow(/declares synthetic evidence/);
+    // A refused mission must not leave a brief or guide that calls the research production.
+    expect(["brief.json", "AUTHORING.md", "review-packet.json"].map((name) => readFileSync(join(dir, name), "utf8"))).toEqual(before);
   });
 
   it("recognises the research pipeline's own synthetic marker, not only the fixture's naming", () => {
