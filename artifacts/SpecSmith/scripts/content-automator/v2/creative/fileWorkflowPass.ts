@@ -11,6 +11,7 @@ import { runCreativeGenerationPass } from "./generationPass.ts";
 import type { CreativeMissionInput } from "./proposalPass.ts";
 import {
   batchHashOf,
+  buildCreativeBrief,
   buildReviewPacket,
   buildRevisionFeedback,
   createFileConceptGenerator,
@@ -50,6 +51,71 @@ export interface FileWorkflowOptions {
   readonly exportOnly?: boolean;
 }
 
+export interface BatchEvaluation {
+  readonly brief: ExportedBrief;
+  readonly pass: Awaited<ReturnType<typeof runCreativeGenerationPass>>;
+  /** The attempt that was read. */
+  readonly attempts: number;
+  readonly feedback: RevisionFeedback | null;
+  readonly packet: CreativeReviewPacket;
+}
+
+/**
+ * Every check the workflow runs on the latest authored batch, WITHOUT writing
+ * anything. The workflow writes what this returns; the MASTER #1 handoff re-runs
+ * it rather than trusting a packet file on disk.
+ */
+export async function evaluateAuthoredBatch(
+  directory: string,
+  input: Omit<CreativeMissionInput, "concepts">,
+  brief: ExportedBrief = buildCreativeBrief(input, []),
+): Promise<BatchEvaluation> {
+  // Exactly one attempt per run: see `createFileConceptGenerator`. The
+  // revision loop is the author re-running this after writing the next batch.
+  const pass = await runCreativeGenerationPass(input, createFileConceptGenerator(directory), { maxAttempts: 1 });
+  // Number the feedback after the batch that was actually read, so
+  // feedback/attempt-N.md always describes batches/attempt-N/.
+  const attempts = latestAuthoredAttempt(directory);
+
+  const feedback = attempts > 0
+    ? buildRevisionFeedback(attempts, brief.briefHash, pass.status, pass.reason, pass.result, {
+      approvedClaimIds: brief.approvedClaims.map((claim) => claim.claimId),
+      requiredWordingByClaimId: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording])),
+      claimPropositionsById: Object.fromEntries(brief.approvedClaims.map((claim) => [claim.claimId, claim.proposition])),
+      captureStateIdentifier: brief.captureStateIdentifier,
+      productDestination: brief.productDestination,
+      surface: brief.captureSurface,
+      captureType: brief.captureType,
+    })
+    : null;
+
+  // The hash of the concepts the pass actually CHECKED, when it checked a
+  // batch; re-reading the directory could hash files that changed since.
+  let batchHash: string | null = null;
+  if (pass.result.proposals.length > 0) {
+    batchHash = batchHashOf(pass.result.proposals.map((proposal) => proposal.concept));
+  } else if (attempts > 0) {
+    try {
+      batchHash = batchHashOf(importAuthoredBatch(directory, attempts).concepts);
+    } catch {
+      // The attempt was unreadable. A null hash is the honest record; it must
+      // not be filled in with the hash of something else.
+      batchHash = null;
+    }
+  }
+
+  const packet = buildReviewPacket({
+    brief,
+    attempt: attempts,
+    generatorName: "local-file-authored-batch",
+    status: pass.status,
+    result: pass.result,
+    batchHash,
+    feedback,
+  });
+  return { brief, pass, attempts, feedback, packet };
+}
+
 export async function runCreativeFileWorkflow(
   directory: string,
   input: Omit<CreativeMissionInput, "concepts">,
@@ -82,54 +148,10 @@ export async function runCreativeFileWorkflow(
     };
   }
 
-  // Exactly one attempt per run: see `createFileConceptGenerator`. The
-  // revision loop is the author re-running this after writing the next batch.
-  const pass = await runCreativeGenerationPass(input, createFileConceptGenerator(directory), { maxAttempts: 1 });
-
-  const feedback: RevisionFeedback[] = [];
-  // Number the feedback after the batch that was actually read, so
-  // feedback/attempt-N.md always describes batches/attempt-N/.
-  const attempts = latestAuthoredAttempt(directory);
-
-  // Feedback is written for the attempt that was actually read, so an author
-  // reading feedback/attempt-N.md is reading about the files in
-  // batches/attempt-N/ and nothing else.
-  if (attempts > 0) {
-    const entry = buildRevisionFeedback(attempts, exported.brief.briefHash, pass.status, pass.reason, pass.result, {
-      approvedClaimIds: exported.brief.approvedClaims.map((claim) => claim.claimId),
-      requiredWordingByClaimId: Object.fromEntries(
-        exported.brief.approvedClaims.map((claim) => [claim.claimId, claim.requiredWording]),
-      ),
-      claimPropositionsById: Object.fromEntries(exported.brief.approvedClaims.map((claim) => [claim.claimId, claim.proposition])),
-      captureStateIdentifier: exported.brief.captureStateIdentifier,
-      productDestination: exported.brief.productDestination,
-      surface: exported.brief.captureSurface,
-      captureType: exported.brief.captureType,
-    });
-    feedback.push(entry);
-    written.push(...writeRevisionFeedback(directory, entry));
-  }
-
-  let batchHash: string | null = null;
-  if (attempts > 0) {
-    try {
-      batchHash = batchHashOf(importAuthoredBatch(directory, attempts).concepts);
-    } catch {
-      // The attempt was unreadable. A null hash is the honest record; it must
-      // not be filled in with the hash of something else.
-      batchHash = null;
-    }
-  }
-
-  const packet = buildReviewPacket({
-    brief: exported.brief,
-    attempt: attempts,
-    generatorName: "local-file-authored-batch",
-    status: pass.status,
-    result: pass.result,
-    batchHash,
-    feedback: feedback[0] ?? null,
-  });
+  const evaluation = await evaluateAuthoredBatch(directory, input, exported.brief);
+  const { pass, attempts, packet } = evaluation;
+  const feedback: RevisionFeedback[] = evaluation.feedback === null ? [] : [evaluation.feedback];
+  if (evaluation.feedback !== null) written.push(...writeRevisionFeedback(directory, evaluation.feedback));
   written.push(writeReviewPacket(directory, packet));
 
   const workflowStatus: FileWorkflowResult["workflowStatus"] = packet.machineChecksPassed

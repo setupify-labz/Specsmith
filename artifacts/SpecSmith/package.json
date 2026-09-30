@@ -29,7 +29,8 @@
     "content:analytics:pass": "tsx scripts/content-automator/analyticsPassCli.ts",
     "audit:retailer-links": "tsx scripts/retail/audit/audit-retailer-links.ts",
     "content:creative:brief": "tsx scripts/content-automator/creativeFileWorkflowCli.ts brief",
-    "content:creative:review": "tsx scripts/content-automator/creativeFileWorkflowCli.ts review"
+    "content:creative:review": "tsx scripts/content-automator/creativeFileWorkflowCli.ts review",
+    "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
