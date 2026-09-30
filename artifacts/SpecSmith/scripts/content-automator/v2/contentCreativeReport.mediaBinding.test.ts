@@ -1,17 +1,28 @@
-// publishReady may rest only on real rendered bytes and on human decisions made
-// about THOSE bytes. Before this, any truthy string counted as "rendered media",
-// and an approval recorded for one render counted for every later render.
+// publishReady may rest only on bytes that were actually read and hashed, on a
+// quality review of THOSE bytes, and on human decisions from a trusted record.
+// On #165 each case below produced publishReady: true.
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { buildContentCreativeReport, type HumanGate } from "./contentCreativeReport.ts";
+import { buildContentCreativeReport, NO_TRUSTED_APPROVAL_RECORD, type HumanGate } from "./contentCreativeReport.ts";
 import { HUMAN_ONLY_DIMENSIONS, reviewCreativeQuality } from "./creativeQualityReview.ts";
+import { isVerifiedMedia, MediaVerificationError, verifyRenderedMedia, type VerifiedMedia } from "./mediaVerification.ts";
 import type { CaptionCue } from "../captionRender.ts";
-import type { CreativeFingerprint, PlatformScriptStoryboard, StoryboardBeat } from "../types.ts";
+import type { PlatformScriptStoryboard, StoryboardBeat } from "../types.ts";
 
 const NOW = new Date("2026-09-14T00:00:00.000Z");
-const SHA = "c".repeat(64);
-const OTHER_SHA = "d".repeat(64);
+const dir = mkdtempSync(join(tmpdir(), "media-binding-"));
+afterAll(() => rmSync(dir, { recursive: true, force: true }));
+const sha = (text: string) => createHash("sha256").update(text).digest("hex");
+function render(name: string, bytes: string): VerifiedMedia {
+  const path = join(dir, name);
+  writeFileSync(path, bytes);
+  return verifyRenderedMedia(path, NOW);
+}
 
 const beat = (overrides: Partial<StoryboardBeat> & Pick<StoryboardBeat, "startSecond" | "endSecond" | "purpose">): StoryboardBeat => ({
   narration: "SpecSmith holds the rest of the build constant.",
@@ -20,7 +31,6 @@ const beat = (overrides: Partial<StoryboardBeat> & Pick<StoryboardBeat, "startSe
   factDependencies: [],
   ...overrides,
 });
-
 const storyboard: PlatformScriptStoryboard = {
   platform: "youtube-shorts",
   targetDurationSeconds: 24,
@@ -35,54 +45,90 @@ const storyboard: PlatformScriptStoryboard = {
   finalCta: "Open SpecSmith Compare.",
   factualGuardrails: [],
 };
-
-const fingerprint = { version: "creative-fingerprint-v1", creativeId: "creative-1", ideaId: "idea-1", campaignId: "campaign-1" } as unknown as CreativeFingerprint;
 const cues = (board: PlatformScriptStoryboard): CaptionCue[] =>
   board.beats.map((entry) => ({ startSecond: entry.startSecond, endSecond: entry.endSecond, text: entry.onScreenText }));
 const reviewOf = (mediaSha256: string | null) => reviewCreativeQuality({
   creativeId: "creative-1", packageId: "pkg-1", storyboard, captionCues: cues(storyboard), ctaRoute: "/compare", mediaSha256, now: NOW,
 });
 const GATES = [...HUMAN_ONLY_DIMENSIONS, "audio-listening-review"];
-const approvals = (decision: Partial<NonNullable<HumanGate["decision"]>> = {}) =>
-  Object.fromEntries(GATES.map((gate) => [gate, { by: "aaron", at: NOW.toISOString(), outcome: "approved", mediaSha256: SHA, ...decision }])) as
+const approvals = (mediaSha256: string, decision: Partial<NonNullable<HumanGate["decision"]>> = {}) =>
+  Object.fromEntries(GATES.map((gate) => [gate, { by: "aaron", at: NOW.toISOString(), outcome: "approved", mediaSha256, ...decision }])) as
     Record<string, HumanGate["decision"]>;
+const report = (input: Partial<Parameters<typeof buildContentCreativeReport>[0]>) =>
+  buildContentCreativeReport({ review: reviewOf(null), fingerprint: null, now: NOW, ...input });
 
-describe("publishReady is bound to real rendered media", () => {
-  it("is ready only for a real digest with every approval made about that digest", () => {
-    const report = buildContentCreativeReport({ review: reviewOf(SHA), fingerprint, mediaSha256: SHA, now: NOW, recordedHumanDecisions: approvals() });
-    expect(report.blockedBy).toEqual([]);
-    expect(report.publishReady).toBe(true);
+describe("rendered media is verified from its bytes", () => {
+  it("hashes the actual file, and refuses a path with nothing at it", () => {
+    const media = render("a.mp4", "render A");
+    expect(media.sha256).toBe(sha("render A"));
+    expect(isVerifiedMedia(media)).toBe(true);
+    expect(() => verifyRenderedMedia(join(dir, "missing.mp4"))).toThrow(MediaVerificationError);
+    writeFileSync(join(dir, "empty.mp4"), "");
+    expect(() => verifyRenderedMedia(join(dir, "empty.mp4"))).toThrow(/empty/);
   });
 
-  it("refuses a media value that is not a SHA-256 digest", () => {
-    for (const fake of ["pending", "rendered", "x", "C".repeat(63)]) {
-      const report = buildContentCreativeReport({ review: reviewOf(null), fingerprint, mediaSha256: fake, now: NOW, recordedHumanDecisions: approvals({ mediaSha256: fake }) });
-      expect(report.publishReady, fake).toBe(false);
-      expect(report.blockedBy.join(" "), fake).toMatch(/not a SHA-256 digest/);
-    }
+  it("refuses a plausible hash for a file that does not exist", () => {
+    const plausible = "a".repeat(64);
+    const forged = { path: join(dir, "missing.mp4"), sha256: plausible, bytes: 1, verifiedAt: NOW.toISOString() };
+    const result = report({ review: reviewOf(plausible), media: forged, recordedHumanDecisions: approvals(plausible) });
+    expect(result.publishReady).toBe(false);
+    expect(result.identity.mediaVerified).toBe(false);
+    expect(result.blockedBy.join(" ")).toMatch(/not produced by verifyRenderedMedia/);
   });
 
-  it("does not let an approval of one render count for another", () => {
-    const stale = buildContentCreativeReport({ review: reviewOf(SHA), fingerprint, mediaSha256: SHA, now: NOW, recordedHumanDecisions: approvals({ mediaSha256: OTHER_SHA }) });
-    expect(stale.publishReady).toBe(false);
-    expect(stale.blockedBy.join(" ")).toMatch(/made about other media/);
-    const unbound = buildContentCreativeReport({
-      review: reviewOf(SHA), fingerprint, mediaSha256: SHA, now: NOW,
-      recordedHumanDecisions: Object.fromEntries(GATES.map((gate) => [gate, { by: "aaron", at: NOW.toISOString(), outcome: "approved" }])) as Record<string, HumanGate["decision"]>,
-    });
-    expect(unbound.publishReady).toBe(false);
+  it("refuses media whose file changed after review", () => {
+    const media = render("changed.mp4", "render as reviewed");
+    const review = reviewOf(media.sha256);
+    writeFileSync(media.path, "render edited afterwards");
+    const result = report({ review, media, recordedHumanDecisions: approvals(media.sha256) });
+    expect(result.publishReady).toBe(false);
+    expect(result.identity.mediaVerified).toBe(false);
+    expect(result.blockedBy.join(" ")).toMatch(/changed after it was verified/);
+  });
+
+  it("refuses a quality review with no media binding", () => {
+    const media = render("unbound.mp4", "render with an unbound review");
+    const result = report({ review: reviewOf(null), media, recordedHumanDecisions: approvals(media.sha256) });
+    expect(result.publishReady).toBe(false);
+    expect(result.blockedBy.join(" ")).toMatch(/quality review has no media binding/);
+  });
+
+  it("refuses a quality review of other bytes", () => {
+    const media = render("reviewed-other.mp4", "render B");
+    const result = report({ review: reviewOf(sha("render C")), media, recordedHumanDecisions: approvals(media.sha256) });
+    expect(result.publishReady).toBe(false);
+    expect(result.blockedBy.join(" ")).toMatch(/quality review measured other media/);
+  });
+});
+
+describe("human approvals", () => {
+  it("does not count an approval of a different render", () => {
+    const media = render("current.mp4", "current render");
+    const result = report({ review: reviewOf(media.sha256), media, recordedHumanDecisions: approvals(sha("earlier render")) });
+    expect(result.publishReady).toBe(false);
+    expect(result.blockedBy.join(" ")).toMatch(/made about other media/);
   });
 
   it("does not accept an anonymous, undated or future-dated approval", () => {
+    const media = render("dated.mp4", "dated render");
     for (const bad of [{ by: " " }, { at: "not a date" }, { at: new Date(NOW.getTime() + 86_400_000).toISOString() }]) {
-      const report = buildContentCreativeReport({ review: reviewOf(SHA), fingerprint, mediaSha256: SHA, now: NOW, recordedHumanDecisions: approvals(bad) });
-      expect(report.publishReady, JSON.stringify(bad)).toBe(false);
+      const result = report({ review: reviewOf(media.sha256), media, recordedHumanDecisions: approvals(media.sha256, bad) });
+      expect(result.publishReady, JSON.stringify(bad)).toBe(false);
     }
   });
 
-  it("refuses a quality review that measured different media from the one being reported", () => {
-    const report = buildContentCreativeReport({ review: reviewOf(OTHER_SHA), fingerprint, mediaSha256: SHA, now: NOW, recordedHumanDecisions: approvals() });
-    expect(report.publishReady).toBe(false);
-    expect(report.blockedBy.join(" ")).toMatch(/quality review measured other media/);
+  it("does not close any gate from a caller-supplied name and time, however complete", () => {
+    const media = render("complete.mp4", "complete render");
+    const result = report({ review: reviewOf(media.sha256), media, recordedHumanDecisions: approvals(media.sha256) });
+    expect(result.identity.mediaVerified).toBe(true);
+    expect(result.blockedBy).toEqual(result.humanGates.map((gate) => `Human gate ${gate.gate}: ${NO_TRUSTED_APPROVAL_RECORD}.`));
+    expect(result.publishReady).toBe(false);
+  });
+
+  it("still honours a recorded rejection: refusing to proceed never needs proof", () => {
+    const media = render("rejected.mp4", "rejected render");
+    const decisions = { ...approvals(media.sha256), "audio-listening-review": { by: "aaron", at: NOW.toISOString(), outcome: "rejected" as const } };
+    const result = report({ review: reviewOf(media.sha256), media, recordedHumanDecisions: decisions });
+    expect(result.blockedBy.join(" ")).toMatch(/Human gate rejected: audio-listening-review/);
   });
 });

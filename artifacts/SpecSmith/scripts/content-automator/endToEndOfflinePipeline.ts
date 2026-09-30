@@ -1146,7 +1146,7 @@ async function main(): Promise<void> {
     // Deliberately null. The bytes rendered in section 2 are a separate
     // hand-authored timeline, not a render of the storyboard this report
     // describes, and binding them here would be a false media attribution.
-    mediaSha256: null,
+    media: null,
     now: generatedAt,
     // No recorded human decisions are supplied, because none were made in this
     // run. The report therefore reports publishReady=false, which is the true
