@@ -413,7 +413,11 @@ export function repairCreative(input: RepairInput): RepairResult {
     const improvedDimensions = [...deltas.entries()].filter(([, delta]) => delta > 0).map(([dimension]) => dimension);
     const regressedDimensions = [...deltas.entries()].filter(([, delta]) => delta < 0).map(([dimension]) => dimension);
     const bestDimensionGain = Math.max(0, ...deltas.values());
-    const accepted = slopResolved > 0 || (bestDimensionGain >= minImprovement && regressedDimensions.length === 0);
+    // Clearing a hard failure is necessary, but it is not permission to damage
+    // another measured quality dimension. Every accepted repair must be
+    // non-regressive; then either a hard failure was cleared or a measured
+    // dimension improved by the minimum amount. (Ported from PR #127.)
+    const accepted = regressedDimensions.length === 0 && (slopResolved > 0 || bestDimensionGain >= minImprovement);
     const revisionId = `${currentCreativeId}-r${pass}`;
 
     const lineage: RevisionLineage = {
@@ -433,7 +437,7 @@ export function repairCreative(input: RepairInput): RepairResult {
         ? {}
         : {
             rejectionReason: regressedDimensions.length
-              ? `Regressed ${regressedDimensions.join(", ")} and cleared no hard failure.`
+              ? `Regressed ${regressedDimensions.join(", ")}; clearing a hard failure does not permit a measured regression.`
               : `Best dimension gain was ${bestDimensionGain} (under the ${minImprovement} minimum) and no hard failure was cleared.`,
           }),
     };
@@ -449,7 +453,13 @@ export function repairCreative(input: RepairInput): RepairResult {
     currentReview = candidateReview;
     currentCreativeId = revisionId;
 
-    if (currentReview.productionQualityScore >= qualityTarget && currentReview.slop.passable) {
+    // A high average may not hide a known defect. The quality target is only a
+    // valid stop when the re-review has no remaining named fixes. (Ported from PR #127.)
+    if (
+      currentReview.productionQualityScore >= qualityTarget &&
+      currentReview.slop.passable &&
+      currentReview.recommendedFixes.length === 0
+    ) {
       stoppedBecause = "quality-target-met";
       break;
     }

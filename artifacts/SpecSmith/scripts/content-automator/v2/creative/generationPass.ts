@@ -2,6 +2,7 @@
  * network request, spending or approval. A caller must supply the generator. */
 import { createHash } from "node:crypto";
 import { CREATIVE_DISCLOSURES, type CreativeConcept } from "./concept.ts";
+import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
 import { runCreativeProposalPass, type CreativeMissionInput } from "./proposalPass.ts";
 
 export interface CreativeGeneratorRequest {
@@ -40,7 +41,10 @@ export async function runCreativeGenerationPass(
       !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error("Invalid bounded creative generation budget.");
   const baseline = runCreativeProposalPass({ ...input, concepts: [] }); // validates mission/provenance without using templates
   const history: { attempt: number; generator: string; inputHash: string; outputHash?: string; feedback: string[] }[] = [];
-  if (!input.research.safeClaims.some((claim) => claim.supportingSnapshotIds.length)) {
+  // The same rule the proposal pass applies: a claim is usable only if it has
+  // evidence AND reached a state that may be said. Snapshot ids on an unsafe
+  // claim are not a grounded answer.
+  if (!input.research.safeClaims.some((claim) => !UNSAFE_FOR_CREATIVE.includes(claim.state) && claim.supportingSnapshotIds.length > 0)) {
     return { status: "blocked-evidence" as const, result: baseline, history, reason: "Research has not approved a grounded answer; no generator called." };
   }
   if (!generator) return { status: "blocked-generator" as const, result: baseline, history, reason: "No text generator configured. Templates are not substituted." };
@@ -75,7 +79,8 @@ export async function runCreativeGenerationPass(
         ...proposal.evidenceFindings.filter((finding) => finding.severity === "hard-fail").map((finding) => `${proposal.concept.conceptId}: ${finding.message}`),
         ...(!proposal.contractEligible ? [`${proposal.concept.conceptId}: not contract eligible; check factual claim bindings, exact capture state, destination and set divergence.`] : []),
       ]);
-      if (result.proposals.every((proposal) => proposal.contractEligible)) {
+      // `every` is true of an empty list: review-ready needs three checked proposals.
+      if (result.proposals.length === 3 && result.proposals.every((proposal) => proposal.contractEligible)) {
         return { status: "awaiting-human-review" as const, result, history, reason: "Three generator-authored treatments passed machine checks; no creative score, rendered-media approval or publishing permission is inferred." };
       }
     } catch (error) {
