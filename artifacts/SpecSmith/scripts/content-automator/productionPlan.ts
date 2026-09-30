@@ -8,6 +8,8 @@ import type {
 } from "./types.ts";
 import { buildRightsSafeVisualPrompt, buildVisualRightsPolicyState } from "./rightsSafeVisuals.ts";
 import { deriveUiRenderState, isRenderableFeature } from "./uiRender/planUiRenderState.ts";
+import { parseUiRenderRequest, type UiRenderRequest } from "./uiRender/uiRenderState.ts";
+import { compareCaptureSettings } from "./compareVideoScript.ts";
 
 interface UiRenderContext {
   feature: ScriptStoryboardPackage["feature"];
@@ -30,6 +32,18 @@ function providerDurationForBeat(beat: StoryboardBeat): 4 | 6 | 8 {
   if (duration <= 4) return 4;
   if (duration <= 6) return 6;
   return 8;
+}
+
+/**
+ * Show an actual settings change rather than five copies of one Compare
+ * screenshot. The order is the Compare video script's, so each beat captures
+ * the setting its narration and caption talk about (compareVideoScript.ts).
+ */
+function uiStateForBeat(state: UiRenderRequest | undefined, index: number): UiRenderRequest | undefined {
+  if (!state || state.state.surface !== "compare" || index === 0) return state;
+  const selected = compareCaptureSettings()[index - 1];
+  if (!selected) throw new Error(`No reviewed Compare capture settings for beat ${index}.`);
+  return parseUiRenderRequest({ ...state, state: { ...state.state, ...selected } });
 }
 
 export function deriveVideoGenerationState(
@@ -99,7 +113,8 @@ function buildTasks(script: PlatformScriptStoryboard, context: UiRenderContext):
       ],
       fallbackCapability: capability === "video-generation" ? "image-generation" : undefined,
       ...(capability === "video-generation" ? { videoGenerationState: deriveVideoGenerationState(script, beat) } : {}),
-      ...(capability === "deterministic-ui-render" && uiRenderState ? { uiRenderState } : {}),
+      ...(capability === "deterministic-ui-render" && uiRenderState
+        ? { uiRenderState: uiStateForBeat(uiRenderState, index) } : {}),
     };
 
     // Structured policy travels beside the provider state. Provider adapters can

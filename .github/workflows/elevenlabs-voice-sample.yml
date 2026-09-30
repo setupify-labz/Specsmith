@@ -1,22 +1,31 @@
-# Opt-in ElevenLabs voice sample — MANUAL TRIGGER ONLY.
+# Opt-in exact Compare narration with Liam — MANUAL TRIGGER ONLY.
 #
 # This is the only workflow in this repository that spends a paid provider's
 # credits, so it is deliberately hard to run by accident:
 #
 #   - `workflow_dispatch` only. No push, pull_request, or schedule trigger.
 #   - The operator must type the word `generate` to confirm.
-#   - It generates ONE short sample (capped at 200 characters) and stops.
+#   - It generates ONE approved narration and stops: the Compare video's
+#     (`script: compare-video`, the default) or the GPU race draft's five lines
+#     (`script: gpu-race`). Each refuses before any spend unless its text is the
+#     approved script and Compare still computes the figures it states.
+#     `list-voices` lists the account's voices and spends nothing;
+#     `voice-audition` reads the race's last three approved lines once in each
+#     of two named voices, for choosing by ear (never as approved narration).
 #   - The script reads the subscription first and refuses if the sample would
 #     exceed the included allowance, or if the account can extend its limit
 #     (which would turn an overage into a bill).
 #
-# It never renders a video, never publishes, and never falls back to the local
-# espeak fixture: if generation fails, the job fails with the reason.
+# The job holding the key never renders a video, never publishes, and never
+# falls back to the local espeak fixture: if generation fails, the job fails
+# with the reason. For `gpu-race` a SECOND job, with no secrets and read-only
+# permissions, retimes the draft to the take and renders it for review. It
+# refuses a take that cannot fit the draft's 12-15 second cut.
 #
 # Every action is pinned to a commit SHA rather than a moving tag, as in every
 # other workflow here. A tag can be repointed by whoever controls the action's
 # repository, and this job holds a paid API key while it runs.
-name: ElevenLabs voice sample (manual)
+name: Compare Liam narration (manual)
 
 on:
   workflow_dispatch:
@@ -25,12 +34,26 @@ on:
         description: 'Type "generate" to confirm spending included ElevenLabs credits'
         required: true
         default: ''
+      script:
+        description: 'Which approved narration to generate'
+        required: true
+        type: choice
+        default: compare-video
+        options:
+          - compare-video
+          - gpu-race
+          - list-voices
+          - voice-audition
+      audition_voice_ids:
+        description: 'voice-audition only: exactly two voice ids, comma separated (list-voices prints them)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  # One audition at a time. Overlapping runs would spend credits twice for the
+  # One narration at a time. Overlapping runs would spend credits twice for the
   # same decision.
   group: elevenlabs-voice-sample
   cancel-in-progress: false
@@ -39,7 +62,7 @@ jobs:
   sample:
     runs-on: ubuntu-latest
     # A stuck run on the one workflow that spends a provider's credits should
-    # end by itself. Install plus one short sample is minutes, not tens.
+    # end by itself. Install plus one short narration is minutes, not tens.
     timeout-minutes: 10
     steps:
       - name: Require explicit confirmation
@@ -78,21 +101,122 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate one voice sample
+      - name: Generate the exact Compare narration with Liam
+        if: inputs.script == 'compare-video'
         working-directory: artifacts/SpecSmith
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
           # Optional overrides; all have safe defaults in the adapter.
           ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
           ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
         run: pnpm exec tsx scripts/content-automator/elevenLabsVoiceSample.ts
 
-      - name: Upload the sample for approval
+      - name: Generate one Liam take of the GPU race draft
+        if: inputs.script == 'gpu-race'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/liamTake.ts
+
+      - name: Upload the GPU race take
+        if: inputs.script == 'gpu-race'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: specsmith-voice-sample
+          name: specsmith-gpu-race-liam-take
+          path: artifacts/SpecSmith/render-output/liam-take/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: List the account's voices (no audio, no spend)
+        if: inputs.script == 'list-voices'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/voiceAuditions.ts list
+
+      - name: Generate one audition per chosen voice
+        if: inputs.script == 'voice-audition'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+          # Passed as data, never interpolated into the shell; the script validates each id.
+          AUDITION_VOICE_IDS: ${{ inputs.audition_voice_ids }}
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/voiceAuditions.ts
+
+      - name: Upload the auditions
+        if: inputs.script == 'voice-audition'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-voice-auditions
+          path: artifacts/SpecSmith/render-output/voice-auditions/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload the narration for review
+        if: inputs.script == 'compare-video'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-compare-liam-narration
           path: |
-            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.mp3
-            artifacts/SpecSmith/render-output/voice-sample/specsmith-voice-sample.json
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-compare-liam.mp3
+            artifacts/SpecSmith/render-output/voice-sample/specsmith-compare-liam.json
+          if-no-files-found: error
+          retention-days: 14
+
+  # Retimes the GPU race draft to the take and renders it for review. This job
+  # holds no secret and no write permission: it only reads the take the job
+  # above uploaded.
+  render-gpu-race:
+    needs: sample
+    if: inputs.script == 'gpu-race'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install ffmpeg and Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -encoders | grep -q ' libx264 ' || { echo "::error::ffmpeg has no libx264 encoder."; exit 1; }
+          cd artifacts/SpecSmith && pnpm exec playwright install --with-deps chromium
+
+      - name: Download the take
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: specsmith-gpu-race-liam-take
+          path: artifacts/SpecSmith/render-output/liam-take
+
+      - name: Retime the draft to the take and render it
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec tsx scripts/content-automator/gpuRacePoc/render.ts --liam-take render-output/liam-take
+
+      - name: Upload the draft for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-gpu-race-liam-draft
+          path: artifacts/SpecSmith/render-output/gpu-race-liam/
           if-no-files-found: error
           retention-days: 14

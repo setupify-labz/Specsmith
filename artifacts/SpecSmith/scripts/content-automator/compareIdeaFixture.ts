@@ -19,14 +19,14 @@ import type { ContentIdea } from "./types.ts";
 export const COMPARE_IDEA: ContentIdea = {
   id: "compare-rtx4080s-rtx4080",
   format: "comparison",
-  title: "Pick the GPU before SpecSmith reveals the names: RTX 4080 Super vs RTX 4080",
+  title: "RTX 4080 Super vs RTX 4080",
   // Compare estimates complete GPU + CPU builds and shows which BUILD has the
   // higher estimate. It never says a card is faster, so the hook asks which
   // build SpecSmith estimates higher (see #155).
-  hook: "Which build does SpecSmith estimate higher? Pick before the names show.",
-  // Read aloud as "The catch: …". The page says so itself: "Resolution and
-  // preset change the estimated FPS numbers shown", and the capture sequence
-  // steps through 1080p, 1440p, 4K and Ultra on screen while it is spoken.
+  hook: "RTX 4080 Super versus RTX 4080: how different are their build estimates?",
+  // The video's spoken lines and captions do NOT come from the hook and angle
+  // any more: this idea has a written script, compareVideoScript.ts, whose
+  // every figure is the Compare page's. These remain the idea's metadata.
   angle: "resolution and quality change both builds' estimates.",
   targetAudience: "PC builders",
   requiredFacts: ["comparison state"],
@@ -40,13 +40,13 @@ export const COMPARE_IDEA: ContentIdea = {
     sitePayoff: "The viewer can continue the exact comparison.",
   },
   creativeDNA: {
-    conceptName: "Blind Compare",
+    conceptName: "Modelled Game Gap",
     visualWorld: "real SpecSmith comparison",
-    narrativeEngine: "blind choice -> evidence -> reveal",
-    openingImage: "Two anonymous cards",
-    patternInterrupt: "Names hidden",
+    narrativeEngine: "build comparison -> modelled results -> settings tradeoff",
+    openingImage: "Two named builds with the same CPU",
+    patternInterrupt: "Resolution and quality change the estimates",
     retentionBeats: ["1", "2", "3", "4", "5"],
-    payoff: "Reveal the winner",
+    payoff: "Show each build's modelled game leads",
     audioDirection: "Tight",
     originalityConstraint: "Compare is essential",
     antiSlopRules: ["a", "b", "c", "d", "e", "f"],
