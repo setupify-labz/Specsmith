@@ -20,6 +20,7 @@ const { width, story, disclosure } = DISCLOSURE_BANDED_LAYOUT;
 let dir: string;
 const ffmpeg = (...args: string[]) => {
   const result = spawnSync("ffmpeg", ["-v", "error", "-y", ...args]);
+  if (result.error) throw new Error(`ffmpeg could not run: ${result.error.message}. These tests need ffmpeg installed.`);
   if (result.status !== 0) throw new Error(result.stderr.toString());
 };
 const file = (name: string) => join(dir, name);

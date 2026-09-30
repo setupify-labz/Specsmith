@@ -55,6 +55,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # The banded render tests run the real ffmpeg compositor and frame check
+      # (scripts/content-automator/bandedRender.test.ts). Same install as
+      # content-e2e-offline.yml; no network access beyond the package mirror.
+      - name: Install ffmpeg for real render tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+
       - name: Run full test suite
         working-directory: artifacts/SpecSmith
         run: pnpm exec vitest run
