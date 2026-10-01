@@ -106,18 +106,31 @@ export function ffmpeg(...args: string[]): void {
   if (result.status !== 0) throw new Error(result.stderr.toString());
 }
 
-export interface ReviewFixture {
-  readonly dir: string;
+export interface CaptureSpec {
+  readonly path: string;
+  readonly pairing: ComparePairing;
+  readonly metadata?: Record<string, string | number | boolean>;
+}
+
+export interface FixtureCut {
   readonly videoPath: string;
   readonly manifestPath: string;
   readonly manifest: RenderManifest;
-  readonly files: { readonly captures: readonly string[]; readonly panel: string; readonly voice: string; readonly captions: string };
-  /** A fresh, independent copy of the clean submission. */
+  /** A fresh copy of the submission for this cut: its storyboard, the clean claims, rights and research. */
   submission(): ReviewSubmission;
+}
+
+export interface ReviewFixture extends FixtureCut {
+  readonly dir: string;
+  readonly files: { readonly captures: readonly string[]; readonly panel: string; readonly voice: string };
   /** Write a manifest (mutated from the clean one) and return its path. */
   writeManifest(name: string, mutate: (manifest: RenderManifest) => RenderManifest): string;
   /** A new file derived from the clean video by ffmpeg, recorded in its own manifest as if the renderer made it. */
   derive(name: string, args: readonly string[]): { videoPath: string; manifestPath: string };
+  /** Render another cut through the real compositor: a changed storyboard, or other captures. */
+  renderCut(name: string, options: { storyboard?: PlatformScriptStoryboard; captures?: readonly CaptureSpec[] }): Promise<FixtureCut>;
+  /** A distinct generated picture at the story band's size. */
+  picture(name: string, color: string, box: number): string;
 }
 
 const artifact = (taskId: string, path: string, kind: RenderArtifact["kind"], mimeType: string): RenderArtifact =>
@@ -127,54 +140,29 @@ export async function buildReviewFixture(dir: string): Promise<ReviewFixture> {
   mkdirSync(dir, { recursive: true });
   const { width, story, disclosure } = DISCLOSURE_BANDED_LAYOUT;
   const file = (name: string) => join(dir, name);
-  const colors = ["0x223355", "0x552233", "0x225533"];
-  const captures = colors.map((color, index) => {
-    const path = file(`capture-${index}.png`);
+  const picture = (name: string, color: string, box: number) => {
+    const path = file(`${name}.png`);
     ffmpeg("-f", "lavfi", "-i", `color=c=${color}:s=${width}x${story.height}`, "-frames:v", "1",
-      "-vf", `drawbox=x=${100 + index * 250}:y=${200 + index * 150}:w=300:h=300:color=white:t=fill`, path);
+      "-vf", `drawbox=x=${100 + box * 250}:y=${200 + box * 150}:w=300:h=300:color=white:t=fill`, path);
     return path;
-  });
+  };
+  const captures = ["0x223355", "0x552233", "0x225533"].map((color, index) => picture(`capture-${index}`, color, index));
   const panel = file("disclosure-panel.png");
   ffmpeg("-f", "lavfi", "-i", `color=c=0x0b0c12:s=${width}x${disclosure.height}`, "-frames:v", "1",
     "-vf", "drawbox=x=36:y=80:w=900:h=28:color=white:t=fill,drawbox=x=36:y=150:w=820:h=28:color=white:t=fill", panel);
   const voice = file("voice.wav");
   const on = FIXTURE_SEGMENTS.map((segment) => `between(t\\,${segment.startSecond}\\,${segment.endSecond})`).join("+");
   ffmpeg("-f", "lavfi", "-i", `aevalsrc=0.25*sin(2*PI*220*t)*(${on}):d=6:s=22050`, voice);
-  const captions = file("captions.ass");
-  const cues = FIXTURE_STORYBOARD.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, text: beat.onScreenText }));
-  writeFileSync(captions, buildAssDocument(parseCaptionRenderState({ durationSeconds: 6, cues, placement: "caption-band" })));
-
-  const adapter = createMotionCompositorAdapter({ outputDir: file("render"), preset: "ultrafast" });
-  const [video] = await adapter.render({
-    packageId: "review-fixture", campaignId: "c", ideaId: "i", platform: "youtube-shorts", targetDurationSeconds: 6,
-    task: {
-      taskId: "compose", capability: "motion-compositor", sourceBeat: null, purpose: "", inputRequirements: [], outputRequirements: [],
-      compositorState: {
-        durationSeconds: 6, fps: 30, voiceTaskId: "voice", captionTaskId: "captions", disclosureTaskId: "disclosure", layout: DISCLOSURE_BANDED_LAYOUT,
-        visualTimeline: FIXTURE_STORYBOARD.beats.map((beat, index) => ({ visualTaskId: `v${index}`, startSecond: beat.startSecond, endSecond: beat.endSecond })),
-      },
-    } as never,
-    dependencyArtifacts: [
-      ...captures.map((path, index) => artifact(`v${index}`, path, "image", "image/png")),
-      artifact("voice", voice, "audio", "audio/wav"),
-      artifact("captions", captions, "captions", "text/x-ass"),
-      artifact("disclosure", panel, "image", "image/png"),
-    ],
-  });
-  const videoPath = fileURLToPath(video.uri);
-  const meta = video.metadata ?? {};
-  const encode = {
-    width: Number(meta.width), height: Number(meta.height), fps: Number(meta.fps),
-    videoCodec: String(meta.videoCodec), audioCodec: meta.audioCodec ? String(meta.audioCodec) : null,
-  };
   const disclosureLines = [CREATIVE_DISCLOSURES["disclosure.fps-estimate"]];
   const productionPlan = { fixture: FIXTURE_LABEL, layout: "banded", beats: 3 };
+  const cleanCaptures: CaptureSpec[] = captures.map((path, index) => ({ path, pairing: PAIRINGS[index] }));
+  let encode: RenderManifest["output"]["encode"] | null = null;
 
-  const manifestFor = (outputPath: string): RenderManifest => buildRenderManifest({
+  const manifestFor = (outputPath: string, storyboard: PlatformScriptStoryboard, captions: string, specs: readonly CaptureSpec[]): RenderManifest => buildRenderManifest({
     variantId: SHORTS_VARIANT.variantId,
     outputPath,
-    encode,
-    storyboard: FIXTURE_STORYBOARD,
+    encode: encode!,
+    storyboard,
     productionPlan,
     layout: DISCLOSURE_BANDED_LAYOUT,
     disclosurePanel: { assetId: "disclosure-panel", path: panel, metadata: {
@@ -182,17 +170,15 @@ export async function buildReviewFixture(dir: string): Promise<ReviewFixture> {
     } },
     captions: { assetId: "captions", path: captions, metadata: { renderer: "specsmith-ass-captions", placement: "caption-band" } },
     narration: { assetId: "narration", path: voice, metadata: {
-      renderer: "review-test-fixture-tones", isFixture: true, textSha256: sha256Text(narrationText(FIXTURE_STORYBOARD)), beatTiming: "per-beat",
+      renderer: "review-test-fixture-tones", isFixture: true, textSha256: sha256Text(narrationText(storyboard)), beatTiming: "per-beat",
     } },
     narrationSegments: FIXTURE_SEGMENTS,
-    beats: FIXTURE_STORYBOARD.beats.map((beat, index): { startSecond: number; endSecond: number; captures: ManifestFile[] } => ({
+    beats: storyboard.beats.map((beat, index): { startSecond: number; endSecond: number; captures: ManifestFile[] } => ({
       startSecond: beat.startSecond, endSecond: beat.endSecond,
-      captures: [{ assetId: `capture-${index}`, path: captures[index], metadata: fixtureCaptureMetadata(PAIRINGS[index]) }],
+      captures: [{ assetId: `capture-${index}-${sha256Text(specs[index].path).slice(0, 8)}`, path: specs[index].path,
+        metadata: fixtureCaptureMetadata(specs[index].pairing, specs[index].metadata) }],
     })),
   });
-  const manifest = manifestFor(videoPath);
-  const manifestPath = file("render-manifest.json");
-  writeRenderManifest(manifestPath, manifest);
 
   const repoRecord = (assetId: string, kind: AssetRightsRecord["kind"], source: string, placeholderWhy: string | null): AssetRightsRecord => ({
     assetId, kind, source,
@@ -201,58 +187,99 @@ export async function buildReviewFixture(dir: string): Promise<ReviewFixture> {
     transformations: [],
     placeholder: { isPlaceholder: placeholderWhy !== null, why: placeholderWhy },
   });
-  const rights: AssetRightsRecord[] = [
-    ...captures.map((_, index) => repoRecord(`capture-${index}`, "test-fixture", "generated shapes standing in for a Compare capture", "fixture image, not a SpecSmith capture")),
-    repoRecord("disclosure-panel", "test-fixture", "drawn boxes standing in for the measured disclosure panel", "fixture panel, not browser-measured"),
-    { ...repoRecord("captions", "caption-render", "captionRender.buildAssDocument from the storyboard", null),
-      generation: { generator: "captionRender.buildAssDocument", inputs: `storyboard ${sha256Json(FIXTURE_STORYBOARD).slice(0, 12)}` } },
-    repoRecord("narration", "narration", "sine tones standing in for narration", "tones, not a voice"),
-  ];
 
-  const clean: ReviewSubmission = {
-    creativeId: "review-fixture/leads-vs-average",
-    variant: SHORTS_VARIANT,
-    research: { contract: FIXTURE_CONTRACT, declaredKind: "synthetic-fixture", evidenceSnapshotIds: [] },
-    concept: { conceptId: "review-fixture-leads-vs-average", body: { label: FIXTURE_LABEL } },
-    storyboard: FIXTURE_STORYBOARD,
-    title: "Ahead in more games, behind on average",
-    description: "SpecSmith model estimates for two builds. Check your own pair at /compare.",
-    approvedDestination: "/compare",
-    disclosureLines,
-    productionPlan,
-    claims: [
-      { claimId: "hook-tally-caption", beatIndex: 0, where: "caption", text: "10 games to 7 · 3 ties", basis: "model-estimate",
-        statement: { kind: "tally", pairing: DEMO_PAIRING, leadsA: 10, leadsB: 7, ties: 3 } },
-      { claimId: "hook-tally-narration", beatIndex: 0, where: "narration", text: "Ten games to seven, plus three ties", basis: "model-estimate",
-        statement: { kind: "tally", pairing: DEMO_PAIRING, leadsA: 10, leadsB: 7, ties: 3 } },
-      { claimId: "averages-caption", beatIndex: 1, where: "caption", text: "Est. average: 121 vs 123", basis: "model-estimate",
-        statement: { kind: "averages", pairing: DEMO_PAIRING, averageA: 121, averageB: 123 } },
-      { claimId: "averages-narration", beatIndex: 1, where: "narration", text: "the estimated average is 121 to 123", basis: "model-estimate",
-        statement: { kind: "averages", pairing: DEMO_PAIRING, averageA: 121, averageB: 123 } },
-    ],
-    graphics: [],
-    renderManifestPath: manifestPath,
-    rights,
-  };
+  async function renderCut(name: string, options: { storyboard?: PlatformScriptStoryboard; captures?: readonly CaptureSpec[] }): Promise<FixtureCut> {
+    const storyboard = options.storyboard ?? FIXTURE_STORYBOARD;
+    const specs = options.captures ?? cleanCaptures;
+    const captions = file(`${name}-captions.ass`);
+    const cues = storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, text: beat.onScreenText }));
+    writeFileSync(captions, buildAssDocument(parseCaptionRenderState({ durationSeconds: 6, cues, placement: "caption-band" })));
+    const adapter = createMotionCompositorAdapter({ outputDir: file(`render-${name}`), preset: "ultrafast" });
+    const [video] = await adapter.render({
+      packageId: "review-fixture", campaignId: "c", ideaId: "i", platform: "youtube-shorts", targetDurationSeconds: 6,
+      task: {
+        taskId: "compose", capability: "motion-compositor", sourceBeat: null, purpose: "", inputRequirements: [], outputRequirements: [],
+        compositorState: {
+          durationSeconds: 6, fps: 30, voiceTaskId: "voice", captionTaskId: "captions", disclosureTaskId: "disclosure", layout: DISCLOSURE_BANDED_LAYOUT,
+          visualTimeline: storyboard.beats.map((beat, index) => ({ visualTaskId: `v${index}`, startSecond: beat.startSecond, endSecond: beat.endSecond })),
+        },
+      } as never,
+      dependencyArtifacts: [
+        ...specs.map((spec, index) => artifact(`v${index}`, spec.path, "image", "image/png")),
+        artifact("voice", voice, "audio", "audio/wav"),
+        artifact("captions", captions, "captions", "text/x-ass"),
+        artifact("disclosure", panel, "image", "image/png"),
+      ],
+    });
+    const videoPath = fileURLToPath(video.uri);
+    const meta = video.metadata ?? {};
+    encode ??= {
+      width: Number(meta.width), height: Number(meta.height), fps: Number(meta.fps),
+      videoCodec: String(meta.videoCodec), audioCodec: meta.audioCodec ? String(meta.audioCodec) : null,
+    };
+    const manifest = manifestFor(videoPath, storyboard, captions, specs);
+    const manifestPath = file(`${name}.manifest.json`);
+    writeRenderManifest(manifestPath, manifest);
+    const rights: AssetRightsRecord[] = [
+      ...manifest.beats.flatMap((beat) => beat.captureAssetIds).filter((id, index, all) => all.indexOf(id) === index)
+        .map((id) => repoRecord(id, "test-fixture", "generated shapes standing in for a Compare capture", "fixture image, not a SpecSmith capture")),
+      repoRecord("disclosure-panel", "test-fixture", "drawn boxes standing in for the measured disclosure panel", "fixture panel, not browser-measured"),
+      { ...repoRecord("captions", "caption-render", "captionRender.buildAssDocument from the storyboard", null),
+        generation: { generator: "captionRender.buildAssDocument", inputs: `storyboard ${sha256Json(storyboard).slice(0, 12)}` } },
+      repoRecord("narration", "narration", "sine tones standing in for narration", "tones, not a voice"),
+    ];
+    const submission: ReviewSubmission = {
+      creativeId: "review-fixture/leads-vs-average",
+      variant: SHORTS_VARIANT,
+      research: { contract: FIXTURE_CONTRACT, declaredKind: "synthetic-fixture", evidenceSnapshotIds: [] },
+      concept: { conceptId: "review-fixture-leads-vs-average", body: { label: FIXTURE_LABEL } },
+      storyboard,
+      title: "Ahead in more games, behind on average",
+      description: "SpecSmith model estimates for two builds. Check your own pair at /compare.",
+      approvedDestination: "/compare",
+      disclosureLines,
+      productionPlan,
+      claims: FIXTURE_CLAIMS,
+      graphics: [],
+      renderManifestPath: manifestPath,
+      rights,
+    };
+    return { videoPath, manifestPath, manifest, submission: () => structuredClone(submission) };
+  }
 
+  const clean = await renderCut("clean", {});
   return {
-    dir, videoPath, manifestPath, manifest,
-    files: { captures, panel, voice, captions },
-    submission: () => structuredClone(clean),
+    ...clean,
+    dir,
+    files: { captures, panel, voice },
+    renderCut,
+    picture,
     writeManifest(name, mutate) {
       const path = file(`${name}.manifest.json`);
-      writeRenderManifest(path, mutate(structuredClone(manifest)));
+      writeRenderManifest(path, mutate(structuredClone(clean.manifest)));
       return path;
     },
     derive(name, args) {
       const derivedPath = file(`${name}.mp4`);
-      ffmpeg("-i", videoPath, ...args, "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "copy", derivedPath);
+      ffmpeg("-i", clean.videoPath, ...args, "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "copy", derivedPath);
       const manifestPathOut = file(`${name}.manifest.json`);
-      writeRenderManifest(manifestPathOut, manifestFor(derivedPath));
+      const captionsPath = clean.manifest.assets.find((asset) => asset.role === "captions")!.path;
+      writeRenderManifest(manifestPathOut, manifestFor(derivedPath, FIXTURE_STORYBOARD, captionsPath, cleanCaptures));
       return { videoPath: derivedPath, manifestPath: manifestPathOut };
     },
   };
 }
+
+export const FIXTURE_CLAIMS: ReviewSubmission["claims"] = [
+  { claimId: "hook-tally-caption", beatIndex: 0, where: "caption", text: "10 games to 7 · 3 ties", basis: "model-estimate",
+    statement: { kind: "tally", pairing: DEMO_PAIRING, leadsA: 10, leadsB: 7, ties: 3 } },
+  { claimId: "hook-tally-narration", beatIndex: 0, where: "narration", text: "Ten games to seven, plus three ties", basis: "model-estimate",
+    statement: { kind: "tally", pairing: DEMO_PAIRING, leadsA: 10, leadsB: 7, ties: 3 } },
+  { claimId: "averages-caption", beatIndex: 1, where: "caption", text: "Est. average: 121 vs 123", basis: "model-estimate",
+    statement: { kind: "averages", pairing: DEMO_PAIRING, averageA: 121, averageB: 123 } },
+  { claimId: "averages-narration", beatIndex: 1, where: "narration", text: "the estimated average is 121 to 123", basis: "model-estimate",
+    statement: { kind: "averages", pairing: DEMO_PAIRING, averageA: 121, averageB: 123 } },
+];
 
 /** Copy a file so a test can change the copy without touching the fixture. */
 export const copy = (from: string, to: string) => { cpSync(from, to); return to; };

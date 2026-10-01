@@ -46,7 +46,7 @@ export interface PresentationContext {
 
 const MEASURED_WORDING = /\b(measured|benchmark(?:ed|s)?|tested|lab[- ]tested|real[- ]world (?:fps|results?|performance)|actual fps|we ran)\b/gi;
 const NEGATION = /\b(not|never|no|isn't|aren't|without)\b[\w\s,'-]{0,24}$/i;
-const ESTIMATE_LABEL = /\b(estimat\w*|model(?:led|ed)?|predicted)\b/i;
+const ESTIMATE_LABEL = /\b(estimat\w*|est\.|model(?:led|ed)?|predicted)(?=\W|$)/i;
 const EXACT_WORDING = /\b(exactly|precisely|exact)\b/i;
 const GENERALISING = /\b(every|all|each|always|across the board|in any game|whatever you play)\b/i;
 const PHYSICAL_METAPHOR = /\b(thermometer|ruler|tape measure|speedometer|stopwatch|gauge|scale|dyno|meter)\b/i;
