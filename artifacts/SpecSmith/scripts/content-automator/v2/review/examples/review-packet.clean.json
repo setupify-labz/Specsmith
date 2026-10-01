@@ -1,7 +1,7 @@
 {
   "version": "quality-integrity-review-packet-v1",
-  "packetId": "cfad4a9ea9b46e5f52e8e257",
-  "reviewedAt": "2026-10-01T21:22:35.650Z",
+  "packetId": "d9152266ea9426709fa2631c",
+  "reviewedAt": "2026-10-01T23:04:32.508Z",
   "creativeId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits/claude-batch-three-checks",
   "platformVariantId": "youtube-shorts-1080x1920-30",
   "verdict": "awaiting-human-review",
@@ -189,7 +189,7 @@
     {
       "check": "media.bytes",
       "status": "passed",
-      "detail": "File exists, is not empty, and its bytes match the render manifest's hash"
+      "detail": "File exists, is not empty, and its bytes match the render manifest's hash; the render was made from this script and plan"
     },
     {
       "check": "media.decode",
@@ -418,7 +418,12 @@
         "rights",
         "title",
         "description",
-        "ctaDestination"
+        "ctaDestination",
+        "manifest.captures",
+        "manifest.disclosurePanel",
+        "manifest.captions",
+        "manifest.narration",
+        "manifest.otherAssets"
       ],
       "status": "open",
       "recordedDecisions": []
@@ -429,6 +434,15 @@
     "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
   },
   "bindings": {
+    "manifest.target": "245798f5c3d2130be07245eb387b81752c6a4a4e864cd3b83eda30cb428c5c8d",
+    "manifest.layout": "7bb0f1a48dd3c97c44edaf4b4baeb330fda3bd73224c02eae5faea645ea64269",
+    "manifest.timeline": "e05ec396f7875ce950b13edd7e4fa469045f6f79c97bf73df9f77742262c23ab",
+    "manifest.captures": "0b04bed19249713d807da713b7f504a3b646ddb10a80802e524a7bdf2c06f01c",
+    "manifest.disclosurePanel": "3318b3750f89bbd6178f33145ffc93baff9306c44ff4d865e4e7a6f4feb1ceaf",
+    "manifest.captions": "e8b5b535d13070bb2fdff5b91823a3a14dce86764db97e58f21ae95e149207cd",
+    "manifest.narration": "1ea194725b142b499ae274aaa2cc3e4564586d9c9bf47604ba428d3db8acd0b4",
+    "manifest.otherAssets": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "productionPlan": "70befc8ca091344cffa90c6536d130e91ad6dcd449fbf750f99b2849404f96bc",
     "media": "713537525c87a756dc45458f3782dac16a8a6df9bcc3945aad6a28e5201adf13",
     "platformCut": "dcf1aa0670ec7902b0217eaad1517dc86936d029b84c4c02067d097a1382edb0",
     "script": "3e95d7cfbcdfcd44941b2b2d564ff5607db2530d6099725333e73b9b306bb03a",

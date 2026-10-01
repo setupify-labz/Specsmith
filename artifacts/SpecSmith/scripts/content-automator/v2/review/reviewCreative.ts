@@ -41,7 +41,7 @@ import {
 } from "./mediaInspection.ts";
 import { checkRights, placeholderEvidence } from "./rightsChecks.ts";
 import {
-  CHECKS, REVIEW_PACKET_VERSION,
+  CHECK_USES, CHECKS, REVIEW_PACKET_VERSION,
   type BindingKey, type CheckId, type CheckRecord, type FindingSeverity, type HumanGateId, type HumanGateRecord,
   type ReviewFinding, type ReviewPacket, type ReviewVerdict,
 } from "./types.ts";
@@ -121,10 +121,53 @@ interface ObservedInputs {
   readonly assets: readonly { readonly assetId: string; readonly sha256: string | null }[];
 }
 
+type ManifestKey = Extract<BindingKey, `manifest.${string}`>;
+
+/**
+ * The render manifest, split into the parts the checks read. Each part is
+ * hashed from the parsed manifest, so reformatting the file changes nothing,
+ * and a change to one part invalidates only the checks that read that part.
+ */
+export function manifestBindings(manifest: RenderManifest | null): Record<ManifestKey, string> {
+  if (manifest === null) {
+    return {
+      "manifest.target": "unreadable", "manifest.layout": "unreadable", "manifest.timeline": "unreadable", "manifest.captures": "unreadable",
+      "manifest.disclosurePanel": "unreadable", "manifest.captions": "unreadable", "manifest.narration": "unreadable", "manifest.otherAssets": "unreadable",
+    };
+  }
+  const assetRecord = (id: string | null) => manifest.assets.find((asset) => asset.assetId === id) ?? null;
+  const pointed = new Set([manifest.disclosurePanelAssetId, manifest.captionsAssetId, manifest.narrationAssetId]);
+  return {
+    "manifest.target": sha256Json({
+      version: manifest.version, variantId: manifest.variantId, output: manifest.output,
+      storyboardSha256: manifest.storyboardSha256, productionPlanSha256: manifest.productionPlanSha256,
+    }),
+    "manifest.layout": sha256Json(manifest.layout),
+    "manifest.timeline": sha256Json(manifest.beats),
+    "manifest.captures": sha256Json(manifest.assets.filter((asset) => asset.role === "capture")),
+    "manifest.disclosurePanel": sha256Json({ id: manifest.disclosurePanelAssetId, record: assetRecord(manifest.disclosurePanelAssetId) }),
+    "manifest.captions": sha256Json({ id: manifest.captionsAssetId, record: assetRecord(manifest.captionsAssetId) }),
+    "manifest.narration": sha256Json({ id: manifest.narrationAssetId, record: assetRecord(manifest.narrationAssetId), segments: manifest.narrationSegments }),
+    "manifest.otherAssets": sha256Json(manifest.assets.filter((asset) => asset.role !== "capture" && !pointed.has(asset.assetId))),
+  };
+}
+
+/** Read and parse a render manifest, or null when it cannot be. */
+function readManifest(path: string): RenderManifest | null {
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as RenderManifest;
+    return parsed.version === RENDER_MANIFEST_VERSION ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The input identities a packet is bound to. One function, so issuing and revalidating cannot disagree. */
-function bindingsFor(submission: ReviewSubmission, observed: ObservedInputs, modelSha: string): Record<BindingKey, string> {
+function bindingsFor(submission: ReviewSubmission, observed: ObservedInputs, modelSha: string, manifest: RenderManifest | null): Record<BindingKey, string> {
   const contractSha256 = sha256Json(submission.research.contract);
   return {
+    ...manifestBindings(manifest),
+    productionPlan: sha256Json(submission.productionPlan),
     media: observed.mediaKey,
     platformCut: sha256Json({ variant: submission.variant, encode: observed.encode }),
     script: sha256Json(submission.storyboard),
@@ -609,7 +652,7 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
     assets: files.map((file) => ({ assetId: file.assetId, sha256: file.sha256 })),
   };
   const modelSha = modelSnapshotSha256();
-  const bindings = bindingsFor(submission, observed, modelSha);
+  const bindings = bindingsFor(submission, observed, modelSha, manifest);
   const captionsSha256 = observed.captionsSha256;
 
   const verdict = verdictFor(findings, human.gates);
@@ -694,14 +737,23 @@ export interface RecheckPlan {
 
 /** Which checks and human gates a change of inputs invalidates, and only those. */
 export function planRechecks(previous: Readonly<Record<BindingKey, string>>, next: Readonly<Record<BindingKey, string>>): RecheckPlan {
-  const changed = (Object.keys(previous) as BindingKey[]).filter((key) => previous[key] !== next[key]);
+  const keys = new Set([...Object.keys(previous), ...Object.keys(next)]) as Set<BindingKey>;
+  const changed = [...keys].filter((key) => previous[key] !== next[key]);
   const touches = (bindsTo: readonly string[]) => bindsTo.some((key) => changed.includes(key as BindingKey));
   const checks = Object.keys(CHECKS) as CheckId[];
+  // A check that consumes another check's result repeats whenever that one does.
+  const repeat = new Set(checks.filter((check) => touches(CHECKS[check].bindsTo)));
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const check of checks) {
+      if (!repeat.has(check) && (CHECK_USES[check] ?? []).some((used) => repeat.has(used))) { repeat.add(check); grew = true; }
+    }
+  }
   return {
     changed,
-    checksToRepeat: checks.filter((check) => touches(CHECKS[check].bindsTo)),
+    checksToRepeat: checks.filter((check) => repeat.has(check)),
     gatesToRepeat: HUMAN_GATES.filter((gate) => touches(gate.bindsTo)).map((gate) => gate.gate),
-    stillValidChecks: checks.filter((check) => !touches(CHECKS[check].bindsTo)),
+    stillValidChecks: checks.filter((check) => !repeat.has(check)),
     stillValidGates: HUMAN_GATES.filter((gate) => !touches(gate.bindsTo)).map((gate) => gate.gate),
   };
 }
@@ -712,7 +764,12 @@ const BINDING_LABELS: Record<BindingKey, string> = {
   disclosure: "the disclosures", claims: "the declared claims", evidence: "the research contract or the model",
   research: "the research identity", graphics: "the graphics", assets: "the assets", rights: "the rights records",
   decisions: "the recorded human decisions", title: "the title", description: "the description",
-  ctaDestination: "the approved call-to-action destination",
+  ctaDestination: "the approved call-to-action destination", productionPlan: "the production plan",
+  "manifest.target": "the render manifest's record of what was rendered (cut, encode, script and plan, output)",
+  "manifest.layout": "the render manifest's band layout", "manifest.timeline": "the render manifest's beat timeline",
+  "manifest.captures": "the render manifest's capture records", "manifest.disclosurePanel": "the render manifest's disclosure panel record",
+  "manifest.captions": "the render manifest's captions record", "manifest.narration": "the render manifest's narration record and timing",
+  "manifest.otherAssets": "the render manifest's other asset records",
 };
 
 /**
@@ -740,10 +797,21 @@ export function revalidateReviewPacket(packet: ReviewPacket, current?: ReviewSub
   } else {
     reasons.push("The packet has no verified media.");
   }
-  const manifestNow = sha256File(state.manifestPath);
-  if (manifestNow !== state.manifestSha256) {
-    reasons.push("The render manifest changed after review.");
-    next.media = `${next.media}:manifest-changed`;
+  // The manifest is re-read and compared part by part, so an edit invalidates
+  // only the checks that read the part it touched.
+  if (sha256File(state.manifestPath) !== state.manifestSha256) {
+    const reread = readManifest(state.manifestPath);
+    if (reread === null) {
+      reasons.push("The render manifest is now missing or unreadable.");
+      next.media = `${next.media}:manifest-unreadable`;
+    }
+    const parts = manifestBindings(reread);
+    for (const key of Object.keys(parts) as ManifestKey[]) {
+      if (parts[key] !== packet.bindings[key]) {
+        reasons.push(`${BINDING_LABELS[key][0].toUpperCase()}${BINDING_LABELS[key].slice(1)} changed after review.`);
+        next[key] = parts[key];
+      }
+    }
   }
   const changedFiles = state.files.filter((file) => sha256File(file.path) !== file.sha256);
   for (const file of changedFiles) {
@@ -761,10 +829,10 @@ export function revalidateReviewPacket(packet: ReviewPacket, current?: ReviewSub
       reasons.push("The submission names a different render manifest: it is about another render.");
       next.media = `${next.media}:other-render`;
     }
-    const recomputed = bindingsFor(current, state.observed, modelSnapshotSha256());
+    const recomputed = bindingsFor(current, state.observed, modelSnapshotSha256(), null);
     for (const key of Object.keys(recomputed) as BindingKey[]) {
-      // Media, captions and assets come from files, checked above.
-      if (key === "media" || key === "captions" || key === "assets") continue;
+      // Media, captions, assets and the manifest come from files, checked above.
+      if (key === "media" || key === "captions" || key === "assets" || key.startsWith("manifest.")) continue;
       if (recomputed[key] !== packet.bindings[key]) {
         reasons.push(`${BINDING_LABELS[key][0].toUpperCase()}${BINDING_LABELS[key].slice(1)} changed after review.`);
         next[key] = recomputed[key];

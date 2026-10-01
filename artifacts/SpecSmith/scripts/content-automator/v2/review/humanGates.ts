@@ -16,7 +16,7 @@
 
 import { NO_TRUSTED_APPROVAL_RECORD } from "../contentCreativeReport.ts";
 import type { HumanDecisionClaim } from "./inputs.ts";
-import type { BindingKey, HumanGateId, HumanGateRecord, ReviewFinding } from "./types.ts";
+import { MANIFEST_ASSET_KEYS, type BindingKey, type HumanGateId, type HumanGateRecord, type ReviewFinding } from "./types.ts";
 
 export const HUMAN_GATES: readonly { readonly gate: HumanGateId; readonly question: string; readonly bindsTo: readonly BindingKey[] }[] = [
   { gate: "hook-on-phone", question: "Watched on a phone at real size: is the hook understood within the first two seconds?", bindsTo: ["media", "platformCut", "script"] },
@@ -26,7 +26,7 @@ export const HUMAN_GATES: readonly { readonly gate: HumanGateId; readonly questi
   { gate: "style-fits-audience", question: "Does the style suit a beginner choosing a gaming PC?", bindsTo: ["media"] },
   { gate: "voice-and-mix", question: "After a full listen: is every word pronounced correctly, and is the mix clear?", bindsTo: ["media", "script"] },
   { gate: "disclosures-in-context", question: "Is each disclosure understandable in context, while the claim it qualifies is on screen?", bindsTo: ["media", "disclosure", "claims"] },
-  { gate: "rights-and-publication", question: "Are the rights to every asset signed off, and is publication of this exact cut authorised?", bindsTo: ["media", "platformCut", "assets", "rights", "title", "description", "ctaDestination"] },
+  { gate: "rights-and-publication", question: "Are the rights to every asset signed off, and is publication of this exact cut authorised?", bindsTo: ["media", "platformCut", "assets", "rights", "title", "description", "ctaDestination", ...MANIFEST_ASSET_KEYS] },
 ];
 
 /** Stated in every packet, so nobody has to find this comment. */
