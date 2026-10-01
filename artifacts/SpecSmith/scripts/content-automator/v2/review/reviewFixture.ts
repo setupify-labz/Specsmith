@@ -29,18 +29,12 @@ import { DEMO_PAIRING, type ComparePairing } from "../../leadsVsAverage/facts.ts
 import { REQUIRED_USE, type AssetRightsRecord, type RenderManifest, type ReviewSubmission } from "./inputs.ts";
 import { buildRenderManifest, writeRenderManifest, type ManifestFile } from "./renderManifest.ts";
 import type { PlatformVariant } from "./types.ts";
+import { YOUTUBE_SHORTS_1080X1920_30 } from "./platformVariants.ts";
 import { narrationText, sha256Json, sha256Text } from "./util.ts";
 
 export const FIXTURE_LABEL = "REVIEW TEST FIXTURE: generated shapes stand in for captures; narration is tones; research is synthetic. Not a creative.";
 
-export const SHORTS_VARIANT: PlatformVariant = {
-  variantId: "youtube-shorts-1080x1920-30",
-  platform: "youtube-shorts",
-  width: 1080, height: 1920, fps: 30,
-  minDurationSeconds: 1, maxDurationSeconds: 60,
-  requiresAudio: true,
-  safeArea: null,
-};
+export const SHORTS_VARIANT: PlatformVariant = YOUTUBE_SHORTS_1080X1920_30;
 
 export const FIXTURE_STORYBOARD: PlatformScriptStoryboard = {
   platform: "youtube-shorts",

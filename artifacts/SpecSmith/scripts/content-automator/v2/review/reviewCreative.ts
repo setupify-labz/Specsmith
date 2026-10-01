@@ -9,7 +9,7 @@
 // WHAT RUNS (and what each step reuses)
 // -------------------------------------
 //   research.provenance  #2 contractDeclaresSynthetic: synthetic stays synthetic
-//   claims.research      #2 checkScriptAgainstResearch on the storyboard
+//   claims.research      #2 checkScriptAgainstResearchStrict (the fail-closed gate) on the storyboard
 //   storyboard.quality   #1 reviewCreativeQuality: any recommended fix blocks; the score is not used
 //   media.*              #166 verifyRenderedMedia, then ffprobe/ffmpeg on those bytes
 //   frames.bands         #168 checkBandedFrames, fed from the render manifest
@@ -30,7 +30,8 @@ import { MIN_DISCLOSURE_CONTRAST, MIN_DISCLOSURE_FONT_PX } from "../../uiRender/
 import { modelSnapshotSha256 } from "../../modelSnapshot.ts";
 import { reviewCreativeQuality } from "../creativeQualityReview.ts";
 import { isVerifiedMedia, MediaVerificationError, recheckMedia, verifyRenderedMedia, type VerifiedMedia } from "../mediaVerification.ts";
-import { checkScriptAgainstResearch, contractDeclaresSynthetic } from "../research/creativeContract.ts";
+import { contractDeclaresSynthetic } from "../research/creativeContract.ts";
+import { checkScriptAgainstResearchStrict } from "../research/strictEvidenceGate.ts";
 import { checkCapturesCurrent, checkClaims, checkGraphics, type BeatCapture } from "./claimChecks.ts";
 import { APPROVAL_MECHANISM, evaluateHumanGates, HUMAN_GATES } from "./humanGates.ts";
 import { RENDER_MANIFEST_VERSION, type RenderManifest, type ReviewSubmission } from "./inputs.ts";
@@ -152,7 +153,7 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
 
   // --- MASTER #2 against the script --------------------------------------------
   ran.add("claims.research");
-  for (const entry of checkScriptAgainstResearch(storyboard, submission.research.contract)) {
+  for (const entry of checkScriptAgainstResearchStrict(storyboard, submission.research.contract)) {
     add({ code: entry.code, severity: entry.severity === "hard-fail" ? "blocking" : "advisory", check: "claims.research", location: entry.location,
       evidence: entry.evidence, message: entry.message, owner: "script", recheck: ["claims.research"] });
   }
@@ -356,20 +357,29 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
         durationSeconds: probed.durationSeconds,
       };
       frames = await checkBandedFrames(expectation, { ffmpegPath: tools.ffmpegPath });
-      for (const failure of frames.failures) {
-        const at = /^At ([\d.]+)s/.exec(failure)?.[1];
-        const where = at ? `${at}s` : "across cuts";
-        if (/disclosure band/.test(failure)) {
-          block("disclosure.coverage", "disclosure-not-on-screen", where, failure, "The verified disclosure is missing, changed or obscured at this moment; it must be on screen whenever a claim is.", "disclosure", ["disclosure.coverage", "frames.bands", "disclosures-in-context"]);
-        } else if (/story band/.test(failure)) {
-          block("frames.bands", "story-band-mismatch", where, failure, "The story band does not show this beat's verified capture: something is drawn over it, or it shows other pictures.", "render", ["frames.bands", "claims.screen"]);
-        } else if (/caption band is empty/.test(failure)) {
-          block("frames.bands", "caption-missing", where, failure, "A caption should be on screen and is not.", "captions");
-        } else if (/same picture/.test(failure)) {
-          block("frames.bands", "repeated-picture", where, failure, "Two consecutive beats show the same picture.", "capture");
-        } else {
-          block("frames.bands", "frame-check-failed", where, failure, failure, "render");
-        }
+      // One finding per kind of failure, listing every sampled moment it was seen,
+      // so an editor reads "gone from 3.20s" once rather than nine times.
+      const kinds = [
+        { test: /disclosure band/, check: "disclosure.coverage" as const, code: "disclosure-not-on-screen", owner: "disclosure" as const,
+          message: "The verified disclosure is missing, changed or obscured at these moments; it must be on screen whenever a claim is.",
+          recheck: ["disclosure.coverage", "frames.bands", "disclosures-in-context"] as ReviewFinding["recheck"] },
+        { test: /story band/, check: "frames.bands" as const, code: "story-band-mismatch", owner: "render" as const,
+          message: "The story band does not show the beat's verified capture: something is drawn over it, or it shows other pictures.",
+          recheck: ["frames.bands", "claims.screen"] as ReviewFinding["recheck"] },
+        { test: /caption band is empty/, check: "frames.bands" as const, code: "caption-missing", owner: "captions" as const,
+          message: "A caption should be on screen and is not.", recheck: ["frames.bands"] as ReviewFinding["recheck"] },
+        { test: /same picture/, check: "frames.bands" as const, code: "repeated-picture", owner: "capture" as const,
+          message: "Consecutive beats show the same picture.", recheck: ["frames.bands"] as ReviewFinding["recheck"] },
+      ];
+      for (const kind of kinds) {
+        const hits = frames.failures.filter((failure) => kind.test.test(failure));
+        if (!hits.length) continue;
+        const moments = hits.map((failure) => /^At ([\d.]+)s/.exec(failure)?.[1]).filter(Boolean).map((at) => `${at}s`);
+        block(kind.check, kind.code, moments.length ? moments.join(", ") : "across cuts",
+          hits.length > 1 ? `${hits[0]} (and ${hits.length - 1} more sampled moment(s))` : hits[0], kind.message, kind.owner, kind.recheck);
+      }
+      for (const failure of frames.failures.filter((entry) => !kinds.some((kind) => kind.test.test(entry)))) {
+        block("frames.bands", "frame-check-failed", "frames", failure, failure, "render");
       }
       details.set("frames.bands", `${frames.samples.length} sampled frames, including the first and last`);
     }

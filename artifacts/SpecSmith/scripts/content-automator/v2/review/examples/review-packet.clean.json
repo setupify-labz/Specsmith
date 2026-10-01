@@ -1,0 +1,437 @@
+{
+  "version": "quality-integrity-review-packet-v1",
+  "packetId": "83a4551cb2372b77412ccd96",
+  "reviewedAt": "2026-10-01T20:13:13.606Z",
+  "creativeId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits/claude-batch-three-checks",
+  "platformVariantId": "youtube-shorts-1080x1920-30",
+  "verdict": "awaiting-human-review",
+  "summary": "AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 4 question(s) only a person can answer; final approval is impossible until these are resolved: synthetic-research, placeholder-asset.",
+  "verdictMeaning": "No machine-found defect in this exact cut. People must still decide every open gate; this is not an approval, and the cut may not be published or scheduled.",
+  "identities": {
+    "researchContractSha256": "65189f99f83256be35c4f08269971138d7a890adc8f5de75607637f0217aa9aa",
+    "researchQuestionId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
+    "researchKind": "synthetic-fixture",
+    "evidenceSnapshotIds": [
+      "SYNTHETIC_ENGINEERING_FIXTURE-snapshot"
+    ],
+    "modelSnapshotSha256": "60da28cfd1d13c59914ed870e33a200161903622247b5067cf77a4e6d4e165e2",
+    "conceptId": "claude-batch-three-checks",
+    "conceptSha256": "e80704d26898f7c805e0d7daddcbab8c0cf34c10b0a9ea69c2c27ab7aff0a451",
+    "storyboardSha256": "3e95d7cfbcdfcd44941b2b2d564ff5607db2530d6099725333e73b9b306bb03a",
+    "narrationSha256": "1d03b9f8d0ecf47306989b18f6b0a17a9694d068b2812dfd6f0bb11abc1b8662",
+    "captionsSha256": "f2e3a0d9292d0db8379e268c0036a709200d7c4632562ee6fee50e31b2d44664",
+    "disclosuresSha256": "cbe091622f36dd2c217cf684766c89aa544f41b6b784d52beb905eec39116ec5",
+    "claimsSha256": "b16b09bfb97cf005776c83a034815506c94c6576e463b03fa403c995822c2fc5",
+    "graphicsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "productionPlanSha256": "70befc8ca091344cffa90c6536d130e91ad6dcd449fbf750f99b2849404f96bc",
+    "renderManifestSha256": "3f681180891d6cc54c9e4025adf72167e72e4ee49940135d3b17bb1eaa93d67b",
+    "assetsSha256": "b8ed92d43d1c3ff0785a9e19ae146ae12741fc3c1ef77be035547d0068a663a9",
+    "rightsManifestSha256": "7c5f8ce01b4f25d69c01edbb71625c01781132f42fdfbc8a68a6c604d79bf5c4",
+    "platformCutSha256": "dcf1aa0670ec7902b0217eaad1517dc86936d029b84c4c02067d097a1382edb0"
+  },
+  "media": {
+    "path": "/home/user/Specsmith/artifacts/SpecSmith/render-output/master6-claude-batch-three-checks/master6-claude-batch-three-checks-youtube-shorts-youtube-shorts-compose.mp4",
+    "sha256": "713537525c87a756dc45458f3782dac16a8a6df9bcc3945aad6a28e5201adf13",
+    "bytes": 747674,
+    "durationSeconds": 29.3,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioChannels": 1
+  },
+  "assets": [
+    {
+      "assetId": "youtube-shorts-disclosure-overlay",
+      "role": "disclosure-panel",
+      "sha256": "5f2094bc40f306b3fbb32274ca041f5d70857db217dcab0826022260425ae9d5",
+      "kind": "disclosure-panel",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-captions",
+      "role": "captions",
+      "sha256": "f2e3a0d9292d0db8379e268c0036a709200d7c4632562ee6fee50e31b2d44664",
+      "kind": "caption-render",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-voice",
+      "role": "narration",
+      "sha256": "e72918ebf273a7bf620ff823520bea5ca74d064c745ff4508fe5ab741575740a",
+      "kind": "narration",
+      "rights": "repo-owned (PLACEHOLDER)"
+    },
+    {
+      "assetId": "youtube-shorts-beat-1-visual",
+      "role": "capture",
+      "sha256": "6b28e1502fa852dadc28beb97ada308c9417ec244bc1a295fd65c57cc2792dad",
+      "kind": "specsmith-ui-capture",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-2-visual",
+      "role": "capture",
+      "sha256": "e6c9cea5ca4a6cdeea5b4cf3dbb4d3fbaecd994c0264b6571ee7fdf71c511349",
+      "kind": "specsmith-ui-capture",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-3-visual",
+      "role": "capture",
+      "sha256": "6b28e1502fa852dadc28beb97ada308c9417ec244bc1a295fd65c57cc2792dad",
+      "kind": "specsmith-ui-capture",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-4-visual",
+      "role": "capture",
+      "sha256": "4deb998f59db6c5c6790844f529a5961e82e52a171e84c40309da2691fda281a",
+      "kind": "specsmith-ui-capture",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-5-visual",
+      "role": "capture",
+      "sha256": "2634c368101af413169cb5dfb1f9b5ed9aed99575862e03b70dcaca7cc83b614",
+      "kind": "specsmith-ui-capture",
+      "rights": "repo-owned"
+    }
+  ],
+  "findings": [
+    {
+      "code": "narration-timing-unknown",
+      "severity": "needs-person",
+      "check": "narration.timing",
+      "location": "narration",
+      "evidence": "beatTiming: none",
+      "message": "Nothing measures whether each line is spoken over its own beat's screen. A person must check during a full watch that every figure is heard over the screen it describes.",
+      "owner": "narration",
+      "recheck": [
+        "narration.timing",
+        "pacing"
+      ],
+      "gate": "pacing"
+    },
+    {
+      "code": "safe-area-unverified",
+      "severity": "needs-person",
+      "check": "disclosure.safe-area",
+      "location": "platform cut",
+      "evidence": "youtube-shorts-1080x1920-30",
+      "message": "Whether the platform's own interface covers the disclosure or captions is unknown; check on a real phone in the app.",
+      "owner": "platform-cut",
+      "recheck": [
+        "disclosure.safe-area",
+        "readable-at-size"
+      ],
+      "gate": "readable-at-size"
+    },
+    {
+      "code": "rendered-text-unread",
+      "severity": "needs-person",
+      "check": "text.ocr",
+      "location": "on-screen text",
+      "evidence": "no OCR",
+      "message": "Read every caption, number and game name on a phone at real size.",
+      "owner": "human-review",
+      "recheck": [
+        "text.ocr",
+        "readable-at-size"
+      ],
+      "gate": "readable-at-size"
+    },
+    {
+      "code": "spoken-words-unheard",
+      "severity": "needs-person",
+      "check": "audio.asr",
+      "location": "narration",
+      "evidence": "no ASR",
+      "message": "Listen to the full narration: every number and name must be pronounced as written.",
+      "owner": "human-review",
+      "recheck": [
+        "audio.asr",
+        "voice-and-mix"
+      ],
+      "gate": "voice-and-mix"
+    },
+    {
+      "code": "synthetic-research",
+      "severity": "blocks-final-approval",
+      "check": "research.provenance",
+      "location": "research",
+      "evidence": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits",
+      "message": "The research is a synthetic engineering fixture. The cut can be reviewed for craft, never published.",
+      "owner": "research",
+      "recheck": [
+        "research.provenance"
+      ]
+    },
+    {
+      "code": "placeholder-asset",
+      "severity": "blocks-final-approval",
+      "check": "rights.placeholders",
+      "location": "asset youtube-shorts-voice",
+      "evidence": "renderer metadata isFixture: true",
+      "message": "This narration is a placeholder (espeak-ng fixture voice; no production voice has been approved). It may be reviewed for craft but never published.",
+      "owner": "rights",
+      "recheck": [
+        "rights.placeholders",
+        "rights-and-publication"
+      ]
+    }
+  ],
+  "checksCompleted": [
+    {
+      "check": "media.bytes",
+      "status": "passed",
+      "detail": "File exists, is not empty, and its bytes match the render manifest's hash"
+    },
+    {
+      "check": "media.decode",
+      "status": "passed",
+      "detail": "Every frame and audio packet decodes"
+    },
+    {
+      "check": "media.format",
+      "status": "passed",
+      "detail": "1080x1920, 30 fps, 29.3s, h264/aac"
+    },
+    {
+      "check": "media.blank-frozen",
+      "status": "passed",
+      "detail": "5 still hold(s) found; holds inside a static capture beat are intended"
+    },
+    {
+      "check": "media.audio-levels",
+      "status": "passed",
+      "detail": "max -2.1 dBFS, mean -21.3 dBFS. Levels describe the signal, not whether the voice sounds natural."
+    },
+    {
+      "check": "media.ending",
+      "status": "passed",
+      "detail": "The video reaches its planned end and the narration is not cut off"
+    },
+    {
+      "check": "frames.bands",
+      "status": "passed",
+      "detail": "12 sampled frames, including the first and last"
+    },
+    {
+      "check": "captions.rendered-text",
+      "status": "passed",
+      "detail": "Burned-in caption file matches the storyboard text and beat windows"
+    },
+    {
+      "check": "narration.binding",
+      "status": "passed",
+      "detail": "Narration audio was synthesised from this script"
+    },
+    {
+      "check": "disclosure.content",
+      "status": "passed",
+      "detail": "The rendered disclosure panel carries the planned disclosure, verbatim, legibly"
+    },
+    {
+      "check": "disclosure.coverage",
+      "status": "passed",
+      "detail": "The disclosure is on screen for every claim, for the whole video"
+    },
+    {
+      "check": "claims.model",
+      "status": "passed",
+      "detail": "Every figure agrees with the model it comes from, ties kept apart from leads"
+    },
+    {
+      "check": "claims.presentation",
+      "status": "passed",
+      "detail": "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact"
+    },
+    {
+      "check": "claims.screen",
+      "status": "passed",
+      "detail": "A figure is presented over a screen showing the build, settings and game it is about"
+    },
+    {
+      "check": "claims.undeclared",
+      "status": "passed",
+      "detail": "No figure appears in text without a declared, checkable claim"
+    },
+    {
+      "check": "claims.research",
+      "status": "passed",
+      "detail": "Script against the research contract, through the strict gate (MASTER #2)"
+    },
+    {
+      "check": "captures.current",
+      "status": "passed",
+      "detail": "Each capture still shows what the current model gives for its state"
+    },
+    {
+      "check": "storyboard.quality",
+      "status": "passed",
+      "detail": "0 recommended fix(es). The aggregate production score is not used by this verdict."
+    },
+    {
+      "check": "research.provenance",
+      "status": "passed",
+      "detail": "Research identity, and synthetic research kept marked as synthetic"
+    },
+    {
+      "check": "cta.destination",
+      "status": "passed",
+      "detail": "The call to action names the approved destination"
+    },
+    {
+      "check": "rights.assets",
+      "status": "passed",
+      "detail": "Every asset in the render has source, permission, permitted use and scope"
+    },
+    {
+      "check": "rights.placeholders",
+      "status": "passed",
+      "detail": "Placeholder voice, fixture audio and mock images stay identified"
+    },
+    {
+      "check": "decisions.binding",
+      "status": "passed",
+      "detail": "Recorded human decisions name these exact bytes and this cut"
+    }
+  ],
+  "checksUnavailable": [
+    {
+      "check": "narration.timing",
+      "status": "unavailable",
+      "detail": "The narration renderer read the script as one continuous take and recorded no per-beat timing; without ASR, which line is spoken over which screen cannot be measured."
+    },
+    {
+      "check": "disclosure.safe-area",
+      "status": "unavailable",
+      "detail": "No verified safe-area insets are recorded for youtube-shorts; guessed numbers are not used."
+    },
+    {
+      "check": "graphics.integrity",
+      "status": "not-applicable",
+      "detail": "No editorial graphics declared."
+    },
+    {
+      "check": "text.ocr",
+      "status": "unavailable",
+      "detail": "No OCR engine is part of this pipeline. Caption and disclosure wording is checked in the files that were burned in, and their presence in pixels, but not read back from the frames."
+    },
+    {
+      "check": "audio.asr",
+      "status": "unavailable",
+      "detail": "No speech recogniser is part of this pipeline. The audio is bound to its script by hash; what is actually said is not transcribed."
+    }
+  ],
+  "humanGates": [
+    {
+      "gate": "hook-on-phone",
+      "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "factual-takeaway",
+      "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+      "bindsTo": [
+        "media",
+        "script",
+        "claims",
+        "evidence",
+        "graphics"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "readable-at-size",
+      "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "captions",
+        "disclosure"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "pacing",
+      "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+      "bindsTo": [
+        "media",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "style-fits-audience",
+      "question": "Does the style suit a beginner choosing a gaming PC?",
+      "bindsTo": [
+        "media"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "voice-and-mix",
+      "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+      "bindsTo": [
+        "media",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "disclosures-in-context",
+      "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+      "bindsTo": [
+        "media",
+        "disclosure",
+        "claims"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "rights-and-publication",
+      "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "assets",
+        "rights"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    }
+  ],
+  "approvalMechanism": {
+    "trustedApprovalAvailable": false,
+    "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+  },
+  "bindings": {
+    "media": "713537525c87a756dc45458f3782dac16a8a6df9bcc3945aad6a28e5201adf13",
+    "platformCut": "dcf1aa0670ec7902b0217eaad1517dc86936d029b84c4c02067d097a1382edb0",
+    "script": "3e95d7cfbcdfcd44941b2b2d564ff5607db2530d6099725333e73b9b306bb03a",
+    "captions": "f2e3a0d9292d0db8379e268c0036a709200d7c4632562ee6fee50e31b2d44664",
+    "disclosure": "ccfb4fe1bf09ea8eef784046098de6d40e5bf8f1eee0c3636df98632b66f5425",
+    "claims": "b16b09bfb97cf005776c83a034815506c94c6576e463b03fa403c995822c2fc5",
+    "evidence": "1aa512a1b9085a5a73f81f6341dcb8aeb54acfa364e59cce254c6853033320b2",
+    "research": "488e18d3fef88b3d624d048242d44efea6d5517ca64038f19b4130736df3e35b",
+    "graphics": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "assets": "b8ed92d43d1c3ff0785a9e19ae146ae12741fc3c1ef77be035547d0068a663a9",
+    "rights": "7c5f8ce01b4f25d69c01edbb71625c01781132f42fdfbc8a68a6c604d79bf5c4",
+    "decisions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}

@@ -11,7 +11,7 @@ the code exists but nothing on the #6 → render path calls it.
 | #1 | Repair loop, lineage | `v2/beatRepair.ts` | Exists. Not on the #6 path. |
 | #1 | Creative report; human gates; `publishReady` can't be reached | `v2/contentCreativeReport.ts` | Exists. Gates can't close: `NO_TRUSTED_APPROVAL_RECORD`. |
 | #2 | Claim states, `UNSAFE_FOR_CREATIVE`, safe/unsafe claims | `v2/research/{model,creativeContract}.ts` | Exists. |
-| #2 | Script vs research (`checkScriptAgainstResearch`) | `v2/research/creativeContract.ts` | Exists. Checks storyboard text, not the render. |
+| #2 | Script vs research (`checkScriptAgainstResearchStrict`, fail-closed) | `v2/research/creativeContract.ts` | Exists. Checks storyboard text, not the render. |
 | #2 | Synthetic markers (`provenance.synthetic`, `contractDeclaresSynthetic`) | `v2/research/*` | Exists. The packet must keep it; a flag can't clear it. |
 | #6 | Concept assessment, disclosure validity (`disclosure-describes-absent-range`) | `v2/creative/concept.ts` | Exists (#169). |
 | #6 | Workflow packet `machineChecksPassed` / `humanReviewReady` / `approved:false` | `v2/creative/fileWorkflow.ts` | Exists. The demo batch is unready, because two concepts have #1 fixes. |

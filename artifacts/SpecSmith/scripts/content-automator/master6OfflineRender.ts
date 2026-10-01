@@ -40,6 +40,8 @@ import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts"
 import { checkBandedFrames, type BandedFrameExpectation } from "./bandedFrameCheck.ts";
 import { DISCLOSURE_BANDED_LAYOUT } from "./bandedLayout.ts";
 import { verifyRenderedMedia } from "./v2/mediaVerification.ts";
+import { buildRenderManifest, writeRenderManifest } from "./v2/review/renderManifest.ts";
+import { YOUTUBE_SHORTS_1080X1920_30 } from "./v2/review/platformVariants.ts";
 import { evaluateAuthoredBatch } from "./v2/creative/fileWorkflowPass.ts";
 import { buildCreativeProposalProductionPlan } from "./v2/creative/proposalPass.ts";
 
@@ -162,6 +164,28 @@ export async function renderProposalOffline(directory: string, conceptId: string
     `${framePaths.map((_, index) => `[${index}:v]scale=270:480[s${index}]`).join(";")};${framePaths.map((_, index) => `[s${index}]`).join("")}xstack=inputs=${framePaths.length}:layout=${framePaths.map((_, index) => `${(index % 5) * 270}_${Math.floor(index / 5) * 480}`).join("|")}:fill=black`,
     "-frames:v", "1", sheetPath]);
 
+  // The render manifest: what these bytes were made from, each by its own file's hash.
+  const meta = video.metadata ?? {};
+  const manifestPath = join(outputDir, "render-manifest.json");
+  const fileOf = (taskId: string) => {
+    const artifact = artifactOf(taskId);
+    return { assetId: taskId, path: fileURLToPath(artifact.uri), metadata: artifact.metadata ?? {} };
+  };
+  writeRenderManifest(manifestPath, buildRenderManifest({
+    variantId: YOUTUBE_SHORTS_1080X1920_30.variantId,
+    outputPath: videoPath,
+    encode: { width: Number(meta.width), height: Number(meta.height), fps: Number(meta.fps), videoCodec: String(meta.videoCodec), audioCodec: meta.audioCodec ? String(meta.audioCodec) : null },
+    storyboard,
+    productionPlan: plan,
+    layout: DISCLOSURE_BANDED_LAYOUT,
+    disclosurePanel: fileOf(`${plan.platform}-disclosure-overlay`),
+    captions: fileOf(`${plan.platform}-captions`),
+    narration: fileOf(`${plan.platform}-voice`),
+    // The local voice reads every beat as one continuous take: no per-beat timing exists.
+    narrationSegments: null,
+    beats: storyboard.beats.map((beat, index) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, captures: [fileOf(visualTasks[index].taskId)] })),
+  }));
+
   const media = verifyRenderedMedia(videoPath);
   const report = {
     label: "ENGINEERING RENDER of a synthetic-research concept. Not reviewed, not approved, not for publication.",
@@ -183,6 +207,7 @@ export async function renderProposalOffline(directory: string, conceptId: string
     controls: controlResults,
     inspectionFrames: framePaths,
     inspectionSheet: sheetPath,
+    renderManifest: manifestPath,
     planQualityChecks: plan.qualityChecks,
     stillNeedsAPerson: [
       "Whether the video is worth a viewer's time: hook, pacing, and whether the three checks land.",

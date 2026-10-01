@@ -88,7 +88,7 @@ export const CHECKS = {
   "claims.presentation": { title: "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact", bindsTo: ["claims", "script", "captions", "evidence"] },
   "claims.screen": { title: "A figure is presented over a screen showing the build, settings and game it is about", bindsTo: ["claims", "assets", "script"] },
   "claims.undeclared": { title: "No figure appears in text without a declared, checkable claim", bindsTo: ["claims", "script", "captions"] },
-  "claims.research": { title: "Script against the research contract (MASTER #2)", bindsTo: ["research", "script"] },
+  "claims.research": { title: "Script against the research contract, through the strict gate (MASTER #2)", bindsTo: ["research", "script"] },
   "captures.current": { title: "Each capture still shows what the current model gives for its state", bindsTo: ["assets", "evidence"] },
   "graphics.integrity": { title: "Editorial graphics show only supported values, at honest scale, attributed truthfully", bindsTo: ["graphics", "evidence", "assets"] },
   "storyboard.quality": { title: "MASTER #1 storyboard review: no recommended fix or hard failure outstanding", bindsTo: ["script", "captions"] },
