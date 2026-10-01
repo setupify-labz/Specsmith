@@ -31,7 +31,8 @@
     "content:creative:brief": "tsx scripts/content-automator/creativeFileWorkflowCli.ts brief",
     "content:creative:review": "tsx scripts/content-automator/creativeFileWorkflowCli.ts review",
     "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff",
-    "content:creative:render": "tsx scripts/content-automator/master6OfflineRender.ts"
+    "content:creative:render": "tsx scripts/content-automator/master6OfflineRender.ts",
+    "content:poc:leads-vs-average": "tsx scripts/content-automator/leadsVsAverage/render.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",

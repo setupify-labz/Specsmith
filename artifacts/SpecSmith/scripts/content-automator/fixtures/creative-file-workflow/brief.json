@@ -91,10 +91,6 @@
     {
       "id": "disclosure.fps-estimate",
       "text": "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
-    },
-    {
-      "id": "disclosure.model-range",
-      "text": "The range shown is a model convention, not measured or calibrated uncertainty."
     }
   ],
   "availableCapabilityIds": [
@@ -135,5 +131,5 @@
     "Passing every check makes a batch ready for human review. It does not approve it, render it, or permit publishing."
   ],
   "syntheticResearch": true,
-  "briefHash": "d090f021ab4330bf076617c7fd314268c3559f2cd74441b4a8a0b7bd6cd1de67"
+  "briefHash": "3888a94e7fcfa4c2e865cdda0d2fdf014a8b1a74a7e2d3c4db170b4332a25630"
 }

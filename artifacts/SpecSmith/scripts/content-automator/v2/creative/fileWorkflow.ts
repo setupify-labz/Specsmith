@@ -159,7 +159,8 @@ export function buildCreativeBrief(
   const approved = input.research.safeClaims.filter(
     (claim) => !UNSAFE_FOR_CREATIVE.includes(claim.state) && claim.supportingSnapshotIds.length > 0,
   );
-  const disclosureIds = ["disclosure.fps-estimate", "disclosure.model-range"];
+  // The capture shows estimated FPS but no range; "The range shown..." would describe something absent.
+  const disclosureIds = ["disclosure.fps-estimate"];
 
   const body: Omit<ExportedBrief, "briefHash"> = {
     version: FILE_WORKFLOW_VERSION,
@@ -742,6 +743,8 @@ export interface FeedbackExpectations {
 
 function actionFor(code: string, detail: string): string {
   switch (code) {
+    case "disclosure-describes-absent-range":
+      return `Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. ${detail}`;
     case "undisclosed-estimate":
       return `Add the exact disclosure text to disclosureTextByBeat for every beat that shows the capture. ${detail}`;
     case "beats-not-contiguous":

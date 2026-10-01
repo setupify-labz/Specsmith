@@ -139,8 +139,7 @@
       "type": "array",
       "items": {
         "enum": [
-          "disclosure.fps-estimate",
-          "disclosure.model-range"
+          "disclosure.fps-estimate"
         ]
       }
     },

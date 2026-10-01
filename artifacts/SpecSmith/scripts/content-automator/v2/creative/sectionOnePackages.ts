@@ -13,7 +13,7 @@
 // no vertical annotated spec-card surface. A creative system that silently drops
 // its most useful idea because the idea is inconvenient is worse than no system.
 
-import { CREATIVE_DISCLOSURES, type CreativeConcept } from "./concept.ts";
+import { CREATIVE_DISCLOSURES, showsEstimateRange, type CreativeConcept } from "./concept.ts";
 import { FPS_ESTIMATE_DISCLOSURE } from "./separability.ts";
 
 /** Disclosure ids referenced by the packages. */
@@ -33,6 +33,23 @@ function disclosuresForBeats(count: number, ids: readonly string[]) {
   return Object.fromEntries(Array.from({ length: count }, (_, index) => [index, ids.map((id) => DISCLOSURE_TEXT[id])])) as Record<number, string[]>;
 }
 
+/**
+ * Keeps "The range shown..." only on beats that actually draw a range. The
+ * packages list their disclosures once for every beat; on a beat showing only
+ * a Compare capture, which renders single estimates, the range sentence would
+ * describe something the viewer cannot see.
+ */
+function rangeDisclosureOnlyWhereShown(concept: CreativeConcept): CreativeConcept {
+  const range = DISCLOSURE_TEXT[DISCLOSURE_MODEL_RANGE];
+  return {
+    ...concept,
+    disclosureTextByBeat: Object.fromEntries(concept.beats.map((beat, index) => {
+      const shown = beat.visualIds.some((id) => showsEstimateRange(concept.visuals.find((visual) => visual.visualId === id)));
+      return [index, (concept.disclosureTextByBeat?.[index] ?? []).filter((text) => shown || text !== range)];
+    })),
+  };
+}
+
 /** The capability ids the packages declare they need. */
 export const CAPABILITY_COMPARE_CAPTURE = "render.compare-surface-capture";
 export const CAPABILITY_BAND_OVERLAY = "render.estimate-band-overlay";
@@ -43,7 +60,7 @@ const COMPARE_STATE_LOW_GPU_BOUND = "compare-rtx5060ti-i3-13100f-rtx4060ti-r5-96
 const COMPARE_STATE_HIGH_GPU_BOUND = "compare-rtx5060ti-i3-13100f-rtx4060ti-r5-9600x-1440p-high-cyberpunk2077";
 
 /** PACKAGE 1 — "The Crossover That Isn't". */
-export const PACKAGE_CROSSOVER: CreativeConcept = {
+export const PACKAGE_CROSSOVER: CreativeConcept = rangeDisclosureOnlyWhereShown({
   disclosureTextByBeat: disclosuresForBeats(6, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE, DISCLOSURE_EDITORIAL_PRICE]),
   conceptId: "m6-crossover-that-isnt",
   axes: {
@@ -142,10 +159,10 @@ export const PACKAGE_CROSSOVER: CreativeConcept = {
       factDependencies: [],
     },
   ],
-};
+});
 
 /** PACKAGE 2 — "Two Numbers That Aren't Estimates". Blocked by design. */
-export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
+export const PACKAGE_SPEC_FORENSICS: CreativeConcept = rangeDisclosureOnlyWhereShown({
   disclosureTextByBeat: disclosuresForBeats(6, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE, DISCLOSURE_EDITORIAL_PRICE]),
   conceptId: "m6-two-numbers-that-arent-estimates",
   axes: {
@@ -240,10 +257,10 @@ export const PACKAGE_SPEC_FORENSICS: CreativeConcept = {
       factDependencies: [],
     },
   ],
-};
+});
 
 /** PACKAGE 3 — "One Question, Then Stop Watching". */
-export const PACKAGE_BRANCH: CreativeConcept = {
+export const PACKAGE_BRANCH: CreativeConcept = rangeDisclosureOnlyWhereShown({
   disclosureTextByBeat: disclosuresForBeats(5, [DISCLOSURE_FPS_ESTIMATE, DISCLOSURE_MODEL_RANGE]),
   conceptId: "m6-one-question-then-stop",
   axes: {
@@ -342,7 +359,7 @@ export const PACKAGE_BRANCH: CreativeConcept = {
       factDependencies: [],
     },
   ],
-};
+});
 
 export const SECTION_ONE_PACKAGES: readonly CreativeConcept[] = [
   PACKAGE_CROSSOVER,

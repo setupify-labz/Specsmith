@@ -54,7 +54,8 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
   if (!approved.length) return { proposals: [], selected: null, retrieved, reason: "No evidence-grounded answer available; research is required.", limitations: ["No provider or rendered-video generation is implemented."] };
   const fact = approved[0];
   const answer = [fact.proposition, ...fact.requiredWording, fact.attribution ?? ""].filter(Boolean).join(" ");
-  const ids = ["disclosure.fps-estimate", "disclosure.model-range"];
+  // Compare shows single estimates, not a range, so only the estimate disclosure applies.
+  const ids = ["disclosure.fps-estimate"];
   const visualId = `${input.missionId}-compare`;
   const beat = (purpose: ConceptBeatPlan["purpose"], narration: string, text: string, start: number, end: number, factual = false): ConceptBeatPlan => ({
     purpose, narration, onScreenText: text, startSecond: start, endSecond: end,
@@ -94,7 +95,7 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     requiredDisclosures: ids,
     disclosureTextByBeat: Object.fromEntries(partial.beats.map((_, index) => [index, ids.map((id) => CREATIVE_DISCLOSURES[id])])),
   } as CreativeConcept));
-  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture"], guaranteedDisclosureIds: ids });
+  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture"], guaranteedDisclosureIds: ["disclosure.fps-estimate", "disclosure.model-range"] });
   const proposals = plans.map((concept) => {
     const storyboard: PlatformScriptStoryboard = { platform: input.platform,
       title: input.viewerQuestion, targetDurationSeconds: concept.beats.at(-1)!.endSecond,

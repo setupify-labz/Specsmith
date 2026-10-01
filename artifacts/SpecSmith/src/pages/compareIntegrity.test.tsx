@@ -6,6 +6,12 @@ import { MemoryRouter } from 'react-router-dom';
 import Compare from './Compare';
 import { ToastProvider } from '../context/ToastContext';
 import { getRouteMeta } from '../lib/seo';
+import { estimateFpsForBuild } from '../lib/fps';
+import { tallyModelledLeads } from '../lib/compareTally';
+import { getAverageFps } from '../lib/compareValue';
+import gpus from '../data/gpus.json';
+import cpus from '../data/cpus.json';
+import games from '../data/games.json';
 
 beforeAll(() => {
   class NoopObserver {
@@ -22,9 +28,9 @@ beforeAll(() => {
 
 afterEach(cleanup);
 
-function open() {
+function open(path = '/compare') {
   return render(
-    <MemoryRouter initialEntries={['/compare']}>
+    <MemoryRouter initialEntries={[path]}>
       <ToastProvider>
         <Compare />
       </ToastProvider>
@@ -69,5 +75,29 @@ describe('/compare evidence boundaries', () => {
     const meta = getRouteMeta('/compare');
     expect(meta.description).toMatch(/estimate|model/i);
     expect(meta.description).not.toMatch(/price chart|performance per dollar|before you buy|better value/i);
+  });
+
+  it('counts ties separately, and the rendered tally matches the current model', () => {
+    // The pairing used by the MASTER #6 demo. Before this fix the page showed
+    // 13 "leads" for Build A: its 10 real leads plus the 3 tied games.
+    const pair = { gpuA: 'rtx5060ti', cpuA: 'i3-13100f', gpuB: 'rtx4060ti', cpuB: 'r5-9600x' };
+    const { container } = open(`/compare?gpuA=${pair.gpuA}&cpuA=${pair.cpuA}&gpuB=${pair.gpuB}&cpuB=${pair.cpuB}&res=1440p&preset=high`);
+    const find = <T extends { id: string }>(list: T[], id: string) => list.find((entry) => entry.id === id)!;
+    const rows = (games as Parameters<typeof estimateFpsForBuild>[2][]).map((game) => ({
+      fpsA: estimateFpsForBuild(find(gpus as never[], pair.gpuA), find(cpus as never[], pair.cpuA), game, '1440p', 'high').estimated,
+      fpsB: estimateFpsForBuild(find(gpus as never[], pair.gpuB), find(cpus as never[], pair.cpuB), game, '1440p', 'high').estimated,
+    }));
+    const tally = tallyModelledLeads(rows);
+    expect(tally).toEqual({ leadsA: 10, leadsB: 7, ties: 3 });
+    expect([getAverageFps(rows.map((row) => row.fpsA)), getAverageFps(rows.map((row) => row.fpsB))]).toEqual([121, 123]);
+
+    const leadCounts = Array.from(container.querySelectorAll('.text-3xl.font-black')).map((node) => node.textContent);
+    expect(leadCounts).toEqual(['10', '7']);
+    expect(screen.getByTestId('compare-ties').textContent).toBe('3 ties');
+    const text = container.textContent ?? '';
+    expect(text).toContain('Est. Avg FPS: 121');
+    expect(text).toContain('Est. Avg FPS: 123');
+    // Tied games are labelled as ties in the per-game table, not as Build A.
+    expect(screen.getAllByText('Tie')).toHaveLength(3);
   });
 });

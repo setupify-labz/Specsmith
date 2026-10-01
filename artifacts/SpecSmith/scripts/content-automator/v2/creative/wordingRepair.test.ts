@@ -26,7 +26,7 @@ async function probe(edit: (concepts: CreativeConcept[]) => void,
   mission: Omit<CreativeMissionInput, "concepts"> = DEMO_MISSION) {
   const root = mkdtempSync(join(tmpdir(), "specsmith-wording-repair-"));
   try {
-    const concepts = structuredClone(importAuthoredBatch(DEMO_WORKFLOW_DIRECTORY, 3).concepts) as CreativeConcept[];
+    const concepts = structuredClone(importAuthoredBatch(DEMO_WORKFLOW_DIRECTORY, 6).concepts) as CreativeConcept[];
     edit(concepts);
     const batch = join(root, "batches", "attempt-1");
     mkdirSync(batch, { recursive: true });

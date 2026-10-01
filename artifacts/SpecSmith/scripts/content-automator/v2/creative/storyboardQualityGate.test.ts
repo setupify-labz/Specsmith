@@ -17,7 +17,7 @@ import { reviewStoryboard } from "./storyboardQualityGate.ts";
 import { CREATIVE_DISCLOSURES, type CreativeConcept } from "./concept.ts";
 
 const REVISED = "claude-batch-three-checks";
-const LATEST = 5;
+const LATEST = 6;
 const PRIMARY = "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2";
 
 const dirs: string[] = [];
@@ -36,6 +36,25 @@ const editRevised = (dir: string, edit: (concept: CreativeConcept) => CreativeCo
   writeFileSync(revisedPath(dir), JSON.stringify(edit(readRevised(dir))));
 const withBeat = (index: number, change: Partial<CreativeConcept["beats"][number]>) => (concept: CreativeConcept): CreativeConcept =>
   ({ ...concept, beats: concept.beats.map((beat, at) => at === index ? { ...beat, ...change } : beat) });
+/**
+ * Historical attempts 1-5 also carry "The range shown..." on Compare beats,
+ * which no longer passes #6 (claimMention.counts.test.ts pins that it is their
+ * only #6 defect). These tests are about #1's review, so they apply exactly that
+ * correction and nothing else.
+ */
+const RANGE = CREATIVE_DISCLOSURES["disclosure.model-range"];
+const withoutAbsentRange = (concept: CreativeConcept): CreativeConcept => ({
+  ...concept,
+  requiredDisclosures: concept.requiredDisclosures.filter((id) => id !== "disclosure.model-range"),
+  disclosureTextByBeat: Object.fromEntries(Object.entries(concept.disclosureTextByBeat ?? {}).map(([beat, texts]) => [beat, texts.filter((text) => text !== RANGE)])),
+});
+function correctAttempt(dir: string, attempt: number): string {
+  const batchDir = join(dir, "batches", `attempt-${attempt}`);
+  for (const name of readdirSync(batchDir).filter((entry) => entry.endsWith(".json"))) {
+    writeFileSync(join(batchDir, name), JSON.stringify(withoutAbsentRange(JSON.parse(readFileSync(join(batchDir, name), "utf8")))));
+  }
+  return dir;
+}
 const dimensions = (items: readonly string[]) =>
   items.filter((item) => item.startsWith("MASTER #1 storyboard review")).map((item) => /\[([^\]]+)\]/.exec(item)![1]).sort();
 async function evaluate(dir: string, mission = DEMO_MISSION) {
@@ -46,7 +65,7 @@ async function evaluate(dir: string, mission = DEMO_MISSION) {
 
 describe("concepts that passed #6 are refused until #1's fixes are made", () => {
   it("returns the attempt-3 concept's #1 failures to its author", async () => {
-    const old = (await evaluate(workflow(3))).concept(REVISED);
+    const old = (await evaluate(correctAttempt(workflow(3), 3))).concept(REVISED);
     expect(old.contractEligible).toBe(true);
     expect(dimensions(old.required)).toEqual(["beat-duration", "cta-clarity", "hook-duration", "shot-uniqueness", "visual-change-frequency", "visual-repetition"]);
     expect(old.required.join("\n")).toMatch(/Hook is 5s against a 3s envelope/);
@@ -56,7 +75,7 @@ describe("concepts that passed #6 are refused until #1's fixes are made", () => 
   });
 
   it("refuses attempt 4, which fixed the timing but still shows one view on every beat", async () => {
-    const result = await evaluate(workflow(4));
+    const result = await evaluate(correctAttempt(workflow(4), 4));
     const attempt4 = result.concept(REVISED);
     expect(dimensions(attempt4.required)).toEqual(["shot-uniqueness", "visual-repetition"]);
     // The mission now lists more validated views, so this is the author's to fix.
@@ -76,7 +95,8 @@ describe("the revised concept passes both #6 and #1", () => {
     expect(revised.blockedOutsideAuthor).toEqual([]);
     const proposal = result.pass.result.proposals.find((entry) => entry.concept.conceptId === REVISED)!;
     // The disclosures ride in the persistent overlay, verbatim, not in any caption.
-    expect(proposal.storyboard.persistentDisclosures).toEqual([CREATIVE_DISCLOSURES["disclosure.fps-estimate"], CREATIVE_DISCLOSURES["disclosure.model-range"]]);
+    // Only the estimate disclosure: Compare shows no range, so "The range shown..." would be false.
+    expect(proposal.storyboard.persistentDisclosures).toEqual([CREATIVE_DISCLOSURES["disclosure.fps-estimate"]]);
     for (const beat of proposal.storyboard.beats) expect(beat.onScreenText).not.toMatch(/model convention|measured benchmarks/);
     // The claim beat shows the view the claim was established for.
     const claimBeat = proposal.concept.beats.findIndex((beat) => beat.factDependencies.length > 0);
@@ -126,7 +146,7 @@ describe("controls", () => {
 
   it("with a single validated view, the repetition is the mission's to fix, and still blocks", async () => {
     const singleView = { ...DEMO_MISSION, additionalViews: [] };
-    const dir = workflow(4);
+    const dir = correctAttempt(workflow(4), 4);
     const result = await evaluate(dir, singleView);
     const attempt4 = result.concept(REVISED);
     expect(dimensions(attempt4.blockedOutsideAuthor)).toEqual(["shot-uniqueness", "visual-repetition"]);
@@ -171,8 +191,8 @@ describe("the generation pass's own status", () => {
   };
 
   it("never claims awaiting-human-review for a batch the combined checks refuse", async () => {
-    // Attempt 3 is contract eligible under #6's proposal pass, and fails #1.
-    const result = await runCreativeGenerationPass(DEMO_MISSION, { name: "attempt-3-replay", async generate() { return batch(3); } }, { maxAttempts: 1 });
+    // Attempt 3, range sentence corrected, is contract eligible under #6's proposal pass, and fails #1.
+    const result = await runCreativeGenerationPass(DEMO_MISSION, { name: "attempt-3-replay", async generate() { return batch(3).map(withoutAbsentRange); } }, { maxAttempts: 1 });
     expect(result.result.proposals.every((proposal) => proposal.contractEligible)).toBe(true);
     expect(result.status).not.toBe("awaiting-human-review");
     expect(result.status).toBe("blocked-revision");

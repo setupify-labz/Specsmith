@@ -61,7 +61,8 @@ describe("the #6 production plan for the revised concept", () => {
     const plan = buildCreativeProposalProductionPlan(BASE, proposal).platforms[0];
     const overlay = plan.tasks.find((task) => task.capability === "disclosure-overlay") as Task;
     expect(overlay.disclosureOverlayState).toEqual({
-      lines: [CREATIVE_DISCLOSURES["disclosure.fps-estimate"], CREATIVE_DISCLOSURES["disclosure.model-range"]],
+      // Compare shows no range, so "The range shown..." is not among them.
+      lines: [CREATIVE_DISCLOSURES["disclosure.fps-estimate"]],
       width: DISCLOSURE_BANDED_LAYOUT.width, height: DISCLOSURE_BANDED_LAYOUT.disclosure.height,
     });
     const captions = plan.tasks.find((task) => task.capability === "caption-render") as Task;
@@ -96,5 +97,22 @@ describe("readiness stays at the batch", () => {
     expect(evaluation.packet.approved).toBe(false);
     expect(evaluation.pass.status).toBe("blocked-revision");
     expect(evaluation.pass.status).not.toBe("awaiting-human-review");
+  });
+});
+
+describe("'The range shown' only where a range is shown", () => {
+  it("refuses the sentence on a Compare-only beat, and accepts it where an FPS range is drawn", async () => {
+    const { assessConcept } = await import("./concept.ts");
+    const { importAuthoredBatch } = await import("./fileWorkflow.ts");
+    const stale = importAuthoredBatch(DEMO_WORKFLOW_DIRECTORY, 5).concepts[1];
+    const env = { availableCapabilityIds: ["render.compare-surface-capture"], guaranteedDisclosureIds: Object.keys(CREATIVE_DISCLOSURES) };
+    const staleCodes = assessConcept({ ...env, concept: stale }).defects.map((defect) => defect.code);
+    expect(staleCodes).toContain("disclosure-describes-absent-range");
+    const corrected = importAuthoredBatch(DEMO_WORKFLOW_DIRECTORY, 6).concepts[1];
+    expect(assessConcept({ ...env, concept: corrected }).defects).toEqual([]);
+    // Where an FPS illustration draws the range, the sentence is true and required.
+    const { PACKAGE_BRANCH } = await import("./sectionOnePackages.ts");
+    expect(assessConcept({ ...env, availableCapabilityIds: PACKAGE_BRANCH.requiredCapabilities.map((capability) => capability.capabilityId), concept: PACKAGE_BRANCH })
+      .defects.map((defect) => defect.code)).not.toContain("disclosure-describes-absent-range");
   });
 });
