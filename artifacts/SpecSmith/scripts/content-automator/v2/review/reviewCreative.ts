@@ -57,6 +57,8 @@ export class ReviewPacketError extends Error {
 const ISSUED = new WeakSet<object>();
 interface PacketState {
   readonly media: VerifiedMedia | null;
+  /** What the review measured from files, so bindings can be recomputed for a changed submission. */
+  readonly observed: ObservedInputs;
   readonly manifestPath: string;
   readonly manifestSha256: string | null;
   readonly files: readonly { readonly assetId: string; readonly role: string; readonly path: string; readonly sha256: string | null }[];
@@ -110,6 +112,55 @@ function summaryFor(verdict: ReviewVerdict, findings: readonly ReviewFinding[], 
   return "ELIGIBLE TO REQUEST FINAL APPROVAL (not approved, not scheduled, not publishable yet).";
 }
 
+/** What the review read from files. Everything else in the bindings comes from the submission. */
+interface ObservedInputs {
+  readonly mediaKey: string;
+  readonly encode: unknown;
+  readonly captionsSha256: string;
+  readonly panelSha256: string | null;
+  readonly assets: readonly { readonly assetId: string; readonly sha256: string | null }[];
+}
+
+/** The input identities a packet is bound to. One function, so issuing and revalidating cannot disagree. */
+function bindingsFor(submission: ReviewSubmission, observed: ObservedInputs, modelSha: string): Record<BindingKey, string> {
+  const contractSha256 = sha256Json(submission.research.contract);
+  return {
+    media: observed.mediaKey,
+    platformCut: sha256Json({ variant: submission.variant, encode: observed.encode }),
+    script: sha256Json(submission.storyboard),
+    captions: observed.captionsSha256,
+    disclosure: sha256Json({ lines: submission.disclosureLines, panel: observed.panelSha256 }),
+    claims: sha256Json(submission.claims),
+    evidence: sha256Json({ contractSha256, modelSha }),
+    research: sha256Json({ contractSha256, declaredKind: submission.research.declaredKind, snapshots: submission.research.evidenceSnapshotIds }),
+    graphics: sha256Json(submission.graphics),
+    assets: sha256Json(observed.assets),
+    rights: sha256Json(submission.rights),
+    decisions: sha256Json(submission.humanDecisions ?? []),
+    title: sha256Text(submission.title),
+    description: sha256Text(submission.description),
+    ctaDestination: sha256Text(submission.approvedDestination),
+  };
+}
+
+/**
+ * MASTER #2's strict gate over everything a viewer reads: the storyboard, and
+ * the published title and description, which are not part of it.
+ */
+function researchFindings(submission: ReviewSubmission) {
+  const { storyboard, research } = submission;
+  const findings = checkScriptAgainstResearchStrict(storyboard, research.contract);
+  for (const [location, text] of [["title", submission.title], ["description", submission.description]] as const) {
+    if (!text.trim()) continue;
+    // Scanned as a storyboard whose only line is this text; other lines are blank and skipped.
+    const alone = { ...storyboard, title: text, finalCta: "", beats: [] };
+    for (const entry of checkScriptAgainstResearchStrict(alone, research.contract)) {
+      if (entry.location === "title") findings.push({ ...entry, location });
+    }
+  }
+  return findings;
+}
+
 export interface ReviewOptions {
   readonly ffmpegPath?: string;
   readonly ffprobePath?: string;
@@ -153,7 +204,7 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
 
   // --- MASTER #2 against the script --------------------------------------------
   ran.add("claims.research");
-  for (const entry of checkScriptAgainstResearchStrict(storyboard, submission.research.contract)) {
+  for (const entry of researchFindings(submission)) {
     add({ code: entry.code, severity: entry.severity === "hard-fail" ? "blocking" : "advisory", check: "claims.research", location: entry.location,
       evidence: entry.evidence, message: entry.message, owner: "script", recheck: ["claims.research"] });
   }
@@ -550,24 +601,16 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
     };
   });
 
-  const encode = probed ? { width: probed.width, height: probed.height, fps: probed.fps, videoCodec: probed.videoCodec, audioCodec: probed.audioCodec } : manifest?.output.encode ?? null;
-  const assetsList = files.map((file) => ({ assetId: file.assetId, sha256: file.sha256 }));
-  const captionsSha256 = captionsAsset ? sha256File(captionsAsset.path) ?? "missing" : "none";
-  const modelSha = modelSnapshotSha256();
-  const bindings: Record<BindingKey, string> = {
-    media: media?.sha256 ?? `unverified:${manifest?.output.sha256 ?? "none"}`,
-    platformCut: sha256Json({ variant, encode }),
-    script: storyboardSha256,
-    captions: captionsSha256,
-    disclosure: sha256Json({ lines: submission.disclosureLines, panel: panel ? sha256File(panel.path) : null }),
-    claims: sha256Json(submission.claims),
-    evidence: sha256Json({ contractSha256, modelSha }),
-    research: sha256Json({ contractSha256, declaredKind: submission.research.declaredKind, snapshots: submission.research.evidenceSnapshotIds }),
-    graphics: sha256Json(submission.graphics),
-    assets: sha256Json(assetsList),
-    rights: sha256Json(submission.rights),
-    decisions: sha256Json(submission.humanDecisions ?? []),
+  const observed: ObservedInputs = {
+    mediaKey: media?.sha256 ?? `unverified:${manifest?.output.sha256 ?? "none"}`,
+    encode: probed ? { width: probed.width, height: probed.height, fps: probed.fps, videoCodec: probed.videoCodec, audioCodec: probed.audioCodec } : manifest?.output.encode ?? null,
+    captionsSha256: captionsAsset ? sha256File(captionsAsset.path) ?? "missing" : "none",
+    panelSha256: panel ? sha256File(panel.path) : null,
+    assets: files.map((file) => ({ assetId: file.assetId, sha256: file.sha256 })),
   };
+  const modelSha = modelSnapshotSha256();
+  const bindings = bindingsFor(submission, observed, modelSha);
+  const captionsSha256 = observed.captionsSha256;
 
   const verdict = verdictFor(findings, human.gates);
   const packet: ReviewPacket = deepFreeze({
@@ -594,6 +637,9 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
       claimsSha256: bindings.claims,
       graphicsSha256: bindings.graphics,
       productionPlanSha256,
+      titleSha256: bindings.title,
+      descriptionSha256: bindings.description,
+      approvedDestination: submission.approvedDestination,
       renderManifestSha256: manifestSha256 ?? "unreadable",
       assetsSha256: bindings.assets,
       rightsManifestSha256: bindings.rights,
@@ -630,7 +676,7 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
     bindings,
   } satisfies ReviewPacket);
   ISSUED.add(packet);
-  STATE.set(packet, { media, manifestPath: submission.renderManifestPath, manifestSha256, files });
+  STATE.set(packet, { media, observed, manifestPath: submission.renderManifestPath, manifestSha256, files });
   return packet;
 }
 
@@ -660,11 +706,25 @@ export function planRechecks(previous: Readonly<Record<BindingKey, string>>, nex
   };
 }
 
+/** Plain names for binding keys, for the reasons a revalidation gives. */
+const BINDING_LABELS: Record<BindingKey, string> = {
+  media: "the media", platformCut: "the platform cut", script: "the storyboard (script and narration)", captions: "the captions",
+  disclosure: "the disclosures", claims: "the declared claims", evidence: "the research contract or the model",
+  research: "the research identity", graphics: "the graphics", assets: "the assets", rights: "the rights records",
+  decisions: "the recorded human decisions", title: "the title", description: "the description",
+  ctaDestination: "the approved call-to-action destination",
+};
+
 /**
- * Re-read the files a packet was made from. A packet whose media or assets
- * changed no longer describes anything; the plan says what must run again.
+ * Check that a packet still describes its inputs.
+ *
+ * Always re-reads the files it was made from. Given the submission as it
+ * stands now, it also recomputes every input binding from it (title,
+ * description, destination, script, claims, rights, research and the rest),
+ * so an edit made after the packet was issued invalidates exactly the checks
+ * and gates that depend on what changed.
  */
-export function revalidateReviewPacket(packet: ReviewPacket): { valid: boolean; reasons: string[]; plan: RecheckPlan | null } {
+export function revalidateReviewPacket(packet: ReviewPacket, current?: ReviewSubmission): { valid: boolean; reasons: string[]; plan: RecheckPlan | null } {
   if (!isIssuedReviewPacket(packet)) {
     return { valid: false, reasons: ["This packet was not issued by reviewCreative (it was built by hand, copied, or read from JSON); it proves nothing."], plan: null };
   }
@@ -692,6 +752,25 @@ export function revalidateReviewPacket(packet: ReviewPacket): { valid: boolean; 
     if (file.role === "captions") next.captions = `${packet.bindings.captions}:changed`;
     if (file.role === "disclosure-panel") next.disclosure = `${packet.bindings.disclosure}:changed`;
   }
+  if (current) {
+    if (current.creativeId !== packet.creativeId || current.variant.variantId !== packet.platformVariantId) {
+      reasons.push(`The submission is for ${current.creativeId} / ${current.variant.variantId}, not this packet's ${packet.creativeId} / ${packet.platformVariantId}.`);
+      next.platformCut = `${next.platformCut}:other-creative-or-cut`;
+    }
+    if (current.renderManifestPath !== state.manifestPath) {
+      reasons.push("The submission names a different render manifest: it is about another render.");
+      next.media = `${next.media}:other-render`;
+    }
+    const recomputed = bindingsFor(current, state.observed, modelSnapshotSha256());
+    for (const key of Object.keys(recomputed) as BindingKey[]) {
+      // Media, captions and assets come from files, checked above.
+      if (key === "media" || key === "captions" || key === "assets") continue;
+      if (recomputed[key] !== packet.bindings[key]) {
+        reasons.push(`${BINDING_LABELS[key][0].toUpperCase()}${BINDING_LABELS[key].slice(1)} changed after review.`);
+        next[key] = recomputed[key];
+      }
+    }
+  }
   return { valid: reasons.length === 0, reasons, plan: reasons.length ? planRechecks(packet.bindings, next) : null };
 }
 
@@ -699,15 +778,15 @@ export function revalidateReviewPacket(packet: ReviewPacket): { valid: boolean; 
  * The only door to final approval, and it is shut.
  *
  * It refuses a packet it did not issue, a packet that is not eligible, and a
- * packet whose files changed. Even an eligible, unchanged packet is refused:
+ * packet whose files, or (given the current submission) whose inputs, changed. Even an eligible, unchanged packet is refused:
  * final approval needs a trusted, authenticated decision, and this repository
  * has no mechanism to record one. Approval itself is not MASTER #7's to grant.
  */
-export function requestFinalApproval(packet: unknown): { granted: false; reasons: string[] } {
+export function requestFinalApproval(packet: unknown, current?: ReviewSubmission): { granted: false; reasons: string[] } {
   if (!isIssuedReviewPacket(packet)) return { granted: false, reasons: ["Not a packet issued by reviewCreative."] };
   const reasons: string[] = [];
   if (packet.verdict !== "eligible-to-request-final-approval") reasons.push(`The packet's verdict is ${packet.verdict}.`);
-  const revalidation = revalidateReviewPacket(packet);
+  const revalidation = revalidateReviewPacket(packet, current);
   reasons.push(...revalidation.reasons);
   reasons.push(APPROVAL_MECHANISM.why);
   return { granted: false, reasons };

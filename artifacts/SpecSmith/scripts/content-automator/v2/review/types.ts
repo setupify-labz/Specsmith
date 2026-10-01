@@ -84,16 +84,16 @@ export const CHECKS = {
   "disclosure.content": { title: "The rendered disclosure panel carries the planned disclosure, verbatim, legibly", bindsTo: ["disclosure", "assets"] },
   "disclosure.coverage": { title: "The disclosure is on screen for every claim, for the whole video", bindsTo: ["disclosure", "media", "claims"] },
   "disclosure.safe-area": { title: "Disclosure and captions stay inside the platform cut's safe area", bindsTo: ["platformCut", "disclosure", "captions"] },
-  "claims.model": { title: "Every figure agrees with the model it comes from, ties kept apart from leads", bindsTo: ["claims", "evidence", "script"] },
-  "claims.presentation": { title: "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact", bindsTo: ["claims", "script", "captions", "evidence"] },
+  "claims.model": { title: "Every figure agrees with the model it comes from, ties kept apart from leads", bindsTo: ["claims", "evidence", "script", "captions", "title", "description"] },
+  "claims.presentation": { title: "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact", bindsTo: ["claims", "script", "captions", "evidence", "title", "description"] },
   "claims.screen": { title: "A figure is presented over a screen showing the build, settings and game it is about", bindsTo: ["claims", "assets", "script"] },
-  "claims.undeclared": { title: "No figure appears in text without a declared, checkable claim", bindsTo: ["claims", "script", "captions"] },
-  "claims.research": { title: "Script against the research contract, through the strict gate (MASTER #2)", bindsTo: ["research", "script"] },
+  "claims.undeclared": { title: "No figure appears in text without a declared, checkable claim", bindsTo: ["claims", "script", "captions", "graphics", "title", "description"] },
+  "claims.research": { title: "Script, title and description against the research contract, through the strict gate (MASTER #2)", bindsTo: ["research", "script", "title", "description"] },
   "captures.current": { title: "Each capture still shows what the current model gives for its state", bindsTo: ["assets", "evidence"] },
   "graphics.integrity": { title: "Editorial graphics show only supported values, at honest scale, attributed truthfully", bindsTo: ["graphics", "evidence", "assets"] },
-  "storyboard.quality": { title: "MASTER #1 storyboard review: no recommended fix or hard failure outstanding", bindsTo: ["script", "captions"] },
+  "storyboard.quality": { title: "MASTER #1 storyboard review: no recommended fix or hard failure outstanding", bindsTo: ["script", "captions", "ctaDestination"] },
   "research.provenance": { title: "Research identity, and synthetic research kept marked as synthetic", bindsTo: ["research"] },
-  "cta.destination": { title: "The call to action names the approved destination", bindsTo: ["script", "captions"] },
+  "cta.destination": { title: "The call to action names the approved destination", bindsTo: ["script", "captions", "description", "ctaDestination"] },
   "rights.assets": { title: "Every asset in the render has source, permission, permitted use and scope", bindsTo: ["assets", "rights"] },
   "rights.placeholders": { title: "Placeholder voice, fixture audio and mock images stay identified", bindsTo: ["assets", "rights"] },
   "text.ocr": { title: "Rendered on-screen text read back from pixels (OCR)", bindsTo: ["media"] },
@@ -106,7 +106,9 @@ export type CheckId = keyof typeof CHECKS;
 /** The input identities a packet binds to. */
 export type BindingKey =
   | "media" | "platformCut" | "script" | "captions" | "disclosure" | "claims" | "evidence"
-  | "research" | "graphics" | "assets" | "rights" | "decisions";
+  | "research" | "graphics" | "assets" | "rights" | "decisions"
+  /** The published title, the description, and the destination the call to action must name. */
+  | "title" | "description" | "ctaDestination";
 
 export type HumanGateId =
   | "hook-on-phone"
@@ -187,6 +189,9 @@ export interface ReviewPacket {
     readonly claimsSha256: string;
     readonly graphicsSha256: string;
     readonly productionPlanSha256: string;
+    readonly titleSha256: string;
+    readonly descriptionSha256: string;
+    readonly approvedDestination: string;
     readonly renderManifestSha256: string;
     readonly assetsSha256: string;
     readonly rightsManifestSha256: string;

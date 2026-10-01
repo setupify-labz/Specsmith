@@ -1,7 +1,7 @@
 {
   "version": "quality-integrity-review-packet-v1",
-  "packetId": "83a4551cb2372b77412ccd96",
-  "reviewedAt": "2026-10-01T20:13:13.606Z",
+  "packetId": "cfad4a9ea9b46e5f52e8e257",
+  "reviewedAt": "2026-10-01T21:22:35.650Z",
   "creativeId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits/claude-batch-three-checks",
   "platformVariantId": "youtube-shorts-1080x1920-30",
   "verdict": "awaiting-human-review",
@@ -24,6 +24,9 @@
     "claimsSha256": "b16b09bfb97cf005776c83a034815506c94c6576e463b03fa403c995822c2fc5",
     "graphicsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "productionPlanSha256": "70befc8ca091344cffa90c6536d130e91ad6dcd449fbf750f99b2849404f96bc",
+    "titleSha256": "ecc0e47fdca975cc47509be4b7fdc23706c6d55ff46999e4fc5fec14d8159b1d",
+    "descriptionSha256": "2cdd3275693955ed5bb662dceacbe8ceb88e9a3c966094ae46bb62a1763043b6",
+    "approvedDestination": "/compare",
     "renderManifestSha256": "3f681180891d6cc54c9e4025adf72167e72e4ee49940135d3b17bb1eaa93d67b",
     "assetsSha256": "b8ed92d43d1c3ff0785a9e19ae146ae12741fc3c1ef77be035547d0068a663a9",
     "rightsManifestSha256": "7c5f8ce01b4f25d69c01edbb71625c01781132f42fdfbc8a68a6c604d79bf5c4",
@@ -261,7 +264,7 @@
     {
       "check": "claims.research",
       "status": "passed",
-      "detail": "Script against the research contract, through the strict gate (MASTER #2)"
+      "detail": "Script, title and description against the research contract, through the strict gate (MASTER #2)"
     },
     {
       "check": "captures.current",
@@ -346,7 +349,9 @@
         "script",
         "claims",
         "evidence",
-        "graphics"
+        "graphics",
+        "title",
+        "description"
       ],
       "status": "open",
       "recordedDecisions": []
@@ -410,7 +415,10 @@
         "media",
         "platformCut",
         "assets",
-        "rights"
+        "rights",
+        "title",
+        "description",
+        "ctaDestination"
       ],
       "status": "open",
       "recordedDecisions": []
@@ -432,6 +440,9 @@
     "graphics": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     "assets": "b8ed92d43d1c3ff0785a9e19ae146ae12741fc3c1ef77be035547d0068a663a9",
     "rights": "7c5f8ce01b4f25d69c01edbb71625c01781132f42fdfbc8a68a6c604d79bf5c4",
-    "decisions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    "decisions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "title": "ecc0e47fdca975cc47509be4b7fdc23706c6d55ff46999e4fc5fec14d8159b1d",
+    "description": "2cdd3275693955ed5bb662dceacbe8ceb88e9a3c966094ae46bb62a1763043b6",
+    "ctaDestination": "a00971334b056054e1e69d472fe00ec05157634995151654b0f5e5dfb20b4e4f"
   }
 }

@@ -20,13 +20,13 @@ import type { BindingKey, HumanGateId, HumanGateRecord, ReviewFinding } from "./
 
 export const HUMAN_GATES: readonly { readonly gate: HumanGateId; readonly question: string; readonly bindsTo: readonly BindingKey[] }[] = [
   { gate: "hook-on-phone", question: "Watched on a phone at real size: is the hook understood within the first two seconds?", bindsTo: ["media", "platformCut", "script"] },
-  { gate: "factual-takeaway", question: "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?", bindsTo: ["media", "script", "claims", "evidence", "graphics"] },
+  { gate: "factual-takeaway", question: "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?", bindsTo: ["media", "script", "claims", "evidence", "graphics", "title", "description"] },
   { gate: "readable-at-size", question: "Are all text, numbers and game names readable at real size, inside the visible area?", bindsTo: ["media", "platformCut", "captions", "disclosure"] },
   { gate: "pacing", question: "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?", bindsTo: ["media", "script"] },
   { gate: "style-fits-audience", question: "Does the style suit a beginner choosing a gaming PC?", bindsTo: ["media"] },
   { gate: "voice-and-mix", question: "After a full listen: is every word pronounced correctly, and is the mix clear?", bindsTo: ["media", "script"] },
   { gate: "disclosures-in-context", question: "Is each disclosure understandable in context, while the claim it qualifies is on screen?", bindsTo: ["media", "disclosure", "claims"] },
-  { gate: "rights-and-publication", question: "Are the rights to every asset signed off, and is publication of this exact cut authorised?", bindsTo: ["media", "platformCut", "assets", "rights"] },
+  { gate: "rights-and-publication", question: "Are the rights to every asset signed off, and is publication of this exact cut authorised?", bindsTo: ["media", "platformCut", "assets", "rights", "title", "description", "ctaDestination"] },
 ];
 
 /** Stated in every packet, so nobody has to find this comment. */
