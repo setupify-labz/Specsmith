@@ -6,7 +6,7 @@ import {
   UiRenderStateError,
   VERTICAL_1080x1920,
 } from "./uiRenderState.ts";
-import { compareAverageFpsText, planSurface } from "./surfaces.ts";
+import { compareAverageFpsText, compareTiesText, planSurface } from "./surfaces.ts";
 import { createDeterministicUiRenderAdapter } from "./deterministicUiRenderAdapter.ts";
 import { RenderAdapterRegistry, createDryRunAdapter, createFullDryRunRegistry } from "../rendering.ts";
 import type { ProductionTask } from "../types.ts";
@@ -156,9 +156,16 @@ describe("deterministic state behaviour", () => {
       planSurface(parseUiRenderRequest({ ...compare, state: { ...compare.state, resolution, preset } })).expectedText.slice(2);
     const averages = at("4k", "ultra");
     expect(averages.length).toBeGreaterThan(0);
-    for (const text of averages) expect(text).toMatch(/^Est\. Avg FPS: \d+$/);
+    for (const text of averages.slice(0, -1)) expect(text).toMatch(/^Est\. Avg FPS: \d+$/);
+    expect(averages.at(-1)).toMatch(/^\d+ ties?$/);
     expect(averages).not.toEqual(at("1080p", "high"));
-    expect(averages).toEqual(compareAverageFpsText({ ...compare.state, resolution: "4k", preset: "ultra" }));
+    expect(averages.slice(0, -1)).toEqual(compareAverageFpsText({ ...compare.state, resolution: "4k", preset: "ultra" }));
+  });
+
+  it("requires the model's tie count, so a capture of a build that scored ties as leads is refused", () => {
+    const request = parseUiRenderRequest({ captureType: "static", state: { surface: "compare", gpuA: "rtx5060ti", cpuA: "i3-13100f", gpuB: "rtx4060ti", cpuB: "r5-9600x", resolution: "1440p", preset: "high" } });
+    expect(planSurface(request).expectedText).toContain("3 ties");
+    expect(compareTiesText(request.state as never)).toBe("3 ties");
   });
 
   it("maps each surface to its real SpecSmith route", () => {

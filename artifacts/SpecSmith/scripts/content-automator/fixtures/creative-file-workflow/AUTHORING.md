@@ -29,7 +29,6 @@ This is a local, file-based workflow. Nothing here calls a provider, spends mone
 Every beat showing the product capture must carry these verbatim in `disclosureTextByBeat`:
 
 - `disclosure.fps-estimate`: FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.
-- `disclosure.model-range`: The range shown is a model convention, not measured or calibrated uncertainty.
 
 ## The one capture state
 

@@ -1,0 +1,122 @@
+{
+  "conceptId": "claude-batch-three-checks",
+  "axes": {
+    "audienceExperience": "investigator",
+    "explanatoryStructure": "question-evidence-boundary",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Same price, different parts. What does this comparison page actually settle?",
+  "viewerTakeaway": "I can apply a repeatable check to any comparison page and know when its numbers are too close to act on.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-1080p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1080p_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-4k-ultra",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_4k_ultra_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "checklist-1080p-low",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1080p_low_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "Three checks for any comparison page.",
+      "onScreenText": "Three checks",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 3,
+      "endSecond": 9,
+      "narration": "First, set the resolution you actually play at. Here the page is switched to 1080p.",
+      "onScreenText": "1. Your resolution",
+      "visualIds": [
+        "checklist-1080p-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9,
+      "endSecond": 17,
+      "narration": "Second: at these settings, every per-game gap on this page is smaller than the range the model declares for its own estimates. These are model estimates.",
+      "onScreenText": "2. Is the gap real?",
+      "visualIds": [
+        "checklist-capture"
+      ],
+      "factDependencies": [
+        "SYNTHETIC_ENGINEERING_FIXTURE-estimate-range-limit"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 17,
+      "endSecond": 24,
+      "narration": "Third, change the quality setting too. At 4K Ultra every number on the page is a new estimate, so run the check again.",
+      "onScreenText": "3. Your settings",
+      "visualIds": [
+        "checklist-4k-ultra"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 24,
+      "endSecond": 29,
+      "narration": "Open /compare and run all three checks on your own pair.",
+      "onScreenText": "Run it at /compare",
+      "visualIds": [
+        "checklist-1080p-low"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

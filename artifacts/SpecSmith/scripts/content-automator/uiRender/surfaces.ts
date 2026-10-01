@@ -23,6 +23,7 @@ import cpus from "../../../src/data/cpus.json" with { type: "json" };
 import games from "../../../src/data/games.json" with { type: "json" };
 import { estimateFpsForBuild, type BuildFpsCpu, type BuildFpsGame, type BuildFpsGpu } from "../../../src/lib/fps.ts";
 import { getAverageFps } from "../../../src/lib/compareValue.ts";
+import { tallyModelledLeads } from "../../../src/lib/compareTally.ts";
 import { predictCrate } from "./crateSeed.ts";
 import {
   BUILDER_COMPONENT_SLOTS,
@@ -104,12 +105,31 @@ const CRATE_FIRST_BUTTON_TEXT = `Open ${CRATE_REVEAL_ORDER[0].label} Crate`;
  * setting. A capture of the wrong setting shows different numbers and times
  * out instead of being accepted.
  */
-export function compareAverageFpsText(state: { gpuA: string; cpuA: string; gpuB: string; cpuB: string; resolution?: string; preset?: string }): string[] {
-  const gpu = (id: string) => (gpus as BuildFpsGpu[]).find((entry) => (entry as { id?: string }).id === id)!;
-  const cpu = (id: string) => (cpus as BuildFpsCpu[]).find((entry) => (entry as { id?: string }).id === id)!;
-  const average = (gpuId: string, cpuId: string) => getAverageFps((games as BuildFpsGame[]).map((game) =>
-    estimateFpsForBuild(gpu(gpuId), cpu(cpuId), game, state.resolution ?? "1440p", state.preset ?? "high").estimated));
-  return [...new Set([`Est. Avg FPS: ${average(state.gpuA, state.cpuA)}`, `Est. Avg FPS: ${average(state.gpuB, state.cpuB)}`])];
+type ComparePair = { gpuA: string; cpuA: string; gpuB: string; cpuB: string; resolution?: string; preset?: string };
+
+function compareEstimates(state: ComparePair, gpuId: string, cpuId: string): number[] {
+  const gpu = (gpus as BuildFpsGpu[]).find((entry) => (entry as { id?: string }).id === gpuId)!;
+  const cpu = (cpus as BuildFpsCpu[]).find((entry) => (entry as { id?: string }).id === cpuId)!;
+  return (games as BuildFpsGame[]).map((game) =>
+    estimateFpsForBuild(gpu, cpu, game, state.resolution ?? "1440p", state.preset ?? "high").estimated);
+}
+
+export function compareAverageFpsText(state: ComparePair): string[] {
+  const a = getAverageFps(compareEstimates(state, state.gpuA, state.cpuA));
+  const b = getAverageFps(compareEstimates(state, state.gpuB, state.cpuB));
+  return [...new Set([`Est. Avg FPS: ${a}`, `Est. Avg FPS: ${b}`])];
+}
+
+/**
+ * The tie count Compare must show for this state. A build that still scored
+ * ties as Build A leads renders no tie count, so its capture is refused as
+ * stale rather than accepted with an inflated tally.
+ */
+export function compareTiesText(state: ComparePair): string {
+  const a = compareEstimates(state, state.gpuA, state.cpuA);
+  const b = compareEstimates(state, state.gpuB, state.cpuB);
+  const { ties } = tallyModelledLeads(a.map((fpsA, index) => ({ fpsA, fpsB: b[index] })));
+  return `${ties} ${ties === 1 ? "tie" : "ties"}`;
 }
 
 function q(params: Record<string, string | undefined>): string {
@@ -141,7 +161,7 @@ export function planSurface(request: UiRenderRequest): SurfacePlan {
           preset: state.preset,
         })}`,
         subjectIds: [state.gpuA, state.cpuA, state.gpuB, state.cpuB],
-        expectedText: [sideA, sideB, ...compareAverageFpsText(state)],
+        expectedText: [sideA, sideB, ...compareAverageFpsText(state), compareTiesText(state)],
         // The composite string is rendered in the results section, so framing
         // on it lands the crop on the actual comparison.
         // "Share Comparison" sits directly under the Resolution and Quality

@@ -24,7 +24,11 @@ describe("incidental counts are not purchase evidence", () => {
     const batch = importAuthoredBatch(DEMO_WORKFLOW_DIRECTORY, attempt);
     const result = runCreativeProposalPass({ ...DEMO_MISSION, concepts: batch.concepts });
     expect(result.proposals).toHaveLength(3);
-    expect(result.proposals.every((proposal) => proposal.contractEligible)).toBe(true);
+    // No incidental count reaches the evidence gate as a claim.
+    expect(result.proposals.flatMap((proposal) => proposal.evidenceFindings.filter((finding) => finding.severity === "hard-fail"))).toEqual([]);
+    // These historical batches are now refused for one reason only: they carry
+    // "The range shown..." on Compare beats, where no range is shown.
+    expect(new Set(result.proposals.flatMap((proposal) => proposal.critique.findings.map((finding) => finding.code)))).toEqual(new Set(["disclosure-describes-absent-range"]));
     expect(result.proposals.every((proposal) => proposal.reviewRequired)).toBe(true);
   });
   it.each(["Step one: write down what would answer your question.", "Step two: inspect the evidence.", "Pick one.",

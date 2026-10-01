@@ -40,9 +40,9 @@ const STATE = "compare_rtx5060ti_i3-13100f_vs_rtx4060ti_r5-9600x_1440p_high_stat
 const CLAIM = "SYNTHETIC_TEST_FIXTURE-range-limit";
 const REFUSED = "SYNTHETIC_TEST_FIXTURE-better-buy";
 const QUESTION = "Different parts. What do these model estimates actually establish?";
+// The Compare capture shows single estimates and no range, so only the estimate disclosure applies.
 const DISCLOSURES = [
   "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems.",
-  "The range shown is a model convention, not measured or calibrated uncertainty.",
 ];
 const ANSWER =
   "On this comparison every per-game difference is smaller than the range SpecSmith's model declares for its own " +
@@ -156,7 +156,7 @@ function concept(
     requiredCapabilities: [
       { capabilityId: "render.compare-surface-capture", description: "Existing deterministic Compare UI capture." },
     ],
-    requiredDisclosures: ["disclosure.fps-estimate", "disclosure.model-range"],
+    requiredDisclosures: ["disclosure.fps-estimate"],
     beats,
     disclosureTextByBeat: { 0: DISCLOSURES, 1: DISCLOSURES, 2: DISCLOSURES },
   };

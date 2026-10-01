@@ -1,14 +1,19 @@
 {
   "version": "creative-file-workflow-v1",
   "attempt": 5,
-  "briefHash": "d090f021ab4330bf076617c7fd314268c3559f2cd74441b4a8a0b7bd6cd1de67",
+  "briefHash": "3888a94e7fcfa4c2e865cdda0d2fdf014a8b1a74a7e2d3c4db170b4332a25630",
   "status": "blocked-revision",
   "reason": "Bounded revision budget exhausted; unresolved concepts preserved for review, not approved.",
   "concepts": [
     {
       "conceptId": "claude-batch-commit-first",
-      "contractEligible": true,
+      "contractEligible": false,
       "required": [
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 0s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 6s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 13s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 28s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 36s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
         "MASTER #1 storyboard review [hook-duration] at beat 1: Hook is 6s against a 3s envelope. Shorten beat 1 to the envelope, moving any setup into beat 2.",
         "MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.",
         "MASTER #1 storyboard review [information-density] at the whole storyboard: Narration peaks at 5 words per second. Cut the densest beat's narration to the single idea it needs, or lengthen the beat.",
@@ -22,16 +27,27 @@
     },
     {
       "conceptId": "claude-batch-three-checks",
-      "contractEligible": true,
-      "required": [],
+      "contractEligible": false,
+      "required": [
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 0s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 3s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 9s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 17s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 24s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range."
+      ],
       "advisory": [],
       "missionBlockers": [],
       "blockedOutsideAuthor": []
     },
     {
       "conceptId": "claude-batch-vanishing-gap",
-      "contractEligible": true,
+      "contractEligible": false,
       "required": [
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 0s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 5s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 13s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 28s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
+        "Remove the range disclosure from beats that show no range; the Compare capture displays single estimates only. Beat at 36s carries \"The range shown is a model convention, not measured or calibrated uncertainty.\", but nothing it shows displays a range.",
         "MASTER #1 storyboard review [hook-duration] at beat 1: Hook is 5s against a 3s envelope. Shorten beat 1 to the envelope, moving any setup into beat 2.",
         "MASTER #1 storyboard review [visual-repetition] at the whole storyboard: 5 consecutive beats share one visual direction. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count.",
         "MASTER #1 storyboard review [cta-clarity] at beat 5: The CTA beat does not state the exact route. Name the SpecSmith route explicitly in the final beat.",

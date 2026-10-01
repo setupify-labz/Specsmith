@@ -122,7 +122,8 @@ export type ConceptDefectCode =
   | "visual-never-used"
   | "visual-honesty"
   | "missing-capability"
-  | "undisclosed-estimate";
+  | "undisclosed-estimate"
+  | "disclosure-describes-absent-range";
 
 export interface ConceptDefect {
   readonly code: ConceptDefectCode;
@@ -216,8 +217,7 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
     ...concept.visuals.filter((visual) => visual.kind === "real-product-capture" && visual.surface === "compare").map((visual) => visual.visualId)]);
   for (const visualId of disclosureVisuals) {
     const visual = concept.visuals.find((entry) => entry.visualId === visualId);
-    const fps = (visual?.kind === "real-product-capture" && visual.surface === "compare") || (visual?.kind === "derived-illustration" && (visual.subject === "fps" || visual.subject === "frame-rate" || visual.subject === "frame-time"));
-    const required = fps ? ["disclosure.fps-estimate", "disclosure.model-range"] : ["disclosure.illustration"];
+    const required = requiredDisclosureIdsFor(visual);
     const covered = required.every((id) => concept.requiredDisclosures.includes(id) && input.guaranteedDisclosureIds.includes(id) &&
       concept.beats.every((beat, index) => !beat.visualIds.includes(visualId) || concept.disclosureTextByBeat?.[index]?.includes(CREATIVE_DISCLOSURES[id])));
     if (!covered) {
@@ -229,6 +229,19 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
       });
     }
   }
+  // "The range shown..." is only true while a range is on screen. Compare
+  // renders single estimates, never a range, so on a beat showing only
+  // Compare the sentence describes something the viewer cannot see.
+  concept.beats.forEach((beat, index) => {
+    if (!concept.disclosureTextByBeat?.[index]?.includes(CREATIVE_DISCLOSURES["disclosure.model-range"])) return;
+    const showsRange = beat.visualIds.some((id) => showsEstimateRange(concept.visuals.find((visual) => visual.visualId === id)));
+    if (!showsRange) {
+      defects.push({
+        code: "disclosure-describes-absent-range",
+        detail: `Beat at ${beat.startSecond}s carries "${CREATIVE_DISCLOSURES["disclosure.model-range"]}", but nothing it shows displays a range.`,
+      });
+    }
+  });
   if (concept.beats.some((beat) => !Number.isFinite(beat.startSecond) || !Number.isFinite(beat.endSecond) || beat.startSecond < 0 || beat.endSecond <= beat.startSecond) ||
       (concept.beats.length > 0 && concept.beats[0].startSecond !== 0)) {
     defects.push({ code: "beats-not-contiguous", detail: "Beats must start at zero and have finite, positive durations." });
@@ -281,6 +294,22 @@ export function toStoryboardBeats(concept: CreativeConcept): StoryboardBeat[] {
       factDependencies: [...beat.factDependencies],
     };
   });
+}
+
+/** Whether a visual puts a model estimate RANGE on screen. Compare shows single values only. */
+export function showsEstimateRange(visual: DeclaredVisual | undefined): boolean {
+  return visual?.kind === "derived-illustration" && (visual.subject === "fps" || visual.subject === "frame-rate" || visual.subject === "frame-time");
+}
+
+/**
+ * The disclosures a visual needs while it is on screen. A Compare capture
+ * shows estimated FPS but no range, so it needs the estimate disclosure only;
+ * the range disclosure belongs where a range is actually drawn.
+ */
+export function requiredDisclosureIdsFor(visual: DeclaredVisual | undefined): string[] {
+  if (visual?.kind === "real-product-capture" && visual.surface === "compare") return ["disclosure.fps-estimate"];
+  if (showsEstimateRange(visual)) return ["disclosure.fps-estimate", "disclosure.model-range"];
+  return ["disclosure.illustration"];
 }
 
 /**
