@@ -29,7 +29,7 @@
 // that's a real next step (see the PR description's Limitations), left out
 // here rather than shipped unexercised by any actual render in this change.
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { copyFile, mkdir, rename, stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -165,6 +165,11 @@ export function createLocalFixtureTtsAdapter(options: {
           speedWpm,
           bytes: size,
           textCharacters: text.length,
+          // The exact text read, so a review can bind the audio to a script.
+          textSha256: createHash("sha256").update(text).digest("hex"),
+          // espeak-ng reads every beat as one continuous take: there is no
+          // per-beat timing to check narration against its beat.
+          beatTiming: "none",
           isPaidProvider: false,
           isFixture: true,
         },

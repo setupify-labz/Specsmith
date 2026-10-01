@@ -1,0 +1,78 @@
+QUALITY AND INTEGRITY REVIEW — SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits/claude-batch-three-checks/DEFECTIVE-derivative / youtube-shorts-1080x1920-30
+Verdict: blocked
+  BLOCKED: 11 defect(s) to fix (owners: disclosure, script). First: 3.20s, 6.00s, 9.20s, 13.00s, 17.20s, 20.50s, 24.20s, 26.50s, 29.25s: The verified disclosure is missing, changed or obscured at these moments; it must be on screen whenever a claim is.
+  What this means: Not ready. Fix every blocking finding, then review the new cut; nothing here has been approved.
+Media: /home/user/Specsmith/artifacts/SpecSmith/render-output/master6-claude-batch-three-checks/review/DEFECTIVE-disclosure-blanked.mp4
+  sha256 20d35cc7d67ece1e918f544a2dad81db92580435dce1977ff351c4ca8cd46779 · 1080x1920 · 30 fps · 29.3s · h264/aac
+Research: SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits (synthetic-fixture)
+Fix before anything else (11):
+  - [disclosure-not-on-screen] 3.20s, 6.00s, 9.20s, 13.00s, 17.20s, 20.50s, 24.20s, 26.50s, 29.25s — The verified disclosure is missing, changed or obscured at these moments; it must be on screen whenever a claim is.
+      evidence: At 3.20s the disclosure band does not show the verified disclosure panel (error 27.8). (and 8 more sampled moment(s))
+      owner: disclosure; recheck: disclosure.coverage, frames.bands, disclosures-in-context
+  - [estimate-labelled-measured] title — This figure is computed by SpecSmith's estimate model, but it is declared as a measured benchmark. Estimates and measurements never share a label.
+      evidence: wins 13 games to 7
+      owner: script; recheck: claims.presentation
+  - [estimate-presented-as-measured] title — "measured" presents a model estimate as a measurement.
+      evidence: RTX 5060 Ti build wins 13 games to 7: measured
+      owner: script; recheck: claims.presentation
+  - [estimate-unlabelled] title — The title states an estimated figure without saying it is an estimate; no on-screen disclosure travels with it.
+      evidence: wins 13 games to 7
+      owner: script; recheck: claims.presentation, disclosure.coverage
+  - [tie-counted-as-lead] title — Counts the 3 tied game(s) as Build A leads: the model gives 10 A leads, 3 ties, 7 B leads. A tie is not a win.
+      evidence: wins 13 games to 7
+      owner: script; recheck: claims.model
+  - [conditions-omitted] title — An FPS figure in the title does not state its resolution and preset (1440p high); no screen travels with it.
+      evidence: wins 13 games to 7
+      owner: script; recheck: claims.presentation
+  - [estimate-presented-as-measured] description — "Measured" presents a model estimate as a measurement.
+      evidence: Measured: the RTX 5060 Ti build is exactly 2 FPS slower on average. See /compare-deals.
+      owner: script; recheck: claims.presentation
+  - [estimate-unlabelled] description — The description states an estimated figure without saying it is an estimate; no on-screen disclosure travels with it.
+      evidence: exactly 2 FPS slower on average
+      owner: script; recheck: claims.presentation, disclosure.coverage
+  - [rounded-average-as-exact] description — The averages Compare shows are rounded means of 20 estimates; their difference is not an exact figure and may not be presented as one.
+      evidence: exactly 2 FPS slower on average
+      owner: script; recheck: claims.presentation
+  - [conditions-omitted] description — An FPS figure in the description does not state its resolution and preset (1440p high); no screen travels with it.
+      evidence: exactly 2 FPS slower on average
+      owner: script; recheck: claims.presentation
+  - [cta-wrong-destination] call to action — The call to action names /compare-deals; the approved destination is /compare.
+      evidence: /compare-deals
+      owner: script; recheck: cta.destination
+Only a person can decide (4):
+  - [narration-timing-unknown] narration — Nothing measures whether each line is spoken over its own beat's screen. A person must check during a full watch that every figure is heard over the screen it describes.
+      evidence: beatTiming: none
+      owner: narration; recheck: narration.timing, pacing
+  - [safe-area-unverified] platform cut — Whether the platform's own interface covers the disclosure or captions is unknown; check on a real phone in the app.
+      evidence: youtube-shorts-1080x1920-30
+      owner: platform-cut; recheck: disclosure.safe-area, readable-at-size
+  - [rendered-text-unread] on-screen text — Read every caption, number and game name on a phone at real size.
+      evidence: no OCR
+      owner: human-review; recheck: text.ocr, readable-at-size
+  - [spoken-words-unheard] narration — Listen to the full narration: every number and name must be pronounced as written.
+      evidence: no ASR
+      owner: human-review; recheck: audio.asr, voice-and-mix
+Forbids final approval regardless of review (2):
+  - [synthetic-research] research — The research is a synthetic engineering fixture. The cut can be reviewed for craft, never published.
+      evidence: SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits
+      owner: research; recheck: research.provenance
+  - [placeholder-asset] asset youtube-shorts-voice — This narration is a placeholder (espeak-ng fixture voice; no production voice has been approved). It may be reviewed for craft but never published.
+      evidence: renderer metadata isFixture: true
+      owner: rights; recheck: rights.placeholders, rights-and-publication
+Checks completed: media.bytes passed; media.decode passed; media.format passed; media.blank-frozen passed; media.audio-levels passed; media.ending passed; frames.bands passed; captions.rendered-text passed; narration.binding passed; disclosure.content passed; disclosure.coverage failed; claims.model failed; claims.presentation failed; claims.screen passed; claims.undeclared passed; claims.research passed; captures.current passed; storyboard.quality passed; research.provenance passed; cta.destination failed; rights.assets passed; rights.placeholders passed; decisions.binding passed
+Checks not available:
+  - narration.timing (unavailable): The narration renderer read the script as one continuous take and recorded no per-beat timing; without ASR, which line is spoken over which screen cannot be measured.
+  - disclosure.safe-area (unavailable): No verified safe-area insets are recorded for youtube-shorts; guessed numbers are not used.
+  - graphics.integrity (not-applicable): No editorial graphics declared.
+  - text.ocr (unavailable): No OCR engine is part of this pipeline. Caption and disclosure wording is checked in the files that were burned in, and their presence in pixels, but not read back from the frames.
+  - audio.asr (unavailable): No speech recogniser is part of this pipeline. The audio is bound to its script by hash; what is actually said is not transcribed.
+Human gates (none can close here):
+  - hook-on-phone [open] Watched on a phone at real size: is the hook understood within the first two seconds?
+  - factual-takeaway [open] Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?
+  - readable-at-size [open] Are all text, numbers and game names readable at real size, inside the visible area?
+  - pacing [open] Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?
+  - style-fits-audience [open] Does the style suit a beginner choosing a gaming PC?
+  - voice-and-mix [open] After a full listen: is every word pronounced correctly, and is the mix clear?
+  - disclosures-in-context [open] Is each disclosure understandable in context, while the claim it qualifies is on screen?
+  - rights-and-publication [open] Are the rights to every asset signed off, and is publication of this exact cut authorised?
+Approval mechanism: no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks.

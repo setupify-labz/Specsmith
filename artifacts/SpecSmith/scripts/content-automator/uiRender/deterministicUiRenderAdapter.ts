@@ -29,6 +29,7 @@ import {
   UiCaptureError,
 } from "./capture.ts";
 import { ERROR_BOUNDARY_MARKERS, planSurface } from "./surfaces.ts";
+import { modelSnapshotSha256 } from "../modelSnapshot.ts";
 import {
   parseUiRenderRequest,
   stateIdentifier,
@@ -175,7 +176,18 @@ export function createDeterministicUiRenderAdapter(options: UiRenderAdapterOptio
             kind: "image",
             uri: `file://${finalPath}`,
             mimeType: "image/png",
-            metadata: buildMetadata(request, plan.route, plan.subjectIds, size, 1),
+            metadata: {
+              ...buildMetadata(request, plan.route, plan.subjectIds, size, 1),
+              // What this capture was proved to show, so a later review can
+              // check it against the model as it is then, not only now.
+              verifiedText: plan.expectedText.join("\n"),
+              // The page's whole text after the screenshot. Present on the
+              // page is not the same as inside the crop; a person still
+              // judges what is visible.
+              pageText: after,
+              modelSnapshotSha256: modelSnapshotSha256(),
+              capturedAt: new Date().toISOString(),
+            },
           }];
         }
 
