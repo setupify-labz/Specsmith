@@ -33,7 +33,8 @@
     "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff",
     "content:creative:render": "tsx scripts/content-automator/master6OfflineRender.ts",
     "content:poc:leads-vs-average": "tsx scripts/content-automator/leadsVsAverage/render.ts",
-    "content:poc:reversal": "tsx scripts/content-automator/reversalShort/render.ts"
+    "content:poc:reversal": "tsx scripts/content-automator/reversalShort/render.ts",
+    "content:poc:hook": "tsx scripts/content-automator/reversalHook/render.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
