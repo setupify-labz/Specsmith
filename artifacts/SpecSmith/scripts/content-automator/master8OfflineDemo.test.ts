@@ -40,9 +40,11 @@ describe("MASTER #8 offline demonstrations", () => {
     expect(report.steps.every((step) => step.refused)).toBe(true);
     expect(report.steps.map((step) => step.code)).toEqual([
       "ledger-refused", "packet-not-issued", "no-trusted-approval-mechanism", "no-trusted-approval-mechanism", "not-authorized", "synthetic-in-production",
+      "no-verified-source",
     ]);
     expect(report.ledger.events.map((event) => event.status)).toEqual(["generated", "machine-reviewed", "human-review-pending"]);
     expect(report.ledger.events.some((event) => event.simulated)).toBe(false);
     expect(report.learningUnknowns[0]).toMatch(/No provider-confirmed publication exists/);
+    expect(report.learningUnknowns[1]).toMatch(/Production metrics are closed: No verified metrics source exists for production/);
   });
 });

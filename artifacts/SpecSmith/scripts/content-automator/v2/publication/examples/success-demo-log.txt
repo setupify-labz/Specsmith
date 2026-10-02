@@ -1,24 +1,24 @@
 MASTER #8 SUCCESS DEMO — every approval, provider answer and number below is SIMULATED.
 
-1. MASTER #7 packet e75588a561fbcb8c91ff0e2c: awaiting-human-review (AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 3 question(s) only a person can answer; final approval is impossible until these are resolved: synthetic-research, placeholder-asset.)
+1. MASTER #7 packet 4b1aae39d1a129e050fa305f: awaiting-human-review (AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 3 question(s) only a person can answer; final approval is impossible until these are resolved: synthetic-research, placeholder-asset.)
 2. Ledger: machine-reviewed -> human-review-pending. Nothing is approved; nothing can be sent.
 3. SIMULATED trusted approval -> publication-authorized. SIMULATED authorization by SIMULATED:demo-editor. In production this would be refused: synthetic-research, placeholder-asset.
-4. Draft request built (idempotency key specsmith-61965a19d63b46687919ea3222aa09e6ae469381); building it sent nothing.
+4. Draft request built (idempotency key specsmith-fbbe52deed431a6defb075aecdd1962a327340bb); building it sent nothing.
 5. SIMULATED provider: first send -> unknown (No answer from the provider: SIMULATED: connection timed out after the request was sent.).
    Blind resend: refused [outcome-unknown] The last submission of review-fixture/leads-vs-average has no reliable outcome. Ask the provider first (reconcileSubmission); resending could create a duplicate post.
 6. Reconciled by asking the provider: The provider holds post SIM-POST-1 (draft).
 7. Retry -> already-accepted; posts held by the provider: 1; submissions received: 1.
 8. Provider confirms: The provider confirms published. (https://simulated.invalid/post/SIM-POST-1)
-9. SIMULATED observations imported at 24 hours for the demo post and one seeded peer.
-10. Learning report learning-1303316dc82ac7c3; next brief 3791e8e038fb… built by fileWorkflow.buildCreativeBrief with 3 evidence line(s).
+9. SIMULATED observations fetched from a registered (simulated) metrics source at 24 hours, for the demo post and one seeded peer.
+10. Learning report learning-3fad212b37d6dacb; next brief 213318ddf93d… built by fileWorkflow.buildCreativeBrief with 3 evidence line(s).
 
 Ledger events:
-  2026-10-02T08:47:54.524Z  generated
-  2026-10-02T08:48:54.524Z  machine-reviewed  [SIMULATED]
-  2026-10-02T08:48:54.524Z  human-review-pending  [SIMULATED]
-  2026-10-02T08:49:54.524Z  publication-authorized  [SIMULATED]
-  2026-10-02T08:50:54.524Z  submission-started  [SIMULATED]
-  2026-10-02T08:50:54.524Z  submission-unknown  [SIMULATED]
-  2026-10-02T08:52:54.524Z  draft-submitted  [SIMULATED]  post SIM-POST-1
-  2026-10-02T09:47:54.524Z  published  [SIMULATED]  post SIM-POST-1
-  2026-10-05T08:47:54.524Z  analytics-partial  [SIMULATED]
+  2026-10-02T18:21:53.851Z  generated
+  2026-10-02T18:22:53.851Z  machine-reviewed  [SIMULATED]
+  2026-10-02T18:22:53.851Z  human-review-pending  [SIMULATED]
+  2026-10-02T18:23:53.851Z  publication-authorized  [SIMULATED]
+  2026-10-02T18:24:53.851Z  submission-started  [SIMULATED]
+  2026-10-02T18:24:53.851Z  submission-unknown  [SIMULATED]
+  2026-10-02T18:26:53.851Z  draft-submitted  [SIMULATED]  post SIM-POST-1
+  2026-10-02T19:21:53.851Z  published  [SIMULATED]  post SIM-POST-1
+  2026-10-05T18:21:53.851Z  analytics-partial  [SIMULATED]

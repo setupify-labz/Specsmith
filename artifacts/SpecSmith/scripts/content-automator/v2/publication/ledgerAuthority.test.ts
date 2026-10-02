@@ -44,7 +44,7 @@ import {
   submitAuthorizedPublication,
   type ProviderPublicationRequest,
 } from "./boundary.ts";
-import { importProviderObservations } from "./observations.ts";
+import { createSimulatedObservationSource, importProviderObservations } from "./observations.ts";
 import { buildLearningReport } from "./learningReport.ts";
 
 const roots: string[] = [];
@@ -139,10 +139,19 @@ describe("legacy qc-passed ledgers are readable, and are not MASTER #7 approved"
     const ledger = (await loadStoredPublicationLedger(root, "legacy-1"))!;
 
     expect(await eligibilityFor(root, ledger)).toEqual({ creativeId: "legacy-1", reason: "legacy-unverified" });
-    await expect(importProviderObservations({ storeRoot: root, now: new Date("2026-10-01T00:00:00Z"), batch: {
-      kind: "PROVIDER_OBSERVATIONS", provider: "metricool", source: { adapter: "metricool-rest", simulated: false }, platform: "youtube-shorts",
+    const body = {
+      kind: "PROVIDER_OBSERVATIONS", provider: "metricool", platform: "youtube-shorts",
       accountId: "specsmithpc-main", providerPostId: "legacy-post-1", collectedAt: "2026-09-03T12:00:00Z", metrics: { views: 1000 }, raw: {},
-    } })).rejects.toMatchObject({ code: "legacy-unverified" });
+    } as const;
+    // Production metrics are closed outright (no verified source)...
+    await expect(importProviderObservations({ storeRoot: root, now: new Date("2026-10-01T00:00:00Z"), batch: body }))
+      .rejects.toMatchObject({ code: "no-verified-source" });
+    // ...and where a registered source does exist, the legacy ledger itself is refused.
+    const simRoot = await store("simulation");
+    await writeLegacyLedger(simRoot, "legacy-1", LEGACY_HISTORY);
+    await bindProviderPost(simRoot, "metricool", "legacy-post-1", "legacy-1");
+    await expect(importProviderObservations({ storeRoot: simRoot, now: new Date("2026-10-01T00:00:00Z"), batch: createSimulatedObservationSource().respond(body) }))
+      .rejects.toMatchObject({ code: "legacy-unverified" });
     const report = await buildLearningReport({ storeRoot: root, now: new Date("2026-10-01T00:00:00Z") });
     expect(report.videos).toEqual([]);
     expect(report.unknowns.join(" ")).toMatch(/Excluded 1 legacy ledger\(s\) \(legacy-1\)/);

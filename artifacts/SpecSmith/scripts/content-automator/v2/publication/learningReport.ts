@@ -19,7 +19,14 @@ import { listStoredCreativeIds, loadStoredCreativeFingerprint, loadStoredPublica
 import type { CreativeFingerprint, VideoPlatform } from "../../types.ts";
 import { sha256Json } from "../review/util.ts";
 import { loadAuthorization } from "./boundary.ts";
-import { loadObservationFailures, loadObservations, type ObservationRecord } from "./observations.ts";
+import {
+  loadObservationFailures,
+  loadObservations,
+  loadUnverifiedObservations,
+  MISSING_METRICS_CAPABILITY,
+  PRODUCTION_OBSERVATION_SOURCES,
+  type ObservationRecord,
+} from "./observations.ts";
 
 export const LEARNING_REPORT_VERSION = "learning-report-v1";
 
@@ -165,6 +172,9 @@ export async function buildLearningReport(options: LearningOptions): Promise<Lea
   // Only creatives a provider confirmed as published.
   const videos: PublishedVideo[] = [];
   const legacy: string[] = [];
+  const untrusted: string[] = [];
+  const unverifiedSupplied: string[] = [];
+  const trustedSourceIds = new Set(PRODUCTION_OBSERVATION_SOURCES.map((source) => source.sourceId));
   // Sorted by id, so comparisons and reports come out in a stable, readable order.
   for (const creativeId of (await listStoredCreativeIds(options.storeRoot)).sort()) {
     const ledger = await loadStoredPublicationLedger(options.storeRoot, creativeId);
@@ -173,7 +183,15 @@ export async function buildLearningReport(options: LearningOptions): Promise<Lea
     const authorization = await loadAuthorization(options.storeRoot, creativeId);
     if (!ledger || !published || !authorization) continue;
     const reviewed = ledger.events.find((event) => event.status === "machine-reviewed");
-    const observations = (await loadObservations(options.storeRoot, published.providerPostId!)).filter((record) => record.simulated === simulated);
+    // Only observations a registered source issued for this store's mode. In
+    // production that is a source in PRODUCTION_OBSERVATION_SOURCES (none yet).
+    const all = (await loadObservations(options.storeRoot, published.providerPostId!)).filter((record) => record.simulated === simulated);
+    const observations = all.filter((record) => simulated
+      ? record.sourceMechanism === "simulated"
+      : record.sourceMechanism !== "simulated" && trustedSourceIds.has(record.source));
+    if (observations.length < all.length) untrusted.push(creativeId);
+    const unverified = await loadUnverifiedObservations(options.storeRoot, published.providerPostId!);
+    if (unverified.length) unverifiedSupplied.push(`${creativeId} (${unverified.length})`);
     videos.push({
       creativeId, platform: ledger.platform, variantId: authorization.variantId, mediaSha256: authorization.mediaSha256,
       providerPostId: published.providerPostId!, publishedAt: published.at,
@@ -239,6 +257,9 @@ export async function buildLearningReport(options: LearningOptions): Promise<Lea
     if (group.length < minimum) unknowns.push(`Only ${group.length} published ${platform} video(s): nothing on ${platform} can be compared yet.`);
   }
   if (videos.length === 0) unknowns.push("No provider-confirmed publication exists in this store; there is no performance to learn from.");
+  if (!simulated && PRODUCTION_OBSERVATION_SOURCES.length === 0) unknowns.push(`Production metrics are closed: ${MISSING_METRICS_CAPABILITY}`);
+  if (untrusted.length) unknowns.push(`Excluded observations not issued by a trusted source for ${untrusted.join(", ")}.`);
+  if (unverifiedSupplied.length) unknowns.push(`Numbers supplied by hand and kept as UNVERIFIED were not used: ${unverifiedSupplied.join(", ")}.`);
 
   const retention = videos.map((video) => {
     const curve = [...video.observations].reverse().find((record) => record.metricId === "retention-curve" && record.state === "observed");

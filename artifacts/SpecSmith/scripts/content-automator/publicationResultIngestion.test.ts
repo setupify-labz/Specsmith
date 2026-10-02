@@ -16,6 +16,7 @@ import {
   PUBLISH_RESULT_KIND,
   PUBLISH_RESULT_VERSION,
   ingestPublishResult,
+  loadStoredResult,
   parsePublishResult,
   publishResultTemplate,
   type PublishResultDocument,
@@ -26,7 +27,7 @@ import {
   initPublicationStore,
   loadStoredPublicationLedger,
 } from "./publishingStore.ts";
-import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
+import { loadAuthorization, recordReportedProviderResult, seedSimulatedLedger, submitAuthorizedPublication } from "./v2/publication/boundary.ts";
 import { createSimulatedProvider, type SimulatedProvider } from "./v2/publication/simulatedProvider.ts";
 import { reportAllCreatives, reportCreativeStatus, formatStatusReport } from "./publicationStatusReport.ts";
 import type { MetricoolPublishingRequest } from "./publishing.ts";
@@ -116,7 +117,7 @@ async function authorized(platform: VideoPlatform = "youtube-shorts"): Promise<{
 }
 
 /** ...and handed off: the release is in a person's hands. */
-async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ root: string; sha256: string; provider: SimulatedProvider }> {
+async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ root: string; sha256: string; provider: SimulatedProvider; idempotencyKey: string }> {
   const { root, sha256, path } = await authorized(platform);
   const fp = fingerprint(platform);
   await prepareReadyToPublishHandoff(
@@ -127,10 +128,13 @@ async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ 
     },
     { storeRoot: root },
   );
-  // The post the person created in the provider, as the provider holds it.
+  // The post the person created in the provider, as the provider holds it:
+  // they entered the handoff's idempotency key where the provider stores and
+  // returns it, which is what lets the provider tie the post to this authorization.
+  const { idempotencyKey } = (await loadAuthorization(root, fp.creativeId))!;
   const provider = createSimulatedProvider();
-  provider.adopt({ providerPostId: "mc-post-1", mediaSha256: sha256, account: "blog-1", state: "scheduled" });
-  return { root, sha256, provider };
+  provider.adopt({ providerPostId: "mc-post-1", mediaSha256: sha256, account: "blog-1", state: "scheduled", idempotencyKey });
+  return { root, sha256, provider, idempotencyKey };
 }
 
 function result(sha256: string, overrides: Partial<PublishResultDocument> = {}): Record<string, unknown> {
@@ -208,10 +212,46 @@ describe("NEGATIVE CONTROLS: publication state cannot be asserted into existence
   });
 
   it("refuses a post the provider holds with other media", async () => {
-    const { root, sha256, provider } = await handedOff();
-    provider.adopt({ providerPostId: "mc-post-other-media", mediaSha256: "f".repeat(64), account: "blog-1", state: "scheduled" });
+    const { root, sha256, provider, idempotencyKey } = await handedOff();
+    provider.adopt({ providerPostId: "mc-post-other-media", mediaSha256: "f".repeat(64), account: "blog-1", state: "scheduled", idempotencyKey });
     await expect(ingestPublishResult(result(sha256, { providerPostId: "mc-post-other-media" } as Partial<PublishResultDocument>), { storeRoot: root, provider }))
       .rejects.toThrow(/other media than the authorized bytes/);
+  });
+
+  it("ADVERSARIAL: an unrelated real post id is not attributed; the outcome stays unknown and nothing can be resent", async () => {
+    const { root, sha256, provider } = await handedOff();
+    // A real post the provider does hold, on the same account and even with the same bytes,
+    // but made outside this authorization (by hand, without the handoff's key).
+    provider.adopt({ providerPostId: "mc-post-unrelated", mediaSha256: sha256, account: "blog-1", state: "published" });
+    await expect(ingestPublishResult(result(sha256, { status: "published", providerPostId: "mc-post-unrelated" } as Partial<PublishResultDocument>), { storeRoot: root, provider }))
+      .rejects.toMatchObject({ code: "provider-unconfirmed", message: expect.stringMatching(/did not return the post's idempotency key.*outcome stays unknown/s) });
+    const ledger = (await loadStoredPublicationLedger(root, "creative-youtube-shorts"))!;
+    expect(ledger.events.at(-1)).toMatchObject({ status: "submission-unknown" });
+    expect(ledger.events.some((event) => event.providerPostId)).toBe(false);
+    expect(await loadStoredResult(root, "creative-youtube-shorts", "youtube-shorts", "published")).toBeNull();
+  });
+
+  it("ADVERSARIAL: another authorization's post (its own key, same bytes) is not attributed", async () => {
+    const { root, sha256, provider } = await handedOff();
+    provider.adopt({ providerPostId: "mc-post-other-request", mediaSha256: sha256, account: "blog-1", state: "scheduled", idempotencyKey: "specsmith-another-authorization" });
+    const report = await recordReportedProviderResult({ storeRoot: root, creativeId: "creative-youtube-shorts", reportedProviderPostId: "mc-post-other-request", provider });
+    expect(report).toMatchObject({ kind: "unknown", reason: expect.stringMatching(/another request's idempotency key/) });
+    expect(report.ledger.events.some((event) => event.providerPostId)).toBe(false);
+  });
+
+  it("ADVERSARIAL: a provider that returns the key but no media hash cannot confirm the bytes", async () => {
+    const { root, provider, idempotencyKey } = await handedOff();
+    provider.adopt({ providerPostId: "mc-post-no-hash", mediaSha256: "", account: "blog-1", state: "scheduled", idempotencyKey });
+    const report = await recordReportedProviderResult({ storeRoot: root, creativeId: "creative-youtube-shorts", reportedProviderPostId: "mc-post-no-hash", provider });
+    expect(report).toMatchObject({ kind: "unknown", reason: expect.stringMatching(/did not return the post's media hash/) });
+  });
+
+  it("after an unattributed report, a blind resend is still refused", async () => {
+    const { root, sha256, provider } = await handedOff();
+    provider.adopt({ providerPostId: "mc-post-unrelated", mediaSha256: sha256, account: "blog-1", state: "published" });
+    await recordReportedProviderResult({ storeRoot: root, creativeId: "creative-youtube-shorts", reportedProviderPostId: "mc-post-unrelated", provider });
+    await expect(submitAuthorizedPublication({ storeRoot: root, request: { creativeId: "creative-youtube-shorts" } as never, mediaPath: "/nonexistent", provider }))
+      .rejects.toThrow(/no reliable outcome/);
   });
 
   it("records what the provider says, not a stronger claim: 'published' for a post still scheduled", async () => {

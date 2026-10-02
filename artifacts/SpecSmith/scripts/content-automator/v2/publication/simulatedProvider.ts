@@ -43,8 +43,13 @@ export interface SimulatedProvider extends PublicationProvider {
   advance(providerPostId: string, state: "scheduled" | "published"): void;
   /** Make lookups unavailable, as a provider without a lookup API would be. */
   lookupsUnsupported: boolean;
-  /** A post a person created by hand in the provider (the handoff route), which SpecSmith never sent. */
-  adopt(post: { providerPostId: string; mediaSha256: string; account: string; state: SimulatedPost["state"] }): void;
+  /**
+   * A post a person created by hand in the provider (the handoff route), which
+   * SpecSmith never sent. `idempotencyKey` is the handoff's key when the person
+   * entered it where the provider stores and returns it; without it, the post
+   * cannot be tied to an authorization.
+   */
+  adopt(post: { providerPostId: string; mediaSha256: string; account: string; state: SimulatedPost["state"]; idempotencyKey?: string }): void;
 }
 
 export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-draft"): SimulatedProvider {
@@ -68,7 +73,7 @@ export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-d
   };
   const found = (post: SimulatedPost): ProviderLookup => ({
     kind: "found", state: post.state, providerPostId: post.providerPostId, providerUrl: post.providerUrl,
-    scheduledFor: post.scheduledFor, idempotencyKey: post.idempotencyKey, mediaSha256: post.mediaSha256,
+    scheduledFor: post.scheduledFor, idempotencyKey: post.idempotencyKey || undefined, mediaSha256: post.mediaSha256,
   });
 
   const provider: SimulatedProvider = {
@@ -79,7 +84,7 @@ export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-d
     lookupsUnsupported: false,
     queue(...behaviours) { scripted.push(...behaviours); },
     adopt(post) {
-      posts.push({ ...post, idempotencyKey: "(created by hand in the provider)",
+      posts.push({ ...post, idempotencyKey: post.idempotencyKey ?? "",
         ...(post.state === "published" ? { providerUrl: `https://simulated.invalid/post/${post.providerPostId}` } : {}),
         ...(post.state === "scheduled" ? { scheduledFor: "2026-09-20T10:00:00" } : {}) });
     },
@@ -106,7 +111,7 @@ export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-d
     },
     async lookupByIdempotencyKey(idempotencyKey) {
       if (provider.lookupsUnsupported) return { kind: "unsupported", reason: "SIMULATED: this provider has no lookup API." };
-      const post = posts.find((entry) => entry.idempotencyKey === idempotencyKey);
+      const post = idempotencyKey ? posts.find((entry) => entry.idempotencyKey === idempotencyKey) : undefined;
       return post ? found(post) : { kind: "absent" };
     },
     async lookupPost(providerPostId) {

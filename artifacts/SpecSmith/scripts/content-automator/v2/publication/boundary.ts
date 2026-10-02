@@ -35,6 +35,7 @@ import {
 import {
   advanceStoredPublicationLedger,
   bindProviderPost,
+  creativeForProviderPost,
   loadStoredPublicationLedger,
   publicationStoreMode,
 } from "../../publishingStore.ts";
@@ -654,9 +655,8 @@ export async function reconcileSubmission(input: {
   const lookup = await input.provider.lookupByIdempotencyKey(key);
   const now = input.now ?? new Date();
   if (lookup.kind === "found") {
-    if (lookup.idempotencyKey !== undefined && lookup.idempotencyKey !== key) {
-      return { resolved: false, reason: "The provider returned a post for another request." };
-    }
+    const unbound = bindingProblem(lookup, lookup.providerPostId, key, await loadAuthorization(input.storeRoot, input.creativeId));
+    if (unbound) return { resolved: false, reason: `The provider's answer does not settle this submission: ${unbound}` };
     return { resolved: true, reason: `The provider holds post ${lookup.providerPostId} (${lookup.state}).`, report: await recordOutcome(input.storeRoot, input.creativeId, key, outcomeFromLookup(lookup), "provider-lookup", simulated, now) };
   }
   if (lookup.kind === "absent") {
@@ -693,6 +693,14 @@ export async function confirmProviderState(input: {
  * Record a result a person reports from outside SpecSmith (for example after
  * releasing a handoff through a connector), only once the provider itself
  * confirms it. A typed post id is a claim; the provider's answer is the fact.
+ *
+ * The provider must also prove the post belongs to THIS authorization: its
+ * lookup has to return this submission's idempotency key (which binds the
+ * creative, cut, media, destination, account, review packet and text) and the
+ * authorized media hash. Neither is optional. A real post that cannot be tied
+ * to this authorization (another creative's, someone else's, one made by hand
+ * without the key, or one whose provider does not return these fields) leaves
+ * the outcome unknown, so nothing is resent blind and nothing is attributed.
  */
 export async function recordReportedProviderResult(input: {
   readonly storeRoot: string;
@@ -711,16 +719,45 @@ export async function recordReportedProviderResult(input: {
   if (status !== "submission-started" && status !== "submission-unknown") {
     throw new PublicationBoundaryError("wrong-state", `${input.creativeId} is "${status}"; a reported result answers a submission in progress.`);
   }
-  const lookup = await input.provider.lookupPost(input.reportedProviderPostId);
-  if (lookup.kind !== "found" || lookup.providerPostId !== input.reportedProviderPostId) {
-    throw new PublicationBoundaryError("provider-result-unverified", `The provider does not confirm post ${input.reportedProviderPostId} (${lookup.kind}).`);
-  }
-  const authorization = await loadAuthorization(input.storeRoot, input.creativeId);
-  if (lookup.mediaSha256 !== undefined && lookup.mediaSha256 !== authorization?.mediaSha256) {
-    throw new PublicationBoundaryError("provider-result-unverified", "The provider's post carries other media than the authorized bytes.");
-  }
   const key = str(eventOf(ledger, "submission-started")?.evidence?.idempotencyKey);
-  return recordOutcome(input.storeRoot, input.creativeId, key, outcomeFromLookup({ ...lookup, idempotencyKey: undefined }), "provider-lookup", simulated, input.now ?? new Date());
+  const authorization = await loadAuthorization(input.storeRoot, input.creativeId);
+  const now = input.now ?? new Date();
+  const reported = input.reportedProviderPostId.trim();
+  const lookup = await input.provider.lookupPost(reported);
+  const unbound = bindingProblem(lookup, reported, key, authorization);
+  if (unbound) return leaveUnknown(input.storeRoot, input.creativeId, ledger, key, `Reported post ${reported} not attributed: ${unbound}`, simulated, now);
+  const boundTo = await creativeForProviderPost(input.storeRoot, "metricool", reported);
+  if (boundTo && boundTo !== input.creativeId) {
+    return leaveUnknown(input.storeRoot, input.creativeId, ledger, key, `Reported post ${reported} not attributed: it is already recorded as ${boundTo}'s post.`, simulated, now);
+  }
+  return recordOutcome(input.storeRoot, input.creativeId, key, outcomeFromLookup(lookup as ProviderLookup & { kind: "found" }), "provider-lookup", simulated, now);
+}
+
+/**
+ * Why a provider lookup does not prove a post belongs to this authorization,
+ * or null when it does. Every field is required: an absent key or hash is not
+ * a match.
+ */
+function bindingProblem(lookup: ProviderLookup, providerPostId: string, idempotencyKey: string, authorization: AuthorizedPublication | null): string | null {
+  if (lookup.kind !== "found") return `the provider does not confirm it (${lookup.kind}${"reason" in lookup ? `: ${lookup.reason}` : ""}).`;
+  if (lookup.providerPostId !== providerPostId) return "the provider answered about another post.";
+  if (!authorization || !idempotencyKey || authorization.idempotencyKey !== idempotencyKey) return "this creative has no authorized submission to match it against.";
+  if (!lookup.idempotencyKey) return "the provider did not return the post's idempotency key, so it cannot be tied to this authorization.";
+  if (lookup.idempotencyKey !== idempotencyKey) return "the provider's post carries another request's idempotency key.";
+  if (!lookup.mediaSha256) return "the provider did not return the post's media hash, so the authorized bytes cannot be confirmed.";
+  if (lookup.mediaSha256 !== authorization.mediaSha256) return "the provider's post carries other media than the authorized bytes.";
+  return null;
+}
+
+/** Keep (or put) the submission in `submission-unknown`, with the reason. Never resends, never attributes. */
+async function leaveUnknown(storeRoot: string, creativeId: string, ledger: PublicationLedger, idempotencyKey: string, reason: string,
+  simulated: boolean, now: Date): Promise<SubmissionReport> {
+  if (lastStatus(ledger) === "submission-unknown") return { kind: "unknown", reason, ledger };
+  const next = await write(storeRoot, creativeId, {
+    status: "submission-unknown", at: now.toISOString(), simulated: simulated || undefined,
+    note: `${simulated ? "SIMULATED provider: " : ""}${reason}`, evidence: { idempotencyKey, reason },
+  });
+  return { kind: "unknown", reason, ledger: next };
 }
 
 /**

@@ -38,12 +38,16 @@ Worked examples, all from that demo, are in `examples/`:
 6. **Never resend after an unknown answer.**
    - Call `reconcileSubmission`. It asks the provider by idempotency key and records only what the provider confirms.
    - If the provider cannot say (Metricool today), check the provider dashboard by hand.
-   - Record a definite result through `ingestPublishResult` / `recordReportedProviderResult`. In production that also needs a provider able to confirm the post id (`provider-unconfirmed` otherwise).
+   - Record a definite result through `ingestPublishResult` / `recordReportedProviderResult`. The provider's lookup must return this submission's idempotency key (it is in the handoff manifest, so enter it where the provider keeps it) and the authorized media hash.
+   - Without both, the post is not attributed and the outcome stays `submission-unknown`. This covers an unrelated real post, another authorization's post, and a provider that omits the fields. In production this also needs a provider able to look posts up (`provider-unconfirmed` otherwise).
    - Only `submission-failed` permits another send.
 7. **Confirm publication.**
    - Call `confirmProviderState`. It moves `draft-submitted`/`scheduled` → `published` only when the provider's lookup confirms it.
 8. **Import metrics.**
-   - Call `importProviderObservations` with a `PROVIDER_OBSERVATIONS` batch taken from the provider's own export, with full identity: creative, post id, platform, cut, account, and when it was observed.
+   - Call `collectProviderObservations` with a registered `ObservationSource`: an authenticated provider fetch or a verified (signed) export.
+   - Only batches such a source issues are accepted, with full identity: creative, post id, platform, cut, account, and when it was observed.
+   - *Today there is none for production (`no-verified-source`).* A batch you assemble yourself is refused whatever it claims.
+   - Numbers you have only by hand (dashboard, connector text, an unsigned CSV) go to `recordUnverifiedObservations`. They are kept and labelled unverified, and never used for learning.
    - Each metric is stored as one of:
      - `observed`, with the provider field;
      - `unavailable`, with a reason (never zero);
@@ -76,11 +80,15 @@ Every store used by a test or demo is a temporary directory created with `initPu
 2. **Tamper-evident ledger storage**
    - Transition receipts stop in-process callers. They cannot stop someone with write access to the store directory from writing a well-formed event file by hand.
    - The pilot store needs signed events, or append-only storage the publisher cannot rewrite, before its states are treated as audit evidence.
-3. **A provider that can answer "did this post happen?"**
+3. **A provider that can answer "did this post happen, and is it ours?"**
    - Metricool REST is not on the current plan, and the adapter has no verified lookup (`unsupported`).
    - Until there is one, every unknown outcome is resolved by hand, and reported results cannot be confirmed in production.
    - Either a plan with REST and a verified lookup endpoint, or a different provider with idempotent submission and lookup.
-4. **A real metrics export** with the provider's own field names, mapped through the MASTER #5 metric definitions. No connector or person may type numbers in.
+   - Either way, the lookup must return the idempotency key and the media hash.
+4. **A verified metrics source**
+   - Either an authenticated analytics fetch (a plan with Metricool REST, or the platform's own analytics API with the account's credentials), or a provider export carrying a signature SpecSmith can check.
+   - It must be implemented as an `ObservationSource` and added to `PRODUCTION_OBSERVATION_SOURCES` in a reviewed PR. Its fields are mapped through the MASTER #5 metric definitions.
+   - No connector or person may type numbers in; hand-supplied numbers stay unverified.
 5. **A comparable set**
    - At least two published videos per platform with observations inside the same checkpoint window before a report can compare anything.
    - A single pilot video yields a report that says so; this is the expected result, not a failure.

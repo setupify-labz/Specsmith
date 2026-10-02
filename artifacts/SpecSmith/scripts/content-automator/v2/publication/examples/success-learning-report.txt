@@ -1,5 +1,5 @@
-LEARNING REPORT learning-1303316dc82ac7c3 — SIMULATED DATA, NOT REAL PERFORMANCE
-Generated 2026-10-05T08:47:54.524Z
+LEARNING REPORT learning-3fad212b37d6dacb — SIMULATED DATA, NOT REAL PERFORMANCE
+Generated 2026-10-05T18:21:53.851Z
 
 Which videos have enough comparable data?
   - SIMULATED-peer-result-first (youtube-shorts, youtube-shorts-1080x1920-30, post SIM-PEER-1, 71h old): [SIMULATED] Has comparable data at 24h. 4 observed, 8 unavailable, 0 failed collection(s).

@@ -5,7 +5,7 @@
 // All publications and numbers here are SIMULATED, in a labelled simulation
 // store; the report says so, and a production mission refuses it.
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,7 +17,11 @@ import { buildCreativeBrief } from "../creative/fileWorkflow.ts";
 import { seedSimulatedLedger } from "./boundary.ts";
 import { buildLearningReport, formatLearningReport } from "./learningReport.ts";
 import { nextBriefForWorkflow } from "./nextBrief.ts";
-import { importProviderObservations, type ProviderObservationBatch } from "./observations.ts";
+import { createSimulatedObservationSource, importProviderObservations, type ProviderObservationBatch } from "./observations.ts";
+
+// Each scenario writes several ledgers and observation sets to disk; under a
+// loaded parallel run that can exceed the 5s default without being slow.
+vi.setConfig({ testTimeout: 30_000 });
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -45,12 +49,14 @@ async function publish(root: string, creativeId: string, platform: VideoPlatform
     mediaSha256: "a".repeat(64), variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "acct-1", platform }, title: "t", description: "d" });
 }
 
+const METRICS = createSimulatedObservationSource();
+
 async function observe(root: string, creativeId: string, platform: VideoPlatform, collectedAt: string, metrics: ProviderObservationBatch["metrics"],
   retentionCurve: ProviderObservationBatch["retentionCurve"] = "unavailable") {
-  await importProviderObservations({ storeRoot: root, now: NOW, batch: {
-    kind: "PROVIDER_OBSERVATIONS", provider: "metricool", source: { adapter: "simulated-provider", simulated: true }, platform, accountId: "acct-1",
+  await importProviderObservations({ storeRoot: root, now: NOW, batch: METRICS.respond({
+    kind: "PROVIDER_OBSERVATIONS", provider: "metricool", platform, accountId: "acct-1",
     providerPostId: `SIM-${creativeId}`, collectedAt, metrics, retentionCurve, raw: { note: "SIMULATED" },
-  } });
+  }) });
 }
 
 /** Five simulated publications, each built to exercise one comparison rule. */

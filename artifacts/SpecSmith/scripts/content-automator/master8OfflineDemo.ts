@@ -55,7 +55,13 @@ import {
   type PublicationDestination,
 } from "./v2/publication/boundary.ts";
 import { createSimulatedProvider } from "./v2/publication/simulatedProvider.ts";
-import { importProviderObservations, ObservationRefusedError } from "./v2/publication/observations.ts";
+import {
+  collectProviderObservations,
+  createSimulatedObservationSource,
+  importProviderObservations,
+  ObservationRefusedError,
+  type ProviderObservationBatch,
+} from "./v2/publication/observations.ts";
 import { buildLearningReport, formatLearningReport } from "./v2/publication/learningReport.ts";
 import { nextBriefForWorkflow } from "./v2/publication/nextBrief.ts";
 
@@ -145,17 +151,20 @@ export async function runMaster8Demos(outputDir: string) {
     at: minutes(t0, 60), mediaSha256: "b".repeat(64), variantId: packet.platformVariantId, destination: DESTINATION, title: "peer", description: "peer" });
   const collectedAt = minutes(t0, 60 + 24 * 60).toISOString();
   const later = minutes(t0, 3 * 24 * 60);
+  const metricsSource = createSimulatedObservationSource();
   for (const [postId, metrics, curve] of [
     [provider.posts[0].providerPostId, { views: 2400, stayedToWatchRate: 0.58, averagePercentageViewed: 0.71, saves: 19, shares: "unavailable" },
       { seconds: [0, 1, 2, 3, 4, 5, 6], shareWatching: [1, 0.9, 0.81, 0.62, 0.58, 0.55, 0.52] }],
     ["SIM-PEER-1", { views: 2600, stayedToWatchRate: 0.41, averagePercentageViewed: 0.66, saves: "unavailable" }, "unavailable"],
   ] as const) {
-    await importProviderObservations({ storeRoot: store, now: later, batch: {
-      kind: "PROVIDER_OBSERVATIONS", provider: "metricool", source: { adapter: "SIMULATED provider", simulated: true }, platform: "youtube-shorts",
+    metricsSource.stage({
+      kind: "PROVIDER_OBSERVATIONS", provider: "metricool", platform: "youtube-shorts",
       accountId: DESTINATION.accountId, providerPostId: postId, collectedAt, metrics, retentionCurve: curve as never, raw: { note: "SIMULATED numbers for an offline demo" },
-    } });
+    });
+    await collectProviderObservations({ storeRoot: store, source: metricsSource, now: later,
+      request: { provider: "metricool", platform: "youtube-shorts", accountId: DESTINATION.accountId, providerPostId: postId } });
   }
-  log.push("9. SIMULATED observations imported at 24 hours for the demo post and one seeded peer.");
+  log.push("9. SIMULATED observations fetched from a registered (simulated) metrics source at 24 hours, for the demo post and one seeded peer.");
 
   const report = await buildLearningReport({ storeRoot: store, now: later });
   const handoff = nextBriefForWorkflow(report.nextBrief, DEMO_MISSION);
@@ -187,9 +196,13 @@ export async function runMaster8Demos(outputDir: string) {
       decisionClaim: { simulatedReviewer: "demo-editor" }, now: minutes(t0, 2) })),
     await refusal(rlog, "F. Send a draft without authorization", () => submitAuthorizedPublication({ storeRoot: prod, request, mediaPath: fixture.videoPath,
       provider: { ...createSimulatedProvider(), simulated: false }, now: minutes(t0, 3) })),
-    await refusal(rlog, "G. Import simulated numbers into production analytics", () => importProviderObservations({ storeRoot: prod, now: later, batch: {
-      kind: "PROVIDER_OBSERVATIONS", provider: "metricool", source: { adapter: "SIMULATED provider", simulated: true }, platform: "youtube-shorts",
-      accountId: DESTINATION.accountId, providerPostId: "SIM-POST-1", collectedAt, metrics: { views: 1 }, raw: {} } })),
+    await refusal(rlog, "G. Import simulated numbers into production analytics", () => importProviderObservations({ storeRoot: prod, now: later,
+      batch: createSimulatedObservationSource().respond({ kind: "PROVIDER_OBSERVATIONS", provider: "metricool", platform: "youtube-shorts",
+        accountId: DESTINATION.accountId, providerPostId: "SIM-POST-1", collectedAt, metrics: { views: 1 }, raw: {} }) })),
+    await refusal(rlog, "H. Import a hand-built batch that calls itself real provider data", () => importProviderObservations({ storeRoot: prod, now: later,
+      batch: { kind: "PROVIDER_OBSERVATIONS", provider: "metricool", source: { adapter: "metricool-rest", simulated: false }, platform: "youtube-shorts",
+        accountId: DESTINATION.accountId, providerPostId: "7300000000000000001", collectedAt, metrics: { views: 48000, stayedToWatchRate: 0.74 },
+        raw: { status: 200 } } as ProviderObservationBatch })),
   );
   const prodLedger = (await loadStoredPublicationLedger(prod, packet.creativeId))!;
   const prodReport = await buildLearningReport({ storeRoot: prod, now: later });

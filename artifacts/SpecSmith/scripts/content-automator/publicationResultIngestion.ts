@@ -310,7 +310,9 @@ export async function ingestPublishResult(
       const expected = result.status === "scheduled" ? "scheduled" : "published";
       if (confirmed !== expected) {
         // The provider's answer was recorded; the document's claim was not.
-        throw new PublishResultRefusedError("provider-unconfirmed", `The result reports "${result.status}", but the provider confirms "${confirmed ?? report.kind}". The provider's state was recorded; the report was not.`);
+        throw new PublishResultRefusedError("provider-unconfirmed", report.kind === "unknown"
+          ? `The result reports "${result.status}", but the provider did not confirm that post as this authorization's: ${report.reason} The outcome stays unknown; the report was not recorded.`
+          : `The result reports "${result.status}", but the provider confirms "${confirmed ?? report.kind}". The provider's state was recorded; the report was not.`);
       }
       advanced = report.ledger;
     }
