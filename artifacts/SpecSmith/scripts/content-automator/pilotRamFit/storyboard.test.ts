@@ -21,6 +21,13 @@ describe("the pilot's facts come from the catalog and the Builder's checker", ()
     expect(facts.cpu).toMatchObject({ name: "i5-12400F", socket: "LGA1700", supported_ram: ["DDR4", "DDR5"] });
   });
 
+  it("both fixes on screen are the Builder's own, and the Builder passes each", () => {
+    expect(facts.mismatch.fix).toMatch(/DDR5 memory/);
+    expect(facts.mismatch.fix).toMatch(/motherboard that supports DDR4/);
+    expect(facts.newRamPassed).toContain("RAM type");
+    expect(facts.matchPassed).toContain("RAM type");
+  });
+
   it("refuses to render when the catalog stops supporting a claim", () => {
     expect(() => ramFitFacts({ ...PILOT_PARTS, ddr4Board: "b760mawifi" })).toThrow(PilotFactError);
     expect(() => ramFitFacts({ ...PILOT_PARTS, cpu: "r5-7600" })).toThrow();
@@ -45,11 +52,11 @@ describe("the script stays inside what the facts support", () => {
     for (const number of words.match(/\d+/g) ?? []) expect(["4", "5"]).toContain(number);
   });
 
-  it("runs 12 to 20 seconds in contiguous scenes", () => {
+  it("runs about 12 seconds (the tight-cut brief: 10.5 to 13) in contiguous scenes", () => {
     expect(scenes[0].startSecond).toBe(0);
     scenes.slice(1).forEach((scene, index) => expect(scene.startSecond).toBe(scenes[index].endSecond));
-    expect(scenes.at(-1)!.endSecond).toBeGreaterThanOrEqual(12);
-    expect(scenes.at(-1)!.endSecond).toBeLessThanOrEqual(20);
+    expect(scenes.at(-1)!.endSecond).toBeGreaterThanOrEqual(10.5);
+    expect(scenes.at(-1)!.endSecond).toBeLessThanOrEqual(13);
   });
 
   it("every caption chunk fits the renderer's two lines of 28 characters", () => {

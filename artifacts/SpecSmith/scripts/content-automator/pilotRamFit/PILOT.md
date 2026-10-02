@@ -1,6 +1,6 @@
 # Pilot Short: "Can you reuse your old DDR4 RAM?" (draft)
 
-One YouTube Shorts draft (revision 3, polish pass on revision 2's story), 17.4 s, 1080×1920, 30 fps. It is not a framework and has not been published, scheduled or watched by real viewers. Nothing here claims retention.
+One YouTube Shorts draft (revision 4: the tight cut), 11.2 s, 1080×1920, 30 fps. It is not a framework and has not been published, scheduled or watched by real viewers. Nothing here claims retention.
 
 - **Render:** `render-output/pilot-ram-fit/pilot-ram-fit-draft.mp4` (gitignored; the exact SHA-256 is in `report.json` next to it).
 - **Re-render:** serve the built app, then run
@@ -17,44 +17,41 @@ One YouTube Shorts draft (revision 3, polish pass on revision 2's story), 17.4 s
 - No FPS, benchmark or estimate.
 - Not the synthetic MASTER #6 fixture.
 
-## Exact script (revision 3)
+## Exact script (revision 4: the tight cut)
 
-One continuous story. The camera never cuts to an unrelated picture: the slot in the opening is the same slot that the pull-back reveals on the DDR5 board. The warning and the CTA each appear once, at the end.
+The same sequence as before, tightened:
+1. The stick fails inside the first second.
+2. A brief notch close-up.
+3. The two choices.
+4. A large payoff message carrying both fixes, with the real Builder warning flashed as proof.
+5. One short CTA.
 
 | Shot | Time (s) | Voiceover | Captions | Other on-screen text |
 |---|---|---|---|---|
-| 1. Approach | 0.0–1.9 | Reusing old DDR4? | Reusing old DDR4? | DDR4 (stick) · DDR5 slot |
-| 2. Stops | 1.9–4.3 | It won't fit a DDR5 slot. | It won't fit a DDR5 slot. | same |
-| 3. Notch close-up | 4.3–7.8 | The notch is in a different place, so it can't line up. | The notch is in / a different place, / so it can't line up. | DDR5 key · DDR4 notch · Diagram, not to scale |
-| 4. Board choices | 7.8–11.8 | Your DDR4 needs a board with DDR4 slots. | Your DDR4 needs a board / with DDR4 slots. | DDR4 board · DDR5 board · ✓ |
-| 5. SpecSmith catches it | 11.8–15.0 | Pick the wrong board, and SpecSmith flags it. | Pick the wrong board, / and SpecSmith flags it. | SpecSmith Builder · the real warning card, with its own words "is DDR4" and "only takes DDR5" highlighted |
-| 6. CTA | 15.0–17.4 | Check yours at SpecSmith. | Check yours at SpecSmith. | SpecSmith · specsmithpc.com/builder |
+| 1. Fail | 0.0–2.35 | DDR4 won't fit DDR5. | DDR4 won't fit DDR5. | DDR4 (stick) · DDR5 slot |
+| 2. Notch | 2.35–3.9 | The notch doesn't line up. | The notch doesn't line up. | DDR5 key · DDR4 notch · Diagram, not to scale |
+| 3. Choice | 3.9–6.95 | Use DDR5 RAM, or a DDR4 board. | Use DDR5 RAM, / or a DDR4 board. | DDR5 board ✓ · DDR4 board ✓ |
+| 4. Payoff + proof | 6.95–9.45 | SpecSmith flags it, with both fixes. | SpecSmith flags it, / with both fixes. | SpecSmith Builder · WON'T FIT · DDR4 RAM · DDR5 board · ✓ Use DDR5 RAM · ✓ Or a DDR4 board · Real SpecSmith Builder warning (the real card, about 1 s) |
+| 5. CTA | 9.45–11.2 | Check yours at SpecSmith. | Check yours at SpecSmith. | SpecSmith · specsmithpc.com/builder |
 
 ## Storyboard
 
-1. **Approach.**
-   - The first frame already shows the attempt: a DDR4 stick lined up over a DDR5 slot, close up.
-   - It pushes down while the camera creeps in.
-2. **Stops.**
-   - On "It won't fit" the stick hits the key and stops. A jolt and a thud.
-   - The notch ring and the slot key glow red.
-   - The gold contacts left outside the slot pulse red: the part that should have gone in.
-3. **Notch close-up.**
-   - A 1.0 s push-in on the contacts.
-   - Dashed guides run down from the notch (amber) and the key (cyan) to large labels: **DDR4 notch** and **DDR5 key**.
-4. **Board choices.**
-   - A 1.1 s pull-back reveals the slot sits on a motherboard (socket, VRM heatsinks, PCIe slot) tagged **DDR5 board**, with a **DDR4 board** above it.
-   - The stick lifts, rises and seats in the DDR4 board's slot. Latches click and a green check pops. The DDR5 board dims.
-5. **SpecSmith catches it.**
-   - The boards fade. The Builder's real warning card for DDR4 on the DDR5 board settles in under a "SpecSmith Builder" header.
-   - Highlighter sweeps mark the card's own words "is DDR4" (amber) and "only takes DDR5" (cyan) as the voice reaches them. Their positions are read from the live card, not drawn over a guess.
-6. **CTA.** The card settles higher, and a SpecSmith logo lockup and a breathing `specsmithpc.com/builder` pill rise in beneath it.
+1. **Fail.**
+   - The first frame shows the DDR4 stick already pushing into the DDR5 slot.
+   - At **0.5 s** it slams to a stop on the key: punch-in, jolt, a red flash and a thud.
+   - The contacts left outside the slot pulse red.
+2. **Notch.** A 0.55 s push-in. Guides and large labels: **DDR4 notch** (amber) and **DDR5 key** (cyan).
+3. **Choice.**
+   - Pull back to the two boards.
+   - The DDR4 stick exits right. A DDR5 stick enters from the left and seats in this board (✓, on "Use DDR5 RAM").
+   - The DDR4 stick comes back in over the DDR4 board above and seats (✓, on "or a DDR4 board").
+4. **Payoff + proof.**
+   - "SpecSmith Builder" header. **WON'T FIT** (150 px, red) and "DDR4 RAM · DDR5 board".
+   - Two large fix rows: **✓ Use DDR5 RAM** and **✓ Or a DDR4 board**.
+   - Then the real Builder warning card slides up beneath, labelled "Real SpecSmith Builder warning", for about 1 s as proof. It isn't there to be read.
+5. **CTA.** SpecSmith logo lockup and a breathing `specsmithpc.com/builder` pill.
 
-What changed in revision 3:
-- **Story and timing:** the jam lands on "It won't fit". The exposed contacts turn red so "it stops" reads at a glance. The ending moved from static cards to a highlighted card and a logo lockup, and the video is 1.2 s shorter.
-- **Visuals:** the boards are recognisable motherboards, stacked full-width so the stick is large. Board detail and the off-stage board are hidden in the close-ups.
-- **Type:** Inter, SpecSmith's own UI font, instead of DejaVu.
-- **Sound:** a soft pad, a light beat that drops in on the jam, and music ducking under the voice. The temp voice is respelled ("dee dee ar") and lightly EQ'd and compressed.
+The payoff message restates the Builder's own verdict and fix: "RAM won't fit this motherboard", and "Choose DDR5 memory, or a motherboard that supports DDR4". `facts.ts` refuses to render if that fix text changes. It also checks that the Builder passes DDR5 memory (Kingston Fury Beast 16GB DDR5-5200) on the DDR5 board, and the DDR4 stick on the DDR4 board.
 
 ## Claim sources
 
@@ -73,18 +70,17 @@ Every claim is re-checked at render time by `facts.ts`. If any one stops holding
 
 ## Voiceover script for approval (ElevenLabs not used)
 
-**Delivery:** friendly and quick. Say "DDR-four" / "DDR-five" as words.
+**Delivery:** quick and plain. Say "DDR-four" / "DDR-five" as words.
 
 | Cue | Starts | Line |
 |---|---|---|
-| 1 | 0.0 s | Reusing old DDR4? |
-| 2 | 1.9 s | It won't fit a DDR5 slot. |
-| 3 | 4.3 s | The notch is in a different place, so it can't line up. |
-| 4 | 7.8 s | Your DDR4 needs a board with DDR4 slots. |
-| 5 | 11.8 s | Pick the wrong board, and SpecSmith flags it. |
-| 6 | 15.0 s | Check yours at SpecSmith. |
+| 1 | 0.0 s | DDR4 won't fit DDR5. |
+| 2 | 2.35 s | The notch doesn't line up. |
+| 3 | 3.9 s | Use DDR5 RAM, or a DDR4 board. |
+| 4 | 6.95 s | SpecSmith flags it, with both fixes. |
+| 5 | 9.45 s | Check yours at SpecSmith. |
 
-The render refuses any take that runs past its shot.
+The temp voice runs at 200 wpm. A human read of line 1 will likely take about 1.3 s rather than 2.25 s; trim shot 1 to match.
 
 ## Temporary sound and type
 

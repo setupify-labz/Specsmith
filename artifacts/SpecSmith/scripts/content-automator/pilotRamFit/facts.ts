@@ -21,6 +21,8 @@ export const PILOT_PARTS = {
   ddr4Board: "b660mpro",
   ddr5Board: "b760mawifi",
   oldRam: "cv16ddr4",
+  /** Fix 1: DDR5 memory for the DDR5 board. */
+  newRam: "kf16ddr5",
 } as const;
 
 export interface RamFitFacts {
@@ -28,10 +30,13 @@ export interface RamFitFacts {
   readonly ddr4Board: CatalogBoard;
   readonly ddr5Board: CatalogBoard;
   readonly oldRam: CatalogRam;
+  readonly newRam: CatalogRam;
   /** checkCompatibility(cpu, ddr5Board, oldRam): the Builder's warning, verbatim. */
   readonly mismatch: CompatibilityWarning;
-  /** checkCompatibility(cpu, ddr4Board, oldRam): what passed. */
+  /** checkCompatibility(cpu, ddr4Board, oldRam): what passed (fix 2). */
   readonly matchPassed: readonly string[];
+  /** checkCompatibility(cpu, ddr5Board, newRam): what passed (fix 1). */
+  readonly newRamPassed: readonly string[];
   /** Catalog-wide: how many LGA1700 boards take each generation (none take both). */
   readonly lga1700Boards: { readonly ddr4: number; readonly ddr5: number; readonly both: number };
 }
@@ -55,6 +60,8 @@ export function ramFitFacts(parts: typeof PILOT_PARTS = PILOT_PARTS): RamFitFact
   const ddr4Board = byId(boards, parts.ddr4Board, "motherboard");
   const ddr5Board = byId(boards, parts.ddr5Board, "motherboard");
   const oldRam = byId(components.ram as CatalogRam[], parts.oldRam, "RAM");
+  const newRam = byId(components.ram as CatalogRam[], parts.newRam, "RAM");
+  if (newRam.type !== "DDR5") throw new PilotFactError(`${newRam.name} is not DDR5.`);
 
   // "Same CPU, either board": the CPU supports both generations and fits both sockets.
   if (!cpu.supported_ram.includes("DDR4") || !cpu.supported_ram.includes("DDR5")) throw new PilotFactError(`${cpu.name} does not list both DDR4 and DDR5.`);
@@ -69,6 +76,12 @@ export function ramFitFacts(parts: typeof PILOT_PARTS = PILOT_PARTS): RamFitFact
   const mismatch = wrong.warnings.find((warning) => warning.id === "ram-type-mismatch");
   if (!mismatch || mismatch.type !== "error" || mismatch.confidence !== "certain") throw new PilotFactError("the Builder no longer flags DDR4 on a DDR5 board as a certain error.");
   if (!/keyed differently/.test(mismatch.detail)) throw new PilotFactError("the Builder no longer says the generations are keyed differently.");
+  // The video's two fixes are the Builder's own: "Choose DDR5 memory, or a motherboard that supports DDR4."
+  if (!/DDR5 memory/.test(mismatch.fix ?? "") || !/motherboard that supports DDR4/.test(mismatch.fix ?? "")) {
+    throw new PilotFactError("the Builder's fix no longer names DDR5 memory and a DDR4 motherboard.");
+  }
+  const fix1 = checkCompatibility({ cpu, motherboard: ddr5Board, ram: newRam });
+  if (fix1.warnings.length || !fix1.passed.includes("RAM type")) throw new PilotFactError("the Builder does not pass DDR5 memory on the DDR5 board.");
   const right = checkCompatibility({ cpu, motherboard: ddr4Board, ram: oldRam });
   if (right.warnings.length || !right.passed.includes("RAM type") || !right.passed.includes("CPU socket")) {
     throw new PilotFactError("the Builder does not pass the DDR4 build cleanly.");
@@ -80,7 +93,7 @@ export function ramFitFacts(parts: typeof PILOT_PARTS = PILOT_PARTS): RamFitFact
     ddr5: lga.filter((board) => board.supported_ram.join() === "DDR5").length,
     both: lga.filter((board) => board.supported_ram.includes("DDR4") && board.supported_ram.includes("DDR5")).length,
   };
-  return { cpu, ddr4Board, ddr5Board, oldRam, mismatch, matchPassed: right.passed, lga1700Boards };
+  return { cpu, ddr4Board, ddr5Board, oldRam, newRam, mismatch, matchPassed: right.passed, newRamPassed: fix1.passed, lga1700Boards };
 }
 
 /** The Builder URL that reproduces the warning the video ends on. */

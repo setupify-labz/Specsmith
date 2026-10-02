@@ -88,31 +88,9 @@ async function captureWarningCard(facts: RamFitFacts, baseUrl: string, outDir: s
     const expected = [facts.mismatch.title, facts.mismatch.detail, `Fix: ${facts.mismatch.fix}`].map(squash);
     const missing = expected.filter((line) => !shown.includes(line));
     if (missing.length) throw new Error(`The Builder's card does not show the checker's verdict; refusing to use it. Missing: ${JSON.stringify(missing)}. Shown: ${shown}`);
-    // Where the card's own words "is DDR4" and "only takes DDR5" sit, so the
-    // video can highlight them without redrawing or retyping anything.
-    const phrases = [`is ${facts.oldRam.type}`, `only takes ${facts.ddr5Board.supported_ram[0]}`];
-    if (phrases.some((phrase) => !facts.mismatch.detail.includes(phrase))) throw new Error("The verdict no longer contains the phrases the video highlights.");
-    const marks = await cardLocator.evaluate((element, wanted: string[]) => {
-      const box = element.getBoundingClientRect();
-      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-      const found: { phrase: string; x: number; y: number; w: number; h: number }[] = [];
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const content = node.textContent ?? "";
-        for (const phrase of wanted) {
-          const index = content.indexOf(phrase);
-          if (index < 0 || found.some((entry) => entry.phrase === phrase)) continue;
-          const range = document.createRange();
-          range.setStart(node, index); range.setEnd(node, index + phrase.length);
-          const rect = range.getClientRects()[0];
-          if (rect) found.push({ phrase, x: (rect.left - box.left) / box.width, y: (rect.top - box.top) / box.height, w: rect.width / box.width, h: rect.height / box.height });
-        }
-      }
-      return found;
-    }, phrases);
-    if (marks.length !== phrases.length) throw new Error(`Could not locate ${JSON.stringify(phrases)} on the Builder card.`);
     const path = join(outDir, "builder-warning-card.png");
     await cardLocator.screenshot({ path });
-    return { path, route, url: new URL(route, baseUrl).toString(), shownText: shown, marks, viewport: "390x844 CSS px at 3x (phone width)" };
+    return { path, route, url: new URL(route, baseUrl).toString(), shownText: shown, viewport: "390x844 CSS px at 3x (phone width)" };
   } finally {
     await session.close();
   }
@@ -121,19 +99,21 @@ async function captureWarningCard(facts: RamFitFacts, baseUrl: string, outDir: s
 /** Temporary sound effects and a quiet bed, all synthesised; no third-party audio. */
 async function soundDesign(outDir: string, scenes: PilotScene[], total: number) {
   const at = (id: PilotScene["id"]) => scenes.find((scene) => scene.id === id)!.startSecond;
-  const jam = at("stop"), seat = at("boards") + 2.55;
-  // Calm on purpose: soft whooshes under camera moves, one thud, one click.
+  // Event times shared with scene.browser.js (TIMING there).
+  const jam = at("fail") + 0.5, fix1 = at("choice") + 1.25, fix2 = at("choice") + 2.25;
   const effects: { name: string; startSecond: number; expr: string; seconds: number }[] = [
-    { name: "push", startSecond: 0, seconds: 0.5, expr: "(random(5)*2-1)*0.10*sin(PI*t/0.5)" },
-    { name: "thud", startSecond: jam, seconds: 0.45, expr: "0.9*sin(2*PI*58*t)*exp(-9*t)+(random(1)*2-1)*0.35*exp(-32*t)" },
-    { name: "whoosh-push-in", startSecond: at("notch"), seconds: 1.0, expr: "(random(2)*2-1)*0.12*sin(PI*t/1.0)" },
-    { name: "whoosh-pull-back", startSecond: at("boards"), seconds: 1.1, expr: "(random(3)*2-1)*0.12*sin(PI*t/1.1)" },
-    { name: "click-1", startSecond: seat, seconds: 0.06, expr: "0.7*sin(2*PI*2400*t)*exp(-120*t)" },
-    { name: "click-2", startSecond: seat + 0.07, seconds: 0.06, expr: "0.7*sin(2*PI*2200*t)*exp(-120*t)" },
-    { name: "success", startSecond: seat + 0.15, seconds: 0.7, expr: "0.2*(sin(2*PI*880*t)*lt(t,0.18)+sin(2*PI*1320*t)*gte(t,0.15))*exp(-4*t)" },
-    { name: "whoosh-ending", startSecond: at("catch") + 0.25, seconds: 0.8, expr: "(random(4)*2-1)*0.10*sin(PI*t/0.8)" },
-    { name: "marker-1", startSecond: at("catch") + 1.3, seconds: 0.35, expr: "(random(8)*2-1)*0.05*sin(PI*t/0.35)" },
-    { name: "cta-chime", startSecond: at("cta") + 0.2, seconds: 0.9, expr: "0.14*(sin(2*PI*659*t)+0.6*sin(2*PI*988*t))*exp(-3.5*t)" },
+    { name: "push", startSecond: 0, seconds: 0.45, expr: "(random(5)*2-1)*0.12*sin(PI*t/0.45)" },
+    { name: "thud", startSecond: jam, seconds: 0.45, expr: "0.95*sin(2*PI*55*t)*exp(-9*t)+(random(1)*2-1)*0.4*exp(-30*t)" },
+    { name: "whoosh-push-in", startSecond: at("notch"), seconds: 0.6, expr: "(random(2)*2-1)*0.12*sin(PI*t/0.6)" },
+    { name: "whoosh-pull-back", startSecond: at("choice"), seconds: 0.8, expr: "(random(3)*2-1)*0.12*sin(PI*t/0.8)" },
+    ...[fix1, fix2].flatMap((seat, index) => [
+      { name: `click-${index}-a`, startSecond: seat, seconds: 0.06, expr: "0.7*sin(2*PI*2400*t)*exp(-120*t)" },
+      { name: `click-${index}-b`, startSecond: seat + 0.07, seconds: 0.06, expr: "0.7*sin(2*PI*2200*t)*exp(-120*t)" },
+      { name: `ding-${index}`, startSecond: seat + 0.12, seconds: 0.6, expr: `0.18*sin(2*PI*${index ? 1320 : 988}*t)*exp(-5*t)` },
+    ]),
+    { name: "whoosh-payoff", startSecond: at("payoff"), seconds: 0.6, expr: "(random(4)*2-1)*0.12*sin(PI*t/0.6)" },
+    { name: "proof", startSecond: at("payoff") + 1.5, seconds: 0.5, expr: "(random(8)*2-1)*0.08*sin(PI*t/0.5)" },
+    { name: "cta-chime", startSecond: at("cta") + 0.15, seconds: 0.9, expr: "0.14*(sin(2*PI*659*t)+0.6*sin(2*PI*988*t))*exp(-3.5*t)" },
   ];
   const paths: string[] = [];
   for (const effect of effects) {
@@ -142,7 +122,7 @@ async function soundDesign(outDir: string, scenes: PilotScene[], total: number) 
     paths.push(path);
   }
   // Bed: a soft pad from the first frame, and a light beat (kick + hat, 100 bpm) that enters on the jam.
-  const beatIn = at("stop");
+  const beatIn = at("fail") + 0.5;
   const padPath = join(outDir, "bed-pad.wav"), kickPath = join(outDir, "bed-kick.wav"), hatPath = join(outDir, "bed-hat.wav");
   await run("ffmpeg", ["-v", "error", "-y", "-f", "lavfi", "-i",
     `aevalsrc='0.05*(sin(2*PI*110*t)+0.7*sin(2*PI*164.81*t)+0.5*sin(2*PI*220*t)*lt(mod(t,4.8),2.4)+0.5*sin(2*PI*196*t)*gte(mod(t,4.8),2.4))*(0.7+0.3*sin(2*PI*0.83*t))':s=48000:d=${total}`,
@@ -176,7 +156,7 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
   for (const scene of scenes) {
     const path = join(outputDir, `voice-${scene.id}.wav`);
     const raw = join(outputDir, `voice-${scene.id}-raw.wav`);
-    await run("espeak-ng", ["-v", "en-us", "-s", "180", "-p", "42", "-w", raw, forTempVoice(scene.narration)]);
+    await run("espeak-ng", ["-v", "en-us", "-s", "200", "-p", "42", "-w", raw, forTempVoice(scene.narration)]);
     // Take the edge off: low cut, a little presence, gentle compression, a short room.
     await run("ffmpeg", ["-v", "error", "-y", "-i", raw, "-af",
       "highpass=f=90,lowpass=f=9000,equalizer=f=2800:t=q:w=1.2:g=3,acompressor=threshold=-20dB:ratio=3:attack=5:release=90,aecho=0.85:0.5:38|61:0.10|0.06",
@@ -199,13 +179,8 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
 
   // Frames.
   const inter = await loadInter();
-  const catchScene = scenes.find((scene) => scene.id === "catch")!;
-  const catchVoice = voice.find((clip) => clip.scene === "catch")!;
   const data = {
     fontFamily: inter.family,
-    // Highlights land as the voice reaches "wrong board" and "flags it".
-    cardMarks: card.marks.map((mark, index) => ({ ...mark, color: index === 0 ? "amber" : "cyan",
-      at: Number((catchVoice.startSecond - catchScene.startSecond + catchVoice.seconds * (index === 0 ? 0.35 : 0.62)).toFixed(2)) })),
     scenes: Object.fromEntries(scenes.map((scene) => [scene.id, { start: scene.startSecond, end: scene.endSecond }])),
     captions,
     logoDataUrl: `data:image/png;base64,${(await readFile(resolve(appRoot, "public/favicon-512.png"))).toString("base64")}`,
@@ -215,8 +190,11 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
   const session = await launchBrowser({ width: 1080, height: 1920, deviceScaleFactor: 1 });
   try {
     const page = await session.context.newPage();
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
     const fontFace = inter.dataUrl ? `<style>@font-face{font-family:"Inter";src:url(${inter.dataUrl}) format("woff2");font-weight:100 900;}</style>` : "";
     await page.setContent(`<!doctype html><html><head>${fontFace}</head><body style="margin:0;background:#08080D"><canvas id="c" width="1080" height="1920"></canvas><script>const DATA = ${JSON.stringify(data)};\n${sceneScript}</script></body></html>`);
+    if (pageErrors.length) throw new Error(`The scene script failed in the page: ${pageErrors.join("; ")}`);
     await page.evaluate("window.assetsReady");
     if (inter.dataUrl) await page.evaluate("Promise.all(['500 40px Inter','800 40px Inter','900 40px Inter'].map((f) => document.fonts.load(f)))");
     await page.evaluate("document.fonts.ready");
@@ -253,9 +231,9 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
   const inspectDir = join(outputDir, "inspection");
   await mkdir(inspectDir, { recursive: true });
   const sceneAt = (id: PilotScene["id"], offset: number) => scenes.find((scene) => scene.id === id)!.startSecond + offset;
-  const moments = [{ label: "00-first-frame", at: 0 }, { label: "01-approach", at: sceneAt("approach", 1.2) }, { label: "02-stopped", at: sceneAt("stop", 1.4) },
-    { label: "03-notch", at: sceneAt("notch", 2.4) }, { label: "04-boards", at: sceneAt("boards", 1.3) }, { label: "05-seated", at: sceneAt("boards", 3.4) },
-    { label: "06-builder-catch", at: sceneAt("catch", 2.6) }, { label: "07-cta", at: sceneAt("cta", 1.2) }, { label: "08-final", at: total - 0.05 }];
+  const moments = [{ label: "00-first-frame", at: 0 }, { label: "01-jammed", at: 0.9 }, { label: "02-notch", at: sceneAt("notch", 1.1) },
+    { label: "03-fix1", at: sceneAt("choice", 1.7) }, { label: "04-fix2", at: sceneAt("choice", 2.9) }, { label: "05-payoff", at: sceneAt("payoff", 1.2) },
+    { label: "06-proof", at: sceneAt("payoff", 2.3) }, { label: "07-cta", at: sceneAt("cta", 1.0) }, { label: "08-final", at: total - 0.05 }];
   const frames: string[] = [];
   for (const moment of moments) {
     const path = join(inspectDir, `${moment.label}.png`);
@@ -287,7 +265,7 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
       ddr4Board: facts.ddr4Board, ddr5Board: facts.ddr5Board, oldRam: facts.oldRam,
       builderVerdict: facts.mismatch, cleanBuildPassed: facts.matchPassed, lga1700Boards: facts.lga1700Boards,
     },
-    builderCard: { route: card.route, viewport: card.viewport, shownText: card.shownText, highlightedPhrases: card.marks.map((mark) => mark.phrase) },
+    builderCard: { route: card.route, viewport: card.viewport, shownText: card.shownText },
     font: { family: inter.family, source: inter.source, sha256: inter.sha256, license: inter.sha256 ? "SIL Open Font License 1.1" : null },
     scenes, captions, voice: voice.map(({ path: _path, ...clip }) => clip), effects: sound.effects.map(({ path: _path, ...effect }) => effect),
     temporarySound: TEMP_AUDIO,
