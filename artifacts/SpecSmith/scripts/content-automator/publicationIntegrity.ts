@@ -32,7 +32,7 @@ export type PublicationIntegrityCode =
   | "already-published"
   | "unsupported-platform-state"
   | "scheduling-ambiguous"
-  | "qc-not-passed"
+  | "not-authorized"
   | "rights-not-approved";
 
 export class PublicationIntegrityError extends Error {
@@ -133,8 +133,9 @@ export async function verifyApprovedMedia(pkg: ApprovedPublicationPackage): Prom
  */
 export function assertNotAlreadyReleased(ledger: PublicationLedger, platform: VideoPlatform): void {
   assertNotAlreadyPublished([ledger], ledger.creativeId);
+  // A draft or schedule the provider accepted is a post that already exists.
   const scheduled = ledger.events.find(
-    (event: PublicationLedger["events"][number]) => event.status === "scheduled" && event.providerPostId,
+    (event: PublicationLedger["events"][number]) => (event.status === "scheduled" || event.status === "draft-submitted") && event.providerPostId,
   );
   if (scheduled) {
     throw new PublicationIntegrityError(
@@ -147,9 +148,10 @@ export function assertNotAlreadyReleased(ledger: PublicationLedger, platform: Vi
 /**
  * The checks every delivery route must pass before anything leaves.
  *
- * `qcPassed` is read from the ledger rather than taken as a parameter: the
- * ledger reaching `qc-passed` IS the record that quality review passed, and a
- * caller cannot assert it into existence. Rights are represented by the
+ * Authorization is read from the ledger rather than taken as a parameter: a
+ * `publication-authorized` event can only be written by the publication
+ * boundary, after a revalidated MASTER #7 packet and a trusted human decision.
+ * A legacy `qc-passed` ledger is never accepted. Rights are represented by the
  * approved master digest, which verifyApprovedMedia then binds to real bytes.
  */
 export function assertPublicationGatesPassed(
@@ -180,22 +182,45 @@ export function assertPublicationGatesPassed(
     throw new PublicationIntegrityError("scheduling-ambiguous", `Request ${request.requestId} date must be local YYYY-MM-DDTHH:mm:ss.`);
   }
 
-  // Quality review. The ledger is the evidence.
-  const reachedQc = ledger.events.some((event: PublicationLedger["events"][number]) => event.status === "qc-passed");
-  if (!reachedQc) {
+  // Authorization. The ledger must hold a `publication-authorized` event, which
+  // only the publication boundary can write (a trusted human decision on a
+  // revalidated MASTER #7 packet), and must be waiting to be sent. The request
+  // must carry exactly what was authorized: the bytes, the account and
+  // platform, and the reviewed text.
+  if (ledger.legacy) {
     throw new PublicationIntegrityError(
-      "qc-not-passed",
-      `Creative ${request.creativeId} has no qc-passed event; quality review has not cleared it for release.`,
+      "not-authorized",
+      `Creative ${request.creativeId} has a legacy ledger (qc-passed at ${ledger.legacy.since}): ${ledger.legacy.reason} It is not MASTER #7 reviewed or authorized and may not be released.`,
     );
   }
-  const rejected = ledger.events.find(
-    (event: PublicationLedger["events"][number]) => event.status === "rejected" || event.status === "failed",
+  const blocked = ledger.events.find(
+    (event: PublicationLedger["events"][number]) => ["rejected", "failed", "human-rejected"].includes(event.status),
   );
-  if (rejected) {
+  if (blocked) {
+    throw new PublicationIntegrityError("not-authorized", `Creative ${request.creativeId} was ${blocked.status} at ${blocked.at}; it may not be released.`);
+  }
+  const authorized = [...ledger.events].reverse().find((event: PublicationLedger["events"][number]) => event.status === "publication-authorized");
+  if (!authorized?.evidence) {
     throw new PublicationIntegrityError(
-      "qc-not-passed",
-      `Creative ${request.creativeId} was ${rejected.status} at ${rejected.at}; it may not be released.`,
+      "not-authorized",
+      `Creative ${request.creativeId} has no publication authorization: a MASTER #7 review and a trusted human decision are both required. (A legacy qc-passed state is not one.)`,
     );
+  }
+  const current = ledger.events.at(-1)?.status;
+  if (current !== "publication-authorized" && current !== "submission-failed") {
+    throw new PublicationIntegrityError("not-authorized", `Creative ${request.creativeId} is "${current}"; only an authorized creative awaiting release can be released.`);
+  }
+  const evidence = authorized.evidence;
+  const textSha = (text: string) => createHash("sha256").update(text).digest("hex");
+  const problems: string[] = [];
+  if (String(evidence.mediaSha256).toLowerCase() !== request.finalMediaSha256.trim().toLowerCase()) problems.push("the request names other media than was authorized");
+  if (evidence.destinationAccount !== request.blog_id) problems.push(`account ${request.blog_id} was not authorized (authorized: ${String(evidence.destinationAccount)})`);
+  if (evidence.destinationPlatform !== request.platform) problems.push(`platform ${request.platform} was not authorized`);
+  if (textSha(request.text) !== evidence.descriptionSha256) problems.push("the post text is not the reviewed and authorized description");
+  const title = request.youtube_title ?? request.tiktok_title;
+  if (title !== undefined && textSha(title) !== evidence.titleSha256) problems.push("the title is not the reviewed and authorized title");
+  if (problems.length) {
+    throw new PublicationIntegrityError("not-authorized", `Creative ${request.creativeId} cannot be released as requested: ${problems.join("; ")}.`);
   }
 
   // Rights. A missing or malformed approved digest is refused here so the

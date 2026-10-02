@@ -13,10 +13,12 @@ import type { MetricoolTransport } from "./metricoolClient.ts";
 import {
   advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
   loadStoredAnalyticsSnapshots,
   loadStoredPublicationLedger,
 } from "./publishingStore.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
+import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -26,7 +28,18 @@ afterEach(async () => {
 async function storeRoot(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "specsmith-orchestrator-"));
   roots.push(root);
+  await initPublicationStore(root, "simulation", "analytics test: publication is a seeded precondition");
   return root;
+}
+
+/**
+ * A labelled simulation store whose ledger is seeded through the publication
+ * boundary's simulation helper: these tests are about what happens after
+ * publication, so publication itself is a seeded, simulated precondition.
+ */
+async function seedTo(root: string, creativeId: string, through: "publication-authorized" | "scheduled" | "published", postId?: string, at = "2026-09-01T12:00:00.000Z", platform: VideoPlatform = "youtube-shorts"): Promise<void> {
+  await seedSimulatedLedger({ storeRoot: root, creativeId, through, providerPostId: postId, at: new Date(at), mediaSha256: "a".repeat(64),
+    variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "blog-1", platform }, title: "t", description: "d" });
 }
 
 function fingerprint(creativeId = "creative-1", platform: VideoPlatform = "youtube-shorts"): CreativeFingerprint {
@@ -82,9 +95,7 @@ const views = (n: number) => ({ status: 200, body: JSON.stringify({ data: { YTVP
 /** A creative carried all the way to a real published ledger event. */
 async function publishedCreative(root: string, creativeId: string, postId: string): Promise<void> {
   await createStoredPublicationLedger(root, fingerprint(creativeId));
-  await advanceStoredPublicationLedger(root, creativeId, { status: "qc-passed" });
-  await advanceStoredPublicationLedger(root, creativeId, { status: "scheduled", providerPostId: postId });
-  await advanceStoredPublicationLedger(root, creativeId, { status: "published", at: PUBLISHED_AT });
+  await seedTo(root, creativeId, "published", postId, PUBLISHED_AT);
 }
 
 const pass = (root: string, transport: MetricoolTransport, now: Date, window: "1h" | "6h" | "24h" | "72h" | "7d" = "1h") =>
@@ -126,8 +137,7 @@ describe("NEGATIVE CONTROLS: only real publications are measured", () => {
   it("ignores a creative that is scheduled but not published, and makes no request", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint("creative-1"));
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "scheduled", providerPostId: "post-1" });
+    await seedTo(root, "creative-1", "scheduled", "post-1");
 
     const transport = transportOf([views(100)]);
     const result = await pass(root, transport, new Date("2026-09-02T00:00:00.000Z"));
@@ -137,19 +147,18 @@ describe("NEGATIVE CONTROLS: only real publications are measured", () => {
     expect(transport.calls, "a scheduled-only creative must never be queried").toHaveLength(0);
   });
 
-  it("ignores a published creative with no provider id", async () => {
+  it("a published state without a provider id cannot be recorded, and one read from elsewhere is skipped", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint("creative-1"));
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
-    // Scheduled without an id, then published: nothing to ask the platform about.
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "scheduled" });
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "published", at: PUBLISHED_AT });
-
-    const transport = transportOf([views(100)]);
-    const result = await pass(root, transport, new Date("2026-09-02T00:00:00.000Z"));
-
-    expect(result.scan.skipped).toEqual([{ creativeId: "creative-1", reason: "no-provider-id" }]);
-    expect(transport.calls).toHaveLength(0);
+    // The ledger itself refuses a published state that names no post.
+    await expect(advanceStoredPublicationLedger(root, "creative-1", { status: "published", at: PUBLISHED_AT, simulated: true, evidence: { idempotencyKey: "k", confirmedBy: "x" } }))
+      .rejects.toThrow(/no receipt issued|must name the provider's post id/);
+    // An in-memory ledger built some other way is still not queried.
+    const ledger = {
+      creativeId: "creative-1", packageId: "package-1", platform: "youtube-shorts" as const,
+      events: [{ status: "generated" as const, at: PUBLISHED_AT }, { status: "published" as const, at: PUBLISHED_AT }],
+    };
+    expect(await eligibilityFor(root, ledger)).toEqual({ creativeId: "creative-1", reason: "no-provider-id" });
   });
 
   it("does not re-fetch a window it already captured", async () => {
@@ -284,7 +293,7 @@ describe("the pass renders what it found", () => {
   it("names skipped creatives, missed windows and the no-learning reason", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint("creative-1"));
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
+    await seedTo(root, "creative-1", "publication-authorized");
 
     const text = formatAnalyticsPass(await pass(root, transportOf([]), new Date("2026-09-02T00:00:00.000Z")));
     expect(text).toContain("skipped creative-1: not-published");

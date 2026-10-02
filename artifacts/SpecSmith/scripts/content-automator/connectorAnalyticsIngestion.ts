@@ -89,6 +89,7 @@ export interface AnalyticsResultDocument {
 
 export type AnalyticsResultRefusalCode =
   | "malformed-document"
+  | "legacy-unverified"
   | "not-published"
   | "provider-post-mismatch"
   | "identity-mismatch"
@@ -356,6 +357,12 @@ export async function ingestConnectorAnalytics(
     );
   }
 
+  if (ledger.legacy) {
+    throw new AnalyticsResultRefusedError(
+      "legacy-unverified",
+      `Creative ${document.creativeId} has a legacy ledger (${ledger.legacy.reason}); its publication is not confirmed under MASTER #8, so analytics are not attributed to it.`,
+    );
+  }
   const published = ledger.events.find((event) => event.status === "published");
   if (!published) {
     throw new AnalyticsResultRefusedError(
@@ -470,6 +477,7 @@ export async function analyticsResultTemplate(
 ): Promise<Record<string, unknown>> {
   const ledger = await loadStoredPublicationLedger(root, creativeId);
   if (!ledger) throw new AnalyticsResultRefusedError("identity-mismatch", `No publication ledger exists for ${creativeId}.`);
+  if (ledger.legacy) throw new AnalyticsResultRefusedError("legacy-unverified", `Creative ${creativeId} has a legacy ledger; no analytics template is issued for it.`);
   const published = ledger.events.find((event) => event.status === "published");
   if (!published) throw new AnalyticsResultRefusedError("not-published", `Creative ${creativeId} has not been published.`);
   const providerPostId = [...ledger.events].reverse().find((event) => event.providerPostId)?.providerPostId;

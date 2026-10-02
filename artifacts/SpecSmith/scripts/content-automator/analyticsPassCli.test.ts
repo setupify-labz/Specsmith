@@ -18,10 +18,11 @@ import {
 } from "./analyticsPassCli.ts";
 import type { MetricoolTransport } from "./metricoolClient.ts";
 import {
-  advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
 } from "./publishingStore.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
+import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -31,7 +32,18 @@ afterEach(async () => {
 async function storeRoot(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "specsmith-cli-"));
   roots.push(root);
+  await initPublicationStore(root, "simulation", "analytics test: publication is a seeded precondition");
   return root;
+}
+
+/**
+ * A labelled simulation store whose ledger is seeded through the publication
+ * boundary's simulation helper: these tests are about what happens after
+ * publication, so publication itself is a seeded, simulated precondition.
+ */
+async function seedTo(root: string, creativeId: string, through: "publication-authorized" | "scheduled" | "published", postId?: string, at = "2026-09-01T12:00:00.000Z", platform: VideoPlatform = "youtube-shorts"): Promise<void> {
+  await seedSimulatedLedger({ storeRoot: root, creativeId, through, providerPostId: postId, at: new Date(at), mediaSha256: "a".repeat(64),
+    variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "blog-1", platform }, title: "t", description: "d" });
 }
 
 function fingerprint(creativeId = "creative-1", platform: VideoPlatform = "youtube-shorts"): CreativeFingerprint {
@@ -123,7 +135,7 @@ describe("no-learning-yet is a success, not a failure", () => {
   it("reports a creative that is not published as skipped, still without throwing", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
+    await seedTo(root, "creative-1", "publication-authorized");
 
     const { summary } = await runCli(parseCliArgs(["--store", root, "--window", "24h"], EMPTY_ENV));
     expect(summary.skipped).toEqual([{ creativeId: "creative-1", reason: "not-published" }]);
@@ -135,9 +147,7 @@ describe("scan mode touches no network", () => {
   it("fetches nothing even when a transport is available", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "scheduled", providerPostId: "post-1" });
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "published", at: "2026-09-01T12:00:00.000Z" });
+    await seedTo(root, "creative-1", "published", "post-1", "2026-09-01T12:00:00.000Z");
 
     let calls = 0;
     const transport = (async () => {
@@ -170,7 +180,7 @@ describe("both output shapes describe the same result", () => {
   it("produces machine-readable JSON with the fields an operator needs", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
+    await seedTo(root, "creative-1", "publication-authorized");
 
     const { summary, result } = await runCli(parseCliArgs(["--store", root, "--window", "6h"], EMPTY_ENV));
     const parsed = JSON.parse(JSON.stringify(summary));
