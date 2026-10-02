@@ -25,10 +25,10 @@ import { parseArgs } from "node:util";
 
 import {
   metricoolCredentialsFromEnv,
-  publishApprovedPackage,
-  type ApprovedPublicationPackage,
+  publishAuthorizedDraft,
   type MetricoolTransport,
 } from "./metricoolClient.ts";
+import type { ProviderPublicationRequest } from "./v2/publication/boundary.ts";
 
 const LIVE_ACKNOWLEDGEMENT = "i-understand-this-calls-metricool";
 
@@ -65,9 +65,16 @@ function liveTransport(): MetricoolTransport {
   };
 }
 
+/**
+ * Send one authorized creative to Metricool as a DRAFT. It needs a production
+ * store whose ledger was authorized by a trusted decision, which this
+ * repository cannot record today (boundary.MISSING_APPROVAL_CAPABILITY), so it
+ * cannot reach Metricool until that exists.
+ */
 export async function runLiveSmoke(
-  pkg: ApprovedPublicationPackage,
+  request: ProviderPublicationRequest,
   storeRoot: string,
+  mediaPath: string,
   env: NodeJS.ProcessEnv = process.env,
   flags: { confirmLive?: boolean } = {},
 ): Promise<void> {
@@ -77,21 +84,11 @@ export async function runLiveSmoke(
     console.log("This is the safe default. Nothing was sent and no credential was used.");
     return;
   }
-
   const credentials = metricoolCredentialsFromEnv(env);
   if (!credentials) throw new Error("Credentials vanished between the gate and the call.");
-
-  console.log("Scheduling a DRAFT post against the real Metricool API. This never becomes public by itself.");
-  const result = await publishApprovedPackage(pkg, {
-    storeRoot,
-    credentials,
-    transport: liveTransport(),
-    // Hard-coded. There is no flag that makes this "scheduled-live".
-    mode: "draft",
-  });
-
-  console.log(`Draft scheduled. providerPostId=${result.providerPostId} platform=${result.platform}`);
-  console.log(`Verified media sha256=${result.verifiedSha256}`);
+  console.log("Sending a DRAFT to the real Metricool API through the publication boundary. It never becomes public by itself.");
+  const report = await publishAuthorizedDraft(request, { storeRoot, mediaPath, credentials, transport: liveTransport() });
+  console.log(`Outcome: ${report.kind}${"providerPostId" in report ? ` providerPostId=${report.providerPostId}` : ""}${"reason" in report ? ` (${report.reason})` : ""}`);
   console.log("Review it in Metricool and release it manually if it is correct.");
 }
 

@@ -27,21 +27,12 @@
 // environment, are never returned in a result, and are never logged.
 
 import {
-  assertPublicationGatesPassed,
-  PublicationIntegrityError,
-  verifyApprovedMedia,
-  type ApprovedPublicationPackage,
-} from "./publicationIntegrity.ts";
-import type { PublicationLedger } from "./publishing.ts";
-
-// Re-exported so existing importers of the REST adapter keep one import site
-// for the package shape. The type itself is owned by publicationIntegrity.ts.
-export type { ApprovedPublicationPackage };
-import {
-  advanceStoredPublicationLedger,
-  loadStoredPublicationLedger,
-} from "./publishingStore.ts";
-import type { VideoPlatform } from "./types.ts";
+  submitAuthorizedPublication,
+  type ProviderPublicationRequest,
+  type ProviderSubmitOutcome,
+  type PublicationProvider,
+  type SubmissionReport,
+} from "./v2/publication/boundary.ts";
 
 if (typeof globalThis !== "undefined" && "window" in globalThis) {
   throw new Error(
@@ -91,46 +82,12 @@ export function metricoolCredentialsFromEnv(env: NodeJS.ProcessEnv = process.env
   return { userToken, userId };
 }
 
-/**
- * How far this call is allowed to go.
- *
- * "draft" is the default everywhere. It asks Metricool to store the post as a
- * draft for a human to review and release, which is what initial validation
- * needs: a real request, a real response, a real provider id, and nothing
- * visible to the public. "scheduled-live" is the only mode that queues a post
- * for automatic publication, and it has to be asked for by name — no flag
- * defaults to it and no code path infers it.
- */
-export type MetricoolPublishMode = "draft" | "scheduled-live";
-
-
 /** The minimal HTTP surface this module needs, injected so tests never touch the network. */
 export interface MetricoolTransport {
   (url: string, init: { method: string; headers: Record<string, string>; body: string }): Promise<{
     status: number;
     text(): Promise<string>;
   }>;
-}
-
-export interface PublishOptions {
-  readonly storeRoot: string;
-  readonly credentials: MetricoolCredentials;
-  readonly transport: MetricoolTransport;
-  /** Defaults to "draft". "scheduled-live" must be passed explicitly. */
-  readonly mode?: MetricoolPublishMode;
-  readonly baseUrl?: string;
-  readonly now?: Date;
-}
-
-export interface PublishResult {
-  readonly creativeId: string;
-  readonly platform: VideoPlatform;
-  readonly mode: MetricoolPublishMode;
-  readonly providerPostId: string;
-  readonly providerUuid?: string;
-  readonly providerUrl?: string;
-  readonly verifiedSha256: string;
-  readonly ledger: PublicationLedger;
 }
 
 const DEFAULT_BASE_URL = "https://app.metricool.com/api";
@@ -197,115 +154,102 @@ export function metricoolRestAvailability(
 }
 
 /**
- * Schedules one already-approved publication and records the provider's
- * identifiers in the durable ledger.
+ * Metricool REST behind the MASTER #8 boundary's PublicationProvider interface.
  *
- * Every refusal below happens BEFORE the network call except the response
- * checks, so a rejected package costs nothing and cannot half-publish.
+ * It only sends drafts (draft=true, autoPublish=false: going live is a human
+ * act in Metricool), and maps every answer to what it proves:
+ *   - no credentials, a missing schedule, 401/403, other 4xx: rejected (nothing created)
+ *   - a thrown transport error, 5xx, a 2xx with no post id: unknown (a post may exist)
+ *   - a 2xx naming a post: draft accepted
+ * Metricool exposes no lookup by our idempotency key that this repository has
+ * verified, so lookups report "unsupported" and an unknown outcome must be
+ * resolved by a person in Metricool, never by resending.
+ *
+ * `simulated` is true only for a test transport; the boundary refuses a
+ * simulated provider on a production store and a real one on a simulation store.
  */
-export async function publishApprovedPackage(
-  pkg: ApprovedPublicationPackage,
-  options: PublishOptions,
-): Promise<PublishResult> {
-  const mode: MetricoolPublishMode = options.mode ?? "draft";
-  const { request } = pkg;
-
-  // Availability first. On the current Metricool plan this is where every call
-  // stops, which is the intended state: REST is a future adapter, not a route
-  // anything falls back to.
-  const availability = metricoolRestAvailability(options.credentials);
-  if (!availability.available) {
-    throw new MetricoolPublishError("rest-unavailable", availability.reason);
-  }
-  if (!options.credentials?.userToken || !options.credentials?.userId) {
-    throw new MetricoolPublishError("missing-credentials", "Metricool credentials are not configured in this environment.");
-  }
-
-  // "draft" must never queue a live post. A request whose own draft flag
-  // disagrees with the requested mode is a contradiction, not something to
-  // silently resolve in either direction. REST-specific, because only this
-  // route has a mode.
-  if (mode === "draft" && request.draft !== true) {
-    throw new MetricoolPublishError(
-      "unsupported-platform-state" as MetricoolFailureCode,
-      `Request ${request.requestId} has draft=false but the publish mode is "draft". Refusing to guess which was intended.`,
-    );
-  }
-
-  const ledger = await loadStoredPublicationLedger(options.storeRoot, request.creativeId);
-  if (!ledger) {
-    throw new PublicationIntegrityError(
-      "unsupported-platform-state",
-      `No durable publication ledger exists for ${request.creativeId}; a publication must be ledgered before it can be released.`,
-    );
-  }
-
-  // Every content and ledger guarantee, shared with the handoff route so the
-  // two can never drift apart.
-  assertPublicationGatesPassed(pkg, ledger);
-  const verifiedSha256 = await verifyApprovedMedia(pkg);
-
-  const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
-  const url = `${baseUrl}/v2/scheduler/posts?blogId=${encodeURIComponent(request.blog_id)}&userId=${encodeURIComponent(options.credentials.userId)}`;
-  const payload = {
-    text: request.text,
-    date: request.date,
-    timezone: request.timezone,
-    providers: request.networks.map((network) => ({ network })),
-    media: request.media,
-    ...(request.content_type ? { contentType: request.content_type } : {}),
-    ...(request.youtube_title ? { youtubeTitle: request.youtube_title } : {}),
-    ...(request.tiktok_title ? { tiktokTitle: request.tiktok_title } : {}),
-    ...(request.youtube_made_for_kids !== undefined ? { youtubeMadeForKids: request.youtube_made_for_kids } : {}),
-    // The safety-critical field. Draft mode always sends true.
-    draft: mode === "draft" ? true : request.draft,
-    autoPublish: mode === "scheduled-live",
-  };
-
-  let response: { status: number; text(): Promise<string> };
-  try {
-    response = await options.transport(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // The only place the token is used. Never logged, never returned.
-        "X-Mc-Auth": options.credentials.userToken,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    throw new MetricoolPublishError("transport-failed", `Metricool request failed before a response was received: ${(error as Error).message}`);
-  }
-
-  if (response.status === 401 || response.status === 403) {
-    throw new MetricoolPublishError("auth-failed", `Metricool rejected the credentials (HTTP ${response.status}).`);
-  }
-  if (response.status < 200 || response.status >= 300) {
-    const detail = (await response.text().catch(() => "")).slice(0, 300);
-    throw new MetricoolPublishError("transport-failed", `Metricool returned HTTP ${response.status}: ${detail}`);
-  }
-
-  const ids = parseProviderIds(await response.text());
-
-  // Recorded only after the provider confirmed an identifier, so the ledger
-  // never claims a publication that does not exist.
-  const advanced = await advanceStoredPublicationLedger(options.storeRoot, request.creativeId, {
-    status: "scheduled",
-    at: (options.now ?? new Date()).toISOString(),
-    note: `metricool:${mode}`,
-    providerPostId: ids.providerPostId,
-    ...(ids.providerUuid ? { providerUuid: ids.providerUuid } : {}),
-    ...(ids.providerUrl ? { providerUrl: ids.providerUrl } : {}),
-  });
-
+export function createMetricoolRestProvider(options: {
+  readonly credentials: MetricoolCredentials | undefined;
+  readonly transport: MetricoolTransport;
+  readonly baseUrl?: string;
+  readonly simulated?: boolean;
+}): PublicationProvider {
+  const NETWORK: Record<string, string> = { "youtube-shorts": "youtube", tiktok: "tiktok", "instagram-reels": "instagram" };
   return {
-    creativeId: request.creativeId,
-    platform: request.platform,
-    mode,
-    providerPostId: ids.providerPostId,
-    providerUuid: ids.providerUuid,
-    providerUrl: ids.providerUrl,
-    verifiedSha256,
-    ledger: advanced,
+    providerId: "metricool",
+    simulated: options.simulated === true,
+    async submit(request: ProviderPublicationRequest): Promise<ProviderSubmitOutcome> {
+      const credentials = options.credentials;
+      if (!metricoolRestAvailability(credentials).available || !credentials) {
+        return { kind: "rejected", reason: "Metricool REST credentials are not configured; nothing was sent." };
+      }
+      if (!request.schedule) return { kind: "rejected", reason: "Metricool needs a local date and timezone for a draft; nothing was sent." };
+      const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+      const url = `${baseUrl}/v2/scheduler/posts?blogId=${encodeURIComponent(request.destination.accountId)}&userId=${encodeURIComponent(credentials.userId)}`;
+      const payload = {
+        text: request.description,
+        date: request.schedule.localDateTime,
+        timezone: request.schedule.timezone,
+        providers: [{ network: NETWORK[request.platform] }],
+        media: [request.mediaUrl],
+        ...(request.platform === "youtube-shorts" ? { youtubeTitle: request.title } : {}),
+        ...(request.platform === "tiktok" ? { tiktokTitle: request.title } : {}),
+        ...(request.platform === "instagram-reels" ? { contentType: "REEL" } : {}),
+        draft: true,
+        autoPublish: false,
+      };
+      // Thrown transport errors propagate: the boundary records them as unknown,
+      // because the request may have reached Metricool.
+      const response = await options.transport(url, {
+        method: "POST",
+        // The only place the token is used. Never logged, never returned, never written to the ledger.
+        headers: { "Content-Type": "application/json", "X-Mc-Auth": credentials.userToken },
+        body: JSON.stringify(payload),
+      });
+      if (response.status === 401 || response.status === 403) return { kind: "rejected", reason: `Metricool rejected the credentials (HTTP ${response.status}).` };
+      if (response.status >= 400 && response.status < 500) {
+        return { kind: "rejected", reason: `Metricool refused the draft (HTTP ${response.status}): ${(await response.text().catch(() => "")).slice(0, 200)}` };
+      }
+      if (response.status < 200 || response.status >= 300) return { kind: "unknown", reason: `Metricool returned HTTP ${response.status}; the draft may or may not exist.` };
+      try {
+        const ids = parseProviderIds(await response.text());
+        return { kind: "draft-accepted", providerPostId: ids.providerPostId };
+      } catch (error) {
+        return { kind: "unknown", reason: (error as Error).message };
+      }
+    },
+    async lookupByIdempotencyKey() {
+      return { kind: "unsupported", reason: "No Metricool endpoint that finds a post by SpecSmith's idempotency key is verified in this repository." };
+    },
+    async lookupPost() {
+      return { kind: "unsupported", reason: "No Metricool post-status endpoint is verified in this repository." };
+    },
   };
+}
+
+/**
+ * Send an authorized creative to Metricool as a draft, through the boundary.
+ * Refuses before anything is written when REST is unavailable (the current plan).
+ */
+export async function publishAuthorizedDraft(
+  request: ProviderPublicationRequest,
+  options: {
+    readonly storeRoot: string;
+    readonly mediaPath: string;
+    readonly credentials: MetricoolCredentials | undefined;
+    readonly transport: MetricoolTransport;
+    readonly baseUrl?: string;
+    readonly simulated?: boolean;
+    readonly now?: Date;
+  },
+): Promise<SubmissionReport> {
+  const availability = metricoolRestAvailability(options.credentials);
+  if (!availability.available) throw new MetricoolPublishError("rest-unavailable", availability.reason);
+  return submitAuthorizedPublication({
+    storeRoot: options.storeRoot,
+    request,
+    mediaPath: options.mediaPath,
+    provider: createMetricoolRestProvider(options),
+    now: options.now,
+  });
 }

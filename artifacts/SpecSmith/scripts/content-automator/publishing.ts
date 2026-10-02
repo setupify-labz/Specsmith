@@ -1,11 +1,42 @@
+import { createHash } from "node:crypto";
+
 import type { QualityReviewResult } from "./qualityReviewer.ts";
 import type { PublicationAssetBundleResult } from "./productVisualAssets.ts";
 import type { ContentIdea, ContentPackage, CreativeFingerprint, VideoPlatform } from "./types.ts";
 
 export type MetricoolNetwork = "instagram" | "tiktok" | "youtube";
+/**
+ * What has truly happened to one creative on one platform. Each state is a
+ * fact with its own evidence (REQUIRED_EVIDENCE), never an intention:
+ *
+ *   generated               rendered media exists
+ *   machine-reviewed        a MASTER #7 packet reviewed these exact bytes and this cut
+ *   human-review-pending    people still have to decide; nothing is approved
+ *   human-rejected          a person rejected it (terminal)
+ *   publication-authorized  a TRUSTED person authorized these bytes, cut, destination and account
+ *   submission-started      a request was about to be sent (written before the network call)
+ *   submission-failed       the provider definitely refused it; a retry is allowed
+ *   submission-unknown      no reliable answer (timeout, partial response); reconcile before any retry
+ *   draft-submitted         the provider accepted a draft and returned its id
+ *   scheduled               the provider accepted a schedule and returned its id
+ *   published               the provider confirmed publication with its id or URL
+ *   analytics-partial/-complete  metrics were observed after publication
+ *
+ * `qc-passed` is LEGACY and read-only: it was written from a self-reported
+ * score with no MASTER #7 packet, so nothing may write it and nothing may
+ * advance from it.
+ */
 export type PublicationStatus =
   | "generated"
   | "qc-passed"
+  | "machine-reviewed"
+  | "human-review-pending"
+  | "human-rejected"
+  | "publication-authorized"
+  | "submission-started"
+  | "submission-failed"
+  | "submission-unknown"
+  | "draft-submitted"
   | "scheduled"
   | "published"
   | "analytics-partial"
@@ -76,6 +107,10 @@ export interface PublicationEvent {
   providerPostId?: string;
   providerUuid?: string;
   providerUrl?: string;
+  /** The facts this state rests on (packet id, media hash, decision id, idempotency key...). */
+  evidence?: Readonly<Record<string, string | number | boolean>>;
+  /** True when this event happened in a simulation store with simulated people or providers. */
+  simulated?: boolean;
 }
 
 export interface PublicationLedger {
@@ -83,7 +118,18 @@ export interface PublicationLedger {
   packageId: string;
   platform: VideoPlatform;
   events: PublicationEvent[];
+  /**
+   * Set when the ledger was written by the pre-MASTER-#8 route: it reached
+   * `qc-passed` from a self-reported score, with no MASTER #7 packet and no
+   * trusted decision. Such a ledger is readable, so its history is not lost,
+   * but nothing in it counts as reviewed, authorized or provider-confirmed,
+   * and it can only be stopped (`rejected`/`failed`), never advanced.
+   */
+  legacy?: { readonly since: string; readonly reason: string };
 }
+
+export const LEGACY_LEDGER_REASON =
+  "Written by the pre-MASTER-#8 route: qc-passed was recorded from a self-reported quality score, with no MASTER #7 review of the actual file and no trusted human decision. Its later states were not checked against the provider by the current rules.";
 
 const PLATFORM_NETWORK: Record<VideoPlatform, MetricoolNetwork> = {
   "youtube-shorts": "youtube",
@@ -92,8 +138,20 @@ const PLATFORM_NETWORK: Record<VideoPlatform, MetricoolNetwork> = {
 };
 
 const ALLOWED_TRANSITIONS: Record<PublicationStatus, PublicationStatus[]> = {
-  generated: ["qc-passed", "rejected", "failed"],
-  "qc-passed": ["scheduled", "rejected", "failed"],
+  generated: ["machine-reviewed", "rejected", "failed"],
+  // Legacy: kept readable so an old ledger loads and says what it is, but it is
+  // a dead end. A creative stuck here must be reviewed into a new ledger.
+  "qc-passed": ["rejected", "failed"],
+  "machine-reviewed": ["human-review-pending", "rejected", "failed"],
+  "human-review-pending": ["publication-authorized", "human-rejected", "rejected", "failed"],
+  "human-rejected": [],
+  "publication-authorized": ["submission-started", "rejected", "failed"],
+  "submission-started": ["draft-submitted", "scheduled", "published", "submission-failed", "submission-unknown"],
+  // Only a definite refusal may be retried.
+  "submission-failed": ["submission-started", "failed"],
+  // An unknown outcome is resolved by asking the provider, never by resending.
+  "submission-unknown": ["draft-submitted", "scheduled", "published", "submission-failed", "failed"],
+  "draft-submitted": ["scheduled", "published", "failed"],
   scheduled: ["published", "failed"],
   published: ["analytics-partial", "analytics-complete", "failed"],
   "analytics-partial": ["analytics-partial", "analytics-complete", "failed"],
@@ -101,6 +159,122 @@ const ALLOWED_TRANSITIONS: Record<PublicationStatus, PublicationStatus[]> = {
   rejected: [],
   failed: [],
 };
+
+/** States nobody may write any more. */
+const LEGACY_STATUSES: ReadonlySet<PublicationStatus> = new Set(["qc-passed"]);
+
+/**
+ * States that only ever stop a creative. Anyone may record them: refusing to
+ * go ahead on someone's say-so costs nothing.
+ */
+const FREE_STATUSES: ReadonlySet<PublicationStatus> = new Set(["generated", "rejected", "failed"]);
+
+/** The evidence each state must carry, checked on every write and every reload. */
+export const REQUIRED_EVIDENCE: Readonly<Partial<Record<PublicationStatus, readonly string[]>>> = {
+  "machine-reviewed": ["reviewPacketId", "reviewPacketVersion", "reviewVerdict", "mediaSha256", "variantId", "reviewBindingsSha256"],
+  "human-review-pending": ["reviewPacketId"],
+  "human-rejected": ["reviewPacketId", "decisionId", "approvalMechanism"],
+  "publication-authorized": [
+    "reviewPacketId", "reviewBindingsSha256", "mediaSha256", "variantId", "destinationProvider", "destinationAccount",
+    "destinationPlatform", "decisionId", "reviewerId", "approvalMechanism", "decidedAt", "idempotencyKey",
+  ],
+  "submission-started": ["idempotencyKey", "requestSha256", "attempt"],
+  "submission-failed": ["idempotencyKey", "reason"],
+  "submission-unknown": ["idempotencyKey", "reason"],
+  "draft-submitted": ["idempotencyKey", "confirmedBy"],
+  scheduled: ["idempotencyKey", "confirmedBy", "scheduledFor"],
+  published: ["idempotencyKey", "confirmedBy"],
+  "analytics-partial": ["observationIds"],
+  "analytics-complete": ["observationIds"],
+};
+
+/** States that must name the provider's own post. */
+const REQUIRES_PROVIDER_POST: ReadonlySet<PublicationStatus> = new Set(["draft-submitted", "scheduled", "published"]);
+
+export class PublicationLedgerError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PublicationLedgerError";
+  }
+}
+
+// --- the ledger authority ------------------------------------------------------
+//
+// Every state past `generated` (other than the stopping states) is written only
+// with a receipt from the single holder of the ledger authority,
+// v2/publication/boundary.ts, which checks the MASTER #7 packet, the trusted
+// decision or the provider's answer before issuing one.
+//
+// What makes a receipt unforgeable by an ordinary caller:
+//   - only the issuer can create one: receipts are recognised by identity in a
+//     module-private WeakSet, so an object with the same fields, a spread, a
+//     structuredClone or a JSON round trip is not a receipt;
+//   - there is exactly one issuer: the authority can be claimed once per
+//     process, publishingStore imports the boundary so the boundary has claimed
+//     it before any durable write is possible, and a later claim throws;
+//   - a receipt is bound to one event (its digest covers the status, time,
+//     note, provider ids, evidence and the simulated flag), to one position in
+//     one ledger, and to one store, and it is spent when used. Stripping the
+//     simulated flag changes the digest; replaying it into another store, a
+//     later position or a second write is refused.
+
+export interface TransitionReceipt {
+  readonly creativeId: string;
+  readonly status: PublicationStatus;
+  readonly eventSha256: string;
+  /** The ledger length the event is appended at. */
+  readonly sequence: number;
+  /** Realpath of the store it may be written to; null for an in-memory ledger only. */
+  readonly storeRoot: string | null;
+  readonly simulated: boolean;
+}
+
+const RECEIPTS = new WeakSet<object>();
+let authorityClaimed = false;
+
+function eventDigest(creativeId: string, event: PublicationEvent): string {
+  const canonical = JSON.stringify([creativeId, event.status, event.at, event.note ?? null, event.providerPostId ?? null,
+    event.providerUuid ?? null, event.providerUrl ?? null, event.simulated ?? false,
+    Object.entries(event.evidence ?? {}).sort(([a], [b]) => a.localeCompare(b))]);
+  return createHash("sha256").update(canonical).digest("hex");
+}
+
+export type ReceiptIssuer = (
+  creativeId: string,
+  event: PublicationEvent,
+  place: { readonly sequence: number; readonly storeRoot: string | null },
+) => TransitionReceipt;
+
+/** Claimed once, by the publication boundary. Returns the only receipt issuer. */
+export function claimLedgerAuthority(): ReceiptIssuer {
+  if (authorityClaimed) throw new PublicationLedgerError("The ledger authority has already been claimed; there is exactly one issuer of transition receipts.");
+  authorityClaimed = true;
+  return (creativeId, event, place) => {
+    const receipt: TransitionReceipt = Object.freeze({
+      creativeId, status: event.status, eventSha256: eventDigest(creativeId, event),
+      sequence: place.sequence, storeRoot: place.storeRoot, simulated: event.simulated === true,
+    });
+    RECEIPTS.add(receipt);
+    return receipt;
+  };
+}
+
+/** True once the authority has been claimed in this process. */
+export function ledgerAuthorityClaimed(): boolean {
+  return authorityClaimed;
+}
+
+function checkEvidence(creativeId: string, event: PublicationEvent): void {
+  for (const key of REQUIRED_EVIDENCE[event.status] ?? []) {
+    const value = event.evidence?.[key];
+    if (value === undefined || value === "") {
+      throw new PublicationLedgerError(`A "${event.status}" event for ${creativeId} must carry evidence.${key}.`);
+    }
+  }
+  if (REQUIRES_PROVIDER_POST.has(event.status) && !event.providerPostId?.trim()) {
+    throw new PublicationLedgerError(`A "${event.status}" event for ${creativeId} must name the provider's post id.`);
+  }
+}
 
 function nonEmpty(name: string, value: string): string {
   const result = value.trim();
@@ -457,21 +631,103 @@ export function assertNotAlreadyPublished(
   }
 }
 
+function applyTransition(ledger: PublicationLedger, event: PublicationEvent): PublicationLedger {
+  const last = ledger.events.at(-1);
+  if (!last) throw new PublicationLedgerError("Publication ledger has no current state.");
+  if (!ALLOWED_TRANSITIONS[last.status].includes(event.status)) {
+    throw new PublicationLedgerError(`Invalid publication transition ${last.status} -> ${event.status} for ${ledger.creativeId}.`);
+  }
+  if (!Number.isFinite(Date.parse(event.at))) throw new PublicationLedgerError("Publication event timestamp is invalid.");
+  checkEvidence(ledger.creativeId, event);
+  return { ...ledger, events: [...ledger.events, event] };
+}
+
+/**
+ * Append one event.
+ *
+ * `rejected` and `failed` may be recorded by anyone. Every other state needs
+ * the receipt the publication boundary issued for exactly this event, at this
+ * position, for this store; the receipt is spent by the write. `qc-passed`
+ * cannot be written at all, and a legacy ledger can only be stopped.
+ */
 export function advancePublicationLedger(
   ledger: PublicationLedger,
   event: Omit<PublicationEvent, "at"> & { at?: string },
+  receipt?: TransitionReceipt,
+  place: { readonly storeRoot: string | null } = { storeRoot: null },
 ): PublicationLedger {
-  const last = ledger.events.at(-1);
-  if (!last) throw new Error("Publication ledger has no current state.");
-  const allowed = ALLOWED_TRANSITIONS[last.status];
-  if (!allowed.includes(event.status)) {
-    throw new Error(`Invalid publication transition ${last.status} -> ${event.status} for ${ledger.creativeId}.`);
+  const full: PublicationEvent = { ...event, at: event.at ?? new Date().toISOString() };
+  if (LEGACY_STATUSES.has(full.status)) {
+    throw new PublicationLedgerError(
+      `"${full.status}" is a legacy state and can no longer be written: it was set from a self-reported quality score without a MASTER #7 review of the actual file.`,
+    );
   }
+  if (ledger.legacy) {
+    if (full.status !== "rejected" && full.status !== "failed") {
+      throw new PublicationLedgerError(
+        `${ledger.creativeId} has a legacy ledger (qc-passed at ${ledger.legacy.since}). It is not MASTER #7 reviewed or authorized, so it cannot advance to "${full.status}"; review the media as a new creative. It can only be stopped.`,
+      );
+    }
+    return { ...ledger, events: [...ledger.events, full] };
+  }
+  if (FREE_STATUSES.has(full.status)) return applyTransition(ledger, full);
 
-  const at = event.at ?? new Date().toISOString();
-  if (!Number.isFinite(Date.parse(at))) throw new Error("Publication event timestamp is invalid.");
-  return {
-    ...ledger,
-    events: [...ledger.events, { ...event, at }],
-  };
+  const problems: string[] = [];
+  if (!receipt || !RECEIPTS.has(receipt)) problems.push("no receipt issued by the publication boundary was supplied (a copied or hand-built receipt is not one)");
+  else {
+    if (receipt.creativeId !== ledger.creativeId) problems.push(`the receipt is for ${receipt.creativeId}`);
+    if (receipt.status !== full.status) problems.push(`the receipt is for "${receipt.status}"`);
+    if (receipt.eventSha256 !== eventDigest(ledger.creativeId, full)) problems.push("the receipt was issued for a different event (any changed field, including the simulated flag, voids it)");
+    if (receipt.sequence !== ledger.events.length) problems.push(`the receipt is for position ${receipt.sequence}, not ${ledger.events.length}`);
+    if (receipt.storeRoot !== place.storeRoot) problems.push(`the receipt is for store ${receipt.storeRoot ?? "(in memory)"}, not ${place.storeRoot ?? "(in memory)"}`);
+  }
+  if (problems.length) {
+    throw new PublicationLedgerError(`A "${full.status}" event for ${ledger.creativeId} cannot be written: ${problems.join("; ")}.`);
+  }
+  const next = applyTransition(ledger, full);
+  // Spent: a receipt authorizes one write.
+  RECEIPTS.delete(receipt!);
+  return next;
+}
+
+/** How the pre-MASTER-#8 route was allowed to move, kept only to read its ledgers. */
+const LEGACY_TRANSITIONS: Readonly<Partial<Record<PublicationStatus, readonly PublicationStatus[]>>> = {
+  generated: ["qc-passed", "rejected", "failed"],
+  "qc-passed": ["scheduled", "rejected", "failed"],
+  scheduled: ["published", "failed"],
+  published: ["analytics-partial", "analytics-complete", "failed"],
+  "analytics-partial": ["analytics-partial", "analytics-complete", "failed"],
+  "analytics-complete": [],
+  rejected: [],
+  failed: [],
+};
+
+/**
+ * Rebuild a ledger from events already persisted. Checks the transition table
+ * and the evidence every state must carry, but not receipts: those were checked
+ * when each event was written. (Edits made to the files themselves are outside
+ * what this process can detect; see the operator notes.)
+ *
+ * A ledger written by the old route (`generated -> qc-passed -> ...`) is read
+ * under the old table and marked `legacy`: its history stays visible, and
+ * nothing in it is treated as reviewed, authorized or provider-confirmed.
+ */
+export function replayPublicationLedger(base: PublicationLedger, events: readonly PublicationEvent[]): PublicationLedger {
+  let ledger = base;
+  for (const event of events) {
+    const last = ledger.events.at(-1)!;
+    if (event.status === "qc-passed" && last.status === "generated" && !ledger.legacy) {
+      ledger = { ...ledger, legacy: { since: event.at, reason: LEGACY_LEDGER_REASON }, events: [...ledger.events, event] };
+      continue;
+    }
+    if (ledger.legacy) {
+      if (!(LEGACY_TRANSITIONS[last.status] ?? []).includes(event.status)) {
+        throw new PublicationLedgerError(`Legacy ledger ${ledger.creativeId} has an impossible transition ${last.status} -> ${event.status}.`);
+      }
+      ledger = { ...ledger, events: [...ledger.events, event] };
+      continue;
+    }
+    ledger = applyTransition(ledger, event);
+  }
+  return ledger;
 }

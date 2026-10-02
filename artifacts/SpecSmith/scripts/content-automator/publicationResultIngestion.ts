@@ -23,11 +23,14 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { loadExistingHandoff, type ReadyToPublishManifest } from "./readyToPublishHandoff.ts";
+import { loadStoredPublicationLedger } from "./publishingStore.ts";
+import type { PublicationLedger } from "./publishing.ts";
 import {
-  advanceStoredPublicationLedger,
-  loadStoredPublicationLedger,
-} from "./publishingStore.ts";
-import type { PublicationLedger, PublicationStatus } from "./publishing.ts";
+  PublicationBoundaryError,
+  recordReportedFailure,
+  recordReportedProviderResult,
+  type PublicationProvider,
+} from "./v2/publication/boundary.ts";
 import type { VideoPlatform } from "./types.ts";
 
 export const PUBLISH_RESULT_KIND = "PUBLISH_RESULT" as const;
@@ -92,7 +95,8 @@ export type PublishResultRefusalCode =
   | "missing-provider-identity"
   | "conflicting-provider-id"
   | "invalid-transition"
-  | "replayed-with-different-data";
+  | "replayed-with-different-data"
+  | "provider-unconfirmed";
 
 export class PublishResultRefusedError extends Error {
   readonly code: PublishResultRefusalCode;
@@ -215,6 +219,14 @@ function existingProviderId(ledger: PublicationLedger): string | undefined {
 
 export interface IngestOptions {
   readonly storeRoot: string;
+  /**
+   * How to ask the provider whether the reported post exists. A typed post id
+   * is a claim; only the provider's answer advances the ledger. Null or absent
+   * means no lookup is available here, and a scheduled/published report is
+   * refused rather than believed.
+   */
+  readonly provider?: PublicationProvider | null;
+  readonly now?: Date;
 }
 
 export interface IngestOutcome {
@@ -226,10 +238,10 @@ export interface IngestOutcome {
 }
 
 /**
- * Records a real connector result, or refuses it.
+ * Records a connector result once the provider confirms it, or refuses it.
  *
- * The order matters: every comparison against the handoff happens before the
- * ledger is touched, so a rejected result cannot leave a partial state behind.
+ * Every comparison against the handoff happens before the ledger is touched,
+ * so a rejected result cannot leave a partial state behind.
  */
 export async function ingestPublishResult(
   input: unknown,
@@ -237,9 +249,7 @@ export async function ingestPublishResult(
 ): Promise<IngestOutcome> {
   const result = parsePublishResult(input);
 
-  // 1. There must be a handoff for exactly this creative and platform. Without
-  //    one, no publication state may be created at all — this is the check
-  //    that makes a manifest a precondition rather than a formality.
+  // 1. There must be a handoff for exactly this creative and platform.
   const handoff = await loadExistingHandoff(options.storeRoot, result.creativeId, result.platform);
   if (!handoff) {
     throw new PublishResultRefusedError(
@@ -247,9 +257,7 @@ export async function ingestPublishResult(
       `No READY_TO_PUBLISH handoff exists for ${result.creativeId} on ${result.platform}. A publication result cannot create publication state on its own.`,
     );
   }
-
-  // 2. It must answer THAT handoff's media, not some other render of the same
-  //    creative.
+  // 2. It must answer THAT handoff's media and package.
   if (handoff.media.sha256.toLowerCase() !== result.handoffSha256) {
     throw new PublishResultRefusedError(
       "handoff-sha-mismatch",
@@ -257,12 +265,8 @@ export async function ingestPublishResult(
     );
   }
   if (handoff.packageId !== result.packageId) {
-    throw new PublishResultRefusedError(
-      "package-mismatch",
-      `Result reports package ${result.packageId} but the handoff belongs to ${handoff.packageId}.`,
-    );
+    throw new PublishResultRefusedError("package-mismatch", `Result reports package ${result.packageId} but the handoff belongs to ${handoff.packageId}.`);
   }
-
   // 3. A state that implies a post must name it.
   if (REQUIRES_PROVIDER_IDENTITY[result.status] && !result.providerPostId) {
     throw new PublishResultRefusedError(
@@ -270,80 +274,53 @@ export async function ingestPublishResult(
       `A "${result.status}" result must carry providerPostId; without it there is no publication to attribute analytics to.`,
     );
   }
-
   const ledger = await loadStoredPublicationLedger(options.storeRoot, result.creativeId);
   if (!ledger) {
-    throw new PublishResultRefusedError(
-      "no-matching-handoff",
-      `No durable publication ledger exists for ${result.creativeId}, so there is nothing to record against.`,
-    );
+    throw new PublishResultRefusedError("no-matching-handoff", `No durable publication ledger exists for ${result.creativeId}, so there is nothing to record against.`);
   }
-
-  // 4. Replay. An identical result is a no-op; a different one for the same
-  //    creative/platform/status is a contradiction, not an update.
+  // 4. Replay. An identical result is a no-op; a different one is a contradiction.
   const stored = await loadStoredResult(options.storeRoot, result.creativeId, result.platform, result.status);
   if (stored) {
-    if (sameResult(stored, result)) {
-      return { result: stored, handoff, ledger, replayed: true };
-    }
+    if (sameResult(stored, result)) return { result: stored, handoff, ledger, replayed: true };
     throw new PublishResultRefusedError(
       "replayed-with-different-data",
       `A different "${result.status}" result was already recorded for ${result.creativeId} on ${result.platform}. Recorded publication facts are not editable.`,
     );
   }
-
   // 5. A provider id already on the ledger must not be contradicted.
   const already = existingProviderId(ledger);
   if (already && result.providerPostId && already !== result.providerPostId) {
-    throw new PublishResultRefusedError(
-      "conflicting-provider-id",
-      `Ledger ${result.creativeId} already records provider post ${already}; this result claims ${result.providerPostId}.`,
-    );
+    throw new PublishResultRefusedError("conflicting-provider-id", `Ledger ${result.creativeId} already records provider post ${already}; this result claims ${result.providerPostId}.`);
   }
 
-  // 6. The transition must be one the ledger allows. advancePublicationLedger
-  //    enforces the table; this pre-check turns it into a named refusal so a
-  //    fabricated jump (qc-passed straight to published, say) reports why.
-  const current = ledger.events[ledger.events.length - 1].status;
-  assertTransitionIsNotFabricated(current, result.status, result.creativeId);
-
-  const advanced = await advanceStoredPublicationLedger(options.storeRoot, result.creativeId, {
-    status: result.status as PublicationStatus,
-    at: result.occurredAt,
-    note: result.note ?? `metricool-connector:${result.status}`,
-    ...(result.providerPostId ? { providerPostId: result.providerPostId } : {}),
-    ...(result.providerUuid ? { providerUuid: result.providerUuid } : {}),
-    ...(result.providerUrl ? { providerUrl: result.providerUrl } : {}),
-  });
+  // 6. Through the boundary: a reported post is recorded as whatever the
+  //    provider confirms, and a reported failure stays an unknown outcome.
+  let advanced: PublicationLedger;
+  try {
+    if (result.status === "failed") {
+      advanced = await recordReportedFailure({ storeRoot: options.storeRoot, creativeId: result.creativeId, reason: result.note ?? "no reason given", now: options.now });
+    } else {
+      const report = await recordReportedProviderResult({
+        storeRoot: options.storeRoot, creativeId: result.creativeId, reportedProviderPostId: result.providerPostId!,
+        provider: options.provider ?? null, now: options.now,
+      });
+      const confirmed = report.kind === "accepted" ? report.status : null;
+      const expected = result.status === "scheduled" ? "scheduled" : "published";
+      if (confirmed !== expected) {
+        // The provider's answer was recorded; the document's claim was not.
+        throw new PublishResultRefusedError("provider-unconfirmed", `The result reports "${result.status}", but the provider confirms "${confirmed ?? report.kind}". The provider's state was recorded; the report was not.`);
+      }
+      advanced = report.ledger;
+    }
+  } catch (error) {
+    if (error instanceof PublicationBoundaryError) {
+      throw new PublishResultRefusedError(error.code === "wrong-state" ? "invalid-transition" : "provider-unconfirmed", error.message);
+    }
+    throw error;
+  }
 
   await writeStoredResult(options.storeRoot, result);
   return { result, handoff, ledger: advanced, replayed: false };
-}
-
-/**
- * Refuses a jump that would assert a state the creative never passed through.
- *
- * `published` is reachable only from `scheduled`: a creative that was never
- * scheduled cannot have been published, and accepting that claim would create
- * a publication with no scheduling history — precisely the fabricated state
- * the handoff route exists to prevent.
- */
-function assertTransitionIsNotFabricated(
-  current: PublicationStatus,
-  next: PublishResultStatus,
-  creativeId: string,
-): void {
-  const allowed: Record<PublishResultStatus, PublicationStatus[]> = {
-    scheduled: ["qc-passed"],
-    published: ["scheduled"],
-    failed: ["generated", "qc-passed", "scheduled", "published"],
-  };
-  if (!allowed[next].includes(current)) {
-    throw new PublishResultRefusedError(
-      "invalid-transition",
-      `Cannot record "${next}" for ${creativeId} from "${current}": that would assert a state the creative never passed through.`,
-    );
-  }
 }
 
 export async function loadStoredResult(
