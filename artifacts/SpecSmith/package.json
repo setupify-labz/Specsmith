@@ -33,6 +33,7 @@
     "content:creative:handoff": "tsx scripts/content-automator/creativeFileWorkflowCli.ts handoff",
     "content:creative:render": "tsx scripts/content-automator/master6OfflineRender.ts",
     "content:review": "tsx scripts/content-automator/master7ReviewCli.ts",
+    "content:publish:demo": "tsx scripts/content-automator/master8OfflineDemo.ts",
     "content:poc:leads-vs-average": "tsx scripts/content-automator/leadsVsAverage/render.ts"
   },
   "devDependencies": {

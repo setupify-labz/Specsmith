@@ -135,7 +135,7 @@ export interface MetricoolRestAvailability {
  * Whether direct Metricool REST can be used at all.
  *
  * The founder's current plan does not include REST API access, so on that plan
- * this always reports unavailable and publishApprovedPackage refuses before
+ * this always reports unavailable and publishAuthorizedDraft refuses before
  * touching anything. Availability is decided solely by whether REST
  * credentials exist: there is no override flag, and no code path treats
  * "unavailable" as a soft warning to continue past.

@@ -1,0 +1,34 @@
+LEARNING REPORT learning-1303316dc82ac7c3 — SIMULATED DATA, NOT REAL PERFORMANCE
+Generated 2026-10-05T08:47:54.524Z
+
+Which videos have enough comparable data?
+  - SIMULATED-peer-result-first (youtube-shorts, youtube-shorts-1080x1920-30, post SIM-PEER-1, 71h old): [SIMULATED] Has comparable data at 24h. 4 observed, 8 unavailable, 0 failed collection(s).
+  - review-fixture/leads-vs-average (youtube-shorts, youtube-shorts-1080x1920-30, post SIM-POST-1, 71h old): [SIMULATED] Has comparable data at 24h. 6 observed, 6 unavailable, 0 failed collection(s).
+
+Where did viewers appear to leave?
+  - SIMULATED-peer-result-first: No retention curve was returned; where viewers left is unknown.
+  - review-fixture/leads-vs-average: [SIMULATED] steepest loss between 2s and 3s (81% → 62% still watching), at 24h.
+
+Which creative choices are associated with stronger or weaker results? (observations, then hypotheses)
+  - Observed: [SIMULATED] At 24h on youtube-shorts, review-fixture/leads-vs-average (hookFamily = tally-question) had a higher stayed-to-watch-rate than SIMULATED-peer-result-first (hookFamily = result-first): 0.58 vs 0.41.
+    Hypothesis: hookFamily = "tally-question" may have contributed. One video per side: this is a hypothesis to test, not a finding. Topic demand and distribution can move stayed-to-watch-rate on their own.
+  - Observed: [SIMULATED] At 24h on youtube-shorts, SIMULATED-peer-result-first and review-fixture/leads-vs-average had average-percentage-viewed within 10% of each other (0.66 vs 0.71).
+
+Comparisons that are not valid (10):
+  - youtube-shorts at 72h: no video has an observation within the window yet (too new, or not collected).
+  - youtube-shorts at 168h: no video has an observation within the window yet (too new, or not collected).
+  - SIMULATED-peer-result-first vs review-fixture/leads-vs-average, saves at 24h: SIMULATED-peer-result-first's saves is unavailable: The provider reported it unavailable.; only 1 youtube-shorts video(s) have saves at 24h; at least 2 are needed.
+  - SIMULATED-peer-result-first vs review-fixture/leads-vs-average, site-clicks at 24h: SIMULATED-peer-result-first's site-clicks is unavailable: The provider did not return this field.; review-fixture/leads-vs-average's site-clicks is unavailable: The provider did not return this field.; only 0 youtube-shorts video(s) have site-clicks at 24h; at least 2 are needed.
+
+What remains unknown?
+  - Where viewers left is unknown for videos without a provider retention curve.
+  - Why any difference happened: no experiment assigned variants at random, so topic, timing and distribution remain possible explanations.
+  - saves was not observed for SIMULATED-peer-result-first.
+  - site-clicks was not observed for SIMULATED-peer-result-first, review-fixture/leads-vs-average.
+
+One testable change for the next brief:
+  Try hookFamily = "tally-question" instead of "result-first", measured on stayed-to-watch-rate at 24h.
+  Hold constant: format = comparison; targetDurationSeconds = 6; voiceName = placeholder tones (fixture); editDensity = medium; plannedBeatChangesPer10Seconds = 5; ctaFamily = compare-on-specsmithpc; ctaTimingBucket = late; firstVisualType = deterministic-ui; narrativeEngine = tally-then-average; captionDensity = medium; variantId = youtube-shorts-1080x1920-30.
+  Status: A hypothesis to test in the next batch, with every other recorded variable held constant. Based on one video per side; not a causal result.
+
+This report cannot approve a claim, change benchmark data, schedule a post or authorize publishing.

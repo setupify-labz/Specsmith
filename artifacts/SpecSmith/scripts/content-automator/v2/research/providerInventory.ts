@@ -96,7 +96,7 @@ export const PROVIDER_INVENTORY: readonly ProviderRecord[] = [
     requiredEnv: [],
     canExecute: "no-credentials",
     paidUsagePossible: false,
-    freeTierHandling: "The founder's current Metricool plan exposes no REST API. metricoolRestAvailability() reports unavailable whenever credentials are absent, and publishApprovedPackage refuses with rest-unavailable before touching anything.",
+    freeTierHandling: "The founder's current Metricool plan exposes no REST API. metricoolRestAvailability() reports unavailable whenever credentials are absent, and publishAuthorizedDraft refuses with rest-unavailable before touching anything.",
     fallback: "The READY_TO_PUBLISH handoff, plus connector-relayed analytics ingestion. Both are free and require no API access.",
     coreDependency: false,
     notes: "Deliberately kept inert by MASTER #1's work. Nothing in this MASTER changes that.",

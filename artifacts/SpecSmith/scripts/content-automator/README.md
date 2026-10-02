@@ -27,8 +27,10 @@ npx --yes serve artifacts/SpecSmith/dist/public -l 5178 --no-clipboard &
 #    match a committed, previously-inspected evidence record, or the run
 #    stops before publishing) -> a rights-approved asset bundle -> a
 #    tracked, draft-only Metricool-ready publishing request -> a durable
-#    ledger that stops at qc-passed (never "scheduled" — nothing here calls
-#    Metricool) and fails closed on a duplicate publish. Nothing is posted
+#    ledger that stays at "generated": the old score-based qc-passed write
+#    is attempted and refused (MASTER #8 — only the guarded publication
+#    boundary may advance a ledger, and only on a MASTER #7 packet plus
+#    trusted human approval). Nothing here calls Metricool. Nothing is posted
 #    anywhere. Wiring the actual generated storyboard through to a real
 #    render remains separate, tracked future work — this proves the chain of
 #    custody from a real render onward, not full automatic

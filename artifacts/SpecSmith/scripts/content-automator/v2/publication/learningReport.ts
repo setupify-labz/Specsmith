@@ -165,7 +165,8 @@ export async function buildLearningReport(options: LearningOptions): Promise<Lea
   // Only creatives a provider confirmed as published.
   const videos: PublishedVideo[] = [];
   const legacy: string[] = [];
-  for (const creativeId of await listStoredCreativeIds(options.storeRoot)) {
+  // Sorted by id, so comparisons and reports come out in a stable, readable order.
+  for (const creativeId of (await listStoredCreativeIds(options.storeRoot)).sort()) {
     const ledger = await loadStoredPublicationLedger(options.storeRoot, creativeId);
     if (ledger?.legacy) { legacy.push(creativeId); continue; }
     const published = ledger?.events.find((event) => event.status === "published" && event.providerPostId);
@@ -335,7 +336,21 @@ export function formatLearningReport(report: LearningReport): string {
   const invalid = report.comparisons.filter((entry) => !entry.valid);
   if (invalid.length) {
     lines.push("", `Comparisons that are not valid (${invalid.length}):`);
-    for (const entry of invalid) lines.push(`  - ${entry.a.creativeId} vs ${entry.b.creativeId}, ${entry.metricId} at ${entry.checkpointHours}h: ${entry.invalidReasons.join("; ")}.`);
+    // A checkpoint where no video has any observation yet is one fact, not many.
+    const empty = new Set<string>();
+    for (const entry of invalid) {
+      const key = `${entry.platform}@${entry.checkpointHours}`;
+      const atCheckpoint = report.comparisons.filter((other) => `${other.platform}@${other.checkpointHours}` === key);
+      if (atCheckpoint.every((other) => other.a.observationId === null && other.b.observationId === null)) empty.add(key);
+    }
+    for (const key of empty) {
+      const [platform, hours] = key.split("@");
+      lines.push(`  - ${platform} at ${hours}h: no video has an observation within the window yet (too new, or not collected).`);
+    }
+    for (const entry of invalid) {
+      if (empty.has(`${entry.platform}@${entry.checkpointHours}`)) continue;
+      lines.push(`  - ${entry.a.creativeId} vs ${entry.b.creativeId}, ${entry.metricId} at ${entry.checkpointHours}h: ${entry.invalidReasons.join("; ")}.`);
+    }
   }
   lines.push("", "What remains unknown?");
   for (const unknown of report.unknowns) lines.push(`  - ${unknown}`);

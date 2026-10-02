@@ -8,11 +8,13 @@
 // happened gets recorded — the provider's own identifiers, the state it
 // reached, and when.
 //
-// It is the only path that may move a creative to `scheduled` or `published`,
-// and it will do so ONLY on evidence: a result that matches an existing
-// handoff, byte for byte on the media digest, carrying a provider identity the
-// claimed state requires. Nothing here can be talked into inventing a
-// publication.
+// It never writes the ledger itself. A claimed `scheduled` or `published`
+// state is passed to the MASTER #8 boundary (v2/publication/boundary.ts),
+// which records it ONLY when the result matches an existing handoff, byte for
+// byte on the media digest, carries the provider identity the state requires,
+// AND the provider itself confirms the post. Without a provider able to
+// confirm, the claim is refused (`provider-unconfirmed`). Nothing here can be
+// talked into inventing a publication.
 //
 // NO NETWORK, NO CREDENTIALS. This module never contacts Metricool. It reads a
 // PUBLISH_RESULT document that a human (or ChatGPT, after using the connector)
@@ -40,7 +42,7 @@ export const PUBLISH_RESULT_VERSION = "publish-result-v1";
  * The states a connector result may claim.
  *
  * Deliberately narrower than PublicationStatus: this document reports what the
- * platform did with a post, so it cannot assert `generated`, `qc-passed`, or
+ * platform did with a post, so it cannot assert `generated`, any review or authorization state, or
  * any analytics state. Those belong to earlier and later stages and are not a
  * connector's to declare.
  */
