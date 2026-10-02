@@ -4,7 +4,9 @@ import {
   assertNotAlreadyPublished,
   buildMetricoolPublishingRequest,
   buildTrackedWebsiteUrl,
+  replayPublicationLedger,
   startPublicationLedger,
+  type PublicationEvent,
 } from "./publishing.ts";
 import type { QualityReviewResult } from "./qualityReviewer.ts";
 import type { PublicationAssetBundleResult } from "./productVisualAssets.ts";
@@ -276,34 +278,55 @@ describe("publishing", () => {
     expect(live.draft).toBe(false);
   });
 
+  // A ledger as the store reads it back after the boundary wrote it: every
+  // state carries the evidence it requires. Writing these states needs the
+  // boundary's receipts (see v2/publication/ledgerAuthority.test.ts); reading
+  // them back does not.
+  const KEY = "specsmith-key";
+  const confirmedHistory = (postId: string): PublicationEvent[] => [
+    { status: "machine-reviewed", at: "2026-08-23T20:01:00Z", evidence: { reviewPacketId: "pk", reviewPacketVersion: "v1", reviewVerdict: "awaiting-human-review", mediaSha256: "a".repeat(64), variantId: "tiktok-1080x1920-30", reviewBindingsSha256: "b" } },
+    { status: "human-review-pending", at: "2026-08-23T20:01:00Z", evidence: { reviewPacketId: "pk" } },
+    { status: "publication-authorized", at: "2026-08-23T20:02:00Z", evidence: { reviewPacketId: "pk", reviewBindingsSha256: "b", mediaSha256: "a".repeat(64), variantId: "tiktok-1080x1920-30",
+      destinationProvider: "metricool", destinationAccount: "acct", destinationPlatform: "tiktok", decisionId: "d", reviewerId: "r", approvalMechanism: "m", decidedAt: "2026-08-23T20:02:00Z", idempotencyKey: KEY } },
+    { status: "submission-started", at: "2026-08-23T20:03:00Z", evidence: { idempotencyKey: KEY, requestSha256: "q", attempt: 1 } },
+    { status: "scheduled", at: "2026-08-23T20:04:00Z", providerPostId: postId, evidence: { idempotencyKey: KEY, confirmedBy: "provider-response", scheduledFor: "2026-08-24T22:00:00" } },
+    { status: "published", at: "2026-08-24T22:00:00Z", providerPostId: postId, evidence: { idempotencyKey: KEY, confirmedBy: "provider-lookup" } },
+  ];
+
   it("refuses a second publication of the same creative across separate ledgers", () => {
     // A re-run mints a fresh ledger, so the per-ledger transition table cannot
     // see the earlier publish. This is the guard that can.
     const fp = fingerprint("tiktok");
-    let first = startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z"));
-    first = advancePublicationLedger(first, { status: "qc-passed", at: "2026-08-23T20:01:00Z" });
-    first = advancePublicationLedger(first, { status: "scheduled", at: "2026-08-23T20:02:00Z" });
-    first = advancePublicationLedger(first, { status: "published", at: "2026-08-24T22:00:00Z" });
-
+    const first = replayPublicationLedger(startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z")), confirmedHistory("post-1"));
     expect(() => assertNotAlreadyPublished([first], fp.creativeId)).toThrow(/already published/);
     expect(() => assertNotAlreadyPublished([first], "creative-other")).not.toThrow();
   });
 
-  it("keeps an auditable lifecycle and blocks impossible or duplicate publication transitions", () => {
+  it("keeps an auditable lifecycle and blocks impossible, unevidenced or unreceipted transitions", () => {
     const fp = fingerprint("tiktok");
-    let ledger = startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z"));
-    ledger = advancePublicationLedger(ledger, { status: "qc-passed", at: "2026-08-23T20:01:00Z" });
-    ledger = advancePublicationLedger(ledger, { status: "scheduled", at: "2026-08-23T20:02:00Z" });
-    ledger = advancePublicationLedger(ledger, { status: "published", at: "2026-08-24T22:00:00Z", providerPostId: "post-1" });
-    ledger = advancePublicationLedger(ledger, { status: "analytics-partial", at: "2026-08-24T23:00:00Z" });
-    ledger = advancePublicationLedger(ledger, { status: "analytics-complete", at: "2026-08-31T22:00:00Z" });
-    expect(ledger.events.map((entry) => entry.status)).toEqual([
-      "generated", "qc-passed", "scheduled", "published", "analytics-partial", "analytics-complete",
+    const ledger = replayPublicationLedger(startPublicationLedger(fp, new Date("2026-08-23T20:00:00Z")), [
+      ...confirmedHistory("post-1"),
+      { status: "analytics-partial", at: "2026-08-24T23:00:00Z", evidence: { observationIds: "obs-1" } },
+      { status: "analytics-complete", at: "2026-08-31T22:00:00Z", evidence: { observationIds: "obs-2" } },
     ]);
+    expect(ledger.events.map((entry) => entry.status)).toEqual([
+      "generated", "machine-reviewed", "human-review-pending", "publication-authorized", "submission-started",
+      "scheduled", "published", "analytics-partial", "analytics-complete",
+    ]);
+    expect(ledger.legacy).toBeUndefined();
 
     const fresh = startPublicationLedger(fp);
-    expect(() => advancePublicationLedger(fresh, { status: "published" })).toThrow(/Invalid publication transition/);
-    expect(() => advancePublicationLedger(ledger, { status: "published" })).toThrow();
+    // Skipping states is impossible even when replaying stored events.
+    expect(() => replayPublicationLedger(fresh, [confirmedHistory("p")[5]])).toThrow(/Invalid publication transition generated -> published/);
+    // A state without the evidence it requires is refused.
+    expect(() => replayPublicationLedger(fresh, [{ status: "machine-reviewed", at: "2026-08-23T20:01:00Z" }])).toThrow(/must carry evidence.reviewPacketId/);
+    expect(() => replayPublicationLedger(startPublicationLedger(fp), [...confirmedHistory("p").slice(0, 4),
+      { status: "scheduled", at: "2026-08-23T20:04:00Z", evidence: { idempotencyKey: KEY, confirmedBy: "x", scheduledFor: "y" } }])).toThrow(/must name the provider's post id/);
+    // Writing a new protected state needs a boundary receipt.
+    expect(() => advancePublicationLedger(fresh, confirmedHistory("p")[0])).toThrow(/no receipt issued by the publication boundary/);
+    // Stopping states need none; the legacy state cannot be written at all.
+    expect(advancePublicationLedger(fresh, { status: "rejected", note: "not fit" }).events.at(-1)!.status).toBe("rejected");
+    expect(() => advancePublicationLedger(fresh, { status: "qc-passed" })).toThrow(/legacy state and can no longer be written/);
   });
 });
 

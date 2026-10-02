@@ -10,10 +10,9 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  MetricoolPublishError,
+  createMetricoolRestProvider,
   metricoolCredentialsFromEnv,
-  publishApprovedPackage,
-  type ApprovedPublicationPackage,
+  publishAuthorizedDraft,
   type MetricoolTransport,
 } from "./metricoolClient.ts";
 import {
@@ -23,22 +22,33 @@ import {
 } from "./metricoolAnalyticsCollector.ts";
 import { eligibilityFor } from "./analyticsOrchestrator.ts";
 import {
-  advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
   loadStoredPublicationLedger,
 } from "./publishingStore.ts";
-import type { MetricoolPublishingRequest } from "./publishing.ts";
 import { evaluateLiveSmokeGate, runLiveSmoke } from "./metricoolLiveSmoke.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
+import {
+  buildProviderRequest,
+  loadAuthorization,
+  reconcileSubmission,
+  seedSimulatedLedger,
+  type ProviderPublicationRequest,
+} from "./v2/publication/boundary.ts";
+import type { ReviewSubmission } from "./v2/review/inputs.ts";
 
 const roots: string[] = [];
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-async function storeRoot(): Promise<string> {
+async function storeRoot(mode: "simulation" | "production" = "simulation"): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "specsmith-metricool-"));
   roots.push(root);
+  // The transport below is a fake, so the provider built on it is labelled
+  // simulated and lives in a labelled simulation store. A production store
+  // refuses it (see "the provider and the store must agree").
+  if (mode === "simulation") await initPublicationStore(root, "simulation", "Metricool adapter test with a fake transport");
   return root;
 }
 
@@ -83,31 +93,6 @@ async function writeMedia(root: string, contents: string): Promise<{ path: strin
   return { path, sha256: createHash("sha256").update(contents).digest("hex") };
 }
 
-function request(sha256: string, overrides: Partial<MetricoolPublishingRequest> = {}): MetricoolPublishingRequest {
-  const fp = fingerprint();
-  return {
-    requestId: "request-1",
-    creativeId: fp.creativeId,
-    packageId: fp.packageId,
-    campaignId: fp.campaignId,
-    ideaId: fp.ideaId,
-    platform: fp.platform,
-    blog_id: "blog-1",
-    networks: ["youtube"],
-    text: "caption",
-    date: "2026-09-20T10:00:00",
-    timezone: "America/New_York",
-    media: ["https://cdn.example.com/master.mp4"],
-    draft: true,
-    trackedWebsiteUrl: "https://specsmithpc.com/compare?utm_content=creative-youtube-shorts",
-    websiteCtaMode: "profile-link",
-    hashtagStrategy: "intent-balanced-v1",
-    hashtags: ["#SpecSmithPC"],
-    finalMediaSha256: sha256,
-    ...overrides,
-  } as MetricoolPublishingRequest;
-}
-
 const credentials = { userToken: "secret-token", userId: "user-1" };
 
 /** Records calls so a test can assert what was sent — and what was not. */
@@ -123,13 +108,29 @@ function fakeTransport(responses: { status: number; body: string }[]): Metricool
 }
 
 const OK = { status: 200, body: JSON.stringify({ data: { id: "post-123", uuid: "uuid-abc", url: "https://metricool.test/post-123" } }) };
+const TITLE = "Is the Super worth it?";
+const DESCRIPTION = "Is the Super worth it? Estimated FPS at 1440p High. Check yours at specsmithpc.com/compare";
 
-async function ledgeredRoot(platform: VideoPlatform = "youtube-shorts"): Promise<string> {
-  const root = await storeRoot();
-  await createStoredPublicationLedger(root, fingerprint(platform));
-  await advanceStoredPublicationLedger(root, `creative-${platform}`, { status: "qc-passed" });
-  return root;
+/** An authorized creative, the request built for it, and its media on disk. */
+async function authorized(platform: VideoPlatform = "youtube-shorts", root?: string): Promise<{ root: string; media: { path: string; sha256: string }; request: ProviderPublicationRequest }> {
+  const store = root ?? await storeRoot();
+  const media = await writeMedia(store, `real-bytes-${platform}`);
+  const fp = fingerprint(platform);
+  await createStoredPublicationLedger(store, fp);
+  await seedSimulatedLedger({ storeRoot: store, creativeId: fp.creativeId, through: "publication-authorized", mediaSha256: media.sha256,
+    variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "blog-1", platform }, title: TITLE, description: DESCRIPTION });
+  const authorization = (await loadAuthorization(store, fp.creativeId))!;
+  const request = buildProviderRequest({
+    authorization,
+    submission: { creativeId: fp.creativeId, variant: { variantId: `${platform}-1080x1920-30` }, title: TITLE, description: DESCRIPTION } as ReviewSubmission,
+    mediaUrl: "https://cdn.example.com/master.mp4",
+    schedule: { localDateTime: "2026-09-20T10:00:00", timezone: "America/New_York" },
+  });
+  return { root: store, media, request };
 }
+
+const send = (request: ProviderPublicationRequest, root: string, mediaPath: string, transport: MetricoolTransport, creds = credentials) =>
+  publishAuthorizedDraft(request, { storeRoot: root, mediaPath, credentials: creds, transport, simulated: true });
 
 describe("credentials never come from anywhere but the environment", () => {
   it("returns undefined when either half is absent", () => {
@@ -143,225 +144,172 @@ describe("credentials never come from anywhere but the environment", () => {
       .toEqual({ userToken: "t", userId: "u" });
   });
 
-  it("never returns the token in a publish result", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+  it("uses the token only in the request header: never in a result, the ledger or any stored file", async () => {
+    const { root, media, request } = await authorized();
     const transport = fakeTransport([OK]);
-    const result = await publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    );
-    expect(JSON.stringify(result)).not.toContain("secret-token");
+    const report = await send(request, root, media.path, transport);
+    expect(transport.calls[0].headers["X-Mc-Auth"]).toBe("secret-token");
+    expect(transport.calls[0].body).not.toContain("secret-token");
+    expect(JSON.stringify(report)).not.toContain("secret-token");
+    const { readdir, readFile } = await import("node:fs/promises");
+    const walk = async (dir: string): Promise<string[]> => (await Promise.all((await readdir(dir, { withFileTypes: true })).map((entry) =>
+      entry.isDirectory() ? walk(join(dir, entry.name)) : Promise.resolve([join(dir, entry.name)])))).flat();
+    for (const file of await walk(root)) expect(await readFile(file, "utf8"), file).not.toContain("secret-token");
   });
 });
 
-describe("the digest is re-verified against the real bytes immediately before publishing", () => {
-  it("publishes when file, request and rights registry all agree", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+describe("only the authorized draft is sent", () => {
+  it("sends a draft (draft=true, autoPublish=false) carrying the reviewed text, title, account and media", async () => {
+    const { root, media, request } = await authorized();
     const transport = fakeTransport([OK]);
-
-    const result = await publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    );
-
-    expect(result.verifiedSha256).toBe(media.sha256);
-    expect(result.providerPostId).toBe("post-123");
-    expect(transport.calls).toHaveLength(1);
-  });
-
-  it("refuses when the file changed after approval, and sends nothing", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
-    await writeFile(media.path, "different-bytes-after-approval");
-    const transport = fakeTransport([OK]);
-
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "media-mismatch" });
-    expect(transport.calls, "a rejected package must never reach the network").toHaveLength(0);
-  });
-
-  it("refuses when the request digest and the rights-approved digest disagree", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
-    const other = createHash("sha256").update("some-other-render").digest("hex");
-    const transport = fakeTransport([OK]);
-
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: other },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "media-mismatch" });
-    expect(transport.calls).toHaveLength(0);
-  });
-
-  it("refuses when the media file is missing entirely", async () => {
-    const root = await ledgeredRoot();
-    const transport = fakeTransport([OK]);
-    await expect(publishApprovedPackage(
-      { request: request("a".repeat(64)), mediaPath: join(root, "nope.mp4"), approvedMasterSha256: "a".repeat(64) },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "media-missing" });
-    expect(transport.calls).toHaveLength(0);
-  });
-});
-
-describe("safe mode is the default", () => {
-  it("sends draft=true and autoPublish=false when no mode is given", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
-    const transport = fakeTransport([OK]);
-
-    const result = await publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    );
-
-    expect(result.mode).toBe("draft");
+    const report = await send(request, root, media.path, transport);
+    expect(report).toMatchObject({ kind: "accepted", status: "draft-submitted", providerPostId: "post-123" });
     const sent = JSON.parse(transport.calls[0].body);
-    expect(sent.draft).toBe(true);
-    expect(sent.autoPublish).toBe(false);
+    expect(sent).toMatchObject({ draft: true, autoPublish: false, text: DESCRIPTION, youtubeTitle: TITLE, media: ["https://cdn.example.com/master.mp4"],
+      date: "2026-09-20T10:00:00", timezone: "America/New_York", providers: [{ network: "youtube" }] });
+    expect(transport.calls[0].url).toContain("blogId=blog-1");
   });
 
-  it("queues a live post only when scheduled-live is asked for by name", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+  it("refuses when the file changed after authorization, and sends nothing", async () => {
+    const { root, media, request } = await authorized();
+    await writeFile(media.path, "different-bytes-after-authorization");
     const transport = fakeTransport([OK]);
-
-    await publishApprovedPackage(
-      { request: request(media.sha256, { draft: false }), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport, mode: "scheduled-live" },
-    );
-
-    expect(JSON.parse(transport.calls[0].body).autoPublish).toBe(true);
+    await expect(send(request, root, media.path, transport)).rejects.toMatchObject({ code: "media-changed" });
+    expect(transport.calls, "a refused request must never reach the network").toHaveLength(0);
   });
 
-  it("refuses a request whose own draft flag contradicts draft mode rather than guessing", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+  it("refuses a request altered after it was built (title, account, mode), and sends nothing", async () => {
+    const { root, media, request } = await authorized();
     const transport = fakeTransport([OK]);
-
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256, { draft: false }), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "unsupported-platform-state" });
+    for (const altered of [
+      { ...request, title: "A punchier, unreviewed title" },
+      { ...request, destination: { ...request.destination, accountId: "someone-elses-account" } },
+      { ...request, mode: "public" as never },
+    ]) {
+      await expect(send(altered, root, media.path, transport)).rejects.toMatchObject({ code: "request-mismatch" });
+    }
     expect(transport.calls).toHaveLength(0);
+  });
+
+  it("refuses to build a request for a revised title or description", async () => {
+    const { root } = await authorized();
+    const authorization = (await loadAuthorization(root, "creative-youtube-shorts"))!;
+    expect(() => buildProviderRequest({ authorization, mediaUrl: "https://cdn.example.com/m.mp4",
+      submission: { creativeId: "creative-youtube-shorts", variant: { variantId: "youtube-shorts-1080x1920-30" }, title: TITLE, description: `${DESCRIPTION} Now 20% off!` } as ReviewSubmission,
+    })).toThrow(/differs from the one reviewed and authorized/);
   });
 });
 
-describe("idempotency", () => {
-  it("refuses a second publication for the same creative and platform", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+describe("retries never create a duplicate post", () => {
+  it("returns the accepted post instead of sending again", async () => {
+    const { root, media, request } = await authorized();
     const transport = fakeTransport([OK, OK]);
-    const pkg: ApprovedPublicationPackage = { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 };
-
-    await publishApprovedPackage(pkg, { storeRoot: root, credentials, transport });
-    await expect(publishApprovedPackage(pkg, { storeRoot: root, credentials, transport }))
-      .rejects.toMatchObject({ code: "already-published" });
-
+    await send(request, root, media.path, transport);
+    const again = await send(request, root, media.path, transport);
+    expect(again).toMatchObject({ kind: "already-accepted", providerPostId: "post-123" });
     expect(transport.calls, "the second attempt must not reach the network").toHaveLength(1);
   });
 
-  it("records the provider identifiers in the append-only ledger", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
-    await publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport: fakeTransport([OK]) },
-    );
-
-    const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
-    const scheduled = ledger?.events.at(-1);
-    expect(scheduled?.status).toBe("scheduled");
-    expect(scheduled?.providerPostId).toBe("post-123");
-    expect(scheduled?.providerUuid).toBe("uuid-abc");
-    expect(scheduled?.providerUrl).toBe("https://metricool.test/post-123");
+  it("records the provider's post id against the idempotency key, in the append-only ledger", async () => {
+    const { root, media, request } = await authorized();
+    await send(request, root, media.path, fakeTransport([OK]));
+    const ledger = (await loadStoredPublicationLedger(root, "creative-youtube-shorts"))!;
+    expect(ledger.events.slice(-2).map((event) => event.status)).toEqual(["submission-started", "draft-submitted"]);
+    expect(ledger.events.at(-1)).toMatchObject({ providerPostId: "post-123", evidence: { idempotencyKey: request.idempotencyKey, confirmedBy: "provider-response" }, simulated: true });
   });
 });
 
-describe("it fails closed on every bad response", () => {
-  const cases: { name: string; response: { status: number; body: string }; code: string }[] = [
-    { name: "auth failure", response: { status: 401, body: "{}" }, code: "auth-failed" },
-    { name: "forbidden", response: { status: 403, body: "{}" }, code: "auth-failed" },
-    { name: "server error", response: { status: 500, body: "boom" }, code: "transport-failed" },
-    { name: "non-JSON body", response: { status: 200, body: "<html>" }, code: "malformed-response" },
-    { name: "JSON that is not an object", response: { status: 200, body: "[1,2,3]" }, code: "malformed-response" },
-    // The dangerous one: accepted, but nothing can be recorded against it.
-    { name: "2xx with no post id", response: { status: 200, body: JSON.stringify({ data: {} }) }, code: "malformed-response" },
+describe("every answer is recorded as what it proves", () => {
+  const definite: { name: string; response: { status: number; body: string } }[] = [
+    { name: "auth failure", response: { status: 401, body: "{}" } },
+    { name: "forbidden", response: { status: 403, body: "{}" } },
+    { name: "a refused draft", response: { status: 422, body: "{\"error\":\"bad media\"}" } },
   ];
-
-  for (const testCase of cases) {
-    it(`refuses on ${testCase.name} and writes no scheduled event`, async () => {
-      const root = await ledgeredRoot();
-      const media = await writeMedia(root, "real-bytes");
-      await expect(publishApprovedPackage(
-        { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-        { storeRoot: root, credentials, transport: fakeTransport([testCase.response]) },
-      )).rejects.toMatchObject({ code: testCase.code });
-
-      const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
-      expect(ledger?.events.some((event) => event.status === "scheduled")).toBe(false);
+  for (const testCase of definite) {
+    it(`${testCase.name}: a definite refusal, recorded as submission-failed; a retry is allowed`, async () => {
+      const { root, media, request } = await authorized();
+      const transport = fakeTransport([testCase.response, OK]);
+      expect(await send(request, root, media.path, transport)).toMatchObject({ kind: "rejected" });
+      const ledger = (await loadStoredPublicationLedger(root, "creative-youtube-shorts"))!;
+      expect(ledger.events.at(-1)!.status).toBe("submission-failed");
+      expect(ledger.events.some((event) => event.status === "scheduled" || event.status === "draft-submitted")).toBe(false);
+      expect(await send(request, root, media.path, transport)).toMatchObject({ kind: "accepted", providerPostId: "post-123" });
     });
   }
 
-  it("refuses an ambiguous or malformed schedule time", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
-    const transport = fakeTransport([OK]);
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256, { date: "2026-09-20T10:00:00Z" }), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "scheduling-ambiguous" });
-    expect(transport.calls).toHaveLength(0);
+  const uncertain: { name: string; response: { status: number; body: string } }[] = [
+    { name: "a server error", response: { status: 500, body: "boom" } },
+    { name: "a non-JSON body", response: { status: 200, body: "<html>" } },
+    { name: "JSON that is not an object", response: { status: 200, body: "[1,2,3]" } },
+    // The dangerous one: accepted, but no post to record. It may exist.
+    { name: "a 2xx with no post id", response: { status: 200, body: JSON.stringify({ data: {} }) } },
+  ];
+  for (const testCase of uncertain) {
+    it(`${testCase.name}: recorded as submission-unknown, and a blind retry is refused`, async () => {
+      const { root, media, request } = await authorized();
+      const transport = fakeTransport([testCase.response, OK]);
+      expect(await send(request, root, media.path, transport)).toMatchObject({ kind: "unknown" });
+      await expect(send(request, root, media.path, transport)).rejects.toMatchObject({ code: "outcome-unknown" });
+      expect(transport.calls).toHaveLength(1);
+      // Metricool offers no verified lookup by idempotency key, so reconciliation
+      // cannot resolve it: a person must check Metricool by hand.
+      const reconciled = await reconcileSubmission({ storeRoot: root, creativeId: "creative-youtube-shorts", provider: createMetricoolRestProvider({ credentials, transport, simulated: true }) });
+      expect(reconciled.resolved).toBe(false);
+      expect(reconciled.reason).toMatch(/unsupported/);
+    });
+  }
+
+  it("a transport that throws after sending is unknown, not failed", async () => {
+    const { root, media, request } = await authorized();
+    const transport = (async () => { throw new Error("socket hang up"); }) as MetricoolTransport;
+    expect(await send(request, root, media.path, transport)).toMatchObject({ kind: "unknown", reason: expect.stringMatching(/socket hang up/) });
   });
 
   it("refuses when no ledger exists for the creative", async () => {
     const root = await storeRoot();
     const media = await writeMedia(root, "real-bytes");
     const transport = fakeTransport([OK]);
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials, transport },
-    )).rejects.toMatchObject({ code: "unsupported-platform-state" });
+    await expect(send({ creativeId: "creative-youtube-shorts" } as ProviderPublicationRequest, root, media.path, transport)).rejects.toMatchObject({ code: "no-ledger" });
     expect(transport.calls).toHaveLength(0);
   });
 
   // Without REST credentials the adapter is UNAVAILABLE, which is the state on
-  // the founder's current Metricool plan — a stronger and more accurate refusal
-  // than "credentials missing", and the first thing checked.
+  // the founder's current Metricool plan, and the first thing checked.
   it("refuses as unavailable when no REST credentials exist", async () => {
-    const root = await ledgeredRoot();
-    const media = await writeMedia(root, "real-bytes");
+    const { root, media, request } = await authorized();
     const transport = fakeTransport([OK]);
-    await expect(publishApprovedPackage(
-      { request: request(media.sha256), mediaPath: media.path, approvedMasterSha256: media.sha256 },
-      { storeRoot: root, credentials: { userToken: "", userId: "" }, transport },
-    )).rejects.toMatchObject({ code: "rest-unavailable" });
+    await expect(send(request, root, media.path, transport, { userToken: "", userId: "" })).rejects.toMatchObject({ code: "rest-unavailable" });
+    expect(transport.calls).toHaveLength(0);
+    expect((await loadStoredPublicationLedger(root, "creative-youtube-shorts"))!.events.at(-1)!.status).toBe("publication-authorized");
+  });
+});
+
+describe("the provider and the store must agree", () => {
+  it("a fake transport cannot act on a production store, and a real one cannot act on a simulation store", async () => {
+    const production = await storeRoot("production");
+    await createStoredPublicationLedger(production, fingerprint());
+    const transport = fakeTransport([OK]);
+    await expect(publishAuthorizedDraft({ creativeId: "creative-youtube-shorts" } as ProviderPublicationRequest,
+      { storeRoot: production, mediaPath: "/nonexistent", credentials, transport, simulated: true })).rejects.toMatchObject({ code: "provider-mode-mismatch" });
+    const { root, media, request } = await authorized();
+    await expect(publishAuthorizedDraft(request, { storeRoot: root, mediaPath: media.path, credentials, transport }))
+      .rejects.toMatchObject({ code: "provider-mode-mismatch" });
     expect(transport.calls).toHaveLength(0);
   });
 });
 
-describe("all three platforms schedule", () => {
+describe("all three platforms send their own draft shape", () => {
   for (const platform of ["youtube-shorts", "tiktok", "instagram-reels"] as VideoPlatform[]) {
-    it(`schedules ${platform}`, async () => {
-      const root = await ledgeredRoot(platform);
-      const media = await writeMedia(root, `bytes-${platform}`);
-      const fp = fingerprint(platform);
-      const req = request(media.sha256, {
-        creativeId: fp.creativeId,
-        platform,
-        networks: [platform === "youtube-shorts" ? "youtube" : platform === "tiktok" ? "tiktok" : "instagram"],
-      } as Partial<MetricoolPublishingRequest>);
-
-      const result = await publishApprovedPackage(
-        { request: req, mediaPath: media.path, approvedMasterSha256: media.sha256 },
-        { storeRoot: root, credentials, transport: fakeTransport([OK]) },
-      );
-      expect(result.platform).toBe(platform);
-      expect(result.providerPostId).toBe("post-123");
+    it(`sends a ${platform} draft`, async () => {
+      const { root, media, request } = await authorized(platform);
+      const transport = fakeTransport([OK]);
+      const report = await send(request, root, media.path, transport);
+      expect(report).toMatchObject({ kind: "accepted", providerPostId: "post-123" });
+      const sent = JSON.parse(transport.calls[0].body);
+      expect(sent.providers).toEqual([{ network: platform === "youtube-shorts" ? "youtube" : platform === "tiktok" ? "tiktok" : "instagram" }]);
+      if (platform === "youtube-shorts") expect(sent.youtubeTitle).toBe(TITLE);
+      if (platform === "tiktok") expect(sent.tiktokTitle).toBe(TITLE);
+      if (platform === "instagram-reels") expect(sent.contentType).toBe("REEL");
     });
   }
 });
@@ -372,12 +320,12 @@ describe("all three platforms schedule", () => {
 
 const PUBLISHED_AT = "2026-09-01T12:00:00.000Z";
 
-async function publishedLedgerRoot(): Promise<string> {
+/** A simulation store whose ledger is seeded to a published post: these tests are about analytics, after publication. */
+async function publishedLedgerRoot(through: "scheduled" | "published" = "published"): Promise<string> {
   const root = await storeRoot();
   await createStoredPublicationLedger(root, fingerprint());
-  await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "qc-passed" });
-  await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "scheduled", providerPostId: "post-123" });
-  await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "published", at: PUBLISHED_AT });
+  await seedSimulatedLedger({ storeRoot: root, creativeId: "creative-youtube-shorts", through, providerPostId: "post-123", at: new Date(PUBLISHED_AT),
+    mediaSha256: "a".repeat(64), variantId: "youtube-shorts-1080x1920-30", destination: { provider: "metricool", accountId: "blog-1", platform: "youtube-shorts" }, title: TITLE, description: DESCRIPTION });
   return root;
 }
 
@@ -402,8 +350,7 @@ describe("analytics are collected only for real, ledgered publications", () => {
   });
 
   it("returns nothing for a ledger that is only scheduled, so it is never queried", async () => {
-    const root = await ledgeredRoot();
-    await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "scheduled", providerPostId: "post-123" });
+    const root = await publishedLedgerRoot("scheduled");
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
     expect(await eligibilityFor(root, ledger!)).toMatchObject({ reason: "not-published" });
   });
@@ -535,15 +482,10 @@ describe("the live smoke gate is closed by default", () => {
   });
 
   it("runLiveSmoke makes no call when the gate is closed", async () => {
-    const root = await storeRoot();
-    // A package that would otherwise be rejected for missing media — proving we
-    // exit before any work, not merely before the network.
-    await runLiveSmoke(
-      { request: request("a".repeat(64)), mediaPath: join(root, "nope.mp4"), approvedMasterSha256: "a".repeat(64) },
-      root,
-      {} as NodeJS.ProcessEnv,
-      {},
-    );
+    const root = await storeRoot("production");
+    // A request that would otherwise be refused for having no ledger — proving
+    // we exit before any work, not merely before the network.
+    await runLiveSmoke({ creativeId: "nothing" } as ProviderPublicationRequest, root, join(root, "nope.mp4"), {} as NodeJS.ProcessEnv, {});
   });
 });
 

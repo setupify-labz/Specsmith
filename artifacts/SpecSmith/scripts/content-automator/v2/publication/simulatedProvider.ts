@@ -43,6 +43,8 @@ export interface SimulatedProvider extends PublicationProvider {
   advance(providerPostId: string, state: "scheduled" | "published"): void;
   /** Make lookups unavailable, as a provider without a lookup API would be. */
   lookupsUnsupported: boolean;
+  /** A post a person created by hand in the provider (the handoff route), which SpecSmith never sent. */
+  adopt(post: { providerPostId: string; mediaSha256: string; account: string; state: SimulatedPost["state"] }): void;
 }
 
 export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-draft"): SimulatedProvider {
@@ -76,6 +78,11 @@ export function createSimulatedProvider(fallback: SimulatedBehaviour = "accept-d
     submissions,
     lookupsUnsupported: false,
     queue(...behaviours) { scripted.push(...behaviours); },
+    adopt(post) {
+      posts.push({ ...post, idempotencyKey: "(created by hand in the provider)",
+        ...(post.state === "published" ? { providerUrl: `https://simulated.invalid/post/${post.providerPostId}` } : {}),
+        ...(post.state === "scheduled" ? { scheduledFor: "2026-09-20T10:00:00" } : {}) });
+    },
     advance(providerPostId, state) {
       const post = posts.find((entry) => entry.providerPostId === providerPostId);
       if (!post) throw new Error(`No simulated post ${providerPostId}.`);

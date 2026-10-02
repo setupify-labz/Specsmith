@@ -1,9 +1,10 @@
-// The return leg: a real Metricool result coming back into SpecSmith.
+// The return leg: a result a person reports after releasing a handoff by hand.
 //
-// No network anywhere in this file, and none in the module under test — this
-// path reads a document a human filled in from what the connector reported.
-// The tests are mostly refusals, because the whole value of this module is
-// that publication state cannot be asserted into existence.
+// No network anywhere in this file, and none in the module under test. The
+// typed document is a claim; the ledger advances only to what the provider
+// itself confirms when asked (here a labelled simulated provider, in a
+// simulation store). Most tests are refusals, because the whole value of this
+// module is that publication state cannot be asserted into existence.
 
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -21,10 +22,12 @@ import {
 } from "./publicationResultIngestion.ts";
 import { prepareReadyToPublishHandoff } from "./readyToPublishHandoff.ts";
 import {
-  advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
   loadStoredPublicationLedger,
 } from "./publishingStore.ts";
+import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
+import { createSimulatedProvider, type SimulatedProvider } from "./v2/publication/simulatedProvider.ts";
 import { reportAllCreatives, reportCreativeStatus, formatStatusReport } from "./publicationStatusReport.ts";
 import type { MetricoolPublishingRequest } from "./publishing.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
@@ -99,15 +102,22 @@ function request(sha256: string, overrides: Partial<MetricoolPublishingRequest> 
   } as MetricoolPublishingRequest;
 }
 
-/** A store with a QC-passed ledger and a real handoff manifest. */
-async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ root: string; sha256: string }> {
+/** A simulation store with an authorized ledger, ready to hand off. */
+async function authorized(platform: VideoPlatform = "youtube-shorts"): Promise<{ root: string; sha256: string; path: string }> {
   const root = await storeRoot();
+  await initPublicationStore(root, "simulation", "result ingestion test");
   await createStoredPublicationLedger(root, fingerprint(platform));
-  await advanceStoredPublicationLedger(root, `creative-${platform}`, { status: "qc-passed" });
-
   const path = join(root, "master.mp4");
   await writeFile(path, `bytes-${platform}`);
   const sha256 = createHash("sha256").update(`bytes-${platform}`).digest("hex");
+  await seedSimulatedLedger({ storeRoot: root, creativeId: `creative-${platform}`, through: "publication-authorized", mediaSha256: sha256,
+    variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "blog-1", platform }, title: "unused", description: "caption" });
+  return { root, sha256, path };
+}
+
+/** ...and handed off: the release is in a person's hands. */
+async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ root: string; sha256: string; provider: SimulatedProvider }> {
+  const { root, sha256, path } = await authorized(platform);
   const fp = fingerprint(platform);
   await prepareReadyToPublishHandoff(
     {
@@ -117,7 +127,10 @@ async function handedOff(platform: VideoPlatform = "youtube-shorts"): Promise<{ 
     },
     { storeRoot: root },
   );
-  return { root, sha256 };
+  // The post the person created in the provider, as the provider holds it.
+  const provider = createSimulatedProvider();
+  provider.adopt({ providerPostId: "mc-post-1", mediaSha256: sha256, account: "blog-1", state: "scheduled" });
+  return { root, sha256, provider };
 }
 
 function result(sha256: string, overrides: Partial<PublishResultDocument> = {}): Record<string, unknown> {
@@ -137,30 +150,32 @@ function result(sha256: string, overrides: Partial<PublishResultDocument> = {}):
   } as Record<string, unknown>;
 }
 
-describe("a real result is recorded against the handoff it answers", () => {
-  it("records provider identity, status, timestamp and package identity", async () => {
-    const { root, sha256 } = await handedOff();
-    const outcome = await ingestPublishResult(result(sha256), { storeRoot: root });
+describe("a reported result is recorded only as the provider confirms it", () => {
+  it("records the post the provider confirms, with the provider's own identifiers", async () => {
+    const { root, sha256, provider } = await handedOff();
+    const outcome = await ingestPublishResult(result(sha256), { storeRoot: root, provider });
 
     expect(outcome.replayed).toBe(false);
-    const event = outcome.ledger.events.at(-1);
-    expect(event?.status).toBe("scheduled");
-    expect(event?.providerPostId).toBe("mc-post-1");
-    expect(event?.providerUuid).toBe("mc-uuid-1");
-    expect(event?.providerUrl).toBe("https://metricool.test/mc-post-1");
-    expect(event?.at).toBe("2026-09-20T14:05:00.000Z");
+    const event = outcome.ledger.events.at(-1)!;
+    expect(event.status).toBe("scheduled");
+    expect(event.providerPostId).toBe("mc-post-1");
+    expect(event.evidence).toMatchObject({ confirmedBy: "provider-lookup" });
+    expect(event.simulated).toBe(true);
+    // The typed document's URL and uuid are claims; the ledger holds only what the provider returned.
+    expect(event.providerUuid).toBeUndefined();
     expect(outcome.handoff.packageId).toBe("package-1");
   });
 
-  it("carries a creative all the way to published, in order", async () => {
-    const { root, sha256 } = await handedOff();
-    await ingestPublishResult(result(sha256), { storeRoot: root });
-    const published = await ingestPublishResult(
-      result(sha256, { status: "published", occurredAt: "2026-09-20T15:00:00.000Z" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
-    );
-    expect(published.ledger.events.at(-1)?.status).toBe("published");
-    expect(published.ledger.events.at(-1)?.providerPostId).toBe("mc-post-1");
+  it("carries a creative to published once the provider confirms publication", async () => {
+    const { root, sha256, provider } = await handedOff();
+    await ingestPublishResult(result(sha256), { storeRoot: root, provider });
+    // Scheduled -> published is confirmed by asking the provider (confirmProviderState),
+    // not by a second typed document: the result route answers a submission in progress.
+    provider.advance("mc-post-1", "published");
+    const { confirmProviderState } = await import("./v2/publication/boundary.ts");
+    const confirmed = await confirmProviderState({ storeRoot: root, creativeId: "creative-youtube-shorts", provider });
+    expect(confirmed.changed).toBe(true);
+    expect(confirmed.ledger.events.at(-1)).toMatchObject({ status: "published", providerPostId: "mc-post-1", providerUrl: "https://simulated.invalid/post/mc-post-1" });
   });
 
   it("offers a template carrying no invented values", async () => {
@@ -178,95 +193,122 @@ describe("a real result is recorded against the handoff it answers", () => {
 });
 
 describe("NEGATIVE CONTROLS: publication state cannot be asserted into existence", () => {
+  it("refuses a typed result when no provider lookup is available, and records nothing", async () => {
+    const { root, sha256 } = await handedOff();
+    await expect(ingestPublishResult(result(sha256), { storeRoot: root })).rejects.toMatchObject({ code: "provider-unconfirmed" });
+    const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
+    expect(ledger?.events.at(-1)?.status).toBe("submission-started");
+  });
+
+  it("refuses a post id the provider does not hold", async () => {
+    const { root, sha256, provider } = await handedOff();
+    await expect(ingestPublishResult(result(sha256, { providerPostId: "made-up-post" } as Partial<PublishResultDocument>), { storeRoot: root, provider }))
+      .rejects.toMatchObject({ code: "provider-unconfirmed" });
+    expect((await loadStoredPublicationLedger(root, "creative-youtube-shorts"))?.events.some((event) => event.providerPostId)).toBe(false);
+  });
+
+  it("refuses a post the provider holds with other media", async () => {
+    const { root, sha256, provider } = await handedOff();
+    provider.adopt({ providerPostId: "mc-post-other-media", mediaSha256: "f".repeat(64), account: "blog-1", state: "scheduled" });
+    await expect(ingestPublishResult(result(sha256, { providerPostId: "mc-post-other-media" } as Partial<PublishResultDocument>), { storeRoot: root, provider }))
+      .rejects.toThrow(/other media than the authorized bytes/);
+  });
+
+  it("records what the provider says, not a stronger claim: 'published' for a post still scheduled", async () => {
+    const { root, sha256, provider } = await handedOff();
+    await expect(ingestPublishResult(result(sha256, { status: "published" } as Partial<PublishResultDocument>), { storeRoot: root, provider }))
+      .rejects.toThrow(/reports "published", but the provider confirms "scheduled"/);
+    const ledger = (await loadStoredPublicationLedger(root, "creative-youtube-shorts"))!;
+    expect(ledger.events.at(-1)!.status).toBe("scheduled");
+    expect(ledger.events.some((event) => event.status === "published")).toBe(false);
+  });
+
+  it("keeps a reported failure as an unknown outcome, so nothing is resent blind", async () => {
+    const { root, sha256, provider } = await handedOff();
+    const outcome = await ingestPublishResult(result(sha256, { status: "failed", note: "connector said upload failed", providerPostId: undefined } as Partial<PublishResultDocument>), { storeRoot: root, provider });
+    expect(outcome.ledger.events.at(-1)).toMatchObject({ status: "submission-unknown" });
+    expect(String(outcome.ledger.events.at(-1)!.evidence?.reason)).toMatch(/unconfirmed/);
+  });
+
   it("rejects a result for a creative that has no handoff", async () => {
-    const root = await storeRoot();
-    await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "qc-passed" });
-
-    await expect(ingestPublishResult(result("a".repeat(64)), { storeRoot: root }))
+    const { root } = await authorized();
+    await expect(ingestPublishResult(result("a".repeat(64)), { storeRoot: root, provider: createSimulatedProvider() }))
       .rejects.toMatchObject({ code: "no-matching-handoff" });
-
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
     expect(ledger?.events.some((event) => event.status === "scheduled")).toBe(false);
   });
 
   it("rejects a result naming the wrong creative", async () => {
-    const { root, sha256 } = await handedOff();
+    const { root, sha256, provider } = await handedOff();
     await expect(ingestPublishResult(
       result(sha256, { creativeId: "creative-someone-else" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
+      { storeRoot: root, provider },
     )).rejects.toMatchObject({ code: "no-matching-handoff" });
   });
 
   it("rejects a result naming the wrong platform", async () => {
-    const { root, sha256 } = await handedOff();
+    const { root, sha256, provider } = await handedOff();
     await expect(ingestPublishResult(
       result(sha256, { platform: "tiktok" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
+      { storeRoot: root, provider },
     )).rejects.toMatchObject({ code: "no-matching-handoff" });
   });
 
   it("rejects a result whose handoff SHA-256 does not match", async () => {
-    const { root } = await handedOff();
+    const { root, provider } = await handedOff();
     const otherRender = createHash("sha256").update("a-different-render").digest("hex");
-    await expect(ingestPublishResult(result(otherRender), { storeRoot: root }))
+    await expect(ingestPublishResult(result(otherRender), { storeRoot: root, provider }))
       .rejects.toMatchObject({ code: "handoff-sha-mismatch" });
-
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
     expect(ledger?.events.some((event) => event.status === "scheduled")).toBe(false);
   });
 
   it("rejects a result naming a different package", async () => {
-    const { root, sha256 } = await handedOff();
+    const { root, sha256, provider } = await handedOff();
     await expect(ingestPublishResult(
       result(sha256, { packageId: "package-other" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
+      { storeRoot: root, provider },
     )).rejects.toMatchObject({ code: "package-mismatch" });
   });
 
   it("rejects scheduled or published with no provider identity", async () => {
-    const { root, sha256 } = await handedOff();
+    const { root, sha256, provider } = await handedOff();
     for (const status of ["scheduled", "published"] as const) {
       await expect(ingestPublishResult(
         result(sha256, { status, providerPostId: undefined } as Partial<PublishResultDocument>),
-        { storeRoot: root },
+        { storeRoot: root, provider },
       )).rejects.toMatchObject({ code: "missing-provider-identity" });
     }
   });
 
   it("rejects a conflicting provider id", async () => {
-    const { root, sha256 } = await handedOff();
-    await ingestPublishResult(result(sha256), { storeRoot: root });
-
+    const { root, sha256, provider } = await handedOff();
+    await ingestPublishResult(result(sha256), { storeRoot: root, provider });
     await expect(ingestPublishResult(
       result(sha256, { status: "published", occurredAt: "2026-09-20T15:00:00.000Z", providerPostId: "mc-post-DIFFERENT" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
+      { storeRoot: root, provider },
     )).rejects.toMatchObject({ code: "conflicting-provider-id" });
   });
 
-  it("rejects a jump to published without ever being scheduled", async () => {
-    const { root, sha256 } = await handedOff();
-    await expect(ingestPublishResult(
-      result(sha256, { status: "published" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
-    )).rejects.toMatchObject({ code: "invalid-transition" });
-
-    const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
-    expect(ledger?.events.some((event) => event.status === "published")).toBe(false);
+  it("rejects a result for a creative that was never handed off or authorized in this store", async () => {
+    const root = await storeRoot();
+    await initPublicationStore(root, "simulation", "result ingestion test");
+    await createStoredPublicationLedger(root, fingerprint());
+    await expect(ingestPublishResult(result("a".repeat(64)), { storeRoot: root, provider: createSimulatedProvider() }))
+      .rejects.toMatchObject({ code: "no-matching-handoff" });
   });
 
   it("rejects a replay carrying different data", async () => {
-    const { root, sha256 } = await handedOff();
-    await ingestPublishResult(result(sha256), { storeRoot: root });
-
+    const { root, sha256, provider } = await handedOff();
+    await ingestPublishResult(result(sha256), { storeRoot: root, provider });
     await expect(ingestPublishResult(
       result(sha256, { occurredAt: "2026-09-20T16:00:00.000Z" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
+      { storeRoot: root, provider },
     )).rejects.toMatchObject({ code: "replayed-with-different-data" });
   });
 
   it("refuses a malformed document rather than filling in defaults", async () => {
-    const { root, sha256 } = await handedOff();
+    const { sha256 } = await handedOff();
     expect(() => parsePublishResult({ kind: "SOMETHING_ELSE" })).toThrow(/kind must be/);
     expect(() => parsePublishResult(result(sha256, { status: "public" as never }))).toThrow(/status must be/);
     expect(() => parsePublishResult(result(sha256, { handoffSha256: "short" } as Partial<PublishResultDocument>))).toThrow(/64-character/);
@@ -278,11 +320,11 @@ describe("NEGATIVE CONTROLS: publication state cannot be asserted into existence
 
 describe("exact replay is idempotent", () => {
   it("returns the stored result and writes no second ledger event", async () => {
-    const { root, sha256 } = await handedOff();
-    const first = await ingestPublishResult(result(sha256), { storeRoot: root });
+    const { root, sha256, provider } = await handedOff();
+    const first = await ingestPublishResult(result(sha256), { storeRoot: root, provider });
     const eventCount = first.ledger.events.length;
 
-    const second = await ingestPublishResult(result(sha256), { storeRoot: root });
+    const second = await ingestPublishResult(result(sha256), { storeRoot: root, provider });
     expect(second.replayed).toBe(true);
 
     const ledger = await loadStoredPublicationLedger(root, "creative-youtube-shorts");
@@ -292,37 +334,26 @@ describe("exact replay is idempotent", () => {
 });
 
 describe("the status report invents nothing", () => {
-  it("distinguishes ready-not-handed-off from handed-off", async () => {
-    const root = await storeRoot();
-    await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-youtube-shorts", { status: "qc-passed" });
-
+  it("distinguishes authorized-not-sent from a release in progress", async () => {
+    const { root, sha256, path } = await authorized();
     const before = await reportCreativeStatus(root, "creative-youtube-shorts");
-    expect(before?.stage).toBe("ready-not-handed-off");
+    expect(before?.stage).toBe("authorized-not-sent");
     expect(before?.analytics.measurable).toBe(false);
     expect(before?.analytics.missed).toEqual([]);
 
-    const path = join(root, "master.mp4");
-    await writeFile(path, "bytes-youtube-shorts");
-    const sha256 = createHash("sha256").update("bytes-youtube-shorts").digest("hex");
-    await prepareReadyToPublishHandoff(
-      { request: request(sha256), mediaPath: path, approvedMasterSha256: sha256 },
-      { storeRoot: root },
-    );
-
+    await prepareReadyToPublishHandoff({ request: request(sha256), mediaPath: path, approvedMasterSha256: sha256 }, { storeRoot: root });
     const after = await reportCreativeStatus(root, "creative-youtube-shorts");
-    expect(after?.stage).toBe("handed-off-not-scheduled");
+    expect(after?.stage).toBe("submission-in-progress");
   });
 
-  it("reports scheduled, then published, from real ledger events only", async () => {
-    const { root, sha256 } = await handedOff();
-    await ingestPublishResult(result(sha256), { storeRoot: root });
+  it("reports scheduled, then published, from provider-confirmed ledger events only", async () => {
+    const { root, sha256, provider } = await handedOff();
+    await ingestPublishResult(result(sha256), { storeRoot: root, provider });
     expect((await reportCreativeStatus(root, "creative-youtube-shorts"))?.stage).toBe("scheduled");
 
-    await ingestPublishResult(
-      result(sha256, { status: "published", occurredAt: "2026-09-20T15:00:00.000Z" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
-    );
+    provider.advance("mc-post-1", "published");
+    const { confirmProviderState } = await import("./v2/publication/boundary.ts");
+    await confirmProviderState({ storeRoot: root, creativeId: "creative-youtube-shorts", provider, now: new Date("2026-09-20T15:00:00.000Z") });
     const published = await reportCreativeStatus(root, "creative-youtube-shorts");
     expect(published?.stage).toBe("published");
     expect(published?.providerPostId).toBe("mc-post-1");
@@ -336,12 +367,11 @@ describe("the status report invents nothing", () => {
   });
 
   it("reports missed windows only once they have actually come due", async () => {
-    const { root, sha256 } = await handedOff();
-    await ingestPublishResult(result(sha256), { storeRoot: root });
-    await ingestPublishResult(
-      result(sha256, { status: "published", occurredAt: "2026-09-20T15:00:00.000Z" } as Partial<PublishResultDocument>),
-      { storeRoot: root },
-    );
+    const { root, sha256, provider } = await handedOff();
+    await ingestPublishResult(result(sha256), { storeRoot: root, provider });
+    provider.advance("mc-post-1", "published");
+    const { confirmProviderState } = await import("./v2/publication/boundary.ts");
+    await confirmProviderState({ storeRoot: root, creativeId: "creative-youtube-shorts", provider, now: new Date("2026-09-20T15:00:00.000Z") });
 
     const soon = await reportCreativeStatus(root, "creative-youtube-shorts", new Date("2026-09-20T15:30:00.000Z"));
     expect(soon?.analytics.missed).toEqual([]);
@@ -357,7 +387,7 @@ describe("the status report invents nothing", () => {
     const all = await reportAllCreatives(root);
     expect(all.map((status) => status.creativeId)).toEqual(["creative-youtube-shorts"]);
     const text = formatStatusReport(all);
-    expect(text).toContain("handed off, not yet scheduled");
+    expect(text).toContain("submission started; no provider answer recorded");
     expect(text).toContain("not measurable yet");
   });
 

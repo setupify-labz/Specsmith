@@ -6,11 +6,13 @@ import { normalizeMetricoolAnalyticsRow } from "./analyticsIngestion.ts";
 import {
   advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
   loadStoredAnalyticsSnapshots,
   loadStoredPublicationLedger,
   recordStoredAnalyticsSnapshot,
 } from "./publishingStore.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
+import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -79,12 +81,32 @@ describe("durable publication store", () => {
     await createStoredPublicationLedger(root, fp, new Date("2026-08-23T20:00:00Z"));
     await expect(createStoredPublicationLedger(root, fp)).rejects.toThrow(/duplicate run/);
 
-    await advanceStoredPublicationLedger(root, fp.creativeId, {
-      status: "qc-passed",
-      at: "2026-08-23T20:01:00Z",
-    });
+    await advanceStoredPublicationLedger(root, fp.creativeId, { status: "rejected", at: "2026-08-23T20:01:00Z", note: "not fit to publish" });
     const reloaded = await loadStoredPublicationLedger(root, fp.creativeId);
-    expect(reloaded?.events.map((event) => event.status)).toEqual(["generated", "qc-passed"]);
+    expect(reloaded?.events.map((event) => event.status)).toEqual(["generated", "rejected"]);
+  });
+
+  it("reloads a full guarded history exactly as the boundary wrote it", async () => {
+    const root = await storeRoot();
+    await initPublicationStore(root, "simulation", "store reload test");
+    const fp = fingerprint();
+    await createStoredPublicationLedger(root, fp, new Date("2026-08-23T20:00:00Z"));
+    await seedSimulatedLedger({ storeRoot: root, creativeId: fp.creativeId, through: "published", mediaSha256: "a".repeat(64), variantId: "tiktok-1080x1920-30",
+      destination: { provider: "metricool", accountId: "acct", platform: "tiktok" }, title: "t", description: "d", at: new Date("2026-08-23T20:02:00Z") });
+    const reloaded = (await loadStoredPublicationLedger(root, fp.creativeId))!;
+    expect(reloaded.events.map((event) => event.status)).toEqual([
+      "generated", "machine-reviewed", "human-review-pending", "publication-authorized", "submission-started", "draft-submitted", "scheduled", "published",
+    ]);
+    expect(reloaded.events.slice(1).every((event) => event.simulated === true)).toBe(true);
+  });
+
+  it("refuses an unreceipted protected state, and a protected state skipped ahead", async () => {
+    const root = await storeRoot();
+    const fp = fingerprint();
+    await createStoredPublicationLedger(root, fp);
+    await expect(advanceStoredPublicationLedger(root, fp.creativeId, { status: "published", providerPostId: "p", evidence: { idempotencyKey: "k", confirmedBy: "x" } }))
+      .rejects.toThrow(/no receipt issued by the publication boundary/);
+    expect((await loadStoredPublicationLedger(root, fp.creativeId))?.events).toHaveLength(1);
   });
 
   it("allows only one concurrent writer to claim the next lifecycle slot", async () => {
@@ -92,8 +114,8 @@ describe("durable publication store", () => {
     const fp = fingerprint();
     await createStoredPublicationLedger(root, fp, new Date("2026-08-23T20:00:00Z"));
     const attempts = await Promise.allSettled([
-      advanceStoredPublicationLedger(root, fp.creativeId, { status: "qc-passed", at: "2026-08-23T20:01:00Z" }),
-      advanceStoredPublicationLedger(root, fp.creativeId, { status: "qc-passed", at: "2026-08-23T20:01:01Z" }),
+      advanceStoredPublicationLedger(root, fp.creativeId, { status: "rejected", at: "2026-08-23T20:01:00Z", note: "writer a" }),
+      advanceStoredPublicationLedger(root, fp.creativeId, { status: "rejected", at: "2026-08-23T20:01:01Z", note: "writer b" }),
     ]);
     expect(attempts.filter((attempt) => attempt.status === "fulfilled")).toHaveLength(1);
     expect(attempts.filter((attempt) => attempt.status === "rejected")).toHaveLength(1);

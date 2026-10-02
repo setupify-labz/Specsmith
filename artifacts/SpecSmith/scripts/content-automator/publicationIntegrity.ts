@@ -133,8 +133,9 @@ export async function verifyApprovedMedia(pkg: ApprovedPublicationPackage): Prom
  */
 export function assertNotAlreadyReleased(ledger: PublicationLedger, platform: VideoPlatform): void {
   assertNotAlreadyPublished([ledger], ledger.creativeId);
+  // A draft or schedule the provider accepted is a post that already exists.
   const scheduled = ledger.events.find(
-    (event: PublicationLedger["events"][number]) => event.status === "scheduled" && event.providerPostId,
+    (event: PublicationLedger["events"][number]) => (event.status === "scheduled" || event.status === "draft-submitted") && event.providerPostId,
   );
   if (scheduled) {
     throw new PublicationIntegrityError(
