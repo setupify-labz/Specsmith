@@ -72,19 +72,16 @@ async function captureWarningCard(facts: RamFitFacts, baseUrl: string, outDir: s
 /** Temporary sound effects and a quiet bed, all synthesised; no third-party audio. */
 async function soundDesign(outDir: string, scenes: PilotScene[], total: number) {
   const at = (id: PilotScene["id"]) => scenes.find((scene) => scene.id === id)!.startSecond;
-  const clunk = at("hook") + 0.62, seat = at("payoff") + 0.87;
+  const jam = at("stop") + 0.05, seat = at("boards") + 2.6;
+  // Calm on purpose: soft whooshes under camera moves, one thud, one click.
   const effects: { name: string; startSecond: number; expr: string; seconds: number }[] = [
-    { name: "whoosh-drop", startSecond: 0.1, seconds: 0.55, expr: "(random(0)*2-1)*0.35*sin(PI*t/0.55)" },
-    { name: "clunk", startSecond: clunk, seconds: 0.45, expr: "0.9*sin(2*PI*62*t)*exp(-9*t)+(random(1)*2-1)*0.45*exp(-28*t)" },
-    { name: "buzz", startSecond: clunk + 0.2, seconds: 0.32, expr: "0.22*(sin(2*PI*150*t)+0.5*sin(2*PI*300*t))*(lt(mod(t,0.16),0.11))" },
-    { name: "whoosh-zoom", startSecond: at("why") + 0.02, seconds: 0.8, expr: "(random(2)*2-1)*0.22*sin(PI*t/0.8)" },
-    { name: "fit-chime", startSecond: at("why") + 3.55, seconds: 0.5, expr: "0.25*(sin(2*PI*988*t)+sin(2*PI*1319*t))*exp(-6*t)" },
-    { name: "whoosh-boards", startSecond: at("twist") + 0.4, seconds: 0.7, expr: "(random(3)*2-1)*0.25*sin(PI*t/0.7)" },
-    { name: "socket-chime", startSecond: at("twist") + 1.95, seconds: 0.5, expr: "0.22*(sin(2*PI*784*t)+sin(2*PI*1175*t))*exp(-6*t)" },
-    { name: "click-1", startSecond: seat, seconds: 0.06, expr: "0.8*sin(2*PI*2400*t)*exp(-120*t)" },
-    { name: "click-2", startSecond: seat + 0.07, seconds: 0.06, expr: "0.8*sin(2*PI*2200*t)*exp(-120*t)" },
-    { name: "success", startSecond: seat + 0.15, seconds: 0.7, expr: "0.25*(sin(2*PI*880*t)*lt(t,0.18)+sin(2*PI*1320*t)*gte(t,0.15))*exp(-4*t)" },
-    { name: "whoosh-cta", startSecond: at("cta") + 0.4, seconds: 0.7, expr: "(random(4)*2-1)*0.22*sin(PI*t/0.7)" },
+    { name: "thud", startSecond: jam, seconds: 0.4, expr: "0.8*sin(2*PI*62*t)*exp(-10*t)+(random(1)*2-1)*0.3*exp(-30*t)" },
+    { name: "whoosh-push-in", startSecond: at("notch"), seconds: 1.1, expr: "(random(2)*2-1)*0.12*sin(PI*t/1.1)" },
+    { name: "whoosh-pull-back", startSecond: at("boards"), seconds: 1.1, expr: "(random(3)*2-1)*0.12*sin(PI*t/1.1)" },
+    { name: "click-1", startSecond: seat, seconds: 0.06, expr: "0.7*sin(2*PI*2400*t)*exp(-120*t)" },
+    { name: "click-2", startSecond: seat + 0.07, seconds: 0.06, expr: "0.7*sin(2*PI*2200*t)*exp(-120*t)" },
+    { name: "success", startSecond: seat + 0.15, seconds: 0.7, expr: "0.2*(sin(2*PI*880*t)*lt(t,0.18)+sin(2*PI*1320*t)*gte(t,0.15))*exp(-4*t)" },
+    { name: "whoosh-ending", startSecond: at("catch") + 0.3, seconds: 0.8, expr: "(random(4)*2-1)*0.1*sin(PI*t/0.8)" },
   ];
   const paths: string[] = [];
   for (const effect of effects) {
@@ -179,9 +176,9 @@ export async function renderRamFitPilot(outputDir = resolve(appRoot, "render-out
   const inspectDir = join(outputDir, "inspection");
   await mkdir(inspectDir, { recursive: true });
   const sceneAt = (id: PilotScene["id"], offset: number) => scenes.find((scene) => scene.id === id)!.startSecond + offset;
-  const moments = [{ label: "00-first-frame", at: 0 }, { label: "01-hook-impact", at: sceneAt("hook", 1.2) }, { label: "02-why-guides", at: sceneAt("why", 2.2) },
-    { label: "03-why-fix", at: sceneAt("why", 4.2) }, { label: "04-twist-chip", at: sceneAt("twist", 1.0) }, { label: "05-twist-decides", at: sceneAt("twist", 3.4) },
-    { label: "06-payoff-seated", at: sceneAt("payoff", 2.0) }, { label: "07-cta-card", at: sceneAt("cta", 2.0) }, { label: "08-final", at: total - 0.05 }];
+  const moments = [{ label: "00-first-frame", at: 0 }, { label: "01-approach", at: sceneAt("approach", 1.6) }, { label: "02-stopped", at: sceneAt("stop", 1.2) },
+    { label: "03-notch", at: sceneAt("notch", 2.6) }, { label: "04-boards", at: sceneAt("boards", 1.3) }, { label: "05-seated", at: sceneAt("boards", 3.4) },
+    { label: "06-builder-catch", at: sceneAt("catch", 2.4) }, { label: "07-cta", at: sceneAt("cta", 1.5) }, { label: "08-final", at: total - 0.05 }];
   const frames: string[] = [];
   for (const moment of moments) {
     const path = join(inspectDir, `${moment.label}.png`);

@@ -88,7 +88,7 @@ function slot(cx, top, stickW, gen, latch, opts) {
   rrect(cx - stickW / 2, top + h * 0.18, stickW, h * 0.42, 3); fill(C.groove);
   const kx = cx - stickW / 2 + stickW * GEN[gen].ratio, kw = Math.max(4, stickW * 0.02);
   ctx.fillStyle = opts.keyColor || '#4A4A5E'; ctx.fillRect(kx - kw / 2, top + h * 0.12, kw, h * 0.5);
-  if (opts.keyGlow) glow(opts.keyGlow, 30, () => { ctx.fillStyle = opts.keyGlow; ctx.fillRect(kx - kw / 2, top + h * 0.12, kw, h * 0.5); });
+  if (opts.keyGlow) glow(opts.keyGlow, 30, () => { ctx.fillStyle = opts.keyColor || '#4A4A5E'; ctx.fillRect(kx - kw / 2, top + h * 0.12, kw, h * 0.5); });
   // Latches: 0 open (tilted outward), 1 closed.
   for (const side of [-1, 1]) {
     ctx.save();
@@ -100,231 +100,169 @@ function slot(cx, top, stickW, gen, latch, opts) {
   return { keyX: kx, height: h };
 }
 
-function chip(cx, cy, size, alpha) {
+// ---------------------------------------------------------------- the world
+//
+// One world, one camera. Board-view coordinates are screen pixels at scale 1;
+// the opening shots are the same slot seen close up, so every cut is a camera
+// move, never a jump to a different picture.
+
+const S = DATA.scenes; // approach, stop, notch, boards, catch, cta -> { start, end }
+const STICK_W = 330;
+const BOARDS = {
+  DDR4: { x: 60, y: 600, w: 420, h: 420 },
+  DDR5: { x: 600, y: 600, w: 420, h: 420 },
+};
+const slotTop = (gen) => BOARDS[gen].y + 280;
+const slotX = (gen) => BOARDS[gen].x + BOARDS[gen].w / 2;
+const SEAT = 18, BLOCK = -2; // stick bottom relative to slot top: seated vs jammed on the key
+
+const NOTCH_X = slotX('DDR5') - STICK_W / 2 + STICK_W * GEN.DDR4.ratio;
+const KEY_X = slotX('DDR5') - STICK_W / 2 + STICK_W * GEN.DDR5.ratio;
+
+/** Camera keyframes: world point -> screen point, at a scale. */
+const CAM = {
+  slot: { wx: slotX('DDR5'), wy: slotTop('DDR5'), sx: 540, sy: 1060, s: 2.75 },
+  notch: { wx: (NOTCH_X + KEY_X) / 2, wy: slotTop('DDR5'), sx: 540, sy: 760, s: 6.2 },
+  boards: { wx: 540, wy: 810, sx: 540, sy: 860, s: 1.06 },
+};
+// Each held shot creeps slowly forward, so nothing sits still.
+const creep = (key, factor) => ({ ...CAM[key], s: CAM[key].s * factor });
+CAM.slotEnd = creep('slot', 1.14);
+CAM.notchEnd = creep('notch', 1.05);
+CAM.boardsEnd = creep('boards', 1.06);
+function camBetween(a, b, p) {
+  const s = Math.exp(lerp(Math.log(a.s), Math.log(b.s), p));
+  // Interpolate the world point that sits at the screen centre, so the move reads as one smooth dolly.
+  const ca = { x: a.wx + (540 - a.sx) / a.s, y: a.wy + (960 - a.sy) / a.s };
+  const cb = { x: b.wx + (540 - b.sx) / b.s, y: b.wy + (960 - b.sy) / b.s };
+  return { cx: lerp(ca.x, cb.x, p), cy: lerp(ca.y, cb.y, p), s };
+}
+/** A camera state expressed as a keyframe (world centre at screen centre). */
+const asKey = (cam) => ({ wx: cam.cx, wy: cam.cy, sx: 540, sy: 960, s: cam.s });
+function camera(t) {
+  const toNotch = easeInOut(seg(t, S.notch.start, S.notch.start + 1.1));
+  const toBoards = easeInOut(seg(t, S.boards.start, S.boards.start + 1.1));
+  if (toBoards > 0) {
+    if (toBoards < 1) return camBetween(CAM.notchEnd, CAM.boards, toBoards);
+    return camBetween(CAM.boards, CAM.boardsEnd, seg(t, S.boards.start + 1.1, S.catch.start + 0.6));
+  }
+  const slotNow = camBetween(CAM.slot, CAM.slotEnd, seg(t, 0, S.notch.start));
+  if (toNotch < 1) return camBetween(asKey(slotNow), CAM.notch, toNotch);
+  return camBetween(CAM.notch, CAM.notchEnd, seg(t, S.notch.start + 1.1, S.boards.start));
+}
+const toScreen = (cam, x, y) => [540 + (x - cam.cx) * cam.s, 960 + (y - cam.cy) * cam.s];
+
+function boardShape(gen, alpha, opts, scale) {
+  const b = BOARDS[gen];
+  // Close up, the board is only a backdrop: its outline and socket fade out.
+  const detail = clamp((2.0 - scale) / 0.8);
   faded(alpha, () => {
-    rrect(cx - size / 2, cy - size / 2, size, size, size * 0.05); fill('#1C4A2E');
-    const pad = size * 0.11;
-    const g = ctx.createLinearGradient(cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2);
-    g.addColorStop(0, '#E6E8EF'); g.addColorStop(0.5, '#B9BDC9'); g.addColorStop(1, '#D9DCE5');
-    rrect(cx - size / 2 + pad, cy - size / 2 + pad, size - 2 * pad, size - 2 * pad, size * 0.06); ctx.fillStyle = g; ctx.fill();
-    text(DATA.cpuName, cx, cy, Math.round(size * 0.12), '#15151C');
+    rrect(b.x, b.y, b.w, b.h, 16); fill(C.board);
+    faded(detail, () => { ctx.strokeStyle = C.boardEdge; ctx.lineWidth = 2.5; ctx.stroke(); });
+    const ss = 120;
+    faded(detail, () => { rrect(b.x + b.w / 2 - ss / 2, b.y + 60, ss, ss, 8); fill('#0E0E14'); ctx.strokeStyle = '#34344A'; ctx.lineWidth = 2.5; ctx.stroke(); });
+    slot(slotX(gen), slotTop(gen), STICK_W, gen, opts.latch || 0, { keyColor: GEN[gen].color, edge: opts.slotEdge, edgeWidth: 3 });
   });
 }
 
-function board(x, y, w, h, gen, opts) {
-  opts = opts || {};
-  rrect(x, y, w, h, 18); fill(C.board); ctx.strokeStyle = C.boardEdge; ctx.lineWidth = 3; ctx.stroke();
-  ctx.strokeStyle = 'rgba(108,99,255,0.10)'; ctx.lineWidth = 2;
-  for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x + 24, y + 60 + i * 26); ctx.lineTo(x + w * 0.22, y + 60 + i * 26); ctx.lineTo(x + w * 0.26, y + 80 + i * 26); ctx.stroke(); }
-  const sx = x + w / 2, sy = y + h * 0.25, ss = w * 0.34;
-  rrect(sx - ss / 2, sy - ss / 2, ss, ss, 8); fill('#0E0E14'); ctx.strokeStyle = opts.socketColor || '#3A3A4E'; ctx.lineWidth = opts.socketColor ? 5 : 3; ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  for (let i = 1; i < 9; i++) for (let j = 1; j < 9; j++) ctx.fillRect(sx - ss / 2 + i * ss / 9 - 1.5, sy - ss / 2 + j * ss / 9 - 1.5, 3, 3);
-  const sw = w * 0.74;
-  const slots = [y + h * 0.56, y + h * 0.7].map((top, index) => ({ top, ...slot(x + w / 2, top, sw, gen, index === 0 ? (opts.latch ?? 0) : 0, { keyColor: GEN[gen].color, edge: index === 0 ? opts.slotEdge : undefined, edgeWidth: 4 }) }));
-  return { socket: { x: sx, y: sy, size: ss }, slotTop: slots[0].top, stickW: sw };
-}
+// ---------------------------------------------------------------- story
 
-// ---------------------------------------------------------------- scenes
-
-function background(t) {
-  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = C.grid; ctx.lineWidth = 2;
-  const drift = (t * 18) % 90;
-  for (let x = -90 + drift; x < W + 90; x += 90) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = -90 + drift; y < H + 90; y += 90) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  const g = ctx.createRadialGradient(540, 820, 80, 540, 820, 900);
-  g.addColorStop(0, 'rgba(108,99,255,0.16)'); g.addColorStop(1, 'rgba(10,10,15,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-}
-
-const S = DATA.scenes; // { hook, why, twist, payoff, cta } -> { start, end }
-const STICK_W = 900, SLOT_TOP = 1130;
-const SEATED = SLOT_TOP + 34, BLOCKED = SLOT_TOP - 6;
-
-/** Hook + why share one set: a DDR4 stick against a DDR5 slot, then a push-in on the contacts. */
-function slotScene(t) {
-  const hit = S.hook.start + 0.62;
-  let bottom;
-  if (t < hit) bottom = lerp(640, BLOCKED, easeIn(seg(t, 0.12, hit)));
-  else bottom = BLOCKED - 26 * Math.exp(-(t - hit) * 7) * Math.abs(Math.sin((t - hit) * 16));
-  const shake = t >= hit && t < hit + 0.45 ? Math.sin((t - hit) * 70) * 16 * (1 - seg(t, hit, hit + 0.45)) : 0;
-  const tilt = t < hit ? lerp(-0.05, 0, seg(t, 0, hit)) : 0;
-  const blocked = t >= hit;
-
-  // Push-in on the contacts during "why".
-  const nx = 540 - STICK_W / 2 + STICK_W * GEN.DDR4.ratio, kx = 540 - STICK_W / 2 + STICK_W * GEN.DDR5.ratio, fx = (nx + kx) / 2;
-  const z = easeInOut(seg(t, S.why.start + 0.05, S.why.start + 0.85));
-  const scale = 2.2, focusY = SLOT_TOP, focusScreenY = 760;
-  const toScreen = (x, y) => [540 + (x - fx) * scale, focusScreenY + (y - focusY) * scale];
-  const camX = lerp(0, 540 - fx * scale, z), camY = lerp(0, focusScreenY - focusY * scale, z), camS = lerp(1, scale, z);
-
-  // The DDR4 stick lifts out late in "why" and a DDR5 stick drops in and seats.
-  const swapOut = seg(t, S.why.start + 2.55, S.why.start + 2.95), swapIn = easeOut(seg(t, S.why.start + 2.95, S.why.start + 3.55));
-
-  if (t < hit) {
-    const v = seg(t, 0.12, hit);
-    ctx.strokeStyle = `rgba(155,148,255,${0.18 + 0.4 * v})`; ctx.lineCap = 'round';
-    for (const [x, len, w] of [[230, 180, 6], [420, 260, 8], [660, 220, 7], [850, 160, 5]]) {
-      const top = bottom - STICK_W * 0.27 - 30 - len * (0.6 + v);
-      ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom - STICK_W * 0.27 - 30); ctx.stroke();
-    }
+function story(t) {
+  const cam = camera(t);
+  const jam = S.stop.start + 0.05;
+  // Stick path (world): lowering into the DDR5 slot, jammed, then (boards shot) lifted across and seated in the DDR4 slot.
+  const top5 = slotTop('DDR5'), top4 = slotTop('DDR4');
+  let sx = slotX('DDR5'), sb;
+  if (t < jam) sb = lerp(top5 - 95, top5 + BLOCK, 0.8 * easeOut(seg(t, 0, jam - 0.4)) + 0.2 * easeIn(seg(t, jam - 0.4, jam)));
+  else sb = top5 + BLOCK - 3 * Math.exp(-(t - jam) * 10) * Math.abs(Math.sin((t - jam) * 18));
+  const lift = easeInOut(seg(t, S.boards.start + 1.2, S.boards.start + 1.6));
+  const across = easeInOut(seg(t, S.boards.start + 1.6, S.boards.start + 2.3));
+  const seat = easeIn(seg(t, S.boards.start + 2.3, S.boards.start + 2.6));
+  const seated = t >= S.boards.start + 2.6;
+  const latch = easeOut(seg(t, S.boards.start + 2.6, S.boards.start + 2.75));
+  if (lift > 0) {
+    sb = lerp(top5 + BLOCK, top5 - 120, lift);
+    sx = lerp(slotX('DDR5'), slotX('DDR4'), across);
+    if (across >= 1) sb = lerp(top4 - 120, top4 + SEAT, seat);
   }
+  const jammed = t >= jam && lift === 0;
+  const glowA = jammed ? 0.6 + 0.3 * Math.sin((t - jam) * 5) : 0;
+  const red = `rgba(255,23,68,${glowA})`;
+  const dim = easeOut(seg(t, S.boards.start + 2.75, S.boards.start + 3.2));
+  const shake = t >= jam && t < jam + 0.3 ? Math.sin((t - jam) * 60) * 7 * (1 - seg(t, jam, jam + 0.3)) : 0;
+  const leave = easeInOut(seg(t, S.catch.start, S.catch.start + 0.6));
+
   ctx.save();
-  ctx.translate(shake + camX, camY); ctx.scale(camS, camS);
-  const pulse = blocked ? 0.55 + 0.45 * Math.sin((t - hit) * 9) : 0;
-  const red = `rgba(255,23,68,${pulse})`;
-  slot(540, SLOT_TOP, STICK_W, 'DDR5', 0, { keyGlow: blocked && swapIn < 1 ? red : swapIn >= 1 ? C.green : null, keyColor: C.cyan });
-  faded(1 - swapOut, () => stick(540, bottom - swapOut * 420, STICK_W, 'DDR4', { rotate: tilt, notchGlow: blocked ? red : null, outline: blocked ? 'rgba(255,23,68,0.5)' : 'rgba(108,99,255,0.6)' }));
-  faded(swapIn, () => stick(540, lerp(SEATED - 380, SEATED, swapIn), STICK_W, 'DDR5', { outline: swapIn >= 1 ? 'rgba(0,230,118,0.7)' : 'rgba(0,212,255,0.6)', notchGlow: swapIn >= 1 ? C.green : null }));
+  ctx.globalAlpha *= 1 - leave;
+  ctx.translate(540 + shake, 960); ctx.scale(cam.s, cam.s); ctx.translate(-cam.cx, -cam.cy);
+  boardShape('DDR4', 1, { latch, slotEdge: seated ? C.green : null }, cam.s);
+  boardShape('DDR5', 1 - 0.55 * dim, {}, cam.s);
+  const keyGlow = t < S.notch.start ? red : `rgba(0,212,255,${0.5 + 0.3 * Math.sin((t - jam) * 5)})`;
+  if (jammed) faded(1, () => slot(slotX('DDR5'), top5, STICK_W, 'DDR5', 0, { keyColor: C.cyan, keyGlow, edgeWidth: 3 }));
+  stick(sx, sb, STICK_W, 'DDR4', {
+    notchGlow: jammed ? red : null,
+    outline: seated ? 'rgba(0,230,118,0.85)' : jammed ? 'rgba(255,23,68,0.45)' : 'rgba(155,148,255,0.5)',
+  });
   ctx.restore();
 
-  // Hook overlays (screen space).
-  const zoomed = z > 0.02;
-  faded(1 - seg(t, S.why.start - 0.05, S.why.start + 0.2), () => {
-    text('DDR5 slot', 540, SLOT_TOP + 160, 54, C.cyan);
-    const stamp = back(seg(t, hit + 0.18, hit + 0.42));
-    if (stamp > 0) {
-      ctx.save(); ctx.translate(540, 700); ctx.rotate(-0.07); ctx.scale(stamp, stamp);
-      rrect(-330, -78, 660, 156, 20); ctx.fillStyle = 'rgba(255,23,68,0.14)'; ctx.fill(); ctx.strokeStyle = C.red; ctx.lineWidth = 8; ctx.stroke();
-      text("WON'T GO IN", 0, 4, 94, C.red);
-      ctx.restore();
+  // Screen-space labels, one set per shot.
+  const slotShot = 1 - easeInOut(seg(t, S.notch.start, S.notch.start + 0.4));
+  faded(slotShot * (1 - leave), () => {
+    const [, y] = toScreen(cam, 0, top5);
+    text('DDR5 slot', 540, y + 170, 68, C.cyan);
+  });
+  const notchLabels = seg(t, S.notch.start + 1.2, S.notch.start + 1.6) * (1 - seg(t, S.boards.start, S.boards.start + 0.35));
+  faded(notchLabels, () => {
+    const [nx] = toScreen(cam, NOTCH_X, 0), [kx, ky] = toScreen(cam, KEY_X, top5);
+    ctx.setLineDash([20, 14]); ctx.lineWidth = 6;
+    // Guides start at the contact edge, below the sticker, and run down to the labels.
+    ctx.strokeStyle = C.amber; ctx.beginPath(); ctx.moveTo(nx, ky - 20); ctx.lineTo(nx, ky + 220); ctx.stroke();
+    ctx.strokeStyle = C.cyan; ctx.beginPath(); ctx.moveTo(kx, ky + 60); ctx.lineTo(kx, ky + 220); ctx.stroke();
+    ctx.setLineDash([]);
+    text('DDR4', nx + 24, ky + 280, 72, C.amber, 'left', 'bold', 10); text('notch', nx + 24, ky + 350, 56, C.amber, 'left', 'bold', 8);
+    text('DDR5', kx - 24, ky + 280, 72, C.cyan, 'right', 'bold', 10); text('key', kx - 24, ky + 350, 56, C.cyan, 'right', 'bold', 8);
+  });
+  faded(notchLabels, () => text('Diagram, not to scale', 540, 1300, 40, C.dim, 'center', 'normal'));
+
+  const boardLabels = seg(t, S.boards.start + 0.8, S.boards.start + 1.2) * (1 - leave);
+  faded(boardLabels, () => {
+    for (const gen of ['DDR4', 'DDR5']) {
+      const b = BOARDS[gen];
+      const [x, y] = toScreen(cam, b.x + b.w / 2, b.y + b.h);
+      faded(gen === 'DDR5' ? 1 - 0.55 * dim : 1, () => text(`${gen} slots`, x, y + 70, 68, GEN[gen].color));
     }
   });
-  // "Why" overlays: guides from the notch and the key, then the DDR5 fix.
-  if (zoomed) {
-    const [nsx] = toScreen(nx, 0), [ksx] = toScreen(kx, 0);
-    const guides = seg(t, S.why.start + 0.9, S.why.start + 1.3) * (1 - swapOut);
-    faded(guides * z, () => {
-      ctx.setLineDash([18, 14]); ctx.lineWidth = 5;
-      ctx.strokeStyle = C.amber; ctx.beginPath(); ctx.moveTo(nsx, 640); ctx.lineTo(nsx, 1030); ctx.stroke();
-      ctx.strokeStyle = C.cyan; ctx.beginPath(); ctx.moveTo(ksx, 640); ctx.lineTo(ksx, 1030); ctx.stroke();
-      ctx.setLineDash([]);
-      text('DDR4 notch', nsx + 18, 1010, 52, C.amber, 'left', 'bold', 8);
-      text('DDR5 key', ksx - 18, 1010, 52, C.cyan, 'right', 'bold', 8);
-    });
-    const gap = seg(t, S.why.start + 1.4, S.why.start + 1.75) * (1 - swapOut);
-    faded(gap * z, () => {
-      const y = 1090; ctx.strokeStyle = C.red; ctx.lineWidth = 7;
-      ctx.beginPath(); ctx.moveTo(ksx + 8, y); ctx.lineTo(nsx - 8, y); ctx.stroke();
-      for (const [x, d] of [[ksx + 8, 1], [nsx - 8, -1]]) { ctx.beginPath(); ctx.moveTo(x + d * 22, y - 18); ctx.lineTo(x, y); ctx.lineTo(x + d * 22, y + 18); ctx.stroke(); }
-      text("doesn't line up", 540, 1160, 56, C.red);
-    });
-    faded(seg(t, S.why.start + 3.5, S.why.start + 3.8) * z, () => {
-      text('DDR5 stick: lines up', 540, 1110, 58, C.green);
-    });
-    faded(seg(t, S.why.start + 0.7, S.why.start + 0.95) * (1 - seg(t, S.why.end - 0.2, S.why.end + 0.1)), () => text('Diagram, not to scale', 540, 1262, 38, C.dim, 'center', 'normal'));
-  }
-}
-
-function boardsLayout() {
-  return { left: { x: 60, y: 640, w: 450, h: 540 }, right: { x: 570, y: 640, w: 450, h: 540 } };
-}
-
-/** Twist + payoff: one CPU, two boards. */
-function boardScene(t) {
-  const L = boardsLayout();
-  const enter = easeOut(seg(t, S.twist.start + 0.45, S.twist.start + 1.1));
-  const exit = easeInOut(seg(t, S.cta.start, S.cta.start + 0.3));
-  const chipIn = back(seg(t, S.twist.start + 0.15, S.twist.start + 0.55));
-  const fly = easeInOut(seg(t, S.twist.start + 1.25, S.twist.start + 1.95));
-  const landed = t >= S.twist.start + 1.95;
-  const decides = back(seg(t, S.twist.start + 2.6, S.twist.start + 2.95));
-  const seatT = S.payoff.start + 0.75, latchT = seatT + 0.12;
-  const stickDrop = easeIn(seg(t, S.payoff.start + 0.15, seatT));
-  const latch = easeOut(seg(t, latchT, latchT + 0.18));
-  const seated = t >= latchT + 0.18;
-  const dim = easeOut(seg(t, latchT, latchT + 0.4));
-
-  ctx.save();
-  ctx.translate(0, -exit * 260); ctx.globalAlpha *= 1 - exit;
-  ctx.save();
-
-  // Boards slide in from either side.
-  const lx = lerp(-L.left.w - 40, L.left.x, enter), rx = lerp(W + 40, L.right.x, enter);
-  let left, right;
-  faded(1, () => { left = board(lx, L.left.y, L.left.w, L.left.h, 'DDR4', { socketColor: landed ? C.green : null, latch, slotEdge: seated ? C.green : null }); });
-  faded(1 - dim * 0.6, () => { right = board(rx, L.right.y, L.right.w, L.right.h, 'DDR5', { socketColor: landed ? C.green : null }); });
-  faded(enter, () => {
-    text('DDR4 board', lx + L.left.w / 2, L.left.y + L.left.h + 58, 54, C.amber);
-    const names = 1 - seg(t, S.payoff.start, S.payoff.start + 0.3);
-    faded(names, () => text(DATA.ddr4Board, lx + L.left.w / 2, L.left.y + L.left.h + 112, 32, C.dim, 'center', 'normal'));
-    faded(1 - dim * 0.6, () => {
-      text('DDR5 board', rx + L.right.w / 2, L.right.y + L.right.h + 58, 54, C.cyan);
-      faded(names, () => text(DATA.ddr5Board, rx + L.right.w / 2, L.right.y + L.right.h + 112, 32, C.dim, 'center', 'normal'));
-    });
-  });
-
-  // The CPU, then a copy flying into each socket.
-  const from = { x: 540, y: 330, s: 230 };
-  if (!landed || fly < 1) {
-    chip(from.x, from.y, from.s * chipIn, 1 - fly);
-    faded(chipIn * (1 - seg(t, S.twist.start + 1.0, S.twist.start + 1.25)), () => {
-      text('works with', 540, 500, 40, C.dim, 'center', 'normal');
-      text('DDR4', 400, 556, 56, C.amber); text('+', 540, 556, 56, C.text); text('DDR5', 680, 556, 56, C.cyan);
-    });
-  }
-  if (fly > 0) for (const target of [left.socket, right.socket]) {
-    chip(lerp(from.x, target.x, fly), lerp(from.y, target.y, fly), lerp(from.s, target.size * 0.86, fly), target === right.socket ? 1 - dim * 0.6 : 1);
-  }
-  if (landed) {
-    const pop = back(seg(t, S.twist.start + 1.95, S.twist.start + 2.25));
-    for (const target of [left.socket, right.socket]) faded(target === right.socket ? 1 - dim * 0.6 : 1, () => {
-      ctx.save(); ctx.translate(target.x + target.size * 0.62, target.y - target.size * 0.62); ctx.scale(pop, pop);
-      ctx.beginPath(); ctx.arc(0, 0, 34, 0, Math.PI * 2); fill(C.green); text('✓', 0, 2, 44, '#062B16');
-      ctx.restore();
-    });
-  }
-  // Payoff: the old DDR4 stick seats in the DDR4 board.
-  if (t >= S.payoff.start) {
-    const target = left.slotTop + 22;
-    const bottom = lerp(target - 520, target, stickDrop);
-    stick(lx + L.left.w / 2, bottom, left.stickW, 'DDR4', { outline: seated ? 'rgba(0,230,118,0.9)' : 'rgba(255,179,0,0.7)' });
-    if (seated) {
-      const pop = back(seg(t, latchT + 0.18, latchT + 0.45));
-      ctx.save(); ctx.translate(lx + L.left.w - 26, L.left.y + 26); ctx.scale(pop, pop);
-      ctx.beginPath(); ctx.arc(0, 0, 54, 0, Math.PI * 2); fill(C.green); text('✓', 0, 3, 66, '#062B16');
-      ctx.restore();
-      faded(dim, () => {
-        ctx.save(); ctx.translate(rx + L.right.w / 2, L.right.y + L.right.h * 0.62);
-        ctx.strokeStyle = C.red; ctx.lineWidth = 14; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(-70, -70); ctx.lineTo(70, 70); ctx.moveTo(70, -70); ctx.lineTo(-70, 70); ctx.stroke();
-        ctx.restore();
-      });
-    }
-  }
-  ctx.restore();
-  if (decides > 0) {
-    ctx.save(); ctx.translate(540, 400); ctx.scale(decides, decides);
-    text('THE BOARD', 0, -54, 96, C.text); text('DECIDES', 0, 50, 96, C.accent === '#6C63FF' ? '#9B94FF' : C.accent);
+  if (seated) faded(1 - leave, () => {
+    const pop = back(seg(t, S.boards.start + 2.75, S.boards.start + 3.05));
+    const b = BOARDS.DDR4;
+    const [x, y] = toScreen(cam, b.x + b.w / 2, b.y);
+    ctx.save(); ctx.translate(x, y - 80); ctx.scale(pop, pop);
+    ctx.beginPath(); ctx.arc(0, 0, 58, 0, Math.PI * 2); fill(C.green); text('✓', 0, 4, 72, '#062B16');
     ctx.restore();
-  }
-
-  ctx.restore();
+  });
 }
 
-/** SpecSmith: the Builder's real warning for this build. */
-function ctaScene(t) {
-  const a = easeOut(seg(t, S.cta.start + 0.3, S.cta.start + 0.7));
-  const slide = easeOut(seg(t, S.cta.start + 0.45, S.cta.start + 1.05));
+/** SpecSmith catches the mismatch, then the route. Shown once, at the end. */
+function ending(t) {
+  const a = easeOut(seg(t, S.catch.start + 0.35, S.catch.start + 0.95));
+  if (a <= 0) return;
   faded(a, () => {
-    const size = 120, total = size + 24 + 420;
-    const x0 = 540 - total / 2;
-    ctx.drawImage(logo, x0, 250, size, size);
-    text('SpecSmith', x0 + size + 24, 312, 86, C.text, 'left');
-  });
-  faded(slide, () => {
-    const w = 1000, h = w * card.naturalHeight / card.naturalWidth, x = 40, y = lerp(760, 470, slide);
-    const pulse = t > S.cta.start + 1.05 ? 0.5 + 0.5 * Math.sin((t - S.cta.start) * 6) : 0;
-    glow(`rgba(255,23,68,${0.35 + 0.4 * pulse})`, 60, () => { rrect(x - 6, y - 6, w + 12, h + 12, 22); fill('#13131A'); });
+    const size = 104;
+    ctx.font = font(70);
+    const label = 'SpecSmith Builder', total = size + 24 + ctx.measureText(label).width, x0 = 540 - total / 2;
+    ctx.drawImage(logo, x0, 400 - size / 2, size, size);
+    text(label, x0 + size + 24, 402, 70, C.text, 'left');
+    // The card breathes a little: a slow scale and a red glow that pulses gently.
+    const grow = 1 + 0.025 * seg(t, S.catch.start, S.cta.end);
+    const w = 980 * grow, h = w * card.naturalHeight / card.naturalWidth, x = 540 - w / 2, y = lerp(560, 520, a);
+    const pulse = 0.35 + 0.25 * (0.5 + 0.5 * Math.sin((t - S.catch.start) * 3.2));
+    glow(`rgba(255,23,68,${pulse})`, 56, () => { rrect(x - 6, y - 6, w + 12, h + 12, 22); fill('#13131A'); });
     ctx.drawImage(card, x, y, w, h);
-    text('Real Builder warning for this exact build', 540, y + h + 50, 34, C.dim, 'center', 'normal');
-    const url = seg(t, S.cta.start + 1.3, S.cta.start + 1.7);
+    const url = easeOut(seg(t, S.cta.start + 0.1, S.cta.start + 0.6));
     faded(url, () => {
-      const uy = y + h + 150;
-      rrect(130, uy - 54, 820, 108, 54); ctx.fillStyle = 'rgba(0,212,255,0.12)'; ctx.fill(); ctx.strokeStyle = C.cyan; ctx.lineWidth = 4; ctx.stroke();
-      text('specsmithpc.com/builder', 540, uy + 2, 54, C.cyan);
-      text('Free · no account needed', 540, uy + 100, 40, C.dim, 'center', 'normal');
+      const uy = y + h + 140 - 20 * (1 - url);
+      rrect(90, uy - 62, 900, 124, 62); ctx.fillStyle = 'rgba(0,212,255,0.12)'; ctx.fill(); ctx.strokeStyle = C.cyan; ctx.lineWidth = 4; ctx.stroke();
+      text('specsmithpc.com/builder', 540, uy + 2, 56, C.cyan);
     });
   });
 }
@@ -335,35 +273,39 @@ function captionWord(word) { return /DDR4/.test(word) ? C.amber : /DDR5/.test(wo
 function captions(t) {
   const cue = DATA.captions.find((c) => t >= c.start && t < c.end);
   if (!cue) return;
-  const p = cue.start <= 0 ? 1 : easeOut(seg(t, cue.start, cue.start + 0.14));
-  const lines = cue.lines, cy = 1440;
-  // Largest size up to 68px at which every line fits 920px.
-  let size = 68;
+  const p = cue.start <= 0 ? 1 : easeOut(seg(t, cue.start, cue.start + 0.12));
+  const lines = cue.lines, cy = 1500;
+  let size = 70;
   ctx.font = font(size);
   const widest = Math.max(...lines.map((l) => ctx.measureText(l).width));
-  if (widest > 920) size = Math.floor(68 * 920 / widest);
+  if (widest > 920) size = Math.floor(70 * 920 / widest);
   const lh = Math.round(size * 1.26);
-  ctx.save(); ctx.globalAlpha *= p; ctx.translate(540, cy); ctx.scale(0.94 + 0.06 * p, 0.94 + 0.06 * p);
+  ctx.save(); ctx.globalAlpha *= p; ctx.translate(540, cy);
   ctx.font = font(size);
   const width = Math.max(...lines.map((l) => ctx.measureText(l).width));
-  rrect(-width / 2 - 34, -(lines.length * lh) / 2 - 22, width + 68, lines.length * lh + 44, 26); ctx.fillStyle = 'rgba(8,8,12,0.78)'; ctx.fill();
+  rrect(-width / 2 - 34, -(lines.length * lh) / 2 - 22, width + 68, lines.length * lh + 44, 26); ctx.fillStyle = 'rgba(8,8,12,0.8)'; ctx.fill();
   lines.forEach((line, i) => {
     const y = -((lines.length - 1) * lh) / 2 + i * lh;
-    // Per-word colour: DDR4 amber, DDR5 cyan.
-    const words = line.split(' '); const space = ctx.measureText(' ').width;
+    const words = line.split(' '), space = ctx.measureText(' ').width;
     let x = -ctx.measureText(line).width / 2;
     for (const word of words) { const ww = ctx.measureText(word).width; text(word, x + ww / 2, y, size, captionWord(word), 'center', 'bold', 10); x += ww + space; }
   });
   ctx.restore();
 }
 
+function background() {
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(540, 860, 60, 540, 860, 1000);
+  g.addColorStop(0, 'rgba(108,99,255,0.14)'); g.addColorStop(1, 'rgba(10,10,15,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
 window.renderAt = function renderAt(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-  background(t);
-  if (t < S.twist.start + 0.1) faded(1 - seg(t, S.twist.start - 0.2, S.twist.start + 0.05), () => slotScene(t));
-  if (t >= S.twist.start && t < S.cta.start + 0.4) faded(seg(t, S.twist.start, S.twist.start + 0.25), () => boardScene(t));
-  if (t >= S.cta.start) ctaScene(t);
+  background();
+  story(t);
+  ending(t);
   captions(t);
-  faded(0.75, () => text('DRAFT · temp voice', 40, 70, 28, C.dim, 'left', 'normal'));
+  faded(0.7, () => text('DRAFT · temp voice', 40, 70, 28, C.dim, 'left', 'normal'));
   return canvas.toDataURL('image/jpeg', 0.93);
 };

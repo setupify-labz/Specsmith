@@ -1,19 +1,20 @@
-// The pilot Short: "Can I reuse my old DDR4?" One idea, shown with motion:
-// the motherboard decides which RAM generation fits, because DDR4 and DDR5
-// sticks are keyed differently.
+// The pilot Short: "Will my old DDR4 fit?" One idea, told as one continuous
+// story: a DDR4 stick needs a board with DDR4 slots, because DDR4 and DDR5
+// sticks are keyed differently. Approach, stop, notch close-up, the two board
+// choices, the Builder's warning, the route; each shot follows from the last.
 //
 // Wording rules, pinned by storyboard.test.ts:
 // - no performance figure of any kind: this video makes compatibility claims
 //   only, each traceable to the catalog or the Builder's checker (facts.ts);
-// - nothing absolute the catalog cannot back: "the board decides" is about
-//   the two boards shown and the Builder's rule, not every board ever made;
+// - "needs a board with DDR4 slots" is a necessary condition, never stated as
+//   enough on its own;
 // - the RAM diagram is labelled a diagram while the notch is the subject.
 
 import type { PlatformScriptStoryboard, StoryboardBeat } from "../types.ts";
 import type { DeclaredVisual } from "../v2/creative/visualHonesty.ts";
 import type { RamFitFacts } from "./facts.ts";
 
-export type SceneId = "hook" | "why" | "twist" | "payoff" | "cta";
+export type SceneId = "approach" | "stop" | "notch" | "boards" | "catch" | "cta";
 
 export interface PilotScene {
   readonly id: SceneId;
@@ -32,43 +33,50 @@ export interface PilotScene {
   readonly claimSources: readonly string[];
 }
 
-export function pilotScenes(facts: RamFitFacts): PilotScene[] {
+export function pilotScenes(_facts: RamFitFacts): PilotScene[] {
   return [
     {
-      id: "hook", purpose: "hook", startSecond: 0, endSecond: 2.5,
-      narration: "Reusing your old D D R 4 RAM?",
-      captions: ["Reusing your old DDR4 RAM?"],
-      motion: "A DDR4 stick drops into a DDR5 slot and slams to a stop short of seating; the frame shakes, the misaligned notch flashes red, a WON'T GO IN stamp lands.",
-      claimSources: ["oldRam.type", "ddr5Board.supported_ram", "mismatch (ram-type-mismatch, certain)"],
+      id: "approach", purpose: "hook", startSecond: 0, endSecond: 2.3,
+      narration: "Reusing old D D R 4 RAM?",
+      captions: ["Reusing old DDR4 RAM?"],
+      motion: "From the first frame a DDR4 stick is lowering into a DDR5 slot, close up.",
+      claimSources: ["oldRam.type = DDR4", "ddr5Board.supported_ram = DDR5"],
     },
     {
-      id: "why", purpose: "evidence", startSecond: 2.5, endSecond: 7,
-      narration: "On a D D R 5 board, it can't go in. The notch is in a different spot.",
-      captions: ["On a DDR5 board,", "it can't go in.", "The notch is in", "a different spot."],
-      motion: "The camera pushes in on the contacts: dashed guides drop from the DDR4 notch and the slot's DDR5 key, an arrow shows the gap, then a ghost DDR5 edge slides in and lines up. Labelled 'Diagram, not to scale'.",
+      id: "stop", purpose: "commitment", startSecond: 2.3, endSecond: 4.7,
+      narration: "It won't fit a D D R 5 slot.",
+      captions: ["It won't fit a DDR5 slot."],
+      motion: "The stick hits the slot and stops short, contacts still showing; a small jolt; the notch and the slot key glow red.",
+      claimSources: ["mismatch (ram-type-mismatch, error, certain)"],
+    },
+    {
+      id: "notch", purpose: "evidence", startSecond: 4.7, endSecond: 8.5,
+      narration: "The notch is in a different place, so it can't line up.",
+      captions: ["The notch is in", "a different place,", "so it can't line up."],
+      motion: "A slow push-in on the contacts: an amber marker on the DDR4 notch, a cyan marker on the DDR5 key, an arrow between them. Labelled 'Diagram, not to scale'.",
       claimSources: ["mismatch.detail: keyed differently and are not interchangeable"],
     },
     {
-      id: "twist", purpose: "reversal", startSecond: 7, endSecond: 10.7,
-      narration: `This Intel chip works with both. The board decides which.`,
-      captions: ["This Intel chip", "works with both.", "The board decides which."],
-      motion: `A ${facts.cpu.name} chip clones itself into two ${facts.cpu.socket} boards that slide in from either side: a DDR4 board (${facts.ddr4Board.name}) and a DDR5 board (${facts.ddr5Board.name}). Both sockets light green; THE BOARD DECIDES lands above them.`,
-      claimSources: ["cpu.supported_ram = DDR4, DDR5", "cpu.socket = ddr4Board.socket = ddr5Board.socket", "ddr4Board.supported_ram = DDR4", "ddr5Board.supported_ram = DDR5"],
+      id: "boards", purpose: "payoff", startSecond: 8.5, endSecond: 12.5,
+      narration: "Your D D R 4 needs a board with D D R 4 slots.",
+      captions: ["Your DDR4 needs a board", "with DDR4 slots."],
+      motion: "The camera pulls back: the DDR5 slot belongs to a DDR5 board, with a DDR4 board beside it. The stick lifts out, moves across and clicks into the DDR4 board; a green check; the DDR5 board dims.",
+      claimSources: ["ddr4Board.supported_ram = DDR4", "matchPassed includes RAM type"],
     },
     {
-      id: "payoff", purpose: "payoff", startSecond: 10.7, endSecond: 13.7,
-      narration: "On a D D R 4 board, it clicks right in.",
-      captions: ["On a DDR4 board,", "it clicks right in."],
-      motion: "The old DDR4 stick flies into the DDR4 board's slot and seats; both latches snap shut and the slot glows green. The DDR5 board dims behind a red cross.",
-      claimSources: ["matchPassed includes RAM type and CPU socket"],
+      id: "catch", purpose: "reversal", startSecond: 12.5, endSecond: 16.1,
+      narration: "Pick the wrong board, and Spec Smith flags it.",
+      captions: ["Pick the wrong board,", "and SpecSmith flags it."],
+      motion: "The boards fade; the SpecSmith Builder's real warning card for DDR4 on this DDR5 board settles in the middle of the frame.",
+      claimSources: ["mismatch.title, detail and fix, captured from the running Builder at the same parts"],
     },
     {
-      id: "cta", purpose: "cta", startSecond: 13.7, endSecond: 17.5,
-      narration: "Spec Smith's Builder catches this before you buy.",
-      captions: ["SpecSmith's Builder catches", "this before you buy."],
-      onScreenExtras: ["specsmithpc.com/builder", "Free · no account needed"],
-      motion: "The SpecSmith mark appears and the Builder's real warning card for this exact DDR4 + DDR5-board build slides up and pulses red; specsmithpc.com/builder settles beneath it.",
-      claimSources: ["mismatch.title and detail, captured from the running Builder at the same parts", "About page: completely free with no account required"],
+      id: "cta", purpose: "cta", startSecond: 16.1, endSecond: 18.6,
+      narration: "Check yours at Spec Smith.",
+      captions: ["Check yours at SpecSmith."],
+      onScreenExtras: ["specsmithpc.com/builder"],
+      motion: "The card holds; the URL pill rises in beneath it and stays to the end.",
+      claimSources: ["route /builder reproduces the card"],
     },
   ];
 }
@@ -79,7 +87,7 @@ export function pilotStoryboard(facts: RamFitFacts): PlatformScriptStoryboard {
   return {
     platform: "youtube-shorts",
     targetDurationSeconds: scenes.at(-1)!.endSecond,
-    title: "Can you reuse your old DDR4 RAM?",
+    title: "Will your old DDR4 RAM fit?",
     narrationStyle: "Friendly, quick, like a friend who has built a few PCs. No hype.",
     beats: scenes.map((scene) => ({
       startSecond: scene.startSecond,
@@ -114,7 +122,7 @@ export function captionTimings(scene: PilotScene, voiceStart: number, voiceSecon
 export const DECLARED_VISUALS: DeclaredVisual[] = [
   { kind: "derived-illustration", visualId: "ram-keying-diagram", explains: "DDR4 and DDR5 sticks are keyed differently, so a DDR4 stick cannot seat in a DDR5 slot.",
     subject: "other", explanatoryLabel: "Diagram, not to scale", derivedFrom: "compatibility.ts ram-type-mismatch (certain): keyed differently and are not interchangeable", showsNumericValues: false },
-  { kind: "derived-illustration", visualId: "one-cpu-two-boards", explains: "The same LGA1700 CPU supports DDR4 and DDR5; each of the two boards shown takes one.",
-    subject: "other", explanatoryLabel: null, derivedFrom: "cpus.json i5-12400f; components.json b660mpro, b760mawifi", showsNumericValues: false },
-  { kind: "decorative", visualId: "grid-background", description: "Drifting grid and glow behind every scene." },
+  { kind: "derived-illustration", visualId: "two-board-choices", explains: "A DDR4 stick seats in a board with DDR4 slots and not in one with DDR5 slots.",
+    subject: "other", explanatoryLabel: null, derivedFrom: "components.json b660mpro (DDR4), b760mawifi (DDR5); checkCompatibility verdicts", showsNumericValues: false },
+  { kind: "decorative", visualId: "background", description: "Dark background with a soft glow behind every scene." },
 ];
