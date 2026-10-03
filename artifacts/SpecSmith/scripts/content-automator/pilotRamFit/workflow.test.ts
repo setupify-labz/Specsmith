@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { REVIEWED_LIAM_VOICE } from "../liamVoice.ts";
 import { summaryLines } from "./ciSummary.ts";
+import { SAVED_RAM_FIT_TAKE } from "./savedTake.ts";
 
 const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..", "..", "..", "..");
 const workflow = readFileSync(join(repoRoot, ".github", "workflows", "elevenlabs-voice-sample.yml"), "utf8");
@@ -65,6 +66,45 @@ describe("the ram-fit option of the paid voice workflow", () => {
     for (const text of [job("render-ram-fit"), step(job("sample"), "Generate one Liam take of the RAM-fit pilot")]) {
       expect(text).not.toMatch(/metricool|youtube|tiktok|instagram|gh release|git push/i);
     }
+  });
+});
+
+describe("the saved-take option of the voice workflow", () => {
+  const render = () => job("render-ram-fit-saved-take");
+
+  it("never runs the job that holds the provider key", () => {
+    expect(job("sample")).toContain("if: inputs.script != 'ram-fit-saved-take'");
+    expect(code).toMatch(/options:[\s\S]*- ram-fit-saved-take/);
+  });
+
+  it("renders in a job that holds no secret, can only read, and keeps no push token", () => {
+    const text = render();
+    expect(text).toContain("if: inputs.script == 'ram-fit-saved-take'");
+    expect(text).not.toContain("needs:");
+    expect(text).not.toContain("secrets.");
+    expect(text).not.toMatch(/ELEVENLABS|xi-api-key|liamTake\.ts/);
+    const permissions = text.match(/permissions:\n((?: {6}[a-z-]+: [a-z]+\n)+)/);
+    expect(permissions?.[1].trim().split(/\n\s*/)).toEqual(["contents: read", "actions: read"]);
+    expect(text).not.toMatch(/: write|write-all/);
+    expect(text).toContain("persist-credentials: false");
+    expect(text).toMatch(/timeout-minutes:\s*\d+/);
+  });
+
+  it("checks the pinned run before downloading exactly its take, then renders only that take", () => {
+    const text = render();
+    const verify = text.indexOf("run: pnpm exec tsx scripts/content-automator/pilotRamFit/savedTake.ts");
+    const download = text.indexOf("- name: Download the saved take");
+    const renderStep = text.indexOf("render.ts --saved-take render-output/ram-fit-liam-take");
+    expect(verify).toBeGreaterThan(0);
+    expect(download).toBeGreaterThan(verify);
+    expect(renderStep).toBeGreaterThan(download);
+    const downloadStep = step(text, "Download the saved take");
+    expect(downloadStep).toContain(`run-id: ${SAVED_RAM_FIT_TAKE.runId}`);
+    expect(downloadStep).toContain(`name: ${SAVED_RAM_FIT_TAKE.artifactName}`);
+  });
+
+  it("publishes nothing", () => {
+    expect(render()).not.toMatch(/metricool|youtube|tiktok|instagram|gh release|git push/i);
   });
 });
 

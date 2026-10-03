@@ -11,6 +11,9 @@
 #     Each refuses before any spend unless its text is the approved script and
 #     SpecSmith still computes or checks what it states (Compare's figures; the
 #     Builder's RAM verdict and both fixes for ram-fit).
+#     `ram-fit-saved-take` spends nothing: it renders the RAM-fit pilot again
+#     from the ONE paid take of run 37086531999, after checking that run, its
+#     artifact digest and the take's audio hash, in a job that holds no secret.
 #     `list-voices` lists the account's voices and spends nothing;
 #     `voice-audition` reads the race's last three approved lines once in each
 #     of two named voices, for choosing by ear (never as approved narration).
@@ -48,6 +51,7 @@ on:
           - compare-video
           - gpu-race
           - ram-fit
+          - ram-fit-saved-take
           - list-voices
           - voice-audition
       audition_voice_ids:
@@ -66,6 +70,8 @@ concurrency:
 
 jobs:
   sample:
+    # The saved-take render needs no provider and must not touch the key.
+    if: inputs.script != 'ram-fit-saved-take'
     runs-on: ubuntu-latest
     # A stuck run on the one workflow that spends a provider's credits should
     # end by itself. Install plus one short narration is minutes, not tens.
@@ -303,6 +309,87 @@ jobs:
         env:
           SPECSMITH_RENDER_BASE_URL: http://localhost:5178
         run: pnpm exec tsx scripts/content-automator/pilotRamFit/render.ts --liam-take render-output/ram-fit-liam-take
+
+      - name: Summarise the render as notices
+        working-directory: artifacts/SpecSmith
+        run: pnpm exec tsx scripts/content-automator/pilotRamFit/ciSummary.ts render-output/pilot-ram-fit-final/report.json
+
+      - name: Upload the final MP4 for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-ram-fit-final
+          path: artifacts/SpecSmith/render-output/pilot-ram-fit-final/
+          if-no-files-found: error
+          retention-days: 14
+
+  # Renders the RAM-fit pilot from the one paid take that already exists, so a
+  # timing change never needs another generation. No secret, no provider call,
+  # no write permission: the job's own token can only read this repository and
+  # its Actions metadata. It verifies the pinned run and artifact (savedTake.ts)
+  # before downloading, and the renderer refuses any audio but the pinned bytes.
+  render-ram-fit-saved-take:
+    if: inputs.script == 'ram-fit-saved-take'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify the saved take's run and artifact
+        working-directory: artifacts/SpecSmith
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm exec tsx scripts/content-automator/pilotRamFit/savedTake.ts
+
+      - name: Download the saved take
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: specsmith-ram-fit-liam-take
+          run-id: 37086531999
+          github-token: ${{ github.token }}
+          path: artifacts/SpecSmith/render-output/ram-fit-liam-take
+
+      - name: Install ffmpeg and Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -hide_banner -encoders | grep -q ' libx264 ' || { echo "::error::ffmpeg has no libx264 encoder."; exit 1; }
+          cd artifacts/SpecSmith && pnpm exec playwright install --with-deps chromium
+
+      - name: Build and serve the app for the Builder warning capture
+        working-directory: artifacts/SpecSmith
+        run: |
+          pnpm exec vite build --config vite.config.ts
+          nohup pnpm exec vite preview --config vite.config.ts --port 5178 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -sf -o /dev/null http://localhost:5178/builder && exit 0
+            sleep 1
+          done
+          echo "::error::The built app did not start; the Builder warning cannot be captured."
+          cat "$RUNNER_TEMP/preview.log"
+          exit 1
+
+      - name: Time the locked cut to the saved take and render the final MP4
+        working-directory: artifacts/SpecSmith
+        env:
+          SPECSMITH_RENDER_BASE_URL: http://localhost:5178
+        run: pnpm exec tsx scripts/content-automator/pilotRamFit/render.ts --saved-take render-output/ram-fit-liam-take
 
       - name: Summarise the render as notices
         working-directory: artifacts/SpecSmith

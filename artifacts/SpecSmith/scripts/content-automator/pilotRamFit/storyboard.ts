@@ -29,9 +29,10 @@ export interface PilotScene {
   readonly motion: string;
   /**
    * Words in the narration that a visual beat lands on, so a real take can be
-   * timed to them: the jam on "won't", each fix as its words are said.
+   * timed to them: each fix as its words are said. (The jam is not anchored to
+   * a word: it lands at 0.5 s and Liam's "won't" follows it.)
    */
-  readonly anchors?: readonly { readonly event: "jam" | "fix1" | "fix2"; readonly phrase: string; readonly at: "start" | "end" }[];
+  readonly anchors?: readonly { readonly event: "fix1" | "fix2"; readonly phrase: string; readonly at: "start" | "end" }[];
   /** Other words on screen that are not captions (the URL on the end card). */
   readonly onScreenExtras?: readonly string[];
   /** Which facts.ts fields this scene's claims rest on. */
@@ -44,7 +45,6 @@ export function pilotScenes(_facts: RamFitFacts): PilotScene[] {
       id: "fail", purpose: "hook", startSecond: 0, endSecond: 2.35,
       narration: "DDR4 RAM won't fit a DDR5 slot.",
       captions: ["DDR4 RAM won't fit", "a DDR5 slot."],
-      anchors: [{ event: "jam", phrase: "won't", at: "start" }],
       motion: "From the first frame a DDR4 stick is pushing into a DDR5 slot; at 0.5 s it slams to a stop on the key, the frame jolts, and the contacts left outside the slot turn red.",
       claimSources: ["mismatch (ram-type-mismatch, error, certain)", "oldRam.type = DDR4", "ddr5Board.supported_ram = DDR5"],
     },

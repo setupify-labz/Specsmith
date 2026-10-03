@@ -11,7 +11,8 @@ interface Report {
   label: string;
   video: { sha256: string; bytes: number; durationSeconds: number };
   take: { voiceId: string; voiceUsed: string; modelId: string; audioSha256: string; providerReportedCharacterCost: number | null; lineTimings: { id: string; start: number; end: number }[] } | null;
-  timing: { events: Record<string, number>; adjustments?: string[] };
+  timing: { events: Record<string, number>; heard?: Record<string, number>; commaPause?: number; adjustments?: string[] };
+  savedTake?: { runId: number; artifactId: number; audioSha256: string } | null;
   scenes: { id: string; startSecond: number; endSecond: number }[];
   captions: { text: string; start: number; end: number }[];
   builderCard: { route: string; shownText: string };
@@ -29,7 +30,10 @@ export function summaryLines(report: Report): string[] {
       ? `take: ${report.take.voiceUsed} (${report.take.voiceId}), model ${report.take.modelId}, audio sha256 ${report.take.audioSha256}, provider charge ${report.take.providerReportedCharacterCost ?? "not reported"} characters`
       : "take: none (draft)",
     ...(report.take?.lineTimings ?? []).map((line) => `take line ${line.id}: ${line.start.toFixed(3)}-${line.end.toFixed(3)} s`),
+    ...(report.savedTake ? [`saved take: run ${report.savedTake.runId}, artifact ${report.savedTake.artifactId}, audio sha256 ${report.savedTake.audioSha256}`] : []),
     `events: ${JSON.stringify(report.timing.events)}`,
+    ...(report.timing.heard ? [`heard: ${JSON.stringify(report.timing.heard)}`] : []),
+    ...(report.timing.commaPause !== undefined ? [`comma pause added: ${report.timing.commaPause} s`] : []),
     ...(report.timing.adjustments ?? []).map((note) => `timing adjustment: ${note}`),
     `shots: ${report.scenes.map((scene) => `${scene.id} ${scene.startSecond.toFixed(2)}-${scene.endSecond.toFixed(2)}`).join(", ")}`,
     `captions: ${report.captions.map((cue) => `${cue.start.toFixed(2)} "${cue.text}"`).join(" | ")}`,

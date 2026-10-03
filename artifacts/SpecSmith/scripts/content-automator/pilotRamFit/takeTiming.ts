@@ -5,9 +5,11 @@
 // timestamps. There is no fallback: without timestamps the render refuses,
 // because captions and the three visual beats are timed to the words.
 //
-// The shots, their order and their internal moves are locked. What the take
-// decides is when each shot starts, and exactly when three beats land:
-//   - the jam, on "won't";
+// The shots, their order and their internal moves are locked. The jam is a
+// fixed visual beat: the stick moves from frame one and jams at LOCKED.jamAt,
+// and line 1 starts on frame one so Liam's "won't" follows and reinforces it
+// (it is not moved onto the jam). What the take decides is when each shot
+// starts, and exactly when the other two beats land:
 //   - the DDR5 stick seating, as "DDR5 RAM here" ends;
 //   - the DDR4 stick seating, as "DDR4 board" ends.
 // Each line is cut from the take at its own timestamps and placed at its
@@ -18,8 +20,8 @@
 // after "here," is lengthened (by at most LOCKED.maxCommaPause) so both still
 // land as their words end; a take that would need more is refused.
 // Captions appear as their first word is said. The only exception is the
-// opening hook, which is on screen from frame one when line 1 starts within
-// LOCKED.jamEarliest of it.
+// opening hook, which is on screen from frame one when line 1's first word is
+// heard within LOCKED.hookWithin of it.
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -113,9 +115,13 @@ export function phraseTime(alignment: Alignment, timings: readonly LineTiming[],
 
 /** Locked-animation needs, in seconds after each shot starts (from scene.browser.js). */
 export const LOCKED = Object.freeze({
-  /** The stick must be seen moving before it jams, and the jam must land inside the first second. */
-  jamEarliest: 0.35,
-  jamLatest: 1.0,
+  /** The stick moves from frame one and jams here, whatever the take; line 1 starts on frame one. */
+  jamAt: 0.5,
+  firstLineAt: 0,
+  /** The jam's jolt and the red contacts need this long on screen before the cut. */
+  afterJam: 0.9,
+  /** The opening hook may be on screen before its first word only if that word is heard this soon. */
+  hookWithin: 0.35,
   /** The pull-back takes 0.75 s; the DDR4 stick leaves 0.5 s before the DDR5 stick seats. */
   fix1Earliest: 1.25,
   /** The DDR4 stick needs 0.85 s to leave and come back between the two fixes. */
@@ -147,6 +153,8 @@ export interface TakePlan {
   readonly adjustments: readonly string[];
   /** Seconds added to Liam's pause after "here," (0 when his own pause was long enough). */
   readonly commaPause: number;
+  /** When words that are not beat anchors are heard in the video, for the report (Liam's "won't" after the jam). */
+  readonly heard: { readonly wont: number };
 }
 
 /** The locked cut, retimed to the take. */
@@ -154,7 +162,7 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   const timings = take.lineTimings;
   const timing = (id: SceneId) => timings.find((entry) => entry.id === id)!;
   const length = (id: SceneId) => timing(id).end - timing(id).start;
-  const anchor = (id: SceneId, event: "jam" | "fix1" | "fix2") => {
+  const anchor = (id: SceneId, event: "fix1" | "fix2") => {
     const scene = scenes.find((entry) => entry.id === id)!;
     const spec = scene.anchors?.find((entry) => entry.event === event);
     if (!spec) throw new TakeError(`The ${id} shot has no ${event} anchor.`);
@@ -164,14 +172,11 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   const delay = new Map<SceneId, number>();
   const duration = new Map<SceneId, number>();
 
-  // Shot 1: the jam lands on "won't", inside the first second.
-  const wont = anchor("fail", "jam");
-  let failDelay = LOCKED.lead;
-  if (failDelay + wont < LOCKED.jamEarliest) { failDelay = LOCKED.jamEarliest - wont; adjustments.push(`Line 1 starts ${failDelay.toFixed(2)} s in so the stick is seen moving before the jam.`); }
-  const jam = failDelay + wont;
-  if (jam > LOCKED.jamLatest) throw new TakeError(`"won't" is said ${jam.toFixed(2)} s in; the jam must land inside the first second. Not rendered.`);
+  // Shot 1: the stick jams at jamAt; line 1 starts on frame one and "won't" follows when Liam says it.
+  const failDelay = LOCKED.firstLineAt;
+  const wontHeard = failDelay + phraseTime(take.alignment, timings, "fail", "won't", "start");
   delay.set("fail", failDelay);
-  duration.set("fail", failDelay + length("fail") + LOCKED.breath);
+  duration.set("fail", Math.max(failDelay + length("fail") + LOCKED.breath, LOCKED.jamAt + LOCKED.afterJam));
 
   delay.set("notch", LOCKED.lead);
   duration.set("notch", Math.max(LOCKED.notchMinimum, LOCKED.lead + length("notch") + LOCKED.breath));
@@ -228,7 +233,7 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   };
 
   // Captions: each chunk from its first word to the next chunk, the last to the end of its shot.
-  // The opening hook alone may be on screen from frame one, if line 1 starts within jamEarliest.
+  // The opening hook alone may be on screen from frame one, if its first word is heard within hookWithin.
   const offsets = lineOffsets();
   const captions = retimed.flatMap((scene) => {
     const line = APPROVED_RAM_FIT_LINES.find((entry) => entry.id === scene.id)!;
@@ -239,7 +244,7 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
       within += chunk.length + 1;
       return round(heardAt(scene.id, take.alignment.character_start_times_seconds[global]));
     });
-    const hookFromFrameOne = scene.id === "fail" && starts[0] - scene.startSecond <= LOCKED.jamEarliest + 1e-9;
+    const hookFromFrameOne = scene.id === "fail" && starts[0] - scene.startSecond <= LOCKED.hookWithin + 1e-9;
     return scene.captions.map((text, index) => ({
       text,
       start: index === 0 && hookFromFrameOne ? scene.startSecond : starts[index],
@@ -249,8 +254,9 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
 
   return {
     scenes: retimed,
-    events: { jam: round(startOf("fail") + jam), fix1: round(startOf("choice") + fix1Offset), fix2: round(startOf("choice") + fix2Offset) },
+    events: { jam: round(startOf("fail") + LOCKED.jamAt), fix1: round(startOf("choice") + fix1Offset), fix2: round(startOf("choice") + fix2Offset) },
     commaPause: round(commaPause),
+    heard: { wont: round(startOf("fail") + wontHeard) },
     proofAt: LOCKED.proofAt,
     voice,
     captions,

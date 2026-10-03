@@ -2,6 +2,8 @@
 //
 //   FINAL (the only path to a release candidate):
 //     pnpm exec tsx scripts/content-automator/pilotRamFit/render.ts --liam-take <take dir>
+//   FINAL from the one saved paid take (savedTake.ts; refuses any other audio):
+//     pnpm exec tsx scripts/content-automator/pilotRamFit/render.ts --saved-take <take dir>
 //   DRAFT (labelled, never for release):
 //     pnpm exec tsx scripts/content-automator/pilotRamFit/render.ts --temp-voice
 //
@@ -31,6 +33,7 @@ import { audioLevels, blackIntervals, decodeErrors, freezeIntervals, probe, type
 import { builderRoute, ramFitFacts, type RamFitFacts } from "./facts.ts";
 import { reviewVisualHonesty } from "../v2/creative/visualHonesty.ts";
 import { captionTimings, DECLARED_VISUALS, pilotScenes, pilotStoryboard, type PilotScene } from "./storyboard.ts";
+import { assertSavedTake, SAVED_RAM_FIT_TAKE } from "./savedTake.ts";
 import { loadRamFitTake, planFromTake } from "./takeTiming.ts";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -169,12 +172,20 @@ async function loudness(path: string): Promise<{ integratedLufs: number; truePea
   return { integratedLufs: num(/I:\s*(-?[\d.]+) LUFS/), truePeakDbtp: num(/Peak:\s*(-?[\d.]+) dBFS/), rangeLu: num(/LRA:\s*(-?[\d.]+) LU/) };
 }
 
-export type RenderMode = { readonly mode: "final"; readonly takeDir: string } | { readonly mode: "draft" };
+export type RenderMode = { readonly mode: "final"; readonly takeDir: string; readonly savedTake?: boolean } | { readonly mode: "draft" };
+
+/** The take a render uses: none for a draft; the approved Liam take for a final; and for --saved-take, only the saved bytes. */
+export async function takeForMode(options: RenderMode) {
+  if (options.mode !== "final") return null;
+  const take = await loadRamFitTake(options.takeDir);
+  if (options.savedTake) assertSavedTake(take);
+  return take;
+}
 
 export async function renderRamFitPilot(options: RenderMode, outputDir = resolve(appRoot, options.mode === "final" ? "render-output/pilot-ram-fit-final" : "render-output/pilot-ram-fit")) {
   const facts = ramFitFacts();
   // FINAL: the locked cut timed to the approved Liam take, or nothing. There is no fallback voice.
-  const take = options.mode === "final" ? await loadRamFitTake(options.takeDir) : null;
+  const take = await takeForMode(options);
   const plan = take ? planFromTake(take, pilotScenes(facts)) : null;
   const scenes = plan ? plan.scenes : pilotScenes(facts);
   const storyboard = pilotStoryboard(facts, scenes);
@@ -195,8 +206,9 @@ export async function renderRamFitPilot(options: RenderMode, outputDir = resolve
     const lines = plan.voice;
     for (const [index, line] of lines.entries()) {
       const next = lines[index + 1];
-      // Every cut starts 0.03 s before its first sound; the cut before it stops there, so no audio is heard twice.
-      const from = Math.max(0, line.takeStart - 0.03);
+      // Every cut starts 0.03 s before its first sound (less if the line is placed on frame one, so
+      // nothing lands before the video starts); the cut before it stops there, so no audio is heard twice.
+      const from = Math.max(0, line.takeStart - Math.min(0.03, line.at));
       const to = next ? Math.min(line.takeEnd + 0.15, next.takeStart - 0.03) : line.takeEnd + 0.25;
       const path = join(outputDir, `voice-${index + 1}-${line.id}.wav`);
       await run("ffmpeg", ["-v", "error", "-y", "-ss", from.toFixed(3), "-to", to.toFixed(3), "-i", take.audioPath,
@@ -362,8 +374,9 @@ export async function renderRamFitPilot(options: RenderMode, outputDir = resolve
       : "DRAFT PILOT. Temporary espeak voice. Not for publication.",
     mode: options.mode,
     video: { path: videoPath, sha256: media.sha256, bytes: media.bytes, durationSeconds: probed.durationSeconds },
+    savedTake: options.mode === "final" && options.savedTake ? SAVED_RAM_FIT_TAKE : null,
     take: take ? { voiceId: take.voiceId, voiceUsed: take.voiceUsed, modelId: take.modelId, audioSha256: take.audioSha256, providerReportedCharacterCost: take.providerReportedCharacterCost, lineTimings: take.lineTimings } : null,
-    timing: plan ? { events: plan.events, proofAt: plan.proofAt, adjustments: plan.adjustments, voice: plan.voice } : { events, proofAt },
+    timing: plan ? { events: plan.events, heard: plan.heard, commaPause: plan.commaPause, proofAt: plan.proofAt, adjustments: plan.adjustments, voice: plan.voice } : { events, proofAt },
     facts: {
       cpu: { id: facts.cpu.id, name: facts.cpu.name, socket: facts.cpu.socket, supported_ram: facts.cpu.supported_ram },
       ddr4Board: facts.ddr4Board, ddr5Board: facts.ddr5Board, oldRam: facts.oldRam, newRam: facts.newRam,
@@ -381,13 +394,18 @@ export async function renderRamFitPilot(options: RenderMode, outputDir = resolve
   return report;
 }
 
-/** `--liam-take <dir>` renders the final; `--temp-voice` renders a labelled draft. Nothing else is accepted. */
+/**
+ * `--liam-take <dir>` renders the final; `--saved-take <dir>` renders it from the
+ * one saved paid take and nothing else; `--temp-voice` renders a labelled draft.
+ * Nothing else is accepted.
+ */
 export function renderModeFromArgs(argv: readonly string[]): RenderMode {
-  const takeIndex = argv.indexOf("--liam-take");
-  if (takeIndex >= 0) {
+  for (const flag of ["--saved-take", "--liam-take"] as const) {
+    const takeIndex = argv.indexOf(flag);
+    if (takeIndex < 0) continue;
     const takeDir = argv[takeIndex + 1];
-    if (!takeDir || takeDir.startsWith("--")) throw new Error("--liam-take needs the take directory.");
-    return { mode: "final", takeDir: resolve(takeDir) };
+    if (!takeDir || takeDir.startsWith("--")) throw new Error(`${flag} needs the take directory.`);
+    return flag === "--saved-take" ? { mode: "final", takeDir: resolve(takeDir), savedTake: true } : { mode: "final", takeDir: resolve(takeDir) };
   }
   if (argv.includes("--temp-voice")) return { mode: "draft" };
   throw new Error("Choose --liam-take <dir> for the final (Liam only, no fallback voice) or --temp-voice for a labelled draft.");
@@ -400,6 +418,7 @@ if (isMain) {
     console.log(`video: ${report.video.path} (${report.video.durationSeconds.toFixed(2)}s) sha256 ${report.video.sha256}`);
     for (const clip of report.voice) console.log(`  voice ${clip.scene}: at ${clip.startSecond}s for ${clip.seconds}s (${clip.source})`);
     console.log(`events: ${JSON.stringify(report.timing.events)}`);
+    if ("heard" in report.timing) console.log(`heard: ${JSON.stringify(report.timing.heard)}`);
     console.log(`#1 storyboard review fixes: ${report.master1StoryboardReview.recommendedFixes.length}`);
     console.log(`render checks: ${JSON.stringify({ decode: report.renderChecks.decodeErrors.length, black: report.renderChecks.black, frozen: report.renderChecks.frozen, mix: report.renderChecks.mix })}`);
   }).catch((error) => {

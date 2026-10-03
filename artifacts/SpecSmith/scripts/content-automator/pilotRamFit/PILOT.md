@@ -13,7 +13,7 @@ The script is pinned in `liamTake.ts` (`APPROVED_RAM_FIT_LINES`); the video's na
 
 | # | Shot | Voice and captions | What proves it |
 |---|---|---|---|
-| 1 | The DDR4 stick jams in the DDR5 slot (the jam lands on "won't") | DDR4 RAM won't fit a DDR5 slot. | Builder `ram-type-mismatch` (error, certain): "keyed differently and are not interchangeable"; the real card says "RAM won't fit this motherboard" |
+| 1 | The DDR4 stick moves from frame one and jams in the DDR5 slot at 0.5 s; Liam's "won't" follows at his own pace | DDR4 RAM won't fit a DDR5 slot. | Builder `ram-type-mismatch` (error, certain): "keyed differently and are not interchangeable"; the real card says "RAM won't fit this motherboard" |
 | 2 | Notch close-up | The notch doesn't line up. | Same rule; the drawing is labelled "Diagram, not to scale" |
 | 3 | The DDR5 stick seats as "DDR5 RAM here" ends; the DDR4 stick seats in the DDR4 board as "DDR4 board" ends | Use DDR5 RAM here, or a DDR4 board compatible with your CPU. | The Builder's fix: "Choose DDR5 memory, or a motherboard that supports DDR4". The Builder passes DDR5 RAM on this board, and the build's CPU with the DDR4 board (socket and RAM type) |
 | 4 | WON'T FIT, both fixes ("Or a DDR4 board / compatible with your CPU"), then the real Builder card | SpecSmith catches it. | The real card, captured at these parts and read back word for word |
@@ -22,6 +22,12 @@ The script is pinned in `liamTake.ts` (`APPROVED_RAM_FIT_LINES`); the video's na
 **Generation path (no spend until the owner approves):** the guarded workflow `elevenlabs-voice-sample.yml`, option `ram-fit`, dispatched by hand with `confirm=generate`.
 - **Job 1** holds the stored key. It runs `liamTake.ts`: it re-checks the Builder facts and the script, checks the voice is the pinned Liam id, reads the subscription (and refuses if the account can extend its limit or lacks the characters), makes one timestamped request, and uploads the take.
 - **Job 2** holds no secret. It builds the app, captures the Builder card, times the locked cut and captions to the take (`takeTiming.ts`), mixes the jam 6 dB under Liam's line-1 peak at about -14 LUFS, renders the 1080x1920 MP4, posts its report as check notices, and uploads it.
+
+**Rendering the saved take (no spend):** the one paid take is from run 37086531999 (artifact 11259988966, audio sha256 `ab54f7a9…cdb871`). Its line 1 is slow, with "won't" 1.01 s in, so the first render refused it under the old "jam on won't, inside the first second" rule. The owner then removed that rule (2026-10-03). The jam is now a fixed visual beat at 0.5 s, line 1 starts on frame one, and the two fixes and every caption stay timed to Liam's words.
+- Option `ram-fit-saved-take` of the same workflow skips the key-holding job entirely.
+- Its render job holds no secret. Its token can only read the repository and Actions metadata.
+- `savedTake.ts` checks GitHub's record of the pinned run before downloading: commit, workflow, manual dispatch, the RAM-fit generation step, and the artifact's id, name and digest.
+- `render.ts --saved-take` refuses any audio but the pinned bytes in the pinned Liam voice.
 
 Nothing publishes.
 

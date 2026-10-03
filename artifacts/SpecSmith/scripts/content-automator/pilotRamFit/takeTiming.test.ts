@@ -74,15 +74,16 @@ describe("timing the locked cut to the take", () => {
   const alignment = fakeAlignment();
   const lineTimings = lineTimingsFromAlignment(alignment);
 
-  it("lands the jam on \"won't\", inside the first second, and each fix as its words end", () => {
+  it("jams the stick at 0.5 s whatever the take, starts line 1 on frame one, and lands each fix as its words end", () => {
     const plan = planFromTake({ alignment, lineTimings }, scenes());
     const voice = (id: string) => plan.voice.find((line) => line.id === id)!;
     const lineStart = (id: string) => lineTimings.find((timing) => timing.id === id)!.start;
-    // "won't" in the take, moved to where line 1 is placed.
+    expect(plan.events.jam).toBe(LOCKED.jamAt);
+    expect(LOCKED.jamAt).toBe(0.5);
+    expect(voice("fail").at).toBe(0);
+    // "won't" is heard where Liam says it; it is not moved onto the jam.
     const wont = voice("fail").at + phraseTime(alignment, lineTimings, "fail", "won't", "start");
-    expect(plan.events.jam).toBeCloseTo(wont, 3);
-    expect(plan.events.jam).toBeGreaterThanOrEqual(LOCKED.jamEarliest);
-    expect(plan.events.jam).toBeLessThanOrEqual(LOCKED.jamLatest);
+    expect(plan.heard.wont).toBeCloseTo(wont, 3);
     const choice = plan.scenes.find((scene) => scene.id === "choice")!;
     expect(plan.events.fix1).toBeCloseTo(voice("choice").at + phraseTime(alignment, lineTimings, "choice", "DDR5 RAM here", "end"), 3);
     expect(plan.events.fix1 - choice.startSecond).toBeGreaterThanOrEqual(LOCKED.fix1Earliest - 1e-9);
@@ -126,7 +127,7 @@ describe("timing the locked cut to the take", () => {
       const plan = planFromTake({ alignment: take, lineTimings: lineTimingsFromAlignment(take) }, scenes());
       const heard = heardStarts(plan, take);
       expect(plan.captions[0]).toMatchObject({ text: "DDR4 RAM won't fit", start: 0 });
-      expect(heard[0]).toBeLessThanOrEqual(LOCKED.jamEarliest + 1e-9);
+      expect(heard[0]).toBeLessThanOrEqual(LOCKED.hookWithin + 1e-9);
       plan.captions.slice(1).forEach((cue, index) => {
         expect(cue.start).toBeCloseTo(heard[index + 1], 3);
         expect(cue.start).toBeGreaterThanOrEqual(plan.captions[index].end - 1e-9);
@@ -190,8 +191,32 @@ describe("timing the locked cut to the take", () => {
     expect(plan.adjustments.join(" ")).toMatch(/pull-back finishes first/);
   });
 
-  it("refuses a take whose \"won't\" cannot land inside the first second", () => {
+  it("accepts a slow first line like the saved take's: the jam stays at 0.5 s and \"won't\" follows it at Liam's pace", () => {
+    // About the saved take's pace: "won't" roughly a second into line 1.
     const slow = fakeAlignment(RAM_FIT_TAKE_TEXT, 0.12, 0.3);
-    expect(() => planFromTake({ alignment: slow, lineTimings: lineTimingsFromAlignment(slow) }, scenes())).toThrow(/inside the first second/);
+    const timings = lineTimingsFromAlignment(slow);
+    expect(phraseTime(slow, timings, "fail", "won't", "start")).toBeGreaterThan(1);
+    const plan = planFromTake({ alignment: slow, lineTimings: timings }, scenes());
+    expect(plan.events.jam).toBe(0.5);
+    expect(plan.heard.wont).toBeCloseTo(phraseTime(slow, timings, "fail", "won't", "start"), 3);
+    // Line 1 is heard whole inside its shot, and its captions follow Liam's words.
+    const fail = plan.scenes.find((scene) => scene.id === "fail")!;
+    const line1 = plan.voice.find((entry) => entry.id === "fail")!;
+    expect(line1.at + line1.takeEnd - line1.takeStart).toBeLessThanOrEqual(fail.endSecond);
+    const second = plan.captions.find((cue) => cue.text === "a DDR5 slot.")!;
+    expect(second.start).toBeCloseTo(line1.at + phraseTime(slow, timings, "fail", "a DDR5 slot.", "start"), 3);
+  });
+
+  it("holds the first shot long enough for the jam to read, even with a short line 1", () => {
+    // Line 1 squeezed to a fifth of its length; every other line as read.
+    const base = fakeAlignment();
+    const line1Chars = APPROVED_RAM_FIT_LINES[0].text.length;
+    const squeeze = (times: number[]) => times.map((t, index) => (index < line1Chars ? t * 0.2 : t));
+    const short = { characters: base.characters, character_start_times_seconds: squeeze(base.character_start_times_seconds), character_end_times_seconds: squeeze(base.character_end_times_seconds) };
+    const timings = lineTimingsFromAlignment(short);
+    expect(timings[0].end - timings[0].start + LOCKED.breath).toBeLessThan(LOCKED.jamAt + LOCKED.afterJam);
+    const plan = planFromTake({ alignment: short, lineTimings: timings }, scenes());
+    const fail = plan.scenes.find((scene) => scene.id === "fail")!;
+    expect(fail.endSecond - fail.startSecond).toBeGreaterThanOrEqual(LOCKED.jamAt + LOCKED.afterJam - 1e-9);
   });
 });
