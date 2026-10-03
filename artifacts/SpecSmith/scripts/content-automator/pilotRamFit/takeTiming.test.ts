@@ -104,14 +104,82 @@ describe("timing the locked cut to the take", () => {
     expect(payoff.endSecond - payoff.startSecond).toBeGreaterThanOrEqual(LOCKED.proofAt + LOCKED.proofOnScreen - 1e-9);
   });
 
-  it("starts each caption on its first word, back to back, the first on frame one", () => {
+  /** Where the first word of each caption is heard in the video, from the take and the plan's voice placement. */
+  function heardStarts(plan: ReturnType<typeof planFromTake>, align: typeof alignment): number[] {
+    let offset = 0;
+    return APPROVED_RAM_FIT_LINES.flatMap((line) => {
+      const scene = plan.scenes.find((entry) => entry.id === line.id)!;
+      let within = 0;
+      const starts = scene.captions.map((chunk) => {
+        const takeSeconds = align.character_start_times_seconds[offset + within];
+        within += chunk.length + 1;
+        const part = [...plan.voice].reverse().find((entry) => entry.id === line.id && takeSeconds >= entry.takeStart - 1e-9)!;
+        return part.at + takeSeconds - part.takeStart;
+      });
+      offset += line.text.length + 1;
+      return starts;
+    });
+  }
+
+  it("starts each caption as its first word is heard; only the opening hook is on frame one", () => {
+    for (const take of [alignment, fakeAlignment(RAM_FIT_TAKE_TEXT, 0.03, 0.2), fakeAlignment(RAM_FIT_TAKE_TEXT, 0.04, 0.3)]) {
+      const plan = planFromTake({ alignment: take, lineTimings: lineTimingsFromAlignment(take) }, scenes());
+      const heard = heardStarts(plan, take);
+      expect(plan.captions[0]).toMatchObject({ text: "DDR4 RAM won't fit", start: 0 });
+      expect(heard[0]).toBeLessThanOrEqual(LOCKED.jamEarliest + 1e-9);
+      plan.captions.slice(1).forEach((cue, index) => {
+        expect(cue.start).toBeCloseTo(heard[index + 1], 3);
+        expect(cue.start).toBeGreaterThanOrEqual(plan.captions[index].end - 1e-9);
+      });
+      expect(plan.captions.map((cue) => cue.text).join(" ")).toBe(RAM_FIT_TAKE_TEXT);
+    }
+  });
+
+  it("never shows a delayed line's caption before its first word", () => {
+    const fast = fakeAlignment(RAM_FIT_TAKE_TEXT, 0.03, 0.2);
+    const plan = planFromTake({ alignment: fast, lineTimings: lineTimingsFromAlignment(fast) }, scenes());
+    const choice = plan.scenes.find((scene) => scene.id === "choice")!;
+    const first = plan.captions.find((cue) => cue.text === "Use DDR5 RAM here,")!;
+    const line = plan.voice.find((entry) => entry.id === "choice")!;
+    expect(line.at - choice.startSecond).toBeGreaterThan(0.3);
+    expect(first.start).toBeCloseTo(line.at, 3);
+  });
+
+  it("lengthens the pause at \"here,\" so the DDR4 stick still seats as \"DDR4 board\" ends", () => {
+    const close = fakeAlignment(RAM_FIT_TAKE_TEXT, 0.04, 0.3);
+    const timings = lineTimingsFromAlignment(close);
+    const gap = phraseTime(close, timings, "choice", "DDR4 board", "end") - phraseTime(close, timings, "choice", "DDR5 RAM here", "end");
+    expect(gap).toBeLessThan(LOCKED.fixGap);
+    const plan = planFromTake({ alignment: close, lineTimings: timings }, scenes());
+    expect(plan.commaPause).toBeCloseTo(LOCKED.fixGap - gap, 3);
+    const parts = plan.voice.filter((entry) => entry.id === "choice");
+    expect(parts).toHaveLength(2);
+    // The cut falls in the silence after the comma, and nothing of the line is lost or repeated.
+    const text = APPROVED_RAM_FIT_LINES.find((line) => line.id === "choice")!.text;
+    const offset = APPROVED_RAM_FIT_LINES.slice(0, 2).reduce((sum, line) => sum + line.text.length + 1, 0);
+    expect(parts[0].takeEnd).toBeCloseTo(close.character_end_times_seconds[offset + text.indexOf(",")], 6);
+    expect(parts[1].takeStart).toBeCloseTo(close.character_start_times_seconds[offset + text.indexOf("or a")], 6);
+    expect(parts[1].at - (parts[0].at + parts[0].takeEnd - parts[0].takeStart)).toBeCloseTo(parts[1].takeStart - parts[0].takeEnd + plan.commaPause, 3);
+    // Both beats on their words, as heard.
+    const boardEnd = close.character_end_times_seconds[offset + text.indexOf("DDR4 board") + "DDR4 board".length - 1];
+    expect(plan.events.fix2).toBeCloseTo(parts[1].at + boardEnd - parts[1].takeStart, 3);
+    const hereEnd = close.character_end_times_seconds[offset + text.indexOf("DDR5 RAM here") + "DDR5 RAM here".length - 1];
+    expect(plan.events.fix1).toBeCloseTo(parts[0].at + hereEnd - parts[0].takeStart, 3);
+    expect(plan.events.fix2 - plan.events.fix1).toBeCloseTo(LOCKED.fixGap, 3);
+    expect(plan.adjustments.join(" ")).toMatch(/pause after "here," is/);
+    const choice = plan.scenes.find((scene) => scene.id === "choice")!;
+    expect(parts[1].at + parts[1].takeEnd - parts[1].takeStart).toBeLessThanOrEqual(choice.endSecond);
+  });
+
+  it("refuses a take whose fixes are too close to seat on their words, rather than moving a beat off its words", () => {
+    const rushed = fakeAlignment(RAM_FIT_TAKE_TEXT, 0.015, 0.2);
+    expect(() => planFromTake({ alignment: rushed, lineTimings: lineTimingsFromAlignment(rushed) }, scenes())).toThrow(/longer pause at "here,"/);
+  });
+
+  it("does not touch Liam's pause when his own read leaves the stick time to come back", () => {
     const plan = planFromTake({ alignment, lineTimings }, scenes());
-    expect(plan.captions[0]).toMatchObject({ text: "DDR4 RAM won't fit", start: 0 });
-    plan.captions.slice(1).forEach((cue, index) => expect(cue.start).toBeCloseTo(plan.captions[index].end, 6));
-    const second = plan.captions.find((cue) => cue.text === "a DDR5 slot.")!;
-    const fail = plan.voice.find((line) => line.id === "fail")!;
-    expect(second.start).toBeCloseTo(fail.at + phraseTime(alignment, lineTimings, "fail", "a DDR5 slot.", "start"), 3);
-    expect(plan.captions.map((cue) => cue.text).join(" ")).toBe(RAM_FIT_TAKE_TEXT);
+    expect(plan.commaPause).toBe(0);
+    expect(plan.voice).toHaveLength(5);
   });
 
   it("waits for the pull-back when the take says the fix early, and records that it did", () => {

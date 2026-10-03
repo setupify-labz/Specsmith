@@ -195,9 +195,10 @@ export async function renderRamFitPilot(options: RenderMode, outputDir = resolve
     const lines = plan.voice;
     for (const [index, line] of lines.entries()) {
       const next = lines[index + 1];
+      // Every cut starts 0.03 s before its first sound; the cut before it stops there, so no audio is heard twice.
       const from = Math.max(0, line.takeStart - 0.03);
-      const to = next ? Math.min(line.takeEnd + 0.15, next.takeStart - 0.01) : line.takeEnd + 0.25;
-      const path = join(outputDir, `voice-${line.id}.wav`);
+      const to = next ? Math.min(line.takeEnd + 0.15, next.takeStart - 0.03) : line.takeEnd + 0.25;
+      const path = join(outputDir, `voice-${index + 1}-${line.id}.wav`);
       await run("ffmpeg", ["-v", "error", "-y", "-ss", from.toFixed(3), "-to", to.toFixed(3), "-i", take.audioPath,
         "-af", `afade=t=in:d=0.01,afade=t=out:st=${Math.max(0, to - from - 0.03).toFixed(3)}:d=0.03`, "-ar", "48000", "-ac", "2", path]);
       voice.push({ scene: line.id, startSecond: Number((line.at - (line.takeStart - from)).toFixed(3)), seconds: Number((to - from).toFixed(3)), path, source: `Liam take ${from.toFixed(3)}-${to.toFixed(3)} s` });

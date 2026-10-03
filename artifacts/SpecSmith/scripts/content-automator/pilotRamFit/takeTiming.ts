@@ -13,6 +13,13 @@
 // Each line is cut from the take at its own timestamps and placed at its
 // shot's start, so a line never spills into the next shot. A shot is held a
 // little longer than its line only where the locked animation needs the time.
+// A beat never moves off its words: if Liam says the two fixes closer together
+// than the animation can seat them, the pause he already takes at the comma
+// after "here," is lengthened (by at most LOCKED.maxCommaPause) so both still
+// land as their words end; a take that would need more is refused.
+// Captions appear as their first word is said. The only exception is the
+// opening hook, which is on screen from frame one when line 1 starts within
+// LOCKED.jamEarliest of it.
 
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -113,6 +120,10 @@ export const LOCKED = Object.freeze({
   fix1Earliest: 1.25,
   /** The DDR4 stick needs 0.85 s to leave and come back between the two fixes. */
   fixGap: 0.85,
+  /** The most the pause at "here," may be lengthened so the second fix still lands on "board". */
+  maxCommaPause: 0.5,
+  /** Where line 3 may be split for that pause: after this text, before the next word. */
+  commaAfter: "Use DDR5 RAM here,",
   /** Each tick pops for 0.4 s after its fix. */
   afterFix2: 0.55,
   /** The notch push-in (0.55 s) and labels (to 0.8 s), then a beat to read them. */
@@ -130,10 +141,12 @@ export interface TakePlan {
   readonly scenes: PilotScene[];
   readonly events: { readonly jam: number; readonly fix1: number; readonly fix2: number };
   readonly proofAt: number;
-  /** Where each line is cut from the take and placed in the video. */
+  /** Where each line (or part of a line, if its comma pause was lengthened) is cut from the take and placed in the video. */
   readonly voice: readonly { readonly id: SceneId; readonly takeStart: number; readonly takeEnd: number; readonly at: number }[];
   readonly captions: readonly { readonly text: string; readonly start: number; readonly end: number }[];
   readonly adjustments: readonly string[];
+  /** Seconds added to Liam's pause after "here," (0 when his own pause was long enough). */
+  readonly commaPause: number;
 }
 
 /** The locked cut, retimed to the take. */
@@ -168,13 +181,21 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   let choiceDelay = LOCKED.lead;
   if (choiceDelay + fix1Rel < LOCKED.fix1Earliest) { choiceDelay = LOCKED.fix1Earliest - fix1Rel; adjustments.push(`Line 3 starts ${choiceDelay.toFixed(2)} s into its shot so the pull-back finishes first.`); }
   const fix1Offset = choiceDelay + fix1Rel;
-  let fix2Offset = choiceDelay + fix2Rel;
-  if (fix2Offset - fix1Offset < LOCKED.fixGap) {
-    fix2Offset = fix1Offset + LOCKED.fixGap;
-    adjustments.push(`The DDR4 stick seats ${(fix2Offset - (choiceDelay + fix2Rel)).toFixed(2)} s after "DDR4 board" ends: it needs ${LOCKED.fixGap} s to come back.`);
+  // Too close for the stick to come back: lengthen the comma pause, never move the beat off "board".
+  const commaPause = Math.max(0, LOCKED.fixGap - (fix2Rel - fix1Rel));
+  if (commaPause > LOCKED.maxCommaPause + 1e-9) {
+    throw new TakeError(`"DDR5 RAM here" and "DDR4 board" end ${(fix2Rel - fix1Rel).toFixed(2)} s apart; seating both on their words would need a ${commaPause.toFixed(2)} s longer pause at "here," (at most ${LOCKED.maxCommaPause} s). Not rendered.`);
   }
+  const choiceLine = APPROVED_RAM_FIT_LINES.find((entry) => entry.id === "choice")!;
+  if (!choiceLine.text.startsWith(LOCKED.commaAfter)) throw new TakeError(`Line 3 no longer starts "${LOCKED.commaAfter}".`);
+  const commaIndex = lineOffsets().get("choice")! + LOCKED.commaAfter.length - 1;
+  /** Take seconds where the comma ends and the next word starts: the pause is lengthened in that silence. */
+  const commaEnd = take.alignment.character_end_times_seconds[commaIndex];
+  const resumeAt = take.alignment.character_start_times_seconds[commaIndex + 2];
+  if (commaPause > 0) adjustments.push(`The pause after "here," is ${commaPause.toFixed(2)} s longer than Liam's, so the DDR4 stick can come back and seat as "DDR4 board" ends.`);
+  const fix2Offset = choiceDelay + fix2Rel + commaPause;
   delay.set("choice", choiceDelay);
-  duration.set("choice", Math.max(choiceDelay + length("choice") + LOCKED.breath, fix2Offset + LOCKED.afterFix2));
+  duration.set("choice", Math.max(choiceDelay + length("choice") + commaPause + LOCKED.breath, fix2Offset + LOCKED.afterFix2));
 
   delay.set("payoff", LOCKED.lead);
   duration.set("payoff", Math.max(LOCKED.lead + length("payoff") + LOCKED.breath, LOCKED.proofAt + LOCKED.proofOnScreen));
@@ -191,26 +212,37 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   });
   const startOf = (id: SceneId) => retimed.find((scene) => scene.id === id)!.startSecond;
 
-  const voice = APPROVED_RAM_FIT_LINES.map((line) => {
+  const voice = APPROVED_RAM_FIT_LINES.flatMap((line) => {
     const span = timing(line.id);
-    return { id: line.id, takeStart: span.start, takeEnd: span.end, at: round(startOf(line.id) + delay.get(line.id)!) };
+    const at = round(startOf(line.id) + delay.get(line.id)!);
+    if (line.id !== "choice" || commaPause === 0) return [{ id: line.id, takeStart: span.start, takeEnd: span.end, at }];
+    return [
+      { id: line.id, takeStart: span.start, takeEnd: commaEnd, at },
+      { id: line.id, takeStart: resumeAt, takeEnd: span.end, at: round(at + (resumeAt - span.start) + commaPause) },
+    ];
   });
+  /** Where a take moment of a line is heard in the video. */
+  const heardAt = (id: SceneId, takeSeconds: number) => {
+    const part = [...voice].reverse().find((entry) => entry.id === id && takeSeconds >= entry.takeStart - 1e-9) ?? voice.find((entry) => entry.id === id)!;
+    return part.at + takeSeconds - part.takeStart;
+  };
 
   // Captions: each chunk from its first word to the next chunk, the last to the end of its shot.
+  // The opening hook alone may be on screen from frame one, if line 1 starts within jamEarliest.
   const offsets = lineOffsets();
   const captions = retimed.flatMap((scene) => {
     const line = APPROVED_RAM_FIT_LINES.find((entry) => entry.id === scene.id)!;
     if (scene.captions.join(" ") !== line.text) throw new TakeError(`The ${scene.id} captions do not spell its line.`);
-    const lineAt = voice.find((entry) => entry.id === scene.id)!.at;
     let within = 0;
     const starts = scene.captions.map((chunk) => {
       const global = offsets.get(scene.id)! + within;
       within += chunk.length + 1;
-      return round(lineAt + take.alignment.character_start_times_seconds[global] - timing(scene.id).start);
+      return round(heardAt(scene.id, take.alignment.character_start_times_seconds[global]));
     });
+    const hookFromFrameOne = scene.id === "fail" && starts[0] - scene.startSecond <= LOCKED.jamEarliest + 1e-9;
     return scene.captions.map((text, index) => ({
       text,
-      start: index === 0 ? scene.startSecond : starts[index],
+      start: index === 0 && hookFromFrameOne ? scene.startSecond : starts[index],
       end: index === scene.captions.length - 1 ? scene.endSecond : starts[index + 1],
     }));
   });
@@ -218,6 +250,7 @@ export function planFromTake(take: Pick<LoadedRamFitTake, "alignment" | "lineTim
   return {
     scenes: retimed,
     events: { jam: round(startOf("fail") + jam), fix1: round(startOf("choice") + fix1Offset), fix2: round(startOf("choice") + fix2Offset) },
+    commaPause: round(commaPause),
     proofAt: LOCKED.proofAt,
     voice,
     captions,
