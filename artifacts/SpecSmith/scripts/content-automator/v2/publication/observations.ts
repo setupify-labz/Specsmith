@@ -45,10 +45,25 @@ import { loadAuthorization, recordMetricsObserved } from "./boundary.ts";
 export const OBSERVATION_BATCH_KIND = "PROVIDER_OBSERVATIONS" as const;
 export const OBSERVATION_RECORD_VERSION = "provider-observation-v1";
 
+/**
+ * Who supplied the numbers.
+ *
+ * Distinct from the PUBLISHING provider. Metricool publishes on SpecSmith's
+ * behalf and can also report normalized metrics across platforms; the three
+ * platform entries are each platform's own analytics API, read directly. The
+ * difference matters for field names (an aggregator speaks SpecSmith's contract
+ * names, a platform API speaks its own) and for post ids (an aggregator knows
+ * its own id, a platform API knows only the platform-native id).
+ */
+export type ObservationProvider = "metricool" | "youtube" | "tiktok" | "instagram";
+
+/** Providers that read a platform's own API rather than an aggregator's. */
+export const NATIVE_PLATFORM_PROVIDERS: readonly ObservationProvider[] = Object.freeze(["youtube", "tiktok", "instagram"]);
+
 /** One collection of metrics for one post, as a provider returned it. */
 export interface ProviderObservationBatch {
   readonly kind: typeof OBSERVATION_BATCH_KIND;
-  readonly provider: "metricool";
+  readonly provider: ObservationProvider;
   readonly platform: VideoPlatform;
   readonly accountId: string;
   readonly providerPostId: string;
@@ -65,7 +80,7 @@ export interface ProviderObservationBatch {
 
 /** Which post's numbers to fetch. */
 export interface ObservationRequest {
-  readonly provider: "metricool";
+  readonly provider: ObservationProvider;
   readonly platform: VideoPlatform;
   readonly accountId: string;
   readonly providerPostId: string;
@@ -198,7 +213,7 @@ export interface ObservationRecord {
   readonly version: typeof OBSERVATION_RECORD_VERSION;
   readonly observationId: string;
   readonly platform: VideoPlatform;
-  readonly provider: "metricool";
+  readonly provider: ObservationProvider;
   readonly accountId: string;
   readonly providerPostId: string;
   readonly creativeId: string;
@@ -315,12 +330,27 @@ export async function importProviderObservations(input: {
   const definitions = metricsForPlatform(batch.platform);
   const seenFields = new Set<string>();
 
+  // WHICH FIELD NAME TO LOOK UP DEPENDS ON WHO SENT THE BATCH.
+  //
+  // Metricool is an aggregator and already speaks SpecSmith's contract names
+  // (`views`, `stayedToWatchRate`, `siteClicks`). A platform's own API speaks
+  // its own (`view_count` on TikTok, `ig_reels_avg_watch_time` on Instagram).
+  // Looking up the wrong one reads undefined and records a metric the provider
+  // DID return as unavailable — the mirror of turning an absent metric into
+  // zero, and just as much a false statement about the world.
+  //
+  // A native provider also gets no fallback to the aggregator name: if its
+  // access declaration says the platform does not serve the metric,
+  // `nativeField` is null and the metric is skipped rather than being hunted
+  // for under a name that platform never uses.
+  const native = NATIVE_PLATFORM_PROVIDERS.includes(batch.provider);
   for (const definition of definitions) {
-    if (!definition.providerField) continue;
-    seenFields.add(definition.providerField);
-    const raw = batch.metrics[definition.providerField];
+    const field = native ? definition.nativeField : definition.providerField;
+    if (!field) continue;
+    seenFields.add(field);
+    const raw = batch.metrics[field];
     const common = {
-      ...base, observationId: idFor(definition.metricId), metricId: definition.metricId, providerField: definition.providerField,
+      ...base, observationId: idFor(definition.metricId), metricId: definition.metricId, providerField: field,
       unit: definition.unit, definitionId: `${definition.platform}:${definition.metricId}`, definition: definition.meaning,
     };
     if (definition.metricId === "site-clicks" && typeof raw === "number") {

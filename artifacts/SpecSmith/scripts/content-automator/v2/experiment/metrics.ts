@@ -20,6 +20,7 @@
 
 import type { VideoPlatform } from "../../types.ts";
 import type { StrategicObjective } from "../strategy/model.ts";
+import { metricsAccessFor } from "../publication/platformAccess.ts";
 
 // ---------------------------------------------------------------------------
 // Metric availability (section 15)
@@ -132,6 +133,18 @@ export interface MetricDefinition {
   /** False when no connected provider supplies it today. */
   readonly availableToday: boolean;
   readonly availabilityNote: string;
+  /**
+   * This PLATFORM API's own field name, when its API serves the metric.
+   *
+   * Distinct from `providerField`, which is the aggregator (Metricool) contract
+   * name. Null means the platform's API has no such field, so a native adapter
+   * must record the metric unavailable rather than substitute another field.
+   */
+  readonly nativeField: string | null;
+  /** Whether this platform's own API serves the metric at all. */
+  readonly servedByPlatformApi: boolean;
+  /** Why the platform cannot serve it, when it cannot. */
+  readonly platformAbsenceReason: string | null;
 }
 
 const ALL_WINDOWS: readonly import("../../types.ts").SnapshotWindow[] = ["1h", "6h", "24h", "72h", "7d"];
@@ -150,7 +163,9 @@ function definitionsFor(platform: VideoPlatform): readonly MetricDefinition[] {
     "No analytics transport is connected in this repository. The metric is defined so its semantics are fixed in " +
     "advance; it carries no value until a real ANALYTICS_RESULT supplies one.";
 
-  const base: readonly Omit<MetricDefinition, "platform" | "availableToday" | "availabilityNote">[] = [
+  const base: readonly Omit<MetricDefinition,
+    "platform" | "availableToday" | "availabilityNote" | "nativeField" | "servedByPlatformApi" | "platformAbsenceReason"
+  >[] = [
     {
       metricId: "views",
       providerField: "views",
@@ -208,6 +223,23 @@ function definitionsFor(platform: VideoPlatform): readonly MetricDefinition[] {
       validWindows: SETTLED_WINDOWS,
       caveats: [
         "Can be raised by padding a video rather than by improving it — see the guardrail on artificial stretching.",
+      ],
+    },
+    {
+      // A CURVE, not a scalar. Stored whole or not at all: collapsing it to one
+      // number ("retention") throws away where viewers left, which is the only
+      // part that tells you what to change.
+      metricId: "audience-retention-curve",
+      providerField: "audienceWatchRatio",
+      meaning: "Share of viewers still watching at each elapsed fraction of the video.",
+      unit: "ratio",
+      aggregation: "per-creative-snapshot",
+      direction: "higher-is-better",
+      roles: ["secondary-only"],
+      validWindows: SETTLED_WINDOWS,
+      caveats: [
+        "Only YouTube exposes this. TikTok and Instagram do not, and it must not be approximated from average watch time.",
+        "Shaped by duration: a shorter video holds a higher share at the same elapsed ratio.",
       ],
     },
     {
@@ -288,12 +320,47 @@ function definitionsFor(platform: VideoPlatform): readonly MetricDefinition[] {
     },
   ];
 
-  return base.map((definition) => ({
-    ...definition,
-    platform,
-    availableToday: false,
-    availabilityNote: unavailableNote,
-  }));
+  // PLATFORM-LOCAL METRICS, PROVIDER-LOCAL FIELD NAMES. They are not the
+  // same axis, and an earlier version of this change collapsed them.
+  //
+  // The METRIC is platform-local: YouTube's retention curve and a TikTok watch
+  // count are different measurements, so the keys stay platform-scoped and
+  // cross-platform comparison stays refused.
+  //
+  // The FIELD NAME is provider-local: the same metric arrives as `views` from
+  // Metricool's normalized contract, `views` from YouTube Analytics, `view_count`
+  // from TikTok and `views` from Instagram insights. Metricool is an aggregator
+  // and already speaks SpecSmith's contract names; the platform APIs do not.
+  //
+  // So `providerField` keeps the aggregator contract name, and `nativeField`
+  // carries the platform API's own name. Replacing one with the other — which I
+  // did first — silently broke every aggregator ingest: the loop looked up
+  // `view_count` in a batch keyed `views`, read undefined, and recorded a
+  // returned metric as unavailable. Reading a present number as absent is the
+  // mirror image of reading an absent one as zero, and just as wrong.
+  //
+  // `servedByPlatformApi` is what stops the other leak: this list used to be
+  // returned unchanged for all three platforms, registering TikTok with
+  // stayed-to-watch-rate and YouTube with saves, neither of which those APIs
+  // serve.
+  const access = metricsAccessFor(platform);
+  return base.map((definition) => {
+    const requirement = access.metrics.find((metric) => metric.metricId === definition.metricId);
+    return {
+      ...definition,
+      platform,
+      availableToday: false,
+      availabilityNote: requirement && !requirement.servedByProvider
+        ? `${platform}'s own API does not serve this metric. ${requirement.absenceReason ?? ""}`.trim()
+        : `${unavailableNote} ${access.missingCapability}`,
+      // Null when this platform's API has no such field, or when SpecSmith has
+      // no access declaration for the metric at all (site-clicks, for one, is
+      // measured by SpecSmith's own attribution, not by any platform API).
+      nativeField: requirement?.servedByProvider ? requirement.providerField : null,
+      servedByPlatformApi: requirement?.servedByProvider === true,
+      platformAbsenceReason: requirement && !requirement.servedByProvider ? requirement.absenceReason ?? null : null,
+    };
+  });
 }
 
 const REGISTRY: ReadonlyMap<string, MetricDefinition> = (() => {
