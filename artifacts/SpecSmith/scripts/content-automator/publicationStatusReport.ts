@@ -28,9 +28,13 @@ import type { SnapshotWindow, VideoPlatform } from "./types.ts";
  * no heuristic and no defaulting.
  */
 export type PipelineStage =
-  | "generated-not-ready"
-  | "ready-not-handed-off"
-  | "handed-off-not-scheduled"
+  | "generated-not-reviewed"
+  | "legacy-unverified"
+  | "awaiting-human-review"
+  | "authorized-not-sent"
+  | "submission-in-progress"
+  | "submission-outcome-unknown"
+  | "draft-submitted"
   | "scheduled"
   | "published"
   | "rejected-or-failed";
@@ -40,6 +44,8 @@ export interface CreativeStatus {
   readonly platform: VideoPlatform;
   readonly stage: PipelineStage;
   readonly ledgerStatus: PublicationStatus;
+  /** Present for a pre-MASTER-#8 ledger: readable history, not reviewed, authorized or confirmed. */
+  readonly legacy?: { readonly since: string; readonly reason: string };
   readonly hasHandoff: boolean;
   readonly handoffPreparedAt?: string;
   readonly providerPostId?: string;
@@ -91,15 +97,21 @@ async function creativeIdsIn(root: string): Promise<string[]> {
 
 function stageFrom(
   ledgerStatus: PublicationStatus,
-  hasHandoff: boolean,
 ): PipelineStage {
-  if (ledgerStatus === "rejected" || ledgerStatus === "failed") return "rejected-or-failed";
-  if (ledgerStatus === "published" || ledgerStatus === "analytics-partial" || ledgerStatus === "analytics-complete") return "published";
-  if (ledgerStatus === "scheduled") return "scheduled";
-  // qc-passed splits on whether a manifest was actually produced: that is the
-  // difference between "cleared to publish" and "someone has been handed it".
-  if (ledgerStatus === "qc-passed") return hasHandoff ? "handed-off-not-scheduled" : "ready-not-handed-off";
-  return "generated-not-ready";
+  switch (ledgerStatus) {
+    case "rejected": case "failed": case "human-rejected": return "rejected-or-failed";
+    case "published": case "analytics-partial": case "analytics-complete": return "published";
+    case "scheduled": return "scheduled";
+    case "draft-submitted": return "draft-submitted";
+    case "submission-unknown": return "submission-outcome-unknown";
+    case "submission-started": return "submission-in-progress";
+    // A definite refusal: the creative is still authorized and may be resent.
+    case "publication-authorized": case "submission-failed": return "authorized-not-sent";
+    case "machine-reviewed": case "human-review-pending": return "awaiting-human-review";
+    // Written from a self-reported score with no MASTER #7 review: not evidence of anything.
+    case "qc-passed": return "legacy-unverified";
+    case "generated": return "generated-not-reviewed";
+  }
 }
 
 export async function reportCreativeStatus(
@@ -121,8 +133,9 @@ export async function reportCreativeStatus(
   return {
     creativeId,
     platform: ledger.platform,
-    stage: stageFrom(ledgerStatus, Boolean(handoff)),
+    stage: ledger.legacy ? "legacy-unverified" : stageFrom(ledgerStatus),
     ledgerStatus,
+    ...(ledger.legacy ? { legacy: ledger.legacy } : {}),
     hasHandoff: Boolean(handoff),
     handoffPreparedAt: handoff?.preparedAt,
     providerPostId: providerEvent?.providerPostId,
@@ -159,11 +172,15 @@ export async function hasRecordedResult(
 }
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
-  "generated-not-ready": "generated, quality review not passed",
-  "ready-not-handed-off": "READY, not handed off",
-  "handed-off-not-scheduled": "handed off, not yet scheduled",
-  scheduled: "scheduled",
-  published: "published",
+  "generated-not-reviewed": "rendered; no MASTER #7 review recorded",
+  "legacy-unverified": "LEGACY ledger: qc-passed from a self-reported score; not MASTER #7 reviewed, not authorized, later states not provider-confirmed",
+  "awaiting-human-review": "machine-reviewed; awaiting human review (not approved)",
+  "authorized-not-sent": "authorized by a trusted decision; not sent",
+  "submission-in-progress": "submission started; no provider answer recorded",
+  "submission-outcome-unknown": "submission outcome UNKNOWN; reconcile with the provider before any retry",
+  "draft-submitted": "draft accepted by the provider",
+  scheduled: "schedule accepted by the provider",
+  published: "publication confirmed by the provider",
   "rejected-or-failed": "rejected or failed",
 };
 
@@ -172,7 +189,7 @@ export function formatStatusReport(statuses: readonly CreativeStatus[]): string 
   if (statuses.length === 0) return "No publications in this store.";
   const lines: string[] = [];
   for (const status of statuses) {
-    lines.push(`${status.creativeId} [${status.platform}] — ${STAGE_LABEL[status.stage]}`);
+    lines.push(`${status.creativeId} [${status.platform}] — ${STAGE_LABEL[status.stage]}${status.legacy ? ` (last recorded state: ${status.ledgerStatus})` : ""}`);
     if (status.hasHandoff) lines.push(`  handoff prepared: ${status.handoffPreparedAt}`);
     if (status.providerPostId) lines.push(`  provider post: ${status.providerPostId}${status.providerUrl ? ` (${status.providerUrl})` : ""}`);
     if (!status.analytics.measurable) {

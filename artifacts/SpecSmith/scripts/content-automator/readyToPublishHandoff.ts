@@ -23,6 +23,7 @@
 // NO NETWORK. This module makes no request to Metricool or anywhere else, and
 // imports nothing that can.
 
+import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -33,6 +34,7 @@ import {
   type ApprovedPublicationPackage,
 } from "./publicationIntegrity.ts";
 import { loadStoredPublicationLedger } from "./publishingStore.ts";
+import { recordHandoffSubmission } from "./v2/publication/boundary.ts";
 import type { PublicationStatus } from "./publishing.ts";
 import type { VideoPlatform } from "./types.ts";
 
@@ -84,10 +86,16 @@ export interface ReadyToPublishManifest {
    */
   readonly intent: "draft" | "public";
 
-  readonly qc: {
-    readonly state: "passed";
-    /** The ledger event that is the evidence. */
+  /** The publication-authorized ledger event this release rests on. */
+  readonly authorization: {
+    readonly state: "authorized";
     readonly at: string;
+    readonly reviewPacketId: string;
+    readonly decisionId: string;
+    readonly reviewerId: string;
+    readonly approvalMechanism: string;
+    readonly idempotencyKey: string;
+    readonly simulated: boolean;
   };
 
   readonly rights: {
@@ -198,12 +206,13 @@ export async function prepareReadyToPublishHandoff(
   // Last, and against the real bytes.
   const sha256 = await verifyApprovedMedia(pkg);
 
-  const qcEvent = ledger.events.find((event) => event.status === "qc-passed");
-  if (!qcEvent) {
+  const authorized = [...ledger.events].reverse().find((event) => event.status === "publication-authorized");
+  if (!authorized?.evidence) {
     // assertPublicationGatesPassed already guarantees this; kept so the
     // manifest can never be built from an absent event.
-    throw new PublicationIntegrityError("qc-not-passed", `Creative ${request.creativeId} has no qc-passed event.`);
+    throw new PublicationIntegrityError("not-authorized", `Creative ${request.creativeId} has no publication-authorized event.`);
   }
+  const evidence = authorized.evidence;
 
   const manifest: ReadyToPublishManifest = {
     kind: HANDOFF_KIND,
@@ -228,30 +237,48 @@ export async function prepareReadyToPublishHandoff(
     },
     // Never upgraded here. A draft request produces a draft intent.
     intent: request.draft ? "draft" : "public",
-    qc: { state: "passed", at: qcEvent.at },
+    authorization: {
+      state: "authorized",
+      at: authorized.at,
+      reviewPacketId: String(evidence.reviewPacketId),
+      decisionId: String(evidence.decisionId),
+      reviewerId: String(evidence.reviewerId),
+      approvalMechanism: String(evidence.approvalMechanism),
+      idempotencyKey: String(evidence.idempotencyKey),
+      simulated: authorized.simulated === true,
+    },
     rights: { state: "approved", approvedMasterSha256: pkg.approvedMasterSha256.trim().toLowerCase() },
     ledgerStatusAtPreparation: ledger.events[ledger.events.length - 1].status,
     notice:
-      "This manifest means the creative is cleared to publish. It is NOT a record of publication. "
+      "This manifest means the creative was authorized for release by a trusted decision. It is NOT a record of publication. "
       + "SpecSmith has not scheduled or posted anything; no provider post id exists yet. "
-      + "Release it through the Metricool connector, then record the real result in the publication ledger.",
+      + "Release it through the provider, then record the post id the provider returns: it is recorded only once the provider confirms it.",
   };
 
-  // A released creative must never reach this line, but the manifest itself is
-  // also checked: writing one that claims a post-release ledger state would
-  // make the artifact self-contradictory.
-  if (manifest.ledgerStatusAtPreparation === "scheduled" || manifest.ledgerStatusAtPreparation === "published") {
+  if (manifest.ledgerStatusAtPreparation !== "publication-authorized" && manifest.ledgerStatusAtPreparation !== "submission-failed") {
     throw new HandoffRefusedError(
       "already-released",
-      `Creative ${request.creativeId} is already ${manifest.ledgerStatusAtPreparation}; a handoff manifest would misrepresent it.`,
+      `Creative ${request.creativeId} is ${manifest.ledgerStatusAtPreparation}; a handoff manifest would misrepresent it.`,
     );
   }
+
+  // The ledger records that the release is now in a person's hands BEFORE the
+  // manifest exists, so a crash between the two leaves a visible "submission
+  // started" rather than a manifest nobody accounted for.
+  const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
+  await recordHandoffSubmission({
+    storeRoot: options.storeRoot,
+    creativeId: request.creativeId,
+    requestSha256: createHash("sha256").update(JSON.stringify(request)).digest("hex"),
+    manifestSha256: createHash("sha256").update(manifestJson).digest("hex"),
+    now,
+  });
 
   await mkdir(handoffDirectory(options.storeRoot), { recursive: true });
   // Exclusive create: two concurrent runs cannot both believe they produced
   // the handoff.
   try {
-    await writeFile(handoffPath(options.storeRoot, request.creativeId, request.platform), `${JSON.stringify(manifest, null, 2)}\n`, { flag: "wx" });
+    await writeFile(handoffPath(options.storeRoot, request.creativeId, request.platform), manifestJson, { flag: "wx" });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new HandoffRefusedError(

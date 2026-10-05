@@ -1068,24 +1068,25 @@ async function main(): Promise<void> {
   console.log(`Ephemeral demo store (never the production publishing-store): ${publishingStoreRoot}`);
   const ledger = await createStoredPublicationLedger(publishingStoreRoot, fingerprint, generatedAt);
   console.log(`Ledger created for ${ledger.creativeId}, state: ${ledger.events.at(-1)?.status}`);
-  const advanced = await advanceStoredPublicationLedger(publishingStoreRoot, fingerprint.creativeId, {
-    status: "qc-passed",
-    note: `Passed automated review at ${review.overallScore}/10.`,
-  });
-  console.log(`Ledger advanced to: ${advanced.events.at(-1)?.status}`);
-  // Deliberately stops here. "scheduled" is a real production status other
-  // code treats as meaning Metricool actually accepted a schedule slot for
-  // this creative — and nothing in this pipeline ever calls Metricool (see
-  // step 5's header): the "approved master URI" fed into the publishing
-  // request above is a non-resolving *.example placeholder, not a real
-  // hosted file Metricool (or anyone) could fetch. Advancing to "scheduled"
-  // without a real Metricool API call accepting a slot would be a false
-  // status on a real production ledger field. A genuinely "scheduled" state
-  // requires an actual Metricool API call, which is out of scope for this
-  // offline demo, so the ledger for this run stays at qc-passed — a state
-  // that genuinely happened, once the quality gate is honestly evidenced
-  // (see section 3).
-
+  // MASTER #8: the old step here advanced this ledger to `qc-passed` on the
+  // strength of the self-reported quality score above. That is closed. The
+  // only route past `generated` is the publication boundary, which needs a
+  // MASTER #7 packet issued for these exact bytes and this cut, and this
+  // legacy render has none (its storyboard and its bytes are separate; see
+  // section 8). So the ledger honestly stays at `generated`, and the direct
+  // write is shown to be refused.
+  let scoreGateRefused = false;
+  try {
+    await advanceStoredPublicationLedger(publishingStoreRoot, fingerprint.creativeId, {
+      status: "qc-passed",
+      note: `Passed automated review at ${review.overallScore}/10.`,
+    });
+  } catch (error) {
+    scoreGateRefused = true;
+    console.log(`Score-based qc-passed correctly refused: ${(error as Error).message}`);
+  }
+  if (!scoreGateRefused) throw new Error("The legacy score-based qc-passed transition was accepted; the MASTER #8 boundary is not in force.");
+  console.log(`Ledger stays at: ${ledger.events.at(-1)?.status} (no MASTER #7 packet exists for this render, so nothing may claim it was reviewed).`);
   let duplicateBlocked = false;
   try {
     await createStoredPublicationLedger(publishingStoreRoot, fingerprint, generatedAt);
@@ -1167,7 +1168,7 @@ async function main(): Promise<void> {
   console.log(`\n${formatMaster2Ledger()}`);
 
   section("Done");
-  console.log("Real idea -> real generated storyboard/production-plan contract -> real (separately-authored) render -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger stopped at qc-passed -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled. Wiring the generated storyboard through to a real render is separate future work — see the header comment.");
+  console.log("Real idea -> real generated storyboard/production-plan contract -> real (separately-authored) render -> rights-approved bundle -> passing evidence-bound quality review -> tracked draft Metricool request -> durable ledger held at generated (no MASTER #7 packet; the score-based qc-passed write is refused) -> analytics-identity proof, all bound to the same sha256/creativeId. Nothing was published or scheduled. Wiring the generated storyboard through to a real render is separate future work — see the header comment.");
 }
 
 main().catch((error) => {

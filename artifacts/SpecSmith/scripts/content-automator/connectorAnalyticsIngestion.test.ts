@@ -22,11 +22,12 @@ import {
 } from "./connectorAnalyticsIngestion.ts";
 import { runLearningFromStoredSnapshots } from "./metricoolAnalyticsCollector.ts";
 import {
-  advanceStoredPublicationLedger,
   createStoredPublicationLedger,
+  initPublicationStore,
   loadStoredAnalyticsSnapshots,
 } from "./publishingStore.ts";
 import type { CreativeFingerprint, VideoPlatform } from "./types.ts";
+import { seedSimulatedLedger } from "./v2/publication/boundary.ts";
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -36,7 +37,18 @@ afterEach(async () => {
 async function storeRoot(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "specsmith-connector-"));
   roots.push(root);
+  await initPublicationStore(root, "simulation", "analytics test: publication is a seeded precondition");
   return root;
+}
+
+/**
+ * A labelled simulation store whose ledger is seeded through the publication
+ * boundary's simulation helper: these tests are about what happens after
+ * publication, so publication itself is a seeded, simulated precondition.
+ */
+async function seedTo(root: string, creativeId: string, through: "publication-authorized" | "scheduled" | "published", postId?: string, at = "2026-09-01T12:00:00.000Z", platform: VideoPlatform = "youtube-shorts"): Promise<void> {
+  await seedSimulatedLedger({ storeRoot: root, creativeId, through, providerPostId: postId, at: new Date(at), mediaSha256: "a".repeat(64),
+    variantId: `${platform}-1080x1920-30`, destination: { provider: "metricool", accountId: "blog-1", platform }, title: "t", description: "d" });
 }
 
 function fingerprint(creativeId = "creative-1", platform: VideoPlatform = "youtube-shorts"): CreativeFingerprint {
@@ -61,9 +73,7 @@ const NOW_1H = new Date("2026-09-01T13:10:00.000Z");
 async function publishedStore(creativeId = "creative-1", postId = "post-1", platform: VideoPlatform = "youtube-shorts"): Promise<string> {
   const root = await storeRoot();
   await createStoredPublicationLedger(root, fingerprint(creativeId, platform));
-  await advanceStoredPublicationLedger(root, creativeId, { status: "qc-passed" });
-  await advanceStoredPublicationLedger(root, creativeId, { status: "scheduled", providerPostId: postId });
-  await advanceStoredPublicationLedger(root, creativeId, { status: "published", at: PUBLISHED_AT });
+  await seedTo(root, creativeId, "published", postId, PUBLISHED_AT, platform);
   return root;
 }
 
@@ -124,8 +134,7 @@ describe("NEGATIVE CONTROLS", () => {
   it("rejects analytics for a creative that was never published", async () => {
     const root = await storeRoot();
     await createStoredPublicationLedger(root, fingerprint());
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "qc-passed" });
-    await advanceStoredPublicationLedger(root, "creative-1", { status: "scheduled", providerPostId: "post-1" });
+    await seedTo(root, "creative-1", "scheduled", "post-1");
 
     await expect(ingestConnectorAnalytics(doc(), { storeRoot: root, now: NOW_1H }))
       .rejects.toMatchObject({ code: "not-published" });

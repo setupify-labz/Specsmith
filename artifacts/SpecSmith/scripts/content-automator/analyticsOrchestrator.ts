@@ -44,6 +44,7 @@ import type { SnapshotWindow } from "./types.ts";
 
 /** Why a creative the store holds is not eligible for analytics collection. */
 export type SkipReason =
+  | "legacy-unverified"
   | "not-published"
   | "no-provider-id"
   | "no-stored-fingerprint";
@@ -69,6 +70,12 @@ export async function eligibilityFor(
   root: string,
   ledger: PublicationLedger,
 ): Promise<KnownPublication | SkippedCreative> {
+  if (ledger.legacy) {
+    // A legacy ledger's "published" was never confirmed under MASTER #8 and the
+    // creative was never MASTER #7 reviewed: its history is readable, but it is
+    // not a publication SpecSmith attributes analytics to.
+    return { creativeId: ledger.creativeId, reason: "legacy-unverified" };
+  }
   const published = ledger.events.find((event) => event.status === "published");
   if (!published) {
     // Scheduled is not published. A post sitting in a queue has nothing to

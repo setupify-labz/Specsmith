@@ -3,10 +3,17 @@ import { mkdir, open, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   advancePublicationLedger,
+  replayPublicationLedger,
   startPublicationLedger,
   type PublicationEvent,
   type PublicationLedger,
+  type TransitionReceipt,
 } from "./publishing.ts";
+import { realpath } from "node:fs/promises";
+// The publication boundary claims the ledger authority when it loads. Importing
+// it here guarantees it holds the authority before this store can write any
+// protected state, so no other module can become the issuer first.
+import "./v2/publication/boundary.ts";
 import {
   recordAnalyticsSnapshot,
   type AnalyticsSnapshot,
@@ -151,23 +158,20 @@ export async function loadStoredPublicationLedger(
   if (first.creativeId !== creativeId || first.event.status !== "generated") {
     throw new Error(`Publication ledger ${creativeId} has an invalid first event.`);
   }
-  let ledger: PublicationLedger = {
+  const base: PublicationLedger = {
     creativeId: first.creativeId,
     packageId: first.packageId,
     platform: first.platform,
     events: [first.event],
   };
   for (const entry of stored.slice(1)) {
-    if (
-      entry.creativeId !== ledger.creativeId ||
-      entry.packageId !== ledger.packageId ||
-      entry.platform !== ledger.platform
-    ) {
+    if (entry.creativeId !== base.creativeId || entry.packageId !== base.packageId || entry.platform !== base.platform) {
       throw new Error(`Publication ledger ${creativeId} changes identity between events.`);
     }
-    ledger = advancePublicationLedger(ledger, entry.event);
   }
-  return ledger;
+  // Receipts were checked when each event was written; replay checks the
+  // transitions and the evidence each state must carry.
+  return replayPublicationLedger(base, stored.slice(1).map((entry) => entry.event));
 }
 
 /** Atomically claims the next event slot, so concurrent advances cannot both win. */
@@ -175,10 +179,20 @@ export async function advanceStoredPublicationLedger(
   root: string,
   creativeId: string,
   event: Omit<PublicationEvent, "at"> & { at?: string },
+  receipt?: TransitionReceipt,
 ): Promise<PublicationLedger> {
   const current = await loadStoredPublicationLedger(root, creativeId);
   if (!current) throw new Error(`No durable publication ledger exists for ${creativeId}.`);
-  const next = advancePublicationLedger(current, event);
+  // A simulated event never lands in a production store, and a simulation
+  // store never holds an event that does not say it was simulated.
+  const mode = await publicationStoreMode(root);
+  if (mode === "production" && event.simulated) {
+    throw new Error(`Refusing to write a simulated "${event.status}" event into the production store at ${root}.`);
+  }
+  if (mode === "simulation" && !event.simulated && !["generated", "rejected", "failed"].includes(event.status)) {
+    throw new Error(`Store ${root} is a simulation store; every "${event.status}" event written to it must be labelled simulated.`);
+  }
+  const next = advancePublicationLedger(current, event, receipt, { storeRoot: await realpath(root) });
   const storedEvent = next.events.at(-1);
   if (!storedEvent) throw new Error(`Publication ledger ${creativeId} produced no next event.`);
   const created = await writeJsonExclusive(eventPath(ledgerDirectory(root, creativeId), current.events.length), {
@@ -273,4 +287,93 @@ export async function loadStoredCreativeFingerprint(
   }
   const stored = parseStoredEvent(raw, path);
   return stored.fingerprint ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Store mode
+// ---------------------------------------------------------------------------
+//
+// A store is either production or a labelled simulation. A root with no marker
+// is production: the safe default is the one with the strictest rules. A
+// simulation store is created deliberately and says so in every event; nothing
+// written there can be mistaken for something that happened.
+
+export type PublicationStoreMode = "production" | "simulation";
+
+interface StoreModeRecord {
+  readonly version: 1;
+  readonly mode: PublicationStoreMode;
+  readonly createdAt: string;
+  readonly purpose: string;
+}
+
+const MODE_FILE = "store-mode.json";
+
+/** Mark a new store as production or simulation. A store's mode is set once. */
+export async function initPublicationStore(root: string, mode: PublicationStoreMode, purpose: string, at = new Date()): Promise<void> {
+  await mkdir(root, { recursive: true });
+  const created = await writeJsonExclusive(join(root, MODE_FILE), { version: 1, mode, createdAt: at.toISOString(), purpose } satisfies StoreModeRecord);
+  if (!created && (await publicationStoreMode(root)) !== mode) {
+    throw new Error(`Store ${root} is already a ${await publicationStoreMode(root)} store; its mode cannot change.`);
+  }
+}
+
+export async function publicationStoreMode(root: string): Promise<PublicationStoreMode> {
+  try {
+    const record = JSON.parse(await readFile(join(root, MODE_FILE), "utf8")) as Partial<StoreModeRecord>;
+    if (record.mode === "simulation" || record.mode === "production") return record.mode;
+    throw new Error(`Store ${root} has an unreadable mode marker.`);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") return "production";
+    throw error;
+  }
+}
+
+/** Every creative with a ledger in this store, read from each ledger's first event. */
+export async function listStoredCreativeIds(root: string): Promise<string[]> {
+  let directories: string[];
+  try {
+    directories = await readdir(join(root, "publication-ledgers"));
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") return [];
+    throw error;
+  }
+  const ids: string[] = [];
+  for (const directory of directories.sort()) {
+    const path = join(root, "publication-ledgers", directory, "000000.json");
+    try {
+      ids.push(parseStoredEvent(await readFile(path, "utf8"), path).creativeId);
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
+    }
+  }
+  return ids;
+}
+
+// ---------------------------------------------------------------------------
+// Provider post index: which creative a provider's post id belongs to
+// ---------------------------------------------------------------------------
+
+function providerPostPath(root: string, provider: string, providerPostId: string): string {
+  return join(root, "provider-posts", `${storageKey(`${provider}:${providerPostId}`)}.json`);
+}
+
+/** Bind a provider post id to one creative, once. Rebinding it elsewhere fails. */
+export async function bindProviderPost(root: string, provider: string, providerPostId: string, creativeId: string): Promise<void> {
+  await mkdir(join(root, "provider-posts"), { recursive: true });
+  const path = providerPostPath(root, provider, providerPostId);
+  if (await writeJsonExclusive(path, { provider, providerPostId, creativeId })) return;
+  const existing = JSON.parse(await readFile(path, "utf8")) as { creativeId: string };
+  if (existing.creativeId !== creativeId) {
+    throw new Error(`Provider post ${provider}:${providerPostId} is already bound to ${existing.creativeId}, not ${creativeId}.`);
+  }
+}
+
+export async function creativeForProviderPost(root: string, provider: string, providerPostId: string): Promise<string | null> {
+  try {
+    return (JSON.parse(await readFile(providerPostPath(root, provider, providerPostId), "utf8")) as { creativeId: string }).creativeId;
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") return null;
+    throw error;
+  }
 }
