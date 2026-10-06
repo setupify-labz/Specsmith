@@ -404,6 +404,8 @@ describe("post -> report -> next brief", () => {
     expect(report.observations.join(" ")).not.toMatch(/1045|Views: 82/);
     expect(handoff.brief.memoryObservations.filter((line) => line.startsWith("Exploratory context") && line.includes("not a metric or a causal finding") && line.includes("not ranked against other posts"))
       .map((line) => line.match(/Views: (\d+); Likes: (\d+)/)!.slice(1))).toEqual([["1045", "17"], ["82", "0"]]);
+    // The prefix must not call a relayed connector snapshot "user-provided".
+    expect(handoff.brief.memoryObservations.filter((line) => line.startsWith("Exploratory context")).every((line) => !line.includes("user-provided and unverified") && line.includes("relayed connector snapshot"))).toBe(true);
     expect(report.unknowns.some((line) => /Exploratory values exist for 2 posts .* not ranked or compared: .* different ages/.test(line))).toBe(true);
     expect(report.posts.every((entry) => entry.publishedAt.value === null && entry.scheduledAt.value !== null && entry.providerStatus.value === "PUBLISHED")).toBe(true);
     // Each published copy is described once, not once per platform.

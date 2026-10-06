@@ -772,7 +772,7 @@ export async function externalPostReport(input: {
   ].filter((hash): hash is string => hash !== null))];
   const memoryObservations = [
     ...observations.map((line) => `Observation about published SpecSmith videos (context, not a rule; report ${reportId}): ${line}`),
-    ...exploratoryContext.map((line) => `Exploratory context (report ${reportId}; user-provided and unverified, not a metric or a causal finding): ${line}`),
+    ...exploratoryContext.map((line) => `Exploratory context (report ${reportId}; unverified — a user-read dashboard or a relayed connector snapshot, as the line says — not a metric or a causal finding): ${line}`),
     ...(recommendation ? [`Creative change to test (report ${reportId}; a hypothesis, not a finding): ${recommendation.change} Rests on: ${recommendation.restsOn.join("; ")}. Test with: ${recommendation.testWith}`] : []),
   ];
   return {
