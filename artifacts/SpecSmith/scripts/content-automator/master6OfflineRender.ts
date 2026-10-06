@@ -129,7 +129,9 @@ export async function renderProposalOffline(directory: string, conceptId: string
         ? { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: [], clip: fileURLToPath(artifact.uri) }
         : { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: [fileURLToPath(artifact.uri)] };
     }),
-    captionCues: storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond })),
+    // The cues the plan actually captions: a beat whose line its graphic carries has none.
+    captionCues: ((plan.tasks.find((task) => task.capability === "caption-render") as { captionRenderState?: { cues?: { startSecond: number; endSecond: number }[] } } | undefined)
+      ?.captionRenderState?.cues ?? storyboard.beats).map((cue) => ({ startSecond: cue.startSecond, endSecond: cue.endSecond })),
     durationSeconds: Number(video.metadata?.durationSeconds),
   };
   const frameCheck = await checkBandedFrames(expectation, { ffmpegPath });

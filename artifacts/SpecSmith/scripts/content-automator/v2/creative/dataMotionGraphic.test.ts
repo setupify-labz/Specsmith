@@ -10,7 +10,10 @@ import { assessConcept, type CreativeConcept } from "./concept.ts";
 import { missionCaptureViews, pictureIdentity } from "./captureViews.ts";
 import {
   dataMotionGraphicDefects,
+  graphicLabels,
   percentChange,
+  stageNote,
+  stageNoteText,
   resolveDataMotionGraphic,
   unsupportedGraphicValues,
   valuesShown,
@@ -18,6 +21,8 @@ import {
 } from "./dataMotionGraphic.ts";
 import { buildCreativeProposalProductionPlan, runCreativeProposalPass } from "./proposalPass.ts";
 import { reviewVisualHonesty } from "./visualHonesty.ts";
+import { checkScriptAgainstResearch } from "../research/creativeContract.ts";
+import type { PlatformScriptStoryboard } from "../../types.ts";
 
 const P = "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2";
 const graphic = (overrides: Partial<DataMotionGraphic> = {}): DataMotionGraphic => ({
@@ -137,6 +142,92 @@ describe("resolving a graphic from the primary Compare state", () => {
     expect(pictureIdentity(graphic({ visualId: "a" }))).toBe(pictureIdentity(graphic({ visualId: "b" })));
     expect(pictureIdentity(graphic())).not.toBe(pictureIdentity(graphic({ template: "fps-change" })));
     expect(pictureIdentity(graphic())).not.toBe(pictureIdentity(graphic({ games: ["valorant", "alanwake2"] })));
+  });
+});
+
+describe("percent-change stages: the comparison stays on screen while the story ends", () => {
+  it("adds only the fixed line the graphic's own values make true", () => {
+    const explain = resolveDataMotionGraphic(graphic({ stage: "explain" }), views, { productDestination: "/compare" });
+    expect(stageNoteText(explain)).toBe("Same upgrade. Different gains by game.");
+    // The values behind the line are the same tuple the reveal shows.
+    expect(valuesShown(explain)).toEqual(valuesShown(resolveDataMotionGraphic(graphic(), views)));
+    const ask = resolveDataMotionGraphic(graphic({ stage: "ask" }), views, { productDestination: "/compare" });
+    expect(stageNoteText(ask)).toBe("Which game would you upgrade for? specsmithpc.com/compare");
+    expect(resolveDataMotionGraphic(graphic(), views).note).toBeNull();
+  });
+
+  it("refuses a stage its values cannot support", () => {
+    // "Different gains by game" needs two games with different percentages.
+    expect(() => resolveDataMotionGraphic(graphic({ stage: "explain", games: ["alanwake2"] }), views)).toThrow(/compares games and shows 1/);
+    // The ask stage links the product destination; it never invents one.
+    expect(() => resolveDataMotionGraphic(graphic({ stage: "ask" }), views)).toThrow(/product destination/);
+    // ...and refuses it when the percentages are equal, whatever the games.
+    const same = { gameId: "x", name: "X", before: 50, after: 60, percent: 20, formula: "" };
+    expect(() => stageNote("g", "explain", [same, { ...same, gameId: "y", name: "Y" }], "/compare")).toThrow(/false here; the percentages are equal/);
+    expect(stageNote("g", "explain", [same, { ...same, gameId: "y", name: "Y", percent: 21 }], "/compare")?.lines).toEqual(["Same upgrade.", "Different gains by game."]);
+    expect(dataMotionGraphicDefects(graphic({ template: "fps-change", stage: "explain" }))).toContain("Only a percent-change graphic has stages.");
+    expect(dataMotionGraphicDefects(graphic({ stage: "shout" as never })).join(" ")).toMatch(/Unknown stage/);
+  });
+
+  it("labels a percentage as an estimated percentage boost, beside the estimated FPS it is computed from", () => {
+    const labels = graphicLabels(resolveDataMotionGraphic(graphic(), views));
+    expect(labels).toContain("Estimated percentage boost");
+    expect(labels).toContain("Estimated FPS");
+  });
+
+  it("counts a later stage as a new picture, and the same stage under another id as the same one", () => {
+    expect(pictureIdentity(graphic({ stage: "explain" }))).not.toBe(pictureIdentity(graphic()));
+    expect(pictureIdentity(graphic({ stage: "ask" }))).not.toBe(pictureIdentity(graphic({ stage: "explain" })));
+    expect(pictureIdentity(graphic({ stage: "reveal" }))).toBe(pictureIdentity(graphic()));
+    expect(pictureIdentity(graphic({ visualId: "x", stage: "ask" }))).toBe(pictureIdentity(graphic({ visualId: "y", stage: "ask" })));
+  });
+
+  it("drops a beat's caption only when it is exactly the line its graphic draws", () => {
+    const proposal = pass(batch()).proposals[0];
+    const plan = buildCreativeProposalProductionPlan({ packageId: "p", ideaId: "i", campaignId: "c", feature: "compare", subjectIds: [] } as never, proposal as never);
+    const cues = (plan.platforms[0].tasks.find((task) => task.capability === "caption-render") as unknown as { captionRenderState: { cues: { startSecond: number; text: string }[] } }).captionRenderState.cues;
+    const carried = proposal.concept.beats.filter((beat) => beat.visualIds.some((id) => id.endsWith("-explain") || id.endsWith("-ask")));
+    expect(carried).toHaveLength(2);
+    for (const beat of carried) expect(cues.some((cue) => cue.startSecond === beat.startSecond)).toBe(false);
+    expect(cues).toHaveLength(proposal.concept.beats.length - 2);
+
+    // A caption that only resembles the graphic's line stays in the caption band.
+    const concepts = batch();
+    concepts[0] = { ...concepts[0], beats: concepts[0].beats.map((beat) => beat.visualIds.includes("pct-aw-val-explain") ? { ...beat, onScreenText: "Same upgrade, different gains" } : beat) };
+    const near = pass(concepts).proposals[0];
+    const nearPlan = buildCreativeProposalProductionPlan({ packageId: "p", ideaId: "i", campaignId: "c", feature: "compare", subjectIds: [] } as never, near as never);
+    const nearCues = (nearPlan.platforms[0].tasks.find((task) => task.capability === "caption-render") as unknown as { captionRenderState: { cues: { text: string }[] } }).captionRenderState.cues;
+    expect(nearCues.map((cue) => cue.text)).toContain("Same upgrade, different gains");
+  });
+});
+
+describe("a percentage is never labelled as FPS", () => {
+  const storyboardWith = (onScreenText: string, narration = "Here is the result."): PlatformScriptStoryboard => ({
+    platform: "youtube-shorts", title: "t", targetDurationSeconds: 4, narrationStyle: "", finalCta: "",
+    factualGuardrails: [], beats: [{ purpose: "evidence", startSecond: 0, endSecond: 4, narration, onScreenText, visualDirection: "" }],
+  } as unknown as PlatformScriptStoryboard);
+  const percentLabelFailures = (text: string, narration?: string) =>
+    checkScriptAgainstResearch(storyboardWith(text, narration), mission.research)
+      .filter((finding) => finding.severity === "hard-fail" && /Estimated percentage boost/.test(finding.message));
+
+  it("refuses the earlier caption, which labelled two percentages \"Estimated FPS\"", () => {
+    const failures = percentLabelFailures("51% vs 16% · Estimated FPS");
+    expect(failures).toHaveLength(1);
+    expect(failures[0].location).toBe("beat-1.onScreenText");
+  });
+
+  it("accepts a percentage labelled as an estimated boost", () => {
+    expect(percentLabelFailures("Estimated percentage boost: 51% vs 16%")).toEqual([]);
+    expect(percentLabelFailures("Estimated percentage boost: 51% vs 16%", "That's an estimated 51% boost for Alan Wake 2, and just 16% for Valorant.")).toEqual([]);
+    expect(percentLabelFailures("Estimated percentage boost: 51% vs 16%", "As an estimated boost, that's 51% against 16%.")).toEqual([]);
+  });
+
+  it("requires the label on the percentage claims only, not on the FPS claims", () => {
+    const wording = Object.fromEntries(mission.research.safeClaims.map((claim) => [claim.claimId, claim.requiredWording]));
+    expect(wording["gpu-upgrade-gpu-heavy-game"]).toEqual(["Estimated FPS"]);
+    for (const id of ["gpu-upgrade-percent-gpu-heavy-game", "gpu-upgrade-percent-cpu-heavy-game", "bigger-percentage-boost"]) {
+      expect(wording[id]).toEqual(["Estimated FPS", "Estimated percentage boost"]);
+    }
   });
 });
 

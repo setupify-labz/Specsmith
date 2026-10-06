@@ -337,6 +337,12 @@ export interface AtomicClaim {
   readonly configuration?: ClaimConfiguration;
   /** What the claim is about, for applicability checks. */
   readonly subjectIds: readonly string[];
+  /**
+   * For an estimate: whether it also states a percentage computed from the
+   * estimated figures. A percentage is labelled as an estimated percentage
+   * boost, never as FPS, so the claim carries both labels.
+   */
+  readonly derivedPercentage?: boolean;
   readonly provenance: ResearchProvenance;
 }
 

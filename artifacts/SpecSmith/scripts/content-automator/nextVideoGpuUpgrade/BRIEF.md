@@ -243,6 +243,48 @@ Every movement is a step in the question arriving.
 - **Colours swapping.** The colours changed when a scene listed Valorant first. Each game now keeps one colour for the whole video, by first appearance: Alan Wake 2 purple, Valorant cyan.
 - **Leftover placeholders.** The closing `game-labels` scene still drew empty tracks and "+?%". It now shows full names and labels only.
 
+## Revised visual draft (Concept A, attempt 4): the final third
+
+**What changed:**
+- **Length:** 21.5 s → **19.0 s**. The game beats keep 3.6 s and 3.2 s, so the names are not rushed.
+- **The percentages arrive beside the results.** Each percentage card keeps that game's estimated FPS result ("43 → 65", "263 → 305"). It also shows the calculation from the rounded estimates: "(65 − 43) ÷ 43 · rounded estimates".
+- **The Compare screenshot (15.5–19 s) is gone.** The same comparison stays on screen as a settled `explain` stage that adds "Same upgrade. Different gains by game."
+- **No spoken GPU-weighting explanation.** The `model-weights-games` claim is no longer used.
+- **New ending.** The comparison stays visible as an `ask` stage: "Which game would you upgrade for?", with `specsmithpc.com/compare` as a small line inside the graphic.
+- **Label fix.** The caption is now "Estimated percentage boost: 51% vs 16%". It was "51% vs 16% · Estimated FPS", which labelled percentages as FPS.
+  - **Cause:** every percentage claim inherited only the FPS label rule.
+  - **Fix:** percentage claims (`derivedPercentage`) now also require "Estimated percentage boost". The evidence gate refuses a percentage labelled only as FPS.
+  - **Concepts B and C** had the same caption and are fixed the same way.
+- **Trimmed narration.** "SpecSmith's model estimates" is said once instead of three times, the second "estimated FPS" is dropped, and the model-weights line is gone.
+
+**Beats:**
+
+| Time | Picture | Narration (planned, not spoken) | Caption |
+|---|---|---|---|
+| 0–3.0 | upgrade-intro | Same CPU, new GPU. Which game gets the bigger percentage boost? | Same CPU. New GPU. |
+| 3.0–6.6 | fps-change Alan Wake 2 | At 1440p High, SpecSmith estimates Alan Wake 2 goes from 43 to 65 FPS. | Alan Wake 2: 43 → 65 Estimated FPS |
+| 6.6–9.8 | fps-change Valorant | Valorant goes from 263 to 305. | Valorant: 263 → 305 Estimated FPS |
+| 9.8–13.8 | percent-change, reveal | That's an estimated 51% boost for Alan Wake 2, and just 16% for Valorant. | Estimated percentage boost: 51% vs 16% |
+| 13.8–16.4 | percent-change, explain | Same upgrade, different gains by game. | (inside the graphic) |
+| 16.4–19.0 | percent-change, ask | Which game would you upgrade for? | (inside the graphic, with the link line) |
+
+**How the stage text stays honest:**
+- **Fixed text.** Stage lines are never author text, and each one is drawn only when the graphic's own values make it true:
+  - "Same upgrade" holds because every game in the graphic shares one pairing and one direction;
+  - "Different gains by game" needs at least two games whose percentages differ;
+  - the ask stage links the concept's product destination, and is refused without one.
+- **Picture identity.** A later stage counts as a new picture because it adds a new statement. The same stage under a different visual id still counts as the same picture.
+- **Caption shown once.** A caption that is exactly the graphic's line is shown once, inside the graphic. Any other caption stays in the caption band.
+- **Same checks.** The frame check uses the captions the plan actually renders. The required-wording check reads the labels the graphic draws, as well as the narration and the caption.
+
+**Result:**
+- **File:** `render-output/next-video-gpu-upgrade-draft-2/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4`.
+- **Format:** 1080×1920 at 30 fps, 19.07 s.
+- **SHA-256:** `53fdb7a7b873779ef038fa05c08f8292aa2359076d39f14f0cbafd058de2b99a`.
+- **Frame check:** passed, 14 samples.
+- **Controls:** all three broken renders were refused.
+- **Audio:** silence of the planned length. No voice was generated.
+
 ## Open before production
 
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.

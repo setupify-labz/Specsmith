@@ -19,6 +19,7 @@ import { launchBrowser } from "../../uiRender/capture.ts";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "../../rendering.ts";
 import {
   DataMotionGraphicError,
+  MOTION_LABELS,
   MOTION_MIN_LABEL_PX,
   MOTION_MIN_PRIMARY_PX,
   SPECSMITH_MOTION_COLOURS,
@@ -58,6 +59,7 @@ function pageScript(state: DataMotionGraphicState): string {
   return `
 const S = ${JSON.stringify(state)};
 const C = ${JSON.stringify(SPECSMITH_MOTION_COLOURS)};
+const LABELS = ${JSON.stringify(MOTION_LABELS)};
 const MIN_PRIMARY = ${MOTION_MIN_PRIMARY_PX}, MIN_LABEL = ${MOTION_MIN_LABEL_PX};
 const FONT = ${JSON.stringify(MOTION_FONT)};
 const W = S.width, H = S.height, G = S.graphic;
@@ -145,27 +147,71 @@ function fpsChange(t) {
     const after = ease((t - 0.6 - delay) / 0.35);
     ctx.save(); ctx.globalAlpha = after; ctx.fillStyle = r.colour; ctx.fillText(String(r.game.after), x0 + beforeW + arrowW + 30 * (1 - after), by); ctx.restore();
     measured.minFontPx = Math.min(measured.minFontPx, size);
-    text('Estimated FPS', PAD + 56 + dx, r.y + r.h * 0.88, INNER - 112, 40, MIN_LABEL, C.textSecondary, 'left', 'normal');
+    text(LABELS.fps, PAD + 56 + dx, r.y + r.h * 0.88, INNER - 112, 40, MIN_LABEL, C.textSecondary, 'left', 'normal');
   }
 }
 
+/**
+ * The percentage comparison. Each card keeps the game's estimated FPS result
+ * beside its percentage, so the viewer sees what the percentage is OF, and
+ * the formula from the two displayed (rounded) estimates.
+ *   reveal   cards, names and results from frame 0; bars grow, percentages appear
+ *   explain  everything settled from frame 0; the fixed explanation fades in
+ *   ask      everything settled; the question and the link line fade in
+ * The cards sit in the same place in every stage, so the cut between stages
+ * changes only the line underneath.
+ */
+const CARD_H = 330, CARD_GAP = 28, CARD_TOP = 196;
 function percentChange(t) {
   const maxPercent = Math.max(...G.games.map((g) => g.percent), 1);
-  for (const r of rows()) {
-    const dx = card(r, t);
-    text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.26, INNER - 112, 88, MIN_PRIMARY, C.text, 'left', 'bold');
-    const delay = r.i * 0.25;
+  const settled = G.stage && G.stage !== 'reveal';
+  const tt = settled ? 99 : t;
+  const x0 = PAD + 48, x1 = PAD + INNER - 48, inner = x1 - x0;
+  G.games.forEach((game, i) => {
+    const y = CARD_TOP + i * (CARD_H + CARD_GAP), h = CARD_H, colour = GAME_COLOURS[i];
+    const ink = colour === C.accent ? C.accentText : colour;
+    rect(PAD, y, INNER, h, 28, C.card);
+    rect(PAD, y, 14, h, 7, colour);
+    text(game.name, x0, y + 78, inner, 80, MIN_PRIMARY, C.text, 'left', 'bold');
+    // The estimated result, top right: what the percentage is a boost of.
+    const result = game.before + ' → ' + game.after;
+    text(result, x1, y + 180, inner * 0.5, 64, MIN_PRIMARY, C.text, 'right', 'bold');
+    text(LABELS.fps, x1, y + 222, inner * 0.5, 36, MIN_LABEL, C.textSecondary, 'right', 'normal');
     // The bar grows (a length, not a stated figure); the percentage appears only at its value.
-    const grow = ease((t - 0.3 - delay) / 0.8);
-    const track = INNER - 112;
-    rect(PAD + 56 + dx, r.y + r.h * 0.38, track, 44, 22, C.surface);
-    rect(PAD + 56 + dx, r.y + r.h * 0.38, track * 0.72 * (r.game.percent / maxPercent) * grow, 44, 22, r.colour);
-    const shown = ease((t - 1.0 - delay) / 0.3);
+    const delay = i * 0.25;
+    const grow = ease((tt - 0.2 - delay) / 0.7);
+    rect(x0, y + 104, inner, 20, 10, C.surface);
+    rect(x0, y + 104, inner * (game.percent / maxPercent) * grow, 20, 10, colour);
+    const shown = ease((tt - 0.8 - delay) / 0.3);
     ctx.save(); ctx.globalAlpha = shown;
-    text('+' + r.game.percent + '%', PAD + 56 + dx + 24 * (1 - shown), r.y + r.h * 0.77, INNER - 112, 120, MIN_PRIMARY, r.colour, 'left', 'bold');
+    text('+' + game.percent + '%', x0 + 24 * (1 - shown), y + 214, inner * 0.45, 104, MIN_PRIMARY, ink, 'left', 'bold');
     ctx.restore();
-    text('estimated boost · ' + r.game.formula, PAD + 56 + dx, r.y + r.h * 0.93, INNER - 112, 38, MIN_LABEL, C.textSecondary, 'left', 'normal');
+    text(LABELS.percent, x0, y + 266, inner, 36, MIN_LABEL, ink, 'left', 'bold');
+    text(game.formula + ' · rounded estimates', x0, y + 310, inner, 34, MIN_LABEL, C.textSecondary, 'left', 'normal');
+  });
+  if (!G.note) return;
+  // The stage's one line, under the cards. It is the only thing that moves.
+  const top = CARD_TOP + G.games.length * (CARD_H + CARD_GAP) + 30;
+  const p = ease(t / 0.4);
+  ctx.save(); ctx.globalAlpha = p; ctx.translate(0, 24 * (1 - p));
+  // Two sentences read as two statements, one per line; a single sentence wraps.
+  let rowsOut, size;
+  if (G.note.lines.length > 1) {
+    size = Math.min(...G.note.lines.map((line) => fit(line, INNER, 76, MIN_PRIMARY, 'bold')));
+    rowsOut = G.note.lines;
+  } else {
+    const head = layoutHeadline(G.note.lines[0], INNER, 2, 76, MIN_PRIMARY);
+    size = head ? head.size : MIN_PRIMARY;
+    rowsOut = head ? head.lines.map((line) => line.map((w) => w.word).join(' ')) : G.note.lines;
   }
+  const lineH = Math.round(size * 1.18);
+  let y = top;
+  rowsOut.forEach((line, i) => {
+    y = top + size + i * lineH;
+    text(line, PAD, y, INNER, size, MIN_PRIMARY, C.text, 'left', 'bold');
+  });
+  if (G.note.link) text(G.note.link, PAD, y + 64, INNER, 40, MIN_LABEL, C.accentText, 'left', 'bold');
+  ctx.restore();
 }
 
 /** Word-wrapped headline at the largest size that fits in maxLines; returns laid-out words. */

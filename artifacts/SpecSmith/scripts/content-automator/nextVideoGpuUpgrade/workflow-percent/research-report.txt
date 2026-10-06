@@ -12,12 +12,15 @@ CONTENT_RESEARCH_REPORT research-gpu-upgrade-gains-by-game-1440p-high-2026-10-06
         attribute to: SpecSmith
     [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives Alan Wake 2 an estimated 51% boost: from 43 to 65 FPS, (65 − 43) ÷ 43.
         required wording: Estimated FPS
+        required wording: Estimated percentage boost
         attribute to: SpecSmith
     [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives Valorant an estimated 16% boost: from 263 to 305 FPS, (305 − 263) ÷ 263.
         required wording: Estimated FPS
+        required wording: Estimated percentage boost
         attribute to: SpecSmith
     [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, Alan Wake 2 gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: 51% against Valorant's 16%.
         required wording: Estimated FPS
+        required wording: Estimated percentage boost
         attribute to: SpecSmith
     [strongly-supported] SpecSmith's model weights each game by how much it leans on the GPU; it gives Alan Wake 2 far more GPU weight than Valorant.
         attribute to: SpecSmith

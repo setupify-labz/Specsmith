@@ -45,10 +45,40 @@ export const DATA_MOTION_GRAPHIC_CAPABILITY = "render.data-motion-graphic";
  *   game-labels     the games' full names, animated in; no figures
  *   fps-change      per game: before -> after estimated FPS, counting up
  *   percent-change  per game: the estimated percentage boost, as a growing bar,
- *                   with the formula and the two values it is computed from
+ *                   beside the two estimates it is computed from and the formula.
+ *                   Its later STAGES keep that comparison on screen, settled,
+ *                   and add one fixed line the data itself makes true:
+ *                     reveal   the bars grow and the percentages appear (default)
+ *                     explain  + "Same upgrade. Different gains by game."
+ *                     ask      + "Which game would you upgrade for?" and the
+ *                              product destination as a small link line
  */
 export const DATA_MOTION_TEMPLATES = ["upgrade-intro", "game-labels", "fps-change", "percent-change"] as const;
 export type DataMotionTemplate = (typeof DATA_MOTION_TEMPLATES)[number];
+
+export const PERCENT_CHANGE_STAGES = ["reveal", "explain", "ask"] as const;
+export type PercentChangeStage = (typeof PERCENT_CHANGE_STAGES)[number];
+
+/** The site the product destination is on, for the ask stage's link line. */
+export const SPECSMITH_SITE_HOST = "specsmithpc.com";
+
+/**
+ * The labels the renderer draws, verbatim. One source for the renderer and
+ * for the wording checks, so a check reads exactly what the viewer sees.
+ */
+export const MOTION_LABELS = {
+  fps: "Estimated FPS",
+  percent: "Estimated percentage boost",
+} as const;
+
+/**
+ * The stage lines. Fixed text, never author text, and only drawn when the
+ * graphic's own values make them true (see stageNote).
+ */
+export const STAGE_LINES = {
+  explain: ["Same upgrade.", "Different gains by game."],
+  ask: ["Which game would you upgrade for?"],
+} as const;
 
 export interface DataMotionGraphic {
   readonly kind: "data-motion-graphic";
@@ -60,6 +90,8 @@ export interface DataMotionGraphic {
   readonly games: readonly string[];
   /** Which Compare build is "before" for a change: "B" means B -> A. */
   readonly baseline: "A" | "B";
+  /** percent-change only; defaults to "reveal". */
+  readonly stage?: PercentChangeStage;
 }
 
 export interface ResolvedGameFigures {
@@ -96,6 +128,9 @@ export interface ResolvedDataMotionGraphic {
   /** upgrade-intro only: the mission's own viewer question, never author text. */
   readonly headline: string | null;
   readonly games: readonly ResolvedGameFigures[];
+  /** percent-change only: which stage, and the fixed line(s) it adds; null in the reveal. */
+  readonly stage?: PercentChangeStage;
+  readonly note?: { readonly lines: readonly string[]; readonly link: string | null } | null;
 }
 
 export class DataMotionGraphicError extends Error {
@@ -129,6 +164,10 @@ export function dataMotionGraphicDefects(visual: DataMotionGraphic): string[] {
     }
   }
   if (visual.baseline !== "A" && visual.baseline !== "B") defects.push('baseline must be "A" or "B".');
+  if (visual.stage !== undefined) {
+    if (visual.template !== "percent-change") defects.push("Only a percent-change graphic has stages.");
+    else if (!(PERCENT_CHANGE_STAGES as readonly string[]).includes(visual.stage)) defects.push(`Unknown stage "${visual.stage}". Use one of: ${PERCENT_CHANGE_STAGES.join(", ")}.`);
+  }
   if (typeof visual.sourceStateIdentifier !== "string" || !visual.sourceStateIdentifier.trim()) {
     defects.push("A motion graphic must name the Compare state its values come from.");
   }
@@ -141,7 +180,50 @@ const capitalise = (value: string) => `${value[0].toUpperCase()}${value.slice(1)
  * Computes everything the graphic shows, from the primary view. Refuses a
  * graphic sourced from any other state, or a game Compare does not list.
  */
-export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: readonly CaptureView[], context: { readonly viewerQuestion?: string } = {}): ResolvedDataMotionGraphic {
+/**
+ * The fixed line a later percent-change stage adds, or a refusal when the
+ * graphic's values do not make it true. "Same upgrade" holds by construction
+ * (one pairing, one direction, every game); "different gains" needs at least
+ * two games whose percentages differ. The ask stage compares games, so it
+ * needs two as well, and names the product destination it sends the viewer to.
+ */
+export function stageNote(
+  visualId: string,
+  stage: PercentChangeStage,
+  games: readonly ResolvedGameFigures[],
+  productDestination: string | undefined,
+): { lines: readonly string[]; link: string | null } | null {
+  if (stage === "reveal") return null;
+  if (games.length < 2) throw new DataMotionGraphicError(`${visualId}: the ${stage} stage compares games and shows ${games.length}.`);
+  if (stage === "explain") {
+    if (new Set(games.map((game) => game.percent)).size < 2) {
+      throw new DataMotionGraphicError(`${visualId}: "${STAGE_LINES.explain.join(" ")}" is false here; the percentages are equal.`);
+    }
+    return { lines: STAGE_LINES.explain, link: null };
+  }
+  if (!productDestination || !productDestination.startsWith("/")) {
+    throw new DataMotionGraphicError(`${visualId}: the ask stage links the product destination, and none was given.`);
+  }
+  return { lines: STAGE_LINES.ask, link: `${SPECSMITH_SITE_HOST}${productDestination}` };
+}
+
+/** The text a stage puts on screen, as one caption line: what a beat's caption must equal to be carried by the graphic. */
+export function stageNoteText(graphic: ResolvedDataMotionGraphic): string | null {
+  if (!graphic.note) return null;
+  return [...graphic.note.lines, ...(graphic.note.link ? [graphic.note.link] : [])].join(" ");
+}
+
+/** Every fixed label the graphic draws, verbatim, for wording checks. Names and figures excluded. */
+export function graphicLabels(graphic: ResolvedDataMotionGraphic): string[] {
+  const labels: string[] = [`SpecSmith model estimates · ${graphic.setting}`];
+  if (graphic.template === "fps-change") labels.push(MOTION_LABELS.fps);
+  if (graphic.template === "percent-change") labels.push(MOTION_LABELS.fps, MOTION_LABELS.percent);
+  const note = stageNoteText(graphic);
+  if (note) labels.push(note);
+  return labels;
+}
+
+export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: readonly CaptureView[], context: { readonly viewerQuestion?: string; readonly productDestination?: string } = {}): ResolvedDataMotionGraphic {
   const defects = dataMotionGraphicDefects(visual);
   if (defects.length) throw new DataMotionGraphicError(`${visual.visualId}: ${defects.join(" ")}`);
   const view = views.find((entry) => entry.stateIdentifier === visual.sourceStateIdentifier);
@@ -186,6 +268,9 @@ export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: reado
     setting: `${pairing.resolution} ${capitalise(pairing.preset)}`,
     headline: visual.template === "upgrade-intro" ? context.viewerQuestion!.trim() : null,
     games: resolved,
+    ...(visual.template === "percent-change"
+      ? { stage: visual.stage ?? "reveal", note: stageNote(visual.visualId, visual.stage ?? "reveal", resolved, context.productDestination) }
+      : {}),
   };
 }
 
@@ -266,9 +351,15 @@ export function withConsistentColours(graphics: readonly ResolvedDataMotionGraph
   return graphics.map((graphic) => ({ ...graphic, games: graphic.games.map((game) => ({ ...game, colour: slot.get(game.gameId) ?? 0 })) }));
 }
 
-/** The picture a graphic puts on screen, for shot-variety: template, games and state. */
+/**
+ * The picture a graphic puts on screen, for shot-variety: template, games,
+ * state and, for a percent-change, its stage. A later stage adds a statement
+ * the viewer has not seen, so it is a new picture; the same stage under
+ * another visual id is not.
+ */
 export function dataMotionGraphicIdentity(visual: DataMotionGraphic): string {
-  return `data-motion-graphic:${visual.template}:${visual.games.join("+")}:${visual.baseline}:${visual.sourceStateIdentifier}`;
+  const stage = visual.template === "percent-change" && visual.stage && visual.stage !== "reveal" ? `:${visual.stage}` : "";
+  return `data-motion-graphic:${visual.template}${stage}:${visual.games.join("+")}:${visual.baseline}:${visual.sourceStateIdentifier}`;
 }
 
 /** SpecSmith's own palette (src/index.css, --ff-*). */

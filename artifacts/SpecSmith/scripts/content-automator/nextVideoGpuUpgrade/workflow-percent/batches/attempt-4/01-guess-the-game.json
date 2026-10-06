@@ -1,0 +1,192 @@
+{
+  "conceptId": "boost-guess-the-game",
+  "axes": {
+    "audienceExperience": "participant",
+    "explanatoryStructure": "prediction-then-reveal",
+    "visualMechanism": "animated-product-walk"
+  },
+  "viewerQuestion": "Which game gets the bigger percentage boost?",
+  "viewerTakeaway": "The same GPU upgrade can be a big boost in one game and a small one in another, so I check the percentage for the games I play.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "upgrade-intro",
+      "template": "upgrade-intro",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "fps-aw",
+      "template": "fps-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "fps-val",
+      "template": "fps-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "pct-aw-val",
+      "template": "percent-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "pct-aw-val-explain",
+      "template": "percent-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B",
+      "stage": "explain"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "pct-aw-val-ask",
+      "template": "percent-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B",
+      "stage": "ask"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.data-motion-graphic",
+      "description": "Data motion graphics computed from the primary Compare state."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3.0,
+      "narration": "Same CPU, new GPU. Which game gets the bigger percentage boost?",
+      "onScreenText": "Same CPU. New GPU.",
+      "visualIds": [
+        "upgrade-intro"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3.0,
+      "endSecond": 6.6,
+      "narration": "At 1440p High, SpecSmith estimates Alan Wake 2 goes from 43 to 65 FPS.",
+      "onScreenText": "Alan Wake 2: 43 \u2192 65 Estimated FPS",
+      "visualIds": [
+        "fps-aw"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 6.6,
+      "endSecond": 9.8,
+      "narration": "Valorant goes from 263 to 305.",
+      "onScreenText": "Valorant: 263 \u2192 305 Estimated FPS",
+      "visualIds": [
+        "fps-val"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "reversal",
+      "startSecond": 9.8,
+      "endSecond": 13.8,
+      "narration": "That's an estimated 51% boost for Alan Wake 2, and just 16% for Valorant.",
+      "onScreenText": "Estimated percentage boost: 51% vs 16%",
+      "visualIds": [
+        "pct-aw-val"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-percent-gpu-heavy-game",
+        "gpu-upgrade-percent-cpu-heavy-game",
+        "bigger-percentage-boost"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 13.8,
+      "endSecond": 16.4,
+      "narration": "Same upgrade, different gains by game.",
+      "onScreenText": "Same upgrade. Different gains by game.",
+      "visualIds": [
+        "pct-aw-val-explain"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-percent-gpu-heavy-game",
+        "gpu-upgrade-percent-cpu-heavy-game",
+        "bigger-percentage-boost"
+      ]
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 16.4,
+      "endSecond": 19.0,
+      "narration": "Which game would you upgrade for?",
+      "onScreenText": "Which game would you upgrade for? specsmithpc.com/compare",
+      "visualIds": [
+        "pct-aw-val-ask"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-percent-gpu-heavy-game",
+        "gpu-upgrade-percent-cpu-heavy-game",
+        "bigger-percentage-boost"
+      ]
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "5": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

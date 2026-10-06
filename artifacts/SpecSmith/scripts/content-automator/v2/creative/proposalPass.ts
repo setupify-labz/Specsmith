@@ -10,7 +10,7 @@ import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
-import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, unsupportedGraphicValues, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
 import { critiqueConceptSet } from "./conceptCritique.ts";
 import { retrieveCreativeMemory, type CreativeMemoryEntry, type RetrievalQuery } from "./memory.ts";
 
@@ -115,7 +115,7 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     const motionGraphicProblems: string[] = [];
     for (const visual of concept.visuals) {
       if (visual.kind !== "data-motion-graphic") continue;
-      try { motionGraphics.push(resolveDataMotionGraphic(visual, views, { viewerQuestion: input.viewerQuestion })); }
+      try { motionGraphics.push(resolveDataMotionGraphic(visual, views, { viewerQuestion: input.viewerQuestion, productDestination: concept.productDestination })); }
       catch (error) { motionGraphicProblems.push((error as Error).message); }
     }
     // Games in order of first appearance on screen, beat by beat.
@@ -232,6 +232,24 @@ export function buildCreativeProposalProductionPlan(
       compose.inputRequirements = compose.inputRequirements.filter((id) => id !== music.taskId);
       delete compose.compositorState!.musicTaskId;
       platform.qualityChecks.push("No music track: this path has no licensed or offline music capability. Narration only; sound design remains a human decision.");
+    }
+
+    // A beat whose caption is exactly the line its graphic draws is captioned
+    // by the graphic: burning the same words into the caption band as well
+    // would show them twice. Only an exact match is dropped, so a caption can
+    // never vanish because a graphic says something similar.
+    if (captions?.captionRenderState) {
+      const carried = new Set(proposal.concept.beats.flatMap((beat, index) => {
+        const graphic = proposal.motionGraphics.find((entry) => beat.visualIds.includes(entry.visualId));
+        const note = graphic ? stageNoteText(graphic) : null;
+        return note !== null && note === beat.onScreenText ? [index] : [];
+      }));
+      if (carried.size > 0) {
+        const cues = (captions.captionRenderState.cues as { startSecond: number }[]).filter((cue) =>
+          !proposal.concept.beats.some((beat, index) => carried.has(index) && beat.startSecond === cue.startSecond));
+        captions.captionRenderState = { ...captions.captionRenderState, cues };
+        platform.qualityChecks.push(`Beat ${[...carried].map((index) => index + 1).join(", ")}: the caption is the line the motion graphic draws, so it is shown once, in the graphic.`);
+      }
     }
 
     if (banded) {

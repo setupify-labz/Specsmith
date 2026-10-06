@@ -22,13 +22,13 @@ This is a local, file-based workflow. Nothing here calls a provider, spends mone
   - required wording, verbatim: "Estimated FPS"
   - attribution required: SpecSmith
 - `gpu-upgrade-percent-gpu-heavy-game` (strongly-supported): In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives Alan Wake 2 an estimated 51% boost: from 43 to 65 FPS, (65 − 43) ÷ 43.
-  - required wording, verbatim: "Estimated FPS"
+  - required wording, verbatim: "Estimated FPS", "Estimated percentage boost"
   - attribution required: SpecSmith
 - `gpu-upgrade-percent-cpu-heavy-game` (strongly-supported): In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives Valorant an estimated 16% boost: from 263 to 305 FPS, (305 − 263) ÷ 263.
-  - required wording, verbatim: "Estimated FPS"
+  - required wording, verbatim: "Estimated FPS", "Estimated percentage boost"
   - attribution required: SpecSmith
 - `bigger-percentage-boost` (strongly-supported): In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, Alan Wake 2 gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: 51% against Valorant's 16%.
-  - required wording, verbatim: "Estimated FPS"
+  - required wording, verbatim: "Estimated FPS", "Estimated percentage boost"
   - attribution required: SpecSmith
 - `model-weights-games` (strongly-supported): SpecSmith's model weights each game by how much it leans on the GPU; it gives Alan Wake 2 far more GPU weight than Valorant.
   - attribution required: SpecSmith
@@ -82,7 +82,10 @@ Capability `render.data-motion-graphic`. A visual of kind `data-motion-graphic` 
   - `upgrade-intro`: the mission's question as a headline, the GPU upgrade shown once, then the games' full names as large panels. No figures.
   - `game-labels`: the games' full names, animated in. No figures.
   - `fps-change`: per game, the before and after estimated FPS Compare shows.
-  - `percent-change`: per game, the estimated percentage boost, with its formula and the two values it uses.
+  - `percent-change`: per game, the estimated percentage boost beside the two estimates it is computed from, with the formula.
+    Optional `stage` keeps that comparison on screen, settled, and adds one fixed line its values make true:
+    `reveal` (default) the bars grow and the percentages appear; `explain` adds "Same upgrade. Different gains by game." (two or more games with different percentages); `ask` adds "Which game would you upgrade for?" and the product destination as a small link line.
+    A beat showing the explain or ask stage may set its `onScreenText` to exactly that line (for ask, the question, a space and the link); the graphic then carries it and the caption band does not repeat it.
 - `games`: one to three catalog game ids, in display order. Names are taken from the catalog.
 - `baseline`: which Compare build is "before" ("B" means B → A).
 

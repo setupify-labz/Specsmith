@@ -53,7 +53,7 @@ import type { CreativeGenerator, CreativeGeneratorRequest } from "./generationPa
 import { CREATIVE_GENERATOR_INSTRUCTIONS } from "./instructions.ts";
 import { missionCaptureViews } from "./captureViews.ts";
 import { claimBeatsOffPrimaryView } from "./proposalPass.ts";
-import { DATA_MOTION_GRAPHIC_CAPABILITY, DATA_MOTION_TEMPLATES } from "./dataMotionGraphic.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, DATA_MOTION_TEMPLATES, graphicLabels, PERCENT_CHANGE_STAGES, STAGE_LINES } from "./dataMotionGraphic.ts";
 import catalogGames from "../../../../src/data/games.json" with { type: "json" };
 import type { CreativeMissionInput, runCreativeProposalPass } from "./proposalPass.ts";
 
@@ -296,6 +296,7 @@ export function conceptSchema(brief: ExportedBrief): unknown {
                 sourceStateIdentifier: { const: brief.motionGraphics.sourceStateIdentifier },
                 games: { type: "array", minItems: 1, maxItems: 3, items: { enum: brief.motionGraphics.games.map((game) => game.id) } },
                 baseline: { enum: ["A", "B"] },
+                stage: { enum: [...PERCENT_CHANGE_STAGES] },
               },
             },
           ],
@@ -411,7 +412,10 @@ export function authoringGuide(brief: ExportedBrief): string {
   lines.push("  - `upgrade-intro`: the mission's question as a headline, the GPU upgrade shown once, then the games' full names as large panels. No figures.");
   lines.push("  - `game-labels`: the games' full names, animated in. No figures.");
   lines.push("  - `fps-change`: per game, the before and after estimated FPS Compare shows.");
-  lines.push("  - `percent-change`: per game, the estimated percentage boost, with its formula and the two values it uses.");
+  lines.push("  - `percent-change`: per game, the estimated percentage boost beside the two estimates it is computed from, with the formula.");
+  lines.push("    Optional `stage` keeps that comparison on screen, settled, and adds one fixed line its values make true:");
+  lines.push(`    \`reveal\` (default) the bars grow and the percentages appear; \`explain\` adds "${STAGE_LINES.explain.join(" ")}" (two or more games with different percentages); \`ask\` adds "${STAGE_LINES.ask.join(" ")}" and the product destination as a small link line.`);
+  lines.push("    A beat showing the explain or ask stage may set its `onScreenText` to exactly that line (for ask, the question, a space and the link); the graphic then carries it and the caption band does not repeat it.");
   lines.push("- `games`: one to three catalog game ids, in display order. Names are taken from the catalog.");
   lines.push('- `baseline`: which Compare build is "before" ("B" means B → A).');
   lines.push("");
@@ -556,6 +560,7 @@ export function parseAuthoredConcept(raw: unknown, source: string): CreativeConc
         games: requireArray(visual.games, source, `visuals[${index}].games`).map((id, position) =>
           requireString(id, source, `visuals[${index}].games[${position}]`)),
         baseline: requireEnum(visual.baseline, ["A", "B"] as const, source, `visuals[${index}].baseline`),
+        ...(visual.stage === undefined ? {} : { stage: requireEnum(visual.stage, PERCENT_CHANGE_STAGES, source, `visuals[${index}].stage`) }),
       };
     }
     if (kind !== "real-product-capture") {
@@ -788,7 +793,7 @@ export interface FeedbackExpectations {
    * Required wording per approved claim.
    *
    * MASTER #2's contract enforces `requiredWording` only for two specific
-   * requirement shapes ("Estimated FPS" and the live-price caveat); any other
+   * requirement shapes ("Estimated FPS" / "Estimated percentage boost" and the live-price caveat); any other
    * required wording is carried but never checked. This workflow enforces the
    * general rule — a beat that binds a claim must carry that claim's required
    * wording — rather than modifying the audited gate to do it.
@@ -879,8 +884,12 @@ export function buildRevisionFeedback(
       (expectations.requiredWordingByClaimId[id] ?? []).some((wording) => /editorial.*subtotal/i.test(wording)));
     const wordingLines = [
       { location: "title", text: proposal.storyboard.title, bindings: [] as readonly string[] },
+      // A beat's text is everything the viewer hears or reads on it: the
+      // narration, the caption and the labels its motion graphic draws.
       ...proposal.concept.beats.map((beat, index) => ({ location: `beat-${index + 1}`,
-        text: `${beat.narration} ${beat.onScreenText}`, bindings: beat.factDependencies })),
+        text: [beat.narration, beat.onScreenText,
+          ...proposal.motionGraphics.filter((graphic) => beat.visualIds.includes(graphic.visualId)).flatMap(graphicLabels)].join(" "),
+        bindings: beat.factDependencies })),
       { location: "cta", text: proposal.storyboard.finalCta, bindings: [] as readonly string[] },
     ];
     for (const line of wordingLines) {

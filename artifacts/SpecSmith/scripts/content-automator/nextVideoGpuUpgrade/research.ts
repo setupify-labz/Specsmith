@@ -24,6 +24,7 @@ import { percentChange } from "../v2/creative/dataMotionGraphic.ts";
 import { leadsVsAverageFacts, type ComparePairing, type GameEstimate } from "../leadsVsAverage/facts.ts";
 import type { AtomicClaim, ClaimEvidenceLink, Observation, ResearchProvenance, ResearchQuestion, SourceSnapshot } from "../v2/research/model.ts";
 import { runResearchPass, type ResearchResult } from "../v2/research/researchPass.ts";
+import { ESTIMATED_FPS_INSTRUCTION, ESTIMATED_PERCENTAGE_INSTRUCTION } from "../v2/research/creativeContract.ts";
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
@@ -144,16 +145,20 @@ export const QUESTION_ID = "gpu-upgrade-gains-by-game-1440p-high";
  * text that must appear verbatim in the beat. Left alone, the only way to pass
  * would be to print the instruction itself. This maps that one instruction to
  * the label it names, which the gate then requires in the beat's text; nothing
- * else in the contract changes. (The mismatch between the two modules is
- * reported, not fixed here.)
+ * else in the contract changes. The percentage instruction maps the same way.
+ * (The mismatch between the two modules is reported, not fixed here.)
  */
-export const ESTIMATE_LABEL_INSTRUCTION = 'Label the figure "Estimated FPS" wherever it is visible, not only in narration.';
+export const ESTIMATE_LABEL_INSTRUCTION = ESTIMATED_FPS_INSTRUCTION;
+const VERBATIM_LABELS: Readonly<Record<string, string>> = {
+  [ESTIMATED_FPS_INSTRUCTION]: "Estimated FPS",
+  [ESTIMATED_PERCENTAGE_INSTRUCTION]: "Estimated percentage boost",
+};
 export function withVerbatimLabels(contract: ResearchResult["contract"]): ResearchResult["contract"] {
   return {
     ...contract,
     safeClaims: contract.safeClaims.map((claim) => ({
       ...claim,
-      requiredWording: claim.requiredWording.map((wording) => (wording === ESTIMATE_LABEL_INSTRUCTION ? "Estimated FPS" : wording)),
+      requiredWording: claim.requiredWording.map((wording) => VERBATIM_LABELS[wording] ?? wording),
     })),
   };
 }
@@ -268,6 +273,9 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
 
   const claim = (claimId: string, proposition: string, kind: AtomicClaim["kind"], risk: AtomicClaim["risk"], configuration: AtomicClaim["configuration"], subjectIds: readonly string[]): AtomicClaim =>
     ({ claimId, questionId: QUESTION_ID, proposition, kind, risk, configuration, subjectIds, provenance });
+  // The percentage claims state a percentage computed from the estimates, which
+  // is labelled "Estimated percentage boost", never "Estimated FPS".
+  const percentage = (entry: AtomicClaim): AtomicClaim => ({ ...entry, derivedPercentage: true });
   const claims: AtomicClaim[] = [
     claim("gpu-upgrade-gpu-heavy-game",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, moving from an RTX 4060 to an RTX 5070 takes ${facts.gpuHeavy.game} from ${facts.gpuHeavy.fpsB} to ${facts.gpuHeavy.fpsA} FPS.`,
@@ -275,15 +283,15 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
     claim("gpu-upgrade-cpu-heavy-game",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade takes ${facts.cpuHeavy.game} from ${facts.cpuHeavy.fpsB} to ${facts.cpuHeavy.fpsA} FPS.`,
       "performance-estimated", "medium", config(CONTRAST_GAMES.cpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.cpuHeavy]),
-    claim("gpu-upgrade-percent-gpu-heavy-game",
+    percentage(claim("gpu-upgrade-percent-gpu-heavy-game",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives ${facts.gpuHeavy.game} an estimated ${facts.gpuHeavy.percent}% boost: from ${facts.gpuHeavy.fpsB} to ${facts.gpuHeavy.fpsA} FPS, (${facts.gpuHeavy.fpsA} − ${facts.gpuHeavy.fpsB}) ÷ ${facts.gpuHeavy.fpsB}.`,
-      "performance-estimated", "medium", config(CONTRAST_GAMES.gpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy]),
-    claim("gpu-upgrade-percent-cpu-heavy-game",
+      "performance-estimated", "medium", config(CONTRAST_GAMES.gpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy])),
+    percentage(claim("gpu-upgrade-percent-cpu-heavy-game",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives ${facts.cpuHeavy.game} an estimated ${facts.cpuHeavy.percent}% boost: from ${facts.cpuHeavy.fpsB} to ${facts.cpuHeavy.fpsA} FPS, (${facts.cpuHeavy.fpsA} − ${facts.cpuHeavy.fpsB}) ÷ ${facts.cpuHeavy.fpsB}.`,
-      "performance-estimated", "medium", config(CONTRAST_GAMES.cpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.cpuHeavy]),
-    claim("bigger-percentage-boost",
+      "performance-estimated", "medium", config(CONTRAST_GAMES.cpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.cpuHeavy])),
+    percentage(claim("bigger-percentage-boost",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, ${facts.gpuHeavy.game} gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: ${facts.gpuHeavy.percent}% against ${facts.cpuHeavy.game}'s ${facts.cpuHeavy.percent}%.`,
-      "performance-estimated", "medium", { cpu: "Ryzen 5 7600", resolution: "1440p", preset: "high" }, ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy, CONTRAST_GAMES.cpuHeavy]),
+      "performance-estimated", "medium", { cpu: "Ryzen 5 7600", resolution: "1440p", preset: "high" }, ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy, CONTRAST_GAMES.cpuHeavy])),
     claim("model-weights-games",
       `SpecSmith's model weights each game by how much it leans on the GPU; it gives ${facts.gpuHeavy.game} far more GPU weight than ${facts.cpuHeavy.game}.`,
       "specsmith-product", "low", { resolution: "1440p", preset: "high" }, [CONTRAST_GAMES.gpuHeavy, CONTRAST_GAMES.cpuHeavy]),

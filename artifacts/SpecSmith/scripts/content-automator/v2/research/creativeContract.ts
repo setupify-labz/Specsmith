@@ -103,6 +103,19 @@ export interface ContractInput {
   readonly now: Date;
 }
 
+export const ESTIMATED_FPS_INSTRUCTION = 'Label the figure "Estimated FPS" wherever it is visible, not only in narration.';
+export const ESTIMATED_PERCENTAGE_INSTRUCTION =
+  'Label the percentage "Estimated percentage boost" wherever it is visible, not only in narration; never label a percentage "Estimated FPS".';
+
+/** A percentage stated in copy: "51%", "51 percent". */
+const PERCENTAGE = /\d+(?:\.\d+)?\s*(?:%|percent\b)/i;
+/**
+ * A percentage labelled as an estimated boost: "Estimated percentage boost",
+ * "an estimated 51% boost", "as an estimated boost". "Estimated" alone is not
+ * enough: "51% vs 16% · Estimated FPS" labels the wrong quantity.
+ */
+const ESTIMATED_PERCENTAGE = /\bestimated(?:\W+\w+){0,2}?\W+boost\b/i;
+
 /**
  * Wording a claim kind must carry to stay true.
  *
@@ -133,7 +146,8 @@ function requiredWordingFor(
   }
 
   if (claim.kind === "performance-estimated") {
-    wording.push('Label the figure "Estimated FPS" wherever it is visible, not only in narration.');
+    wording.push(ESTIMATED_FPS_INSTRUCTION);
+    if (claim.derivedPercentage === true) wording.push(ESTIMATED_PERCENTAGE_INSTRUCTION);
   }
 
   if (claim.kind === "performance-measured") {
@@ -376,7 +390,19 @@ export function checkScriptAgainstResearch(
     for (const safe of contract.safeClaims) {
       if (!mentionsClaim(text, safe.proposition)) continue;
       for (const requirement of safe.requiredWording) {
-        if (requirement.includes("Estimated FPS") && /\bfps\b/i.test(text) && !/\bestimat/i.test(text)) {
+        // A percentage is not a frame rate. "51% vs 16% · Estimated FPS" carries
+        // an estimate label, but it names the wrong quantity.
+        if (requirement.includes("Estimated percentage boost") && PERCENTAGE.test(text) && !ESTIMATED_PERCENTAGE.test(text) &&
+          !findings.some((finding) => finding.location === location && finding.code === "missing-required-wording")) {
+          findings.push({
+            code: "missing-required-wording",
+            severity: "hard-fail",
+            location,
+            evidence: text,
+            message: `A percentage computed from estimates is shown without the label "Estimated percentage boost". Required: ${requirement}`,
+          });
+        }
+        if (requirement.includes("Estimated FPS") && !requirement.includes("Estimated percentage boost") && /\bfps\b/i.test(text) && !/\bestimat/i.test(text)) {
           findings.push({
             code: "estimate-presented-as-measurement",
             severity: "hard-fail",

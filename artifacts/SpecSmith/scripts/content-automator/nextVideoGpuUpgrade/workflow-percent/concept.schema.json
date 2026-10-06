@@ -151,6 +151,13 @@
                   "A",
                   "B"
                 ]
+              },
+              "stage": {
+                "enum": [
+                  "reveal",
+                  "explain",
+                  "ask"
+                ]
               }
             }
           }

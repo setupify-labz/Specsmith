@@ -101,7 +101,8 @@
       "proposition": "In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives Alan Wake 2 an estimated 51% boost: from 43 to 65 FPS, (65 − 43) ÷ 43.",
       "state": "strongly-supported",
       "requiredWording": [
-        "Estimated FPS"
+        "Estimated FPS",
+        "Estimated percentage boost"
       ],
       "attribution": "SpecSmith",
       "evidence": [
@@ -130,7 +131,8 @@
       "proposition": "In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives Valorant an estimated 16% boost: from 263 to 305 FPS, (305 − 263) ÷ 263.",
       "state": "strongly-supported",
       "requiredWording": [
-        "Estimated FPS"
+        "Estimated FPS",
+        "Estimated percentage boost"
       ],
       "attribution": "SpecSmith",
       "evidence": [
@@ -159,7 +161,8 @@
       "proposition": "In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, Alan Wake 2 gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: 51% against Valorant's 16%.",
       "state": "strongly-supported",
       "requiredWording": [
-        "Estimated FPS"
+        "Estimated FPS",
+        "Estimated percentage boost"
       ],
       "attribution": "SpecSmith",
       "evidence": [
@@ -380,5 +383,5 @@
     "Passing every check makes a batch ready for human review. It does not approve it, render it, or permit publishing."
   ],
   "syntheticResearch": false,
-  "briefHash": "2b6947b57417617ad60cbf507b5fbce5386033127e582f7c2c0b8c2c0d98386a"
+  "briefHash": "0987dd8dcfd370aed22849143999d2055c19440fd791e992fb7e9fd85d62be3a"
 }

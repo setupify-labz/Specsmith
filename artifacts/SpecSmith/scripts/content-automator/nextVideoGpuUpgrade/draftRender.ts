@@ -20,7 +20,7 @@ import { gpuUpgradeMission, WORKFLOW_DIRECTORY } from "./workflowCli.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const DRAFT_CONCEPT = "boost-guess-the-game";
-export const DRAFT_DIR = resolve(here, "../../../render-output/next-video-gpu-upgrade-draft");
+export const DRAFT_DIR = resolve(here, "../../../render-output/next-video-gpu-upgrade-draft-2");
 
 export async function renderDraft() {
   const { mission } = gpuUpgradeMission();
