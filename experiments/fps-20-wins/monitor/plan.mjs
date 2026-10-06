@@ -48,7 +48,7 @@ export const MONITOR_TIMING = Object.freeze({
   rollLen: 0.35, // the last segments fill to 20
   landToBlowout: 0.3, // the 20/20 lands, then "Sounds like a blowout."
   pullBack: 0.62, // the pullback starts this long before the question and settles as it is asked
-  endHold: 1.0,
+  endHold: 0.75, // enough to read the question and the site line, no idle wait
 });
 
 const round = (x) => Math.round(x * 1000) / 1000;

@@ -119,7 +119,7 @@ ff(["-i", voiceTrack, "-i", bedTrack, "-i", fxTrack, "-filter_complex",
 const report = execFileSync("sh", ["-c", `ffmpeg -hide_banner -i "${premix}" -af loudnorm=I=-15:TP=-1.5:LRA=11:print_format=json -f null - 2>&1`]).toString();
 const m = JSON.parse(report.slice(report.lastIndexOf("{"), report.lastIndexOf("}") + 1));
 const out = join(root, "public", "monitor-mix.wav");
-ff(["-i", premix, "-af", `loudnorm=I=-15:TP=-1.5:LRA=11:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset},alimiter=limit=0.78:attack=1:release=60:level=disabled`, "-ar", String(SR), out]);
+ff(["-i", premix, "-af", `loudnorm=I=-15:TP=-1.5:LRA=11:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset},alimiter=limit=0.78:attack=1:release=60:level=disabled,afade=t=out:st=${Math.max(0, D - 0.35)}:d=0.35`, "-ar", String(SR), out]); // a short fade, never a hard cut, at the end
 // Stems with the same ducking, for measuring the voice-to-bed and voice-to-effects gaps during speech.
 for (const [name, input, gain, sc] of [["bed-ducked", bedTrack, BED_GAIN, "threshold=0.02:ratio=6:attack=15:release=600"], ["fx-ducked", fxTrack, FX_GAIN, "threshold=0.03:ratio=3:attack=5:release=150"]]) {
   ff(["-i", voiceTrack, "-i", input, "-filter_complex", `[1]volume=${gain}[x];[x][0]sidechaincompress=${sc}[out]`, "-map", "[out]", "-ar", String(SR), join(work, `${name}.wav`)]);

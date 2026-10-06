@@ -389,7 +389,7 @@ const Payoff: React.FC<{ t: number; D: Display; e: Events; c: Cam }> = ({ t, D, 
           </div>
         </div>
       </PayoffPlace>
-      <PayoffPlace c={c} port={{ x: W / 2, y: 780 + 190 }} land={{ x: 960, y: 755, s: 0.95 }} w={W} h={380}>
+      <PayoffPlace c={c} port={{ x: W / 2, y: 780 + 190 }} land={{ x: 960, y: 735, s: 0.85 }} w={W} h={380}>
         <div style={{ position: "absolute", left: 90, right: 90, top: 10, textAlign: "center", fontWeight: 700, fontSize: 34, color: C.ink, opacity: nums }}>
           Estimated average FPS (rounded) · {D.setting}
         </div>
@@ -412,19 +412,21 @@ const Payoff: React.FC<{ t: number; D: Display; e: Events; c: Cam }> = ({ t, D, 
   );
 };
 
-/** The final question takes the headline's place on the landscape screen, above the comparison. */
+/** The final question takes the headline's place on the landscape screen, above the comparison; the site sits beneath it. */
 const Question: React.FC<{ t: number; e: Events; c: Cam }> = ({ t, e, c }) => {
   if (t < e.question + 0.08) return null;
   const R = screenRect(c);
   const u = R.w / 1920;
   const q = lerp(t, [e.question + 0.1, e.question + 0.3], [0, 1], easeOut);
-  const cta = lerp(t, [e.lastWord, e.lastWord + 0.35], [0, 1]);
+  const cta = lerp(t, [e.question + 0.4, e.question + 0.65], [0, 1]); // with the question, so both can be read before the end
   return (
     <div style={{ position: "absolute", left: R.x, top: R.y, width: 1920, height: 1080, transformOrigin: "0 0", transform: `scale(${u})`, fontFamily: FONT, textAlign: "center" }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 96, opacity: q, translate: `0px ${24 * (1 - q)}px`, fontWeight: 900, fontSize: 100, lineHeight: 1.04, color: C.ink }}>
         Would you have<br />guessed <span style={{ color: C.sup }}>four</span>?
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 982, opacity: cta, fontWeight: 800, fontSize: 52, letterSpacing: 4, color: C.muted }}>COMPARE BUILDS ON SPECSMITH</div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 918, opacity: cta, fontWeight: 800, fontSize: 88, lineHeight: 1.1, color: C.muted, whiteSpace: "nowrap" }}>
+        Compare builds at <span style={{ color: C.sup }}>specsmithpc.com</span>
+      </div>
     </div>
   );
 };
