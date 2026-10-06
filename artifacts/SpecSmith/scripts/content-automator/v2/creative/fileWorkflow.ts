@@ -35,7 +35,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
-import { contractDeclaresSynthetic } from "../research/creativeContract.ts";
+import { contractDeclaresSynthetic, type ClaimEvidenceValues } from "../research/creativeContract.ts";
 import { normalizeForMatching } from "../research/claimMention.ts";
 import { assessDivergence } from "./divergence.ts";
 import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
@@ -120,6 +120,8 @@ export interface ExportedBrief {
     readonly state: string;
     readonly requiredWording: readonly string[];
     readonly attribution: string | null;
+    /** The structured evidence a graphic's values must match, as one tuple. */
+    readonly evidence: readonly ClaimEvidenceValues[];
   }[];
   /** Named so an author can see what was considered and refused. */
   readonly refusedClaims: readonly { readonly claimId: string; readonly reason: string }[];
@@ -202,6 +204,7 @@ export function buildCreativeBrief(
       state: claim.state,
       requiredWording: claim.requiredWording,
       attribution: claim.attribution ?? null,
+      evidence: claim.evidence ?? [],
     })),
     refusedClaims: [
       ...input.research.unsafeClaims.map((claim) => ({ claimId: claim.claimId, reason: claim.reason })),
@@ -405,13 +408,14 @@ export function authoringGuide(brief: ExportedBrief): string {
   lines.push(`    sourceStateIdentifier: ${brief.motionGraphics.sourceStateIdentifier}`);
   lines.push("");
   lines.push(`- \`template\`: one of ${brief.motionGraphics.templates.map((template) => `\`${template}\``).join(", ")}.`);
+  lines.push("  - `upgrade-intro`: the mission's question as a headline, the GPU upgrade shown once, then the games' full names as large panels. No figures.");
   lines.push("  - `game-labels`: the games' full names, animated in. No figures.");
   lines.push("  - `fps-change`: per game, the before and after estimated FPS Compare shows.");
   lines.push("  - `percent-change`: per game, the estimated percentage boost, with its formula and the two values it uses.");
   lines.push("- `games`: one to three catalog game ids, in display order. Names are taken from the catalog.");
   lines.push('- `baseline`: which Compare build is "before" ("B" means B → A).');
   lines.push("");
-  lines.push("You never type a number into a graphic. Every figure it shows is computed, and every figure must be stated by an approved claim bound in that beat's `factDependencies`, or the beat is refused. A graphic carries the estimate disclosure like the capture. Each template and game set is its own picture for shot variety; no other setting is needed.");
+  lines.push("You never type a number into a graphic. Every value it shows is computed, and each game's values must be covered, as one tuple, by the `evidence` of an approved claim bound in that beat's `factDependencies`: the same game, setting, CPU, before and after GPU, and the same values. Matching digits elsewhere is not enough; otherwise the beat is refused. A graphic carries the estimate disclosure like the capture. Each template and game set is its own picture for shot variety; no other setting is needed.");
   lines.push("");
   lines.push("## Constraints");
   lines.push("");

@@ -28,6 +28,7 @@
 import {
   UNSAFE_FOR_CREATIVE,
   type AtomicClaim,
+  type ClaimConfiguration,
   type ClaimEvidenceLink,
   type ConfidenceAssessment,
   type EpistemicState,
@@ -52,6 +53,19 @@ export interface SafeClaim {
   /** Attribution the viewer must be given, where the source must be named. */
   readonly attribution?: string;
   readonly supportingSnapshotIds: readonly string[];
+  /**
+   * The structured evidence behind the claim: each applicable supporting
+   * observation's configuration and values, exactly as observed. A visual that
+   * shows values (a data motion graphic) is checked against THESE, so approval
+   * covers the game, setting and values together, not digits in a sentence.
+   */
+  readonly evidence?: readonly ClaimEvidenceValues[];
+}
+
+export interface ClaimEvidenceValues {
+  readonly observationId: string;
+  readonly configuration: ClaimConfiguration | null;
+  readonly fields: Readonly<Record<string, string | number | boolean>>;
 }
 
 /** A claim the Creative Director may not state, and precisely why. */
@@ -237,6 +251,11 @@ export function buildResearchCreativeContract(input: ContractInput): ResearchCre
           .map((link) => input.observations.find((entry) => entry.observationId === link.observationId)?.snapshotId)
           .filter((value): value is string => typeof value === "string"),
       )].sort(),
+      evidence: supporting
+        .filter((link) => link.applicability !== "not-applicable")
+        .map((link) => input.observations.find((entry) => entry.observationId === link.observationId))
+        .filter((entry): entry is Observation => entry !== undefined)
+        .map((entry) => ({ observationId: entry.observationId, configuration: entry.configuration ?? null, fields: { ...(entry.fields ?? {}) } })),
     });
   }
 

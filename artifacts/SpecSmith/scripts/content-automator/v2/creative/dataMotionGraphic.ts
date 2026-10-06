@@ -18,9 +18,10 @@
 //
 //   - Source: a graphic must name the mission's PRIMARY capture state. A graphic
 //     at another setting would put numbers on screen no claim covers.
-//   - Binding: every figure a graphic shows must appear in an approved claim
-//     the beat binds (see unboundGraphicFigures). A graphic cannot say more
-//     than research established.
+//   - Binding: every value a graphic shows must be covered, as one tuple, by
+//     the structured evidence of an approved claim the beat binds: the same
+//     game, setting, CPU, before and after GPU, and the same values (see
+//     unsupportedGraphicValues). Matching digits in a sentence is not enough.
 //   - Labels: the renderer always labels figures "Estimated FPS" / "estimated
 //     boost", names the setting, and shows the percentage formula with the
 //     values it uses. Disclosure: the estimate disclosure, as for Compare.
@@ -29,6 +30,9 @@
 //     from showing different data, not from changing the resolution.
 
 import games from "../../../../src/data/games.json" with { type: "json" };
+import gpuCatalog from "../../../../src/data/gpus.json" with { type: "json" };
+import cpuCatalog from "../../../../src/data/cpus.json" with { type: "json" };
+import type { ClaimEvidenceValues } from "../research/creativeContract.ts";
 import { leadsVsAverageFacts, type ComparePairing } from "../../leadsVsAverage/facts.ts";
 import type { CaptureView } from "./captureViews.ts";
 
@@ -36,12 +40,14 @@ export const DATA_MOTION_GRAPHIC_CAPABILITY = "render.data-motion-graphic";
 
 /**
  * The closed set of scenes the renderer draws.
+ *   upgrade-intro   the mission's question as a headline, the GPU upgrade shown
+ *                   once, then the games' full names as large panels; no figures
  *   game-labels     the games' full names, animated in; no figures
  *   fps-change      per game: before -> after estimated FPS, counting up
  *   percent-change  per game: the estimated percentage boost, as a growing bar,
  *                   with the formula and the two values it is computed from
  */
-export const DATA_MOTION_TEMPLATES = ["game-labels", "fps-change", "percent-change"] as const;
+export const DATA_MOTION_TEMPLATES = ["upgrade-intro", "game-labels", "fps-change", "percent-change"] as const;
 export type DataMotionTemplate = (typeof DATA_MOTION_TEMPLATES)[number];
 
 export interface DataMotionGraphic {
@@ -68,14 +74,25 @@ export interface ResolvedGameFigures {
   readonly formula: string;
 }
 
+export interface CatalogPart { readonly id: string; readonly name: string }
+
 export interface ResolvedDataMotionGraphic {
   readonly visualId: string;
   readonly template: DataMotionTemplate;
   readonly sourceStateIdentifier: string;
   readonly beforeBuild: string;
   readonly afterBuild: string;
+  /** The parts either side of the change. One CPU when only the GPU changes. */
+  readonly beforeGpu: CatalogPart;
+  readonly afterGpu: CatalogPart;
+  readonly beforeCpu: CatalogPart;
+  readonly afterCpu: CatalogPart;
+  readonly resolution: string;
+  readonly preset: string;
   /** e.g. "1440p High". */
   readonly setting: string;
+  /** upgrade-intro only: the mission's own viewer question, never author text. */
+  readonly headline: string | null;
   readonly games: readonly ResolvedGameFigures[];
 }
 
@@ -122,7 +139,7 @@ const capitalise = (value: string) => `${value[0].toUpperCase()}${value.slice(1)
  * Computes everything the graphic shows, from the primary view. Refuses a
  * graphic sourced from any other state, or a game Compare does not list.
  */
-export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: readonly CaptureView[]): ResolvedDataMotionGraphic {
+export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: readonly CaptureView[], context: { readonly viewerQuestion?: string } = {}): ResolvedDataMotionGraphic {
   const defects = dataMotionGraphicDefects(visual);
   if (defects.length) throw new DataMotionGraphicError(`${visual.visualId}: ${defects.join(" ")}`);
   const view = views.find((entry) => entry.stateIdentifier === visual.sourceStateIdentifier);
@@ -145,47 +162,97 @@ export function resolveDataMotionGraphic(visual: DataMotionGraphic, views: reado
     const after = visual.baseline === "B" ? row.fpsA : row.fpsB;
     return { gameId: id, name, before, after, percent: percentChange(before, after), formula: `(${after} − ${before}) ÷ ${before}` };
   });
+  const part = (list: unknown, id: string): CatalogPart => {
+    const found = (list as CatalogPart[]).find((entry) => entry.id === id);
+    if (!found) throw new DataMotionGraphicError(`${visual.visualId}: ${id} is not in the catalog.`);
+    return { id: found.id, name: found.name };
+  };
+  const [before, after] = visual.baseline === "B" ? ["B", "A"] as const : ["A", "B"] as const;
+  const gpuOf = (side: "A" | "B") => part(gpuCatalog, side === "A" ? pairing.gpuA : pairing.gpuB);
+  const cpuOf = (side: "A" | "B") => part(cpuCatalog, side === "A" ? pairing.cpuA : pairing.cpuB);
+  if (visual.template === "upgrade-intro" && !context.viewerQuestion?.trim()) {
+    throw new DataMotionGraphicError(`${visual.visualId}: upgrade-intro shows the mission's question, and none was given.`);
+  }
   return {
     visualId: visual.visualId,
     template: visual.template,
     sourceStateIdentifier: visual.sourceStateIdentifier,
     beforeBuild: visual.baseline === "B" ? facts.buildB : facts.buildA,
     afterBuild: visual.baseline === "B" ? facts.buildA : facts.buildB,
+    beforeGpu: gpuOf(before), afterGpu: gpuOf(after), beforeCpu: cpuOf(before), afterCpu: cpuOf(after),
+    resolution: pairing.resolution, preset: pairing.preset,
     setting: `${pairing.resolution} ${capitalise(pairing.preset)}`,
+    headline: visual.template === "upgrade-intro" ? context.viewerQuestion!.trim() : null,
     games: resolved,
   };
 }
 
-/** Every figure the graphic puts on screen, as the text a claim must contain. */
-export function figuresShown(graphic: ResolvedDataMotionGraphic): string[] {
-  if (graphic.template === "game-labels") return [];
-  if (graphic.template === "fps-change") return graphic.games.flatMap((game) => [String(game.before), String(game.after)]);
-  return graphic.games.flatMap((game) => [String(game.before), String(game.after), `${game.percent}%`]);
+/**
+ * One value tuple the graphic puts on screen: a game's before and after
+ * estimates (and percentage, for percent-change), at one setting, for one
+ * pairing, one way round. Approval has to cover the whole tuple.
+ */
+export interface ShownValues {
+  readonly gameId: string;
+  readonly resolution: string;
+  readonly preset: string;
+  readonly cpu: string;
+  readonly beforeGpu: string;
+  readonly afterGpu: string;
+  readonly before: number;
+  readonly after: number;
+  readonly percent: number | null;
 }
 
-const containsFigure = (text: string, figure: string) =>
-  new RegExp(`(^|[^0-9.])${figure.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![0-9])`).test(text);
+/** Every value tuple the graphic shows. Label templates show none. */
+export function valuesShown(graphic: ResolvedDataMotionGraphic): ShownValues[] {
+  if (graphic.template !== "fps-change" && graphic.template !== "percent-change") return [];
+  if (graphic.beforeCpu.id !== graphic.afterCpu.id) {
+    throw new DataMotionGraphicError(`${graphic.visualId}: the CPU changes too, so the figures are not a GPU upgrade's alone; no claim shape covers that.`);
+  }
+  return graphic.games.map((game) => ({
+    gameId: game.gameId, resolution: graphic.resolution, preset: graphic.preset, cpu: graphic.beforeCpu.id,
+    beforeGpu: graphic.beforeGpu.id, afterGpu: graphic.afterGpu.id, before: game.before, after: game.after,
+    percent: graphic.template === "percent-change" ? game.percent : null,
+  }));
+}
+
+const same = (a: unknown, b: unknown) => typeof a === "string" && typeof b === "string" && a.toLowerCase() === b.toLowerCase();
+
+/** Whether one observation covers the whole tuple: game, setting, pairing, direction and values. */
+export function evidenceCovers(evidence: ClaimEvidenceValues, shown: ShownValues): boolean {
+  const config = evidence.configuration ?? {};
+  const fields = evidence.fields;
+  return same(config.gameId, shown.gameId) && same(config.resolution, shown.resolution) && same(config.preset, shown.preset) &&
+    same(fields.cpu, shown.cpu) && same(fields.beforeGpu, shown.beforeGpu) && same(fields.afterGpu, shown.afterGpu) &&
+    fields.estimatedFpsBefore === shown.before && fields.estimatedFpsAfter === shown.after &&
+    (shown.percent === null || fields.percent === shown.percent);
+}
 
 /**
- * Figures a beat's graphics show that no approved claim bound on that beat
- * states. Empty means every number on screen is covered by research.
+ * Value tuples a beat's graphics show that no approved claim bound on that
+ * beat covers through its structured evidence. Empty means every value on
+ * screen is approved for that game, setting, pairing and direction.
  */
-export function unboundGraphicFigures(input: {
+export function unsupportedGraphicValues(input: {
   readonly beats: readonly { readonly visualIds: readonly string[]; readonly factDependencies: readonly string[] }[];
   readonly graphics: readonly ResolvedDataMotionGraphic[];
-  readonly approvedPropositions: Readonly<Record<string, string>>;
-}): { readonly beat: number; readonly visualId: string; readonly figure: string }[] {
-  const out: { beat: number; visualId: string; figure: string }[] = [];
+  readonly approvedClaims: readonly { readonly claimId: string; readonly evidence?: readonly ClaimEvidenceValues[] }[];
+}): { readonly beat: number; readonly visualId: string; readonly shown: ShownValues }[] {
+  const out: { beat: number; visualId: string; shown: ShownValues }[] = [];
   input.beats.forEach((beat, index) => {
-    const bound = beat.factDependencies.map((id) => input.approvedPropositions[id]).filter((text): text is string => typeof text === "string");
+    const evidence = input.approvedClaims.filter((claim) => beat.factDependencies.includes(claim.claimId)).flatMap((claim) => claim.evidence ?? []);
     for (const graphic of input.graphics.filter((entry) => beat.visualIds.includes(entry.visualId))) {
-      for (const figure of figuresShown(graphic)) {
-        if (!bound.some((text) => containsFigure(text, figure))) out.push({ beat: index + 1, visualId: graphic.visualId, figure });
+      for (const shown of valuesShown(graphic)) {
+        if (!evidence.some((entry) => evidenceCovers(entry, shown))) out.push({ beat: index + 1, visualId: graphic.visualId, shown });
       }
     }
   });
   return out;
 }
+
+export const describeShown = (shown: ShownValues) =>
+  `${shown.gameId} ${shown.before} → ${shown.after}${shown.percent === null ? "" : ` (${shown.percent}%)`} at ${shown.resolution} ${shown.preset}, ${shown.beforeGpu} → ${shown.afterGpu} with ${shown.cpu}`;
 
 /** The picture a graphic puts on screen, for shot-variety: template, games and state. */
 export function dataMotionGraphicIdentity(visual: DataMotionGraphic): string {

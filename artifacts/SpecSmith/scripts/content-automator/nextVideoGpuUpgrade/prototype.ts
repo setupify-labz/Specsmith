@@ -90,17 +90,22 @@ export async function renderPrototype() {
     "-metadata", "title=PROTOTYPE gpu-upgrade opening (3 s)", "-metadata", "comment=Visual prototype. No voice. Figures are SpecSmith model estimates. Not reviewed, not approved, not for publication.",
     video]);
 
+  // Phone-size frames: 390 px wide, an iPhone's CSS width, as a viewer sees them.
   const frames: string[] = [];
-  for (const at of [0, 0.25, 0.6, 1.5, 2.95]) {
-    const path = join(PROTOTYPE_DIR, `frame-${at.toFixed(2)}s.png`);
-    await run("ffmpeg", ["-v", "error", "-y", "-ss", at.toFixed(3), "-i", video, "-frames:v", "1", path]);
+  const moments = [0, 0.3, 0.6, 1.0, 1.4, 1.8, 2.2, 2.6, 2.95];
+  for (const at of moments) {
+    const path = join(PROTOTYPE_DIR, `phone-${at.toFixed(2)}s.png`);
+    await run("ffmpeg", ["-v", "error", "-y", "-ss", at.toFixed(3), "-i", video, "-frames:v", "1", "-vf", "scale=390:693:flags=lanczos", path]);
     frames.push(path);
   }
-  const sheet = join(PROTOTYPE_DIR, "inspection-sheet.png");
+  const sheet = join(PROTOTYPE_DIR, "phone-sheet.png");
   await run("ffmpeg", ["-v", "error", "-y", ...frames.flatMap((path) => ["-i", path]), "-filter_complex",
-    `${frames.map((_, i) => `[${i}:v]scale=432:768[s${i}]`).join(";")};${frames.map((_, i) => `[s${i}]`).join("")}hstack=inputs=${frames.length}`, "-frames:v", "1", sheet]);
+    `${frames.map((_, i) => `[${i}:v]pad=400:703:5:5:color=0x2a2a36[s${i}]`).join(";")};${frames.map((_, i) => `[s${i}]`).join("")}` +
+    `xstack=inputs=${frames.length}:layout=${frames.map((_, i) => `${(i % 5) * 400}_${Math.floor(i / 5) * 703}`).join("|")}:fill=0x2a2a36`, "-frames:v", "1", sheet]);
 
   const caption0 = await textRows(video, 0, L.captions.y, L.captions.height);
+  // The question headline, at the top of the story band, on frame 0.
+  const headline0 = await textRows(video, 0, L.story.y, 360);
   const bytes = await readFile(video);
   const report = {
     label: "VISUAL PROTOTYPE, 3 s, silent. Not reviewed, not approved, not for publication.",
@@ -112,6 +117,7 @@ export async function renderPrototype() {
     story: { sha256: story.sha256, minFontPx: story.minFontPx, valuesSha256: story.valuesSha256 },
     disclosurePanel: panel.metadata,
     captionFrame0: { ...caption0, frameHeight: L.height, percentOfFrame: Number(((caption0.last - caption0.first + 1) / L.height * 100).toFixed(1)) },
+    questionHeadlineFrame0: { ...headline0, frameHeight: L.height, percentOfFrame: Number(((headline0.last - headline0.first + 1) / L.height * 100).toFixed(1)) },
     frames, sheet,
   };
   await writeFile(join(PROTOTYPE_DIR, "report.json"), `${JSON.stringify(report, null, 2)}\n`);

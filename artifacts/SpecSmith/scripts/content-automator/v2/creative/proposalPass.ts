@@ -10,7 +10,7 @@ import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
-import { DATA_MOTION_GRAPHIC_CAPABILITY, resolveDataMotionGraphic, unboundGraphicFigures, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, unsupportedGraphicValues, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
 import { critiqueConceptSet } from "./conceptCritique.ts";
 import { retrieveCreativeMemory, type CreativeMemoryEntry, type RetrievalQuery } from "./memory.ts";
 
@@ -115,13 +115,14 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     const motionGraphicProblems: string[] = [];
     for (const visual of concept.visuals) {
       if (visual.kind !== "data-motion-graphic") continue;
-      try { motionGraphics.push(resolveDataMotionGraphic(visual, views)); }
+      try { motionGraphics.push(resolveDataMotionGraphic(visual, views, { viewerQuestion: input.viewerQuestion })); }
       catch (error) { motionGraphicProblems.push((error as Error).message); }
     }
-    for (const entry of unboundGraphicFigures({ beats: concept.beats, graphics: motionGraphics,
-      approvedPropositions: Object.fromEntries(approved.map((claim) => [claim.claimId, claim.proposition])) })) {
-      motionGraphicProblems.push(`Beat ${entry.beat}: motion graphic "${entry.visualId}" shows ${entry.figure}, which no approved claim bound on that beat states. Bind the claim that states it, or show a template without that figure.`);
-    }
+    try {
+      for (const entry of unsupportedGraphicValues({ beats: concept.beats, graphics: motionGraphics, approvedClaims: approved })) {
+        motionGraphicProblems.push(`Beat ${entry.beat}: motion graphic "${entry.visualId}" shows ${describeShown(entry.shown)}, and no approved claim bound on that beat covers that game, setting, pairing, direction and those values together. Bind the claim whose evidence states exactly this, or show a template without values.`);
+      }
+    } catch (error) { motionGraphicProblems.push((error as Error).message); }
     // This production adapter renders the exact Compare capture and data
     // motion graphics computed from it. Declared illustrations must stay
     // blocked, not be silently replaced with screenshots.

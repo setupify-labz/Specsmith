@@ -108,6 +108,7 @@
               },
               "template": {
                 "enum": [
+                  "upgrade-intro",
                   "game-labels",
                   "fps-change",
                   "percent-change"

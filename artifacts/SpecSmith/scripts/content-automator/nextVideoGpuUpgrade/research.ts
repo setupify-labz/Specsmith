@@ -165,6 +165,10 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
   const facts = gpuUpgradeFacts();
   const modelHash = modelContentHash();
   const config = (gameId: string) => ({ cpu: "Ryzen 5 7600", gameId, resolution: "1440p", preset: "high" });
+  // Which pairing, and which way round, every value below describes: before is
+  // build B (RTX 4060), after is build A (RTX 5070), one CPU. Kept beside the
+  // values so a visual can be checked against all of it together.
+  const PAIRING_FIELDS = { cpu: GPU_UPGRADE_PAIRING.cpuA, beforeGpu: GPU_UPGRADE_PAIRING.gpuB, afterGpu: GPU_UPGRADE_PAIRING.gpuA } as const;
 
   const question: ResearchQuestion = {
     questionId: QUESTION_ID,
@@ -199,7 +203,7 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
     snapshotId: snapshot.snapshotId,
     form: "structured-value",
     content: `${row.game} at 1440p High: ${facts.buildB} estimated ${row.fpsB} FPS; ${facts.buildA} estimated ${row.fpsA} FPS (SpecSmith model estimates).`,
-    fields: { estimatedFpsBefore: row.fpsB, estimatedFpsAfter: row.fpsA, gpuWeight: row.gpuWeight },
+    fields: { ...PAIRING_FIELDS, estimatedFpsBefore: row.fpsB, estimatedFpsAfter: row.fpsA, gpuWeight: row.gpuWeight },
     configuration: config(row.gameId),
     observedAt: at,
     provenance,
@@ -212,7 +216,7 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
       snapshotId: snapshot.snapshotId,
       form: "structured-value",
       content: `${row.game} at 1440p High: (${row.fpsA} − ${row.fpsB}) ÷ ${row.fpsB} = ${row.percent}% from Compare's displayed estimates (${facts.buildB} → ${facts.buildA}); the model's unrounded ratio is ${row.unroundedRatio}.`,
-      fields: { estimatedFpsBefore: row.fpsB, estimatedFpsAfter: row.fpsA, percent: row.percent, unroundedRatio: row.unroundedRatio },
+      fields: { ...PAIRING_FIELDS, estimatedFpsBefore: row.fpsB, estimatedFpsAfter: row.fpsA, percent: row.percent, unroundedRatio: row.unroundedRatio },
       configuration: config(row.gameId),
       observedAt: at,
       provenance,

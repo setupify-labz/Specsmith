@@ -47,7 +47,26 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-gpu-heavy",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "gameId": "alanwake2",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "cpu": "r5-7600",
+            "beforeGpu": "rtx4060",
+            "afterGpu": "rtx5070",
+            "estimatedFpsBefore": 43,
+            "estimatedFpsAfter": 65,
+            "gpuWeight": 0.92
+          }
+        }
+      ]
     },
     {
       "claimId": "gpu-upgrade-cpu-heavy-game",
@@ -56,7 +75,26 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-cpu-heavy",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "gameId": "valorant",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "cpu": "r5-7600",
+            "beforeGpu": "rtx4060",
+            "afterGpu": "rtx5070",
+            "estimatedFpsBefore": 263,
+            "estimatedFpsAfter": 305,
+            "gpuWeight": 0.45
+          }
+        }
+      ]
     },
     {
       "claimId": "gpu-upgrade-percent-gpu-heavy-game",
@@ -65,7 +103,27 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-percent-gpu-heavy",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "gameId": "alanwake2",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "cpu": "r5-7600",
+            "beforeGpu": "rtx4060",
+            "afterGpu": "rtx5070",
+            "estimatedFpsBefore": 43,
+            "estimatedFpsAfter": 65,
+            "percent": 51,
+            "unroundedRatio": 1.496
+          }
+        }
+      ]
     },
     {
       "claimId": "gpu-upgrade-percent-cpu-heavy-game",
@@ -74,7 +132,27 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-percent-cpu-heavy",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "gameId": "valorant",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "cpu": "r5-7600",
+            "beforeGpu": "rtx4060",
+            "afterGpu": "rtx5070",
+            "estimatedFpsBefore": 263,
+            "estimatedFpsAfter": 305,
+            "percent": 16,
+            "unroundedRatio": 1.16
+          }
+        }
+      ]
     },
     {
       "claimId": "bigger-percentage-boost",
@@ -83,14 +161,41 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-percent-comparison",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "gpuHeavyPercent": 51,
+            "cpuHeavyPercent": 16
+          }
+        }
+      ]
     },
     {
       "claimId": "model-weights-games",
       "proposition": "SpecSmith's model weights each game by how much it leans on the GPU; it gives Alan Wake 2 far more GPU weight than Valorant.",
       "state": "strongly-supported",
       "requiredWording": [],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-weights",
+          "configuration": {
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "gpuHeavyWeight": 0.92,
+            "cpuHeavyWeight": 0.45
+          }
+        }
+      ]
     },
     {
       "claimId": "rtx5070-higher-in-every-game",
@@ -99,7 +204,21 @@
       "requiredWording": [
         "Estimated FPS"
       ],
-      "attribution": "SpecSmith"
+      "attribution": "SpecSmith",
+      "evidence": [
+        {
+          "observationId": "obs-tally",
+          "configuration": {
+            "cpu": "Ryzen 5 7600",
+            "resolution": "1440p",
+            "preset": "high"
+          },
+          "fields": {
+            "leadsA": 20,
+            "games": 20
+          }
+        }
+      ]
     }
   ],
   "refusedClaims": [
@@ -126,6 +245,7 @@
     "capabilityId": "render.data-motion-graphic",
     "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
     "templates": [
+      "upgrade-intro",
       "game-labels",
       "fps-change",
       "percent-change"
@@ -260,5 +380,5 @@
     "Passing every check makes a batch ready for human review. It does not approve it, render it, or permit publishing."
   ],
   "syntheticResearch": false,
-  "briefHash": "853c7176250d50af98c5f9aecf7b1a447ed8882799b2297583aba4118858bcfa"
+  "briefHash": "2b6947b57417617ad60cbf507b5fbce5386033127e582f7c2c0b8c2c0d98386a"
 }

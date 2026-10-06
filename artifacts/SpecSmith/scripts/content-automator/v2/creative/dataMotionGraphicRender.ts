@@ -154,8 +154,139 @@ function percentChange(t) {
   }
 }
 
+/** Word-wrapped headline at the largest size that fits in maxLines; returns laid-out words. */
+function layoutHeadline(s, maxWidth, maxLines, max, min) {
+  const words = s.split(' ');
+  for (let size = max; size >= min; size -= 2) {
+    ctx.font = 'bold ' + size + 'px "' + FONT + '"';
+    const space = ctx.measureText(' ').width;
+    const lines = [[]]; let width = 0, ok = true;
+    for (const word of words) {
+      const w = ctx.measureText(word).width;
+      if (w > maxWidth) { ok = false; break; }
+      if (width > 0 && width + space + w > maxWidth) { lines.push([]); width = 0; }
+      lines[lines.length - 1].push({ word, w });
+      width += (width > 0 ? space : 0) + w;
+    }
+    if (ok && lines.length <= maxLines) return { size, space, lines };
+  }
+  measured.misfits.push(s);
+  return null;
+}
+const mix = (a, b, p) => {
+  const h = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+  const x = h(a), y = h(b);
+  return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * clamp(p))).join(',') + ')';
+};
+/** Lays out "old ↓ new" as two stacked, centred chips at the largest size that fits. */
+function upgradeLayout(oldLabel, newLabel) {
+  const PADX = 48;
+  for (let size = 84; size >= MIN_PRIMARY; size -= 2) {
+    ctx.font = 'bold ' + size + 'px "' + FONT + '"';
+    const w = Math.max(ctx.measureText(oldLabel).width, ctx.measureText(newLabel).width) + 2 * PADX;
+    if (w <= INNER) {
+      const box = { x: (W - w) / 2, w };
+      return { size, h: Math.round(size * 1.8), a: box, b: box, arrowGap: 110 };
+    }
+  }
+  measured.misfits.push(oldLabel + ' → ' + newLabel);
+  return null;
+}
+function chipAt(label, box, y, h, size, border, fill, colour, scale) {
+  ctx.save();
+  const cx = box.x + box.w / 2, cy = y + h / 2;
+  ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
+  rect(box.x, y, box.w, h, 28, fill);
+  ctx.strokeStyle = border; ctx.lineWidth = 5; ctx.beginPath(); ctx.roundRect(box.x, y, box.w, h, 28); ctx.stroke();
+  ctx.font = 'bold ' + size + 'px "' + FONT + '"'; ctx.fillStyle = colour; ctx.textAlign = 'center';
+  ctx.fillText(label, cx, y + h / 2 + size * 0.36);
+  ctx.restore();
+  measured.minFontPx = Math.min(measured.minFontPx, Math.round(size * Math.min(1, scale)));
+}
+
+/**
+ * The opening: the question, the upgrade once, then the two games.
+ * Every step is a piece of the question arriving; nothing moves for its own sake.
+ *   0.00-0.70  the upgrade happens: RTX 4060 dims, the arrow draws, RTX 5070
+ *              lands (both chips fully on screen from frame 0)
+ *   1.05-1.30  the upgrade rises and clears ...
+ *   1.20-1.45  ... and the same facts settle as a compact header
+ *   1.20-2.05  the two game panels arrive, one after the other
+ *   2.25-2.75  each panel gains its label, in turn
+ *   2.55-2.90  the question's key words take the accent
+ */
+function upgradeIntro(t) {
+  const head = layoutHeadline(G.headline, INNER, 3, 84, MIN_PRIMARY);
+  let y = 0;
+  if (head) {
+    const lineH = Math.round(head.size * 1.16);
+    const key = new Set(['bigger', 'percentage', 'boost?', 'boost']);
+    const p = ease((t - 2.55) / 0.35);
+    head.lines.forEach((line, i) => {
+      let x = PAD; y = 40 + head.size + i * lineH;
+      for (const { word, w } of line) {
+        ctx.font = 'bold ' + head.size + 'px "' + FONT + '"';
+        ctx.fillStyle = key.has(word.toLowerCase()) ? mix(C.text, C.accentText, p) : C.text;
+        ctx.textAlign = 'left'; ctx.fillText(word, x, y);
+        x += w + head.space;
+      }
+    });
+    measured.minFontPx = Math.min(measured.minFontPx, head.size);
+  }
+  const headBottom = y + 30;
+
+  const oldName = G.beforeGpu.name, newName = G.afterGpu.name;
+  const lay = upgradeLayout(oldName, newName);
+  const leave = ease((t - 1.05) / 0.25);
+  if (lay && leave < 1) {
+    const gy = headBottom + 70;
+    ctx.save(); ctx.globalAlpha = 1 - leave; ctx.translate(0, -120 * leave);
+    // The old GPU is on screen from frame 0 and dims as the new one lands.
+    const dim = ease(t / 0.6);
+    chipAt(oldName, lay.a, gy, lay.h, lay.size, mix(C.textSecondary, C.card, dim * 0.5), C.card, mix(C.text, C.textSecondary, dim), 1);
+    const draw = ease(t / 0.4);
+    const ax = W / 2, ay0 = gy + lay.h + 18, ay1 = ay0 + lay.arrowGap - 36;
+    ctx.strokeStyle = C.accent; ctx.lineWidth = 10; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(ax, ay0); ctx.lineTo(ax, ay0 + (ay1 - ay0) * draw); ctx.stroke();
+    if (draw > 0.85) { ctx.beginPath(); ctx.moveTo(ax, ay1); ctx.lineTo(ax - 26, ay1 - 28); ctx.moveTo(ax, ay1); ctx.lineTo(ax + 26, ay1 - 28); ctx.stroke(); }
+    // The new GPU rises into place, fully on screen throughout.
+    const land = ease(t / 0.7);
+    const by = gy + lay.h + lay.arrowGap + 60 * (1 - land);
+    chipAt(newName, lay.b, by, lay.h, lay.size, mix(C.textSecondary, C.accent, land), mix(C.card, C.surface, land), C.text, 1);
+    // Below the lowest point the new chip passes through, so they never touch.
+    text('Same ' + G.beforeCpu.name + ' · ' + G.setting, W / 2, gy + 2 * lay.h + lay.arrowGap + 60 + 80, INNER, 46, MIN_LABEL, C.textSecondary, 'center', 'normal');
+    ctx.restore();
+  }
+  const header = ease((t - 1.2) / 0.25);
+  if (header > 0) {
+    ctx.save(); ctx.globalAlpha = header;
+    text(oldName + '  →  ' + newName, PAD, headBottom + 56, INNER, 52, MIN_LABEL, C.accentText, 'left', 'bold');
+    text('Same ' + G.beforeCpu.name + ' · ' + G.setting, PAD, headBottom + 112, INNER, 42, MIN_LABEL, C.textSecondary, 'left', 'normal');
+    ctx.restore();
+  }
+
+  const top = headBottom + 170, gap = 40, n = G.games.length;
+  const h = Math.min(400, (H - 50 - top - (n - 1) * gap) / n);
+  G.games.forEach((game, i) => {
+    const arrive = ease((t - 1.2 - i * 0.25) / 0.6);
+    if (arrive <= 0) return;
+    const py = top + i * (h + gap) + 90 * (1 - arrive);
+    ctx.save(); ctx.globalAlpha = arrive;
+    rect(PAD, py, INNER, h, 30, C.card);
+    rect(PAD, py, 18, h, 9, GAME_COLOURS[i]);
+    text(game.name, PAD + 64, py + h * 0.52, INNER - 128, 124, MIN_PRIMARY, C.text, 'left', 'bold');
+    const label = ease((t - 2.25 - i * 0.2) / 0.3);
+    if (label > 0) {
+      ctx.globalAlpha = arrive * label;
+      text('estimated % boost · ' + G.setting, PAD + 64 + 30 * (1 - label), py + h * 0.8, INNER - 128, 46, MIN_LABEL, GAME_COLOURS[i] === C.accent ? C.accentText : GAME_COLOURS[i], 'left', 'bold');
+    }
+    ctx.restore();
+  });
+}
+
 window.renderAt = (t) => {
   ctx.fillStyle = C.background; ctx.fillRect(0, 0, W, H);
+  if (G.template === 'upgrade-intro') { upgradeIntro(t); return canvas.toDataURL('image/png'); }
   context();
   if (G.template === 'game-labels') gameLabels(t);
   else if (G.template === 'fps-change') fpsChange(t);

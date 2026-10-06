@@ -10,10 +10,10 @@ import { assessConcept, type CreativeConcept } from "./concept.ts";
 import { missionCaptureViews, pictureIdentity } from "./captureViews.ts";
 import {
   dataMotionGraphicDefects,
-  figuresShown,
   percentChange,
   resolveDataMotionGraphic,
-  unboundGraphicFigures,
+  unsupportedGraphicValues,
+  valuesShown,
   type DataMotionGraphic,
 } from "./dataMotionGraphic.ts";
 import { buildCreativeProposalProductionPlan, runCreativeProposalPass } from "./proposalPass.ts";
@@ -41,8 +41,11 @@ describe("resolving a graphic from the primary Compare state", () => {
       { gameId: "alanwake2", name: "Alan Wake 2", before: 43, after: 65, percent: 51, formula: "(65 − 43) ÷ 43" },
       { gameId: "valorant", name: "Valorant", before: 263, after: 305, percent: 16, formula: "(305 − 263) ÷ 263" },
     ]);
-    expect(figuresShown(resolved)).toEqual(["43", "65", "51%", "263", "305", "16%"]);
-    expect(figuresShown(resolveDataMotionGraphic(graphic({ template: "game-labels" }), views))).toEqual([]);
+    expect(valuesShown(resolved).map((entry) => [entry.gameId, entry.before, entry.after, entry.percent, entry.resolution, entry.preset, entry.cpu, entry.beforeGpu, entry.afterGpu])).toEqual([
+      ["alanwake2", 43, 65, 51, "1440p", "high", "r5-7600", "rtx4060", "rtx5070"],
+      ["valorant", 263, 305, 16, "1440p", "high", "r5-7600", "rtx4060", "rtx5070"],
+    ]);
+    expect(valuesShown(resolveDataMotionGraphic(graphic({ template: "game-labels" }), views))).toEqual([]);
     expect(percentChange(43, 65)).toBe(51);
     expect(() => percentChange(0, 10)).toThrow();
   });
@@ -58,11 +61,67 @@ describe("resolving a graphic from the primary Compare state", () => {
     expect(reviewVisualHonesty([graphic({ games: ["alanwake2", "alanwake2"] })]).acceptable).toBe(false);
   });
 
-  it("finds a figure no bound claim states", () => {
-    const resolved = resolveDataMotionGraphic(graphic(), views);
-    const propositions = Object.fromEntries(mission.research.safeClaims.map((claim) => [claim.claimId, claim.proposition]));
-    const unbound = unboundGraphicFigures({ beats: [{ visualIds: ["g"], factDependencies: ["gpu-upgrade-percent-gpu-heavy-game"] }], graphics: [resolved], approvedPropositions: propositions });
-    expect(unbound.map((entry) => entry.figure)).toEqual(["263", "305", "16%"]);
+  it("binds values to approved evidence as one tuple: game, setting, pairing, direction and values together", () => {
+    const approved = mission.research.safeClaims;
+    const check = (visual: DataMotionGraphic, claimIds: string[], claims = approved) => unsupportedGraphicValues({
+      beats: [{ visualIds: [visual.visualId], factDependencies: claimIds }], graphics: [resolveDataMotionGraphic(visual, views)], approvedClaims: claims,
+    }).map((entry) => entry.shown.gameId);
+    const fps = graphic({ template: "fps-change", games: ["alanwake2"] });
+    // The right claim covers it.
+    expect(check(fps, ["gpu-upgrade-gpu-heavy-game"])).toEqual([]);
+    // Another game's claim does not, though it is about the same upgrade.
+    expect(check(fps, ["gpu-upgrade-cpu-heavy-game"])).toEqual(["alanwake2"]);
+    // Flipped baseline: the graphic would show 65 → 43. Both digits are in the
+    // claim's sentence, so a digit match would pass it; the tuple does not.
+    const flipped = graphic({ template: "fps-change", games: ["alanwake2"], baseline: "A" });
+    expect(approved.find((claim) => claim.claimId === "gpu-upgrade-gpu-heavy-game")!.proposition).toMatch(/43.*65/);
+    expect(check(flipped, ["gpu-upgrade-gpu-heavy-game"])).toEqual(["alanwake2"]);
+    // The right digits with evidence for another setting, or no structured evidence at all: refused.
+    const reworded = approved.map((claim) => claim.claimId !== "gpu-upgrade-gpu-heavy-game" ? claim : {
+      ...claim, evidence: claim.evidence!.map((entry) => ({ ...entry, configuration: { ...entry.configuration!, resolution: "4k" } })),
+    });
+    expect(check(fps, ["gpu-upgrade-gpu-heavy-game"], reworded)).toEqual(["alanwake2"]);
+    const sentenceOnly = approved.map((claim) => claim.claimId !== "gpu-upgrade-gpu-heavy-game" ? claim : { ...claim, evidence: undefined });
+    expect(check(fps, ["gpu-upgrade-gpu-heavy-game"], sentenceOnly)).toEqual(["alanwake2"]);
+    // A percentage needs evidence that carries the percentage: the FPS-only claim is not enough.
+    expect(check(graphic({ games: ["alanwake2"] }), ["gpu-upgrade-gpu-heavy-game"])).toEqual(["alanwake2"]);
+    expect(check(graphic({ games: ["alanwake2"] }), ["gpu-upgrade-percent-gpu-heavy-game"])).toEqual([]);
+  });
+
+  it("refuses when exactly one part of the tuple differs from the evidence", () => {
+    const approved = mission.research.safeClaims;
+    const claimId = "gpu-upgrade-percent-gpu-heavy-game";
+    const pct = graphic({ games: ["alanwake2"] });
+    const with_ = (change: (entry: { configuration: Record<string, unknown>; fields: Record<string, unknown> }) => void) => approved.map((claim) => claim.claimId !== claimId ? claim : {
+      ...claim, evidence: claim.evidence!.map((entry) => {
+        const copy = { ...entry, configuration: { ...entry.configuration! } as Record<string, unknown>, fields: { ...entry.fields } as Record<string, unknown> };
+        change(copy);
+        return copy as never;
+      }),
+    });
+    const refused = (claims: typeof approved) => unsupportedGraphicValues({
+      beats: [{ visualIds: ["g"], factDependencies: [claimId] }], graphics: [resolveDataMotionGraphic(pct, views)], approvedClaims: claims,
+    }).length === 1;
+    expect(refused(approved)).toBe(false);
+    expect(refused(with_((e) => { e.configuration.gameId = "valorant"; }))).toBe(true);
+    expect(refused(with_((e) => { e.configuration.resolution = "4k"; }))).toBe(true);
+    expect(refused(with_((e) => { e.configuration.preset = "ultra"; }))).toBe(true);
+    expect(refused(with_((e) => { e.fields.cpu = "i5-12400f"; }))).toBe(true);
+    expect(refused(with_((e) => { e.fields.beforeGpu = "rtx5070"; e.fields.afterGpu = "rtx4060"; }))).toBe(true);
+    expect(refused(with_((e) => { e.fields.estimatedFpsBefore = 44; }))).toBe(true);
+    expect(refused(with_((e) => { e.fields.estimatedFpsAfter = 66; }))).toBe(true);
+    expect(refused(with_((e) => { e.fields.percent = 50; }))).toBe(true);
+  });
+
+  it("upgrade-intro shows the mission's own question and the parts, and no values", () => {
+    const intro = graphic({ template: "upgrade-intro" });
+    expect(() => resolveDataMotionGraphic(intro, views)).toThrow(/mission's question/);
+    const resolved = resolveDataMotionGraphic(intro, views, { viewerQuestion: mission.viewerQuestion });
+    expect(resolved.headline).toBe("Which game gets the bigger percentage boost?");
+    expect([resolved.beforeGpu.name, resolved.afterGpu.name, resolved.beforeCpu.name, resolved.afterCpu.name, resolved.setting])
+      .toEqual(["RTX 4060", "RTX 5070", "Ryzen 5 7600", "Ryzen 5 7600", "1440p High"]);
+    expect(resolved.games.map((game) => game.name)).toEqual(["Alan Wake 2", "Valorant"]);
+    expect(valuesShown(resolved)).toEqual([]);
   });
 
   it("is one picture per template and game set, whatever its id", () => {
@@ -86,7 +145,7 @@ describe("the workflow's guards on graphics", () => {
     concepts[0] = { ...a, beats: a.beats.map((beat, i) => i === index ? { ...beat, factDependencies: ["gpu-upgrade-percent-gpu-heavy-game"] } : beat) };
     const proposal = pass(concepts).proposals[0];
     expect(proposal.contractEligible).toBe(false);
-    expect(proposal.motionGraphicProblems.join(" ")).toMatch(/shows 263, which no approved claim bound on that beat states/);
+    expect(proposal.motionGraphicProblems.join(" ")).toMatch(/shows valorant 263 → 305 \(16%\) at 1440p high, rtx4060 → rtx5070 with r5-7600, and no approved claim bound on that beat covers/);
   });
 
   it("refuses a graphic computed at another setting", () => {

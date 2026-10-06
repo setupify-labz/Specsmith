@@ -78,14 +78,15 @@ Capability `render.data-motion-graphic`. A visual of kind `data-motion-graphic` 
 
     sourceStateIdentifier: compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2
 
-- `template`: one of `game-labels`, `fps-change`, `percent-change`.
+- `template`: one of `upgrade-intro`, `game-labels`, `fps-change`, `percent-change`.
+  - `upgrade-intro`: the mission's question as a headline, the GPU upgrade shown once, then the games' full names as large panels. No figures.
   - `game-labels`: the games' full names, animated in. No figures.
   - `fps-change`: per game, the before and after estimated FPS Compare shows.
   - `percent-change`: per game, the estimated percentage boost, with its formula and the two values it uses.
 - `games`: one to three catalog game ids, in display order. Names are taken from the catalog.
 - `baseline`: which Compare build is "before" ("B" means B → A).
 
-You never type a number into a graphic. Every figure it shows is computed, and every figure must be stated by an approved claim bound in that beat's `factDependencies`, or the beat is refused. A graphic carries the estimate disclosure like the capture. Each template and game set is its own picture for shot variety; no other setting is needed.
+You never type a number into a graphic. Every value it shows is computed, and each game's values must be covered, as one tuple, by the `evidence` of an approved claim bound in that beat's `factDependencies`: the same game, setting, CPU, before and after GPU, and the same values. Matching digits elsewhere is not enough; otherwise the beat is refused. A graphic carries the estimate disclosure like the capture. Each template and game set is its own picture for shot variety; no other setting is needed.
 
 ## Constraints
 

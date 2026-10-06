@@ -1,6 +1,6 @@
 # Next Short brief (revised): "Which game gets the bigger percentage boost?"
 
-**Status:** the existing workflow says this is ready for human review. It is **not approved**. A 3-second silent visual prototype of the opening exists. Nothing else has been rendered, no voice of any kind was generated, nothing was spent, and nothing was published.
+**Status:** the existing workflow says this is ready for human review. It is **not approved**. A 3-second silent visual prototype of the revised opening exists. Nothing else has been rendered, no voice of any kind was generated, nothing was spent, and nothing was published.
 
 The first brief ("Will a new GPU make every game faster by the same amount?") and its five attempts stay in `workflow/` as history. This revision lives in `workflow-percent/`.
 
@@ -21,13 +21,21 @@ It adds one declared visual kind, `data-motion-graphic`. It is not a new framewo
 - Small edits to the existing modules.
 
 **How an author uses it:**
-- The author chooses a `template` (`game-labels`, `fps-change` or `percent-change`), catalog `games`, and a `baseline`.
+- The author chooses a `template` (`upgrade-intro`, `game-labels`, `fps-change` or `percent-change`), catalog `games`, and a `baseline`.
 - The author never types a number or a game name.
 
 **What the system guarantees:**
 - **Values are computed** at the mission's primary Compare state, using the same functions Compare uses.
 - **Full catalog game names** are always used.
-- **Numbers must be backed by research.** Every figure a graphic shows must appear in an approved claim bound on that beat, or the beat is refused.
+- **Numbers must be backed by research, as a whole.** Approved claims now carry their structured evidence: each supporting observation's configuration and values. Each game's values a graphic shows must match one of those observations on all of these at once:
+  - the game;
+  - the resolution and preset;
+  - the CPU;
+  - the before and after GPU, which fixes the direction;
+  - the before and after FPS;
+  - the percentage, for `percent-change`.
+
+  Matching digits in a sentence is no longer enough. A flipped baseline that would show 65 → 43 uses digits that appear in the Alan Wake 2 claim, and it is refused.
 - **Other settings are refused.** A graphic sourced from any state other than the primary view is refused.
 - **The disclosure is required.** The estimate disclosure is mandatory on every beat that shows a graphic, as it is for the Compare capture.
 - **Variety means different data.** Each template-and-game set is its own picture for shot variety. The same graphic under another id is the same picture.
@@ -35,7 +43,10 @@ It adds one declared visual kind, `data-motion-graphic`. It is not a new framewo
 - **SpecSmith colours** come from `src/index.css` (`--ff-*`): background `#0A0A0F`, card `#1C1C26`, text `#F0F0FF`, accent `#6C63FF`/`#9B94FF`, cyan `#00D4FF`.
   - **Font:** SpecSmith's Inter is not installed or bundled here, so the renderer uses DejaVu Sans. Swapping the font is a one-line change once Inter is available.
 
-**Tests:** `dataMotionGraphic.test.ts`, 10 tests. Each guard below was disabled in turn, and every time a test failed: figure binding, primary-view-only, disclosure, picture identity.
+**Tests:** `dataMotionGraphic.test.ts`, 12 tests.
+- One test changes exactly one field of the evidence at a time, and each change is refused.
+- I then removed each part of the tuple match in turn (game, resolution, preset, CPU, direction, FPS values, percentage). Every removal made a test fail.
+- The earlier guard checks still hold: primary view only, disclosure, picture identity.
 
 **One existing test changed on purpose.** With graphics available, a single-view mission's shot repetition is now something the author can fix, so it is reported as `required` rather than "blocked outside the author". It still blocks the batch, and the test still proves it.
 
@@ -64,7 +75,8 @@ Research snapshot `specsmith-model-f434ab70dde4e6fa`, run 2026-10-06T20:51Z. All
 ## How it went through the workflow
 
 - **#174's learning:** report `external-fb62299dbff66267` enters as 13 labelled memory lines. The TikTok snapshots are exploratory context only, not evidence that a format won.
-- **Brief** `853c7176…`, attempt 1, batch `1b8bcb8d…`. Every machine check passed and the status is `awaiting-human-review`, `approved: false`.
+- **Brief** `2b6947b5…` (it now carries each approved claim's structured evidence), attempt 2, batch `4a46239b…`. Every machine check passed under the stricter binding, and the status is `awaiting-human-review`, `approved: false`.
+- Attempt 2 changes only Concept A's opening beat. B and C are unchanged.
 
 To reproduce:
 
@@ -86,7 +98,7 @@ All three stay at 1440p High, and all are under 30 s.
 
 ### A: Guess the game
 
-1. **Hook:** game-label graphic. "Which game gets the bigger percentage boost?"
+1. **Hook:** the new `upgrade-intro` graphic. The question as a headline, the RTX 4060 → RTX 5070 upgrade once, then the two game panels. Caption: "Same CPU. New GPU."
 2. **Pick:** the real Compare capture. "Alan Wake 2, or Valorant? Pick one."
 3. **Alan Wake 2:** FPS graphic counts 43 → 65.
 4. **Valorant:** FPS graphic counts 263 → 305.
@@ -117,7 +129,7 @@ The first brief's version of C rested on an unapproved derived line. It now uses
 
 ### 1. A (recommended)
 
-- **The hook is the exact question,** as a frame-one caption over the two full game names. It's the cleanest test of the opening-caption hypothesis.
+- **The hook is the exact question,** as a frame-one headline above the two full game names, with the upgrade happening from frame 0. It's the cleanest test of the opening-caption hypothesis.
 - **The viewer commits to a guess,** and the percentage reveal is the payoff. The FPS beats before it set up the trap: Valorant adds more frames but the smaller percentage.
 - **Risk:** at 28.5 s it is the longest, near the 30 s limit. If timing slips in voicing, cut the "why" beat to 3 s.
 
@@ -133,11 +145,11 @@ The first brief's version of C rested on an unapproved derived line. It now uses
 
 ## Creative improvement to test, and how it is measured
 
-The test is unchanged from the first brief: the spoken hook appears as a full-size caption from **frame 0**, with no fade.
+The test: the spoken hook's question is readable as full-size text from **frame 0**, with no fade. In this opening it is the headline at the top of the story band, and the caption band carries the first spoken line.
 
 **Pre-publish check (pass/fail, from the file):**
-- Frame 0 shows the hook caption in caption-coloured text rows covering at least 3.1% of the frame height.
-- **The prototype measures 6.9%:** rows 118–249 of the 320-px caption band, in a 1920-px frame. It passes.
+- Frame 0 shows the question as text rows covering at least 3.1% of the frame height.
+- **The prototype measures 14.3%:** the three-line headline spans rows 60–334 of the story band, in a 1920-px frame. It passes. The caption "Same CPU. New GPU." measures 2.3% on its own, one line.
 
 **Post-publish outcome (YouTube):**
 - **What to read:** the share still watching at 3 s on the audience-retention curve, plus average percentage viewed.
@@ -154,31 +166,52 @@ The test is unchanged from the first brief: the spoken hook appears as a full-si
   - The `specsmithpc.com/compare` route in the last caption.
 - **The spoken close is advice:** no spoken promotional outro.
 
-## The 3-second visual prototype (Concept A, 0–3 s)
+## The 3-second opening (Concept A, 0–3 s), revised
 
 **File:** `render-output/next-video-gpu-upgrade-prototype/gpu-upgrade-opening-prototype.mp4`. It is gitignored.
-- SHA-256: `bb2be00cafe9d50f8c1a5194c9f9fce3e0fc28d811b0cc0f97d9fa4899860d87`.
+- SHA-256: `b8f32cabe78b0c04da8e2c4a4e3ff59a6555015e871f4230720f30681aeda87f`.
 - 1080×1920 at 30 fps, silent.
-- It re-renders byte-identical.
+- Phone-size frames are in the same folder (`phone-*.png`, 390 px wide, an iPhone's CSS width), with a contact sheet in `phone-sheet.png`.
 
-**How it was built.** It uses the production banded layout and production renderers:
-- **Disclosure band, 0–300 px:** the disclosure-overlay adapter, verbatim. 36 px type, contrast 19.5:1.
-- **Story band, 300–1600 px:** the new adapter, rendering the beat's `game-labels` graphic from values the proposal pass resolved. The smallest type drawn is 36 px.
-- **Caption band, 1600–1920 px:** the production caption style.
+**How it was built.** It uses the production banded layout:
+- **Disclosure band:** the disclosure-overlay adapter, verbatim. 36 px type, contrast 19.5:1.
+- **Story band:** the new `upgrade-intro` template. The smallest type drawn is 42 px.
+- **Caption band:** the production caption style.
 
-**What happens in the 3 seconds:**
+**What the template draws.** All of it is computed:
+- the question from the mission;
+- the GPU and CPU names from the catalog;
+- the setting from the Compare state;
+- the games' full names from the catalog.
 
-| Time | Picture | Caption | Overlay |
-|---|---|---|---|
-| 0.00 s (frame 0) | "SpecSmith model estimates · 1440p High" and "RTX 4060 + Ryzen 5 7600 → RTX 5070". Two cards, **Alan Wake 2** (accent purple) and **Valorant** (cyan), already readable 48 px from their places. Each has an empty boost track, a pulsing **+?%** and "estimated boost" | "Which game gets the bigger / percentage boost?", fully visible | Estimate disclosure, verbatim |
-| 0.00–0.6 s | The cards slide 48 px into place, staggered by 0.12 s | Holds | Holds |
-| 0.6–3.0 s | Hold, with the **+?%** markers pulsing on a 1.2 s cycle. No figure appears before it is backed by a claim | Holds | Holds |
+It shows no values, so it binds no claim.
 
-**Later scenes, checked, not part of the 3 s.** These are single frames rendered with the same adapter:
+| Time | What happens (muted, it reads as the question being set up) |
+|---|---|
+| 0.00 s (frame 0) | The question, **"Which game gets the bigger percentage boost?"**, is a 3-line headline at the top. Below it, **RTX 4060** is on screen and **RTX 5070** is already rising into place under it. "Same Ryzen 5 7600 · 1440p High" sits underneath. Caption: "Same CPU. New GPU." |
+| 0.00–0.70 s | The upgrade happens once. The downward arrow draws by 0.4 s, RTX 4060 dims, and RTX 5070 lands with an accent border. |
+| 0.70–1.05 s | The finished upgrade holds, briefly. |
+| 1.05–1.45 s | The upgrade rises and clears. The same facts settle as a compact header under the question: "RTX 4060 → RTX 5070" and "Same Ryzen 5 7600 · 1440p High". |
+| 1.20–2.05 s | Two large panels arrive, one after the other: **Alan Wake 2** (accent purple) and **Valorant** (cyan), in full names at up to 124 px. |
+| 2.25–2.75 s | Each panel gains its label, in turn: "estimated % boost · 1440p High". |
+| 2.55–2.90 s | The question's key words, "bigger percentage boost?", take the accent colour, tying the panels back to the question. |
+
+**What this revision removed:**
+- the empty tracks;
+- the "+?%" markers and their hold;
+- the idle pulsing;
+- the question in the bottom caption, where it sat below the games.
+
+Every movement is a step in the question arriving.
+
+**Found and fixed during phone-size inspection:**
+- Side-by-side GPU chips can't fit at the 64 px minimum, and the renderer refused them rather than shrinking the text. The upgrade is now stacked vertically.
+- On frame 0, the rising RTX 5070 chip touched the CPU line. The line now sits below the chip's lowest position.
+- A nearly empty hand-off frame around 1.4 s. The panels now arrive from 1.2 s.
+
+**Later scenes, unchanged, not part of these 3 s:**
 - **FPS:** "Alan Wake 2, 43 → 65, Estimated FPS".
 - **Percentage:** "+51%, estimated boost · (65 − 43) ÷ 43" and "+16% · (305 − 263) ÷ 263".
-
-They are readable in full names. The number-to-bar spacing in the percentage card was widened after inspection.
 
 ## Open before production
 
