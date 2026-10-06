@@ -18,6 +18,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import games from "../../../src/data/games.json" with { type: "json" };
+import gpus from "../../../src/data/gpus.json" with { type: "json" };
+import cpus from "../../../src/data/cpus.json" with { type: "json" };
+import { percentChange } from "../v2/creative/dataMotionGraphic.ts";
 import { leadsVsAverageFacts, type ComparePairing, type GameEstimate } from "../leadsVsAverage/facts.ts";
 import type { AtomicClaim, ClaimEvidenceLink, Observation, ResearchProvenance, ResearchQuestion, SourceSnapshot } from "../v2/research/model.ts";
 import { runResearchPass, type ResearchResult } from "../v2/research/researchPass.ts";
@@ -59,11 +62,27 @@ const gameById = (id: string): GameRecord => {
   return found;
 };
 
+/**
+ * One game's estimates and the percentage computed from them.
+ *
+ * `percent` is computed from the two whole-FPS estimates Compare DISPLAYS
+ * (fpsB before, fpsA after), so a viewer can redo it from what is on screen:
+ * round((fpsA - fpsB) / fpsB * 100). `unroundedRatio` is the model's own ratio
+ * before Compare rounds each estimate; it is recorded so the rounding effect
+ * is visible, never shown as the headline.
+ */
+export type GameFacts = GameEstimate & {
+  readonly gameId: string;
+  readonly gpuWeight: number;
+  readonly percent: number;
+  readonly unroundedRatio: number;
+};
+
 export interface GpuUpgradeFacts {
   readonly buildA: string;
   readonly buildB: string;
-  readonly gpuHeavy: GameEstimate & { readonly gameId: string; readonly gpuWeight: number };
-  readonly cpuHeavy: GameEstimate & { readonly gameId: string; readonly gpuWeight: number };
+  readonly gpuHeavy: GameFacts;
+  readonly cpuHeavy: GameFacts;
   readonly leadsA: number;
   readonly gameCount: number;
   /** Per-game ratio of the two builds' estimates, at each resolution, for the one game. Identical by construction. */
@@ -77,7 +96,16 @@ export function gpuUpgradeFacts(): GpuUpgradeFacts {
     const game = gameById(id);
     const row = facts.games.find((entry) => entry.game === game.name);
     if (!row) throw new Error(`${game.name} is not in the Compare result.`);
-    return { ...row, gameId: id, gpuWeight: game.gpu_bound ?? 0.75 };
+    const gpuWeight = game.gpu_bound ?? 0.75;
+    const multiplier = (list: unknown, key: string, id: string) => ((list as Record<string, unknown>[]).find((entry) => entry.id === id)![key] as number);
+    const cpu = multiplier(cpus, "cpu_multiplier", GPU_UPGRADE_PAIRING.cpuA);
+    const weighted = (gpuId: string) => cpu + gpuWeight * (multiplier(gpus, "gpu_multiplier", gpuId) - cpu);
+    if (GPU_UPGRADE_PAIRING.cpuA !== GPU_UPGRADE_PAIRING.cpuB) throw new Error("The unrounded ratio below assumes one CPU.");
+    return {
+      ...row, gameId: id, gpuWeight,
+      percent: percentChange(row.fpsB, row.fpsA),
+      unroundedRatio: Math.round((weighted(GPU_UPGRADE_PAIRING.gpuA) / weighted(GPU_UPGRADE_PAIRING.gpuB)) * 1000) / 1000,
+    };
   };
   const ratioByResolution: Record<string, number> = {};
   for (const resolution of ["1080p", "1440p", "4k"] as const) {
@@ -179,6 +207,29 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
   const observations: Observation[] = [
     estimateObservation("obs-gpu-heavy", facts.gpuHeavy),
     estimateObservation("obs-cpu-heavy", facts.cpuHeavy),
+    ...[facts.gpuHeavy, facts.cpuHeavy].map((row, index): Observation => ({
+      observationId: index === 0 ? "obs-percent-gpu-heavy" : "obs-percent-cpu-heavy",
+      snapshotId: snapshot.snapshotId,
+      form: "structured-value",
+      content: `${row.game} at 1440p High: (${row.fpsA} − ${row.fpsB}) ÷ ${row.fpsB} = ${row.percent}% from Compare's displayed estimates (${facts.buildB} → ${facts.buildA}); the model's unrounded ratio is ${row.unroundedRatio}.`,
+      fields: { estimatedFpsBefore: row.fpsB, estimatedFpsAfter: row.fpsA, percent: row.percent, unroundedRatio: row.unroundedRatio },
+      configuration: config(row.gameId),
+      observedAt: at,
+      provenance,
+    })),
+    {
+      // One observation for the comparison: two per-game observations would
+      // read to the conflict detector as two sources disagreeing about one
+      // number, when they describe two different games.
+      observationId: "obs-percent-comparison",
+      snapshotId: snapshot.snapshotId,
+      form: "structured-value",
+      content: `Estimated boost at 1440p High, ${facts.buildB} → ${facts.buildA}: ${facts.gpuHeavy.game} ${facts.gpuHeavy.percent}%, ${facts.cpuHeavy.game} ${facts.cpuHeavy.percent}% (each from Compare's displayed estimates).`,
+      fields: { gpuHeavyPercent: facts.gpuHeavy.percent, cpuHeavyPercent: facts.cpuHeavy.percent },
+      configuration: { cpu: "Ryzen 5 7600", resolution: "1440p", preset: "high" },
+      observedAt: at,
+      provenance,
+    },
     {
       observationId: "obs-weights",
       snapshotId: snapshot.snapshotId,
@@ -220,6 +271,15 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
     claim("gpu-upgrade-cpu-heavy-game",
       `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade takes ${facts.cpuHeavy.game} from ${facts.cpuHeavy.fpsB} to ${facts.cpuHeavy.fpsA} FPS.`,
       "performance-estimated", "medium", config(CONTRAST_GAMES.cpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.cpuHeavy]),
+    claim("gpu-upgrade-percent-gpu-heavy-game",
+      `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives ${facts.gpuHeavy.game} an estimated ${facts.gpuHeavy.percent}% boost: from ${facts.gpuHeavy.fpsB} to ${facts.gpuHeavy.fpsA} FPS, (${facts.gpuHeavy.fpsA} − ${facts.gpuHeavy.fpsB}) ÷ ${facts.gpuHeavy.fpsB}.`,
+      "performance-estimated", "medium", config(CONTRAST_GAMES.gpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy]),
+    claim("gpu-upgrade-percent-cpu-heavy-game",
+      `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives ${facts.cpuHeavy.game} an estimated ${facts.cpuHeavy.percent}% boost: from ${facts.cpuHeavy.fpsB} to ${facts.cpuHeavy.fpsA} FPS, (${facts.cpuHeavy.fpsA} − ${facts.cpuHeavy.fpsB}) ÷ ${facts.cpuHeavy.fpsB}.`,
+      "performance-estimated", "medium", config(CONTRAST_GAMES.cpuHeavy), ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.cpuHeavy]),
+    claim("bigger-percentage-boost",
+      `In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, ${facts.gpuHeavy.game} gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: ${facts.gpuHeavy.percent}% against ${facts.cpuHeavy.game}'s ${facts.cpuHeavy.percent}%.`,
+      "performance-estimated", "medium", { cpu: "Ryzen 5 7600", resolution: "1440p", preset: "high" }, ["rtx5070", "rtx4060", "r5-7600", CONTRAST_GAMES.gpuHeavy, CONTRAST_GAMES.cpuHeavy]),
     claim("model-weights-games",
       `SpecSmith's model weights each game by how much it leans on the GPU; it gives ${facts.gpuHeavy.game} far more GPU weight than ${facts.cpuHeavy.game}.`,
       "specsmith-product", "low", { resolution: "1440p", preset: "high" }, [CONTRAST_GAMES.gpuHeavy, CONTRAST_GAMES.cpuHeavy]),
@@ -240,6 +300,9 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
   const stances: { claimId: string; observationId: string; stance: ClaimEvidenceLink["stance"] }[] = [
     { claimId: "gpu-upgrade-gpu-heavy-game", observationId: "obs-gpu-heavy", stance: "supports" },
     { claimId: "gpu-upgrade-cpu-heavy-game", observationId: "obs-cpu-heavy", stance: "supports" },
+    { claimId: "gpu-upgrade-percent-gpu-heavy-game", observationId: "obs-percent-gpu-heavy", stance: "supports" },
+    { claimId: "gpu-upgrade-percent-cpu-heavy-game", observationId: "obs-percent-cpu-heavy", stance: "supports" },
+    { claimId: "bigger-percentage-boost", observationId: "obs-percent-comparison", stance: "supports" },
     { claimId: "model-weights-games", observationId: "obs-weights", stance: "supports" },
     { claimId: "rtx5070-higher-in-every-game", observationId: "obs-tally", stance: "supports" },
     // An estimate is not a measurement, and the model knows no prices: these

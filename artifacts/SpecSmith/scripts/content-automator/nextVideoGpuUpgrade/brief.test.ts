@@ -29,6 +29,27 @@ describe("research for the GPU-upgrade Short", () => {
     expect(result.contract.unsafeClaims.map((claim) => claim.claimId).sort()).toEqual(["better-purchase", "measured-on-hardware"]);
   });
 
+  it("computes each percentage from the two displayed estimates it names, and records the unrounded model ratio", () => {
+    const { result, facts } = runGpuUpgradeResearch(RESEARCH_RUN_AT);
+    expect([facts.gpuHeavy.percent, facts.cpuHeavy.percent]).toEqual([51, 16]);
+    expect(facts.gpuHeavy.percent).toBe(Math.round(((65 - 43) / 43) * 100));
+    expect(facts.cpuHeavy.percent).toBe(Math.round(((305 - 263) / 263) * 100));
+    // The model's own ratio before Compare rounds: why the headline is computed from what is on screen.
+    expect([facts.gpuHeavy.unroundedRatio, facts.cpuHeavy.unroundedRatio]).toEqual([1.496, 1.16]);
+    const safe = Object.fromEntries(result.contract.safeClaims.map((claim) => [claim.claimId, claim]));
+    expect(safe["gpu-upgrade-percent-gpu-heavy-game"].proposition).toContain("an estimated 51% boost: from 43 to 65 FPS, (65 − 43) ÷ 43");
+    expect(safe["gpu-upgrade-percent-cpu-heavy-game"].proposition).toContain("an estimated 16% boost: from 263 to 305 FPS, (305 − 263) ÷ 263");
+    expect(safe["bigger-percentage-boost"].state).toBe("strongly-supported");
+    expect(result.contract.disputedClaims).toEqual([]);
+  });
+
+  it("keeps the mission at 1440p High only, asking the percentage question", () => {
+    const { mission } = gpuUpgradeMission();
+    expect(mission.viewerQuestion).toBe("Which game gets the bigger percentage boost?");
+    expect(mission.additionalViews ?? []).toEqual([]);
+    expect((mission.renderRequest as { state: { resolution: string; preset: string } }).state).toMatchObject({ resolution: "1440p", preset: "high" });
+  });
+
   it("refuses the 4K angle because the model's per-game ratio does not change with resolution", () => {
     const { facts } = runGpuUpgradeResearch(RESEARCH_RUN_AT);
     expect(new Set(Object.values(facts.ratioByResolution)).size).toBe(1);

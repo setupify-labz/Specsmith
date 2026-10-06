@@ -24,7 +24,9 @@ import { formatResearchReport } from "../v2/research/researchPass.ts";
 import { GPU_UPGRADE_PAIRING, modelContentHash, QUESTION_ID, REFUSED_ANGLES, runGpuUpgradeResearch } from "./research.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-export const WORKFLOW_DIRECTORY = join(here, "workflow");
+/** The current brief's workflow. `workflow/` is the first brief (five attempts), kept as history. */
+export const WORKFLOW_DIRECTORY = join(here, "workflow-percent");
+export const FIRST_BRIEF_DIRECTORY = join(here, "workflow");
 export const PUBLISHED_POST_REPORT = join(here, "..", "v2", "publication", "examples", "published-posts-report.json");
 
 /**
@@ -33,7 +35,7 @@ export const PUBLISHED_POST_REPORT = join(here, "..", "v2", "publication", "exam
  * The model hash below is re-checked on every run, so pinning the time can
  * never keep a stale estimate alive.
  */
-export const RESEARCH_RUN_AT = new Date("2026-10-06T18:59:00.000Z");
+export const RESEARCH_RUN_AT = new Date("2026-10-06T20:51:00.000Z");
 export const RESEARCH_MODEL_HASH = "f434ab70dde4e6fa";
 
 export function gpuUpgradeMission() {
@@ -44,7 +46,7 @@ export function gpuUpgradeMission() {
   if (result.containsSyntheticEvidence) throw new Error("This mission must rest on production research.");
   const mission: Omit<CreativeMissionInput, "concepts"> = {
     missionId: QUESTION_ID,
-    viewerQuestion: "Will a new GPU make every game faster by the same amount?",
+    viewerQuestion: "Which game gets the bigger percentage boost?",
     productDestination: "/compare",
     renderRequest: {
       captureType: "static",
@@ -56,16 +58,9 @@ export function gpuUpgradeMission() {
     memory: [],
     retrieval: { kind: "explanatory-structure", allowSynthetic: false },
     platform: "youtube-shorts",
-    // Two more real states of the same pair, for beats that state no claim (the
-    // claims hold for the primary 1440p High view only). The model's per-game
-    // after/before ratio is the same at every resolution, so these views show
-    // the same pattern; no beat may quote their numbers.
-    additionalViews: [
-      { resolution: "1080p", preset: "high" },
-      { resolution: "4k", preset: "high" },
-      { resolution: "1440p", preset: "ultra" },
-      { resolution: "1080p", preset: "ultra" },
-    ],
+    // 1440p High throughout. Shot variety comes from data motion graphics
+    // computed at this one state, not from other settings whose numbers no
+    // claim covers.
   };
   return { mission, result, facts, modelHash };
 }

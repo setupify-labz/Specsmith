@@ -144,19 +144,22 @@ describe("controls", () => {
     expect(revised.required.join("\n")).toMatch(/one of the brief's validated views/);
   });
 
-  it("with a single validated view, the repetition is the mission's to fix, and still blocks", async () => {
+  it("with a single validated view, the repetition is the author's to fix with a motion graphic, and still blocks", async () => {
+    // Data motion graphics give a single-view mission further pictures, so the
+    // fix is now within the author's reach: required, not blocked outside.
     const singleView = { ...DEMO_MISSION, additionalViews: [] };
     const dir = correctAttempt(workflow(4), 4);
     const result = await evaluate(dir, singleView);
     const attempt4 = result.concept(REVISED);
-    expect(dimensions(attempt4.blockedOutsideAuthor)).toEqual(["shot-uniqueness", "visual-repetition"]);
-    expect(attempt4.blockedOutsideAuthor.join("\n")).toMatch(/mission must list further validated views/);
-    // The same packet with every other item cleared is still not ready.
-    const feedback = { ...result.feedback!, concepts: result.feedback!.concepts.map((concept) => ({ ...concept, required: [], missionBlockers: [] })) };
-    const packet = (feedbackIn: typeof feedback) => buildReviewPacket({ brief: result.brief, attempt: result.attempts, generatorName: "local-file-authored-batch",
+    expect(attempt4.blockedOutsideAuthor).toEqual([]);
+    const repetition = attempt4.required.filter((item) => /shot-uniqueness|visual-repetition/.test(item));
+    expect(dimensions(repetition)).toEqual(["shot-uniqueness", "visual-repetition"]);
+    expect(repetition.join("\n")).toMatch(/or a data motion graphic/);
+    // Still blocking: the packet is not ready while they stand.
+    const packet = (feedbackIn: NonNullable<typeof result.feedback>) => buildReviewPacket({ brief: result.brief, attempt: result.attempts, generatorName: "local-file-authored-batch",
       status: "awaiting-human-review", result: result.pass.result, batchHash: result.packet.batchHash, feedback: feedbackIn });
-    expect(packet(feedback).humanReviewReady).toBe(false);
-    expect(packet({ ...feedback, concepts: feedback.concepts.map((concept) => ({ ...concept, blockedOutsideAuthor: [] })) }).humanReviewReady).toBe(true);
+    const othersCleared = { ...result.feedback!, concepts: result.feedback!.concepts.map((concept) => ({ ...concept, required: concept.conceptId === REVISED ? repetition : [], missionBlockers: [] })) };
+    expect(packet(othersCleared).humanReviewReady).toBe(false);
   });
 
   it("no score outweighs an open fix: a strong review with one fix still blocks", async () => {

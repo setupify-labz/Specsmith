@@ -37,6 +37,7 @@ import { createMotionCompositorAdapter } from "./motionCompositor.ts";
 import { RenderAdapterRegistry, renderPlatformPlan } from "./rendering.ts";
 import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRenderAdapter.ts";
 import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts";
+import { createDataMotionGraphicAdapter } from "./v2/creative/dataMotionGraphicRender.ts";
 import { checkBandedFrames, type BandedFrameExpectation } from "./bandedFrameCheck.ts";
 import { DISCLOSURE_BANDED_LAYOUT } from "./bandedLayout.ts";
 import { verifyRenderedMedia } from "./v2/mediaVerification.ts";
@@ -83,6 +84,7 @@ export async function renderProposalOffline(directory: string, conceptId: string
   const registry = new RenderAdapterRegistry()
     .register(createDeterministicUiRenderAdapter({ baseUrl, outputDir: join(outputDir, "ui") }))
     .register(createDisclosureOverlayAdapter({ outputDir: join(outputDir, "disclosure") }))
+    .register(createDataMotionGraphicAdapter({ outputDir: join(outputDir, "motion") }))
     .register(createLocalFixtureTtsAdapter({ outputDir: join(outputDir, "audio") }))
     .register(createCaptionRenderAdapter({ outputDir: join(outputDir, "captions") }))
     .register(createMotionCompositorAdapter({ outputDir, ffmpegPath, ffprobePath: process.env.SPECSMITH_FFPROBE_PATH }));

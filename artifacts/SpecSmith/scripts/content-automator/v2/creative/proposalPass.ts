@@ -10,6 +10,7 @@ import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, resolveDataMotionGraphic, unboundGraphicFigures, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
 import { critiqueConceptSet } from "./conceptCritique.ts";
 import { retrieveCreativeMemory, type CreativeMemoryEntry, type RetrievalQuery } from "./memory.ts";
 
@@ -95,7 +96,7 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     requiredDisclosures: ids,
     disclosureTextByBeat: Object.fromEntries(partial.beats.map((_, index) => [index, ids.map((id) => CREATIVE_DISCLOSURES[id])])),
   } as CreativeConcept));
-  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture"], guaranteedDisclosureIds: ["disclosure.fps-estimate", "disclosure.model-range"] });
+  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture", DATA_MOTION_GRAPHIC_CAPABILITY], guaranteedDisclosureIds: ["disclosure.fps-estimate", "disclosure.model-range"] });
   const proposals = plans.map((concept) => {
     const storyboard: PlatformScriptStoryboard = { platform: input.platform,
       title: input.viewerQuestion, targetDurationSeconds: concept.beats.at(-1)!.endSecond,
@@ -108,16 +109,32 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     const allowedClaims = new Set(approved.map((claim) => claim.claimId));
     const grounded = concept.beats.some((beat) => beat.factDependencies.length > 0) &&
       concept.beats.every((beat) => beat.factDependencies.every((id) => allowedClaims.has(id)));
-    // This production adapter renders only the exact Compare capture. Declared
-    // illustrations must stay blocked, not be silently replaced with screenshots.
-    const exactCapture = concept.visuals.length > 0 && concept.visuals.every((visual) => visual.kind === "real-product-capture" &&
-      visual.surface === "compare" && viewIds.has(visual.stateIdentifier));
+    // Data motion graphics: every value computed from the primary view, and
+    // every figure shown covered by an approved claim bound on that beat.
+    const motionGraphics: ResolvedDataMotionGraphic[] = [];
+    const motionGraphicProblems: string[] = [];
+    for (const visual of concept.visuals) {
+      if (visual.kind !== "data-motion-graphic") continue;
+      try { motionGraphics.push(resolveDataMotionGraphic(visual, views)); }
+      catch (error) { motionGraphicProblems.push((error as Error).message); }
+    }
+    for (const entry of unboundGraphicFigures({ beats: concept.beats, graphics: motionGraphics,
+      approvedPropositions: Object.fromEntries(approved.map((claim) => [claim.claimId, claim.proposition])) })) {
+      motionGraphicProblems.push(`Beat ${entry.beat}: motion graphic "${entry.visualId}" shows ${entry.figure}, which no approved claim bound on that beat states. Bind the claim that states it, or show a template without that figure.`);
+    }
+    // This production adapter renders the exact Compare capture and data
+    // motion graphics computed from it. Declared illustrations must stay
+    // blocked, not be silently replaced with screenshots.
+    const exactCapture = concept.visuals.length > 0 && concept.visuals.every((visual) =>
+      (visual.kind === "real-product-capture" && visual.surface === "compare" && viewIds.has(visual.stateIdentifier)) ||
+      (visual.kind === "data-motion-graphic" && motionGraphics.some((graphic) => graphic.visualId === visual.visualId)));
     // A claim was established for the primary view only. A beat that states
     // one while showing another setting would pair it with numbers it was
     // never checked against.
     const claimsOnPrimaryView = claimBeatsOffPrimaryView(concept, captureStateIdentifier).length === 0;
     return { concept, storyboard, critique, evidenceFindings, reviewRequired: true, synthetic: input.researchSynthetic, renderRequest, views,
-      contractEligible: grounded && exactCapture && claimsOnPrimaryView && concept.productDestination === input.productDestination &&
+      motionGraphics, motionGraphicProblems,
+      contractEligible: grounded && exactCapture && claimsOnPrimaryView && motionGraphicProblems.length === 0 && concept.productDestination === input.productDestination &&
         set.divergent && critique.ready && !evidenceFindings.some((finding) => finding.severity === "hard-fail") };
   });
   // Only verified, directly applicable guidance affects the choice. Context never
@@ -133,7 +150,8 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
 /** Beats (1-based) that state a claim while showing a view other than the primary one. */
 export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateIdentifier: string): number[] {
   const stateOf = new Map(concept.visuals.map((visual) =>
-    [visual.visualId, visual.kind === "real-product-capture" ? visual.stateIdentifier : null] as const));
+    [visual.visualId, visual.kind === "real-product-capture" ? visual.stateIdentifier
+      : visual.kind === "data-motion-graphic" ? visual.sourceStateIdentifier : null] as const));
   return concept.beats.flatMap((beat, index) =>
     beat.factDependencies.length > 0 && beat.visualIds.some((id) => {
       const state = stateOf.get(id);
@@ -165,6 +183,24 @@ export function buildCreativeProposalProductionPlan(
     for (const task of platform.tasks) {
       if (task.sourceBeat !== null && (task.capability === "video-generation" || task.capability === "deterministic-ui-render")) {
         const beat = proposal.concept.beats[task.sourceBeat];
+        const graphics = proposal.motionGraphics.filter((graphic) => beat.visualIds.includes(graphic.visualId));
+        if (graphics.length > 0) {
+          if (graphics.length !== 1 || beat.visualIds.length !== 1) {
+            throw new Error(`Beat ${task.sourceBeat + 1} mixes a motion graphic with other visuals; a visual task renders exactly one.`);
+          }
+          // Rendered from the resolved values, sized to the band it fills.
+          task.capability = "data-motion-graphic";
+          (task as ProductionTask & { dataMotionGraphicState?: unknown }).dataMotionGraphicState = {
+            graphic: graphics[0],
+            durationSeconds: beat.endSecond - beat.startSecond,
+            width: DISCLOSURE_BANDED_LAYOUT.width,
+            height: banded ? DISCLOSURE_BANDED_LAYOUT.story.height : DISCLOSURE_BANDED_LAYOUT.height,
+          };
+          delete task.uiRenderState;
+          delete task.videoGenerationState;
+          delete task.fallbackCapability;
+          continue;
+        }
         const captures = beat.visualIds
           .map((id) => proposal.concept.visuals.find((visual) => visual.visualId === id))
           .filter((visual) => visual?.kind === "real-product-capture") as { stateIdentifier: string }[];

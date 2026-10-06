@@ -22,6 +22,7 @@
 
 import { parseUiRenderRequest, stateIdentifier, type CompareState, type UiRenderRequest } from "../../uiRender/uiRenderState.ts";
 import type { DeclaredVisual } from "./visualHonesty.ts";
+import { dataMotionGraphicIdentity } from "./dataMotionGraphic.ts";
 
 export interface CompareViewSetting {
   readonly resolution: NonNullable<CompareState["resolution"]>;
@@ -76,7 +77,9 @@ export function missionCaptureViews(renderRequest: unknown, additional: readonly
 
 /** What is actually on screen: the state for a capture, the visual itself otherwise. */
 export function pictureIdentity(visual: DeclaredVisual): string {
-  return visual.kind === "real-product-capture"
-    ? `${visual.kind}:${visual.surface}:${visual.stateIdentifier}`
-    : `${visual.kind}:${visual.visualId}`;
+  if (visual.kind === "real-product-capture") return `${visual.kind}:${visual.surface}:${visual.stateIdentifier}`;
+  // What it shows (template, games, state), not its id: two ids for the same
+  // graphic are one picture.
+  if (visual.kind === "data-motion-graphic") return dataMotionGraphicIdentity(visual);
+  return `${visual.kind}:${visual.visualId}`;
 }

@@ -104,8 +104,8 @@ export function storyboardQualityFindings(input: {
       );
     } else if (SINGLE_PICTURE_DIMENSIONS.has(fix.dimension)) {
       required.push(
-        `${label}: ${fix.issue} Show a different validated view from the brief on these beats. The same view under ` +
-          "another visual id is the same picture and does not count.",
+        `${label}: ${fix.issue} Show a different validated view from the brief, or a data motion graphic, on these beats. ` +
+          "The same view or graphic under another visual id is the same picture and does not count.",
       );
     } else {
       required.push(`${label}: ${fix.issue} ${fix.fix}`);
