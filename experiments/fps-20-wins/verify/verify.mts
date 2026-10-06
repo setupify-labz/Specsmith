@@ -51,6 +51,7 @@ const verified = {
   unroundedAvgB: Math.round(unroundedB * 100) / 100,
   perGameLeadRange: [Math.min(...rows.map((row) => row.diff)), Math.max(...rows.map((row) => row.diff))],
   rows,
+  spotlights: [] as unknown[],
 };
 
 // The video's story, as assertions: if the model changes, this refuses rather than keep the hook.
@@ -59,12 +60,28 @@ const story: [boolean, string][] = [
   [leadsA === 20 && leadsB === 0 && ties === 0, `expected 20 leads, 0 ties, 0 losses; found ${leadsA}/${ties}/${leadsB}`],
   [avgA === 164 && avgB === 160, `expected averages 164 vs 160; found ${avgA} vs ${avgB}`],
 ];
+// Spotlighted games: full titles, each checked against the catalogue entry and the model's result.
+const SPOTLIGHTS = [
+  { id: "cyberpunk2077", title: "Cyberpunk 2077" },
+  { id: "cs2", title: "Counter-Strike 2" },
+  { id: "warzone", title: "Call of Duty: Warzone" },
+  { id: "bg3", title: "Baldur's Gate 3" },
+];
+const spotlights = SPOTLIGHTS.map((spot) => {
+  const index = rows.findIndex((row) => row.id === spot.id);
+  const row = rows[index];
+  story.push([index >= 0 && row.name.includes(spot.title), `spotlight "${spot.title}" (${spot.id}) does not match a catalogue entry`]);
+  story.push([!row || row.diff > 0, `spotlight "${spot.title}" is not a Super lead`]);
+  return { title: spot.title, catalogueName: row?.name ?? null, rosterPosition: index + 1, a: row?.a ?? null, b: row?.b ?? null };
+});
+story.push([spotlights.every((spot, i) => i === 0 || spot.rosterPosition > spotlights[i - 1].rosterPosition), "spotlights must follow roster order so the counter stays truthful"]);
 const broken = story.filter(([ok]) => !ok).map(([, why]) => why);
 if (broken.length) {
   console.error(`The video's figures no longer hold: ${broken.join("; ")}. Do not render it.`);
   process.exit(1);
 }
 
+verified.spotlights = spotlights;
 const out = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "verified.json");
 writeFileSync(out, `${JSON.stringify(verified, null, 2)}\n`);
 console.log(`verified: ${leadsA}/${verified.games} leads, ${ties} ties, avg ${avgA} vs ${avgB} (unrounded ${verified.unroundedAvgA} vs ${verified.unroundedAvgB}), per-game lead ${verified.perGameLeadRange.join("-")} FPS -> ${out}`);

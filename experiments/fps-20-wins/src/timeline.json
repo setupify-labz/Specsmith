@@ -1,16 +1,20 @@
 {
   "fps": 30,
-  "duration": 14.8,
-  "beats": [1.45, 2.05, 2.65, 3.15, 3.45, 3.75, 4.05, 4.33, 4.6, 4.86, 5.08, 5.28, 5.46, 5.63, 5.79, 5.94, 6.08, 6.21, 6.33, 6.45],
-  "namedBeats": 3,
-  "land": 6.6,
-  "blowout": 7.3,
-  "collapse": 8.3,
-  "ruler": 8.75,
-  "marks": 9.0,
-  "zoom": 10.0,
-  "apart": 10.45,
-  "perGame": 12.1,
-  "question": 13.05,
-  "signoff": 13.6
+  "duration": 11.6,
+  "spots": [0.0, 0.8, 1.6, 2.4],
+  "spotHold": 0.72,
+  "rolls": [
+    { "at": 0.64, "to": 6 },
+    { "at": 1.44, "to": 8 },
+    { "at": 2.24, "to": 16 },
+    { "at": 3.2, "to": 20 }
+  ],
+  "land": 3.9,
+  "blowout": 4.55,
+  "cut": 5.6,
+  "numbers": 6.0,
+  "apart": 7.0,
+  "perGame": 9.1,
+  "question": 10.15,
+  "signoff": 10.6
 }
