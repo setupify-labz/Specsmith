@@ -205,6 +205,17 @@ export function buildResearchCreativeContract(input: ContractInput): ResearchCre
       continue;
     }
 
+    // Contradicted with nothing applicable for it: refused, and recorded as
+    // contradicted rather than "unanswered". Its negation is NOT added as a
+    // safe claim; that would need its own research.
+    const applicableSupport = supporting.some((link) => link.applicability !== "not-applicable");
+    const contradicted = input.links.some((link) => link.claimId === claim.claimId && link.stance === "contradicts" && link.applicability !== "not-applicable");
+    if (contradicted && !applicableSupport) {
+      unsafeClaims.push(entry);
+      openQuestions.push(`Contradicted by applicable evidence (its negation is not established either): ${claim.proposition}`);
+      continue;
+    }
+
     // UNSAFE_FOR_CREATIVE is checked in addition to the strength comparison, so
     // a state like `stale` can never be argued past on strength grounds alone.
     if (UNSAFE_FOR_CREATIVE.includes(state) || !meetsAcceptableUncertainty(state, required)) {
