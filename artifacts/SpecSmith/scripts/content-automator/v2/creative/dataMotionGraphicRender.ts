@@ -58,10 +58,13 @@ function pageScript(state: DataMotionGraphicState): string {
   return `
 const S = ${JSON.stringify(state)};
 const C = ${JSON.stringify(SPECSMITH_MOTION_COLOURS)};
-const GAME_COLOURS = [C.accent, C.cyan, C.green];
 const MIN_PRIMARY = ${MOTION_MIN_PRIMARY_PX}, MIN_LABEL = ${MOTION_MIN_LABEL_PX};
 const FONT = ${JSON.stringify(MOTION_FONT)};
 const W = S.width, H = S.height, G = S.graphic;
+const PALETTE = [C.accent, C.cyan, C.green];
+// One colour per game for the whole video (assigned across the concept by the
+// proposal pass), whatever order or company a scene shows it in.
+const GAME_COLOURS = G.games.map((g, i) => PALETTE[(g.colour ?? i) % PALETTE.length]);
 const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
@@ -116,26 +119,32 @@ function card(r, t) {
 }
 
 function gameLabels(t) {
+  // Full names and what is being compared. No empty tracks, no placeholder
+  // figures: those read as data that is missing.
   for (const r of rows()) {
     const dx = card(r, t);
-    text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.42, INNER - 112, 104, MIN_PRIMARY, C.text, 'left', 'bold');
-    // An empty track and a question mark: what the video will answer, no figure yet.
-    const pulse = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * Math.PI * 2 / 1.2));
-    rect(PAD + 56 + dx, r.y + r.h * 0.62, INNER - 260, 36, 18, C.surface);
-    ctx.save(); ctx.globalAlpha = pulse;
-    text('+?%', PAD + INNER - 48 + dx, r.y + r.h * 0.62 + 34, 180, 64, MIN_PRIMARY, r.colour, 'right', 'bold');
-    ctx.restore();
-    text('estimated boost', PAD + 56 + dx, r.y + r.h * 0.62 + 92, INNER - 112, 36, MIN_LABEL, C.textSecondary, 'left', 'normal');
+    text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.5, INNER - 112, 112, MIN_PRIMARY, C.text, 'left', 'bold');
+    text('estimated % boost · ' + G.setting, PAD + 56 + dx, r.y + r.h * 0.78, INNER - 112, 46, MIN_LABEL, r.colour === C.accent ? C.accentText : r.colour, 'left', 'bold');
   }
 }
 
+// Only approved values ever appear: a figure is shown at its final value or
+// not at all. No count-ups, which would flash numbers no claim states.
 function fpsChange(t) {
   for (const r of rows()) {
     const dx = card(r, t);
-    text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.30, INNER - 112, 88, MIN_PRIMARY, C.text, 'left', 'bold');
-    const p = ease((t - 0.35 - r.i * 0.2) / 1.0);
-    const shown = Math.round(r.game.before + (r.game.after - r.game.before) * p);
-    text(r.game.before + '  →  ' + shown, PAD + 56 + dx, r.y + r.h * 0.66, INNER - 112, 120, MIN_PRIMARY, r.colour, 'left', 'bold');
+    text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.30, INNER - 112, 88, MIN_PRIMARY, r.colour === C.accent ? C.text : C.text, 'left', 'bold');
+    const delay = r.i * 0.25;
+    const size = fit(r.game.before + '  →  ' + r.game.after, INNER - 112, 120, MIN_PRIMARY, 'bold');
+    ctx.font = 'bold ' + size + 'px "' + FONT + '"';
+    const beforeW = ctx.measureText(r.game.before + '  ').width, arrowW = ctx.measureText('→  ').width;
+    const x0 = PAD + 56 + dx, by = r.y + r.h * 0.66;
+    ctx.textAlign = 'left'; ctx.fillStyle = C.textSecondary; ctx.fillText(String(r.game.before), x0, by);
+    const arrow = ease((t - 0.3 - delay) / 0.35);
+    ctx.save(); ctx.globalAlpha = arrow; ctx.fillStyle = r.colour; ctx.fillText('→', x0 + beforeW, by); ctx.restore();
+    const after = ease((t - 0.6 - delay) / 0.35);
+    ctx.save(); ctx.globalAlpha = after; ctx.fillStyle = r.colour; ctx.fillText(String(r.game.after), x0 + beforeW + arrowW + 30 * (1 - after), by); ctx.restore();
+    measured.minFontPx = Math.min(measured.minFontPx, size);
     text('Estimated FPS', PAD + 56 + dx, r.y + r.h * 0.88, INNER - 112, 40, MIN_LABEL, C.textSecondary, 'left', 'normal');
   }
 }
@@ -145,11 +154,16 @@ function percentChange(t) {
   for (const r of rows()) {
     const dx = card(r, t);
     text(r.game.name, PAD + 56 + dx, r.y + r.h * 0.26, INNER - 112, 88, MIN_PRIMARY, C.text, 'left', 'bold');
-    const p = ease((t - 0.35 - r.i * 0.25) / 1.1);
+    const delay = r.i * 0.25;
+    // The bar grows (a length, not a stated figure); the percentage appears only at its value.
+    const grow = ease((t - 0.3 - delay) / 0.8);
     const track = INNER - 112;
     rect(PAD + 56 + dx, r.y + r.h * 0.38, track, 44, 22, C.surface);
-    rect(PAD + 56 + dx, r.y + r.h * 0.38, track * 0.72 * (r.game.percent / maxPercent) * p, 44, 22, r.colour);
-    text('+' + Math.round(r.game.percent * p) + '%', PAD + 56 + dx, r.y + r.h * 0.77, INNER - 112, 120, MIN_PRIMARY, r.colour, 'left', 'bold');
+    rect(PAD + 56 + dx, r.y + r.h * 0.38, track * 0.72 * (r.game.percent / maxPercent) * grow, 44, 22, r.colour);
+    const shown = ease((t - 1.0 - delay) / 0.3);
+    ctx.save(); ctx.globalAlpha = shown;
+    text('+' + r.game.percent + '%', PAD + 56 + dx + 24 * (1 - shown), r.y + r.h * 0.77, INNER - 112, 120, MIN_PRIMARY, r.colour, 'left', 'bold');
+    ctx.restore();
     text('estimated boost · ' + r.game.formula, PAD + 56 + dx, r.y + r.h * 0.93, INNER - 112, 38, MIN_LABEL, C.textSecondary, 'left', 'normal');
   }
 }
@@ -178,42 +192,13 @@ const mix = (a, b, p) => {
   const x = h(a), y = h(b);
   return 'rgb(' + x.map((v, i) => Math.round(v + (y[i] - v) * clamp(p))).join(',') + ')';
 };
-/** Lays out "old ↓ new" as two stacked, centred chips at the largest size that fits. */
-function upgradeLayout(oldLabel, newLabel) {
-  const PADX = 48;
-  for (let size = 84; size >= MIN_PRIMARY; size -= 2) {
-    ctx.font = 'bold ' + size + 'px "' + FONT + '"';
-    const w = Math.max(ctx.measureText(oldLabel).width, ctx.measureText(newLabel).width) + 2 * PADX;
-    if (w <= INNER) {
-      const box = { x: (W - w) / 2, w };
-      return { size, h: Math.round(size * 1.8), a: box, b: box, arrowGap: 110 };
-    }
-  }
-  measured.misfits.push(oldLabel + ' → ' + newLabel);
-  return null;
-}
-function chipAt(label, box, y, h, size, border, fill, colour, scale) {
-  ctx.save();
-  const cx = box.x + box.w / 2, cy = y + h / 2;
-  ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.translate(-cx, -cy);
-  rect(box.x, y, box.w, h, 28, fill);
-  ctx.strokeStyle = border; ctx.lineWidth = 5; ctx.beginPath(); ctx.roundRect(box.x, y, box.w, h, 28); ctx.stroke();
-  ctx.font = 'bold ' + size + 'px "' + FONT + '"'; ctx.fillStyle = colour; ctx.textAlign = 'center';
-  ctx.fillText(label, cx, y + h / 2 + size * 0.36);
-  ctx.restore();
-  measured.minFontPx = Math.min(measured.minFontPx, Math.round(size * Math.min(1, scale)));
-}
-
 /**
- * The opening: the question, the upgrade once, then the two games.
- * Every step is a piece of the question arriving; nothing moves for its own sake.
- *   0.00-0.70  the upgrade happens: RTX 4060 dims, the arrow draws, RTX 5070
- *              lands (both chips fully on screen from frame 0)
- *   1.05-1.30  the upgrade rises and clears ...
- *   1.20-1.45  ... and the same facts settle as a compact header
- *   1.20-2.05  the two game panels arrive, one after the other
- *   2.25-2.75  each panel gains its label, in turn
- *   2.55-2.90  the question's key words take the accent
+ * The opening. From frame 0: the question, and both games as large panels.
+ * Between them, the upgrade plays once as a compact row and is finished by
+ * 0.8 s. Every movement is part of the question arriving.
+ *   0.00-0.80  RTX 4060 dims, the arrow draws, RTX 5070 slides in and lands
+ *   0.90-1.50  each panel gains its label, in turn
+ *   1.50-1.90  the question's key words take the accent
  */
 function upgradeIntro(t) {
   const head = layoutHeadline(G.headline, INNER, 3, 84, MIN_PRIMARY);
@@ -221,7 +206,7 @@ function upgradeIntro(t) {
   if (head) {
     const lineH = Math.round(head.size * 1.16);
     const key = new Set(['bigger', 'percentage', 'boost?', 'boost']);
-    const p = ease((t - 2.55) / 0.35);
+    const p = ease((t - 1.5) / 0.4);
     head.lines.forEach((line, i) => {
       let x = PAD; y = 40 + head.size + i * lineH;
       for (const { word, w } of line) {
@@ -233,54 +218,41 @@ function upgradeIntro(t) {
     });
     measured.minFontPx = Math.min(measured.minFontPx, head.size);
   }
-  const headBottom = y + 30;
 
-  const oldName = G.beforeGpu.name, newName = G.afterGpu.name;
-  const lay = upgradeLayout(oldName, newName);
-  const leave = ease((t - 1.05) / 0.25);
-  if (lay && leave < 1) {
-    const gy = headBottom + 70;
-    ctx.save(); ctx.globalAlpha = 1 - leave; ctx.translate(0, -120 * leave);
-    // The old GPU is on screen from frame 0 and dims as the new one lands.
-    const dim = ease(t / 0.6);
-    chipAt(oldName, lay.a, gy, lay.h, lay.size, mix(C.textSecondary, C.card, dim * 0.5), C.card, mix(C.text, C.textSecondary, dim), 1);
-    const draw = ease(t / 0.4);
-    const ax = W / 2, ay0 = gy + lay.h + 18, ay1 = ay0 + lay.arrowGap - 36;
-    ctx.strokeStyle = C.accent; ctx.lineWidth = 10; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(ax, ay0); ctx.lineTo(ax, ay0 + (ay1 - ay0) * draw); ctx.stroke();
-    if (draw > 0.85) { ctx.beginPath(); ctx.moveTo(ax, ay1); ctx.lineTo(ax - 26, ay1 - 28); ctx.moveTo(ax, ay1); ctx.lineTo(ax + 26, ay1 - 28); ctx.stroke(); }
-    // The new GPU rises into place, fully on screen throughout.
-    const land = ease(t / 0.7);
-    const by = gy + lay.h + lay.arrowGap + 60 * (1 - land);
-    chipAt(newName, lay.b, by, lay.h, lay.size, mix(C.textSecondary, C.accent, land), mix(C.card, C.surface, land), C.text, 1);
-    // Below the lowest point the new chip passes through, so they never touch.
-    text('Same ' + G.beforeCpu.name + ' · ' + G.setting, W / 2, gy + 2 * lay.h + lay.arrowGap + 60 + 80, INNER, 46, MIN_LABEL, C.textSecondary, 'center', 'normal');
-    ctx.restore();
-  }
-  const header = ease((t - 1.2) / 0.25);
-  if (header > 0) {
-    ctx.save(); ctx.globalAlpha = header;
-    text(oldName + '  →  ' + newName, PAD, headBottom + 56, INNER, 52, MIN_LABEL, C.accentText, 'left', 'bold');
-    text('Same ' + G.beforeCpu.name + ' · ' + G.setting, PAD, headBottom + 112, INNER, 42, MIN_LABEL, C.textSecondary, 'left', 'normal');
-    ctx.restore();
-  }
+  // The upgrade, as one compact row.
+  const rowY = y + 100, oldName = G.beforeGpu.name, newName = G.afterGpu.name;
+  const size = fit(oldName + '  →  ' + newName, INNER, 60, MIN_LABEL, 'bold');
+  ctx.font = 'bold ' + size + 'px "' + FONT + '"';
+  const oldW = ctx.measureText(oldName).width, gap = size * 0.5, arrowW = size * 1.6;
+  measured.minFontPx = Math.min(measured.minFontPx, size);
+  const dim = ease((t - 0.25) / 0.45);
+  ctx.fillStyle = mix(C.text, C.textSecondary, dim); ctx.textAlign = 'left'; ctx.fillText(oldName, PAD, rowY);
+  const draw = ease((t - 0.05) / 0.4);
+  const ax0 = PAD + oldW + gap, ax1 = ax0 + arrowW, ay = rowY - size * 0.34;
+  ctx.strokeStyle = C.accent; ctx.lineWidth = Math.max(6, size / 9); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(ax0, ay); ctx.lineTo(ax0 + arrowW * draw, ay); ctx.stroke();
+  if (draw > 0.8) { ctx.beginPath(); ctx.moveTo(ax1, ay); ctx.lineTo(ax1 - size * 0.32, ay - size * 0.3); ctx.moveTo(ax1, ay); ctx.lineTo(ax1 - size * 0.32, ay + size * 0.3); ctx.stroke(); }
+  const land = ease((t - 0.2) / 0.6);
+  ctx.save(); ctx.globalAlpha = 0.35 + 0.65 * land;
+  ctx.fillStyle = mix(C.textSecondary, C.accentText, land);
+  ctx.fillText(newName, ax1 + gap + 40 * (1 - land), rowY);
+  ctx.restore();
+  text('Same ' + G.beforeCpu.name + ' · ' + G.setting, PAD, rowY + 58, INNER, 42, MIN_LABEL, C.textSecondary, 'left', 'normal');
 
-  const top = headBottom + 170, gap = 40, n = G.games.length;
-  const h = Math.min(400, (H - 50 - top - (n - 1) * gap) / n);
+  // Both games, large, from frame 0.
+  const top = rowY + 110, gapY = 40, n = G.games.length;
+  const h = Math.min(400, (H - 50 - top - (n - 1) * gapY) / n);
   G.games.forEach((game, i) => {
-    const arrive = ease((t - 1.2 - i * 0.25) / 0.6);
-    if (arrive <= 0) return;
-    const py = top + i * (h + gap) + 90 * (1 - arrive);
-    ctx.save(); ctx.globalAlpha = arrive;
+    const py = top + i * (h + gapY);
     rect(PAD, py, INNER, h, 30, C.card);
     rect(PAD, py, 18, h, 9, GAME_COLOURS[i]);
-    text(game.name, PAD + 64, py + h * 0.52, INNER - 128, 124, MIN_PRIMARY, C.text, 'left', 'bold');
-    const label = ease((t - 2.25 - i * 0.2) / 0.3);
+    text(game.name, PAD + 64, py + h * 0.5, INNER - 128, 124, MIN_PRIMARY, C.text, 'left', 'bold');
+    const label = ease((t - 0.9 - i * 0.25) / 0.35);
     if (label > 0) {
-      ctx.globalAlpha = arrive * label;
+      ctx.save(); ctx.globalAlpha = label;
       text('estimated % boost · ' + G.setting, PAD + 64 + 30 * (1 - label), py + h * 0.8, INNER - 128, 46, MIN_LABEL, GAME_COLOURS[i] === C.accent ? C.accentText : GAME_COLOURS[i], 'left', 'bold');
+      ctx.restore();
     }
-    ctx.restore();
   });
 }
 
@@ -372,7 +344,8 @@ export function createDataMotionGraphicAdapter(options: { outputDir: string }): 
         kind: "video",
         uri: `file://${rendered.path}`,
         mimeType: "video/mp4",
-        metadata: { renderer: "specsmith-data-motion-graphic", sha256: rendered.sha256, frames: rendered.frames, minFontPx: rendered.minFontPx, valuesSha256: rendered.valuesSha256 },
+        // A scene that animates in must never restart if its beat is held longer.
+        metadata: { renderer: "specsmith-data-motion-graphic", holdLastFrame: true, sha256: rendered.sha256, frames: rendered.frames, minFontPx: rendered.minFontPx, valuesSha256: rendered.valuesSha256 },
       }];
     },
   };

@@ -213,9 +213,38 @@ Every movement is a step in the question arriving.
 - **FPS:** "Alan Wake 2, 43 → 65, Estimated FPS".
 - **Percentage:** "+51%, estimated boost · (65 − 43) ÷ 43" and "+16% · (305 − 263) ÷ 263".
 
+## Full visual draft (Concept A, attempt 3)
+
+**What changed in Concept A (attempt 3):**
+- It is tightened to **21.5 s**, six beats: question, Alan Wake 2 FPS, Valorant FPS, the percentage reveal, why, close.
+- The separate "Pick one" beat is gone. The opening already asks the question with both games on screen.
+
+**What changed in the opening:**
+- Both games are large panels from frame 0.
+- The RTX 4060 → RTX 5070 upgrade is a compact row above them, finished within 0.8 s.
+
+**How it was rendered.** It went through the production pipeline (`master6OfflineRender.renderProposalOffline`, now able to take a mission and silent narration):
+- the workflow checks;
+- the production plan;
+- the production adapters: Compare capture, data motion graphics, disclosure panel, captions, compositor;
+- the banded frame check and its broken controls.
+
+**Result:**
+- **File:** `render-output/next-video-gpu-upgrade-draft/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4`.
+- **Format:** 1080×1920 at 30 fps, 21.57 s.
+- **SHA-256:** `0fea74c5f95d0cf8e0e6876f2087dfbf9485dca49a0942efc4227b38472964ef`.
+- **Frame check:** passed, 14 samples.
+- **Controls:** all three broken renders were refused: disclosure blanked, disclosure drawn over the story, a repeated picture.
+- **Audio:** silence of the planned length. No voice and no robotic placeholder. The planned lines and timings are recorded beside it. See `VOICE_SCRIPT.md`.
+
+**Found and fixed while rendering:**
+- **Unapproved numbers on screen.** The graphics counted up through numbers no claim states ("43 → 43", "263 → 304", "+48%", "+12%"). The renderer now shows a figure only at its final value; only the bar length grows.
+- **Looping clip.** The compositor looped a motion clip when the final beat was held for the narration tail, so the closing scene restarted. Motion clips now hold their last frame. The frame check caught this.
+- **Colours swapping.** The colours changed when a scene listed Valorant first. Each game now keeps one colour for the whole video, by first appearance: Alan Wake 2 purple, Valorant cyan.
+- **Leftover placeholders.** The closing `game-labels` scene still drew empty tracks and "+?%". It now shows full names and labels only.
+
 ## Open before production
 
-- **Full-pipeline render:** run the whole Concept A video through the production plan, including the graphic beats with the compositor and the banded frame check. Not run yet.
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.
 - **Human review:** creative, readability at phone size, rights and disclosure, and publishing authorization. These are listed in `workflow-percent/review-packet.json`.
 - **Font:** Inter instead of DejaVu Sans, if it can be bundled.

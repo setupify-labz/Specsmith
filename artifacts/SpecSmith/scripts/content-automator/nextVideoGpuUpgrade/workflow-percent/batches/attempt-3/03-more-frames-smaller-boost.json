@@ -1,0 +1,183 @@
+{
+  "conceptId": "boost-more-frames-smaller-boost",
+  "axes": {
+    "audienceExperience": "spectator",
+    "explanatoryStructure": "continuum-then-falsification",
+    "visualMechanism": "split-screen-fork"
+  },
+  "viewerQuestion": "Which game gets the bigger percentage boost?",
+  "viewerTakeaway": "More frames added is not a bigger boost: a game's starting point decides the percentage.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "compare-1440p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "labels-aw-val",
+      "template": "game-labels",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "labels-val-aw",
+      "template": "game-labels",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "valorant",
+        "alanwake2"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "fps-aw",
+      "template": "fps-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "fps-val",
+      "template": "fps-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "pct-val-aw",
+      "template": "percent-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "valorant",
+        "alanwake2"
+      ],
+      "baseline": "B"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    },
+    {
+      "capabilityId": "render.data-motion-graphic",
+      "description": "Data motion graphics computed from the primary Compare state."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "More frames doesn't mean a bigger boost.",
+      "onScreenText": "More frames \u2260 bigger boost",
+      "visualIds": [
+        "labels-val-aw"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3,
+      "endSecond": 9.5,
+      "narration": "In SpecSmith's model estimates, RTX 4060 to RTX 5070, same Ryzen 5 7600 at 1440p High, takes Valorant from 263 to 305.",
+      "onScreenText": "Valorant: 263 \u2192 305 Estimated FPS",
+      "visualIds": [
+        "fps-val"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9.5,
+      "endSecond": 14.0,
+      "narration": "Alan Wake 2 only goes from 43 to 65 estimated FPS.",
+      "onScreenText": "Alan Wake 2: 43 \u2192 65 Estimated FPS",
+      "visualIds": [
+        "fps-aw"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "reversal",
+      "startSecond": 14.0,
+      "endSecond": 19.0,
+      "narration": "Fewer frames, but an estimated 51% boost, against Valorant's 16%.",
+      "onScreenText": "51% vs 16% \u00b7 Estimated FPS",
+      "visualIds": [
+        "pct-val-aw"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-percent-gpu-heavy-game",
+        "gpu-upgrade-percent-cpu-heavy-game",
+        "bigger-percentage-boost"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 19.0,
+      "endSecond": 23.0,
+      "narration": "SpecSmith's model gives Alan Wake 2 far more GPU weight.",
+      "onScreenText": "Some games lean on the GPU",
+      "visualIds": [
+        "compare-1440p-high"
+      ],
+      "factDependencies": [
+        "model-weights-games"
+      ]
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 23.0,
+      "endSecond": 26.0,
+      "narration": "Judge the boost in the games you play.",
+      "onScreenText": "Judge your games \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "labels-aw-val"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "5": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

@@ -305,13 +305,17 @@ async function renderVideoSegment(options: {
   preset: string;
   timeoutMs: number;
   band?: { y: number; height: number };
+  /** Hold the clip's last frame past its end instead of looping it (a scene that must not restart). */
+  holdLastFrame?: boolean;
 }): Promise<void> {
   await runProcess(options.ffmpegPath, [
     "-y",
-    "-stream_loop", "-1",
+    ...(options.holdLastFrame ? [] : ["-stream_loop", "-1"]),
     "-i", options.inputPath,
     "-t", options.durationSeconds.toFixed(3),
-    "-vf", scaleFilter(options.width, options.height, options.band),
+    "-vf", options.holdLastFrame
+      ? `tpad=stop_mode=clone:stop_duration=${Math.max(1, Math.ceil(options.durationSeconds))},${scaleFilter(options.width, options.height, options.band)}`
+      : scaleFilter(options.width, options.height, options.band),
     "-an",
     "-r", String(options.fps),
     "-c:v", "libx264",
@@ -431,7 +435,7 @@ async function renderVisualSegment(options: {
   } else if (options.artifact.kind === "image") {
     await renderStaticImageSegment({ ...shared, inputPath });
   } else if (options.artifact.kind === "video") {
-    await renderVideoSegment({ ...shared, inputPath });
+    await renderVideoSegment({ ...shared, inputPath, holdLastFrame: options.artifact.metadata?.holdLastFrame === true });
   } else {
     throw new MotionCompositorError(
       "unsupported-visual",

@@ -38,6 +38,8 @@ import { RenderAdapterRegistry, renderPlatformPlan } from "./rendering.ts";
 import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRenderAdapter.ts";
 import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts";
 import { createDataMotionGraphicAdapter } from "./v2/creative/dataMotionGraphicRender.ts";
+import { createSilentNarrationAdapter } from "./silentNarration.ts";
+import type { CreativeMissionInput } from "./v2/creative/proposalPass.ts";
 import { checkBandedFrames, type BandedFrameExpectation } from "./bandedFrameCheck.ts";
 import { DISCLOSURE_BANDED_LAYOUT } from "./bandedLayout.ts";
 import { verifyRenderedMedia } from "./v2/mediaVerification.ts";
@@ -60,11 +62,24 @@ async function ffmpeg(args: string[]): Promise<void> {
   });
 }
 
-export async function renderProposalOffline(directory: string, conceptId: string, outputRoot?: string) {
+export interface OfflineRenderOptions {
+  /** The mission the batch was authored against. Defaults to the engineering fixture. */
+  readonly mission?: Omit<CreativeMissionInput, "concepts">;
+  /**
+   * "fixture-voice": local espeak-ng, a labelled robotic fixture (default).
+   * "silent": no speech at all; a silent track of the planned length, with the
+   * planned narration and its timing recorded beside it.
+   */
+  readonly narration?: "fixture-voice" | "silent";
+}
+
+export async function renderProposalOffline(directory: string, conceptId: string, outputRoot?: string, options: OfflineRenderOptions = {}) {
+  const mission = options.mission ?? DEMO_MISSION;
+  const narration = options.narration ?? "fixture-voice";
   const outputDir = resolve(outputRoot ?? join(here, "..", "..", "render-output", `master6-${conceptId}`));
 
   // 1. The concept must pass everything the workflow checks.
-  const evaluation = await evaluateAuthoredBatch(directory, DEMO_MISSION);
+  const evaluation = await evaluateAuthoredBatch(directory, mission);
   const proposal = evaluation.pass.result.proposals.find((entry) => entry.concept.conceptId === conceptId);
   const feedback = evaluation.feedback?.concepts.find((entry) => entry.conceptId === conceptId);
   if (!proposal || !feedback) throw new Error(`Concept ${conceptId} is not in attempt ${evaluation.attempts}.`);
@@ -75,8 +90,8 @@ export async function renderProposalOffline(directory: string, conceptId: string
 
   // 2 and 3. The production plan, rendered by the production adapters.
   const pkg = buildCreativeProposalProductionPlan({
-    packageId: `master6-${conceptId}`, ideaId: conceptId, campaignId: DEMO_MISSION.missionId,
-    feature: "compare", route: DEMO_MISSION.productDestination, subjectIds: [],
+    packageId: `master6-${conceptId}`, ideaId: conceptId, campaignId: mission.missionId,
+    feature: "compare", route: mission.productDestination, subjectIds: [],
   }, proposal);
   const plan = pkg.platforms[0];
   await rm(outputDir, { recursive: true, force: true });
@@ -85,7 +100,10 @@ export async function renderProposalOffline(directory: string, conceptId: string
     .register(createDeterministicUiRenderAdapter({ baseUrl, outputDir: join(outputDir, "ui") }))
     .register(createDisclosureOverlayAdapter({ outputDir: join(outputDir, "disclosure") }))
     .register(createDataMotionGraphicAdapter({ outputDir: join(outputDir, "motion") }))
-    .register(createLocalFixtureTtsAdapter({ outputDir: join(outputDir, "audio") }))
+    .register(narration === "silent"
+      ? createSilentNarrationAdapter({ outputDir: join(outputDir, "audio"), ffmpegPath,
+          plannedLines: proposal.storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, text: beat.narration })) })
+      : createLocalFixtureTtsAdapter({ outputDir: join(outputDir, "audio") }))
     .register(createCaptionRenderAdapter({ outputDir: join(outputDir, "captions") }))
     .register(createMotionCompositorAdapter({ outputDir, ffmpegPath, ffprobePath: process.env.SPECSMITH_FFPROBE_PATH }));
   const result = await renderPlatformPlan(pkg, plan, registry, { maxAttemptsPerCapability: 1 });
@@ -104,11 +122,13 @@ export async function renderProposalOffline(directory: string, conceptId: string
     videoPath,
     layout: DISCLOSURE_BANDED_LAYOUT,
     disclosurePanelPath: fileURLToPath(artifactOf(`${plan.platform}-disclosure-overlay`).uri),
-    beats: storyboard.beats.map((beat, index) => ({
-      startSecond: beat.startSecond,
-      endSecond: beat.endSecond,
-      sources: [fileURLToPath(artifactOf(visualTasks[index].taskId).uri)],
-    })),
+    beats: storyboard.beats.map((beat, index) => {
+      const artifact = artifactOf(visualTasks[index].taskId);
+      // A motion graphic is checked against its own clip at the same moment.
+      return artifact.kind === "video"
+        ? { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: [], clip: fileURLToPath(artifact.uri) }
+        : { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: [fileURLToPath(artifact.uri)] };
+    }),
     captionCues: storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond })),
     durationSeconds: Number(video.metadata?.durationSeconds),
   };
@@ -118,7 +138,12 @@ export async function renderProposalOffline(directory: string, conceptId: string
   const controlsDir = join(outputDir, "controls");
   await mkdir(controlsDir, { recursive: true });
   const { disclosure, story } = DISCLOSURE_BANDED_LAYOUT;
-  const firstSource = expectation.beats[0].sources[0];
+  let firstSource = expectation.beats[0].sources[0];
+  if (!firstSource && expectation.beats[0].clip) {
+    // A still of beat 1's clip, for the repeated-picture control.
+    firstSource = join(controlsDir, "beat-1-still.png");
+    await ffmpeg(["-ss", "1.000", "-i", expectation.beats[0].clip, "-frames:v", "1", firstSource]);
+  }
   const second = expectation.beats[1];
   const controls = [
     {
@@ -183,14 +208,17 @@ export async function renderProposalOffline(directory: string, conceptId: string
     disclosurePanel: fileOf(`${plan.platform}-disclosure-overlay`),
     captions: fileOf(`${plan.platform}-captions`),
     narration: fileOf(`${plan.platform}-voice`),
-    // The local voice reads every beat as one continuous take: no per-beat timing exists.
+    // The local voice reads every beat as one continuous take, and a silent
+    // track has nothing to time: no per-beat narration segments exist.
     narrationSegments: null,
     beats: storyboard.beats.map((beat, index) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, captures: [fileOf(visualTasks[index].taskId)] })),
   }));
 
   const media = verifyRenderedMedia(videoPath);
   const report = {
-    label: "ENGINEERING RENDER of a synthetic-research concept. Not reviewed, not approved, not for publication.",
+    label: mission.researchSynthetic
+      ? "ENGINEERING RENDER of a synthetic-research concept. Not reviewed, not approved, not for publication."
+      : `VISUAL DRAFT of a production-research concept${narration === "silent" ? ", silent: narration is planned, not spoken" : ""}. Not reviewed, not approved, not for publication.`,
     conceptId,
     attempt: evaluation.attempts,
     batchHash: evaluation.packet.batchHash,
@@ -200,7 +228,8 @@ export async function renderProposalOffline(directory: string, conceptId: string
     beats: storyboard.beats.map((beat, index) => ({
       purpose: beat.purpose, startSecond: beat.startSecond, endSecond: beat.endSecond,
       caption: beat.onScreenText, narration: beat.narration, claims: beat.factDependencies,
-      view: (visualTasks[index].uiRenderState as { state: { resolution: string; preset: string } }).state,
+      view: (visualTasks[index].uiRenderState as { state: { resolution: string; preset: string } } | undefined)?.state ?? null,
+      visualCapability: visualTasks[index].capability,
       capture: artifactOf(visualTasks[index].taskId).metadata,
     })),
     disclosurePanel: artifactOf(`${plan.platform}-disclosure-overlay`).metadata,
@@ -215,8 +244,12 @@ export async function renderProposalOffline(directory: string, conceptId: string
       "Whether the video is worth a viewer's time: hook, pacing, and whether the three checks land.",
       "Whether the disclosure panel is comfortable to read on a real phone, not only above the measured minimums.",
       "Whether switching between Compare views reads as deliberate or as jumpy.",
-      "The narration: espeak-ng is a robotic fixture used because no paid voice was approved; voice and audio are unreviewed.",
-      "Rights and disclosure sign-off, and any publishing decision. The research is a synthetic engineering fixture.",
+      narration === "silent"
+        ? "The narration: none was generated. The audio is silence of the planned length; the planned lines and timings are recorded beside it."
+        : "The narration: espeak-ng is a robotic fixture used because no paid voice was approved; voice and audio are unreviewed.",
+      mission.researchSynthetic
+        ? "Rights and disclosure sign-off, and any publishing decision. The research is a synthetic engineering fixture."
+        : "Rights and disclosure sign-off, and any publishing decision.",
     ],
   };
   const reportPath = join(outputDir, "render-report.json");

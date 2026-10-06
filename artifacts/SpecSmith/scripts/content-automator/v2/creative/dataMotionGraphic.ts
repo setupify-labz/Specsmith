@@ -72,6 +72,8 @@ export interface ResolvedGameFigures {
   /** Whole percent, from the two displayed estimates: round((after - before) / before * 100). */
   readonly percent: number;
   readonly formula: string;
+  /** The game's colour slot for the whole video, set across a concept so it never changes between scenes. */
+  readonly colour?: number;
 }
 
 export interface CatalogPart { readonly id: string; readonly name: string }
@@ -253,6 +255,16 @@ export function unsupportedGraphicValues(input: {
 
 export const describeShown = (shown: ShownValues) =>
   `${shown.gameId} ${shown.before} → ${shown.after}${shown.percent === null ? "" : ` (${shown.percent}%)`} at ${shown.resolution} ${shown.preset}, ${shown.beforeGpu} → ${shown.afterGpu} with ${shown.cpu}`;
+
+/**
+ * One colour slot per game for a whole concept, in order of first appearance,
+ * so a game keeps its colour in every scene whatever else is on screen.
+ */
+export function withConsistentColours(graphics: readonly ResolvedDataMotionGraphic[], order: readonly string[]): ResolvedDataMotionGraphic[] {
+  const slot = new Map<string, number>();
+  for (const id of order) if (!slot.has(id)) slot.set(id, slot.size);
+  return graphics.map((graphic) => ({ ...graphic, games: graphic.games.map((game) => ({ ...game, colour: slot.get(game.gameId) ?? 0 })) }));
+}
 
 /** The picture a graphic puts on screen, for shot-variety: template, games and state. */
 export function dataMotionGraphicIdentity(visual: DataMotionGraphic): string {

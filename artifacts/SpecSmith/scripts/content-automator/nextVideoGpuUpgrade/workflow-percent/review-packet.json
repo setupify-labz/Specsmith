@@ -2,7 +2,7 @@
   "version": "creative-file-workflow-v1",
   "missionId": "gpu-upgrade-gains-by-game-1440p-high",
   "briefHash": "2b6947b57417617ad60cbf507b5fbce5386033127e582f7c2c0b8c2c0d98386a",
-  "attempt": 2,
+  "attempt": 3,
   "generatorName": "local-file-authored-batch",
   "status": "awaiting-human-review",
   "machineChecksPassed": true,
@@ -22,7 +22,7 @@
     "boost-read-the-percentage",
     "boost-more-frames-smaller-boost"
   ],
-  "batchHash": "4a46239bc4501d5caa14bed6d0a6c6d0247b2210bd0f05bdfede53f0e73c02f7",
+  "batchHash": "b9f570a8eb73b435259b6c7d1239106afdc9105188bebb9e880d850269c549fa",
   "notes": [
     "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value or factual completeness.",
     "MASTER #1's storyboard review measures caption length and speed, pacing, narration density and the CTA route from the storyboard's text and timing. Passing it does not show that a rendered video looks or sounds good: nothing has been rendered, seen or heard.",

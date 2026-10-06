@@ -124,6 +124,15 @@ describe("resolving a graphic from the primary Compare state", () => {
     expect(valuesShown(resolved)).toEqual([]);
   });
 
+  it("keeps each game's colour across scenes, whatever order or company a scene shows it in", () => {
+    const { proposals } = pass(batch());
+    const colours = new Map<string, Set<number | undefined>>();
+    for (const graphic of proposals[0].motionGraphics) for (const game of graphic.games) {
+      colours.set(game.gameId, (colours.get(game.gameId) ?? new Set()).add(game.colour));
+    }
+    expect([...colours.entries()].sort().map(([id, set]) => [id, [...set]])).toEqual([["alanwake2", [0]], ["valorant", [1]]]);
+  });
+
   it("is one picture per template and game set, whatever its id", () => {
     expect(pictureIdentity(graphic({ visualId: "a" }))).toBe(pictureIdentity(graphic({ visualId: "b" })));
     expect(pictureIdentity(graphic())).not.toBe(pictureIdentity(graphic({ template: "fps-change" })));
