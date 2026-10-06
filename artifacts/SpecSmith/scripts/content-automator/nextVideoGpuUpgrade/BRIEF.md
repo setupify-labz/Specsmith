@@ -147,8 +147,8 @@ The video is 1080×1920 at 30 fps, so 0–3.0 s is frames 0–89. One shot, show
 
 ## Defects found in existing modules (not fixed here)
 
-1. **MASTER #2, `confidence.ts` step 4.** A claim whose only evidence contradicts it is rated `strongly-supported`, meaning its negation. `buildResearchCreativeContract` then lists the claim's own **false** proposition under `safeClaims` with no supporting snapshot.
-   - The brief filter drops it, so it can't reach an author.
-   - The contract still says it, so I kept the 4K claim out of this pass.
+1. **MASTER #2, `confidence.ts` step 4 (fixed in [#175](https://github.com/setupify-labz/Specsmith/pull/175), merged into this branch).** A claim whose only evidence contradicted it was rated `strongly-supported`, meaning its negation. `buildResearchCreativeContract` then listed the claim's own **false** proposition under `safeClaims`.
+   - #175 refuses contradicted claims, marks mixed support and contradiction as disputed, and uses the 4K example as its end-to-end regression.
+   - This brief's research still leaves the 4K claim out, so the brief is unchanged.
 2. **Research → creative wording mismatch.** `requiredWordingFor` writes an instruction (`Label the figure "Estimated FPS" wherever it is visible…`), while the creative gate checks `requiredWording` as verbatim text. `research.ts` maps that one instruction to the label it names; nothing else changes.
 3. **File workflow message.** An empty latest batch directory reports "Research approved no claim…", which is misleading when research approved four.

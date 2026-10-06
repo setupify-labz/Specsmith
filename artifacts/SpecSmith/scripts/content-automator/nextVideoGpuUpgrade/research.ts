@@ -250,12 +250,10 @@ export function runGpuUpgradeResearch(now: Date): { readonly result: ResearchRes
   // Deliberately NOT a claim here: "a GPU upgrade helps Valorant more at 4K
   // because the CPU matters less there". obs-resolution-invariance shows the
   // model's after/before ratio is the same at every resolution, so the claim is
-  // false of the model. It is left out rather than linked as "contradicts":
-  // assessConfidence (step 4) rates a contradicted-only claim
-  // strongly-supported meaning its NEGATION, and buildResearchCreativeContract
-  // then lists the claim's own (false) proposition under safeClaims. The file
-  // workflow's brief drops it (no supporting snapshot), but the contract would
-  // still carry it. Reported separately; see REFUSED_ANGLES.
+  // false of the model. It was left out because assessConfidence used to rate
+  // a contradicted-only claim as safe (fixed in #175, whose regression test
+  // uses this exact case). It stays out so this brief's contract, and the
+  // concepts authored against it, are unchanged; see REFUSED_ANGLES.
   const result = runResearchPass({ researchId: `research-${QUESTION_ID}-${at}`, question, claims, snapshots: [snapshot], observations, stances, startedAt: now, now });
   return { result: { ...result, contract: withVerbatimLabels(result.contract) }, facts, modelHash };
 }
