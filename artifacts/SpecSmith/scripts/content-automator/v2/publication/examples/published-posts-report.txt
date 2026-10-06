@@ -1,45 +1,51 @@
-PUBLISHED-POST REPORT external-8105935cab35a89a — posts published outside the MASTER #8 authorization boundary
-Generated 2026-10-06T17:26:26.119Z
+PUBLISHED-POST REPORT external-be77b84b4b2b658a — posts published outside the MASTER #8 authorization boundary
+Generated 2026-10-06T17:53:16.355Z
 
 Posts:
-  - ram-fit on youtube-shorts: https://www.youtube.com/shorts/cSDhjFC-CI8
-      creative version: RAM-fit pilot, saved-Liam-take render (claude/ram-fit-liam-take, PR #172)
-      published at: unknown
-      metrics: 0 observed, 11 unavailable
-        views (views): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        average-view-duration-seconds (averageViewDuration): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        average-percentage-viewed (averageViewPercentage): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        audience-retention-curve (audienceWatchRatio): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        stayed-to-watch-rate: unavailable — not served by the youtube-shorts API: YouTube Studio displays 'Viewed vs. Swiped away' for Shorts, but SpecSmith has not confirmed a reporting API field that returns it for this channel. Until an authenticated call is seen to return it, it stays unavailable rather than being derived from views, impressions or any other number that happens to be present.
-        likes (likes): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        comments (comments): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        shares (shares): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        follows-gained (subscribersGained): unavailable — no trusted source today (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
-        saves: unavailable — not served by the youtube-shorts API: YouTube has no 'save' action equivalent to a TikTok favourite or an Instagram save. The nearest measurement is videosAddedToPlaylists, which is a different viewer action and is NOT mapped onto saves.
-        profile-visits: unavailable — not served by the youtube-shorts API: YouTube reporting does not attribute channel-page visits to an individual video.
-      note: The user reported that SpecSmith's YouTube, TikTok and Instagram accounts are connected in Metricool. No TikTok or Instagram URL for this video has been supplied, so none is recorded.
-      user-provided evidence: none supplied
-  - fps-20-wins: published, post location not supplied
+  - youtube-shorts https://www.youtube.com/shorts/cSDhjFC-CI8
+      creative: ram-fit@saved-take-pr172 [user-provided; the user named this post the RAM-fit Short; the version suffix is file-measured (see creativeVersion)]
+      version: RAM-fit pilot, saved-Liam-take render (claude/ram-fit-liam-take, PR #172) [file-measured; The uploaded copy runs 13.75 s with the saved-take scene order (DDR4 notch -> DDR5 slot -> two fixes -> Builder warning -> specsmithpc.com/builder), matching the 13.73 s saved-take render reported for PR #172. That render's bytes are not in this checkout, so the match is by content, not by hash.]
+      published at: unknown [unknown; Not supplied. The uploaded copy's container creation_time (2026-10-03T23:38:32Z) is when Google encoded that file, not a confirmed publication time.]
+      account: unknown [unknown; Not supplied: the owning channel id has not been given, and no YouTube API call can be made from here to read it.]
+      uploaded render sha256: unknown [unknown; The uploaded render was built in CI for PR #172; its bytes are not in this checkout.]
+      published copy sha256: ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589 [file-measured]
+      trusted observations: 0
+      not observed: 11
+        views (views): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        average-view-duration-seconds (averageViewDuration): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        average-percentage-viewed (averageViewPercentage): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        audience-retention-curve (audienceWatchRatio): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        stayed-to-watch-rate: not served by the youtube-shorts API: YouTube Studio displays 'Viewed vs. Swiped away' for Shorts, but SpecSmith has not confirmed a reporting API field that returns it for this channel. Until an authenticated call is seen to return it, it stays unavailable rather than being derived from views, impressions or any other number that happens to be present.
+        likes (likes): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        comments (comments): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        shares (shares): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        follows-gained (subscribersGained): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
+        saves: not served by the youtube-shorts API: YouTube has no 'save' action equivalent to a TikTok favourite or an Instagram save. The nearest measurement is videosAddedToPlaylists, which is a different viewer action and is NOT mapped onto saves.
+        profile-visits: not served by the youtube-shorts API: YouTube reporting does not attribute channel-page visits to an individual video.
+      exploratory dashboard evidence: none supplied
+  - fps-20-wins@ce47598: published, post URL not supplied
 
-Observations (recorded or measured facts; no performance figures):
-  - ram-fit is on youtube-shorts at https://www.youtube.com/shorts/cSDhjFC-CI8 (user-provided, supplied by user, 2026-10-03 ("The RAM-fit Short cSDhjFC-CI8 was auto-published through Metricool")); published outside the MASTER #8 authorization boundary via metricool-auto.
-  - ram-fit's published copy (2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4, sha256 ea97c1471d417476…) is 13.75 s, 412 frames at 720x1280 (file-measured).
-  - fps-20-wins's published copy (07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4, sha256 1de92f38b036d504…) is 18.02 s, 540 frames at 720x1280 (file-measured).
-  - ram-fit: Frame one already shows the spoken claim as a caption, "DDR4 RAM won't fit", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)
-  - fps-20-wins: Frame one shows no caption (it fades in from 0.08 s). The largest text is "20 GAMES" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)
+Observations (recorded, measured or provider-reported facts):
+  - ram-fit@saved-take-pr172 on youtube-shorts: https://www.youtube.com/shorts/cSDhjFC-CI8 (supplied by user, 2026-10-03 ("The RAM-fit Short cSDhjFC-CI8 was auto-published through Metricool")); published outside the MASTER #8 authorization boundary via metricool-auto.
+  - ram-fit@saved-take-pr172 on youtube-shorts: published copy 2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4 (sha256 ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589) is 13.75 s, 412 frames at 720x1280 (file-measured).
+  - fps-20-wins@ce47598: published copy 07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4 (sha256 1de92f38b036d5042ad403296e5bfb4c71ede954b773a5639815099ed984f35b) is 18.02 s, 540 frames at 720x1280 (file-measured).
+  - ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, "DDR4 RAM won't fit", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)
+  - fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is "20 GAMES" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)
+
+Exploratory context (user-provided, unverified; not metrics, not causal):
+  - None supplied.
 
 Hypotheses (not conclusions):
   - A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding.
 
 Unknowns:
-  - ram-fit on youtube-shorts: publication time unknown (Not supplied. The uploaded copy's container creation_time (2026-10-03T23:38:32Z) is when Google encoded that file, not a confirmed publication time.), so no metric could be placed at a publication age.
-  - ram-fit on youtube-shorts: 11 of 11 metrics unavailable — views, average-view-duration-seconds, average-percentage-viewed, audience-retention-curve, stayed-to-watch-rate, likes, comments, shares, follows-gained, saves, profile-visits. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.
-  - fps-20-wins: published, but no post URL or publication time was supplied for any platform (the user uploaded the published copy on 2026-10-06; its frames match the ce47598 render on claude/fps-liam-voice (SSIM 0.996 at 720x1280, 540 vs 539 frames)). Nothing can be collected or compared for it.
+  - ram-fit@saved-take-pr172 on youtube-shorts: publication time unknown (Not supplied. The uploaded copy's container creation_time (2026-10-03T23:38:32Z) is when Google encoded that file, not a confirmed publication time.). Authenticated observations cannot be placed at a publication age until it is added with a correction.
+  - ram-fit@saved-take-pr172 on youtube-shorts: owning account unknown (Not supplied: the owning channel id has not been given, and no YouTube API call can be made from here to read it.). Authenticated observations cannot be bound until it is added with a correction.
+  - ram-fit@saved-take-pr172 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.
+  - fps-20-wins@ce47598: published, but no post URL was supplied for any platform (the user uploaded the published copy on 2026-10-06; its frames match the ce47598 render on claude/fps-liam-voice (SSIM 0.996 at 720x1280, 540 vs 539 frames)).
   - Access: Metricool, which published the RAM-fit Short and holds the YouTube, TikTok and Instagram connections, cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The user's Metricool connection lives in another assistant, not in this repository or its CI.
   - Access: YouTube Data and Analytics APIs are reachable but answer 403/401 without a credential; no channel-owner OAuth credential is configured. www.youtube.com (and so oEmbed) is refused by the network policy.
   - Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy.
-  - No performance observation exists for any post: no trusted metrics source is registered, so views, retention and viewed-versus-swiped are all unknown.
-  - Which video performed better, and why: there is no trusted metric for either, so no performance comparison is possible.
 
 One creative change to test:
   In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen.
@@ -47,5 +53,7 @@ One creative change to test:
   Rests on: fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured); ram-fit frame one: the claim as a 40 px caption (file-measured)
   Test with: On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested.
   Status: Hypothesis to test. Not a rule, not an approved claim, not a schedule.
+
+Next-brief evidence: creatives ram-fit@saved-take-pr172, fps-20-wins@ce47598; posts youtube-shorts:cSDhjFC-CI8; media ea97c1471d41, 034880266d45, 1de92f38b036; observations 0.
 
 This report cannot approve a claim, change benchmark data, schedule a post or authorize publishing.

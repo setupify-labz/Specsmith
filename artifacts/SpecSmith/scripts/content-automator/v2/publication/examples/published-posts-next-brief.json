@@ -1,29 +1,37 @@
 {
   "note": "Built by nextBriefForWorkflow from the published-post report. The mission is the engineering fixture; the evidence lines are real.",
   "evidence": {
-    "creativeIds": [],
-    "providerPostIds": [
-      "youtube-shorts:https://www.youtube.com/shorts/cSDhjFC-CI8"
+    "creativeIds": [
+      "ram-fit@saved-take-pr172",
+      "fps-20-wins@ce47598"
     ],
-    "mediaSha256s": [],
+    "providerPostIds": [
+      "youtube-shorts:cSDhjFC-CI8"
+    ],
+    "mediaSha256s": [
+      "ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589",
+      "034880266d456781726815a3ab5d1174f7406a516791a7d8752a2b2af28fdce4",
+      "1de92f38b036d5042ad403296e5bfb4c71ede954b773a5639815099ed984f35b"
+    ],
     "reviewPacketIds": [],
     "observationIds": [],
-    "reportId": "external-8105935cab35a89a"
+    "reportId": "external-be77b84b4b2b658a"
   },
   "constraints": [
     "Every factual claim, figure and disclosure stays exactly as research and MASTER #7 require; performance data never changes what may be said.",
     "These posts were published outside the MASTER #8 authorization boundary; nothing here records or implies their approval.",
+    "User-provided dashboard numbers are exploratory context, not verified metrics and not evidence of what caused a result.",
     "The recommended change is a creative execution choice to test, not an approved claim, a schedule, or an authorization to publish.",
     "The next concepts go through research, the creative workflow, rendering, MASTER #7 review and trusted human approval like any other."
   ],
   "memoryObservations": [
-    "Observation about published SpecSmith videos (context, not a rule; report external-8105935cab35a89a): ram-fit is on youtube-shorts at https://www.youtube.com/shorts/cSDhjFC-CI8 (user-provided, supplied by user, 2026-10-03 (\"The RAM-fit Short cSDhjFC-CI8 was auto-published through Metricool\")); published outside the MASTER #8 authorization boundary via metricool-auto.",
-    "Observation about published SpecSmith videos (context, not a rule; report external-8105935cab35a89a): ram-fit's published copy (2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4, sha256 ea97c1471d417476…) is 13.75 s, 412 frames at 720x1280 (file-measured).",
-    "Observation about published SpecSmith videos (context, not a rule; report external-8105935cab35a89a): fps-20-wins's published copy (07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4, sha256 1de92f38b036d504…) is 18.02 s, 540 frames at 720x1280 (file-measured).",
-    "Observation about published SpecSmith videos (context, not a rule; report external-8105935cab35a89a): ram-fit: Frame one already shows the spoken claim as a caption, \"DDR4 RAM won't fit\", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)",
-    "Observation about published SpecSmith videos (context, not a rule; report external-8105935cab35a89a): fps-20-wins: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)",
-    "Creative change to test (report external-8105935cab35a89a; a hypothesis with no performance evidence yet): In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen. Rests on: fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured); ram-fit frame one: the claim as a 40 px caption (file-measured). Test with: On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested."
+    "Observation about published SpecSmith videos (context, not a rule; report external-be77b84b4b2b658a): ram-fit@saved-take-pr172 on youtube-shorts: https://www.youtube.com/shorts/cSDhjFC-CI8 (supplied by user, 2026-10-03 (\"The RAM-fit Short cSDhjFC-CI8 was auto-published through Metricool\")); published outside the MASTER #8 authorization boundary via metricool-auto.",
+    "Observation about published SpecSmith videos (context, not a rule; report external-be77b84b4b2b658a): ram-fit@saved-take-pr172 on youtube-shorts: published copy 2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4 (sha256 ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589) is 13.75 s, 412 frames at 720x1280 (file-measured).",
+    "Observation about published SpecSmith videos (context, not a rule; report external-be77b84b4b2b658a): fps-20-wins@ce47598: published copy 07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4 (sha256 1de92f38b036d5042ad403296e5bfb4c71ede954b773a5639815099ed984f35b) is 18.02 s, 540 frames at 720x1280 (file-measured).",
+    "Observation about published SpecSmith videos (context, not a rule; report external-be77b84b4b2b658a): ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, \"DDR4 RAM won't fit\", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)",
+    "Observation about published SpecSmith videos (context, not a rule; report external-be77b84b4b2b658a): fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)",
+    "Creative change to test (report external-be77b84b4b2b658a; a hypothesis, not a finding): In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen. Rests on: fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured); ram-fit frame one: the claim as a 40 px caption (file-measured). Test with: On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested."
   ],
-  "briefHash": "c2535a747bbfe4c0825612357405a3f04a13afc7807165ed7d512a3372156737",
+  "briefHash": "2e71ba193f0f6f551644e922963e91498352898a738979d0c479723782a3a7b2",
   "missionId": "SYNTHETIC_ENGINEERING_FIXTURE-compare-estimate-limits"
 }

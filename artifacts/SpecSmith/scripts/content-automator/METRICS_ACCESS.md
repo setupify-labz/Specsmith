@@ -17,17 +17,33 @@ APIs still answer 403/401 without a credential. `www.youtube.com`, `app.metricoo
 TikTok and Instagram are still refused by the network policy, and no `METRICOOL_*`
 or platform credential exists. This session also has no Metricool connector.
 
-The RAM-fit and FPS Shorts were published outside the authorization boundary
-(Metricool auto-published at least the RAM-fit Short). They are recorded by
-`v2/publication/externalPosts.ts` from the facts in `v2/publication/publishedPosts.ts`.
-That record is separate from the ledger: it writes no ledger, no authorization
-and no provider-post index, so trusted import and `buildLearningReport` still
-ignore these posts. Every metric is reported `unavailable` with its reason.
-`publishedPostsCli.ts` walks post → report → creative memory → next brief; the
-output is in `v2/publication/examples/published-posts-*`.
+Posts published outside the authorization boundary are recorded by
+`v2/publication/externalPosts.ts`, from the facts in
+`v2/publication/publishedPosts.ts`. They stay apart from the ledger: no ledger,
+authorization or provider-post index is written, so `buildLearningReport` does
+not count them.
 
-Known: RAM-fit on YouTube (`cSDhjFC-CI8`, user-supplied). Not supplied: the
-publication time, any TikTok or Instagram URL, and any URL for the FPS Short.
+- **Provenance.** Every fact is `user-provided` (with who supplied it),
+  `file-measured` (with the file's SHA-256) or `provider-reported` (citing the
+  trusted observation). Unknown facts are null with a reason.
+- **Corrections.** `correctExternalPost` appends a numbered correction; the
+  original record and every earlier step are kept. A post's platform and id are
+  its identity and cannot be corrected.
+- **Authenticated numbers.** `importExternalPostObservations` uses the same
+  trusted-source check as any import. It accepts only that platform's own API
+  reporting on that platform's post id, for the recorded account, after the
+  publication time is known. It writes observations only, never a ledger event.
+- **Dashboard numbers.** `recordDashboardEvidence` keeps a screenshot or pasted
+  table as EXPLORATORY, unverified context, with the dashboard, read time and
+  source reference. It is never stored as an observation and never compared.
+
+`publishedPostsCli.ts` walks post → report (values, collection times, sources)
+→ creative memory → next brief, whose evidence carries the creative ids and the
+known media hashes. Example output: `v2/publication/examples/published-posts-*`.
+
+Post URLs supplied so far: one (RAM-fit on YouTube, `cSDhjFC-CI8`). Not yet
+supplied: the other platform URLs, every publication time and the owning
+accounts.
 
 ---
 
