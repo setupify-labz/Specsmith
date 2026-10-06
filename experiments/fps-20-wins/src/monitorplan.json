@@ -1,0 +1,193 @@
+{
+  "take": {
+    "sha256": "e43f25a9b32781de4442ca8e72636c92ed61f83146a6879ac5abe9b3c366a41e",
+    "voiceId": "TX3LPaxmHKxFdv7VOQHJ",
+    "voiceUsed": "Liam - Energetic, Social Media Creator"
+  },
+  "narration": [
+    {
+      "key": "gpu",
+      "say": "The RTX forty-eighty",
+      "takeFrom": 0,
+      "takeTo": 1.618,
+      "start": 0.08,
+      "end": 1.698
+    },
+    {
+      "key": "leads",
+      "say": "Super leads all twenty games at fourteen-forty-p High:",
+      "takeFrom": 2.152,
+      "takeTo": 5.141,
+      "start": 1.918,
+      "end": 4.907
+    },
+    {
+      "key": "blowout",
+      "say": "Sounds like a blowout.",
+      "takeFrom": 12.745,
+      "takeTo": 13.697,
+      "start": 6.951,
+      "end": 7.904
+    },
+    {
+      "key": "model",
+      "say": "But the model estimates one-sixty-four versus one-sixty FPS.",
+      "takeFrom": 14.343,
+      "takeTo": 18.879,
+      "start": 8.554,
+      "end": 13.089
+    },
+    {
+      "key": "apart",
+      "say": "That's only four FPS apart.",
+      "takeFrom": 19.718,
+      "takeTo": 21.424,
+      "start": 13.439,
+      "end": 15.145
+    },
+    {
+      "key": "question",
+      "say": "Would you have guessed four?",
+      "takeFrom": 25.033,
+      "takeTo": 26.285,
+      "start": 15.645,
+      "end": 16.897
+    }
+  ],
+  "voice": [
+    {
+      "takeStart": 0,
+      "takeEnd": 1.698,
+      "at": 0.08
+    },
+    {
+      "takeStart": 2.112,
+      "takeEnd": 5.221,
+      "at": 1.878
+    },
+    {
+      "takeStart": 12.705,
+      "takeEnd": 13.777,
+      "at": 6.911
+    },
+    {
+      "takeStart": 14.303,
+      "takeEnd": 18.959,
+      "at": 8.514
+    },
+    {
+      "takeStart": 19.678,
+      "takeEnd": 21.504,
+      "at": 13.399
+    },
+    {
+      "takeStart": 24.993,
+      "takeEnd": 26.365,
+      "at": 15.605
+    }
+  ],
+  "events": {
+    "voiceStart": 0.08,
+    "entry": [
+      0.35,
+      1.65
+    ],
+    "counterStart": 2.251,
+    "spots": [
+      2.301,
+      3.301,
+      4.301,
+      5.301
+    ],
+    "rollTo20": 6.301,
+    "land": 6.651,
+    "blowout": 6.951,
+    "dropStart": 7.904,
+    "reveal": 8.554,
+    "numbers": 9.779,
+    "n160": 11.556,
+    "apart": 13.76,
+    "four": 14.05,
+    "pullBack": 15.025,
+    "question": 15.645,
+    "lastWord": 16.897
+  },
+  "dropSilence": 0.65,
+  "duration": 17.897,
+  "captions": [
+    {
+      "show": "The RTX 4080 Super",
+      "lines": [
+        "The RTX 4080 Super"
+      ],
+      "start": 0.08,
+      "spokenEnd": 2.216,
+      "end": 2.251
+    },
+    {
+      "show": "leads all 20 games",
+      "lines": [
+        "leads all 20 games"
+      ],
+      "start": 2.251,
+      "spokenEnd": 3.365,
+      "end": 3.4
+    },
+    {
+      "show": "at 1440p High",
+      "lines": [
+        "at 1440p High"
+      ],
+      "start": 3.4,
+      "spokenEnd": 4.907,
+      "end": 5.207
+    },
+    {
+      "show": "Sounds like a blowout.",
+      "lines": [
+        "Sounds like a blowout."
+      ],
+      "start": 6.977,
+      "spokenEnd": 7.904,
+      "end": 8.204
+    },
+    {
+      "show": "But the model estimates",
+      "lines": [
+        "But the model estimates"
+      ],
+      "start": 8.502,
+      "spokenEnd": 9.663,
+      "end": 9.779
+    },
+    {
+      "show": "164 versus 160 FPS",
+      "lines": [
+        "164 versus 160 FPS"
+      ],
+      "start": 9.779,
+      "spokenEnd": 13.089,
+      "end": 13.389
+    },
+    {
+      "show": "That's only 4 FPS apart.",
+      "lines": [
+        "That's only 4 FPS apart."
+      ],
+      "start": 13.435,
+      "spokenEnd": 15.145,
+      "end": 15.445
+    },
+    {
+      "show": "Would you have guessed four?",
+      "lines": [
+        "Would you have",
+        "guessed four?"
+      ],
+      "start": 15.609,
+      "spokenEnd": 16.897,
+      "end": 17.297
+    }
+  ],
+  "takeDir": "take"
+}
