@@ -24,11 +24,20 @@ authorization or provider-post index is written, so `buildLearningReport` does
 not count them.
 
 - **Provenance.** Every fact is `user-provided` (with who supplied it),
-  `file-measured` (with the file's SHA-256) or `provider-reported` (citing the
-  trusted observation). Unknown facts are null with a reason.
+  `connector-reported` (an authenticated connector returned it to someone else
+  who relayed it; this environment did not fetch it), `file-measured` (with the
+  file's SHA-256) or `provider-reported`. Unknown facts are null with a reason.
+- **Provider-reported means a real observation.** A provider-reported fact must
+  cite an `observationId` that exists in this store, is trusted for the store's
+  mode (simulated only in a simulation store; a registered production source
+  otherwise), and is bound to the same platform, post and account. An id-shaped
+  string is refused, on write and on every read.
 - **Corrections.** `correctExternalPost` appends a numbered correction; the
   original record and every earlier step are kept. A post's platform and id are
-  its identity and cannot be corrected.
+  its identity and cannot be corrected. Replay checks each step: its `previous`
+  must equal the fact as it stands at that point (value, source, basis and
+  observation), and its replacement must be a valid fact, including the
+  observation check above. A tampered history refuses the read.
 - **Authenticated numbers.** `importExternalPostObservations` uses the same
   trusted-source check as any import. It accepts only that platform's own API
   reporting on that platform's post id, for the recorded account, after the
@@ -41,9 +50,32 @@ not count them.
 → creative memory → next brief, whose evidence carries the creative ids and the
 known media hashes. Example output: `v2/publication/examples/published-posts-*`.
 
-Post URLs supplied so far: one (RAM-fit on YouTube, `cSDhjFC-CI8`). Not yet
-supplied: the other platform URLs, every publication time and the owning
-accounts.
+Posts recorded: six. They came from the authenticated Metricool connector for
+brand 6769542, which returned them to Codex with every provider status
+`PUBLISHED`; Codex relayed them here. They are `connector-reported`, not fetched
+by this environment.
+
+| Video | Platform | Post | Metricool post | Scheduled for |
+| --- | --- | --- | --- | --- |
+| RAM | YouTube | `cSDhjFC-CI8` | 387469692 | 2026-10-03T16:00-04:00 |
+| RAM | TikTok | `7693352089078058271` | 389042813 | 2026-10-05T20:55-04:00 |
+| RAM | Instagram | `DeIi5pZDWew` | 389042813 | 2026-10-05T20:55-04:00 |
+| FPS | YouTube | `648FsZLefnc` | 389611858 | 2026-10-06T12:10-04:00 |
+| FPS | TikTok | `7693587971584429343` | 389611858 | 2026-10-06T12:10-04:00 |
+| FPS | Instagram | `DeKLo_0kw7C` | 389611858 | 2026-10-06T12:10-04:00 |
+
+The times are Metricool's **scheduled** times, kept as `scheduledAt`. With the
+`PUBLISHED` status they show the posts went out, not exactly when, so
+`publishedAt` stays unknown and the authenticated import stays closed until a
+confirmed time is added with a correction.
+
+Accounts: YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg` is recorded. For TikTok
+and Instagram only the handle `@specsmithpc` was supplied. The adapters bind to
+the TikTok `open_id` and the Instagram business account id, so the handle is
+stored as `handle` and `accountId` stays unknown until those ids are supplied.
+
+Still not available: any metric. No Metricool metric has been relayed, and the
+platform APIs remain blocked as above.
 
 ---
 

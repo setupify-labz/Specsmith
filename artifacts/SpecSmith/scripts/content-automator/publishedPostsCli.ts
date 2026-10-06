@@ -28,7 +28,7 @@ import {
   recordExternalPost,
 } from "./v2/publication/externalPosts.ts";
 import { nextBriefForWorkflow } from "./v2/publication/nextBrief.ts";
-import { ACCESS_FINDINGS, OPENING_CHANGE, OPENING_MEASUREMENTS, PUBLISHED_POSTS, PUBLISHED_WITHOUT_POSTS } from "./v2/publication/publishedPosts.ts";
+import { ACCESS_FINDINGS, OPENING_CHANGE, OPENING_MEASUREMENTS, PUBLISHED_POSTS } from "./v2/publication/publishedPosts.ts";
 
 type CorrectionInput = Omit<Parameters<typeof correctExternalPost>[0], "storeRoot" | "now">;
 type DashboardInput = Omit<Parameters<typeof recordDashboardEvidence>[0], "storeRoot" | "now">;
@@ -51,22 +51,22 @@ export async function runPublishedPosts(options: {
     memory.append({
       entryId: "published-ram-fit-opening-v1", conceptId: "ram-fit@saved-take-pr172",
       decision: { kind: "hook-form", value: "claim caption on frame one over a full-frame part close-up" },
-      outcome: { state: "unknown", reason: "No trusted metric is stored for the RAM-fit Short." },
+      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the RAM-fit Short's three posts." },
       evidenceStrength: "insufficient", synthetic: false, now: options.now,
-      note: "Published (YouTube cSDhjFC-CI8, via Metricool). Opening measured from the uploaded copy.",
+      note: "Published via Metricool (status PUBLISHED, connector-reported): YouTube cSDhjFC-CI8, TikTok 7693352089078058271, Instagram DeIi5pZDWew. Opening measured from the uploaded copy.",
     }),
     memory.append({
       entryId: "published-fps-20-wins-opening-v1", conceptId: "fps-20-wins@ce47598",
       decision: { kind: "hook-form", value: "claim on a miniature desk monitor, caption from 0.08 s, 1.3 s push into the screen" },
-      outcome: { state: "unknown", reason: "No post URL or trusted metric is recorded for the FPS Short." },
+      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the FPS Short's three posts." },
       evidenceStrength: "insufficient", synthetic: false, now: options.now,
-      note: "Published (location not supplied). Opening measured from the uploaded copy.",
+      note: "Published via Metricool (status PUBLISHED, connector-reported): YouTube 648FsZLefnc, TikTok 7693587971584429343, Instagram DeKLo_0kw7C. Opening measured from the uploaded copy.",
     }),
   ];
 
   const report = await externalPostReport({
     storeRoot: options.storeRoot, now: options.now,
-    creativesWithoutPosts: PUBLISHED_WITHOUT_POSTS, measurements: OPENING_MEASUREMENTS, recommendation: OPENING_CHANGE, accessFindings: ACCESS_FINDINGS,
+    measurements: OPENING_MEASUREMENTS, recommendation: OPENING_CHANGE, accessFindings: ACCESS_FINDINGS,
   });
   // The next brief enters the normal creative workflow through the same door as
   // the learning report. DEMO_MISSION is the engineering mission; a production
