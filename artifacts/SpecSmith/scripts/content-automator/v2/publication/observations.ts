@@ -243,7 +243,7 @@ export interface ObservationRecord {
 }
 
 export class ObservationRefusedError extends Error {
-  constructor(readonly code: "malformed" | "store-mode" | "synthetic-in-production" | "no-verified-source" | "unverified-source" | "unknown-post" | "legacy-unverified" | "not-published" | "identity-mismatch" | "impossible-timing" | "conflicting-observation", message: string) {
+  constructor(readonly code: "malformed" | "store-mode" | "synthetic-in-production" | "no-verified-source" | "unverified-source" | "unknown-post" | "legacy-unverified" | "not-published" | "identity-mismatch" | "impossible-timing" | "conflicting-observation" | "incomplete-external-post", message: string) {
     super(message);
     this.name = "ObservationRefusedError";
   }
@@ -313,16 +313,52 @@ export async function importProviderObservations(input: {
     throw new ObservationRefusedError("impossible-timing", `Collected at ${batch.collectedAt}, but the post was published at ${published.at} and it is now ${now.toISOString()}.`);
   }
 
+  const { stored, alreadyPresent, rawSha256, ageHours } = await storeObservationBatch({
+    storeRoot, batch, source, postKey: batch.providerPostId,
+    identity: { creativeId, variantId: authorization.variantId, mediaSha256: authorization.mediaSha256, publishedAt: published.at },
+  });
+
+  const status = ledger.events.at(-1)!.status;
+  if (stored.length && (status === "published" || status === "analytics-partial")) {
+    const complete = ageHours >= 168;
+    if (status === "published" || complete) {
+      await recordMetricsObserved({ storeRoot, creativeId, observationIds: stored.map((record) => record.observationId), complete, now });
+    }
+  }
+  return { creativeId, stored, alreadyPresent, rawSha256 };
+}
+
+/** What a batch is about, once the caller has proven it: a creative, its cut, its media and when it was published. */
+interface ObservationIdentity {
+  readonly creativeId: string;
+  readonly variantId: string;
+  readonly mediaSha256: string;
+  readonly publishedAt: string;
+}
+
+/**
+ * Store one batch from a trusted source against an identity the caller has
+ * already established. Shared by the ledger path (importProviderObservations)
+ * and the external-post path (importExternalPostObservations); neither the
+ * storage nor the definitions differ, only how the post was proven to be ours.
+ */
+async function storeObservationBatch({ storeRoot, batch, source, postKey, identity }: {
+  readonly storeRoot: string;
+  readonly batch: ProviderObservationBatch;
+  readonly source: ObservationSource;
+  readonly postKey: string;
+  readonly identity: ObservationIdentity;
+}): Promise<{ stored: ObservationRecord[]; alreadyPresent: number; rawSha256: string; ageHours: number }> {
   const rawSha256 = sha256Json({ source: source.sourceId, batch });
-  const directory = postDirectory(storeRoot, batch.providerPostId);
+  const directory = postDirectory(storeRoot, postKey);
   await mkdir(join(directory, "raw"), { recursive: true });
   await writeExclusive(join(directory, "raw", `${rawSha256}.json`), { source: source.sourceId, mechanism: source.mechanism, batch });
 
-  const ageHours = Math.round(((collected - publishedAt) / 3_600_000) * 100) / 100;
+  const ageHours = Math.round(((Date.parse(batch.collectedAt) - Date.parse(identity.publishedAt)) / 3_600_000) * 100) / 100;
   const base = {
     version: OBSERVATION_RECORD_VERSION, platform: batch.platform, provider: batch.provider, accountId: batch.accountId,
-    providerPostId: batch.providerPostId, creativeId, variantId: authorization.variantId, mediaSha256: authorization.mediaSha256,
-    source: source.sourceId, sourceMechanism: source.mechanism, simulated: source.simulated, collectedAt: batch.collectedAt, publishedAt: published.at,
+    providerPostId: batch.providerPostId, creativeId: identity.creativeId, variantId: identity.variantId, mediaSha256: identity.mediaSha256,
+    source: source.sourceId, sourceMechanism: source.mechanism, simulated: source.simulated, collectedAt: batch.collectedAt, publishedAt: identity.publishedAt,
     publicationAgeHours: ageHours, rawSha256,
   } as const;
   const idFor = (metricId: string) => `obs-${sha256Text(`${batch.providerPostId}|${metricId}|${batch.collectedAt}`).slice(0, 24)}`;
@@ -355,7 +391,7 @@ export async function importProviderObservations(input: {
     };
     if (definition.metricId === "site-clicks" && typeof raw === "number") {
       const a = batch.attribution;
-      if (!a || a.utmContent !== creativeId || !a.measuredBy.trim() || new URL(a.trackedUrl).searchParams.get("utm_content") !== creativeId) {
+      if (!a || a.utmContent !== identity.creativeId || !a.measuredBy.trim() || new URL(a.trackedUrl).searchParams.get("utm_content") !== identity.creativeId) {
         records.push({ ...common, value: null, state: "unavailable", unavailableReason: "A click count was supplied without attribution to this creative's tracked URL and a measuring source; it was not recorded." });
         continue;
       }
@@ -401,14 +437,70 @@ export async function importProviderObservations(input: {
     alreadyPresent += 1;
   }
 
-  const status = ledger.events.at(-1)!.status;
-  if (stored.length && (status === "published" || status === "analytics-partial")) {
-    const complete = ageHours >= 168;
-    if (status === "published" || complete) {
-      await recordMetricsObserved({ storeRoot, creativeId, observationIds: stored.map((record) => record.observationId), complete, now });
-    }
+  return { stored, alreadyPresent, rawSha256, ageHours };
+}
+
+/**
+ * Where an externally published post's observations are kept: by platform and
+ * that platform's own post id, so the same video on two platforms never shares
+ * a key, and an external post never collides with a ledger publication.
+ */
+export function externalPostKey(platform: VideoPlatform, nativePostId: string): string {
+  return `external:${platform}:${nativePostId}`;
+}
+
+/**
+ * Store authenticated observations for a post SpecSmith did NOT publish through
+ * the authorization boundary (see externalPosts.ts). The batch must come from
+ * the same kind of trusted source as any other, and must be that platform's own
+ * API reporting on that platform's own post id, for the account the external
+ * record names. It writes observations only: no ledger, no authorization, no
+ * `metrics-observed` event, so nothing here can look like an approval.
+ */
+export async function importExternalPostObservations(input: {
+  readonly storeRoot: string;
+  readonly batch: ProviderObservationBatch;
+  readonly now?: Date;
+}): Promise<{ readonly externalRecordId: string; readonly stored: readonly ObservationRecord[]; readonly alreadyPresent: number; readonly rawSha256: string }> {
+  const { storeRoot, batch } = input;
+  const now = input.now ?? new Date();
+  if (batch?.kind !== OBSERVATION_BATCH_KIND || !batch.providerPostId?.trim() || !batch.accountId?.trim() || typeof batch.metrics !== "object") {
+    throw new ObservationRefusedError("malformed", "Not a PROVIDER_OBSERVATIONS batch with a post id, an account and metrics.");
   }
-  return { creativeId, stored, alreadyPresent, rawSha256 };
+  const source = await trustedIssuer(storeRoot, batch);
+  if (!source.simulated && SYNTHETIC_MARKER.test(JSON.stringify([batch.providerPostId, batch.accountId, batch.raw]))) {
+    throw new ObservationRefusedError("synthetic-in-production", "Simulated, fixture or synthetic numbers are never imported into production analytics.");
+  }
+  const { resolveExternalPost } = await import("./externalPosts.ts");
+  const post = await resolveExternalPost(storeRoot, batch.platform, batch.providerPostId);
+  if (!post) throw new ObservationRefusedError("unknown-post", `${batch.platform} post ${batch.providerPostId} is not a recorded external post.`);
+  const { metricsAccessFor } = await import("./platformAccess.ts");
+  if (batch.provider !== metricsAccessFor(batch.platform).metricsProvider) {
+    throw new ObservationRefusedError("identity-mismatch", `External posts are bound by their ${batch.platform} post id, so only ${metricsAccessFor(batch.platform).metricsProvider}'s own API can report on them; this batch came from ${batch.provider}.`);
+  }
+  if (!post.accountId.value) {
+    throw new ObservationRefusedError("incomplete-external-post", `The account that owns ${batch.platform} post ${batch.providerPostId} is not recorded; add it with a correction before attributing numbers to it.`);
+  }
+  if (post.accountId.value !== batch.accountId) {
+    throw new ObservationRefusedError("identity-mismatch", `The batch is for account ${batch.accountId}; the post is recorded on account ${post.accountId.value}.`);
+  }
+  if (!post.publishedAt.value) {
+    throw new ObservationRefusedError("incomplete-external-post", `The publication time of ${batch.platform} post ${batch.providerPostId} is not recorded, so no observation can be placed at a publication age. Add it with a correction first.`);
+  }
+  const collected = Date.parse(batch.collectedAt);
+  if (!Number.isFinite(collected) || collected < Date.parse(post.publishedAt.value) || collected > now.getTime()) {
+    throw new ObservationRefusedError("impossible-timing", `Collected at ${batch.collectedAt}, but the post was published at ${post.publishedAt.value} and it is now ${now.toISOString()}.`);
+  }
+  const result = await storeObservationBatch({
+    storeRoot, batch, source, postKey: externalPostKey(batch.platform, batch.providerPostId),
+    identity: {
+      creativeId: post.creativeId.value ?? `external:${batch.platform}:${batch.providerPostId}`,
+      variantId: `external-post:${batch.platform}`,
+      mediaSha256: post.sourceMediaSha256.value ?? post.media?.sha256 ?? "unknown",
+      publishedAt: post.publishedAt.value,
+    },
+  });
+  return { externalRecordId: post.recordId, stored: result.stored, alreadyPresent: result.alreadyPresent, rawSha256: result.rawSha256 };
 }
 
 export const UNVERIFIED_OBSERVATION_VERSION = "unverified-observation-v1";

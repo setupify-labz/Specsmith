@@ -10,6 +10,84 @@ commands are given so each can be re-run rather than trusted.
 Nothing in this document is a measurement of a video. No number here describes
 any SpecSmith content's performance.
 
+## Update 2026-10-06: the already-published Shorts
+
+Re-probed at 17:14Z with the same commands: nothing has changed. The YouTube
+APIs still answer 403/401 without a credential. `www.youtube.com`, `app.metricool.com`,
+TikTok and Instagram are still refused by the network policy, and no `METRICOOL_*`
+or platform credential exists. This session also has no Metricool connector.
+
+Posts published outside the authorization boundary are recorded by
+`v2/publication/externalPosts.ts`, from the facts in
+`v2/publication/publishedPosts.ts`. They stay apart from the ledger: no ledger,
+authorization or provider-post index is written, so `buildLearningReport` does
+not count them.
+
+- **Provenance.** Every fact is `user-provided` (with who supplied it),
+  `connector-reported` (an authenticated connector returned it to someone else
+  who relayed it; this environment did not fetch it), `file-measured` (with the
+  file's SHA-256) or `provider-reported`. Unknown facts are null with a reason.
+- **Provider-reported means a real observation.** A provider-reported fact must
+  cite an `observationId` that exists in this store, is trusted for the store's
+  mode (simulated only in a simulation store; a registered production source
+  otherwise), is bound to the same platform, post and account, and itself
+  reports the exact field and value asserted. Today only `accountId` can be
+  provider-reported: every other value an observation carries was copied into
+  it from the post record, and a metric (views, likes) is evidence for no post
+  fact. Any other provider-reported field is refused, on write and on every read.
+- **Corrections.** `correctExternalPost` appends a numbered correction; the
+  original record and every earlier step are kept. A post's platform and id are
+  its identity and cannot be corrected. Replay checks each step: its `previous`
+  must equal the fact as it stands at that point (value, source, basis and
+  observation), and its replacement must be a valid fact, including the
+  observation check above. A tampered history refuses the read.
+- **Authenticated numbers.** `importExternalPostObservations` uses the same
+  trusted-source check as any import. It accepts only that platform's own API
+  reporting on that platform's post id, for the recorded account, after the
+  publication time is known. It writes observations only, never a ledger event.
+- **Dashboard numbers.** `recordDashboardEvidence` keeps a screenshot or pasted
+  table as EXPLORATORY, unverified context, with the dashboard, read time and
+  source reference. It is never stored as an observation and never compared.
+
+`publishedPostsCli.ts` walks post → report (values, collection times, sources)
+→ creative memory → next brief, whose evidence carries the creative ids and the
+known media hashes. Example output: `v2/publication/examples/published-posts-*`.
+
+Posts recorded: six. They came from the authenticated Metricool connector for
+brand 6769542, which returned them to Codex with every provider status
+`PUBLISHED`; Codex relayed them here. They are `connector-reported`, not fetched
+by this environment.
+
+| Video | Platform | Post | Metricool post | Scheduled for |
+| --- | --- | --- | --- | --- |
+| RAM | YouTube | `cSDhjFC-CI8` | 387469692 | 2026-10-03T16:00-04:00 |
+| RAM | TikTok | `7693352089078058271` | 389042813 | 2026-10-05T20:55-04:00 |
+| RAM | Instagram | `DeIi5pZDWew` | 389042813 | 2026-10-05T20:55-04:00 |
+| FPS | YouTube | `648FsZLefnc` | 389611858 | 2026-10-06T12:10-04:00 |
+| FPS | TikTok | `7693587971584429343` | 389611858 | 2026-10-06T12:10-04:00 |
+| FPS | Instagram | `DeKLo_0kw7C` | 389611858 | 2026-10-06T12:10-04:00 |
+
+The times are Metricool's **scheduled** times, kept as `scheduledAt`. With the
+`PUBLISHED` status they show the posts went out, not exactly when, so
+`publishedAt` stays unknown and the authenticated import stays closed until a
+confirmed time is added with a correction.
+
+Accounts: YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg` is recorded. For TikTok
+and Instagram only the handle `@specsmithpc` was supplied. The adapters bind to
+the TikTok `open_id` and the Instagram business account id, so the handle is
+stored as `handle` and `accountId` stays unknown until those ids are supplied.
+
+Relayed connector snapshots (TikTok, via the Metricool connector, through
+Codex, 2026-10-06): RAM `7693352089078058271` 1,045 views and 17 likes; FPS
+`7693587971584429343` 82 views and 0 likes. They are stored as EXPLORATORY
+`relayed-connector-snapshot` evidence. They may be delayed, their sync time was
+not relayed, and this environment did not fetch them. They are not trusted
+observations. Watch time and completion are unavailable. The two are not
+ranked against each other because the posts went out at different times.
+
+Still not available: any trusted observation. The platform APIs remain blocked
+as above.
+
 ---
 
 ## 1. The three blockers, in the order they bite
