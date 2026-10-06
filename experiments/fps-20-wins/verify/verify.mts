@@ -59,10 +59,12 @@ const story: [boolean, string][] = [
   [verified.games === 20, `expected 20 games, found ${verified.games}`],
   [leadsA === 20 && leadsB === 0 && ties === 0, `expected 20 leads, 0 ties, 0 losses; found ${leadsA}/${ties}/${leadsB}`],
   [avgA === 164 && avgB === 160, `expected averages 164 vs 160; found ${avgA} vs ${avgB}`],
+  [INPUTS.cpu === cpu.id, "both builds must use the same CPU"],
 ];
 // Spotlighted games: full titles, each checked against the catalogue entry and the model's result.
 const SPOTLIGHTS = [
   { id: "cyberpunk2077", title: "Cyberpunk 2077" },
+  { id: "cs2", title: "Counter-Strike 2" },
   { id: "warzone", title: "Call of Duty: Warzone" },
   { id: "bg3", title: "Baldur's Gate 3" },
 ];
