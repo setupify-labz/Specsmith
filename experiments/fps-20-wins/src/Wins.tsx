@@ -1,4 +1,4 @@
-// "20 wins. Only 4 FPS apart?": one standalone Short (v3 cut).
+// "20 wins. Only 4 FPS apart?": one standalone Short.
 //
 // Every number and game title on screen comes from verified.json, which
 // verify/verify.mts recomputes from SpecSmith's Compare model and checks
@@ -19,12 +19,14 @@ import V from "./verified.json";
 
 const FONT = "Inter, sans-serif";
 const C = {
-  bg: "#07080c",
-  ink: "#f4f6fa",
-  muted: "rgba(244,246,250,0.70)",
-  sup: "#ffb21f", // RTX 4080 Super
-  base: "#7fa8ff", // RTX 4080
-  line: "#2a2f3a",
+  // Match SpecSmith's dark site tokens: index.css --ff-bg/text/accent-text/cyan.
+  bg: "#0A0A0F",
+  surface: "#13131A",
+  ink: "#F0F0FF",
+  muted: "#B7B7D1",
+  sup: "#9B94FF", // RTX 4080 Super: accessible violet on dark
+  base: "#00D4FF", // RTX 4080: site's cyan
+  line: "#323247",
 };
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 const ease = Easing.bezier(0.45, 0, 0.2, 1);
@@ -52,8 +54,8 @@ function countAt(t: number): number {
 
 /** The estimates label: on every frame, sized to read at 360 px wide. */
 const EstimateLabel: React.FC = () => (
-  <div style={{ position: "absolute", left: 0, right: 0, bottom: 64, display: "flex", justifyContent: "center" }}>
-    <div style={{ padding: "12px 26px", borderRadius: 40, background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.14)", fontFamily: FONT, fontWeight: 700, fontSize: 38, color: C.ink }}>
+  <div style={{ position: "absolute", left: 0, right: 0, bottom: 245, display: "flex", justifyContent: "center" }}>
+    <div style={{ padding: "13px 26px", borderRadius: 40, background: "rgba(19,19,26,0.94)", border: "2px solid rgba(155,148,255,0.40)", fontFamily: FONT, fontWeight: 700, fontSize: 38, color: C.ink }}>
       SpecSmith model estimates · not benchmarks
     </div>
   </div>
@@ -120,7 +122,7 @@ const Spotlight: React.FC<{ t: number }> = ({ t }) => {
   const slide = lerp(t, [start, start + 0.22], [i === 0 ? 70 : 160, 0], snap);
   const o = interpolate(t, [start, start + (i === 0 ? 0.001 : 0.08), start + T.spotHold - 0.1, start + T.spotHold], [i === 0 ? 1 : 0, 1, 1, 0], clamp);
   return (
-    <div style={{ position: "absolute", left: 70, right: 70, top: 1030, opacity: o, translate: `${slide * dir}px 0px`, padding: "34px 30px", borderRadius: 28, background: "rgba(255,178,31,0.10)", border: `3px solid ${C.sup}`, textAlign: "center", fontFamily: FONT }}>
+    <div style={{ position: "absolute", left: 70, right: 70, top: 1030, opacity: o, translate: `${slide * dir}px 0px`, padding: "34px 30px", borderRadius: 20, background: "linear-gradient(100deg, rgba(108,99,255,0.28), rgba(19,19,26,0.94) 72%)", border: `3px solid ${C.sup}`, boxShadow: "0 16px 55px rgba(108,99,255,0.18)", textAlign: "center", fontFamily: FONT }}>
       <div style={{ fontWeight: 900, fontSize: 74, lineHeight: 1.06, color: C.ink }}>{spot.title}</div>
       <div style={{ marginTop: 14, fontWeight: 800, fontSize: 40, color: C.sup, letterSpacing: 2 }}>4080 SUPER LEADS</div>
     </div>
@@ -209,7 +211,8 @@ export const Wins: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: C.bg, overflow: "hidden" }}>
       <Audio src={staticFile("wins-sound.wav")} />
-      <AbsoluteFill style={{ opacity: bgSplit, background: "linear-gradient(115deg, rgba(255,178,31,0.13) 0%, rgba(255,178,31,0.04) 49.8%, rgba(127,168,255,0.04) 50.2%, rgba(127,168,255,0.13) 100%)" }} />
+      <AbsoluteFill style={{ opacity: bgSplit, background: "linear-gradient(115deg, rgba(108,99,255,0.19) 0%, rgba(108,99,255,0.03) 49.8%, rgba(0,212,255,0.03) 50.2%, rgba(0,212,255,0.13) 100%)" }} />
+      <AbsoluteFill style={{ opacity: bgSplit * 0.27, backgroundImage: "linear-gradient(rgba(155,148,255,0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(155,148,255,0.09) 1px, transparent 1px)", backgroundSize: "112px 112px", translate: `${-((t * 16) % 112)}px 0px` }} />
       <AbsoluteFill style={{ scale: String(scale + spotPush), translate: `${shake}px 0px` }}>
         <Header t={t} />
         <Counter t={t} />
