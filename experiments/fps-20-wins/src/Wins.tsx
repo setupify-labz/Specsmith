@@ -35,7 +35,6 @@ const fade = (t: number, from: number, to: number, inS = 0.12, outS = 0.12) => i
 
 const SUPER = V.inputs.gpuAName.toUpperCase();
 const BASE = V.inputs.gpuBName.toUpperCase();
-const ROLL_SECONDS = (to: number) => (to === V.games ? 0.55 : 0.16);
 
 /** Leads counted by time t: each spotlight is its roster position; between them the counter rolls. */
 function countAt(t: number): number {
@@ -43,7 +42,7 @@ function countAt(t: number): number {
   for (const roll of T.rolls) {
     if (t < roll.at) break;
     const from = n;
-    const k = lerp(t, [roll.at, roll.at + ROLL_SECONDS(roll.to)], [0, 1], Easing.linear);
+    const k = lerp(t, [roll.at, roll.at + roll.span], [0, 1], Easing.linear);
     n = Math.round(from + (roll.to - from) * k);
     if (k < 1) return n;
     n = roll.to;
@@ -131,17 +130,16 @@ const Spotlight: React.FC<{ t: number }> = ({ t }) => {
 /** The payoff: two big numbers, the difference, and the honest zero-based view under them. */
 const Payoff: React.FC<{ t: number }> = ({ t }) => {
   if (t < T.cut) return null;
-  const inA = lerp(t, [T.numbers, T.numbers + 0.6], [0, V.avgA], snap);
-  const inB = lerp(t, [T.numbers + 0.08, T.numbers + 0.68], [0, V.avgB], snap);
+  const inA = lerp(t, [T.numbers, T.numbers + 0.9], [0, V.avgA], snap);
+  const inB = lerp(t, [T.numbers + 0.08, T.numbers + 0.98], [0, V.avgB], snap);
   const numbersIn = lerp(t, [T.numbers - 0.05, T.numbers + 0.15], [0, 1]);
-  const apart = lerp(t, [T.apart, T.apart + 0.3], [0, 1], pop);
+  const apart = lerp(t, [T.apart, T.apart + 0.4], [0, 1], pop);
   const head = lerp(t, [T.cut + 0.15, T.cut + 0.4], [0, 1]);
   const outAll = 1 - lerp(t, [T.question - 0.1, T.question + 0.1], [0, 1]);
   const MAX = 180, X0 = 110, W = 860, BY = 1240;
   const xOf = (fps: number) => X0 + (fps / MAX) * W;
-  const per = lerp(t, [T.perGame, T.perGame + 0.25], [0, 1]);
   return (
-    <AbsoluteFill style={{ fontFamily: FONT, opacity: outAll }}>
+    <AbsoluteFill style={{ fontFamily: FONT, opacity: outAll, scale: String(lerp(t, [T.numbers, T.question], [1, 1.012], Easing.linear)) }}>
       <div style={{ position: "absolute", left: 60, right: 60, top: 150, opacity: head, textAlign: "center" }}>
         <div style={{ fontWeight: 900, fontSize: 62, color: C.sup }}>20 / 20 modelled leads…</div>
         <div style={{ marginTop: 6, opacity: apart, scale: String(0.7 + 0.3 * apart), fontWeight: 900, fontSize: 140, lineHeight: 1.05, color: C.ink }}>4 FPS apart</div>
@@ -174,9 +172,6 @@ const Payoff: React.FC<{ t: number }> = ({ t }) => {
         ))}
         <text x={X0} y={BY + 96} fontFamily={FONT} fontWeight={700} fontSize={30} fill={C.muted}>Full scale from 0 FPS · averages as shown on Compare</text>
       </svg>
-      <div style={{ position: "absolute", left: 60, right: 60, top: 1450, opacity: per, translate: `0px ${(1 - per) * 20}px`, textAlign: "center", fontWeight: 900, fontSize: 56, color: C.ink }}>
-        Each modelled lead: {V.perGameLeadRange[0]}–{V.perGameLeadRange[1]} FPS
-      </div>
     </AbsoluteFill>
   );
 };
@@ -184,7 +179,7 @@ const Payoff: React.FC<{ t: number }> = ({ t }) => {
 const Ending: React.FC<{ t: number }> = ({ t }) => {
   if (t < T.question) return null;
   const q = lerp(t, [T.question, T.question + 0.3], [0, 1], pop);
-  const sign = lerp(t, [T.signoff, T.signoff + 0.35], [0, 1]);
+  const sign = lerp(t, [T.question + 0.2, T.question + 0.5], [0, 1]);
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", fontFamily: FONT }}>
       <div style={{ opacity: q, scale: String(0.88 + 0.12 * q), textAlign: "center", fontWeight: 900, fontSize: 110, lineHeight: 1.05, color: C.ink, padding: "0 70px" }}>

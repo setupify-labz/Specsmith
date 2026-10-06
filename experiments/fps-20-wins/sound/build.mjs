@@ -42,14 +42,14 @@ const pluck1 = sine(659.25, 0.6, 0.18, 0.003, 0.58);
 const pluck2 = sine(783.99, 0.8, 0.16, 0.003, 0.78);
 
 const events = [];
-// Four spotlights, four different hits.
-const hits = [[whoosh, kick, snap], [kick, clap], [kick, tom, snap], [whoosh, kick, clap]];
+// Three spotlights, three different hits.
+const hits = [[whoosh, kick, snap], [kick, clap], [whoosh, kick, tom, snap]];
 T.spots.forEach((at, i) => hits[i].forEach((h) => events.push([h, h === whoosh ? Math.max(0, at - 0.1) : at])));
 // Counter rolls: quiet same-pitch ticks, one per counted game.
 let count = 1;
 for (const roll of T.rolls) {
   const steps = roll.to - count;
-  const span = roll.to === 20 ? 0.55 : 0.16;
+  const span = roll.span;
   for (let k = 1; k <= steps; k++) events.push([tick, roll.at + (span * k) / steps]);
   count = roll.to;
 }
@@ -60,7 +60,6 @@ events.push(
   // T.cut: nothing. The silence is the change.
   [softTick, T.numbers], [softTick, T.numbers + 0.08],
   [thud, T.apart], [bell1, T.apart + 0.02], [bell2, T.apart + 0.02],
-  [softTick, T.perGame],
   [pluck1, T.question], [pluck2, T.question + 0.14],
 );
 

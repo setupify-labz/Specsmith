@@ -1,20 +1,17 @@
 {
   "fps": 30,
-  "duration": 11.6,
-  "spots": [0.0, 0.8, 1.6, 2.4],
-  "spotHold": 0.72,
+  "duration": 15.8,
+  "spots": [0.0, 1.6, 3.2],
+  "spotHold": 1.3,
   "rolls": [
-    { "at": 0.64, "to": 6 },
-    { "at": 1.44, "to": 8 },
-    { "at": 2.24, "to": 16 },
-    { "at": 3.2, "to": 20 }
+    { "at": 1.3, "to": 8, "span": 0.3 },
+    { "at": 2.9, "to": 16, "span": 0.3 },
+    { "at": 4.55, "to": 20, "span": 0.7 }
   ],
-  "land": 3.9,
-  "blowout": 4.55,
-  "cut": 5.6,
-  "numbers": 6.0,
-  "apart": 7.0,
-  "perGame": 9.1,
-  "question": 10.15,
-  "signoff": 10.6
+  "land": 5.4,
+  "blowout": 6.6,
+  "cut": 8.0,
+  "numbers": 8.5,
+  "apart": 10.0,
+  "question": 14.3
 }

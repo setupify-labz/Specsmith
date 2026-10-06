@@ -142,3 +142,23 @@ RTX 4080 Super vs RTX 4080, both with a Ryzen 9 9950X3D, at 1440p High. In SpecS
 18. Minecraft (Java, Optifine)
 19. Dying Light 2
 20. Assassin's Creed Mirage
+
+## v4 cut (15.8 s), 2026-10-06
+
+Recut from the editable source to a slower rhythm. Rechecked first: origin/main 2d9ad28, 20/20 leads, 0 ties, 164 vs 160. Three full titles are spotlighted, each verified against the catalogue and its result. The 2–7 FPS line is removed, and the end card is trimmed.
+
+| Time (s) | Beat |
+|---|---|
+| 0.0–1.3 | Both GPUs and the setting; counter 1/20; **Cyberpunk 2077** |
+| 1.3–1.6 | Counter rolls to 8 |
+| 1.6–2.9 | **Call of Duty: Warzone** |
+| 2.9–3.2 | Counter rolls to 16 |
+| 3.2–4.5 | **Baldur's Gate 3** |
+| 4.55–5.25 | Counter rolls to 20, one tick per counted game, under a swell |
+| 5.4–8.0 | **20 / 20 MODELLED GAME LEADS** · "0 TIES · 0 FOR THE RTX 4080" · "A blowout?" from 6.6 |
+| 8.0–8.5 | Hard cut to black and silence |
+| 8.5–9.4 | 164 and 160 count up over zero-based bars |
+| 10.0–14.3 | **4 FPS apart** lands (thud and bell) and holds with 164 vs 160 |
+| 14.3–15.8 | "Would you have guessed four?" · SPECSMITH |
+
+The phone viewing copy is 540×960 H.264/AAC; the master is 1080×1920.

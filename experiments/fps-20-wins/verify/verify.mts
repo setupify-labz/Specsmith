@@ -63,7 +63,6 @@ const story: [boolean, string][] = [
 // Spotlighted games: full titles, each checked against the catalogue entry and the model's result.
 const SPOTLIGHTS = [
   { id: "cyberpunk2077", title: "Cyberpunk 2077" },
-  { id: "cs2", title: "Counter-Strike 2" },
   { id: "warzone", title: "Call of Duty: Warzone" },
   { id: "bg3", title: "Baldur's Gate 3" },
 ];
