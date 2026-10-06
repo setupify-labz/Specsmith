@@ -60,6 +60,12 @@ describe("the fps-20-wins option of the paid voice workflow", () => {
     expect(post).toContain("REVIEW_PR: ${{ inputs.review_pr }}");
     expect(post).toMatch(/case "\$REVIEW_PR" in ''\|\*\[!0-9\]\*\)/);
     expect(post.split("run:")[1]).not.toContain("${{");
+    // It must be this branch's pull request, checked before the first comment is written.
+    const check = post.indexOf('pulls/${REVIEW_PR}" --jq .head.ref');
+    const firstWrite = post.indexOf("issues/${REVIEW_PR}/comments");
+    expect(check).toBeGreaterThan(0);
+    expect(check).toBeLessThan(firstWrite);
+    expect(post).toContain('[ "$head" = "$GITHUB_REF_NAME" ]');
   });
 
   it("publishes nothing", () => {

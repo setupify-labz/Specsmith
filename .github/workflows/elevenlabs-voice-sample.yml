@@ -456,6 +456,9 @@ jobs:
           REVIEW_PR: ${{ inputs.review_pr }}
         run: |
           case "$REVIEW_PR" in ''|*[!0-9]*) echo "::error::review_pr must be a PR number."; exit 1;; esac
+          # Before any write: the number must be a pull request, and the one for this branch.
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REVIEW_PR}" --jq .head.ref) || { echo "::error::#${REVIEW_PR} is not a pull request; nothing posted."; exit 1; }
+          [ "$head" = "$GITHUB_REF_NAME" ] || { echo "::error::#${REVIEW_PR} is the PR for ${head}, not ${GITHUB_REF_NAME}; nothing posted."; exit 1; }
           tar -czf take.tgz -C take .
           sum=$(sha256sum take.tgz | cut -d' ' -f1)
           { base64 -w0 take.tgz | fold -w 60000; echo; } > parts.txt
