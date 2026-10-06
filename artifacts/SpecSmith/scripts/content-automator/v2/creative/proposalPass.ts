@@ -10,7 +10,7 @@ import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
-import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, verticalOverflow, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
 import { critiqueConceptSet } from "./conceptCritique.ts";
 import { retrieveCreativeMemory, type CreativeMemoryEntry, type RetrievalQuery } from "./memory.ts";
 
@@ -122,6 +122,12 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     const appearance = concept.beats.flatMap((beat) => beat.visualIds)
       .flatMap((id) => motionGraphics.find((graphic) => graphic.visualId === id)?.games.map((game) => game.gameId) ?? []);
     motionGraphics = withConsistentColours(motionGraphics, appearance);
+    // Each graphic must fit the band it will be rendered into, at readable sizes.
+    const storyHeight = persistentDisclosuresOf(concept).length > 0 ? DISCLOSURE_BANDED_LAYOUT.story.height : DISCLOSURE_BANDED_LAYOUT.height;
+    for (const graphic of motionGraphics) {
+      const overflow = verticalOverflow(graphic, storyHeight);
+      if (overflow) motionGraphicProblems.push(overflow);
+    }
     try {
       for (const entry of unsupportedGraphicValues({ beats: concept.beats, graphics: motionGraphics, approvedClaims: approved })) {
         motionGraphicProblems.push(`Beat ${entry.beat}: motion graphic "${entry.visualId}" shows ${describeShown(entry.shown)}, and no approved claim bound on that beat covers that game, setting, pairing, direction and those values together. Bind the claim whose evidence states exactly this, or show a template without values.`);

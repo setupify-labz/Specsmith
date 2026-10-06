@@ -277,6 +277,12 @@ Every movement is a step in the question arriving.
 - **Caption shown once.** A caption that is exactly the graphic's line is shown once, inside the graphic. Any other caption stays in the caption band.
 - **Same checks.** The frame check uses the captions the plan actually renders. The required-wording check reads the labels the graphic draws, as well as the narration and the caption.
 
+**Vertical fit.** The cards and a stage's line are laid out from fixed sizes that are never below the readable minimum (`percentChangeLayout`). With three games, the explain or ask line would need 1,564 px against the 1,276 px the story band allows. That configuration is refused in two places:
+- the workflow (`motionGraphicProblems`);
+- the renderer, before drawing.
+
+As a further check, the renderer records anything drawn past the band's bottom edge. Two games in any stage and three games in the reveal fit. Re-rendering the two-game edit after this change produced the same SHA-256.
+
 **Result:**
 - **File:** `render-output/next-video-gpu-upgrade-draft-2/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4`.
 - **Format:** 1080×1920 at 30 fps, 19.07 s.

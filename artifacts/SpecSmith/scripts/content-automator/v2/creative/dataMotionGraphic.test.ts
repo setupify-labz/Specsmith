@@ -11,16 +11,21 @@ import { missionCaptureViews, pictureIdentity } from "./captureViews.ts";
 import {
   dataMotionGraphicDefects,
   graphicLabels,
+  PERCENT_CHANGE_LAYOUT,
+  percentChangeLayout,
   percentChange,
   stageNote,
   stageNoteText,
   resolveDataMotionGraphic,
   unsupportedGraphicValues,
   valuesShown,
+  verticalOverflow,
   type DataMotionGraphic,
 } from "./dataMotionGraphic.ts";
 import { buildCreativeProposalProductionPlan, runCreativeProposalPass } from "./proposalPass.ts";
 import { reviewVisualHonesty } from "./visualHonesty.ts";
+import { renderDataMotionGraphic } from "./dataMotionGraphicRender.ts";
+import { DISCLOSURE_BANDED_LAYOUT } from "../../bandedLayout.ts";
 import { checkScriptAgainstResearch } from "../research/creativeContract.ts";
 import type { PlatformScriptStoryboard } from "../../types.ts";
 
@@ -198,6 +203,52 @@ describe("percent-change stages: the comparison stays on screen while the story 
     const nearPlan = buildCreativeProposalProductionPlan({ packageId: "p", ideaId: "i", campaignId: "c", feature: "compare", subjectIds: [] } as never, near as never);
     const nearCues = (nearPlan.platforms[0].tasks.find((task) => task.capability === "caption-render") as unknown as { captionRenderState: { cues: { text: string }[] } }).captionRenderState.cues;
     expect(nearCues.map((cue) => cue.text)).toContain("Same upgrade, different gains");
+  });
+});
+
+describe("vertical overflow: a stage never runs off the story band", () => {
+  const band = DISCLOSURE_BANDED_LAYOUT.story.height;
+  const three = ["alanwake2", "valorant", "cyberpunk2077"];
+  const resolved = (stage: "reveal" | "explain" | "ask", games = ["alanwake2", "valorant"]) =>
+    resolveDataMotionGraphic(graphic({ stage, games }), views, { productDestination: "/compare" });
+
+  it("fits two games in every stage, and three games in the reveal", () => {
+    for (const stage of ["reveal", "explain", "ask"] as const) expect(verticalOverflow(resolved(stage), band)).toBeNull();
+    expect(verticalOverflow(resolved("reveal", three), band)).toBeNull();
+  });
+
+  it("refuses three games with the explain or ask line in the 1300px band, naming the shortfall", () => {
+    for (const stage of ["explain", "ask"] as const) {
+      const graphic3 = resolved(stage, three);
+      const layout = percentChangeLayout(3, graphic3.note ?? null, band);
+      expect(layout.fits).toBe(false);
+      // The line would start below the band: cards alone reach the bottom.
+      expect(layout.noteTop).toBeGreaterThanOrEqual(band - PERCENT_CHANGE_LAYOUT.bottomMargin);
+      expect(verticalOverflow(graphic3, band)).toMatch(new RegExp(`3 games and the ${stage} line need \\d+px but the story band allows ${band - PERCENT_CHANGE_LAYOUT.bottomMargin}px`));
+    }
+  });
+
+  it("estimates at least as low as anything drawn: the largest line size, two rows, the link and the fade-in offset", () => {
+    const ask = percentChangeLayout(2, resolved("ask").note ?? null, band);
+    const L = PERCENT_CHANGE_LAYOUT;
+    const noteTop = L.cardTop + 2 * (L.cardHeight + L.cardGap) + L.noteGap;
+    expect(ask.noteTop).toBe(noteTop);
+    expect(ask.bottom).toBe(noteTop + L.noteMaxPx + Math.round(L.noteMaxPx * L.noteLineFactor) + L.linkOffset + Math.ceil(L.linkMaxPx * 0.25) + L.noteRise);
+    expect(ask.fits).toBe(true);
+  });
+
+  it("the renderer refuses an overflowing graphic before drawing a frame", async () => {
+    const state = { graphic: resolved("ask", three), durationSeconds: 1, width: 1080, height: band };
+    await expect(renderDataMotionGraphic(state, "/nonexistent/never-written.mp4", "/nonexistent")).rejects.toThrow(/story band allows/);
+  });
+
+  it("the workflow blocks a concept with a three-game explain stage", () => {
+    const concepts = batch();
+    concepts[0] = { ...concepts[0], visuals: concepts[0].visuals.map((visual) =>
+      visual.kind === "data-motion-graphic" && visual.visualId === "pct-aw-val-explain" ? { ...visual, games: three } : visual) };
+    const proposal = pass(concepts).proposals[0];
+    expect(proposal.contractEligible).toBe(false);
+    expect(proposal.motionGraphicProblems.some((problem) => /pct-aw-val-explain: 3 games and the explain line need \d+px/.test(problem))).toBe(true);
   });
 });
 

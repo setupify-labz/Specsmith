@@ -379,3 +379,56 @@ export const SPECSMITH_MOTION_COLOURS = {
 /** Minimum on-screen type in the 1080px-wide frame: figures and names, and the smallest label. */
 export const MOTION_MIN_PRIMARY_PX = 64;
 export const MOTION_MIN_LABEL_PX = 34;
+
+/**
+ * The percent-change layout, in frame pixels. The cards keep one place in
+ * every stage; a stage's line sits underneath. Nothing here shrinks to fit:
+ * every size is already at or above the readable minimum, so a layout that
+ * runs past the bottom of its band is refused, never squeezed.
+ */
+export const PERCENT_CHANGE_LAYOUT = {
+  cardTop: 196, cardHeight: 330, cardGap: 28, noteGap: 30,
+  /** The stage line is drawn at up to this size, never below MOTION_MIN_PRIMARY_PX. */
+  noteMaxPx: 76, noteLineFactor: 1.18,
+  linkOffset: 64, linkMaxPx: 40,
+  /** The line fades in from this far below its place. */
+  noteRise: 24,
+  /** Clear space kept above the band's bottom edge. */
+  bottomMargin: 24,
+} as const;
+
+export interface PercentChangeLayout {
+  readonly cardsBottom: number;
+  readonly noteTop: number | null;
+  /** The lowest pixel anything is drawn at, descenders included. */
+  readonly bottom: number;
+  readonly limit: number;
+  readonly fits: boolean;
+}
+
+/**
+ * Where the cards and the stage line end, for a band `height` tall. Measured
+ * at the line's largest size and two rows for a single sentence (it may
+ * wrap), so the estimate can only be taller than what is drawn.
+ */
+export function percentChangeLayout(gameCount: number, note: ResolvedDataMotionGraphic["note"], height: number): PercentChangeLayout {
+  const L = PERCENT_CHANGE_LAYOUT;
+  const cardsBottom = L.cardTop + gameCount * L.cardHeight + (gameCount - 1) * L.cardGap;
+  if (!note) return { cardsBottom, noteTop: null, bottom: cardsBottom, limit: height - L.bottomMargin, fits: cardsBottom <= height - L.bottomMargin };
+  const noteTop = L.cardTop + gameCount * (L.cardHeight + L.cardGap) + L.noteGap;
+  const rows = note.lines.length > 1 ? note.lines.length : 2;
+  const lastBaseline = noteTop + L.noteMaxPx + (rows - 1) * Math.round(L.noteMaxPx * L.noteLineFactor);
+  const bottom = L.noteRise + (note.link
+    ? lastBaseline + L.linkOffset + Math.ceil(L.linkMaxPx * 0.25)
+    : lastBaseline + Math.ceil(L.noteMaxPx * 0.25));
+  return { cardsBottom, noteTop, bottom, limit: height - L.bottomMargin, fits: bottom <= height - L.bottomMargin };
+}
+
+/** Why a resolved graphic does not fit a band `height` tall, or null when it does. */
+export function verticalOverflow(graphic: ResolvedDataMotionGraphic, height: number): string | null {
+  if (graphic.template !== "percent-change") return null;
+  const layout = percentChangeLayout(graphic.games.length, graphic.note ?? null, height);
+  if (layout.fits) return null;
+  return `${graphic.visualId}: ${graphic.games.length} games${graphic.note ? ` and the ${graphic.stage} line` : ""} need ${layout.bottom}px but the story band allows ${layout.limit}px at the minimum readable sizes. ` +
+    "Show fewer games in this stage; text is never shrunk below the minimum or drawn off the band.";
+}

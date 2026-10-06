@@ -22,7 +22,9 @@ import {
   MOTION_LABELS,
   MOTION_MIN_LABEL_PX,
   MOTION_MIN_PRIMARY_PX,
+  PERCENT_CHANGE_LAYOUT,
   SPECSMITH_MOTION_COLOURS,
+  verticalOverflow,
   type ResolvedDataMotionGraphic,
 } from "./dataMotionGraphic.ts";
 
@@ -60,6 +62,7 @@ function pageScript(state: DataMotionGraphicState): string {
 const S = ${JSON.stringify(state)};
 const C = ${JSON.stringify(SPECSMITH_MOTION_COLOURS)};
 const LABELS = ${JSON.stringify(MOTION_LABELS)};
+const LAYOUT = ${JSON.stringify(PERCENT_CHANGE_LAYOUT)};
 const MIN_PRIMARY = ${MOTION_MIN_PRIMARY_PX}, MIN_LABEL = ${MOTION_MIN_LABEL_PX};
 const FONT = ${JSON.stringify(MOTION_FONT)};
 const W = S.width, H = S.height, G = S.graphic;
@@ -70,7 +73,7 @@ const GAME_COLOURS = G.games.map((g, i) => PALETTE[(g.colour ?? i) % PALETTE.len
 const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => 1 - Math.pow(1 - clamp(x), 3);
-const measured = { minFontPx: Infinity, misfits: [] };
+const measured = { minFontPx: Infinity, misfits: [], overflow: [] };
 
 /** Largest size in [min, max] at which s fits maxWidth. Records a misfit if none does. */
 function fit(s, maxWidth, max, min, weight) {
@@ -87,10 +90,14 @@ function text(s, x, y, maxWidth, max, min, color, align, weight) {
   measured.minFontPx = Math.min(measured.minFontPx, size);
   ctx.font = weight + ' ' + size + 'px "' + FONT + '"';
   ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
+  // Drawn past the band's bottom edge (descenders included) is drawn off screen.
+  const descent = ctx.measureText(s).actualBoundingBoxDescent || 0;
+  if (y + descent + ctx.getTransform().f > H) measured.overflow.push(s);
   ctx.fillText(s, x, y);
   return size;
 }
 function rect(x, y, w, h, r, color) {
+  if (y + h + ctx.getTransform().f > H) measured.overflow.push('shape at y=' + Math.round(y));
   ctx.fillStyle = color; ctx.beginPath(); ctx.roundRect(x, y, Math.max(0, w), h, Math.min(r, Math.max(0, w) / 2, h / 2)); ctx.fill();
 }
 
@@ -161,7 +168,7 @@ function fpsChange(t) {
  * The cards sit in the same place in every stage, so the cut between stages
  * changes only the line underneath.
  */
-const CARD_H = 330, CARD_GAP = 28, CARD_TOP = 196;
+const CARD_H = LAYOUT.cardHeight, CARD_GAP = LAYOUT.cardGap, CARD_TOP = LAYOUT.cardTop;
 function percentChange(t) {
   const maxPercent = Math.max(...G.games.map((g) => g.percent), 1);
   const settled = G.stage && G.stage !== 'reveal';
@@ -191,26 +198,26 @@ function percentChange(t) {
   });
   if (!G.note) return;
   // The stage's one line, under the cards. It is the only thing that moves.
-  const top = CARD_TOP + G.games.length * (CARD_H + CARD_GAP) + 30;
+  const top = CARD_TOP + G.games.length * (CARD_H + CARD_GAP) + LAYOUT.noteGap;
   const p = ease(t / 0.4);
-  ctx.save(); ctx.globalAlpha = p; ctx.translate(0, 24 * (1 - p));
+  ctx.save(); ctx.globalAlpha = p; ctx.translate(0, LAYOUT.noteRise * (1 - p));
   // Two sentences read as two statements, one per line; a single sentence wraps.
   let rowsOut, size;
   if (G.note.lines.length > 1) {
-    size = Math.min(...G.note.lines.map((line) => fit(line, INNER, 76, MIN_PRIMARY, 'bold')));
+    size = Math.min(...G.note.lines.map((line) => fit(line, INNER, LAYOUT.noteMaxPx, MIN_PRIMARY, 'bold')));
     rowsOut = G.note.lines;
   } else {
-    const head = layoutHeadline(G.note.lines[0], INNER, 2, 76, MIN_PRIMARY);
+    const head = layoutHeadline(G.note.lines[0], INNER, 2, LAYOUT.noteMaxPx, MIN_PRIMARY);
     size = head ? head.size : MIN_PRIMARY;
     rowsOut = head ? head.lines.map((line) => line.map((w) => w.word).join(' ')) : G.note.lines;
   }
-  const lineH = Math.round(size * 1.18);
+  const lineH = Math.round(size * LAYOUT.noteLineFactor);
   let y = top;
   rowsOut.forEach((line, i) => {
     y = top + size + i * lineH;
     text(line, PAD, y, INNER, size, MIN_PRIMARY, C.text, 'left', 'bold');
   });
-  if (G.note.link) text(G.note.link, PAD, y + 64, INNER, 40, MIN_LABEL, C.accentText, 'left', 'bold');
+  if (G.note.link) text(G.note.link, PAD, y + LAYOUT.linkOffset, INNER, LAYOUT.linkMaxPx, MIN_LABEL, C.accentText, 'left', 'bold');
   ctx.restore();
 }
 
@@ -338,6 +345,9 @@ export interface DataMotionGraphicRender {
 /** Draws the graphic and encodes it. Refuses if any string misses its readable size. */
 export async function renderDataMotionGraphic(input: unknown, outputPath: string, workDir: string): Promise<DataMotionGraphicRender> {
   const state = parseDataMotionGraphicState(input);
+  // Refused before a frame is drawn: the layout is known from the values alone.
+  const overflow = verticalOverflow(state.graphic, state.height);
+  if (overflow) throw new DataMotionGraphicError(overflow);
   const framesDir = join(workDir, `frames-${state.graphic.visualId}`);
   await rm(framesDir, { recursive: true, force: true });
   await mkdir(framesDir, { recursive: true });
@@ -352,7 +362,10 @@ export async function renderDataMotionGraphic(input: unknown, outputPath: string
       const url = await page.evaluate(`window.renderAt(${(index / MOTION_FPS).toFixed(4)})`) as string;
       await writeFile(join(framesDir, `f-${String(index).padStart(4, "0")}.png`), Buffer.from(url.split(",")[1], "base64"));
     }
-    const measured = await page.evaluate("window.measured()") as { minFontPx: number; misfits: string[] };
+    const measured = await page.evaluate("window.measured()") as { minFontPx: number; misfits: string[]; overflow: string[] };
+    if (measured.overflow.length) {
+      throw new DataMotionGraphicError(`Drawn past the bottom of the ${state.height}px band: ${[...new Set(measured.overflow)].join(" | ")}. Show fewer games.`);
+    }
     if (measured.misfits.length) {
       throw new DataMotionGraphicError(`Text does not fit at a readable size: ${[...new Set(measured.misfits)].join(" | ")}. Use fewer games or a shorter template.`);
     }
