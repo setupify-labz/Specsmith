@@ -39,6 +39,8 @@ import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRe
 import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts";
 import { createDataMotionGraphicAdapter } from "./v2/creative/dataMotionGraphicRender.ts";
 import { createSilentNarrationAdapter } from "./silentNarration.ts";
+import { createSavedTakeNarrationAdapter, type SavedTake } from "./savedTakeNarration.ts";
+import { createSoundEffectsAdapter, type SoundCue } from "./soundEffects.ts";
 import type { CreativeMissionInput } from "./v2/creative/proposalPass.ts";
 import { checkBandedFrames, type BandedFrameExpectation } from "./bandedFrameCheck.ts";
 import { DISCLOSURE_BANDED_LAYOUT } from "./bandedLayout.ts";
@@ -70,7 +72,13 @@ export interface OfflineRenderOptions {
    * "silent": no speech at all; a silent track of the planned length, with the
    * planned narration and its timing recorded beside it.
    */
-  readonly narration?: "fixture-voice" | "silent";
+  readonly narration?: "fixture-voice" | "silent" | "saved-take";
+  /** narration "saved-take": the saved provider take, re-hashed before use. Never generated here. */
+  readonly savedTake?: SavedTake;
+  /** Where each beat's line sits in the narration, when it is known (a saved take's timestamps). */
+  readonly narrationSegments?: readonly { readonly beatIndex: number; readonly startSecond: number; readonly endSecond: number }[];
+  /** Synthesized sound effects under the narration (soundEffects.ts). None by default. */
+  readonly soundEffects?: readonly SoundCue[];
 }
 
 export async function renderProposalOffline(directory: string, conceptId: string, outputRoot?: string, options: OfflineRenderOptions = {}) {
@@ -92,18 +100,22 @@ export async function renderProposalOffline(directory: string, conceptId: string
   const pkg = buildCreativeProposalProductionPlan({
     packageId: `master6-${conceptId}`, ideaId: conceptId, campaignId: mission.missionId,
     feature: "compare", route: mission.productDestination, subjectIds: [],
-  }, proposal);
+  }, proposal, { soundEffects: options.soundEffects });
   const plan = pkg.platforms[0];
+  if (narration === "saved-take" && !options.savedTake) throw new Error("narration \"saved-take\" needs the saved take; nothing is generated here.");
   await rm(outputDir, { recursive: true, force: true });
   await mkdir(outputDir, { recursive: true });
   const registry = new RenderAdapterRegistry()
     .register(createDeterministicUiRenderAdapter({ baseUrl, outputDir: join(outputDir, "ui") }))
     .register(createDisclosureOverlayAdapter({ outputDir: join(outputDir, "disclosure") }))
     .register(createDataMotionGraphicAdapter({ outputDir: join(outputDir, "motion") }))
-    .register(narration === "silent"
+    .register(narration === "saved-take"
+      ? createSavedTakeNarrationAdapter({ outputDir: join(outputDir, "audio"), take: options.savedTake! })
+      : narration === "silent"
       ? createSilentNarrationAdapter({ outputDir: join(outputDir, "audio"), ffmpegPath,
           plannedLines: proposal.storyboard.beats.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, text: beat.narration })) })
       : createLocalFixtureTtsAdapter({ outputDir: join(outputDir, "audio") }))
+    .register(createSoundEffectsAdapter({ outputDir: join(outputDir, "sfx"), ffmpegPath }))
     .register(createCaptionRenderAdapter({ outputDir: join(outputDir, "captions") }))
     .register(createMotionCompositorAdapter({ outputDir, ffmpegPath, ffprobePath: process.env.SPECSMITH_FFPROBE_PATH }));
   const result = await renderPlatformPlan(pkg, plan, registry, { maxAttemptsPerCapability: 1 });
@@ -210,16 +222,19 @@ export async function renderProposalOffline(directory: string, conceptId: string
     disclosurePanel: fileOf(`${plan.platform}-disclosure-overlay`),
     captions: fileOf(`${plan.platform}-captions`),
     narration: fileOf(`${plan.platform}-voice`),
-    // The local voice reads every beat as one continuous take, and a silent
-    // track has nothing to time: no per-beat narration segments exist.
-    narrationSegments: null,
+    // Known only from a saved take's timestamps. The local voice reads every
+    // beat as one continuous take, and a silent track has nothing to time.
+    narrationSegments: options.narrationSegments ? [...options.narrationSegments] : null,
     beats: storyboard.beats.map((beat, index) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, captures: [fileOf(visualTasks[index].taskId)] })),
+    otherAssets: plan.tasks.filter((task) => task.capability === "music-sfx").map((task) => ({ ...fileOf(task.taskId), role: "sound-effect" as const })),
   }));
 
   const media = verifyRenderedMedia(videoPath);
   const report = {
     label: mission.researchSynthetic
       ? "ENGINEERING RENDER of a synthetic-research concept. Not reviewed, not approved, not for publication."
+      : narration === "saved-take"
+      ? "FINAL CUT of a production-research concept, narrated by the saved provider take. Not approved, not for publication."
       : `VISUAL DRAFT of a production-research concept${narration === "silent" ? ", silent: narration is planned, not spoken" : ""}. Not reviewed, not approved, not for publication.`,
     conceptId,
     attempt: evaluation.attempts,
@@ -236,6 +251,7 @@ export async function renderProposalOffline(directory: string, conceptId: string
     })),
     disclosurePanel: artifactOf(`${plan.platform}-disclosure-overlay`).metadata,
     narration: artifactOf(`${plan.platform}-voice`).metadata,
+    soundEffects: plan.tasks.some((task) => task.capability === "music-sfx") ? { cues: options.soundEffects ?? [], artifact: artifactOf(`${plan.platform}-audio`).metadata } : null,
     frameCheck,
     controls: controlResults,
     inspectionFrames: framePaths,
@@ -246,7 +262,9 @@ export async function renderProposalOffline(directory: string, conceptId: string
       "Whether the video is worth a viewer's time: hook, pacing, and whether the three checks land.",
       "Whether the disclosure panel is comfortable to read on a real phone, not only above the measured minimums.",
       "Whether switching between Compare views reads as deliberate or as jumpy.",
-      narration === "silent"
+      narration === "saved-take"
+        ? "The narration and mix: a listening review of the saved take under the sound effects, at phone volume."
+        : narration === "silent"
         ? "The narration: none was generated. The audio is silence of the planned length; the planned lines and timings are recorded beside it."
         : "The narration: espeak-ng is a robotic fixture used because no paid voice was approved; voice and audio are unreviewed.",
       mission.researchSynthetic

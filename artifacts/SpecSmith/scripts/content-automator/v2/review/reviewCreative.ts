@@ -47,6 +47,34 @@ import {
 } from "./types.ts";
 import { narrationText, normalizeText, pairingFromRoute, parseAssCues, sha256File, sha256Json, sha256Text, type ParsedCue } from "./util.ts";
 
+/** The shortest silence mediaInspection.soundIntervals detects (silencedetect d=0.25). */
+const SILENCE_MIN_SECONDS = 0.25;
+
+/**
+ * Placed narration lines as the silence detector can see them. silencedetect
+ * resolves silences of SILENCE_MIN_SECONDS or longer (plus 0.2 s of tolerance
+ * either side), so two lines closer than that cannot show a measurable gap and
+ * are one span; a sound outside every span is still refused.
+ */
+export function narrationSpans(segments: readonly { readonly startSecond: number; readonly endSecond: number }[]): { startSecond: number; endSecond: number }[] {
+  const spans: { startSecond: number; endSecond: number }[] = [];
+  for (const segment of [...segments].sort((a, b) => a.startSecond - b.startSecond)) {
+    const last = spans.at(-1);
+    if (last && segment.startSecond - last.endSecond <= SILENCE_MIN_SECONDS + 0.4) last.endSecond = Math.max(last.endSecond, segment.endSecond);
+    else spans.push({ startSecond: segment.startSecond, endSecond: segment.endSecond });
+  }
+  return spans;
+}
+
+/** A production plan's caption cues, when it carries a caption task with structured cues. */
+export function plannedCaptionCues(plan: unknown): { startSecond: number; endSecond: number; text: string }[] | null {
+  const platforms = (plan as { platforms?: unknown[] } | null)?.platforms;
+  const platform = (Array.isArray(platforms) ? platforms[0] : plan) as { tasks?: { capability?: string; captionRenderState?: { cues?: unknown } }[] } | null;
+  const cues = platform?.tasks?.find((task) => task.capability === "caption-render")?.captionRenderState?.cues;
+  if (!Array.isArray(cues)) return null;
+  return cues.every((cue) => cue && typeof cue.text === "string" && Number.isFinite(cue.startSecond) && Number.isFinite(cue.endSecond)) ? cues : null;
+}
+
 export class ReviewPacketError extends Error {
   constructor(message: string) {
     super(message);
@@ -420,8 +448,9 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
           block("narration.timing", "narration-missing-in-beat", `beat ${segment.beatIndex + 1}`, `${segment.startSecond}-${segment.endSecond}s`, "No sound where this beat's line is placed.", "narration");
         }
       }
+      const spans = narrationSpans(manifest.narrationSegments);
       for (const interval of sound) {
-        const inside = manifest.narrationSegments.some((segment) => interval.start >= segment.startSecond - 0.2 && interval.end <= segment.endSecond + 0.2);
+        const inside = spans.some((segment) => interval.start >= segment.startSecond - 0.2 && interval.end <= segment.endSecond + 0.2);
         if (!inside) {
           block("narration.timing", "sound-outside-segments", `${interval.start.toFixed(2)}-${interval.end.toFixed(2)}s`, "silencedetect",
             "Audio plays where no narration segment was placed; a line may be running over the next screen.", "narration", ["narration.timing", "claims.screen"]);
@@ -432,6 +461,11 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
     // Sampled frames against their sources.
     const panel = assetById(manifest.disclosurePanelAssetId);
     const beatsWithCaptures = manifest.beats.map((beat) => ({ ...beat, sources: beat.captureAssetIds.map((id) => assetById(id)?.path ?? "") }));
+    // A motion graphic is a clip, compared with itself at the same moment, not a still.
+    const clipOf = (beat: (typeof beatsWithCaptures)[number]) => {
+      const assets = beat.captureAssetIds.map((id) => assetById(id));
+      return assets.length === 1 && assets[0]?.metadata.renderer === "specsmith-data-motion-graphic" ? assets[0].path : null;
+    };
     const missingSources = beatsWithCaptures.some((beat) => beat.sources.length === 0 || beat.sources.some((path) => !path)) ||
       manifest.beats.some((beat) => beat.captureAssetIds.some((id) => !assetOk.get(id))) || !panel || !assetOk.get(panel.assetId);
     if (missingSources) {
@@ -446,7 +480,10 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
         videoPath: media.path,
         layout: manifest.layout,
         disclosurePanelPath: panel!.path,
-        beats: beatsWithCaptures.map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, sources: beat.sources })),
+        beats: beatsWithCaptures.map((beat) => {
+          const clip = clipOf(beat);
+          return clip ? { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: [], clip } : { startSecond: beat.startSecond, endSecond: beat.endSecond, sources: beat.sources };
+        }),
         captionCues: cues.map((cue) => ({ startSecond: cue.startSecond, endSecond: cue.endSecond })),
         durationSeconds: probed.durationSeconds,
       };
@@ -485,7 +522,10 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
   const captionsByBeat: (string | null)[] = storyboard.beats.map(() => null);
   if (captionsAsset && assetOk.get(captionsAsset.assetId)) {
     ran.add("captions.rendered-text");
-    const planned = captionCuesForScript(storyboard);
+    // The planned set is the production plan's own caption cues, when it has
+    // them (the plan is bound to this render by its hash): a beat whose line its
+    // motion graphic draws carries no caption cue. Otherwise, one per beat.
+    const planned = plannedCaptionCues(submission.productionPlan) ?? captionCuesForScript(storyboard);
     for (const cue of cues) {
       const middle = (cue.startSecond + cue.endSecond) / 2;
       const index = storyboard.beats.findIndex((beat) => middle >= beat.startSecond && middle < beat.endSecond);
@@ -564,6 +604,12 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
   }
 
   // --- figures, captures, graphics ---------------------------------------------------
+  const graphicTextByBeat = storyboard.beats.map((_, index) => {
+    const beat = manifest?.beats.find((entry) => entry.beatIndex === index);
+    return (beat?.captureAssetIds ?? []).map((id) => assetById(id))
+      .filter((asset) => asset?.metadata.renderer === "specsmith-data-motion-graphic" && typeof asset.metadata.onScreenText === "string" && assetOk.get(asset.assetId))
+      .map((asset) => String(asset!.metadata.onScreenText)).join(" \n ");
+  });
   const capturesByBeat: BeatCapture[][] = storyboard.beats.map((_, index) => {
     const beat = manifest?.beats.find((entry) => entry.beatIndex === index);
     return (beat?.captureAssetIds ?? []).map((id) => assetById(id)).filter((asset) => asset !== null && asset.role === "capture")
@@ -572,7 +618,7 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
   ran.add("claims.model"); ran.add("claims.presentation"); ran.add("claims.screen"); ran.add("claims.undeclared");
   const disclosureVerifiedOnScreen = frames !== null && !findings.some((entry) => entry.code === "disclosure-not-on-screen" || entry.code === "disclosure-text-differs");
   findings.push(...checkClaims({
-    storyboard, title: submission.title, description: submission.description, captionsByBeat, capturesByBeat,
+    storyboard, title: submission.title, description: submission.description, captionsByBeat, graphicTextByBeat, capturesByBeat,
     claims: submission.claims, graphics: submission.graphics, disclosureLines: submission.disclosureLines,
     disclosureVerifiedOnScreen, contract: submission.research.contract,
   }));

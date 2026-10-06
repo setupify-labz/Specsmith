@@ -8,6 +8,7 @@ import { parseUiRenderRequest, stateIdentifier } from "../../uiRender/uiRenderSt
 import { buildProductionPlanPackage } from "../../productionPlan.ts";
 import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
+import type { SoundCue } from "../../soundEffects.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
 import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, verticalOverflow, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
@@ -178,12 +179,15 @@ export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateI
  * - With required disclosures, the frame is banded (bandedLayout.ts): captures
  *   render at the story band's size, a disclosure-overlay task renders the
  *   disclosures verbatim for the whole video, and captions sit in their own band.
- * - No music task: this path has no licensed or offline music capability, and a
- *   silent placeholder would pass for a sound design decision that was never made.
+ * - No music. The music-sfx task is dropped unless `soundEffects` are given: a
+ *   silent placeholder would pass for a sound design decision that was never
+ *   made. Given cues, it renders those synthesized effects (soundEffects.ts),
+ *   and still no music.
  */
 export function buildCreativeProposalProductionPlan(
   base: Omit<ScriptStoryboardPackage, "scripts">,
   proposal: NonNullable<ReturnType<typeof runCreativeProposalPass>["selected"]>,
+  options: { readonly soundEffects?: readonly SoundCue[] } = {},
 ) {
   if (!proposal.contractEligible) throw new Error("A blocked proposal cannot enter the production contract.");
   const viewById = new Map(proposal.views.map((view) => [view.stateIdentifier, view] as const));
@@ -232,7 +236,11 @@ export function buildCreativeProposalProductionPlan(
     const music = platform.tasks.find((task) => task.capability === "music-sfx");
     const compose = platform.tasks.find((task) => task.capability === "motion-compositor") as ProductionTask & { compositorState?: Record<string, unknown> };
     const captions = platform.tasks.find((task) => task.capability === "caption-render") as ProductionTask & { captionRenderState?: Record<string, unknown> };
-    if (music) {
+    if (music && options.soundEffects && options.soundEffects.length > 0) {
+      (music as ProductionTask & { soundEffectsState?: unknown }).soundEffectsState = { cues: [...options.soundEffects] };
+      music.purpose = "Restrained synthesized sound effects under the narration: cuts and figure reveals only. No music.";
+      platform.qualityChecks.push(`Sound effects: ${options.soundEffects.length} synthesized cues (no music, no samples), mixed under the narration at the compositor's music gain.`);
+    } else if (music) {
       platform.tasks = platform.tasks.filter((task) => task !== music);
       platform.renderOrder = platform.renderOrder.filter((id) => id !== music.taskId);
       compose.inputRequirements = compose.inputRequirements.filter((id) => id !== music.taskId);

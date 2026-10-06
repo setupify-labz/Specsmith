@@ -35,6 +35,12 @@ export interface PresentationContext {
   readonly description: string;
   /** Caption text per beat as the burned-in caption file holds it (null: no cue). */
   readonly captionsByBeat: readonly (string | null)[];
+  /**
+   * The fixed labels a beat's motion graphic draws, as its renderer recorded
+   * them (never its figures). Read with the beat's text for its setting and
+   * qualifiers; the graphic's figures are bound by the creative workflow.
+   */
+  readonly graphicTextByBeat?: readonly string[];
   readonly capturesByBeat: readonly (readonly BeatCapture[])[];
   readonly claims: readonly PresentedClaim[];
   readonly graphics: readonly EditorialGraphic[];
@@ -95,6 +101,7 @@ function beatText(context: PresentationContext, beatIndex: number): string {
   return [
     context.storyboard.beats[beatIndex]?.narration ?? "",
     context.captionsByBeat[beatIndex] ?? "",
+    context.graphicTextByBeat?.[beatIndex] ?? "",
     ...context.graphics.filter((graphic) => graphic.beatIndex === beatIndex).map((graphic) => graphic.label),
   ].join(" \n ");
 }

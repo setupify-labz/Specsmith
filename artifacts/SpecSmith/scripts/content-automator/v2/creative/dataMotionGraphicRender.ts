@@ -19,6 +19,7 @@ import { launchBrowser } from "../../uiRender/capture.ts";
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "../../rendering.ts";
 import {
   DataMotionGraphicError,
+  graphicLabels,
   MOTION_LABELS,
   MOTION_MIN_LABEL_PX,
   MOTION_MIN_PRIMARY_PX,
@@ -404,7 +405,9 @@ export function createDataMotionGraphicAdapter(options: { outputDir: string }): 
         uri: `file://${rendered.path}`,
         mimeType: "video/mp4",
         // A scene that animates in must never restart if its beat is held longer.
-        metadata: { renderer: "specsmith-data-motion-graphic", holdLastFrame: true, sha256: rendered.sha256, frames: rendered.frames, minFontPx: rendered.minFontPx, valuesSha256: rendered.valuesSha256 },
+        // onScreenText: the fixed labels this scene draws (never its figures), for reviews that read a beat's text.
+        metadata: { renderer: "specsmith-data-motion-graphic", holdLastFrame: true, sha256: rendered.sha256, frames: rendered.frames, minFontPx: rendered.minFontPx, valuesSha256: rendered.valuesSha256,
+          onScreenText: graphicLabels(parseDataMotionGraphicState(raw).graphic).join(" · ") },
       }];
     },
   };

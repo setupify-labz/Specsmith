@@ -1,0 +1,220 @@
+#!/usr/bin/env tsx
+// The final GPU-upgrade Short, from the SAVED Liam take, through the existing
+// content pipeline. No provider is called here: a failed render is re-run from
+// the same saved bytes, never re-generated.
+//
+//   SPECSMITH_RENDER_CHROMIUM=/opt/pw-browsers/chromium \
+//   pnpm exec tsx scripts/content-automator/nextVideoGpuUpgrade/finalRender.ts [takeDir]
+//
+// WHAT RUNS
+// 1. loadGpuUpgradeTake: the approved text, pinned Liam, the audio its
+//    manifest hashes, and the provider's timestamps, or nothing renders.
+// 2. retimeBeats + retimeConcept: each beat's picture and caption follow
+//    Liam's actual delivery; the take itself is never edited.
+// 3. The retimed concept is written as a batch and evaluated by the creative
+//    workflow (MASTER #6 and #1's storyboard review, evidence, figure binding).
+// 4. renderProposalOffline: the production plan and adapters, with the saved
+//    take as narration and synthesized sound effects under it; the banded
+//    frame check and its broken controls.
+// 5. The mix is measured: the effects stay well under the voice.
+// 6. MASTER #7 reviews the exact MP4 and writes its review packet. Human gates
+//    stay open; nothing is approved, scheduled or published.
+
+import { spawnSync } from "node:child_process";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, copyFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { renderProposalOffline } from "../master6OfflineRender.ts";
+import { evaluateAuthoredBatch } from "../v2/creative/fileWorkflowPass.ts";
+import { buildCreativeProposalProductionPlan } from "../v2/creative/proposalPass.ts";
+import { REQUIRED_USE, type AssetRightsRecord, type PresentedClaim, type RenderManifest, type ReviewSubmission } from "../v2/review/inputs.ts";
+import { YOUTUBE_SHORTS_1080X1920_30 } from "../v2/review/platformVariants.ts";
+import { formatReviewPacket, reviewCreative } from "../v2/review/reviewCreative.ts";
+import { GPU_UPGRADE_PAIRING } from "./research.ts";
+import { loadGpuUpgradeTake, narrationSegmentsFor, retimeBeats, retimeConcept, soundCuesFor, type LoadedGpuUpgradeTake } from "./takeTiming.ts";
+import { gpuUpgradeMission, WORKFLOW_DIRECTORY } from "./workflowCli.ts";
+
+const here = dirname(fileURLToPath(import.meta.url));
+export const FINAL_CONCEPT = "boost-guess-the-game";
+/** The saved take, checked in: the one paid generation, reused by every render. */
+export const SAVED_TAKE_DIR = join(here, "take");
+export const FINAL_DIR = resolve(here, "../../../render-output/gpu-upgrade-final");
+const ffmpegPath = process.env.SPECSMITH_FFMPEG_PATH ?? "ffmpeg";
+const ffprobePath = process.env.SPECSMITH_FFPROBE_PATH ?? "ffprobe";
+
+/** The authored batch, with Concept A retimed to the take and the other two unchanged. */
+export function writeRetimedWorkflow(take: LoadedGpuUpgradeTake, outputDir: string) {
+  const beats = retimeBeats(take.lineTimings);
+  const source = join(WORKFLOW_DIRECTORY, "batches", "attempt-4");
+  const target = join(outputDir, "workflow", "batches", "attempt-1");
+  rmSync(join(outputDir, "workflow"), { recursive: true, force: true });
+  mkdirSync(target, { recursive: true });
+  for (const file of readdirSync(source).sort()) {
+    const concept = JSON.parse(readFileSync(join(source, file), "utf8"));
+    writeFileSync(join(target, file), `${JSON.stringify(concept.conceptId === FINAL_CONCEPT ? retimeConcept(concept, beats) : concept, null, 2)}\n`);
+  }
+  return { beats, workflowDir: join(outputDir, "workflow") };
+}
+
+/** Loudness of a file (EBU R128 integrated, LUFS) and its sample peak (dBFS). */
+export function loudness(path: string, filter = ""): { integratedLufs: number | null; peakDbfs: number | null } {
+  const result = spawnSync(ffmpegPath, ["-hide_banner", "-nostats", "-i", path, "-af", `${filter}${filter ? "," : ""}ebur128=peak=sample`, "-f", "null", "-"], { encoding: "utf8" });
+  const text = `${result.stderr ?? ""}`;
+  const summary = text.slice(text.lastIndexOf("Summary:"));
+  const integrated = summary.match(/I:\s+(-?[\d.]+|-inf)\s+LUFS/);
+  const peak = summary.match(/Peak:\s+(-?[\d.]+|-inf)\s+dBFS/);
+  const num = (match: RegExpMatchArray | null) => match && match[1] !== "-inf" ? Number(match[1]) : null;
+  return { integratedLufs: num(integrated), peakDbfs: num(peak) };
+}
+
+/** The compositor's fixed gain for the music-sfx track (motionCompositor.muxFinal). */
+export const SFX_MIX_GAIN = 0.14;
+
+/** The final cut from the saved take: loaded and verified, never generated. */
+export async function renderFinal(takeDir = SAVED_TAKE_DIR, outputDir = FINAL_DIR) {
+  return renderFromLoadedTake(await loadGpuUpgradeTake(takeDir), outputDir);
+}
+
+/**
+ * The render itself, from a take that has already been loaded. `dryRun` is
+ * only for proving the edit's mechanics before a take exists: its voice must
+ * be a labelled local fixture, and every output says DRY RUN.
+ */
+export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir: string, options: { readonly dryRun?: boolean } = {}) {
+  const dryRun = options.dryRun === true;
+  if (dryRun !== (take.take.provider === "local-fixture")) throw new Error("A dry run uses a local fixture voice, and only a dry run may.");
+  mkdirSync(outputDir, { recursive: true });
+  const { beats, workflowDir } = writeRetimedWorkflow(take, outputDir);
+  const soundEffects = soundCuesFor(beats);
+  const { mission, result } = gpuUpgradeMission();
+  const renderDir = join(outputDir, "render");
+  const { report, reportPath } = await renderProposalOffline(workflowDir, FINAL_CONCEPT, renderDir, {
+    mission, narration: "saved-take", savedTake: take.take, narrationSegments: narrationSegmentsFor(beats), soundEffects,
+  });
+
+  // The mix: effects under the voice, measured on the files that were mixed.
+  const sfxFile = readdirSync(join(renderDir, "sfx")).find((file) => file.endsWith(".wav"));
+  const voice = loudness(take.take.audioPath);
+  const sfxInMix = sfxFile ? loudness(join(renderDir, "sfx", sfxFile), `volume=${SFX_MIX_GAIN}`) : { integratedLufs: null, peakDbfs: null };
+  const final = loudness(report.video.path);
+  const mix = {
+    voice, soundEffectsAsMixed: sfxInMix, final,
+    effectsPeakBelowVoicePeakDb: voice.peakDbfs !== null && sfxInMix.peakDbfs !== null ? Math.round((voice.peakDbfs - sfxInMix.peakDbfs) * 10) / 10 : null,
+    cues: soundEffects,
+  };
+
+  // MASTER #7: review the exact MP4.
+  const evaluation = await evaluateAuthoredBatch(workflowDir, mission);
+  const proposal = evaluation.pass.result.proposals.find((entry) => entry.concept.conceptId === FINAL_CONCEPT)!;
+  const plan = buildCreativeProposalProductionPlan({
+    packageId: `master6-${FINAL_CONCEPT}`, ideaId: FINAL_CONCEPT, campaignId: mission.missionId,
+    feature: "compare", route: mission.productDestination, subjectIds: [],
+  }, proposal, { soundEffects }).platforms[0];
+  const manifestPath = String(report.renderManifest);
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as RenderManifest;
+  const storyboard = proposal.storyboard;
+  const overlay = plan.tasks.find((task) => task.capability === "disclosure-overlay") as { disclosureOverlayState?: { lines: string[] } } | undefined;
+  const beatOf = (id: string) => beats.findIndex((beat) => beat.id === id);
+  const fps = (beatIndex: number, where: PresentedClaim["where"], text: string, game: string, build: "A" | "B", value: number): PresentedClaim => ({
+    claimId: `${where}-${game}-${build}-b${beatIndex}`, beatIndex, where, text, basis: "model-estimate",
+    statement: { kind: "game-fps", pairing: GPU_UPGRADE_PAIRING, game, build, fps: value },
+  });
+  const percent = (beatIndex: number, where: PresentedClaim["where"], text: string, researchClaimId: string): PresentedClaim => ({
+    claimId: `${where}-${researchClaimId}-b${beatIndex}`, beatIndex, where, text, basis: "research-claim", statement: { kind: "research", researchClaimId },
+  });
+  const aw = beatOf("fps-aw"), val = beatOf("fps-val"), pct = beatOf("percent");
+  const claims: PresentedClaim[] = [
+    // Each figure as the viewer meets it: "43 to 65" said, "43 → 65" captioned; one declaration per value.
+    fps(aw, "narration", "43 to 65", "Alan Wake 2", "B", 43), fps(aw, "narration", "43 to 65", "Alan Wake 2", "A", 65),
+    fps(aw, "caption", "43 → 65", "Alan Wake 2", "B", 43), fps(aw, "caption", "43 → 65", "Alan Wake 2", "A", 65),
+    fps(val, "narration", "263 to 305", "Valorant", "B", 263), fps(val, "narration", "263 to 305", "Valorant", "A", 305),
+    fps(val, "caption", "263 → 305", "Valorant", "B", 263), fps(val, "caption", "263 → 305", "Valorant", "A", 305),
+    percent(pct, "narration", "estimated 51% boost", "gpu-upgrade-percent-gpu-heavy-game"),
+    percent(pct, "narration", "just 16%", "gpu-upgrade-percent-cpu-heavy-game"),
+    percent(pct, "caption", "51%", "gpu-upgrade-percent-gpu-heavy-game"),
+    percent(pct, "caption", "16%", "gpu-upgrade-percent-cpu-heavy-game"),
+  ];
+  const repo = (assetId: string, kind: AssetRightsRecord["kind"], source: string, generator: string): AssetRightsRecord => ({
+    assetId, kind, source,
+    license: { kind: "repo-owned", evidence: "Rendered by this repository from its own data and code.", permittedUse: [REQUIRED_USE], attribution: null, expiresAt: null, scope: "SpecSmith" },
+    generation: { generator, inputs: `retimed storyboard and production plan of ${FINAL_CONCEPT}` },
+    transformations: ["placed into the banded layout by the ffmpeg compositor"],
+    placeholder: { isPlaceholder: false, why: null },
+  });
+  const rights: AssetRightsRecord[] = manifest.assets.map((asset) => {
+    switch (asset.role) {
+      case "capture": return repo(asset.assetId, "repo-generated-graphic", "dataMotionGraphicRender.ts, values from the Compare model", "specsmith-data-motion-graphic (Chromium canvas)");
+      case "disclosure-panel": return repo(asset.assetId, "disclosure-panel", "disclosureOverlay.ts, browser-measured", "disclosure-overlay (Chromium)");
+      case "captions": return repo(asset.assetId, "caption-render", "captionRender.buildAssDocument", "caption-render (ASS)");
+      case "sound-effect": return repo(asset.assetId, "sound-effect", "soundEffects.ts, synthesized from noise and sine tones", "ffmpeg lavfi");
+      case "narration": return {
+        assetId: asset.assetId, kind: "narration",
+        source: dryRun ? `DRY RUN fixture voice ${take.take.sha256}` : `ElevenLabs text-to-speech, voice Liam (${take.take.voiceId}), model ${take.take.modelId}; saved take ${take.take.sha256}`,
+        // The commercial-use terms of the account are not recorded in this repository; a person confirms them.
+        license: { kind: "unknown", evidence: null, permittedUse: [], attribution: null, expiresAt: null, scope: null },
+        generation: { generator: dryRun ? "local fixture (dry run)" : "elevenlabs-text-to-speech-with-timestamps", inputs: `the approved script, provider text sha256 ${take.take.providerTextSha256}` },
+        transformations: ["synthesized effects mixed under it at the compositor's music gain", "AAC encode"],
+        placeholder: dryRun ? { isPlaceholder: true, why: "DRY RUN: a fixture voice stands in for the take to prove the edit's mechanics." } : { isPlaceholder: false, why: null },
+      };
+      default: throw new Error(`No rights record is written for ${asset.role} ${asset.assetId}; add one rather than letting it pass unrecorded.`);
+    }
+  });
+  const submission: ReviewSubmission = {
+    creativeId: `${mission.missionId}/${FINAL_CONCEPT}`,
+    variant: YOUTUBE_SHORTS_1080X1920_30,
+    research: { contract: mission.research, declaredKind: "production", evidenceSnapshotIds: result.snapshots.map((snapshot) => snapshot.snapshotId) },
+    concept: { conceptId: FINAL_CONCEPT, body: proposal.concept },
+    storyboard,
+    title: storyboard.title,
+    description: "One GPU upgrade, very different gains by game. Every figure is a SpecSmith model estimate. Check your own games at specsmithpc.com/compare.",
+    approvedDestination: mission.productDestination,
+    disclosureLines: overlay?.disclosureOverlayState?.lines ?? [],
+    productionPlan: plan,
+    claims,
+    graphics: [],
+    renderManifestPath: manifestPath,
+    rights,
+  };
+  const packet = await reviewCreative(submission, { ffmpegPath, ffprobePath });
+  const reviewDir = join(outputDir, "review");
+  mkdirSync(reviewDir, { recursive: true });
+  const packetJson = join(reviewDir, "review-packet.json");
+  const packetText = join(reviewDir, "review-packet.txt");
+  writeFileSync(packetJson, `${JSON.stringify(packet, null, 2)}\n`);
+  writeFileSync(packetText, `${formatReviewPacket(packet)}\n`);
+
+  const finalMp4 = join(outputDir, "gpu-upgrade-final.mp4");
+  copyFileSync(report.video.path, finalMp4);
+  const summary = {
+    label: dryRun
+      ? "DRY RUN of the final edit with a FIXTURE voice. Not a take, not for review, not for publication."
+      : "FINAL CUT, narrated by the saved Liam take. Reviewed by MASTER #7; human gates open. Not approved, not scheduled, not published.",
+    video: { path: finalMp4, sha256: report.video.sha256, bytes: report.video.bytes },
+    take: { manifest: take.manifestPath, audioSha256: take.take.sha256, providerTextSha256: take.take.providerTextSha256, scriptTextSha256: take.take.scriptTextSha256, providerReportedCharacterCost: take.providerReportedCharacterCost },
+    beats: beats.map((beat) => ({ ...beat, caption: storyboard.beats[beat.index].onScreenText, narration: storyboard.beats[beat.index].narration })),
+    mix,
+    frameCheck: { ok: report.frameCheck.ok, samples: report.frameCheck.samples.length, failures: report.frameCheck.failures },
+    controls: report.controls,
+    reviewPacket: { json: packetJson, text: packetText, verdict: packet.verdict },
+    renderReport: reportPath,
+  };
+  const summaryPath = join(outputDir, "final-report.json");
+  writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
+  return { summary, summaryPath, packet };
+}
+
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
+if (isMain) {
+  renderFinal(process.argv[2] ? resolve(process.argv[2]) : SAVED_TAKE_DIR).then(({ summary, summaryPath }) => {
+    console.log(summary.label);
+    console.log(`video: ${summary.video.path}`);
+    console.log(`sha256: ${summary.video.sha256}`);
+    console.log(`frame check: ${summary.frameCheck.ok ? "passed" : "FAILED"} (${summary.frameCheck.samples} samples)`);
+    for (const control of summary.controls) console.log(`control ${control.control}: ${control.refused ? "refused" : "NOT REFUSED"}`);
+    console.log(`mix: voice peak ${summary.mix.voice.peakDbfs} dBFS, effects as mixed peak ${summary.mix.soundEffectsAsMixed.peakDbfs} dBFS (${summary.mix.effectsPeakBelowVoicePeakDb} dB under)`);
+    console.log(`review packet: ${summary.reviewPacket.verdict} (${summary.reviewPacket.text})`);
+    console.log(`report: ${summaryPath}`);
+    if (!summary.frameCheck.ok || summary.controls.some((control) => !control.refused)) process.exitCode = 1;
+  }).catch((error) => { console.error(error); process.exitCode = 1; });
+}
