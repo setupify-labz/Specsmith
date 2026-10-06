@@ -108,13 +108,38 @@ export function assessConfidence(input: ConfidenceInput): ConfidenceAssessment {
   }
 
   // 4. Contradicted by applicable evidence.
+  //
+  // The state describes THIS proposition. Evidence against it never makes it
+  // sayable, and it does not make the opposite sayable either: the negation is
+  // a different proposition, with its own risk, configuration and wording, and
+  // the creative contract would publish whatever proposition carries a safe
+  // state. (An earlier version returned "strongly-supported" here, meaning the
+  // negation, and the contract then listed the claim's own false proposition
+  // as safe.) To say the opposite, research it as its own claim.
   const applicableContradictions = contradicting.filter((link) => link.applicability !== "not-applicable");
   if (applicableContradictions.length > 0 && applicable.length === 0) {
     return {
-      state: "strongly-supported",
-      drivers: ["Applicable evidence contradicts this claim; its negation is what is supported."],
-      detractors: [`${applicableContradictions.length} applicable observation(s) contradict it.`],
-      wouldChangeIfs: ["Applicable supporting evidence would reopen the question."],
+      state: "insufficient-evidence",
+      drivers: [],
+      detractors: [`${applicableContradictions.length} applicable observation(s) contradict this claim, and none supports it.`],
+      wouldChangeIfs: [
+        "Applicable supporting evidence that answers the contradiction would reopen it.",
+        "To state the negation, research the negation as its own claim, with its own supporting evidence.",
+      ],
+    };
+  }
+  // Applicable evidence on both sides that no configuration or date difference
+  // explains is a disagreement. Preserved as disputed, never averaged into a
+  // supported-with-a-caveat claim.
+  if (applicableContradictions.length > 0 && !conflict?.resolved) {
+    return {
+      state: "disputed",
+      drivers: [`${applicable.length} applicable observation(s) support this claim.`],
+      detractors: [`${applicableContradictions.length} applicable observation(s) contradict it, and nothing explains the disagreement.`],
+      wouldChangeIfs: [
+        "Showing that the supporting and contradicting evidence describe different configurations would resolve it.",
+        "Removing evidence that turns out not to apply would leave one side standing.",
+      ],
     };
   }
   if (applicableContradictions.length > 0) {
