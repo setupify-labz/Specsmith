@@ -1,0 +1,122 @@
+{
+  "conceptId": "gpu-gains-more-frames-smaller-boost",
+  "axes": {
+    "audienceExperience": "spectator",
+    "explanatoryStructure": "continuum-then-falsification",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Will a new GPU make every game faster by the same amount?",
+  "viewerTakeaway": "More frames added is not the same as a bigger upgrade; a game's starting point and how much it leans on the GPU both matter.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "contrast-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "More frames doesn't mean a bigger upgrade.",
+      "onScreenText": "More frames \u2260 a bigger upgrade",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3,
+      "endSecond": 9,
+      "narration": "In SpecSmith's model estimates, an RTX 4060 to RTX 5070 upgrade, same Ryzen 5 7600 at 1440p High, takes Valorant from 263 to 305 FPS.",
+      "onScreenText": "Valorant: 263 \u2192 305 Estimated FPS",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9,
+      "endSecond": 14,
+      "narration": "Alan Wake 2 only goes from 43 to 65.",
+      "onScreenText": "Alan Wake 2: 43 \u2192 65 Estimated FPS",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "reversal",
+      "startSecond": 14,
+      "endSecond": 19.5,
+      "narration": "Fewer frames added, but from 43, that is the bigger jump. Valorant was already far above it.",
+      "onScreenText": "Smaller number, bigger jump",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 19.5,
+      "endSecond": 24.5,
+      "narration": "SpecSmith's model gives Alan Wake 2 far more GPU weight than Valorant.",
+      "onScreenText": "The GPU matters more in some games",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": [
+        "model-weights-games"
+      ]
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 24.5,
+      "endSecond": 27.5,
+      "narration": "Judge an upgrade by the games you play.",
+      "onScreenText": "Your games decide \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "contrast-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "5": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

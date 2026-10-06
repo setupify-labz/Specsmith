@@ -1,0 +1,41 @@
+{
+  "version": "creative-file-workflow-v1",
+  "attempt": 2,
+  "briefHash": "8903fd419a102b36d315a7ce64ad4fed162d8c587a4ae50ce116d58e29f755a9",
+  "status": "blocked-revision",
+  "reason": "Bounded revision budget exhausted; unresolved concepts preserved for review, not approved.",
+  "concepts": [
+    {
+      "conceptId": "gpu-gains-guess-the-game",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 5/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-read-your-games",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 5/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-more-frames-smaller-boost",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [shot-uniqueness] at the whole storyboard: shot-uniqueness scored 5/10. Show a different validated view from the brief on these beats. The same view under another visual id is the same picture and does not count."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    }
+  ],
+  "setFindings": [],
+  "nextStep": "Author a revised batch in batches/attempt-3/ addressing every \"required\" item above."
+}

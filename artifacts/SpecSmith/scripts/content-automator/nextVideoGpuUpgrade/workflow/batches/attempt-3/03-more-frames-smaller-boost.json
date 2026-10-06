@@ -1,0 +1,123 @@
+{
+  "conceptId": "gpu-gains-more-frames-smaller-boost",
+  "axes": {
+    "audienceExperience": "spectator",
+    "explanatoryStructure": "continuum-then-falsification",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Will a new GPU make every game faster by the same amount?",
+  "viewerTakeaway": "More frames added is not the same as a bigger upgrade: where a game starts matters.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "view-1080p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1080p_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "primary-1440p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "view-4k-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_4k_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "view-1440p-ultra",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_ultra_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "More frames doesn't mean a bigger upgrade.",
+      "onScreenText": "More frames \u2260 a bigger upgrade",
+      "visualIds": [
+        "view-1080p-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3,
+      "endSecond": 12,
+      "narration": "In SpecSmith's model estimates, RTX 4060 to RTX 5070, same Ryzen 5 7600 at 1440p High, takes Valorant from 263 to 305 estimated FPS, and Alan Wake 2 from 43 to 65.",
+      "onScreenText": "Valorant: 263 \u2192 305 \u00b7 Alan Wake 2: 43 \u2192 65 \u00b7 Estimated FPS",
+      "visualIds": [
+        "primary-1440p-high"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game",
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "reversal",
+      "startSecond": 12,
+      "endSecond": 16.5,
+      "narration": "Fewer frames added, yet from 43, that's the bigger jump.",
+      "onScreenText": "Smaller number, bigger jump",
+      "visualIds": [
+        "primary-1440p-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 16.5,
+      "endSecond": 21.0,
+      "narration": "So judge an upgrade by the jump in your games.",
+      "onScreenText": "Judge the jump, not the number",
+      "visualIds": [
+        "view-4k-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 21.0,
+      "endSecond": 24.0,
+      "narration": "Check the games you play.",
+      "onScreenText": "Check your games \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "view-1440p-ultra"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

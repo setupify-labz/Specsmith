@@ -1,0 +1,134 @@
+{
+  "conceptId": "gpu-gains-read-your-games",
+  "axes": {
+    "audienceExperience": "investigator",
+    "explanatoryStructure": "question-evidence-boundary",
+    "visualMechanism": "annotated-static-card"
+  },
+  "viewerQuestion": "Will a new GPU make every game faster by the same amount?",
+  "viewerTakeaway": "An upgrade that leads in every game can still add very different amounts per game, and these are estimates, not a verdict on whether to buy.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "view-4k-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_4k_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "primary-1440p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    },
+    {
+      "kind": "real-product-capture",
+      "visualId": "view-1080p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1080p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "A new GPU won't boost every game equally.",
+      "onScreenText": "A new GPU won't boost every game equally",
+      "visualIds": [
+        "view-4k-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3,
+      "endSecond": 9,
+      "narration": "In SpecSmith's model estimates, same Ryzen 5 7600 at 1440p High, the RTX 5070 build leads the RTX 4060 build in all 20 games.",
+      "onScreenText": "RTX 5070 ahead in 20 of 20 \u00b7 Estimated FPS",
+      "visualIds": [
+        "primary-1440p-high"
+      ],
+      "factDependencies": [
+        "rtx5070-higher-in-every-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9,
+      "endSecond": 13.5,
+      "narration": "Alan Wake 2 climbs from 43 to 65 estimated FPS.",
+      "onScreenText": "Alan Wake 2: 43 \u2192 65 Estimated FPS",
+      "visualIds": [
+        "primary-1440p-high"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 13.5,
+      "endSecond": 18.0,
+      "narration": "Valorant climbs from 263 to 305 estimated FPS.",
+      "onScreenText": "Valorant: 263 \u2192 305 Estimated FPS",
+      "visualIds": [
+        "primary-1440p-high"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 18.0,
+      "endSecond": 23.0,
+      "narration": "These are model estimates, not benchmarks. They can't tell you if it's worth it.",
+      "onScreenText": "Estimates, not a verdict",
+      "visualIds": [
+        "view-1080p-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 23.0,
+      "endSecond": 26.5,
+      "narration": "Look up the games you play first.",
+      "onScreenText": "Look up your games \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "view-4k-high"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "5": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": "creative-file-workflow-v1",
+  "attempt": 3,
+  "briefHash": "5f0e2b5a3f5d767355a7406dc0ff6d17ad9de2faf53fe6e6af18beedddbf9ea0",
+  "status": "blocked-revision",
+  "reason": "Bounded revision budget exhausted; unresolved concepts preserved for review, not approved.",
+  "concepts": [
+    {
+      "conceptId": "gpu-gains-guess-the-game",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [caption-density] at the whole storyboard: 1 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. Shorten the offending captions to 2 rendered lines of at most 28 characters."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-read-your-games",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [caption-density] at the whole storyboard: 1 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. Shorten the offending captions to 2 rendered lines of at most 28 characters."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-more-frames-smaller-boost",
+      "contractEligible": true,
+      "required": [
+        "MASTER #1 storyboard review [caption-density] at the whole storyboard: 1 caption(s) exceed 28 characters per rendered line and 0 exceed 2 lines. Shorten the offending captions to 2 rendered lines of at most 28 characters."
+      ],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    }
+  ],
+  "setFindings": [],
+  "nextStep": "Author a revised batch in batches/attempt-4/ addressing every \"required\" item above."
+}
