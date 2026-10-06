@@ -1,0 +1,21 @@
+{
+  "fps": 30,
+  "duration": 14.5,
+  "front1End": 1.0,
+  "whipEnd": 1.3,
+  "question": 1.35,
+  "ticks": [2.2, 2.6, 3.0],
+  "cableStart": 3.1,
+  "hoverA": 4.0,
+  "plugA": 4.3,
+  "why": 5.4,
+  "unplugA": 7.3,
+  "hoverB": 8.2,
+  "plugB": 8.5,
+  "front2": 8.7,
+  "osd": 8.85,
+  "desktop": 9.35,
+  "takeaway": 11.2,
+  "line": 11.6,
+  "signoff": 13.3
+}
