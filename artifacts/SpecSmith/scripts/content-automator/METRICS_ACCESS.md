@@ -10,6 +10,25 @@ commands are given so each can be re-run rather than trusted.
 Nothing in this document is a measurement of a video. No number here describes
 any SpecSmith content's performance.
 
+## Update 2026-10-06: the already-published Shorts
+
+Re-probed at 17:14Z with the same commands: nothing has changed. The YouTube
+APIs still answer 403/401 without a credential. `www.youtube.com`, `app.metricool.com`,
+TikTok and Instagram are still refused by the network policy, and no `METRICOOL_*`
+or platform credential exists. This session also has no Metricool connector.
+
+The RAM-fit and FPS Shorts were published outside the authorization boundary
+(Metricool auto-published at least the RAM-fit Short). They are recorded by
+`v2/publication/externalPosts.ts` from the facts in `v2/publication/publishedPosts.ts`.
+That record is separate from the ledger: it writes no ledger, no authorization
+and no provider-post index, so trusted import and `buildLearningReport` still
+ignore these posts. Every metric is reported `unavailable` with its reason.
+`publishedPostsCli.ts` walks post → report → creative memory → next brief; the
+output is in `v2/publication/examples/published-posts-*`.
+
+Known: RAM-fit on YouTube (`cSDhjFC-CI8`, user-supplied). Not supplied: the
+publication time, any TikTok or Instagram URL, and any URL for the FPS Short.
+
 ---
 
 ## 1. The three blockers, in the order they bite

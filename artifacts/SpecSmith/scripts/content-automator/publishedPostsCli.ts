@@ -1,0 +1,72 @@
+// MASTER #8: the already-published Shorts, walked through the learning loop.
+//
+//   pnpm exec tsx scripts/content-automator/publishedPostsCli.ts [--store <dir>] [--out <dir>]
+//
+// post -> published-post report -> creative memory -> next brief. Uses a fresh
+// temporary store unless --store is given; never touches a publication ledger,
+// never publishes, never calls a provider. The report states which metrics are
+// unavailable and why; it contains no performance figure.
+
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { DEMO_MISSION } from "./creativeFileWorkflowCli.ts";
+import { CreativeMemoryStore } from "./v2/creative/memoryStore.ts";
+import { externalPostReport, formatExternalPostReport, recordExternalPost } from "./v2/publication/externalPosts.ts";
+import { nextBriefForWorkflow } from "./v2/publication/nextBrief.ts";
+import { ACCESS_FINDINGS, OPENING_CHANGE, OPENING_MEASUREMENTS, PUBLISHED_POSTS, PUBLISHED_WITHOUT_POSTS } from "./v2/publication/publishedPosts.ts";
+
+export async function runPublishedPosts(options: { readonly storeRoot: string; readonly outDir: string; readonly now: Date }) {
+  const records = [];
+  for (const post of PUBLISHED_POSTS) records.push(await recordExternalPost({ storeRoot: options.storeRoot, post, now: options.now }));
+
+  // Creative memory: what each video did at its opening, with the outcome unknown.
+  const memory = new CreativeMemoryStore(options.storeRoot);
+  const entries = [
+    memory.append({
+      entryId: "published-ram-fit-opening-v1", conceptId: "ram-fit",
+      decision: { kind: "hook-form", value: "claim caption on frame one over a full-frame part close-up" },
+      outcome: { state: "unknown", reason: "No trusted metric exists for the RAM-fit Short; its YouTube analytics cannot be read from here." },
+      evidenceStrength: "insufficient", synthetic: false, now: options.now,
+      note: "Published (YouTube cSDhjFC-CI8, via Metricool). Opening measured from the uploaded copy.",
+    }),
+    memory.append({
+      entryId: "published-fps-20-wins-opening-v1", conceptId: "fps-20-wins",
+      decision: { kind: "hook-form", value: "claim on a miniature desk monitor, caption from 0.08 s, 1.3 s push into the screen" },
+      outcome: { state: "unknown", reason: "No post URL or trusted metric exists for the FPS Short." },
+      evidenceStrength: "insufficient", synthetic: false, now: options.now,
+      note: "Published (location not supplied). Opening measured from the uploaded copy.",
+    }),
+  ];
+
+  const report = await externalPostReport({
+    storeRoot: options.storeRoot, now: options.now,
+    creativesWithoutPosts: PUBLISHED_WITHOUT_POSTS, measurements: OPENING_MEASUREMENTS, recommendation: OPENING_CHANGE, accessFindings: ACCESS_FINDINGS,
+  });
+  // The next brief enters the normal creative workflow through the same door as
+  // the learning report. DEMO_MISSION is the engineering mission; a production
+  // brief needs MASTER #2 research for the next topic.
+  const handoff = nextBriefForWorkflow(report.nextBrief, DEMO_MISSION);
+
+  mkdirSync(options.outDir, { recursive: true });
+  writeFileSync(join(options.outDir, "published-posts-report.txt"), `${formatExternalPostReport(report)}\n`);
+  writeFileSync(join(options.outDir, "published-posts-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(join(options.outDir, "published-posts-next-brief.json"), `${JSON.stringify({
+    note: "Built by nextBriefForWorkflow from the published-post report. The mission is the engineering fixture; the evidence lines are real.",
+    evidence: handoff.evidence, constraints: handoff.constraints, memoryObservations: handoff.brief.memoryObservations,
+    briefHash: handoff.brief.briefHash, missionId: handoff.brief.missionId,
+  }, null, 2)}\n`);
+  return { records, entries, report, handoff };
+}
+
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
+if (isMain) {
+  const arg = (name: string) => { const index = process.argv.indexOf(name); return index > 0 ? process.argv[index + 1] : undefined; };
+  const storeRoot = arg("--store") ?? mkdtempSync(join(tmpdir(), "published-posts-"));
+  const outDir = arg("--out") ?? join(fileURLToPath(new URL(".", import.meta.url)), "v2", "publication", "examples");
+  const { report, handoff } = await runPublishedPosts({ storeRoot, outDir, now: new Date() });
+  console.log(formatExternalPostReport(report));
+  console.log(`\nNext brief ${handoff.brief.briefHash.slice(0, 12)}… with ${handoff.brief.memoryObservations.length} evidence line(s). Store: ${storeRoot}. Outputs: ${outDir}`);
+}
