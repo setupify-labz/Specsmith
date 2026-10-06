@@ -3,7 +3,9 @@
 //   pnpm exec tsx scripts/content-automator/publishedPostsCli.ts \
 //     [--store <dir>] [--out <dir>] [--corrections <file.json>] [--dashboard <file.json>]
 //
-// post -> published-post report -> creative memory -> next brief. Uses a fresh
+// post -> published-post report -> creative memory -> next brief. The relayed
+// Metricool TikTok snapshots in publishedPosts.ts are always included, as
+// EXPLORATORY context. Uses a fresh
 // temporary store unless --store is given; never touches a publication ledger,
 // never publishes, never calls a provider.
 //
@@ -28,7 +30,7 @@ import {
   recordExternalPost,
 } from "./v2/publication/externalPosts.ts";
 import { nextBriefForWorkflow } from "./v2/publication/nextBrief.ts";
-import { ACCESS_FINDINGS, OPENING_CHANGE, OPENING_MEASUREMENTS, PUBLISHED_POSTS } from "./v2/publication/publishedPosts.ts";
+import { ACCESS_FINDINGS, OPENING_CHANGE, OPENING_MEASUREMENTS, PUBLISHED_POSTS, RELAYED_CONNECTOR_SNAPSHOTS } from "./v2/publication/publishedPosts.ts";
 
 type CorrectionInput = Omit<Parameters<typeof correctExternalPost>[0], "storeRoot" | "now">;
 type DashboardInput = Omit<Parameters<typeof recordDashboardEvidence>[0], "storeRoot" | "now">;
@@ -43,7 +45,7 @@ export async function runPublishedPosts(options: {
   const records = [];
   for (const post of PUBLISHED_POSTS) records.push(await recordExternalPost({ storeRoot: options.storeRoot, post, now: options.now }));
   for (const correction of options.corrections ?? []) await correctExternalPost({ ...correction, storeRoot: options.storeRoot, now: options.now });
-  for (const entry of options.dashboard ?? []) await recordDashboardEvidence({ ...entry, storeRoot: options.storeRoot, now: options.now });
+  for (const entry of [...RELAYED_CONNECTOR_SNAPSHOTS, ...(options.dashboard ?? [])]) await recordDashboardEvidence({ ...entry, storeRoot: options.storeRoot, now: options.now });
 
   // Creative memory: what each video did at its opening, with the outcome unknown.
   const memory = new CreativeMemoryStore(options.storeRoot);
@@ -51,14 +53,14 @@ export async function runPublishedPosts(options: {
     memory.append({
       entryId: "published-ram-fit-opening-v1", conceptId: "ram-fit@saved-take-pr172",
       decision: { kind: "hook-form", value: "claim caption on frame one over a full-frame part close-up" },
-      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the RAM-fit Short's three posts." },
+      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the RAM-fit Short's three posts; the only numbers are a relayed, possibly delayed TikTok snapshot (exploratory)." },
       evidenceStrength: "insufficient", synthetic: false, now: options.now,
       note: "Published via Metricool (status PUBLISHED, connector-reported): YouTube cSDhjFC-CI8, TikTok 7693352089078058271, Instagram DeIi5pZDWew. Opening measured from the uploaded copy.",
     }),
     memory.append({
       entryId: "published-fps-20-wins-opening-v1", conceptId: "fps-20-wins@ce47598",
       decision: { kind: "hook-form", value: "claim on a miniature desk monitor, caption from 0.08 s, 1.3 s push into the screen" },
-      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the FPS Short's three posts." },
+      outcome: { state: "unknown", reason: "No trusted metric is stored for any of the FPS Short's three posts; the only numbers are a relayed, possibly delayed TikTok snapshot (exploratory)." },
       evidenceStrength: "insufficient", synthetic: false, now: options.now,
       note: "Published via Metricool (status PUBLISHED, connector-reported): YouTube 648FsZLefnc, TikTok 7693587971584429343, Instagram DeKLo_0kw7C. Opening measured from the uploaded copy.",
     }),

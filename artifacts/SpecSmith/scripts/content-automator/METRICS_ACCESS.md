@@ -30,8 +30,11 @@ not count them.
 - **Provider-reported means a real observation.** A provider-reported fact must
   cite an `observationId` that exists in this store, is trusted for the store's
   mode (simulated only in a simulation store; a registered production source
-  otherwise), and is bound to the same platform, post and account. An id-shaped
-  string is refused, on write and on every read.
+  otherwise), is bound to the same platform, post and account, and itself
+  reports the exact field and value asserted. Today only `accountId` can be
+  provider-reported: every other value an observation carries was copied into
+  it from the post record, and a metric (views, likes) is evidence for no post
+  fact. Any other provider-reported field is refused, on write and on every read.
 - **Corrections.** `correctExternalPost` appends a numbered correction; the
   original record and every earlier step are kept. A post's platform and id are
   its identity and cannot be corrected. Replay checks each step: its `previous`
@@ -74,8 +77,16 @@ and Instagram only the handle `@specsmithpc` was supplied. The adapters bind to
 the TikTok `open_id` and the Instagram business account id, so the handle is
 stored as `handle` and `accountId` stays unknown until those ids are supplied.
 
-Still not available: any metric. No Metricool metric has been relayed, and the
-platform APIs remain blocked as above.
+Relayed connector snapshots (TikTok, via the Metricool connector, through
+Codex, 2026-10-06): RAM `7693352089078058271` 1,045 views and 17 likes; FPS
+`7693587971584429343` 82 views and 0 likes. They are stored as EXPLORATORY
+`relayed-connector-snapshot` evidence. They may be delayed, their sync time was
+not relayed, and this environment did not fetch them. They are not trusted
+observations. Watch time and completion are unavailable. The two are not
+ranked against each other because the posts went out at different times.
+
+Still not available: any trusted observation. The platform APIs remain blocked
+as above.
 
 ---
 

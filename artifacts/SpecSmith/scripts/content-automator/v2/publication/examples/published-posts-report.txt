@@ -1,5 +1,5 @@
-PUBLISHED-POST REPORT external-74f8283372e7ed83 — posts published outside the MASTER #8 authorization boundary
-Generated 2026-10-06T18:23:19.112Z
+PUBLISHED-POST REPORT external-ad1e669218c157c7 — posts published outside the MASTER #8 authorization boundary
+Generated 2026-10-06T18:36:42.247Z
 
 Posts:
   - instagram-reels https://www.instagram.com/reel/DeIi5pZDWew/ (machineAuthorized: false)
@@ -25,7 +25,7 @@ Posts:
         average-percentage-viewed: not served by the instagram-reels API: Instagram reports average watch time, not average percentage viewed. Dividing it by the media duration would be a derived ratio, and is stored as derived if ever computed — never as an observed provider metric.
         stayed-to-watch-rate: not served by the instagram-reels API: Instagram media insights expose no early-retention or swipe-away rate.
         audience-retention-curve: not served by the instagram-reels API: No per-second retention curve is exposed for Reels.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): none supplied
   - instagram-reels https://www.instagram.com/reel/DeKLo_0kw7C/ (machineAuthorized: false)
       creative: fps-20-wins@ce47598 [user-provided; the user (via Codex, 2026-10-06) listed this URL under the FPS video; the version suffix is file-measured (see creativeVersion)]
       version: FPS 20-wins monitor cut, ce47598 on claude/fps-liam-voice [file-measured; The uploaded copy's frames match the ce47598 render (SSIM 0.996 at 720x1280, 540 vs 539 frames).]
@@ -49,7 +49,7 @@ Posts:
         average-percentage-viewed: not served by the instagram-reels API: Instagram reports average watch time, not average percentage viewed. Dividing it by the media duration would be a derived ratio, and is stored as derived if ever computed — never as an observed provider metric.
         stayed-to-watch-rate: not served by the instagram-reels API: Instagram media insights expose no early-retention or swipe-away rate.
         audience-retention-curve: not served by the instagram-reels API: No per-second retention curve is exposed for Reels.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): none supplied
   - tiktok https://www.tiktok.com/@specsmithpc/video/7693352089078058271 (machineAuthorized: false)
       creative: ram-fit@saved-take-pr172 [user-provided; the user (via Codex, 2026-10-06) listed this URL under the RAM video; the version suffix is file-measured (see creativeVersion)]
       version: RAM-fit pilot, saved-Liam-take render (claude/ram-fit-liam-take, PR #172) [file-measured; The uploaded copy runs 13.75 s with the saved-take scene order (DDR4 notch -> DDR5 slot -> two fixes -> Builder warning -> specsmithpc.com/builder), matching the 13.73 s saved-take render reported for PR #172. That render's bytes are not in this checkout, so the match is by content, not by hash.]
@@ -71,7 +71,10 @@ Posts:
         average-percentage-viewed: not served by the tiktok API: The Display API video query returns no watch-time or retention field. It must not be derived from view_count and duration, which would be an estimate presented as a measurement.
         stayed-to-watch-rate: not served by the tiktok API: TikTok exposes no early-retention or swipe-away rate through the authorized video query.
         audience-retention-curve: not served by the tiktok API: No per-second retention curve is exposed to a standard creator account.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): 
+        [EXPLORATORY: relayed connector snapshot, possibly delayed, not fetched by this environment, not a verified metric, not causal] Metricool connector (authenticated, brand 6769542), read at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.), Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment: Views: 1045; Likes: 17
+          unavailable: Watch time (not in the relayed connector result; unavailable)
+          unavailable: Completion rate (not in the relayed connector result; unavailable)
   - tiktok https://www.tiktok.com/@specsmithpc/video/7693587971584429343 (machineAuthorized: false)
       creative: fps-20-wins@ce47598 [user-provided; the user (via Codex, 2026-10-06) listed this URL under the FPS video; the version suffix is file-measured (see creativeVersion)]
       version: FPS 20-wins monitor cut, ce47598 on claude/fps-liam-voice [file-measured; The uploaded copy's frames match the ce47598 render (SSIM 0.996 at 720x1280, 540 vs 539 frames).]
@@ -93,7 +96,10 @@ Posts:
         average-percentage-viewed: not served by the tiktok API: The Display API video query returns no watch-time or retention field. It must not be derived from view_count and duration, which would be an estimate presented as a measurement.
         stayed-to-watch-rate: not served by the tiktok API: TikTok exposes no early-retention or swipe-away rate through the authorized video query.
         audience-retention-curve: not served by the tiktok API: No per-second retention curve is exposed to a standard creator account.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): 
+        [EXPLORATORY: relayed connector snapshot, possibly delayed, not fetched by this environment, not a verified metric, not causal] Metricool connector (authenticated, brand 6769542), read at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.), Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment: Views: 82; Likes: 0
+          unavailable: Watch time (not in the relayed connector result; unavailable)
+          unavailable: Completion rate (not in the relayed connector result; unavailable)
   - youtube-shorts https://www.youtube.com/shorts/648FsZLefnc (machineAuthorized: false)
       creative: fps-20-wins@ce47598 [user-provided; the user (via Codex, 2026-10-06) listed this URL under the FPS video; the version suffix is file-measured (see creativeVersion)]
       version: FPS 20-wins monitor cut, ce47598 on claude/fps-liam-voice [file-measured; The uploaded copy's frames match the ce47598 render (SSIM 0.996 at 720x1280, 540 vs 539 frames).]
@@ -119,7 +125,7 @@ Posts:
         follows-gained (subscribersGained): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
         saves: not served by the youtube-shorts API: YouTube has no 'save' action equivalent to a TikTok favourite or an Instagram save. The nearest measurement is videosAddedToPlaylists, which is a different viewer action and is NOT mapped onto saves.
         profile-visits: not served by the youtube-shorts API: YouTube reporting does not attribute channel-page visits to an individual video.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): none supplied
   - youtube-shorts https://www.youtube.com/shorts/cSDhjFC-CI8 (machineAuthorized: false)
       creative: ram-fit@saved-take-pr172 [user-provided; the user (via Codex, 2026-10-06) listed this URL under the RAM video; the version suffix is file-measured (see creativeVersion)]
       version: RAM-fit pilot, saved-Liam-take render (claude/ram-fit-liam-take, PR #172) [file-measured; The uploaded copy runs 13.75 s with the saved-take scene order (DDR4 notch -> DDR5 slot -> two fixes -> Builder warning -> specsmithpc.com/builder), matching the 13.73 s saved-take render reported for PR #172. That render's bytes are not in this checkout, so the match is by content, not by hash.]
@@ -145,7 +151,7 @@ Posts:
         follows-gained (subscribersGained): no trusted observation (no-credential; missing YOUTUBE_OAUTH_REFRESH_TOKEN, YOUTUBE_OAUTH_CLIENT_ID, YOUTUBE_OAUTH_CLIENT_SECRET)
         saves: not served by the youtube-shorts API: YouTube has no 'save' action equivalent to a TikTok favourite or an Instagram save. The nearest measurement is videosAddedToPlaylists, which is a different viewer action and is NOT mapped onto saves.
         profile-visits: not served by the youtube-shorts API: YouTube reporting does not attribute channel-page visits to an individual video.
-      exploratory dashboard evidence: none supplied
+      exploratory evidence (dashboard reads, relayed connector snapshots): none supplied
 
 Observations (supplied by a person or relayed from a connector, measured from a file, or provider-reported; each says which):
   - ram-fit@saved-take-pr172 on instagram-reels: https://www.instagram.com/reel/DeIi5pZDWew/ [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389042813 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T00:55:00.000Z (connector-reported; a schedule, not a confirmed publication time).
@@ -159,11 +165,12 @@ Observations (supplied by a person or relayed from a connector, measured from a 
   - ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, "DDR4 RAM won't fit", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)
   - fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is "20 GAMES" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)
 
-Exploratory context (user-provided, unverified; not metrics, not causal):
-  - None supplied.
+Exploratory context (user-read dashboards or relayed connector snapshots; unverified, not metrics, not ranked, not causal):
+  - ram-fit@saved-take-pr172 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 1045; Likes: 17 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 11cff2a174e17b70…; actual publication time unknown, scheduled 2026-10-06T00:55:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause.
+  - fps-20-wins@ce47598 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 82; Likes: 0 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 928b30a315e83926…; actual publication time unknown, scheduled 2026-10-06T16:10:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause.
 
 Hypotheses (not conclusions):
-  - A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding.
+  - A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no trusted performance data for either video, and the relayed TikTok counts are exploratory, at different publication ages, and say nothing about the opening, so this is a bet, not a finding.
 
 Unknowns:
   - ram-fit@saved-take-pr172 on instagram-reels: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-06T00:55:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.
@@ -182,9 +189,10 @@ Unknowns:
   - fps-20-wins@ce47598 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.
   - ram-fit@saved-take-pr172 on youtube-shorts: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-03T20:00:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.
   - ram-fit@saved-take-pr172 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.
-  - Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand; no Metricool metric has been relayed.
+  - Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand, as were the two TikTok count snapshots (kept as exploratory, not as trusted observations).
   - Access: YouTube Data and Analytics APIs are reachable but answer 403/401 without a credential; no channel-owner OAuth credential is configured. www.youtube.com (and so oEmbed) is refused by the network policy.
   - Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy.
+  - Exploratory values exist for 2 posts (tiktok:7693352089078058271, tiktok:7693587971584429343). They are not ranked or compared: the posts went out at different times (actual times unknown), so their numbers are at different ages, and relayed snapshots may be delayed.
 
 One creative change to test:
   In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen.

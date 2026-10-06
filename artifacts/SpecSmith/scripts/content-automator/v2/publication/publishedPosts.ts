@@ -17,7 +17,7 @@
 // correctExternalPost, never an edit here, so the history stays; numbers read
 // off a dashboard go through recordDashboardEvidence, labelled EXPLORATORY.
 
-import type { CreativeChange, CreativeMeasurement, ExternalPostInput, MediaEvidence } from "./externalPosts.ts";
+import type { CreativeChange, CreativeMeasurement, DashboardEvidence, ExternalPostInput, MediaEvidence } from "./externalPosts.ts";
 
 const UPLOADED_COPY_ORIGIN = "uploaded by the user to this session on 2026-10-06; Google-encoded; which platform it was downloaded from was not stated";
 
@@ -123,12 +123,48 @@ export const PUBLISHED_POSTS: readonly ExternalPostInput[] = [
   metricoolPost(FPS, "instagram-reels", "https://www.instagram.com/reel/DeKLo_0kw7C/", "389611858", "2026-10-06T12:10:00-04:00", HANDLE_ONLY("Instagram", "the Instagram business account id (INSTAGRAM_BUSINESS_ACCOUNT_ID)"), SPECSMITH_HANDLE),
 ];
 
+const SNAPSHOT_TIME_UNKNOWN =
+  "The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.";
+const SNAPSHOT_UNAVAILABLE = [
+  { label: "Watch time", reason: "not in the relayed connector result; unavailable" },
+  { label: "Completion rate", reason: "not in the relayed connector result; unavailable" },
+] as const;
+
+/**
+ * Counts the Metricool connector returned for the two TikTok posts, relayed
+ * through Codex. Kept as EXPLORATORY relayed snapshots: possibly delayed, not
+ * fetched by this environment, not trusted observations, never ranked against
+ * each other (the posts went out at different times).
+ */
+export const RELAYED_CONNECTOR_SNAPSHOTS: readonly { readonly suppliedBy: string; readonly evidence: Omit<DashboardEvidence, "kind"> }[] = [
+  {
+    suppliedBy: "the user, relaying the Metricool connector result from Codex (2026-10-06)",
+    evidence: {
+      origin: "relayed-connector-snapshot", platform: "tiktok", nativePostId: "7693352089078058271",
+      dashboard: "Metricool connector (authenticated, brand 6769542)", readAt: null, readAtBasis: SNAPSHOT_TIME_UNKNOWN,
+      sourceReference: "Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment",
+      values: [{ label: "Views", value: 1045 }, { label: "Likes", value: 17 }],
+      unavailable: SNAPSHOT_UNAVAILABLE,
+    },
+  },
+  {
+    suppliedBy: "the user, relaying the Metricool connector result from Codex (2026-10-06)",
+    evidence: {
+      origin: "relayed-connector-snapshot", platform: "tiktok", nativePostId: "7693587971584429343",
+      dashboard: "Metricool connector (authenticated, brand 6769542)", readAt: null, readAtBasis: SNAPSHOT_TIME_UNKNOWN,
+      sourceReference: "Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment",
+      values: [{ label: "Views", value: 82 }, { label: "Likes", value: 0 }],
+      unavailable: SNAPSHOT_UNAVAILABLE,
+    },
+  },
+];
+
 /**
  * Access to real analytics, as probed from this environment on 2026-10-06 at
  * 17:14Z. Re-run the probes in METRICS_ACCESS.md rather than trusting these.
  */
 export const ACCESS_FINDINGS: readonly string[] = [
-  "Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand; no Metricool metric has been relayed.",
+  "Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand, as were the two TikTok count snapshots (kept as exploratory, not as trusted observations).",
   "YouTube Data and Analytics APIs are reachable but answer 403/401 without a credential; no channel-owner OAuth credential is configured. www.youtube.com (and so oEmbed) is refused by the network policy.",
   "TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy.",
 ];
@@ -158,7 +194,7 @@ export const OPENING_CHANGE: CreativeChange = {
     "fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured)",
     "ram-fit frame one: the claim as a 40 px caption (file-measured)",
   ],
-  hypothesis: "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding.",
+  hypothesis: "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no trusted performance data for either video, and the relayed TikTok counts are exploratory, at different publication ages, and say nothing about the opening, so this is a bet, not a finding.",
   testWith: "On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested.",
   status: "Hypothesis to test. Not a rule, not an approved claim, not a schedule.",
 };

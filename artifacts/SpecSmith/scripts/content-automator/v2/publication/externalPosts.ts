@@ -27,9 +27,11 @@
 //   - Numbers arrive two ways, kept apart:
 //       * authenticated observations from a registered source, through
 //         importExternalPostObservations (same trust check as any other);
-//       * user-provided dashboard evidence (a screenshot, a pasted table), kept
-//         through recordUnverifiedObservations and shown only as EXPLORATORY
-//         context: not a verified metric, never compared, never causal.
+//       * exploratory evidence: numbers a person read off a dashboard, or a
+//         connector snapshot relayed from elsewhere (possibly delayed, not
+//         fetched here), kept through recordUnverifiedObservations and shown
+//         only as EXPLORATORY context: not a verified metric, never ranked or
+//         compared, never causal.
 //
 // externalPostReport walks post -> report -> next-brief input, with values,
 // collection times and source references, and keeps observations, exploratory
@@ -216,6 +218,18 @@ function checkTimestamp(value: string, what: string) {
 
 const TIMESTAMP_FIELDS: readonly string[] = ["publishedAt", "scheduledAt"];
 
+/**
+ * Which value in an observation reports which post fact. Only the account: the
+ * provider returns it with the numbers. Every other identity value an
+ * observation carries (creative, variant, media hash, publication time) was
+ * copied into it FROM this record at import, so citing it would be circular,
+ * and a metric (views, likes, …) says nothing about any fact here. A
+ * provider-reported fact for any other field is refused.
+ */
+const OBSERVATION_SUPPORT: Partial<Record<string, (record: ObservationRecord) => string>> = {
+  accountId: (record) => record.accountId,
+};
+
 /** Validate a stored fact's shape: used when a fact is first written AND every time one is read back. */
 function validateFact(field: string, entry: SourcedFact<string> | undefined): SourcedFact<string> {
   if (!entry || typeof entry !== "object" || typeof entry.basis !== "string" || !entry.basis.trim()) {
@@ -228,6 +242,7 @@ function validateFact(field: string, entry: SourcedFact<string> | undefined): So
   if (typeof entry.value !== "string" || !entry.value.trim()) throw new ExternalPostError(`${field} must be text, or unknown.`);
   if (!FACT_SOURCES.includes(entry.source as FactSource)) throw new ExternalPostError(`${field} has an unrecognised source "${entry.source}".`);
   if (entry.source === "provider-reported") {
+    if (!OBSERVATION_SUPPORT[field]) throw new ExternalPostError(`No provider observation reports ${field}; it cannot be provider-reported. Record who supplied it instead.`);
     if (!/^obs-[a-f0-9]{24}$/.test(entry.observationId ?? "")) throw new ExternalPostError(`A provider-reported ${field} must name the trusted observation (observationId) that reported it.`);
   } else if (entry.observationId !== undefined) {
     throw new ExternalPostError(`Only a provider-reported ${field} may name an observation.`);
@@ -262,7 +277,9 @@ function trustedObservation(record: ObservationRecord, simulated: boolean): bool
 
 /**
  * A provider-reported fact must point at a real, trusted observation stored for
- * this same platform, post and account. An id-shaped string proves nothing.
+ * this same platform, post and account, AND that observation must itself report
+ * the exact value asserted for this field (OBSERVATION_SUPPORT). An id-shaped
+ * string proves nothing; neither does a genuine observation of something else.
  */
 async function checkProviderReference(storeRoot: string, post: { readonly platform: VideoPlatform; readonly nativePostId: string; readonly accountId: string | null }, field: string, entry: SourcedFact<string>) {
   if (entry.source !== "provider-reported") return;
@@ -273,6 +290,11 @@ async function checkProviderReference(storeRoot: string, post: { readonly platfo
   const account = field === "accountId" ? entry.value : post.accountId;
   if (!record || !trustedObservation(record, simulated) || record.platform !== post.platform || record.providerPostId !== post.nativePostId || !account || record.accountId !== account) {
     throw new ExternalPostError(`${field} cites observation ${entry.observationId}, but no trusted observation with that id exists for ${post.platform} post ${post.nativePostId} on account ${account ?? "(unknown)"}.`);
+  }
+  const support = OBSERVATION_SUPPORT[field];
+  const reported = support ? support(record) : null;
+  if (reported === null || reported !== entry.value) {
+    throw new ExternalPostError(`${field} cites observation ${entry.observationId} (${record.metricId}), which does not report ${field} = ${entry.value}${support ? `; it reports ${reported}` : ""}.`);
   }
 }
 
@@ -430,17 +452,37 @@ export interface DashboardValue {
   readonly window?: string;
 }
 
+/**
+ * How the numbers reached this repository.
+ *   user-read-dashboard          a person read them off a dashboard or screenshot
+ *   relayed-connector-snapshot   an authenticated connector returned them to another
+ *                                assistant, which relayed them here; possibly delayed,
+ *                                not fetched or re-checked by this environment
+ */
+export type ExploratoryOrigin = "user-read-dashboard" | "relayed-connector-snapshot";
+
+export interface UnavailableValue {
+  readonly label: string;
+  readonly reason: string;
+}
+
 export interface DashboardEvidence {
   readonly kind: typeof DASHBOARD_EVIDENCE_KIND;
+  /** Defaults to user-read-dashboard. */
+  readonly origin?: ExploratoryOrigin;
   readonly platform: VideoPlatform;
   readonly nativePostId: string;
   /** e.g. "YouTube Studio", "Metricool", "TikTok app analytics". */
   readonly dashboard: string;
-  /** When the person read the dashboard (with timezone). */
-  readonly readAt: string;
+  /** When the numbers were read (with timezone), or null when that was not supplied. */
+  readonly readAt: string | null;
+  /** Why readAt is unknown; required when it is null. */
+  readonly readAtBasis?: string;
   /** What it was read from: a screenshot file name and its SHA-256, or "typed from the screen". */
   readonly sourceReference: string;
   readonly values: readonly DashboardValue[];
+  /** Values that were asked for or expected and are not available, with why. */
+  readonly unavailable?: readonly UnavailableValue[];
 }
 
 /**
@@ -460,8 +502,15 @@ export async function recordDashboardEvidence(input: {
   const post = await resolveExternalPost(input.storeRoot, evidence.platform, evidence.nativePostId);
   if (!post) throw new ExternalPostError(`${evidence.platform} post ${evidence.nativePostId} is not recorded; record the post before attaching evidence to it.`);
   if (!evidence.dashboard?.trim() || !evidence.sourceReference?.trim()) throw new ExternalPostError("Dashboard evidence must name the dashboard and what it was read from.");
-  checkTimestamp(evidence.readAt, "The time the dashboard was read");
-  if (Date.parse(evidence.readAt) > (input.now ?? new Date()).getTime()) throw new ExternalPostError("The dashboard cannot have been read in the future.");
+  const origin = evidence.origin ?? "user-read-dashboard";
+  if (origin !== "user-read-dashboard" && origin !== "relayed-connector-snapshot") throw new ExternalPostError(`Unrecognised evidence origin "${origin}".`);
+  if (evidence.readAt === null) {
+    if (!evidence.readAtBasis?.trim()) throw new ExternalPostError("When the read time is unknown, say why (readAtBasis).");
+  } else {
+    checkTimestamp(evidence.readAt, "The time the dashboard was read");
+    if (Date.parse(evidence.readAt) > (input.now ?? new Date()).getTime()) throw new ExternalPostError("The dashboard cannot have been read in the future.");
+  }
+  if ((evidence.unavailable ?? []).some((entry) => !entry.label?.trim() || !entry.reason?.trim())) throw new ExternalPostError("Each unavailable value needs its label and why.");
   if (!evidence.values.length || evidence.values.some((value) => !value.label?.trim() || (typeof value.value === "number" && !Number.isFinite(value.value)))) {
     throw new ExternalPostError("Each dashboard value needs its dashboard label and a finite value.");
   }
@@ -469,7 +518,7 @@ export async function recordDashboardEvidence(input: {
     storeRoot: input.storeRoot,
     providerPostId: externalPostKey(evidence.platform, evidence.nativePostId),
     suppliedBy: input.suppliedBy,
-    supplied: { kind: DASHBOARD_EVIDENCE_KIND, ...evidence },
+    supplied: { kind: DASHBOARD_EVIDENCE_KIND, ...evidence, origin },
     now: input.now,
   });
 }
@@ -497,10 +546,18 @@ export interface MetricAvailability {
   readonly reason: string;
 }
 
+const EXPLORATORY_LABELS = {
+  "user-read-dashboard": "EXPLORATORY: user-provided dashboard evidence, not verified, not a metric, not causal",
+  "relayed-connector-snapshot": "EXPLORATORY: relayed connector snapshot, possibly delayed, not fetched by this environment, not a verified metric, not causal",
+} as const;
+
 export interface ExploratoryEvidence {
-  readonly label: "EXPLORATORY: user-provided dashboard evidence, not verified, not a metric, not causal";
+  readonly label: (typeof EXPLORATORY_LABELS)[ExploratoryOrigin];
+  readonly origin: ExploratoryOrigin;
   readonly dashboard: string;
-  readonly readAt: string;
+  readonly readAt: string | null;
+  readonly readAtBasis: string | null;
+  readonly unavailable: readonly UnavailableValue[];
   readonly sourceReference: string;
   readonly suppliedBy: string;
   readonly receivedAt: string;
@@ -636,9 +693,11 @@ export async function externalPostReport(input: {
     const exploratory: ExploratoryEvidence[] = (await loadUnverifiedObservations(input.storeRoot, key)).flatMap((record) => {
       const supplied = record.supplied as Partial<DashboardEvidence> | null;
       if (supplied?.kind !== DASHBOARD_EVIDENCE_KIND || supplied.platform !== post.platform || supplied.nativePostId !== post.nativePostId) return [];
+      const origin = supplied.origin ?? "user-read-dashboard";
       return [{
-        label: "EXPLORATORY: user-provided dashboard evidence, not verified, not a metric, not causal" as const,
-        dashboard: supplied.dashboard!, readAt: supplied.readAt!, sourceReference: supplied.sourceReference!,
+        label: EXPLORATORY_LABELS[origin], origin,
+        dashboard: supplied.dashboard!, readAt: supplied.readAt ?? null, readAtBasis: supplied.readAtBasis ?? null,
+        unavailable: supplied.unavailable ?? [], sourceReference: supplied.sourceReference!,
         suppliedBy: record.suppliedBy, receivedAt: record.receivedAt, evidenceSha256: record.sha256, values: supplied.values ?? [],
       }];
     });
@@ -666,7 +725,11 @@ export async function externalPostReport(input: {
       observations.push(`${label}: ${record.metricId} = ${record.value ?? "(curve)"}${record.unit && record.unit !== "count" ? ` ${record.unit}` : ""} at ${record.publicationAgeHours}h, collected ${record.collectedAt} by ${record.source} (${record.observationId}${record.definitionId ? `, ${record.definitionId}` : ""}).`);
     }
     for (const entry of exploratory) {
-      exploratoryContext.push(`${label} [EXPLORATORY, user-provided, unverified]: ${entry.values.map(describe).join("; ")} — read from ${entry.dashboard} at ${entry.readAt} (${entry.sourceReference}; supplied by ${entry.suppliedBy}; evidence sha256 ${entry.evidenceSha256.slice(0, 16)}…). Not a verified metric; not comparable across platforms; says nothing about cause.`);
+      const tag = entry.origin === "relayed-connector-snapshot" ? "EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here" : "EXPLORATORY, user-provided, unverified";
+      const when = entry.readAt ? `at ${entry.readAt}` : `at an unknown time (${entry.readAtBasis})`;
+      const missing = entry.unavailable.length ? ` Unavailable: ${entry.unavailable.map((value) => `${value.label} (${value.reason})`).join("; ")}.` : "";
+      const age = publishedAt ? `published ${publishedAt}` : `actual publication time unknown${post.scheduledAt.value ? `, scheduled ${post.scheduledAt.value}` : ""}`;
+      exploratoryContext.push(`${label} [${tag}]: ${entry.values.map(describe).join("; ")} — from ${entry.dashboard} ${when} (${entry.sourceReference}; supplied by ${entry.suppliedBy}; evidence sha256 ${entry.evidenceSha256.slice(0, 16)}…; ${age}).${missing} Not a verified metric; not ranked against other posts; says nothing about cause.`);
     }
 
     if (!publishedAt) unknowns.push(`${label}: actual publication time unknown (${post.publishedAt.basis})${post.scheduledAt.value ? `; it was scheduled for ${post.scheduledAt.value}, which is not used as the publication time` : ""}. Authenticated observations cannot be placed at a publication age until it is added with a correction.`);
@@ -688,6 +751,10 @@ export async function externalPostReport(input: {
     for (const finding of input.accessFindings ?? []) unknowns.push(`Access: ${finding}`);
   }
   if (posts.length === 0) unknowns.push("No externally published post is recorded.");
+  const withExploratory = reported.filter((post) => post.exploratory.length);
+  if (withExploratory.length > 1) {
+    unknowns.push(`Exploratory values exist for ${withExploratory.length} posts (${withExploratory.map((post) => `${post.platform}:${post.nativePostId}`).join(", ")}). They are not ranked or compared: the posts went out at different times (actual times unknown), so their numbers are at different ages, and relayed snapshots may be delayed.`);
+  }
   if (new Set(reported.filter((post) => post.observations.length).map((post) => post.platform)).size > 1) {
     unknowns.push("Observations are from different platforms; their metric definitions differ, so they are not compared with each other.");
   }
@@ -762,13 +829,16 @@ export function formatExternalPostReport(report: ExternalPostReport): string {
     for (const record of post.observations) lines.push(`        ${record.metricId} = ${record.value ?? "(curve)"}${record.unit && record.unit !== "count" ? ` ${record.unit}` : ""} at ${record.publicationAgeHours}h; collected ${record.collectedAt}; ${record.source}; ${record.observationId}`);
     lines.push(`      not observed: ${post.notObserved.length}`);
     for (const metric of post.notObserved) lines.push(`        ${metric.metricId}${metric.providerField ? ` (${metric.providerField})` : ""}: ${metric.reason}`);
-    lines.push(`      exploratory dashboard evidence: ${post.exploratory.length ? "" : "none supplied"}`);
-    for (const entry of post.exploratory) lines.push(`        [EXPLORATORY · user-provided · unverified] ${entry.dashboard}, read ${entry.readAt}, ${entry.sourceReference}: ${entry.values.map(describe).join("; ")}`);
+    lines.push(`      exploratory evidence (dashboard reads, relayed connector snapshots): ${post.exploratory.length ? "" : "none supplied"}`);
+    for (const entry of post.exploratory) {
+      lines.push(`        [${entry.label}] ${entry.dashboard}, read ${entry.readAt ?? `at an unknown time (${entry.readAtBasis})`}, ${entry.sourceReference}: ${entry.values.map(describe).join("; ")}`);
+      for (const value of entry.unavailable) lines.push(`          unavailable: ${value.label} (${value.reason})`);
+    }
   }
   for (const key of report.creativesWithoutPosts) lines.push(`  - ${key}: published, post URL not supplied`);
   lines.push("", "Observations (supplied by a person or relayed from a connector, measured from a file, or provider-reported; each says which):");
   for (const line of report.observations) lines.push(`  - ${line}`);
-  lines.push("", "Exploratory context (user-provided, unverified; not metrics, not causal):");
+  lines.push("", "Exploratory context (user-read dashboards or relayed connector snapshots; unverified, not metrics, not ranked, not causal):");
   for (const line of report.exploratoryContext) lines.push(`  - ${line}`);
   if (!report.exploratoryContext.length) lines.push("  - None supplied.");
   lines.push("", "Hypotheses (not conclusions):");

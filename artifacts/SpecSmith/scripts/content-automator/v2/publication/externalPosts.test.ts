@@ -178,7 +178,7 @@ describe("history-preserving corrections", () => {
       [(correction: Record<string, any>) => { correction.next.value = "2026-10-03T19:40:00-04:00"; }, /invalid replacement: publishedAt must be stored in UTC/],
       [(correction: Record<string, any>) => { correction.next.source = "a friend"; }, /invalid replacement: .*unrecognised source/],
       [(correction: Record<string, any>) => { correction.next = { value: null, source: null, basis: "" }; }, /invalid replacement: .*must carry a basis/],
-      [(correction: Record<string, any>) => { correction.next.source = "provider-reported"; }, /invalid replacement: .*must name the trusted observation/],
+      [(correction: Record<string, any>) => { correction.next.source = "provider-reported"; }, /invalid replacement: No provider observation reports publishedAt/],
       [(correction: Record<string, any>) => { correction.field = "postUrl"; }, /not correctable/],
     ] as const) {
       const root = await twoCorrections();
@@ -191,16 +191,16 @@ describe("history-preserving corrections", () => {
 describe("provider-reported facts need a real trusted observation", () => {
   it("refuses a fabricated observation id when recording, correcting, or replaying", async () => {
     const root = await store("simulation");
-    const fabricated = { value: "PUBLISHED", source: "provider-reported" as const, basis: "the API said so", observationId: FAKE_OBSERVATION };
-    await expect(recordExternalPost({ storeRoot: root, post: { ...RAM, providerStatus: fabricated }, now: NOW })).rejects.toThrow(/no trusted observation with that id exists/);
+    const fabricated = { value: CHANNEL, source: "provider-reported" as const, basis: "the API said so", observationId: FAKE_OBSERVATION };
+    await expect(recordExternalPost({ storeRoot: root, post: { ...RAM, accountId: fabricated }, now: NOW })).rejects.toThrow(/no trusted observation with that id exists/);
     await recordExternalPost({ storeRoot: root, post: RAM, now: NOW });
-    await expect(correctExternalPost({ storeRoot: root, ...YT, field: "providerStatus", next: fabricated, reason: "x", suppliedBy: "x", now: NOW }))
+    await expect(correctExternalPost({ storeRoot: root, ...YT, field: "accountId", next: fabricated, reason: "x", suppliedBy: "x", now: NOW }))
       .rejects.toThrow(/cites observation obs-0123456789abcdef01234567, but no trusted observation/);
     // Written straight into the history, it is caught on read.
-    await correctExternalPost({ storeRoot: root, ...YT, field: "creativeId", next: { value: "ram-fit@other", source: "user-provided", basis: "test" }, reason: "x", suppliedBy: "x", now: NOW });
+    await correctExternalPost({ storeRoot: root, ...YT, field: "accountId", next: { value: CHANNEL, source: "user-provided", basis: "test, re-supplied" }, reason: "x", suppliedBy: "x", now: NOW });
     const path = join(corrections(root), "0001.json");
     const correction = JSON.parse(await readFile(path, "utf8"));
-    await writeFile(path, JSON.stringify({ ...correction, next: { ...fabricated, value: "ram-fit@other" } }));
+    await writeFile(path, JSON.stringify({ ...correction, next: fabricated }));
     await expect(resolveExternalPost(root, "youtube-shorts", "cSDhjFC-CI8")).rejects.toThrow(/invalid replacement: .*no trusted observation/);
   });
 
@@ -219,10 +219,38 @@ describe("provider-reported facts need a real trusted observation", () => {
 
     await expect(correctExternalPost({ storeRoot: root, ...YT, field: "accountId", next: cited("UC-someone-else"), reason: "x", suppliedBy: "x", now: NOW }))
       .rejects.toThrow(/no trusted observation .* on account UC-someone-else/);
-    await expect(correctExternalPost({ storeRoot: root, platform: "youtube-shorts", nativePostId: "648FsZLefnc", field: "providerStatus", next: cited("PUBLISHED"), reason: "x", suppliedBy: "x", now: NOW }))
+    await expect(correctExternalPost({ storeRoot: root, platform: "youtube-shorts", nativePostId: "648FsZLefnc", field: "accountId", next: cited(CHANNEL), reason: "x", suppliedBy: "x", now: NOW }))
       .rejects.toThrow(/no trusted observation .* youtube-shorts post 648FsZLefnc/);
-    await expect(correctExternalPost({ storeRoot: root, ...TT, field: "providerStatus", next: cited("PUBLISHED"), reason: "x", suppliedBy: "x", now: NOW }))
+    await expect(correctExternalPost({ storeRoot: root, ...TT, field: "accountId", next: cited(CHANNEL), reason: "x", suppliedBy: "x", now: NOW }))
       .rejects.toThrow(/no trusted observation .* tiktok post 7693352089078058271/);
+  });
+
+  it("refuses a genuine views observation cited for a false publication time or an unrelated creative version", async () => {
+    const root = await store("simulation");
+    await recordExternalPost({ storeRoot: root, post: RAM, now: NOW });
+    await complete(root); // test-only time 2026-10-03T23:40Z, so the import can run
+    const { stored } = await importExternalPostObservations({ storeRoot: root, batch: createSimulatedObservationSource().respond(youtubeBatch()), now: NOW });
+    const views = stored.find((record) => record.metricId === "views")!;
+    expect(views.value).toBe(1000);
+    const cite = (value: string) => ({ value, source: "provider-reported" as const, basis: "the views observation", observationId: views.observationId });
+    // Same platform, post and account, and a real trusted observation: still not evidence for these values.
+    await expect(correctExternalPost({ storeRoot: root, ...YT, field: "publishedAt", next: cite("2026-10-01T00:00:00Z"), reason: "x", suppliedBy: "x", now: NOW }))
+      .rejects.toThrow(/No provider observation reports publishedAt/);
+    await expect(correctExternalPost({ storeRoot: root, ...YT, field: "creativeVersion", next: cite("some other render"), reason: "x", suppliedBy: "x", now: NOW }))
+      .rejects.toThrow(/No provider observation reports creativeVersion/);
+    await expect(recordExternalPost({ storeRoot: root, post: { ...FPS_YT, creativeVersion: cite("some other render") }, now: NOW })).rejects.toThrow(/No provider observation reports creativeVersion/);
+    // Nor when written straight into the history.
+    await correctExternalPost({ storeRoot: root, ...YT, field: "creativeVersion", next: { value: "some other render", source: "user-provided", basis: "test" }, reason: "x", suppliedBy: "x", now: NOW });
+    for (const [name, field, value] of [["0001.json", "publishedAt", "2026-10-01T00:00:00.000Z"], ["0002.json", "creativeVersion", "some other render"]] as const) {
+      const path = join(corrections(root), name);
+      const original = await readFile(path, "utf8");
+      const correction = JSON.parse(original);
+      expect(correction.field).toBe(field);
+      await writeFile(path, JSON.stringify({ ...correction, next: cite(value) }));
+      await expect(resolveExternalPost(root, "youtube-shorts", "cSDhjFC-CI8")).rejects.toThrow(new RegExp(`invalid replacement: No provider observation reports ${field}`));
+      await writeFile(path, original);
+    }
+    expect((await resolveExternalPost(root, "youtube-shorts", "cSDhjFC-CI8"))!.creativeVersion.value).toBe("some other render");
   });
 
   it("does not accept a simulated observation in a production store", async () => {
@@ -341,6 +369,8 @@ describe("user-provided dashboard evidence", () => {
     await expect(recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, platform: "tiktok" }, now: NOW })).rejects.toThrow(/not recorded/);
     await expect(recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, readAt: "2026-10-09T00:00:00Z" }, now: NOW })).rejects.toThrow(/future/);
     await expect(recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, readAt: "2026-10-05" }, now: NOW })).rejects.toThrow(/timezone/);
+    await expect(recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, readAt: null }, now: NOW })).rejects.toThrow(/readAtBasis/);
+    await expect(recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, origin: "native-fetch" as never }, now: NOW })).rejects.toThrow(/Unrecognised evidence origin/);
     await recordExternalPost({ storeRoot: root, post: RAM_TIKTOK, now: NOW });
     await recordDashboardEvidence({ storeRoot: root, suppliedBy: "x", evidence: { ...evidence, ...TT, dashboard: "TikTok (test)" }, now: NOW });
     const report = await externalPostReport({ storeRoot: root, now: NOW, env: {} });
@@ -361,7 +391,20 @@ describe("post -> report -> next brief", () => {
       "youtube-shorts:648FsZLefnc", "youtube-shorts:cSDhjFC-CI8",
     ]);
     expect([...handoff.evidence.mediaSha256s].sort()).toEqual([RAM_FIT_PUBLISHED_COPY.sha256, FPS_20_WINS_PUBLISHED_COPY.sha256, FPS_20_WINS_RENDER_SHA256].sort());
+    // The relayed TikTok counts are exploratory context, never trusted observations.
     expect(handoff.evidence.observationIds).toEqual([]);
+    const snapshot = (id: string) => report.posts.find((entry) => entry.nativePostId === id)!.exploratory;
+    expect(snapshot("7693352089078058271")).toEqual([expect.objectContaining({
+      origin: "relayed-connector-snapshot", label: expect.stringContaining("relayed connector snapshot, possibly delayed, not fetched by this environment"),
+      readAt: null, values: [{ label: "Views", value: 1045 }, { label: "Likes", value: 17 }],
+      unavailable: [expect.objectContaining({ label: "Watch time" }), expect.objectContaining({ label: "Completion rate" })],
+    })]);
+    expect(snapshot("7693587971584429343")[0].values).toEqual([{ label: "Views", value: 82 }, { label: "Likes", value: 0 }]);
+    expect(report.posts.filter((entry) => entry.exploratory.length).map((entry) => entry.nativePostId).sort()).toEqual(["7693352089078058271", "7693587971584429343"]);
+    expect(report.observations.join(" ")).not.toMatch(/1045|Views: 82/);
+    expect(handoff.brief.memoryObservations.filter((line) => line.startsWith("Exploratory context") && line.includes("not a metric or a causal finding") && line.includes("not ranked against other posts"))
+      .map((line) => line.match(/Views: (\d+); Likes: (\d+)/)!.slice(1))).toEqual([["1045", "17"], ["82", "0"]]);
+    expect(report.unknowns.some((line) => /Exploratory values exist for 2 posts .* not ranked or compared: .* different ages/.test(line))).toBe(true);
     expect(report.posts.every((entry) => entry.publishedAt.value === null && entry.scheduledAt.value !== null && entry.providerStatus.value === "PUBLISHED")).toBe(true);
     // Each published copy is described once, not once per platform.
     expect(report.observations.filter((line) => line.includes(`sha256 ${RAM_FIT_PUBLISHED_COPY.sha256}`)).length).toBe(1);

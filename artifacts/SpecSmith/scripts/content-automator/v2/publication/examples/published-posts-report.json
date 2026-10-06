@@ -1,7 +1,7 @@
 {
   "version": "external-post-report-v2",
-  "reportId": "external-74f8283372e7ed83",
-  "generatedAt": "2026-10-06T18:23:19.112Z",
+  "reportId": "external-ad1e669218c157c7",
+  "generatedAt": "2026-10-06T18:36:42.247Z",
   "posts": [
     {
       "recordId": "external-instagram-reels-DeIi5pZDWew-118fa347bc8c",
@@ -315,7 +315,39 @@
           "reason": "not served by the tiktok API: No per-second retention curve is exposed to a standard creator account."
         }
       ],
-      "exploratory": []
+      "exploratory": [
+        {
+          "label": "EXPLORATORY: relayed connector snapshot, possibly delayed, not fetched by this environment, not a verified metric, not causal",
+          "origin": "relayed-connector-snapshot",
+          "dashboard": "Metricool connector (authenticated, brand 6769542)",
+          "readAt": null,
+          "readAtBasis": "The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.",
+          "unavailable": [
+            {
+              "label": "Watch time",
+              "reason": "not in the relayed connector result; unavailable"
+            },
+            {
+              "label": "Completion rate",
+              "reason": "not in the relayed connector result; unavailable"
+            }
+          ],
+          "sourceReference": "Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment",
+          "suppliedBy": "the user, relaying the Metricool connector result from Codex (2026-10-06)",
+          "receivedAt": "2026-10-06T18:36:42.247Z",
+          "evidenceSha256": "11cff2a174e17b7036fe56699a2e79a3dc7cc40f8e3579720e725b7719f75c94",
+          "values": [
+            {
+              "label": "Views",
+              "value": 1045
+            },
+            {
+              "label": "Likes",
+              "value": 17
+            }
+          ]
+        }
+      ]
     },
     {
       "recordId": "external-tiktok-7693587971584429343-b402b52616aa",
@@ -413,7 +445,39 @@
           "reason": "not served by the tiktok API: No per-second retention curve is exposed to a standard creator account."
         }
       ],
-      "exploratory": []
+      "exploratory": [
+        {
+          "label": "EXPLORATORY: relayed connector snapshot, possibly delayed, not fetched by this environment, not a verified metric, not causal",
+          "origin": "relayed-connector-snapshot",
+          "dashboard": "Metricool connector (authenticated, brand 6769542)",
+          "readAt": null,
+          "readAtBasis": "The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.",
+          "unavailable": [
+            {
+              "label": "Watch time",
+              "reason": "not in the relayed connector result; unavailable"
+            },
+            {
+              "label": "Completion rate",
+              "reason": "not in the relayed connector result; unavailable"
+            }
+          ],
+          "sourceReference": "Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment",
+          "suppliedBy": "the user, relaying the Metricool connector result from Codex (2026-10-06)",
+          "receivedAt": "2026-10-06T18:36:42.247Z",
+          "evidenceSha256": "928b30a315e8392682478d2e45ae65ed4b5812da5c31f0ff6353f433325fe561",
+          "values": [
+            {
+              "label": "Views",
+              "value": 82
+            },
+            {
+              "label": "Likes",
+              "value": 0
+            }
+          ]
+        }
+      ]
     },
     {
       "recordId": "external-youtube-shorts-648FsZLefnc-f9b85b13c3cb",
@@ -665,9 +729,12 @@
     "ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, \"DDR4 RAM won't fit\", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)",
     "fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)"
   ],
-  "exploratoryContext": [],
+  "exploratoryContext": [
+    "ram-fit@saved-take-pr172 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 1045; Likes: 17 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 11cff2a174e17b70…; actual publication time unknown, scheduled 2026-10-06T00:55:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause.",
+    "fps-20-wins@ce47598 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 82; Likes: 0 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 928b30a315e83926…; actual publication time unknown, scheduled 2026-10-06T16:10:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause."
+  ],
   "hypotheses": [
-    "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding."
+    "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no trusted performance data for either video, and the relayed TikTok counts are exploratory, at different publication ages, and say nothing about the opening, so this is a bet, not a finding."
   ],
   "unknowns": [
     "ram-fit@saved-take-pr172 on instagram-reels: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-06T00:55:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.",
@@ -686,9 +753,10 @@
     "fps-20-wins@ce47598 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.",
     "ram-fit@saved-take-pr172 on youtube-shorts: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-03T20:00:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.",
     "ram-fit@saved-take-pr172 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.",
-    "Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand; no Metricool metric has been relayed.",
+    "Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand, as were the two TikTok count snapshots (kept as exploratory, not as trusted observations).",
     "Access: YouTube Data and Analytics APIs are reachable but answer 403/401 without a credential; no channel-owner OAuth credential is configured. www.youtube.com (and so oEmbed) is refused by the network policy.",
-    "Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy."
+    "Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy.",
+    "Exploratory values exist for 2 posts (tiktok:7693352089078058271, tiktok:7693587971584429343). They are not ranked or compared: the posts went out at different times (actual times unknown), so their numbers are at different ages, and relayed snapshots may be delayed."
   ],
   "recommendation": {
     "change": "In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen.",
@@ -697,13 +765,13 @@
       "fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured)",
       "ram-fit frame one: the claim as a 40 px caption (file-measured)"
     ],
-    "hypothesis": "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding.",
+    "hypothesis": "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no trusted performance data for either video, and the relayed TikTok counts are exploratory, at different publication ages, and say nothing about the opening, so this is a bet, not a finding.",
     "testWith": "On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested.",
     "status": "Hypothesis to test. Not a rule, not an approved claim, not a schedule."
   },
   "nextBrief": {
     "version": "next-brief-input-v1",
-    "reportId": "external-74f8283372e7ed83",
+    "reportId": "external-ad1e669218c157c7",
     "simulated": false,
     "evidence": {
       "creativeIds": [
@@ -739,7 +807,7 @@
       "fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)"
     ],
     "hypotheses": [
-      "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no performance data for either video, so this is a bet, not a finding."
+      "A claim readable on frame one may hold more viewers through the first second than one that only becomes readable after the 1.3 s push. There is no trusted performance data for either video, and the relayed TikTok counts are exploratory, at different publication ages, and say nothing about the opening, so this is a bet, not a finding."
     ],
     "unknowns": [
       "ram-fit@saved-take-pr172 on instagram-reels: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-06T00:55:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.",
@@ -758,9 +826,10 @@
       "fps-20-wins@ce47598 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.",
       "ram-fit@saved-take-pr172 on youtube-shorts: actual publication time unknown (No confirmed publication time. Metricool supplied only the scheduled time (kept as scheduledAt) and a PUBLISHED status; the uploaded copy's container time is an encode time. Not inferred from either.); it was scheduled for 2026-10-03T20:00:00.000Z, which is not used as the publication time. Authenticated observations cannot be placed at a publication age until it is added with a correction.",
       "ram-fit@saved-take-pr172 on youtube-shorts: no trusted observation is stored. YouTube metrics require an OAuth 2.0 credential for the channel that owns the video, with scope https://www.googleapis.com/auth/yt-analytics.readonly, supplied as YOUTUBE_OAUTH_REFRESH_TOKEN plus YOUTUBE_OAUTH_CLIENT_ID and YOUTUBE_OAUTH_CLIENT_SECRET. None is configured. An API key is NOT sufficient: it reaches youtube/v3/videos for public counts only, and cannot reach youtubeAnalytics/v2/reports, where average view duration, average percentage viewed and the audience-retention curve live.",
-      "Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand; no Metricool metric has been relayed.",
+      "Access: Metricool cannot be read from here: app.metricool.com is refused by the network policy, no METRICOOL_* credential is configured, and this session has no Metricool connector. The post records above came from the Metricool connector in Codex, relayed by hand, as were the two TikTok count snapshots (kept as exploratory, not as trusted observations).",
       "Access: YouTube Data and Analytics APIs are reachable but answer 403/401 without a credential; no channel-owner OAuth credential is configured. www.youtube.com (and so oEmbed) is refused by the network policy.",
-      "Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy."
+      "Access: TikTok (open.tiktokapis.com, www.tiktok.com) and Instagram (graph.facebook.com, www.instagram.com) are refused by the network policy.",
+      "Exploratory values exist for 2 posts (tiktok:7693352089078058271, tiktok:7693587971584429343). They are not ranked or compared: the posts went out at different times (actual times unknown), so their numbers are at different ages, and relayed snapshots may be delayed."
     ],
     "proposedChange": null,
     "constraints": [
@@ -771,17 +840,19 @@
       "The next concepts go through research, the creative workflow, rendering, MASTER #7 review and trusted human approval like any other."
     ],
     "memoryObservations": [
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): ram-fit@saved-take-pr172 on instagram-reels: https://www.instagram.com/reel/DeIi5pZDWew/ [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389042813 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T00:55:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): ram-fit@saved-take-pr172: published copy 2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4 (sha256 ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589; uploaded by the user to this session on 2026-10-06; Google-encoded; which platform it was downloaded from was not stated) is 13.75 s, 412 frames at 720x1280 (file-measured).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): fps-20-wins@ce47598 on instagram-reels: https://www.instagram.com/reel/DeKLo_0kw7C/ [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): fps-20-wins@ce47598: published copy 07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4 (sha256 1de92f38b036d5042ad403296e5bfb4c71ede954b773a5639815099ed984f35b; uploaded by the user to this session on 2026-10-06; Google-encoded; which platform it was downloaded from was not stated) is 18.02 s, 540 frames at 720x1280 (file-measured).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): ram-fit@saved-take-pr172 on tiktok: https://www.tiktok.com/@specsmithpc/video/7693352089078058271 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389042813 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T00:55:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): fps-20-wins@ce47598 on tiktok: https://www.tiktok.com/@specsmithpc/video/7693587971584429343 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): fps-20-wins@ce47598 on youtube-shorts: https://www.youtube.com/shorts/648FsZLefnc [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): ram-fit@saved-take-pr172 on youtube-shorts: https://www.youtube.com/shorts/cSDhjFC-CI8 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 387469692 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-03T20:00:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, \"DDR4 RAM won't fit\", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)",
-      "Observation about published SpecSmith videos (context, not a rule; report external-74f8283372e7ed83): fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)",
-      "Creative change to test (report external-74f8283372e7ed83; a hypothesis, not a finding): In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen. Rests on: fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured); ram-fit frame one: the claim as a 40 px caption (file-measured). Test with: On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested."
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): ram-fit@saved-take-pr172 on instagram-reels: https://www.instagram.com/reel/DeIi5pZDWew/ [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389042813 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T00:55:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): ram-fit@saved-take-pr172: published copy 2f1bfb2b-DDR4_RAM_Won_t_Fit_a_DDR5_Motherboard___Here_s_the_Fix.mp4 (sha256 ea97c1471d4174768b4ba637e121089f4b8982570f475017c47fde688b22c589; uploaded by the user to this session on 2026-10-06; Google-encoded; which platform it was downloaded from was not stated) is 13.75 s, 412 frames at 720x1280 (file-measured).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): fps-20-wins@ce47598 on instagram-reels: https://www.instagram.com/reel/DeKLo_0kw7C/ [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): fps-20-wins@ce47598: published copy 07d6ae89-20_Game_Leads__Only_4_FPS_Apart_.mp4 (sha256 1de92f38b036d5042ad403296e5bfb4c71ede954b773a5639815099ed984f35b; uploaded by the user to this session on 2026-10-06; Google-encoded; which platform it was downloaded from was not stated) is 18.02 s, 540 frames at 720x1280 (file-measured).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): ram-fit@saved-take-pr172 on tiktok: https://www.tiktok.com/@specsmithpc/video/7693352089078058271 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389042813 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T00:55:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): fps-20-wins@ce47598 on tiktok: https://www.tiktok.com/@specsmithpc/video/7693587971584429343 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): fps-20-wins@ce47598 on youtube-shorts: https://www.youtube.com/shorts/648FsZLefnc [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 389611858 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-06T16:10:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): ram-fit@saved-take-pr172 on youtube-shorts: https://www.youtube.com/shorts/cSDhjFC-CI8 [connector-reported: Metricool connector (authenticated, brand 6769542) returned this to Codex, which relayed it to this session on 2026-10-06; not fetched or re-checked by this environment; provider status PUBLISHED]; published outside the MASTER #8 authorization boundary via metricool-scheduled; publishing-tool post id 387469692 (connector-reported); connector-reported status PUBLISHED; scheduled for 2026-10-03T20:00:00.000Z (connector-reported; a schedule, not a confirmed publication time).",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): ram-fit@saved-take-pr172: Frame one already shows the spoken claim as a caption, \"DDR4 RAM won't fit\", about 40 px tall in a 1280 px frame (3.1% of the height). (frame 0 of sha256 ea97c1471d417476…)",
+      "Observation about published SpecSmith videos (context, not a rule; report external-ad1e669218c157c7): fps-20-wins@ce47598: Frame one shows no caption (it fades in from 0.08 s). The largest text is \"20 GAMES\" on the miniature monitor, 23 px tall (1.8%); the GPU names are about 9 px (0.7%). After the push, at 2.5 s, the same GPU name is 39 px. (frames 0 and 75 of sha256 1de92f38b036d504…)",
+      "Exploratory context (report external-ad1e669218c157c7; user-provided and unverified, not a metric or a causal finding): ram-fit@saved-take-pr172 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 1045; Likes: 17 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 11cff2a174e17b70…; actual publication time unknown, scheduled 2026-10-06T00:55:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause.",
+      "Exploratory context (report external-ad1e669218c157c7; user-provided and unverified, not a metric or a causal finding): fps-20-wins@ce47598 on tiktok [EXPLORATORY, relayed connector snapshot, possibly delayed, not fetched here]: Views: 82; Likes: 0 — from Metricool connector (authenticated, brand 6769542) at an unknown time (The connector result did not say when Metricool last synced these counts from TikTok, and no read time was relayed. Metricool figures can lag the platform, so treat them as a possibly delayed snapshot.) (Metricool connector result returned to Codex and relayed to this session on 2026-10-06; not a native fetch by this environment; supplied by the user, relaying the Metricool connector result from Codex (2026-10-06); evidence sha256 928b30a315e83926…; actual publication time unknown, scheduled 2026-10-06T16:10:00.000Z). Unavailable: Watch time (not in the relayed connector result; unavailable); Completion rate (not in the relayed connector result; unavailable). Not a verified metric; not ranked against other posts; says nothing about cause.",
+      "Creative change to test (report external-ad1e669218c157c7; a hypothesis, not a finding): In the next comparison Short that opens on the desk and monitor, show the spoken hook as a full-size caption from frame one, at least the RAM-fit caption's size (about 40 px of 1280), while keeping the push into the screen. Rests on: fps-20-wins frame one: no caption; claim text 9–23 px on the miniature monitor (file-measured); ram-fit frame one: the claim as a 40 px caption (file-measured). Test with: On YouTube, at the same publication age as fps-20-wins: the share still watching at 1-3 s on the audience-retention curve, and average percentage viewed. Both are owner-only YouTube Analytics metrics, readable once a trusted YouTube source is registered; viewed-versus-swiped-away is not claimed by any adapter. Until then this is untested."
     ]
   }
 }
