@@ -1,0 +1,198 @@
+{
+  "source": "SpecSmith Compare model (estimateFpsForBuild, getAverageFps) on this commit; mirrors /compare?gpuA=rtx4080s&cpuA=r9-9950x3d&gpuB=rtx4080&cpuB=r9-9950x3d&res=1440p&preset=high",
+  "inputs": {
+    "gpuA": "rtx4080s",
+    "gpuB": "rtx4080",
+    "cpu": "r9-9950x3d",
+    "resolution": "1440p",
+    "preset": "high",
+    "gpuAName": "RTX 4080 Super",
+    "gpuBName": "RTX 4080",
+    "cpuName": "Ryzen 9 9950X3D"
+  },
+  "games": 20,
+  "leadsA": 20,
+  "leadsB": 0,
+  "ties": 0,
+  "avgA": 164,
+  "avgB": 160,
+  "avgGapShown": 4,
+  "unroundedAvgA": 164.3,
+  "unroundedAvgB": 159.75,
+  "perGameLeadRange": [
+    2,
+    7
+  ],
+  "rows": [
+    {
+      "id": "cyberpunk2077",
+      "name": "Cyberpunk 2077",
+      "a": 101,
+      "b": 97,
+      "diff": 4
+    },
+    {
+      "id": "msfs2024",
+      "name": "Microsoft Flight Simulator 2024",
+      "a": 60,
+      "b": 58,
+      "diff": 2
+    },
+    {
+      "id": "rdr2",
+      "name": "Red Dead Redemption 2",
+      "a": 113,
+      "b": 109,
+      "diff": 4
+    },
+    {
+      "id": "fortnite",
+      "name": "Fortnite",
+      "a": 167,
+      "b": 163,
+      "diff": 4
+    },
+    {
+      "id": "valorant",
+      "name": "Valorant",
+      "a": 347,
+      "b": 340,
+      "diff": 7
+    },
+    {
+      "id": "cs2",
+      "name": "CS2 (Counter-Strike 2)",
+      "a": 345,
+      "b": 338,
+      "diff": 7
+    },
+    {
+      "id": "apex",
+      "name": "Apex Legends",
+      "a": 236,
+      "b": 229,
+      "diff": 7
+    },
+    {
+      "id": "warzone",
+      "name": "Call of Duty: Warzone",
+      "a": 165,
+      "b": 160,
+      "diff": 5
+    },
+    {
+      "id": "eldenring",
+      "name": "Elden Ring",
+      "a": 104,
+      "b": 100,
+      "diff": 4
+    },
+    {
+      "id": "hogwarts",
+      "name": "Hogwarts Legacy",
+      "a": 93,
+      "b": 89,
+      "diff": 4
+    },
+    {
+      "id": "gtav",
+      "name": "GTA V (Enhanced)",
+      "a": 140,
+      "b": 137,
+      "diff": 3
+    },
+    {
+      "id": "witcher3",
+      "name": "The Witcher 3 (Next Gen)",
+      "a": 130,
+      "b": 125,
+      "diff": 5
+    },
+    {
+      "id": "starfield",
+      "name": "Starfield",
+      "a": 90,
+      "b": 87,
+      "diff": 3
+    },
+    {
+      "id": "alanwake2",
+      "name": "Alan Wake 2",
+      "a": 80,
+      "b": 76,
+      "diff": 4
+    },
+    {
+      "id": "spiderman2",
+      "name": "Spider-Man 2 (PC)",
+      "a": 97,
+      "b": 93,
+      "diff": 4
+    },
+    {
+      "id": "bg3",
+      "name": "Baldur's Gate 3",
+      "a": 116,
+      "b": 112,
+      "diff": 4
+    },
+    {
+      "id": "r6siege",
+      "name": "Rainbow Six Siege",
+      "a": 344,
+      "b": 337,
+      "diff": 7
+    },
+    {
+      "id": "minecraft",
+      "name": "Minecraft (Java, Optifine)",
+      "a": 332,
+      "b": 327,
+      "diff": 5
+    },
+    {
+      "id": "dyinglight2",
+      "name": "Dying Light 2",
+      "a": 103,
+      "b": 99,
+      "diff": 4
+    },
+    {
+      "id": "acmirage",
+      "name": "Assassin's Creed Mirage",
+      "a": 123,
+      "b": 119,
+      "diff": 4
+    }
+  ],
+  "spotlights": [
+    {
+      "title": "Cyberpunk 2077",
+      "catalogueName": "Cyberpunk 2077",
+      "rosterPosition": 1,
+      "a": 101,
+      "b": 97
+    },
+    {
+      "title": "Counter-Strike 2",
+      "catalogueName": "CS2 (Counter-Strike 2)",
+      "rosterPosition": 6,
+      "a": 345,
+      "b": 338
+    },
+    {
+      "title": "Call of Duty: Warzone",
+      "catalogueName": "Call of Duty: Warzone",
+      "rosterPosition": 8,
+      "a": 165,
+      "b": 160
+    },
+    {
+      "title": "Baldur's Gate 3",
+      "catalogueName": "Baldur's Gate 3",
+      "rosterPosition": 16,
+      "a": 116,
+      "b": 112
+    }
+  ]
+}

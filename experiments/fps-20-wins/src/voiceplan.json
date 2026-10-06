@@ -1,0 +1,285 @@
+{
+  "take": {
+    "sha256": "e43f25a9b32781de4442ca8e72636c92ed61f83146a6879ac5abe9b3c366a41e",
+    "voiceId": "TX3LPaxmHKxFdv7VOQHJ",
+    "voiceUsed": "Liam - Energetic, Social Media Creator"
+  },
+  "voice": [
+    {
+      "takeStart": 0,
+      "takeEnd": 1.698,
+      "at": 0.08
+    },
+    {
+      "takeStart": 2.112,
+      "takeEnd": 5.221,
+      "at": 1.818
+    },
+    {
+      "takeStart": 5.605,
+      "takeEnd": 7.467,
+      "at": 5.007
+    },
+    {
+      "takeStart": 7.711,
+      "takeEnd": 8.813,
+      "at": 6.889
+    },
+    {
+      "takeStart": 8.98,
+      "takeEnd": 9.766,
+      "at": 8.011
+    },
+    {
+      "takeStart": 9.991,
+      "takeEnd": 10.684,
+      "at": 8.878
+    },
+    {
+      "takeStart": 10.904,
+      "takeEnd": 12.028,
+      "at": 9.59
+    },
+    {
+      "takeStart": 12.705,
+      "takeEnd": 13.747,
+      "at": 11.144
+    },
+    {
+      "takeStart": 14.313,
+      "takeEnd": 18.959,
+      "at": 12.857
+    },
+    {
+      "takeStart": 19.678,
+      "takeEnd": 21.504,
+      "at": 17.642
+    },
+    {
+      "takeStart": 22.022,
+      "takeEnd": 24.356,
+      "at": 19.608
+    },
+    {
+      "takeStart": 24.993,
+      "takeEnd": 26.535,
+      "at": 22.081
+    }
+  ],
+  "pausesCut": 11,
+  "events": {
+    "voiceStart": 0.08,
+    "spots": [
+      5.056,
+      6.929,
+      8.051,
+      9.63
+    ],
+    "rollTo20": 10.634,
+    "land": 10.984,
+    "blowout": 11.21,
+    "dropStart": 12.137,
+    "reveal": 12.887,
+    "n164": 14.112,
+    "n160": 15.889,
+    "apart": 18.293,
+    "disclaimer": 19.657,
+    "question": 22.121,
+    "lastWord": 23.373
+  },
+  "dropSilence": 0.75,
+  "duration": 24.673,
+  "captions": [
+    {
+      "show": "The RTX 4080 Super",
+      "lines": [
+        "The RTX 4080 Super"
+      ],
+      "start": 0.08,
+      "spokenEnd": 2.156,
+      "end": 2.191,
+      "spotlight": null
+    },
+    {
+      "show": "leads all 20 games",
+      "lines": [
+        "leads all 20 games"
+      ],
+      "start": 2.191,
+      "spokenEnd": 3.305,
+      "end": 3.34,
+      "spotlight": null
+    },
+    {
+      "show": "at 1440p High",
+      "lines": [
+        "at 1440p High"
+      ],
+      "start": 3.34,
+      "spokenEnd": 4.847,
+      "end": 5.056,
+      "spotlight": null
+    },
+    {
+      "show": "Cyberpunk 2077",
+      "lines": [
+        "Cyberpunk 2077"
+      ],
+      "start": 5.056,
+      "spokenEnd": 6.789,
+      "end": 6.929,
+      "spotlight": 0
+    },
+    {
+      "show": "Counter-Strike 2",
+      "lines": [
+        "Counter-Strike 2"
+      ],
+      "start": 6.929,
+      "spokenEnd": 7.911,
+      "end": 8.051,
+      "spotlight": 1
+    },
+    {
+      "show": "Call of Duty: Warzone",
+      "lines": [
+        "Call of Duty: Warzone"
+      ],
+      "start": 8.051,
+      "spokenEnd": 9.49,
+      "end": 9.63,
+      "spotlight": 2
+    },
+    {
+      "show": "Baldur's Gate 3",
+      "lines": [
+        "Baldur's Gate 3"
+      ],
+      "start": 9.63,
+      "spokenEnd": 10.634,
+      "end": 11.21,
+      "spotlight": 3
+    },
+    {
+      "show": "Sounds like a blowout.",
+      "lines": [
+        "Sounds like a blowout."
+      ],
+      "start": 11.21,
+      "spokenEnd": 12.137,
+      "end": 12.737,
+      "spotlight": null
+    },
+    {
+      "show": "But the model estimates",
+      "lines": [
+        "But the model estimates"
+      ],
+      "start": 12.887,
+      "spokenEnd": 13.996,
+      "end": 14.112,
+      "spotlight": null
+    },
+    {
+      "show": "164 versus 160 FPS",
+      "lines": [
+        "164 versus 160 FPS"
+      ],
+      "start": 14.112,
+      "spokenEnd": 17.422,
+      "end": 17.682,
+      "spotlight": null
+    },
+    {
+      "show": "That's only 4 FPS apart.",
+      "lines": [
+        "That's only 4 FPS apart."
+      ],
+      "start": 17.682,
+      "spokenEnd": 19.388,
+      "end": 19.657,
+      "spotlight": null
+    },
+    {
+      "show": "Model estimates, not measured benchmarks.",
+      "lines": [
+        "Model estimates, not",
+        "measured benchmarks."
+      ],
+      "start": 19.657,
+      "spokenEnd": 21.861,
+      "end": 22.121,
+      "spotlight": null
+    },
+    {
+      "show": "Would you have guessed four?",
+      "lines": [
+        "Would you have",
+        "guessed four?"
+      ],
+      "start": 22.121,
+      "spokenEnd": 23.373,
+      "end": 24.673,
+      "spotlight": null
+    }
+  ],
+  "silences": [
+    [
+      1.61807,
+      2.15234
+    ],
+    [
+      5.14098,
+      5.64458
+    ],
+    [
+      7.38698,
+      7.7512
+    ],
+    [
+      8.73333,
+      9.0198
+    ],
+    [
+      9.6861,
+      10.0312
+    ],
+    [
+      10.6041,
+      10.9441
+    ],
+    [
+      11.9476,
+      12.7448
+    ],
+    [
+      13.6974,
+      14.3433
+    ],
+    [
+      16.614,
+      16.884
+    ],
+    [
+      18.8788,
+      19.7181
+    ],
+    [
+      21.4237,
+      22.062
+    ],
+    [
+      22.9052,
+      23.1644
+    ],
+    [
+      24.2756,
+      25.0328
+    ],
+    [
+      25.9378,
+      26.285
+    ]
+  ],
+  "takeDir": "take"
+}
