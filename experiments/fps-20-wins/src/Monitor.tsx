@@ -58,19 +58,17 @@ const mix = (a: number, b: number, m: number) => a + (b - a) * m;
 // ---- Geometry ------------------------------------------------------------------------
 // The opening frame: a 16:9 screen (SW x SH) at (SX, SY). Landscape screen content is
 // designed on a 1920x1080 canvas, so one screen unit is SW / 1920 frame pixels at z = 1.
-const SX = 28, SY = 500, SW = 820, SH = 461; // 820 x 461 is 16:9
+const SX = 50, SY = 500, SW = 776, SH = 437; // 776 x 437 is 16:9; the bezel sits 36 px from the left edge
 const W = 1080, H = 1920;
 // The push has two phases on one continuous, eased zoom. First the screen's centre
 // glides to the frame's centre while the screen grows until its width fills the frame
 // (z = Z1); the landscape content rides with it. Then the screen keeps growing until it
 // covers the whole vertical frame (z = Z_IN) while the content re-flows into the
-// vertical layout. The pullback returns to the same landscape monitor.
-const Z1 = W / SW; // 1.32: screen width = frame width
+// vertical layout. The pullback returns to exactly the opening framing.
+const Z1 = W / SW; // 1.39: screen width = frame width
 const Z_IN = (H / SH) * 1.06; // a little past screen height = frame height, so the bezel clears early
 const Q1 = Math.log(Z1) / Math.log(Z_IN);
-const Z_END = 1.1;
 const SCX = SX + SW / 2, SCY = SY + SH / 2;
-const END_CX = 474, END_CY = SCY + 20; // the pullback's framing: the monitor, its left edge in frame
 const smooth = (x: number, a: number, b: number) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
 type Cam = { z: number; cx: number; cy: number; q: number };
 function camAt(t: number, e: Events): Cam {
@@ -80,9 +78,10 @@ function camAt(t: number, e: Events): Cam {
   let z = Math.pow(Z_IN, q), cx = mix(SCX, W / 2, k), cy = mix(SCY, H / 2, k);
   const o = lerp(t, [e.pullBack, e.pullBack + 0.85], [0, 1], Easing.bezier(0.45, 0, 0.2, 1));
   if (o > 0) {
-    z = Math.exp(mix(Math.log(z), Math.log(Z_END), o));
-    cx = mix(cx, END_CX, o);
-    cy = mix(cy, END_CY, o);
+    // Back to exactly the opening framing: the same desk, monitor and tower.
+    z = Math.exp(mix(Math.log(z), 0, o));
+    cx = mix(cx, SCX, o);
+    cy = mix(cy, SCY, o);
   }
   return { z, cx, cy, q };
 }
@@ -96,14 +95,15 @@ function screenRect(c: Cam, z = c.z) {
 // ---- The desk scene (opening-frame coordinates) -----------------------------------------
 const Fan: React.FC<{ cx: number; cy: number; r: number; angle: number; ring: string }> = ({ cx, cy, r, angle, ring }) => (
   <g transform={`translate(${cx} ${cy})`}>
-    <circle r={r + 6} fill="none" stroke={ring} strokeWidth={10} opacity={0.18} />
-    <circle r={r} fill="#0E0E15" stroke={ring} strokeWidth={5} />
+    <circle r={r + 5} fill="none" stroke={ring} strokeWidth={8} opacity={0.2} />
+    <circle r={r} fill="#101019" stroke={ring} strokeWidth={5} />
+    <circle r={r - 6} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={1.5} />
     <g transform={`rotate(${angle})`}>
       {Array.from({ length: 7 }, (_, i) => (
-        <path key={i} transform={`rotate(${(i * 360) / 7})`} d={`M ${r * 0.2} -6 C ${r * 0.45} -${r * 0.45}, ${r * 0.82} -${r * 0.36}, ${r * 0.88} -${r * 0.06} C ${r * 0.62} 0, ${r * 0.38} 3, ${r * 0.2} 6 Z`} fill="#454562" stroke="#5A5A7C" strokeWidth={1.2} />
+        <path key={i} transform={`rotate(${(i * 360) / 7})`} d={`M ${r * 0.2} -6 C ${r * 0.45} -${r * 0.45}, ${r * 0.82} -${r * 0.36}, ${r * 0.88} -${r * 0.06} C ${r * 0.62} 0, ${r * 0.38} 3, ${r * 0.2} 6 Z`} fill="#55557A" stroke="#7474A0" strokeWidth={1.2} />
       ))}
     </g>
-    <circle r={r * 0.22} fill="#1C1C26" stroke="#5A5A7C" strokeWidth={2} />
+    <circle r={r * 0.22} fill="#1C1C26" stroke="#7474A0" strokeWidth={2} />
     <circle r={r * 0.08} fill={ring} />
   </g>
 );
@@ -115,7 +115,7 @@ const Wall: React.FC<{ t: number }> = ({ t }) => {
       <AbsoluteFill style={{ background: "linear-gradient(180deg, #0D0D17 0%, #0B0B12 55%, #0A0A0F 100%)" }} />
       {/* The screen lights the wall behind it (violet); the PC's RGB adds cyan. */}
       <AbsoluteFill style={{ background: `radial-gradient(ellipse 620px 470px at ${SCX}px ${SCY}px, rgba(108,99,255,${0.5 * pulse}), transparent 72%)` }} />
-      <AbsoluteFill style={{ background: "radial-gradient(ellipse 300px 520px at 950px 900px, rgba(0,212,255,0.22), transparent 70%)" }} />
+      <AbsoluteFill style={{ background: "radial-gradient(ellipse 260px 480px at 950px 900px, rgba(0,212,255,0.20), transparent 70%)" }} />
       {/* A wall light strip above the desk. */}
       <svg width={W} height={H} style={{ position: "absolute", inset: 0 }}>
         <defs>
@@ -124,8 +124,8 @@ const Wall: React.FC<{ t: number }> = ({ t }) => {
             <stop offset="1" stopColor={C.base} />
           </linearGradient>
         </defs>
-        <rect x={60} y={400} width={960} height={6} rx={3} fill="url(#strip)" opacity={0.75} />
-        <rect x={60} y={392} width={960} height={22} rx={11} fill="url(#strip)" opacity={0.12} />
+        <rect x={70} y={404} width={940} height={5} rx={2.5} fill="url(#strip)" opacity={0.7} />
+        <rect x={70} y={397} width={940} height={19} rx={9.5} fill="url(#strip)" opacity={0.1} />
       </svg>
       <AbsoluteFill style={{ background: "radial-gradient(ellipse 560px 120px at 540px 403px, rgba(108,99,255,0.18), transparent 70%)" }} />
     </AbsoluteFill>
@@ -136,64 +136,77 @@ const DeskAndHardware: React.FC<{ t: number }> = ({ t }) => {
   const angle = t * 330; // a little under one turn a second: clearly spinning at 30 fps
   const hue = (Math.sin(t * 1.3) + 1) / 2;
   const ringA = hue < 0.5 ? C.sup : C.base, ringB = hue < 0.5 ? C.base : C.sup;
-  const DESK = 1180;
+  const DESK = 1160;
+  // The tower: slimmer, beside the monitor, with clear space to the frame's right edge.
+  const PX = 872, PW = 158, PT = 640, FX = PX + PW / 2;
   return (
     <svg width={W} height={H} style={{ position: "absolute", inset: 0 }}>
       <defs>
         <linearGradient id="desk" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1D1D2A" />
-          <stop offset="1" stopColor="#121219" />
-        </linearGradient>
-        <radialGradient id="spill" cx="0.4" cy="0" r="0.7">
-          <stop offset="0" stopColor="rgba(108,99,255,0.42)" />
-          <stop offset="0.6" stopColor="rgba(0,212,255,0.08)" />
-          <stop offset="1" stopColor="rgba(0,0,0,0)" />
-        </radialGradient>
-        <linearGradient id="caseFront" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#20202C" />
+          <stop offset="0" stopColor="#22222F" />
           <stop offset="1" stopColor="#14141C" />
         </linearGradient>
+        <radialGradient id="spill" cx={SCX / W} cy="0" r="0.75">
+          <stop offset="0" stopColor="rgba(108,99,255,0.48)" />
+          <stop offset="0.55" stopColor="rgba(108,99,255,0.12)" />
+          <stop offset="1" stopColor="rgba(0,0,0,0)" />
+        </radialGradient>
+        <radialGradient id="cyanSpill" cx={FX / W} cy="0" r="0.3">
+          <stop offset="0" stopColor="rgba(0,212,255,0.22)" />
+          <stop offset="1" stopColor="rgba(0,212,255,0)" />
+        </radialGradient>
+        <linearGradient id="caseFront" x1="0" y1="0" x2="1" y2="0">
+          {/* Screen light from the left falls on the case. */}
+          <stop offset="0" stopColor="#2A2840" />
+          <stop offset="0.35" stopColor="#1E1E2B" />
+          <stop offset="1" stopColor="#16161F" />
+        </linearGradient>
         <linearGradient id="neck" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#262633" />
-          <stop offset="0.5" stopColor="#363648" />
-          <stop offset="1" stopColor="#1C1C26" />
+          <stop offset="0" stopColor="#2C2C3C" />
+          <stop offset="0.5" stopColor="#40405A" />
+          <stop offset="1" stopColor="#202030" />
+        </linearGradient>
+        <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#15151F" />
+          <stop offset="1" stopColor="#0D0D14" />
         </linearGradient>
       </defs>
-      {/* Desk: top, screen light spilling onto it, front edge. */}
-      <rect x={-60} y={DESK} width={1200} height={280} fill="url(#desk)" />
-      <rect x={-60} y={DESK} width={1200} height={280} fill="url(#spill)" />
-      <rect x={-60} y={DESK} width={1200} height={3} fill="rgba(255,255,255,0.12)" />
-      <rect x={-60} y={DESK + 280} width={1200} height={60} fill="#0D0D14" />
-      <rect x={-60} y={DESK + 280} width={1200} height={2} fill="rgba(255,255,255,0.07)" />
-      {/* PC tower beside the monitor: side face for depth, three RGB fans behind a glass front. */}
-      <ellipse cx={966} cy={DESK + 8} rx={132} ry={10} fill="rgba(0,0,0,0.6)" />
-      <path d={`M 850 652 L 866 638 L 866 ${DESK} L 850 ${DESK} Z`} fill="#101018" />
-      <path d={`M 853 690 L 863 680 L 863 ${DESK - 50} L 853 ${DESK - 42} Z`} fill={ringA} opacity={0.18} />
-      <rect x={866} y={638} width={200} height={DESK - 638} rx={10} fill="url(#caseFront)" stroke="rgba(255,255,255,0.12)" strokeWidth={2} />
-      <rect x={880} y={652} width={172} height={26} rx={6} fill="#13131A" />
-      <circle cx={1036} cy={665} r={6} fill="none" stroke={C.base} strokeWidth={2.5} />
-      <rect x={892} y={661} width={52} height={7} rx={3} fill="#2A2A38" />
-      <Fan cx={966} cy={766} r={70} angle={angle} ring={ringA} />
-      <Fan cx={966} cy={926} r={70} angle={angle + 21} ring={ringB} />
-      <Fan cx={966} cy={1086} r={70} angle={angle + 42} ring={ringA} />
-      <rect x={876} y={DESK - 14} width={180} height={4} rx={2} fill={ringB} opacity={0.8} />
-      {/* Monitor: stand and its shadow, then the bezel; the screen surface is drawn on top of the bezel. */}
-      <ellipse cx={SCX} cy={DESK + 10} rx={170} ry={11} fill="rgba(0,0,0,0.6)" />
-      <rect x={SCX - 26} y={SY + SH + 20} width={52} height={DESK - (SY + SH + 20) + 2} rx={6} fill="url(#neck)" />
-      <path d={`M ${SCX - 140} ${DESK + 12} L ${SCX + 140} ${DESK + 12} L ${SCX + 118} ${DESK - 8} L ${SCX - 118} ${DESK - 8} Z`} fill="#2A2A38" stroke="rgba(255,255,255,0.08)" />
-      <rect x={SX - 14} y={SY - 14} width={SW + 28} height={SH + 40} rx={16} fill="#0B0B11" stroke="rgba(255,255,255,0.14)" strokeWidth={2} />
-      <rect x={SCX - 18} y={SY + SH + 12} width={36} height={4} rx={2} fill={C.sup} opacity={0.6} />
+      {/* Desk: top, the screen's light and the tower's cyan on it, a lit front edge. */}
+      <rect x={-60} y={DESK} width={1200} height={300} fill="url(#desk)" />
+      <rect x={-60} y={DESK} width={1200} height={300} fill="url(#spill)" />
+      <rect x={-60} y={DESK} width={1200} height={300} fill="url(#cyanSpill)" />
+      <rect x={-60} y={DESK} width={1200} height={3} fill="rgba(155,148,255,0.30)" />
+      <rect x={-60} y={DESK + 300} width={1200} height={60} fill="#0F0F17" />
+      <rect x={-60} y={DESK + 300} width={1200} height={2} fill="rgba(155,148,255,0.18)" />
+      {/* Tower: grounded by a soft shadow; a side face for depth; three RGB fans behind glass. */}
+      <ellipse cx={FX} cy={DESK + 6} rx={112} ry={9} fill="rgba(0,0,0,0.65)" />
+      <path d={`M ${PX - 16} ${PT + 14} L ${PX} ${PT} L ${PX} ${DESK} L ${PX - 16} ${DESK} Z`} fill="#15151F" stroke="rgba(155,148,255,0.22)" strokeWidth={1.5} />
+      <rect x={PX} y={PT} width={PW} height={DESK - PT} rx={9} fill="url(#caseFront)" stroke="rgba(200,196,255,0.30)" strokeWidth={2} />
+      <rect x={PX + 1} y={PT + 1} width={3} height={DESK - PT - 2} rx={1.5} fill="rgba(155,148,255,0.55)" />
+      <rect x={PX + 12} y={PT + 12} width={PW - 24} height={24} rx={6} fill="#13131A" stroke="rgba(255,255,255,0.06)" />
+      <circle cx={PX + PW - 24} cy={PT + 24} r={5.5} fill="none" stroke={C.base} strokeWidth={2.5} />
+      <rect x={PX + 22} y={PT + 21} width={44} height={6} rx={3} fill="#33334A" />
+      <Fan cx={FX} cy={PT + 120} r={60} angle={angle} ring={ringA} />
+      <Fan cx={FX} cy={PT + 260} r={60} angle={angle + 21} ring={ringB} />
+      <Fan cx={FX} cy={PT + 400} r={60} angle={angle + 42} ring={ringA} />
+      <rect x={PX + 10} y={DESK - 14} width={PW - 20} height={4} rx={2} fill={ringB} opacity={0.75} />
+      {/* Monitor: shadow, stand, then the bezel with a lit edge; the screen surface is drawn on top. */}
+      <ellipse cx={SCX} cy={DESK + 8} rx={160} ry={10} fill="rgba(0,0,0,0.65)" />
+      <rect x={SCX - 24} y={SY + SH + 20} width={48} height={DESK - (SY + SH + 20) + 2} rx={6} fill="url(#neck)" stroke="rgba(255,255,255,0.10)" />
+      <path d={`M ${SCX - 132} ${DESK + 10} L ${SCX + 132} ${DESK + 10} L ${SCX + 110} ${DESK - 8} L ${SCX - 110} ${DESK - 8} Z`} fill="#30304A" stroke="rgba(200,196,255,0.25)" strokeWidth={1.5} />
+      <rect x={SX - 14} y={SY - 14} width={SW + 28} height={SH + 40} rx={16} fill="url(#bezel)" stroke="rgba(200,196,255,0.34)" strokeWidth={2} />
+      <rect x={SCX - 18} y={SY + SH + 12} width={36} height={4} rx={2} fill={C.sup} opacity={0.7} />
     </svg>
   );
 };
 
 const Peripherals: React.FC<{ t: number }> = ({ t }) => {
   const glow = 0.45 + 0.2 * Math.sin(t * 2);
-  const KY = 1290;
+  const KY = 1268;
   return (
     <svg width={W} height={H} style={{ position: "absolute", inset: 0 }}>
       {/* Keyboard in slight perspective, mouse beside it. */}
-      <path d={`M 150 ${KY} L 650 ${KY} L 676 ${KY + 78} L 124 ${KY + 78} Z`} fill="#17171F" stroke="rgba(255,255,255,0.1)" strokeWidth={2} />
+      <path d={`M 150 ${KY} L 650 ${KY} L 676 ${KY + 78} L 124 ${KY + 78} Z`} fill="#1B1B25" stroke="rgba(200,196,255,0.22)" strokeWidth={2} />
       <path d={`M 132 ${KY + 78} L 668 ${KY + 78}`} stroke={C.accent} strokeWidth={4} opacity={glow} />
       {Array.from({ length: 4 }, (_, row) => {
         const y = KY + 8 + row * 17;
@@ -201,7 +214,7 @@ const Peripherals: React.FC<{ t: number }> = ({ t }) => {
         const w = (right - left) / 15;
         return Array.from({ length: 15 }, (_, col) => <rect key={`${row}-${col}`} x={left + col * w + 2} y={y} width={w - 4} height={12} rx={2} fill="#24242F" />);
       })}
-      <path d={`M 760 ${KY + 20} C 760 ${KY - 4}, 816 ${KY - 4}, 816 ${KY + 20} L 816 ${KY + 58} C 816 ${KY + 82}, 760 ${KY + 82}, 760 ${KY + 58} Z`} fill="#17171F" stroke="rgba(255,255,255,0.1)" strokeWidth={2} />
+      <path d={`M 760 ${KY + 20} C 760 ${KY - 4}, 816 ${KY - 4}, 816 ${KY + 20} L 816 ${KY + 58} C 816 ${KY + 82}, 760 ${KY + 82}, 760 ${KY + 58} Z`} fill="#1B1B25" stroke="rgba(200,196,255,0.22)" strokeWidth={2} />
       <line x1={788} y1={KY + 2} x2={788} y2={KY + 24} stroke={C.base} strokeWidth={2.5} opacity={glow} />
     </svg>
   );
@@ -371,14 +384,14 @@ const Question: React.FC<{ t: number; e: Events; c: Cam }> = ({ t, e, c }) => {
   if (t < e.pullBack + 0.3) return null;
   const R = screenRect(c);
   const u = R.w / 1920;
-  const q = lerp(t, [e.pullBack + 0.35, e.pullBack + 0.65], [0, 1], easeOut);
+  const q = lerp(t, [e.pullBack + 0.55, e.pullBack + 0.8], [0, 1], easeOut); // once the camera has nearly settled
   const cta = lerp(t, [e.lastWord, e.lastWord + 0.35], [0, 1]);
   return (
     <div style={{ position: "absolute", left: R.x, top: R.y, width: 1920, height: 1080, transformOrigin: "0 0", transform: `scale(${u})`, fontFamily: FONT, textAlign: "center" }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 250, opacity: q, fontWeight: 900, fontSize: 150, lineHeight: 1.04, color: C.ink }}>
         Would you have<br />guessed <span style={{ color: C.sup }}>four</span>?
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 690, opacity: cta, fontWeight: 800, fontSize: 64, letterSpacing: 4, color: C.muted }}>COMPARE BUILDS ON SPECSMITH</div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 680, opacity: cta, fontWeight: 800, fontSize: 80, letterSpacing: 4, color: C.muted }}>COMPARE BUILDS ON SPECSMITH</div>
     </div>
   );
 };
@@ -458,7 +471,7 @@ export const Monitor: React.FC<MonitorProps> = ({ plan: P, display: D, audio }) 
         <AbsoluteFill style={layer(c, 1)}>
           <DeskAndHardware t={t} />
           {/* The screen surface: lit, with a soft glow onto the bezel and wall. */}
-          <div style={{ position: "absolute", left: SX, top: SY, width: SW, height: SH, borderRadius: 3, background: `radial-gradient(ellipse 90% 85% at 50% 40%, #191927 0%, #0E0E16 75%)`, boxShadow: "0 0 70px rgba(108,99,255,0.45), 0 0 18px rgba(155,148,255,0.35)" }} />
+          <div style={{ position: "absolute", left: SX, top: SY, width: SW, height: SH, borderRadius: 3, background: `radial-gradient(ellipse 90% 85% at 50% 40%, #191927 0%, #0E0E16 75%)`, boxShadow: "0 0 80px rgba(108,99,255,0.5), 0 0 18px rgba(155,148,255,0.4)" }} />
         </AbsoluteFill>
         <ScreenContent t={t} D={D} e={e} c={c} />
         <AbsoluteFill style={layer(c, 1)}>
