@@ -162,3 +162,9 @@ Recut from the editable source to a slower rhythm. Rechecked first: origin/main 
 | 14.3–15.8 | "Would you have guessed four?" · SPECSMITH |
 
 The phone viewing copy is 540×960 H.264/AAC; the master is 1080×1920.
+
+## Branded pacing preview (15.15 s)
+
+The scene uses SpecSmith's dark site palette from `artifacts/SpecSmith/src/index.css`: background `#0A0A0F`, text `#F0F0FF`, readable violet `#9B94FF` for the Super, and cyan `#00D4FF` for the 4080. The game cards and low-contrast moving grid share those tokens. Violet and cyan distinguish the builds; neither colour encodes measured performance. The estimate label sits above the likely platform caption controls.
+
+The three full-title holds and the 164 vs 160 reading window stay intact. The 20/20-to-"A blowout?" pause is 0.65 s shorter: blowout 5.95 s, cut 7.35 s, numbers 7.85 s, four-FPS reveal 9.35 s, question 13.65 s. The sound is rebuilt from the same timeline, with no voice or paid assets. This is a visual preview; its ability to entertain or retain viewers has not been measured.
