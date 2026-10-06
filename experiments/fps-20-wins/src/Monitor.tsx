@@ -70,7 +70,7 @@ const Z_IN = (H / SH) * 1.06; // a little past screen height = frame height, so 
 const Q1 = Math.log(Z1) / Math.log(Z_IN);
 const SCX = SX + SW / 2, SCY = SY + SH / 2;
 const smooth = (x: number, a: number, b: number) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
-type Cam = { z: number; cx: number; cy: number; q: number };
+type Cam = { z: number; cx: number; cy: number; q: number; o: number };
 function camAt(t: number, e: Events): Cam {
   const [a, b] = e.entry;
   const q = lerp(t, [a, b], [0, 1], Easing.bezier(0.5, 0, 0.3, 1));
@@ -83,7 +83,7 @@ function camAt(t: number, e: Events): Cam {
     cx = mix(cx, SCX, o);
     cy = mix(cy, SCY, o);
   }
-  return { z, cx, cy, q };
+  return { z, cx, cy, q, o };
 }
 /** A world layer at depth d: the screen centre goes to the camera centre, scaled by z^d about it. */
 const layer = (c: Cam, depth: number): React.CSSProperties => ({ transformOrigin: `${SCX}px ${SCY}px`, transform: `translate(${c.cx - SCX}px, ${c.cy - SCY}px) scale(${Math.pow(c.z, depth)})` });
@@ -328,70 +328,103 @@ const Spotlight: React.FC<{ t: number; D: Display; e: Events }> = ({ t, D, e }) 
   );
 };
 
-/** The reversal: both averages at once with equal treatment and a clear "vs", zero-based bars, then ONLY 4 FPS APART on "four". */
-const Payoff: React.FC<{ t: number; D: Display; e: Events }> = ({ t, D, e }) => {
+/**
+ * Places a payoff block: in the vertical layout (centre in frame pixels, scale 1) until the
+ * pullback, then gliding with the pullback into its place on the landscape screen (centre in
+ * 1920x1080 screen units, uniform scale). Checked numerically for this geometry: the three
+ * blocks stay inside the frame and the screen and never overlap on the way.
+ */
+const PayoffPlace: React.FC<{ c: Cam; port: { x: number; y: number }; land: { x: number; y: number; s: number }; w: number; h: number; children: React.ReactNode }> = ({ c, port, land, w, h, children }) => {
+  const m = smooth(c.o, 0, 0.9);
+  const A = screenRect(c, Math.min(c.z, Z1));
+  const R = screenRect(c);
+  const u = A.w / 1920;
+  const s = Math.exp(Math.log(land.s * u) * m);
+  const x = mix(port.x, A.x + land.x * u, m);
+  let y = mix(port.y, A.y + land.y * u, m);
+  y = Math.min(Math.max(y, R.y + 16 + (h * s) / 2), R.y + R.h - 16 - (h * s) / 2);
+  return (
+    <div style={{ position: "absolute", left: x - w / 2, top: y - h / 2, width: w, height: h, transformOrigin: "50% 50%", transform: `scale(${s})` }}>
+      {children}
+    </div>
+  );
+};
+
+/**
+ * The reversal: both averages at once with equal treatment and a clear "vs", zero-based bars,
+ * then ONLY 4 FPS APART on "four". It stays on screen through the pullback, re-flowing onto
+ * the landscape monitor; once the camera settles, only the headline hands over to the final
+ * question, so the comparison remains visible to the end.
+ */
+const Payoff: React.FC<{ t: number; D: Display; e: Events; c: Cam }> = ({ t, D, e, c }) => {
   if (t < e.reveal + 0.1) return null;
   const inView = lerp(t, [e.reveal + 0.18, e.reveal + 0.42], [0, 1]);
   const nums = lerp(t, [e.numbers - 0.04, e.numbers + 0.22], [0, 1], easeOut);
   const apart = lerp(t, [e.four - 0.03, e.four + 0.17], [0, 1], easeOut);
-  const out = 1 - lerp(t, [e.pullBack + 0.12, e.pullBack + 0.32], [0, 1]);
-  const MAX = 180, X0 = 130, BW = 820, BY = 1060;
+  const headOut = lerp(t, [e.question, e.question + 0.18], [0, 1]);
+  const MAX = 180, X0 = 130, BW = 820, BY = 280; // bars block coordinates (1080 x 380)
   const xOf = (v: number) => X0 + (v / MAX) * BW;
   const grow = lerp(t, [e.numbers, e.numbers + 0.55], [0, 1], easeOut);
   const lo = Math.min(D.avgA, D.avgB), hi = Math.max(D.avgA, D.avgB);
   return (
-    <AbsoluteFill style={{ fontFamily: FONT, opacity: inView * out }}>
-      <div style={{ position: "absolute", left: 90, right: 90, top: 232, textAlign: "center" }}>
-        <div style={{ fontWeight: 800, fontSize: 44, color: C.sup }}>{D.leadsA} / {D.games} modelled leads…</div>
-        <div style={{ marginTop: 12, opacity: apart, translate: `0px ${16 * (1 - apart)}px`, fontWeight: 900, fontSize: 92, lineHeight: 1.05, color: C.ink, letterSpacing: -1, whiteSpace: "nowrap" }}>
-          ONLY <span style={{ color: C.sup }}>{D.gap}</span> FPS APART
+    <AbsoluteFill style={{ fontFamily: FONT, opacity: inView }}>
+      <PayoffPlace c={c} port={{ x: W / 2, y: 232 + 82 }} land={{ x: 960, y: 200, s: 1.0 }} w={1000} h={165}>
+        <div style={{ textAlign: "center", opacity: 1 - headOut, translate: `0px ${-24 * headOut}px` }}>
+          <div style={{ fontWeight: 800, fontSize: 44, lineHeight: 1.2, color: C.sup }}>{D.leadsA} / {D.games} modelled leads…</div>
+          <div style={{ marginTop: 12, opacity: apart, translate: `0px ${16 * (1 - apart)}px`, fontWeight: 900, fontSize: 92, lineHeight: 1.05, color: C.ink, letterSpacing: -1, whiteSpace: "nowrap" }}>
+            ONLY <span style={{ color: C.sup }}>{D.gap}</span> FPS APART
+          </div>
         </div>
-      </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 480, display: "flex", justifyContent: "center", alignItems: "flex-start", opacity: nums, translate: `0px ${24 * (1 - nums)}px` }}>
-        <div style={{ textAlign: "center", width: 340 }}>
-          <div style={{ fontWeight: 900, fontSize: 184, lineHeight: 0.95, color: C.sup }}>{D.avgA}</div>
-          <div style={{ fontWeight: 800, fontSize: 32, color: C.sup, marginTop: 10 }}>{D.gpuA.toUpperCase()}</div>
+      </PayoffPlace>
+      <PayoffPlace c={c} port={{ x: W / 2, y: 480 + 112 }} land={{ x: 960, y: 445, s: 0.85 }} w={830} h={224}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", opacity: nums, translate: `0px ${24 * (1 - nums)}px` }}>
+          <div style={{ textAlign: "center", width: 340 }}>
+            <div style={{ fontWeight: 900, fontSize: 184, lineHeight: 0.95, color: C.sup }}>{D.avgA}</div>
+            <div style={{ fontWeight: 800, fontSize: 32, color: C.sup, marginTop: 10 }}>{D.gpuA.toUpperCase()}</div>
+          </div>
+          <div style={{ width: 150, textAlign: "center", fontWeight: 800, fontSize: 60, lineHeight: 1, color: C.ink, paddingTop: 62 }}>vs</div>
+          <div style={{ textAlign: "center", width: 340 }}>
+            <div style={{ fontWeight: 900, fontSize: 184, lineHeight: 0.95, color: C.base }}>{D.avgB}</div>
+            <div style={{ fontWeight: 800, fontSize: 32, color: C.base, marginTop: 10 }}>{D.gpuB.toUpperCase()}</div>
+          </div>
         </div>
-        <div style={{ width: 150, textAlign: "center", fontWeight: 800, fontSize: 60, lineHeight: 1, color: C.ink, paddingTop: 62 }}>vs</div>
-        <div style={{ textAlign: "center", width: 340 }}>
-          <div style={{ fontWeight: 900, fontSize: 184, lineHeight: 0.95, color: C.base }}>{D.avgB}</div>
-          <div style={{ fontWeight: 800, fontSize: 32, color: C.base, marginTop: 10 }}>{D.gpuB.toUpperCase()}</div>
+      </PayoffPlace>
+      <PayoffPlace c={c} port={{ x: W / 2, y: 780 + 190 }} land={{ x: 960, y: 755, s: 0.95 }} w={W} h={380}>
+        <div style={{ position: "absolute", left: 90, right: 90, top: 10, textAlign: "center", fontWeight: 700, fontSize: 34, color: C.ink, opacity: nums }}>
+          Estimated average FPS (rounded) · {D.setting}
         </div>
-      </div>
-      <div style={{ position: "absolute", left: 90, right: 90, top: 790, textAlign: "center", fontWeight: 700, fontSize: 34, color: C.ink }}>
-        Estimated average FPS (rounded) · {D.setting}
-      </div>
-      <svg width={W} height={H} style={{ position: "absolute", left: 0, top: 0 }}>
-        <rect x={X0} y={BY - 172} width={((D.avgA * grow) / MAX) * BW} height={62} rx={10} fill={C.sup} />
-        <rect x={X0} y={BY - 96} width={((D.avgB * grow) / MAX) * BW} height={62} rx={10} fill={C.base} />
-        {/* The difference, marked on the bars as it is named. */}
-        <rect x={xOf(lo) - 3} y={BY - 186} width={xOf(hi) - xOf(lo) + 6} height={166} rx={6} fill="none" stroke={C.ink} strokeWidth={4} opacity={apart} />
-        <line x1={X0} y1={BY} x2={X0 + BW} y2={BY} stroke="#5A5A78" strokeWidth={4} />
-        {[0, 60, 120, 180].map((v) => (
-          <g key={v}>
-            <line x1={xOf(v)} y1={BY - 12} x2={xOf(v)} y2={BY + 12} stroke="#5A5A78" strokeWidth={3} />
-            <text x={xOf(v)} y={BY + 48} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={30} fill={C.muted}>{v}</text>
-          </g>
-        ))}
-        <text x={W / 2} y={BY + 88} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={28} fill={C.muted}>Full scale from 0 FPS</text>
-      </svg>
+        <svg width={W} height={380} style={{ position: "absolute", left: 0, top: 0, opacity: nums }}>
+          <rect x={X0} y={BY - 172} width={((D.avgA * grow) / MAX) * BW} height={62} rx={10} fill={C.sup} />
+          <rect x={X0} y={BY - 96} width={((D.avgB * grow) / MAX) * BW} height={62} rx={10} fill={C.base} />
+          {/* The difference, marked on the bars as it is named. */}
+          <rect x={xOf(lo) - 3} y={BY - 186} width={xOf(hi) - xOf(lo) + 6} height={166} rx={6} fill="none" stroke={C.ink} strokeWidth={4} opacity={apart} />
+          <line x1={X0} y1={BY} x2={X0 + BW} y2={BY} stroke="#5A5A78" strokeWidth={4} />
+          {[0, 60, 120, 180].map((v) => (
+            <g key={v}>
+              <line x1={xOf(v)} y1={BY - 12} x2={xOf(v)} y2={BY + 12} stroke="#5A5A78" strokeWidth={3} />
+              <text x={xOf(v)} y={BY + 48} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={30} fill={C.muted}>{v}</text>
+            </g>
+          ))}
+          <text x={W / 2} y={BY + 88} textAnchor="middle" fontFamily={FONT} fontWeight={700} fontSize={28} fill={C.muted}>Full scale from 0 FPS</text>
+        </svg>
+      </PayoffPlace>
     </AbsoluteFill>
   );
 };
 
-/** The final question, laid out for the landscape screen the camera returns to. */
+/** The final question takes the headline's place on the landscape screen, above the comparison. */
 const Question: React.FC<{ t: number; e: Events; c: Cam }> = ({ t, e, c }) => {
-  if (t < e.pullBack + 0.3) return null;
+  if (t < e.question + 0.08) return null;
   const R = screenRect(c);
   const u = R.w / 1920;
-  const q = lerp(t, [e.pullBack + 0.55, e.pullBack + 0.8], [0, 1], easeOut); // once the camera has nearly settled
+  const q = lerp(t, [e.question + 0.1, e.question + 0.3], [0, 1], easeOut);
   const cta = lerp(t, [e.lastWord, e.lastWord + 0.35], [0, 1]);
   return (
     <div style={{ position: "absolute", left: R.x, top: R.y, width: 1920, height: 1080, transformOrigin: "0 0", transform: `scale(${u})`, fontFamily: FONT, textAlign: "center" }}>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 250, opacity: q, fontWeight: 900, fontSize: 150, lineHeight: 1.04, color: C.ink }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 96, opacity: q, translate: `0px ${24 * (1 - q)}px`, fontWeight: 900, fontSize: 100, lineHeight: 1.04, color: C.ink }}>
         Would you have<br />guessed <span style={{ color: C.sup }}>four</span>?
       </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 680, opacity: cta, fontWeight: 800, fontSize: 80, letterSpacing: 4, color: C.muted }}>COMPARE BUILDS ON SPECSMITH</div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 982, opacity: cta, fontWeight: 800, fontSize: 52, letterSpacing: 4, color: C.muted }}>COMPARE BUILDS ON SPECSMITH</div>
     </div>
   );
 };
@@ -406,7 +439,7 @@ const ScreenContent: React.FC<{ t: number; D: Display; e: Events; c: Cam }> = ({
     <div style={{ position: "absolute", inset: 0, clipPath: `inset(${R.y}px ${W - R.x - R.w}px ${H - R.y - R.h}px ${R.x}px round ${Math.max(2, 4 * c.z)}px)` }}>
       {/* Landscape positions are in 1920x1080 screen units; vertical positions are frame pixels. */}
       {/* The app bar steps aside while the blocks re-flow, and returns in its vertical place. */}
-      <div style={{ opacity: 1 - smooth(c.q, 0.22, 0.34) + smooth(c.q, 0.86, 1) }}>
+      <div style={{ opacity: (1 - smooth(c.q, 0.22, 0.34) + smooth(c.q, 0.86, 1)) * (1 - smooth(c.o, 0, 0.12)) }}>
         <Morph c={c} land={{ x: 360, y: 72, s: 1.5 }} port={{ x: 260, y: 112 }} wx={[0.34, 0.86]} wy={[0.34, 0.86]} w={420} h={60}>
           <AppBarBlock />
         </Morph>
@@ -422,7 +455,14 @@ const ScreenContent: React.FC<{ t: number; D: Display; e: Events; c: Cam }> = ({
           <Spotlight t={t} D={D} e={e} />
         </div>
       ) : null}
-      {preQuestion ? <Payoff t={t} D={D} e={e} /> : null}
+      <Payoff t={t} D={D} e={e} c={c} />
+      {c.o > 0.8 ? (
+        <div style={{ position: "absolute", left: R.x, top: R.y, width: 1920, height: 1080, transformOrigin: "0 0", transform: `scale(${R.w / 1920})`, opacity: smooth(c.o, 0.85, 1) }}>
+          <div style={{ position: "absolute", left: 250 - 210 * 1.1, top: 72 - 33, width: 420, height: 60, transformOrigin: "0 0", transform: "scale(1.1)" }}>
+            <AppBarBlock />
+          </div>
+        </div>
+      ) : null}
       <Question t={t} e={e} c={c} />
       <AbsoluteFill style={{ background: "#000", opacity: dim }} />
     </div>
