@@ -42,9 +42,10 @@ function uniformAlignment(text = GPU_TAKE_TEXT, perChar = 0.05): Alignment {
 }
 
 describe("the approved text", () => {
-  it("is the 392-character script proposed for approval, byte for byte", () => {
-    expect(GPU_TAKE_TEXT).toHaveLength(392);
-    expect(createHash("sha256").update(GPU_TAKE_TEXT).digest("hex")).toBe("9bdba9e33e88be6eb633214c5c880bddb9e7ef86113780bd80a4e1119e9edabd");
+  it("is the trimmed 314-character script approved for the take, byte for byte, within the unchanged cap", () => {
+    expect(GPU_TAKE_TEXT).toHaveLength(314);
+    expect(GPU_TAKE_TEXT.length).toBeLessThanOrEqual(MAX_SAMPLE_CHARACTERS);
+    expect(createHash("sha256").update(GPU_TAKE_TEXT).digest("hex")).toBe("fd154a03bcda906e7901b6a97be7d879c9ae4d1e0098ec1777364e692a82d19e");
     expect([...GPU_TAKE_TEXT].every((char) => char.charCodeAt(0) < 128)).toBe(true);
     const script = readFileSync(join(import.meta.dirname, "VOICE_SCRIPT.md"), "utf8");
     expect(script).toContain(`\`\`\`text\n${GPU_TAKE_TEXT}\n\`\`\``);
@@ -64,7 +65,7 @@ describe("the approved text", () => {
 
   it("refuses if a beat's approved narration no longer matches its spoken line", () => {
     const concept = JSON.parse(readFileSync(GPU_TAKE_CONCEPT_FILE, "utf8"));
-    concept.beats[2].narration = "Valorant goes from 263 to 306.";
+    concept.beats[2].narration = "Valorant: 263 to 306.";
     const file = join(tempDir(), "concept.json");
     writeFileSync(file, JSON.stringify(concept));
     expect(() => assertGpuUpgradeStory(undefined, file)).toThrow(/beat 3's narration is not the approved/);
@@ -73,7 +74,7 @@ describe("the approved text", () => {
   it("refuses a spoken line that says anything but its beat's narration with the figures spelled out", () => {
     const lines = APPROVED_GPU_UPGRADE_LINES.map((line) => ({ ...line }));
     lines[1] = { ...lines[1], spoken: lines[1].spoken.replace("sixty-five", "seventy-five") };
-    expect(() => assertGpuUpgradeStory(undefined, undefined, lines)).toThrow(/line 2 says .* which is not "At 1440p High/);
+    expect(() => assertGpuUpgradeStory(undefined, undefined, lines)).toThrow(/line 2 says .* which is not "Alan Wake 2: 43 to 65 estimated FPS\."/);
     lines[1] = { ...APPROVED_GPU_UPGRADE_LINES[1], spoken: `${APPROVED_GPU_UPGRADE_LINES[1].spoken} Easily.` };
     expect(() => assertGpuUpgradeStory(undefined, undefined, lines)).toThrow(/line 2 says/);
   });
@@ -84,14 +85,68 @@ describe("the approved text", () => {
   });
 });
 
+/** A stand-in provider: subscription, voices and one timestamped take. TEST RESPONSES, never a real take. */
+function provider(options: { canExtend?: boolean; remaining?: number; voiceId?: string } = {}) {
+  const calls: { url: string; method: string; body?: string }[] = [];
+  const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", body: typeof init?.body === "string" ? init.body : undefined });
+    if (url.endsWith("/v1/user/subscription")) {
+      return new Response(JSON.stringify({ tier: "creator", character_count: 1000, character_limit: 1000 + (options.remaining ?? 5000), can_extend_character_limit: options.canExtend ?? false }));
+    }
+    if (url.endsWith("/v1/voices")) {
+      return new Response(JSON.stringify({ voices: [{ voice_id: options.voiceId ?? REVIEWED_LIAM_VOICE.voiceId, name: "Liam - Energetic, Social Media Creator" }] }));
+    }
+    if (url.includes("/with-timestamps")) {
+      return new Response(JSON.stringify({ audio_base64: Buffer.from("TEST AUDIO BYTES").toString("base64"), alignment: uniformAlignment() }), { headers: { "character-cost": "314" } });
+    }
+    return new Response("not found", { status: 404 });
+  }) as never;
+  return { calls, fetchImpl };
+}
+
 describe("nothing is sent unless every guard holds", () => {
-  it("is refused by the unchanged shared character cap, with no network call and nothing written", async () => {
-    expect(MAX_SAMPLE_CHARACTERS).toBe(360);
-    const { calls, fetchImpl } = countingFetch();
+  it("with every guard satisfied, makes exactly one generation request with the approved text, and saves a take the loader accepts", async () => {
+    const { calls, fetchImpl } = provider();
     const outputDir = tempDir();
-    await expect(generateLiamGpuUpgradeTake({ env: LIAM_ENV, fetchImpl, outputDir })).rejects.toThrow(/392 characters; the cap is 360/);
+    const result = await generateLiamGpuUpgradeTake({ env: LIAM_ENV, fetchImpl, outputDir });
+    const posts = calls.filter((call) => call.method === "POST");
+    expect(posts).toHaveLength(1);
+    expect(posts[0].url).toContain(`/v1/text-to-speech/${REVIEWED_LIAM_VOICE.voiceId}/with-timestamps`);
+    expect(JSON.parse(posts[0].body!).text).toBe(GPU_TAKE_TEXT);
+    expect(result).toMatchObject({ charactersSent: 314, providerReportedCharacterCost: 314, alignmentError: null });
+    expect(readdirSync(outputDir).sort()).toEqual(["gpu-upgrade-liam.json", "gpu-upgrade-liam.mp3", "gpu-upgrade-liam.response.json"]);
+    const manifest = readFileSync(join(outputDir, "gpu-upgrade-liam.json"), "utf8");
+    expect(manifest).not.toContain(LIAM_ENV.ELEVENLABS_API_KEY);
+    const { loadGpuUpgradeTake } = await import("./takeTiming.ts");
+    const take = await loadGpuUpgradeTake(outputDir);
+    expect(take.take.sha256).toBe(result.sha256);
+  });
+
+  it("refuses before the generation request when an overage could be billed or the allowance is short", async () => {
+    for (const options of [{ canExtend: true }, { remaining: 313 }]) {
+      const { calls, fetchImpl } = provider(options);
+      await expect(generateLiamGpuUpgradeTake({ env: LIAM_ENV, fetchImpl, outputDir: tempDir() })).rejects.toThrow();
+      expect(calls.filter((call) => call.method === "POST")).toEqual([]);
+    }
+  });
+
+  it("refuses a provider voice labelled Liam with another id, before the generation request", async () => {
+    const { calls, fetchImpl } = provider({ voiceId: "not-liam" });
+    await expect(generateLiamGpuUpgradeTake({ env: LIAM_ENV, fetchImpl, outputDir: tempDir() })).rejects.toThrow(/does not match the reviewed SpecSmith Liam id/);
+    expect(calls.filter((call) => call.method === "POST")).toEqual([]);
+  });
+
+  it("makes no request at all without a key, or with a changed figure", async () => {
+    const { calls, fetchImpl } = countingFetch();
+    await expect(generateLiamGpuUpgradeTake({ env: {}, fetchImpl, outputDir: tempDir() })).rejects.toThrow(/No fixture voice is ever substituted/);
+    const facts = gpuUpgradeFacts();
+    await expect(generateLiamGpuUpgradeTake({ env: LIAM_ENV, fetchImpl, outputDir: tempDir(), facts: { ...facts, cpuHeavy: { ...facts.cpuHeavy, fpsA: 300 } } })).rejects.toThrow(/Refusing to generate/);
     expect(calls).toEqual([]);
-    expect(readdirSync(outputDir)).toEqual([]);
+  });
+
+  it("keeps the shared cap at 360, unchanged", () => {
+    expect(MAX_SAMPLE_CHARACTERS).toBe(360);
   });
 
   it("refuses George, a missing or another voice id before any request", async () => {

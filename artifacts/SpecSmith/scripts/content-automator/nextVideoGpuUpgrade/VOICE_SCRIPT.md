@@ -1,44 +1,53 @@
-# Proposed voice script: "Which game gets the bigger percentage boost?" (Concept A)
+# Voice script: "Which game gets the bigger percentage boost?" (Concept A, attempt 5)
 
-**Status:** proposal only. No voice has been generated, paid or otherwise, and no robotic placeholder is used. The visual draft's audio track is silence of the planned length; these lines and timings are recorded beside it (`audio/*__planned-narration.json`).
+**Status:**
+- **Text:** the trimmed 314-character script below is approved for the take (2026-10-06).
+- **Spend:** not yet approved. No voice has been generated, paid or otherwise.
 
-**Length:** 19.0 s, six lines (attempt 4).
+**Why it was trimmed.** The proposed 392-character script was checked against Liam's real pace, measured from the character timestamps of his saved FPS-Short take (about 18 characters a second for plain lines, 13.7 for lines with numbers). It had three problems:
+- **Character cap:** it was over the shared 360-character cap, which stays unchanged.
+- **Length:** it would have run about 29–30 s, at the 30 s ceiling.
+- **Hook:** its opening line would have run about 4.1 s. MASTER #1 blocks a hook over about 3.67 s, so the paid take would likely have been refused at render.
 
-**Delivery:** calm, quick, conversational, like a friend explaining a result.
-- Land the question at 3.0 s.
-- Give the two percentages the only emphasis in the video: "fifty-one" and "sixteen".
-- No sign-off and no promotion. The last line is a question to the viewer, and the site address stays on screen only, as a small line in the graphic.
+The trimmed text keeps every figure, every label and every line's role:
+- **Opening:** the setup ("Same CPU. New GPU.") stays on screen as the opening caption and upgrade row; the voice asks the question.
+- **Attribution:** SpecSmith is named on screen ("SpecSmith model estimates") and in the disclosure.
+- **Predicted:** about 23.6 s in total, with a 2.7 s hook.
 
-**Rules for the read:**
-- Every line must start at its beat and finish before the next one. The draft's cuts are timed to these slots.
-- Each figure is an approved model estimate. Say "estimated" where the line says it, and never change a number.
-- The narration names SpecSmith as the source of the estimates once, in line 2. That is attribution, not promotion.
+## Text for the one Liam take
 
-| # | Slot | Line (as approved) | Spoken form | Pace | Claims it states |
-|---|---|---|---|---|---|
-| 1 | 0.0–3.0 s | Same CPU, new GPU. Which game gets the bigger percentage boost? | Same CPU, new GPU. Which game gets the bigger percentage boost? | 11 words, 3.7/s | none |
-| 2 | 3.0–6.6 s | At 1440p High, SpecSmith estimates Alan Wake 2 goes from 43 to 65 FPS. | At fourteen-forty-p High, SpecSmith estimates Alan Wake Two goes from forty-three to sixty-five FPS. | 14 words, 3.9/s | gpu-upgrade-gpu-heavy-game |
-| 3 | 6.6–9.8 s | Valorant goes from 263 to 305. | Valorant goes from two-sixty-three to three-oh-five. | 6 words, 1.9/s | gpu-upgrade-cpu-heavy-game |
-| 4 | 9.8–13.8 s | That's an estimated 51% boost for Alan Wake 2, and just 16% for Valorant. | That's an estimated fifty-one percent boost for Alan Wake Two, and just sixteen percent for Valorant. | 14 words, 3.5/s | gpu-upgrade-percent-gpu-heavy-game, gpu-upgrade-percent-cpu-heavy-game, bigger-percentage-boost |
-| 5 | 13.8–16.4 s | Same upgrade, different gains by game. | Same upgrade, different gains by game. | 6 words, 2.3/s | the percentage claims (the comparison stays on screen) |
-| 6 | 16.4–19.0 s | Which game would you upgrade for? | Which game would you upgrade for? | 6 words, 2.3/s | none spoken; the comparison stays on screen |
-
-**Removed from attempt 3:** "SpecSmith's model gives Alan Wake 2 far more GPU weight." and the repeated "In SpecSmith's model estimates… estimated FPS".
-
-## Text for one Liam take (for approval)
-
-This is the exact string a single take would send, with the six lines joined by single spaces. Numbers are spelled the way they should be spoken, as in the earlier approved Liam takes; captions and graphics keep the verified digits.
+The six lines joined by single spaces. Numbers are spelled the way they should be spoken; captions and graphics keep the verified digits.
 
 ```text
-Same CPU, new GPU. Which game gets the bigger percentage boost? At fourteen-forty-p High, SpecSmith estimates Alan Wake Two goes from forty-three to sixty-five FPS. Valorant goes from two-sixty-three to three-oh-five. That's an estimated fifty-one percent boost for Alan Wake Two, and just sixteen percent for Valorant. Same upgrade, different gains by game. Which game would you upgrade for?
+Which game gets the bigger percentage boost? Alan Wake Two: forty-three to sixty-five estimated FPS. Valorant: two-sixty-three to three-oh-five. That's an estimated fifty-one percent boost for Alan Wake Two, and sixteen percent for Valorant. Same upgrade, different gains by game. Which game would you upgrade for?
 ```
 
-- **Characters:** 392. Every character is ASCII, so it is also 392 bytes. Counted with Python `len()` on the exact string above, no trailing newline.
-- **SHA-256 (UTF-8):** `9bdba9e33e88be6eb633214c5c880bddb9e7ef86113780bd80a4e1119e9edabd`
+- **Characters:** 314, all ASCII. Counted on the exact string above, no trailing newline.
+- **SHA-256 (UTF-8):** `fd154a03bcda906e7901b6a97be7d879c9ae4d1e0098ec1777364e692a82d19e`
 - **Voice:** Liam, pinned ID `TX3LPaxmHKxFdv7VOQHJ`. Never George.
-- **Status:** not generated. A take needs explicit approval of this text and of the spend.
+- **Request:** one `with-timestamps` request, from the manual workflow (`script: gpu-upgrade`, `confirm: generate`, `review_pr: 176`).
 
-**Approval before any take:**
-- **Voice:** if Liam is used, use the pinned voice ID `TX3LPaxmHKxFdv7VOQHJ` (never George).
-- **Spend:** a paid take needs explicit approval of the spend.
-- **Retiming:** once a take exists, the cuts can be retimed to its measured line starts, as was done for the FPS Short.
+## Lines
+
+Starts are predicted from Liam's measured pace. The final cut is timed to his actual delivery from the take's timestamps.
+
+| # | Starts | Beat narration (captions and checks) | Spoken | Claims |
+|---|---|---|---|---|
+| 1 | 0.0 s | Which game gets the bigger percentage boost? | Which game gets the bigger percentage boost? | none |
+| 2 | ~2.9 s | Alan Wake 2: 43 to 65 estimated FPS. | Alan Wake Two: forty-three to sixty-five estimated FPS. | gpu-upgrade-gpu-heavy-game |
+| 3 | ~7.2 s | Valorant: 263 to 305. | Valorant: two-sixty-three to three-oh-five. | gpu-upgrade-cpu-heavy-game |
+| 4 | ~10.6 s | That's an estimated 51% boost for Alan Wake 2, and 16% for Valorant. | That's an estimated fifty-one percent boost for Alan Wake Two, and sixteen percent for Valorant. | gpu-upgrade-percent-gpu-heavy-game, gpu-upgrade-percent-cpu-heavy-game, bigger-percentage-boost |
+| 5 | ~18.0 s | Same upgrade, different gains by game. | Same upgrade, different gains by game. | the percentage claims (the comparison stays on screen) |
+| 6 | ~20.5 s | Which game would you upgrade for? | Which game would you upgrade for? | none spoken; the comparison stays on screen |
+
+**Delivery:**
+- **Tone:** calm and quick, like a friend explaining a result.
+- **Emphasis:** "fifty-one" and "sixteen" are the only stressed words.
+- **Ending:** no sign-off and no promotion. The last line is a question to the viewer; the site address is on screen only.
+
+**Guards before the one paid request** (`liamTake.ts` and the shared `voiceSpendGuards.ts`):
+- **Figures:** every spoken figure is recomputed from the model.
+- **Lines:** each spoken line must be its beat's approved narration, with only the figures spelled out.
+- **Cap:** the text must be within the unchanged 360-character cap.
+- **Allowance:** the subscription must report no overage billing and enough included characters.
+- **Voice:** the provider's Liam must have the pinned id.

@@ -291,6 +291,34 @@ As a further check, the renderer records anything drawn past the band's bottom e
 - **Controls:** all three broken renders were refused.
 - **Audio:** silence of the planned length. No voice was generated.
 
+## Final cut: prepared, waiting for spend approval (Concept A, attempt 5)
+
+**Script:** the trimmed 314-character narration is approved for the take; see `VOICE_SCRIPT.md`. The 392-character version was set aside:
+- it was over the unchanged 360-character spending cap;
+- at Liam's measured pace it would have run about 29–30 s;
+- its opening would have run about 4.1 s, over MASTER #1's hook limit.
+
+The trimmed version is predicted at about 23.6 s, with a 2.7 s hook.
+
+**The one paid step (not run):**
+- **How it runs:** manual dispatch of `elevenlabs-voice-sample.yml` with `script: gpu-upgrade`, `confirm: generate` and `review_pr: 176`.
+- **Guards before the request:** the shared spending guards are unchanged (360 cap, no overage, enough included characters, the pinned Liam id), plus a recomputation of every spoken figure and a line-by-line check against the concept.
+- **Hand-over:** a job with no secret posts the take to #176.
+
+**After the take** (`finalRender.ts`, which never calls a provider):
+1. **Load:** the saved take is loaded only if it is the approved text in pinned Liam, with the audio its manifest hashes and the provider's timestamps.
+2. **Retime:** beats and captions follow the actual delivery on a 0.1 s grid. The take itself is never edited.
+3. **Check:** the retimed batch goes back through every workflow check.
+4. **Render:** the production pipeline renders it, with restrained synthesized sound effects under the voice. The effects are cut whooshes, ticks as figures land and pops as percentages appear, about 17–21 dB under speech peaks.
+5. **Review:** MASTER #7 reviews the exact MP4 and writes its review packet.
+6. **Retries:** a failed render is re-run from the same saved bytes.
+
+**Dry run (fixture voice, labelled DRY RUN, never delivered):**
+- **Pipeline:** passed end to end.
+- **Frame check:** passed, and its three broken controls were refused.
+- **Effects:** 17.4 dB under the voice peak.
+- **MASTER #7:** `awaiting-human-review`. Still open: three person checks (safe area, reading the on-screen text at phone size, listening), the fixture placeholder, and the voice's licence.
+
 ## Open before production
 
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.

@@ -1,7 +1,9 @@
 #!/usr/bin/env tsx
 /**
  * ONE Liam take of the GPU-upgrade Short ("Which game gets the bigger
- * percentage boost?"), Concept A, attempt 4.
+ * percentage boost?"), Concept A, attempt 5: the trimmed 314-character
+ * script approved for the take (2026-10-06), which fits the unchanged
+ * 360-character cap.
  *
  * WHAT MUST BE TRUE BEFORE ANY SPEND (assertGpuUpgradeStory + the shared
  * spending guards in voiceSpendGuards.ts, which are unchanged):
@@ -51,7 +53,7 @@ export const GPU_TAKE_AUDIO = "gpu-upgrade-liam.mp3";
 export const GPU_TAKE_MANIFEST = "gpu-upgrade-liam.json";
 export const GPU_TAKE_RAW = "gpu-upgrade-liam.response.json";
 /** The concept whose beats these lines narrate. */
-export const GPU_TAKE_CONCEPT_FILE = join(here, "workflow-percent", "batches", "attempt-4", "01-guess-the-game.json");
+export const GPU_TAKE_CONCEPT_FILE = join(here, "workflow-percent", "batches", "attempt-5", "01-guess-the-game.json");
 
 /**
  * The approved lines, one per beat, written so the numbers are spoken
@@ -60,14 +62,14 @@ export const GPU_TAKE_CONCEPT_FILE = join(here, "workflow-percent", "batches", "
  * reviewed change to this file and to the concept.
  */
 export const APPROVED_GPU_UPGRADE_LINES = Object.freeze([
-  { id: "hook", beatNarration: "Same CPU, new GPU. Which game gets the bigger percentage boost?",
-    spoken: "Same CPU, new GPU. Which game gets the bigger percentage boost?" },
-  { id: "fps-aw", beatNarration: "At 1440p High, SpecSmith estimates Alan Wake 2 goes from 43 to 65 FPS.",
-    spoken: "At fourteen-forty-p High, SpecSmith estimates Alan Wake Two goes from forty-three to sixty-five FPS." },
-  { id: "fps-val", beatNarration: "Valorant goes from 263 to 305.",
-    spoken: "Valorant goes from two-sixty-three to three-oh-five." },
-  { id: "percent", beatNarration: "That's an estimated 51% boost for Alan Wake 2, and just 16% for Valorant.",
-    spoken: "That's an estimated fifty-one percent boost for Alan Wake Two, and just sixteen percent for Valorant." },
+  { id: "hook", beatNarration: "Which game gets the bigger percentage boost?",
+    spoken: "Which game gets the bigger percentage boost?" },
+  { id: "fps-aw", beatNarration: "Alan Wake 2: 43 to 65 estimated FPS.",
+    spoken: "Alan Wake Two: forty-three to sixty-five estimated FPS." },
+  { id: "fps-val", beatNarration: "Valorant: 263 to 305.",
+    spoken: "Valorant: two-sixty-three to three-oh-five." },
+  { id: "percent", beatNarration: "That's an estimated 51% boost for Alan Wake 2, and 16% for Valorant.",
+    spoken: "That's an estimated fifty-one percent boost for Alan Wake Two, and sixteen percent for Valorant." },
   { id: "explain", beatNarration: "Same upgrade, different gains by game.",
     spoken: "Same upgrade, different gains by game." },
   { id: "ask", beatNarration: "Which game would you upgrade for?",
@@ -84,7 +86,6 @@ export const GPU_TAKE_TEXT = APPROVED_GPU_UPGRADE_LINES.map((line) => line.spoke
  * back, so no other word can differ between what is said and what was approved.
  */
 export const SPOKEN_FIGURES: readonly (readonly [string, string])[] = [
-  ["fourteen-forty-p", "1440p"],
   ["Alan Wake Two", "Alan Wake 2"],
   ["forty-three", "43"],
   ["sixty-five", "65"],

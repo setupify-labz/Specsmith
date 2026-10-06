@@ -124,3 +124,17 @@ describe("the sound effects", () => {
     expect(() => validateCues(cues, beats.at(-1)!.endSecond)).not.toThrow();
   });
 });
+
+describe("the figures declared to MASTER #7", () => {
+  it("each appear, as declared, in the beat narration or caption they name", async () => {
+    const { presentedClaims } = await import("./finalRender.ts");
+    const concept = JSON.parse(readFileSync(GPU_TAKE_CONCEPT_FILE, "utf8")) as { beats: { narration: string; onScreenText: string }[] };
+    const claims = presentedClaims(APPROVED_GPU_UPGRADE_LINES);
+    expect(claims.length).toBeGreaterThan(0);
+    for (const claim of claims) {
+      const beat = concept.beats[claim.beatIndex];
+      const surface = claim.where === "narration" ? beat.narration : beat.onScreenText;
+      expect(surface, `${claim.claimId}: "${claim.text}"`).toContain(claim.text);
+    }
+  });
+});

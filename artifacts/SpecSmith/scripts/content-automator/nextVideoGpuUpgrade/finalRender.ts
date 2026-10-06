@@ -46,7 +46,7 @@ const ffprobePath = process.env.SPECSMITH_FFPROBE_PATH ?? "ffprobe";
 /** The authored batch, with Concept A retimed to the take and the other two unchanged. */
 export function writeRetimedWorkflow(take: LoadedGpuUpgradeTake, outputDir: string) {
   const beats = retimeBeats(take.lineTimings);
-  const source = join(WORKFLOW_DIRECTORY, "batches", "attempt-4");
+  const source = join(WORKFLOW_DIRECTORY, "batches", "attempt-5");
   const target = join(outputDir, "workflow", "batches", "attempt-1");
   rmSync(join(outputDir, "workflow"), { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
@@ -66,6 +66,34 @@ export function loudness(path: string, filter = ""): { integratedLufs: number | 
   const peak = summary.match(/Peak:\s+(-?[\d.]+|-inf)\s+dBFS/);
   const num = (match: RegExpMatchArray | null) => match && match[1] !== "-inf" ? Number(match[1]) : null;
   return { integratedLufs: num(integrated), peakDbfs: num(peak) };
+}
+
+/**
+ * Every figure the cut presents, as the viewer meets it, for MASTER #7: the
+ * FPS figures said and captioned, and the estimated percentages.
+ */
+export function presentedClaims(beats: readonly { readonly id: string }[]): PresentedClaim[] {
+  const beatOf = (id: string) => beats.findIndex((beat) => beat.id === id);
+  const fps = (beatIndex: number, where: PresentedClaim["where"], text: string, game: string, build: "A" | "B", value: number): PresentedClaim => ({
+    claimId: `${where}-${game}-${build}-b${beatIndex}`, beatIndex, where, text, basis: "model-estimate",
+    statement: { kind: "game-fps", pairing: GPU_UPGRADE_PAIRING, game, build, fps: value },
+  });
+  const percent = (beatIndex: number, where: PresentedClaim["where"], text: string, researchClaimId: string): PresentedClaim => ({
+    claimId: `${where}-${researchClaimId}-b${beatIndex}`, beatIndex, where, text, basis: "research-claim", statement: { kind: "research", researchClaimId },
+  });
+  const aw = beatOf("fps-aw"), val = beatOf("fps-val"), pct = beatOf("percent");
+  const claims: PresentedClaim[] = [
+    // Each figure as the viewer meets it: "43 to 65" said, "43 → 65" captioned; one declaration per value.
+    fps(aw, "narration", "43 to 65", "Alan Wake 2", "B", 43), fps(aw, "narration", "43 to 65", "Alan Wake 2", "A", 65),
+    fps(aw, "caption", "43 → 65", "Alan Wake 2", "B", 43), fps(aw, "caption", "43 → 65", "Alan Wake 2", "A", 65),
+    fps(val, "narration", "263 to 305", "Valorant", "B", 263), fps(val, "narration", "263 to 305", "Valorant", "A", 305),
+    fps(val, "caption", "263 → 305", "Valorant", "B", 263), fps(val, "caption", "263 → 305", "Valorant", "A", 305),
+    percent(pct, "narration", "estimated 51% boost", "gpu-upgrade-percent-gpu-heavy-game"),
+    percent(pct, "narration", "16% for Valorant", "gpu-upgrade-percent-cpu-heavy-game"),
+    percent(pct, "caption", "51%", "gpu-upgrade-percent-gpu-heavy-game"),
+    percent(pct, "caption", "16%", "gpu-upgrade-percent-cpu-heavy-game"),
+  ];
+  return claims;
 }
 
 /** The compositor's fixed gain for the music-sfx track (motionCompositor.muxFinal). */
@@ -115,26 +143,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as RenderManifest;
   const storyboard = proposal.storyboard;
   const overlay = plan.tasks.find((task) => task.capability === "disclosure-overlay") as { disclosureOverlayState?: { lines: string[] } } | undefined;
-  const beatOf = (id: string) => beats.findIndex((beat) => beat.id === id);
-  const fps = (beatIndex: number, where: PresentedClaim["where"], text: string, game: string, build: "A" | "B", value: number): PresentedClaim => ({
-    claimId: `${where}-${game}-${build}-b${beatIndex}`, beatIndex, where, text, basis: "model-estimate",
-    statement: { kind: "game-fps", pairing: GPU_UPGRADE_PAIRING, game, build, fps: value },
-  });
-  const percent = (beatIndex: number, where: PresentedClaim["where"], text: string, researchClaimId: string): PresentedClaim => ({
-    claimId: `${where}-${researchClaimId}-b${beatIndex}`, beatIndex, where, text, basis: "research-claim", statement: { kind: "research", researchClaimId },
-  });
-  const aw = beatOf("fps-aw"), val = beatOf("fps-val"), pct = beatOf("percent");
-  const claims: PresentedClaim[] = [
-    // Each figure as the viewer meets it: "43 to 65" said, "43 → 65" captioned; one declaration per value.
-    fps(aw, "narration", "43 to 65", "Alan Wake 2", "B", 43), fps(aw, "narration", "43 to 65", "Alan Wake 2", "A", 65),
-    fps(aw, "caption", "43 → 65", "Alan Wake 2", "B", 43), fps(aw, "caption", "43 → 65", "Alan Wake 2", "A", 65),
-    fps(val, "narration", "263 to 305", "Valorant", "B", 263), fps(val, "narration", "263 to 305", "Valorant", "A", 305),
-    fps(val, "caption", "263 → 305", "Valorant", "B", 263), fps(val, "caption", "263 → 305", "Valorant", "A", 305),
-    percent(pct, "narration", "estimated 51% boost", "gpu-upgrade-percent-gpu-heavy-game"),
-    percent(pct, "narration", "just 16%", "gpu-upgrade-percent-cpu-heavy-game"),
-    percent(pct, "caption", "51%", "gpu-upgrade-percent-gpu-heavy-game"),
-    percent(pct, "caption", "16%", "gpu-upgrade-percent-cpu-heavy-game"),
-  ];
+  const claims = presentedClaims(beats);
   const repo = (assetId: string, kind: AssetRightsRecord["kind"], source: string, generator: string): AssetRightsRecord => ({
     assetId, kind, source,
     license: { kind: "repo-owned", evidence: "Rendered by this repository from its own data and code.", permittedUse: [REQUIRED_USE], attribution: null, expiresAt: null, scope: "SpecSmith" },
