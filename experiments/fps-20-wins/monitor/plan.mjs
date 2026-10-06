@@ -42,8 +42,8 @@ export const MONITOR_TIMING = Object.freeze({
   head: 0.04, // audio kept before a phrase's first sound
   tail: 0.08, // audio kept after a phrase's last sound
   // Silence between phrases on the timeline (the gap before each phrase).
-  gapBefore: { leads: 0.22, model: 0.65, apart: 0.35, question: 0.5 },
-  entry: [0.35, 1.65], // the push into the monitor screen
+  gapBefore: { leads: 0.22, model: 0.65, apart: 0.35, question: 0.8 }, // the payoff holds before the question
+  entry: [0.2, 1.5], // the push into the monitor screen
   spotLen: 1.0, // each game title holds this long
   rollLen: 0.35, // the last segments fill to 20
   landToBlowout: 0.3, // the 20/20 lands, then "Sounds like a blowout."

@@ -50,8 +50,8 @@
       "say": "Would you have guessed four?",
       "takeFrom": 25.033,
       "takeTo": 26.285,
-      "start": 15.645,
-      "end": 16.897
+      "start": 15.945,
+      "end": 17.197
     }
   ],
   "voice": [
@@ -83,14 +83,14 @@
     {
       "takeStart": 24.993,
       "takeEnd": 26.365,
-      "at": 15.605
+      "at": 15.905
     }
   ],
   "events": {
     "voiceStart": 0.08,
     "entry": [
-      0.35,
-      1.65
+      0.2,
+      1.5
     ],
     "counterStart": 2.251,
     "spots": [
@@ -108,12 +108,12 @@
     "n160": 11.556,
     "apart": 13.76,
     "four": 14.05,
-    "pullBack": 15.025,
-    "question": 15.645,
-    "lastWord": 16.897
+    "pullBack": 15.325,
+    "question": 15.945,
+    "lastWord": 17.197
   },
   "dropSilence": 0.65,
-  "duration": 17.897,
+  "duration": 18.197,
   "captions": [
     {
       "show": "The RTX 4080 Super",
@@ -184,9 +184,9 @@
         "Would you have",
         "guessed four?"
       ],
-      "start": 15.609,
-      "spokenEnd": 16.897,
-      "end": 17.297
+      "start": 15.909,
+      "spokenEnd": 17.197,
+      "end": 17.597
     }
   ],
   "takeDir": "take"
