@@ -41,7 +41,29 @@ const bell2 = sine(1046.5, 1.8, 0.08, 0.003, 1.75);
 const pluck1 = sine(659.25, 0.6, 0.18, 0.003, 0.58);
 const pluck2 = sine(783.99, 0.8, 0.16, 0.003, 0.78);
 
-const events = [];
+// A low, original synth bed gives the silent cut a contrast. Keep the
+// rhythmic section underneath the counting, then switch to a warmer held
+// chord beneath the small-gap reveal. These are tones and filtered noise,
+// not stock samples or a voice track.
+const raceEnd = T.cut - 0.16;
+const raceAir = noise("pink", raceEnd, "highpass=f=180,lowpass=f=1000", 0.15, 0.12, raceEnd - 0.24, 29);
+const raceLow = sine(65.41, raceEnd, 0.16, 0.08, raceEnd - 0.2);
+const revealStart = T.numbers;
+const revealLength = T.duration - revealStart;
+const revealAir = noise("pink", revealLength, "highpass=f=280,lowpass=f=1700", 0.10, 0.35, revealLength - 0.5, 31);
+const revealRoot = sine(130.81, revealLength, 0.12, 0.3, revealLength - 0.5);
+const revealFifth = sine(196.0, revealLength, 0.055, 0.3, revealLength - 0.5);
+const pulse = sine(98, 0.22, 0.25, 0.003, 0.17);
+const brush = noise("pink", 0.12, "highpass=f=2300,lowpass=f=7000", 0.13, 0.005, 0.09, 37);
+
+const events = [
+  [raceAir, 0], [raceLow, 0],
+  [revealAir, revealStart], [revealRoot, revealStart], [revealFifth, revealStart],
+];
+for (let at = 0.25; at < raceEnd - 0.22; at += 0.55) {
+  events.push([pulse, at]);
+  if (Math.round((at - 0.25) / 0.55) % 2) events.push([brush, at + 0.27]);
+}
 // Three spotlights, three different hits.
 const hits = [[whoosh, kick, snap], [kick, clap], [whoosh, kick, tom, snap]];
 T.spots.forEach((at, i) => hits[i].forEach((h) => events.push([h, h === whoosh ? Math.max(0, at - 0.1) : at])));
