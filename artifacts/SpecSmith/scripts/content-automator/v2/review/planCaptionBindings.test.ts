@@ -87,6 +87,9 @@ describe("every input the motion-graphic review added is bound directly to the c
     ["manifest.captures", ["frames.bands"]],
     // narrationSpans (narrationSegments) and the narration's textSha256 metadata
     ["manifest.narration", ["narration.timing", "narration.binding"]],
+    // declared sound-effect windows (cueList) explain sound outside the narration, only for verified bytes
+    ["manifest.otherAssets", ["narration.timing"]],
+    ["assets", ["narration.timing"]],
     // synthesized sound effects' renderer metadata in the rights checks
     ["manifest.otherAssets", ["rights.assets", "rights.placeholders"]],
   ];

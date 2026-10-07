@@ -126,7 +126,8 @@ export function createSoundEffectsAdapter(options: { readonly outputDir: string;
           renderer: "specsmith-synth-sound-effects",
           generator: "ffmpeg lavfi (anoisesrc, sine)",
           cues: state.cues.length,
-          cueList: JSON.stringify(state.cues),
+          // Each effect's window, so a review can tell a declared effect from stray sound.
+          cueList: JSON.stringify(state.cues.map((cue) => ({ ...cue, seconds: SOUND_RECIPES[cue.kind].seconds }))),
           isMusic: false,
           isLicensedSample: false,
           sha256,

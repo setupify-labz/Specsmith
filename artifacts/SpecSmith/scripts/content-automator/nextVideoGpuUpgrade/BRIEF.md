@@ -319,6 +319,38 @@ The trimmed version is predicted at about 23.6 s, with a 2.7 s hook.
 - **Effects:** 17.4 dB under the voice peak.
 - **MASTER #7:** `awaiting-human-review`. Still open: three person checks (safe area, reading the on-screen text at phone size, listening), the fixture placeholder, and the voice's licence.
 
+## Final cut (rendered from the saved take, 2026-10-07)
+
+**The take:** one Liam generation (run 37624439839), 314 characters sent, provider-reported charge 126. Saved in `take/`; see `take/PROVENANCE.md`.
+
+**The final MP4:** `render-output/gpu-upgrade-final/gpu-upgrade-final.mp4`, not checked in.
+- **Format:** 1080×1920 at 30 fps, 24.5 s.
+- **SHA-256:** `75e5a4380516af910016eb3011edfa5049c4394d5ca5f5b120f96a075898d5b1`.
+- **Same bytes twice:** re-rendering from the saved take produced identical bytes.
+
+**Beats, timed to Liam's delivery:**
+
+| Beat | Picture | Liam speaks |
+|---|---|---|
+| Opening | 0–2.8 s | 0–2.14 s |
+| Alan Wake 2 | 2.8–8.4 s | 2.95–7.81 s |
+| Valorant | 8.4–12.4 s | 8.51–11.90 s |
+| Percentages | 12.4–18.6 s | 12.60–18.10 s |
+| Explanation | 18.6–21.4 s | 18.80–20.81 s |
+| Question | 21.4–24.5 s | 21.50–23.22 s |
+
+**Checks:**
+- **Frame check:** passed on 14 samples; all three broken controls were refused.
+- **Sound effects:** peak at −20.2 dBFS, 15.8 dB under the voice's −4.4 dBFS peak.
+- **Loudness:** the whole cut is −24.2 LUFS integrated.
+
+**MASTER #7 review packet** (`final/review-packet.txt`): `awaiting-human-review`, with no machine-found defect. Still open:
+- three checks only a person can do: the safe area on a real phone, reading the text at real size, and listening to the take;
+- `rights-unknown` for the voice: the ElevenLabs account's commercial-use terms are not recorded in this repository;
+- eight human gates.
+
+**Review fix found by the real take.** Liam pauses about 0.7 s between lines, so each cut whoosh plays in a pause. MASTER #7's narration-timing check measured all audio and reported the whooshes as sound outside the narration. The check now accepts sound inside the render's declared sound-effect windows, only when that asset's bytes verified, and binds the inputs it reads. The video did not change.
+
 ## Open before production
 
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.

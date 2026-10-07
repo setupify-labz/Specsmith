@@ -10,7 +10,7 @@ import { DEMO_PAIRING } from "../../leadsVsAverage/facts.ts";
 import { CREATIVE_DISCLOSURES } from "../creative/concept.ts";
 import { checkClaims, type PresentationContext } from "./claimChecks.ts";
 import { REQUIRED_USE, type AssetRightsRecord, type PresentedClaim, type RenderManifestAsset } from "./inputs.ts";
-import { narrationSpans, plannedCaptionCues } from "./reviewCreative.ts";
+import { declaredEffectWindows, narrationSpans, plannedCaptionCues, unexplainedSound } from "./reviewCreative.ts";
 import { FIXTURE_CLAIMS, FIXTURE_CONTRACT, FIXTURE_STORYBOARD } from "./reviewFixture.ts";
 import { checkRights } from "./rightsChecks.ts";
 
@@ -62,6 +62,29 @@ describe("narration spans", () => {
   it("joins lines closer than the silence detector can separate, and keeps real pauses", () => {
     expect(narrationSpans([{ startSecond: 0.1, endSecond: 3.0 }, { startSecond: 3.3, endSecond: 7.0 }, { startSecond: 9.0, endSecond: 10.0 }]))
       .toEqual([{ startSecond: 0.1, endSecond: 7.0 }, { startSecond: 9.0, endSecond: 10.0 }]);
+  });
+});
+
+describe("sound outside the narration", () => {
+  // The saved take's own numbers: Liam pauses about 0.7 s between lines, and
+  // the cut whoosh plays 0.05 s before each new picture, inside that pause.
+  const spans = narrationSpans([{ startSecond: 8.51, endSecond: 11.9 }, { startSecond: 12.597, endSecond: 18.1 }]);
+  const whoosh = declaredEffectWindows(JSON.stringify([{ atSecond: 12.35, kind: "whoosh", reason: "cut to beat 4", seconds: 0.32 }]));
+
+  it("is explained by a declared effect, even when silencedetect joins it to the next line", () => {
+    expect(whoosh).toEqual([{ startSecond: 12.35, endSecond: 12.67 }]);
+    expect(unexplainedSound([{ start: 12.37, end: 15.9 }], spans, whoosh)).toEqual([]);
+  });
+
+  it("is refused without a declared effect, and wherever no effect was declared", () => {
+    expect(unexplainedSound([{ start: 12.37, end: 15.9 }], spans, [])).toEqual([{ start: 12.37, end: 15.9 }]);
+    expect(unexplainedSound([{ start: 12.0, end: 12.2 }], spans, whoosh)).toEqual([{ start: 12.0, end: 12.2 }]);
+  });
+
+  it("reads no windows from a cue list without lengths, or an unreadable one", () => {
+    expect(declaredEffectWindows(JSON.stringify([{ atSecond: 1, kind: "whoosh" }]))).toEqual([]);
+    expect(declaredEffectWindows("not json")).toEqual([]);
+    expect(declaredEffectWindows(undefined)).toEqual([]);
   });
 });
 

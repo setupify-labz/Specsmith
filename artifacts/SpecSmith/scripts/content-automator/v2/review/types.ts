@@ -84,7 +84,8 @@ export const CHECKS = {
   // The planned caption set is the production plan's own cues when it has them (plannedCaptionCues).
   "captions.rendered-text": { title: "Burned-in caption file matches the planned caption cues and beat windows", bindsTo: ["captions", "script", "productionPlan", "manifest.captions"] },
   "narration.binding": { title: "Narration audio was synthesised from this script", bindsTo: ["script", "assets", "manifest.narration"] },
-  "narration.timing": { title: "Each narration line is spoken inside its beat's window", bindsTo: ["script", "media", "manifest.narration"] },
+  // Sound outside the placed lines is explained only by a declared sound effect (manifest.otherAssets), whose bytes verified (assets).
+  "narration.timing": { title: "Each narration line is spoken inside its beat's window, and no other sound plays but declared effects", bindsTo: ["script", "media", "assets", "manifest.narration", "manifest.otherAssets"] },
   "disclosure.content": { title: "The rendered disclosure panel carries the planned disclosure, verbatim, legibly", bindsTo: ["disclosure", "assets", "claims", "manifest.disclosurePanel"] },
   "disclosure.coverage": { title: "The disclosure is on screen for every claim, for the whole video", bindsTo: ["disclosure", "media", "claims"] },
   "disclosure.safe-area": { title: "Disclosure and captions stay inside the platform cut's safe area", bindsTo: ["platformCut", "disclosure", "captions", "manifest.layout"] },

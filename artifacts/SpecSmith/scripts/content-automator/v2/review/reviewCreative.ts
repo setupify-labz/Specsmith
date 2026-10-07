@@ -66,6 +66,40 @@ export function narrationSpans(segments: readonly { readonly startSecond: number
   return spans;
 }
 
+/** The windows a sound-effect asset declares it plays in, from its renderer's recorded cue list. */
+export function declaredEffectWindows(cueList: unknown): { startSecond: number; endSecond: number }[] {
+  if (typeof cueList !== "string") return [];
+  try {
+    const cues = JSON.parse(cueList) as { atSecond?: unknown; seconds?: unknown }[];
+    return Array.isArray(cues)
+      ? cues.filter((cue) => Number.isFinite(cue?.atSecond) && Number.isFinite(cue?.seconds) && (cue.seconds as number) > 0)
+        .map((cue) => ({ startSecond: cue.atSecond as number, endSecond: (cue.atSecond as number) + (cue.seconds as number) }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Sound intervals no placed narration line (within 0.2 s) and no declared
+ * sound effect (within 0.05 s) accounts for. A detected interval often spans
+ * an effect and the line after it, so coverage is by the union of both.
+ */
+export function unexplainedSound(
+  sound: readonly { readonly start: number; readonly end: number }[],
+  spans: readonly { readonly startSecond: number; readonly endSecond: number }[],
+  effects: readonly { readonly startSecond: number; readonly endSecond: number }[],
+): { start: number; end: number }[] {
+  const blocks: { start: number; end: number }[] = [];
+  for (const window of [...spans.map((span) => ({ start: span.startSecond - 0.2, end: span.endSecond + 0.2 })),
+    ...effects.map((effect) => ({ start: effect.startSecond - 0.05, end: effect.endSecond + 0.05 }))].sort((a, b) => a.start - b.start)) {
+    const last = blocks.at(-1);
+    if (last && window.start <= last.end) last.end = Math.max(last.end, window.end);
+    else blocks.push({ ...window });
+  }
+  return sound.filter((interval) => !blocks.some((block) => interval.start >= block.start && interval.end <= block.end)).map((interval) => ({ ...interval }));
+}
+
 /** A production plan's caption cues, when it carries a caption task with structured cues. */
 export function plannedCaptionCues(plan: unknown): { startSecond: number; endSecond: number; text: string }[] | null {
   const platforms = (plan as { platforms?: unknown[] } | null)?.platforms;
@@ -448,13 +482,15 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
           block("narration.timing", "narration-missing-in-beat", `beat ${segment.beatIndex + 1}`, `${segment.startSecond}-${segment.endSecond}s`, "No sound where this beat's line is placed.", "narration");
         }
       }
-      const spans = narrationSpans(manifest.narrationSegments);
-      for (const interval of sound) {
-        const inside = spans.some((segment) => interval.start >= segment.startSecond - 0.2 && interval.end <= segment.endSecond + 0.2);
-        if (!inside) {
-          block("narration.timing", "sound-outside-segments", `${interval.start.toFixed(2)}-${interval.end.toFixed(2)}s`, "silencedetect",
-            "Audio plays where no narration segment was placed; a line may be running over the next screen.", "narration", ["narration.timing", "claims.screen"]);
-        }
+      // Sound is explained by a placed line, or by a sound effect the render
+      // declares (its asset's recorded cue windows), and only when that asset's
+      // bytes verified. Anything else is sound the plan did not place.
+      const effects = manifest.assets
+        .filter((asset) => asset.role === "sound-effect" && assetOk.get(asset.assetId))
+        .flatMap((asset) => declaredEffectWindows(asset.metadata.cueList));
+      for (const interval of unexplainedSound(sound, narrationSpans(manifest.narrationSegments), effects)) {
+        block("narration.timing", "sound-outside-segments", `${interval.start.toFixed(2)}-${interval.end.toFixed(2)}s`, "silencedetect",
+          "Audio plays where neither a placed narration line nor a declared sound effect is; a line may be running over the next screen.", "narration", ["narration.timing", "claims.screen"]);
       }
     }
 
