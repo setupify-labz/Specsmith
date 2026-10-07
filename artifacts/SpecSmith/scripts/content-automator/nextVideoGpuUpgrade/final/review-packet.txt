@@ -3,7 +3,7 @@ Verdict: awaiting-human-review
   AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 3 question(s) only a person can answer; final approval is impossible until these are resolved: rights-unknown.
   What this means: No machine-found defect in this exact cut. People must still decide every open gate; this is not an approval, and the cut may not be published or scheduled.
 Media: /home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final/render/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4
-  sha256 75e5a4380516af910016eb3011edfa5049c4394d5ca5f5b120f96a075898d5b1 · 1080x1920 · 30 fps · 24.5s · h264/aac
+  sha256 d78538cbc5e06673b593c6a70ddab21df90aafebb3a4f38096d3ee837a07d2eb · 1080x1920 · 30 fps · 24.5s · h264/aac
 Research: gpu-upgrade-gains-by-game-1440p-high (production)
 Only a person can decide (3):
   - [safe-area-unverified] platform cut — Whether the platform's own interface covers the disclosure or captions is unknown; check on a real phone in the app.

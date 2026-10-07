@@ -25,6 +25,22 @@ export interface MotionCompositorState {
    */
   layout?: BandedLayout;
   disclosureTaskId?: string;
+  /**
+   * Master the final mix to a loudness target (EBU R128). Absent: the mix is
+   * left as is. See masterLoudness: one constant gain for the whole mix, so
+   * voice and effects keep their balance, and a 4x-oversampled lookahead
+   * limiter that touches only peaks above the true-peak ceiling.
+   */
+  loudness?: LoudnessTarget;
+}
+
+export interface LoudnessTarget {
+  /** Integrated loudness, LUFS (e.g. -16). */
+  integratedLufs: number;
+  /** Highest true peak allowed in the final encode, dBTP (e.g. -1.5). */
+  truePeakDbtp: number;
+  /** How close the final encode's integrated loudness must land, LU. Default 0.5. */
+  toleranceLu?: number;
 }
 
 export interface MotionCompositorConfig {
@@ -145,7 +161,73 @@ export function parseMotionCompositorState(input: unknown): MotionCompositorStat
       throw new MotionCompositorError("bad-layout", error instanceof Error ? error.message : String(error));
     }
   }
-  return { durationSeconds, fps, visualTimeline, voiceTaskId, captionTaskId, musicTaskId, ...(layout ? { layout, disclosureTaskId } : {}) };
+  let loudness: LoudnessTarget | undefined;
+  if (raw.loudness !== undefined) {
+    const target = raw.loudness as Partial<LoudnessTarget> | null;
+    const integratedLufs = Number(target?.integratedLufs), truePeakDbtp = Number(target?.truePeakDbtp);
+    const toleranceLu = target?.toleranceLu === undefined ? 0.5 : Number(target.toleranceLu);
+    if (!Number.isFinite(integratedLufs) || integratedLufs > -5 || integratedLufs < -40 || !Number.isFinite(truePeakDbtp) || truePeakDbtp > 0 || truePeakDbtp < -12 ||
+        !Number.isFinite(toleranceLu) || toleranceLu <= 0 || toleranceLu > 2) {
+      throw new MotionCompositorError("malformed-state", "loudness needs integratedLufs in [-40, -5], truePeakDbtp in [-12, 0] and toleranceLu in (0, 2].");
+    }
+    loudness = { integratedLufs, truePeakDbtp, toleranceLu };
+  }
+  return { durationSeconds, fps, visualTimeline, voiceTaskId, captionTaskId, musicTaskId, ...(layout ? { layout, disclosureTaskId } : {}), ...(loudness ? { loudness } : {}) };
+}
+
+export interface LoudnessMeasurement {
+  /** EBU R128 integrated loudness, LUFS. */
+  readonly integratedLufs: number;
+  /** EBU R128 true peak (4x oversampled), dBTP. */
+  readonly truePeakDbtp: number;
+}
+
+/** Integrated loudness and true peak of a file's audio, by ffmpeg's ebur128 (peak=true). */
+export async function measureLoudness(ffmpegPath: string, path: string, timeoutMs = 120_000): Promise<LoudnessMeasurement> {
+  const stderr = await new Promise<string>((resolvePromise, reject) => {
+    const child = spawn(ffmpegPath, ["-hide_banner", "-nostats", "-i", path, "-vn", "-af", "ebur128=peak=true", "-f", "null", "-"], { stdio: ["ignore", "ignore", "pipe"] });
+    const err: Buffer[] = [];
+    const timer = setTimeout(() => child.kill("SIGKILL"), timeoutMs);
+    child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
+    child.on("error", (error) => { clearTimeout(timer); reject(new MotionCompositorError("process-launch", `Could not launch ${ffmpegPath}: ${error.message}`)); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      const text = Buffer.concat(err).toString("utf8");
+      code === 0 ? resolvePromise(text) : reject(new MotionCompositorError("process-failed", `Loudness measurement failed: ${text.slice(-600)}`));
+    });
+  });
+  const summary = stderr.slice(stderr.lastIndexOf("Summary:"));
+  const integrated = /I:\s+(-?[\d.]+)\s+LUFS/.exec(summary);
+  const peak = /True peak:\s+Peak:\s+(-?[\d.]+|-inf)\s+dBFS/.exec(summary);
+  if (!integrated || !peak) throw new MotionCompositorError("validation-failed", "The loudness measurement could not be read; refusing to call the mix mastered.");
+  return { integratedLufs: Number(integrated[1]), truePeakDbtp: peak[1] === "-inf" ? -Infinity : Number(peak[1]) };
+}
+
+/** The voice and effects mixed exactly as the final mux mixes them, as 48 kHz PCM. */
+export async function mixAudio(options: { ffmpegPath: string; voicePath: string; musicPath?: string; durationSeconds: number; outputPath: string; timeoutMs: number }): Promise<void> {
+  const args = ["-y", "-i", options.voicePath];
+  if (options.musicPath) args.push("-stream_loop", "-1", "-i", options.musicPath);
+  const graph = options.musicPath
+    ? "[0:a]volume=1.0[voice];[1:a]volume=0.14[music];[voice][music]amix=inputs=2:duration=first:normalize=0,apad[aout]"
+    : "[0:a]apad[aout]";
+  args.push("-filter_complex", graph, "-map", "[aout]", "-t", options.durationSeconds.toFixed(3), "-ar", "48000", "-c:a", "pcm_s24le", options.outputPath);
+  await runProcess(options.ffmpegPath, args, options.timeoutMs);
+}
+
+/**
+ * One constant gain, then a lookahead limiter run at 4x the sample rate so it
+ * catches inter-sample peaks, with its delay compensated (latency) so the
+ * voice stays on its timing and its auto-level off so it adds no gain of its
+ * own. Below the ceiling it does nothing: quiet sounds, the effects among
+ * them, keep exactly their level relative to the voice.
+ */
+export function masterChain(gainDb: number, ceilingDbfs: number): string {
+  const limit = Math.pow(10, ceilingDbfs / 20);
+  return `volume=${gainDb.toFixed(3)}dB,aresample=192000,alimiter=limit=${limit.toFixed(6)}:attack=5:release=50:level=false:latency=true,aresample=48000`;
+}
+
+async function applyMaster(options: { ffmpegPath: string; inputPath: string; outputPath: string; gainDb: number; ceilingDbfs: number; timeoutMs: number }): Promise<void> {
+  await runProcess(options.ffmpegPath, ["-y", "-i", options.inputPath, "-af", masterChain(options.gainDb, options.ceilingDbfs), "-c:a", "pcm_s24le", options.outputPath], options.timeoutMs);
 }
 
 function safeFilePart(value: string): string {
@@ -518,6 +600,64 @@ async function muxFinal(options: {
   await runProcess(options.ffmpegPath, args, options.timeoutMs);
 }
 
+/**
+ * Master a mix to a loudness target, verified on the ENCODE: `encode` turns
+ * the mastered PCM into the delivered file and returns its path, and that
+ * file is what is measured. AAC can move the true peak, so the limiter's
+ * ceiling is lowered and the gain trimmed until the encoded file itself meets
+ * both targets; if it cannot within a few passes, this refuses rather than
+ * returning an unmastered or clipped mix.
+ */
+export async function masterToLoudness(options: {
+  ffmpegPath: string;
+  mixPath: string;
+  masteredPath: string;
+  target: LoudnessTarget;
+  timeoutMs: number;
+  encode: (masteredPath: string) => Promise<string>;
+}): Promise<Record<string, string | number>> {
+  const { ffmpegPath, mixPath, masteredPath, target, timeoutMs } = options;
+  const tolerance = target.toleranceLu ?? 0.5;
+  const before = await measureLoudness(ffmpegPath, mixPath, timeoutMs);
+  if (!Number.isFinite(before.integratedLufs)) throw new MotionCompositorError("validation-failed", "The mix has no measurable loudness.");
+  let gainDb = target.integratedLufs - before.integratedLufs;
+  // AAC adds about 0.1 dB of true peak here; the loop lowers the ceiling if the encode needs more.
+  let ceilingDbfs = target.truePeakDbtp - 0.5;
+  let final: LoudnessMeasurement | null = null;
+  let passes = 0;
+  while (passes < 6) {
+    passes += 1;
+    await applyMaster({ ffmpegPath, inputPath: mixPath, outputPath: masteredPath, gainDb, ceilingDbfs, timeoutMs });
+    final = await measureLoudness(ffmpegPath, await options.encode(masteredPath), timeoutMs);
+    const loudOk = Math.abs(final.integratedLufs - target.integratedLufs) <= tolerance;
+    const peakOk = final.truePeakDbtp <= target.truePeakDbtp;
+    if (loudOk && peakOk) break;
+    if (!peakOk) ceilingDbfs -= final.truePeakDbtp - target.truePeakDbtp + 0.2;
+    if (!loudOk) gainDb += target.integratedLufs - final.integratedLufs;
+    // Past these, meeting the loudness would mean crushing the audio into the limiter.
+    if (ceilingDbfs < target.truePeakDbtp - 6 || gainDb > 30) break;
+  }
+  if (!final || Math.abs(final.integratedLufs - target.integratedLufs) > tolerance || final.truePeakDbtp > target.truePeakDbtp) {
+    throw new MotionCompositorError("validation-failed",
+      `Could not master to ${target.integratedLufs} LUFS / ${target.truePeakDbtp} dBTP: the encode measured ${final?.integratedLufs} LUFS, ${final?.truePeakDbtp} dBTP. Refusing to ship an unmastered or clipped mix.`);
+  }
+  const limited = await measureLoudness(ffmpegPath, masteredPath, timeoutMs);
+  return {
+    loudnessTargetLufs: target.integratedLufs,
+    truePeakCeilingDbtp: target.truePeakDbtp,
+    mixIntegratedLufsBefore: before.integratedLufs,
+    mixTruePeakDbtpBefore: before.truePeakDbtp,
+    masterGainDb: Number(gainDb.toFixed(2)),
+    limiterCeilingDbfs: Number(ceilingDbfs.toFixed(2)),
+    masteredIntegratedLufs: limited.integratedLufs,
+    masteredTruePeakDbtp: limited.truePeakDbtp,
+    finalIntegratedLufs: final.integratedLufs,
+    finalTruePeakDbtp: final.truePeakDbtp,
+    masteringPasses: passes,
+    masteringMethod: "constant gain + 4x-oversampled lookahead limiter (alimiter, level=false, latency=true); EBU R128 measured on the encode",
+  };
+}
+
 export function createMotionCompositorAdapter(config: MotionCompositorConfig): RenderAdapter {
   const ffmpegPath = config.ffmpegPath?.trim() || process.env.SPECSMITH_FFMPEG_PATH?.trim() || "ffmpeg";
   const ffprobePath = config.ffprobePath?.trim() || process.env.SPECSMITH_FFPROBE_PATH?.trim() || "ffprobe";
@@ -622,12 +762,12 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
 
         const filename = [context.packageId, context.platform, context.task.taskId].map(safeFilePart).join("-");
         const outputPath = resolve(config.outputDir, `${filename}.mp4`);
-        await muxFinal({
+        const mux = (audio: { voicePath: string; musicPath?: string }) => muxFinal({
           ffmpegPath,
           baseVideoPath,
-          voicePath,
+          voicePath: audio.voicePath,
           captionPath,
-          musicPath,
+          musicPath: audio.musicPath,
           disclosure,
           outputPath,
           durationSeconds: finalDuration,
@@ -635,6 +775,16 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
           preset,
           timeoutMs,
         });
+        let mastering: Record<string, string | number> = {};
+        if (!state.loudness) {
+          await mux({ voicePath, musicPath });
+        } else {
+          await mixAudio({ ffmpegPath, voicePath, musicPath, durationSeconds: finalDuration, outputPath: join(workDir, "mix.wav"), timeoutMs });
+          mastering = await masterToLoudness({
+            ffmpegPath, mixPath: join(workDir, "mix.wav"), masteredPath: join(workDir, "mastered.wav"), target: state.loudness, timeoutMs,
+            encode: async (masteredPath) => { await mux({ voicePath: masteredPath }); return outputPath; },
+          });
+        }
 
         const probe = await probeMedia(ffprobePath, outputPath, timeoutMs);
         if (probe.width !== width || probe.height !== height) {
@@ -680,6 +830,7 @@ export function createMotionCompositorAdapter(config: MotionCompositorConfig): R
             musicIncluded: Boolean(musicPath),
             layout: state.layout ? "banded" : "full-frame",
             disclosureTaskId: state.disclosureTaskId ?? "",
+            ...mastering,
           },
         }];
       } finally {

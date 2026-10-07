@@ -33,7 +33,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { DEMO_MISSION, DEMO_WORKFLOW_DIRECTORY } from "./creativeFileWorkflowCli.ts";
 import { createCaptionRenderAdapter } from "./captionRender.ts";
 import { createLocalFixtureTtsAdapter } from "./localFixtureTts.ts";
-import { createMotionCompositorAdapter } from "./motionCompositor.ts";
+import { createMotionCompositorAdapter, type LoudnessTarget } from "./motionCompositor.ts";
 import { RenderAdapterRegistry, renderPlatformPlan } from "./rendering.ts";
 import { createDeterministicUiRenderAdapter } from "./uiRender/deterministicUiRenderAdapter.ts";
 import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts";
@@ -79,6 +79,8 @@ export interface OfflineRenderOptions {
   readonly narrationSegments?: readonly { readonly beatIndex: number; readonly startSecond: number; readonly endSecond: number }[];
   /** Synthesized sound effects under the narration (soundEffects.ts). None by default. */
   readonly soundEffects?: readonly SoundCue[];
+  /** Master the final mix to this loudness (motionCompositor). Unmastered by default. */
+  readonly loudness?: LoudnessTarget;
 }
 
 export async function renderProposalOffline(directory: string, conceptId: string, outputRoot?: string, options: OfflineRenderOptions = {}) {
@@ -100,7 +102,7 @@ export async function renderProposalOffline(directory: string, conceptId: string
   const pkg = buildCreativeProposalProductionPlan({
     packageId: `master6-${conceptId}`, ideaId: conceptId, campaignId: mission.missionId,
     feature: "compare", route: mission.productDestination, subjectIds: [],
-  }, proposal, { soundEffects: options.soundEffects });
+  }, proposal, { soundEffects: options.soundEffects, loudness: options.loudness });
   const plan = pkg.platforms[0];
   if (narration === "saved-take" && !options.savedTake) throw new Error("narration \"saved-take\" needs the saved take; nothing is generated here.");
   await rm(outputDir, { recursive: true, force: true });

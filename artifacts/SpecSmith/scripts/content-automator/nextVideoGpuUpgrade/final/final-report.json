@@ -2,8 +2,8 @@
   "label": "FINAL CUT, narrated by the saved Liam take. Reviewed by MASTER #7; human gates open. Not approved, not scheduled, not published.",
   "video": {
     "path": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final/gpu-upgrade-final.mp4",
-    "sha256": "75e5a4380516af910016eb3011edfa5049c4394d5ca5f5b120f96a075898d5b1",
-    "bytes": 1084284
+    "sha256": "d78538cbc5e06673b593c6a70ddab21df90aafebb3a4f38096d3ee837a07d2eb",
+    "bytes": 1156428
   },
   "take": {
     "manifest": "/home/user/nv-wt/artifacts/SpecSmith/scripts/content-automator/nextVideoGpuUpgrade/take/gpu-upgrade-liam.json",
@@ -75,19 +75,54 @@
     }
   ],
   "mix": {
-    "voice": {
-      "integratedLufs": -24.1,
-      "peakDbfs": -4.4
-    },
-    "soundEffectsAsMixed": {
-      "integratedLufs": -36.7,
-      "peakDbfs": -20.2
+    "target": {
+      "integratedLufs": -16,
+      "truePeakDbtp": -1.5,
+      "toleranceLu": 0.3
     },
     "final": {
-      "integratedLufs": -24.2,
-      "peakDbfs": -4.2
+      "integratedLufs": -16.1,
+      "truePeakDbtp": -2
     },
-    "effectsPeakBelowVoicePeakDb": 15.8,
+    "meetsTarget": true,
+    "mastering": {
+      "loudnessTargetLufs": -16,
+      "truePeakCeilingDbtp": -1.5,
+      "mixIntegratedLufsBefore": -24.2,
+      "mixTruePeakDbtpBefore": -4.1,
+      "masterGainDb": 8.6,
+      "limiterCeilingDbfs": -2,
+      "masteredIntegratedLufs": -16.1,
+      "masteredTruePeakDbtp": -2,
+      "finalIntegratedLufs": -16.1,
+      "finalTruePeakDbtp": -2,
+      "masteringPasses": 2,
+      "masteringMethod": "constant gain + 4x-oversampled lookahead limiter (alimiter, level=false, latency=true); EBU R128 measured on the encode"
+    },
+    "before": {
+      "voice": {
+        "integratedLufs": -24.1,
+        "peakDbfs": -4.4
+      },
+      "soundEffectsAsMixed": {
+        "integratedLufs": -36.7,
+        "peakDbfs": -20.2
+      },
+      "effectsPeakBelowVoicePeakDb": 15.8,
+      "effectsPeakAboveVoiceLoudnessDb": 3.9
+    },
+    "after": {
+      "voice": {
+        "integratedLufs": -16,
+        "peakDbfs": -2
+      },
+      "soundEffectsAsMixed": {
+        "integratedLufs": -28.1,
+        "peakDbfs": -11.6
+      },
+      "effectsPeakBelowVoicePeakDb": 9.6,
+      "effectsPeakAboveVoiceLoudnessDb": 4.4
+    },
     "cues": [
       {
         "atSecond": 0.05,

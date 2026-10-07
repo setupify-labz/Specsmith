@@ -9,6 +9,7 @@ import { buildProductionPlanPackage } from "../../productionPlan.ts";
 import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
 import type { SoundCue } from "../../soundEffects.ts";
+import type { LoudnessTarget } from "../../motionCompositor.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
 import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, verticalOverflow, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
@@ -187,7 +188,7 @@ export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateI
 export function buildCreativeProposalProductionPlan(
   base: Omit<ScriptStoryboardPackage, "scripts">,
   proposal: NonNullable<ReturnType<typeof runCreativeProposalPass>["selected"]>,
-  options: { readonly soundEffects?: readonly SoundCue[] } = {},
+  options: { readonly soundEffects?: readonly SoundCue[]; readonly loudness?: LoudnessTarget } = {},
 ) {
   if (!proposal.contractEligible) throw new Error("A blocked proposal cannot enter the production contract.");
   const viewById = new Map(proposal.views.map((view) => [view.stateIdentifier, view] as const));
@@ -264,6 +265,11 @@ export function buildCreativeProposalProductionPlan(
         captions.captionRenderState = { ...captions.captionRenderState, cues };
         platform.qualityChecks.push(`Beat ${[...carried].map((index) => index + 1).join(", ")}: the caption is the line the motion graphic draws, so it is shown once, in the graphic.`);
       }
+    }
+
+    if (options.loudness) {
+      compose.compositorState = { ...compose.compositorState, loudness: { ...options.loudness } };
+      platform.qualityChecks.push(`Final mix mastered to ${options.loudness.integratedLufs} LUFS with true peak at most ${options.loudness.truePeakDbtp} dBTP, measured on the encode.`);
     }
 
     if (banded) {

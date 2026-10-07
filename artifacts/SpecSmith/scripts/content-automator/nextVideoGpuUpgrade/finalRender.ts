@@ -16,7 +16,9 @@
 // 4. renderProposalOffline: the production plan and adapters, with the saved
 //    take as narration and synthesized sound effects under it; the banded
 //    frame check and its broken controls.
-// 5. The mix is measured: the effects stay well under the voice.
+// 5. The mix is mastered in the compositor to FINAL_LOUDNESS (one constant
+//    gain and a true-peak limiter), and measured: the encode's loudness and
+//    true peak, and the voice-to-effects balance before and after mastering.
 // 6. MASTER #7 reviews the exact MP4 and writes its review packet. Human gates
 //    stay open; nothing is approved, scheduled or published.
 
@@ -26,6 +28,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { renderProposalOffline } from "../master6OfflineRender.ts";
+import { masterChain, measureLoudness } from "../motionCompositor.ts";
 import { evaluateAuthoredBatch } from "../v2/creative/fileWorkflowPass.ts";
 import { buildCreativeProposalProductionPlan } from "../v2/creative/proposalPass.ts";
 import { REQUIRED_USE, type AssetRightsRecord, type PresentedClaim, type RenderManifest, type ReviewSubmission } from "../v2/review/inputs.ts";
@@ -96,6 +99,9 @@ export function presentedClaims(beats: readonly { readonly id: string }[]): Pres
   return claims;
 }
 
+/** The final mix: about -16 LUFS integrated, true peak no higher than -1.5 dBTP, on the encode. */
+export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp: -1.5, toleranceLu: 0.3 });
+
 /** The compositor's fixed gain for the music-sfx track (motionCompositor.muxFinal). */
 export const SFX_MIX_GAIN = 0.14;
 
@@ -118,17 +124,35 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const { mission, result } = gpuUpgradeMission();
   const renderDir = join(outputDir, "render");
   const { report, reportPath } = await renderProposalOffline(workflowDir, FINAL_CONCEPT, renderDir, {
-    mission, narration: "saved-take", savedTake: take.take, narrationSegments: narrationSegmentsFor(beats), soundEffects,
+    mission, narration: "saved-take", savedTake: take.take, narrationSegments: narrationSegmentsFor(beats), soundEffects, loudness: FINAL_LOUDNESS,
   });
 
-  // The mix: effects under the voice, measured on the files that were mixed.
+  // The mix. The compositor mastered it and recorded how (gain, limiter
+  // ceiling); here the voice alone and the effects alone are put through that
+  // same chain, so the balance between them is measured, not assumed: the
+  // gain moves both equally, and the limiter, set well above the effects,
+  // can only take a little off the voice's loudest peaks.
+  const meta = report.video.metadata as Record<string, unknown>;
+  const gainDb = Number(meta.masterGainDb), ceilingDbfs = Number(meta.limiterCeilingDbfs);
+  if (!Number.isFinite(gainDb) || !Number.isFinite(ceilingDbfs)) throw new Error("The compositor recorded no mastering; refusing to call the mix mastered.");
+  const chain = masterChain(gainDb, ceilingDbfs);
   const sfxFile = readdirSync(join(renderDir, "sfx")).find((file) => file.endsWith(".wav"));
-  const voice = loudness(take.take.audioPath);
-  const sfxInMix = sfxFile ? loudness(join(renderDir, "sfx", sfxFile), `volume=${SFX_MIX_GAIN}`) : { integratedLufs: null, peakDbfs: null };
-  const final = loudness(report.video.path);
+  if (!sfxFile) throw new Error("No sound-effect track was rendered.");
+  const sfxPath = join(renderDir, "sfx", sfxFile);
+  const voiceBefore = loudness(take.take.audioPath), voiceAfter = loudness(take.take.audioPath, chain);
+  const sfxBefore = loudness(sfxPath, `volume=${SFX_MIX_GAIN}`), sfxAfter = loudness(sfxPath, `volume=${SFX_MIX_GAIN},${chain}`);
+  const gap = (voice: { integratedLufs: number | null; peakDbfs: number | null }, sfx: { peakDbfs: number | null }) => ({
+    effectsPeakBelowVoicePeakDb: voice.peakDbfs !== null && sfx.peakDbfs !== null ? Math.round((voice.peakDbfs - sfx.peakDbfs) * 10) / 10 : null,
+    effectsPeakAboveVoiceLoudnessDb: voice.integratedLufs !== null && sfx.peakDbfs !== null ? Math.round((sfx.peakDbfs - voice.integratedLufs) * 10) / 10 : null,
+  });
+  const final = await measureLoudness(process.env.SPECSMITH_FFMPEG_PATH ?? "ffmpeg", report.video.path);
   const mix = {
-    voice, soundEffectsAsMixed: sfxInMix, final,
-    effectsPeakBelowVoicePeakDb: voice.peakDbfs !== null && sfxInMix.peakDbfs !== null ? Math.round((voice.peakDbfs - sfxInMix.peakDbfs) * 10) / 10 : null,
+    target: FINAL_LOUDNESS,
+    final,
+    meetsTarget: Math.abs(final.integratedLufs - FINAL_LOUDNESS.integratedLufs) <= FINAL_LOUDNESS.toleranceLu && final.truePeakDbtp <= FINAL_LOUDNESS.truePeakDbtp,
+    mastering: Object.fromEntries(Object.entries(meta).filter(([key]) => /^(loudness|truePeak|mix|master|limiter|final|mastering)/.test(key))),
+    before: { voice: voiceBefore, soundEffectsAsMixed: sfxBefore, ...gap(voiceBefore, sfxBefore) },
+    after: { voice: voiceAfter, soundEffectsAsMixed: sfxAfter, ...gap(voiceAfter, sfxAfter) },
     cues: soundEffects,
   };
 
@@ -138,7 +162,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const plan = buildCreativeProposalProductionPlan({
     packageId: `master6-${FINAL_CONCEPT}`, ideaId: FINAL_CONCEPT, campaignId: mission.missionId,
     feature: "compare", route: mission.productDestination, subjectIds: [],
-  }, proposal, { soundEffects }).platforms[0];
+  }, proposal, { soundEffects, loudness: FINAL_LOUDNESS }).platforms[0];
   const manifestPath = String(report.renderManifest);
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as RenderManifest;
   const storyboard = proposal.storyboard;
@@ -163,7 +187,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
         // The commercial-use terms of the account are not recorded in this repository; a person confirms them.
         license: { kind: "unknown", evidence: null, permittedUse: [], attribution: null, expiresAt: null, scope: null },
         generation: { generator: dryRun ? "local fixture (dry run)" : "elevenlabs-text-to-speech-with-timestamps", inputs: `the approved script, provider text sha256 ${take.take.providerTextSha256}` },
-        transformations: ["synthesized effects mixed under it at the compositor's music gain", "AAC encode"],
+        transformations: ["synthesized effects mixed under it at the compositor's music gain", "mastered with the effects to -16 LUFS: one constant gain and a true-peak limiter", "AAC encode"],
         placeholder: dryRun ? { isPlaceholder: true, why: "DRY RUN: a fixture voice stands in for the take to prove the edit's mechanics." } : { isPlaceholder: false, why: null },
       };
       default: throw new Error(`No rights record is written for ${asset.role} ${asset.assetId}; add one rather than letting it pass unrecorded.`);
@@ -221,9 +245,10 @@ if (isMain) {
     console.log(`sha256: ${summary.video.sha256}`);
     console.log(`frame check: ${summary.frameCheck.ok ? "passed" : "FAILED"} (${summary.frameCheck.samples} samples)`);
     for (const control of summary.controls) console.log(`control ${control.control}: ${control.refused ? "refused" : "NOT REFUSED"}`);
-    console.log(`mix: voice peak ${summary.mix.voice.peakDbfs} dBFS, effects as mixed peak ${summary.mix.soundEffectsAsMixed.peakDbfs} dBFS (${summary.mix.effectsPeakBelowVoicePeakDb} dB under)`);
+    console.log(`loudness: ${summary.mix.final.integratedLufs} LUFS, true peak ${summary.mix.final.truePeakDbtp} dBTP (target ${summary.mix.target.integratedLufs} LUFS, <= ${summary.mix.target.truePeakDbtp} dBTP): ${summary.mix.meetsTarget ? "met" : "NOT MET"}`);
+    console.log(`balance: effects peak ${summary.mix.before.effectsPeakAboveVoiceLoudnessDb} dB vs voice loudness before, ${summary.mix.after.effectsPeakAboveVoiceLoudnessDb} dB after; effects peak ${summary.mix.before.effectsPeakBelowVoicePeakDb} / ${summary.mix.after.effectsPeakBelowVoicePeakDb} dB under the voice peak`);
     console.log(`review packet: ${summary.reviewPacket.verdict} (${summary.reviewPacket.text})`);
     console.log(`report: ${summaryPath}`);
-    if (!summary.frameCheck.ok || summary.controls.some((control) => !control.refused)) process.exitCode = 1;
+    if (!summary.frameCheck.ok || summary.controls.some((control) => !control.refused) || !summary.mix.meetsTarget) process.exitCode = 1;
   }).catch((error) => { console.error(error); process.exitCode = 1; });
 }

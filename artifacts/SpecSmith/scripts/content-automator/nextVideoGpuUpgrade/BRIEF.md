@@ -351,6 +351,36 @@ The trimmed version is predicted at about 23.6 s, with a 2.7 s hook.
 
 **Review fix found by the real take.** Liam pauses about 0.7 s between lines, so each cut whoosh plays in a pause. MASTER #7's narration-timing check measured all audio and reported the whooshes as sound outside the narration. The check now accepts sound inside the render's declared sound-effect windows, only when that asset's bytes verified, and binds the inputs it reads. The video did not change.
 
+## Mastered final mix (2026-10-07)
+
+**What changed:**
+- **Audio only.** The video stream is byte-identical to the unmastered cut, and every decoded frame matches.
+- **Same take, timing and picture.** No new voice was generated.
+- **New file:** `gpu-upgrade-final.mp4`, SHA-256 `d78538cbc5e06673b593c6a70ddab21df90aafebb3a4f38096d3ee837a07d2eb`, 24.5 s, AAC at 48 kHz.
+- **Re-bound:** the render manifest and the MASTER #7 review packet were regenerated for these bytes.
+
+**Loudness, measured on the encode:**
+
+| Meter | Integrated | True peak | Range |
+|---|---|---|---|
+| EBU R128 (`ebur128 peak=true`) | −16.1 LUFS | −2.0 dBTP | |
+| `loudnorm` analyzer (cross-check) | −16.12 LUFS | −1.96 dBTP | 4.6 LU |
+
+The sample peak is −1.96 dBFS and there is no clipping (flat factor 0).
+
+**Method** (the compositor's `loudness` option, `masterToLoudness`):
+- **Gain:** one constant +8.6 dB for the whole mix, so voice and effects move together.
+- **Limiter:** a 4×-oversampled lookahead limiter at −2.0 dBFS, with no auto-level and its delay compensated.
+- **Verification:** the encode itself is measured, iterating until both targets hold (two passes here).
+- **Not used:** dynamic normalization (`loudnorm`), because it would ride the gain up in Liam's pauses, where the effects sit.
+
+**Balance and timing:**
+- **Effects vs voice loudness:** effects peak 3.9 dB above the voice's integrated loudness before mastering, 4.4 dB after.
+- **Limiter activity:** it acts only on the voice's transients — more than 1 dB in 8.8% of speech, more than 3 dB in 1.0%, at most 6.2 dB. The effects never reach it.
+- **Timing:** speech onsets inside lines match the take to within about 10 ms.
+
+**Checks:** the frame check passed and its three controls were refused. MASTER #7 is `awaiting-human-review`, with the same open items as before.
+
 ## Open before production
 
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.
