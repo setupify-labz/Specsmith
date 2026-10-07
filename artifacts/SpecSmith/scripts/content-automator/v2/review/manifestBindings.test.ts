@@ -33,7 +33,8 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 /** Only the production plan changes. */
 const changePlan = (submission: ReviewSubmission): ReviewSubmission =>
   ({ ...submission, productionPlan: { ...(submission.productionPlan as object), beats: 4 } });
-const PLAN_CHECKS: CheckId[] = ["media.bytes"];
+/** The render's plan identity, and the planned caption cues the caption check reads from the plan. */
+const PLAN_CHECKS: CheckId[] = ["media.bytes", "captions.rendered-text"];
 
 /**
  * Only render-manifest metadata changes: beat 2's capture record now says it
