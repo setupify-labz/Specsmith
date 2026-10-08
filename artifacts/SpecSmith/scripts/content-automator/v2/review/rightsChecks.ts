@@ -36,6 +36,7 @@ function kindFromRenderer(asset: RenderManifestAsset): AssetKind | null {
   if (renderer === "specsmith-disclosure-overlay") return "disclosure-panel";
   if (asset.role === "narration") return "narration";
   if (renderer === "specsmith-synth-sound-effects") return "sound-effect";
+  if (renderer === "specsmith-synth-music-and-effects") return "music";
   if (asset.role === "captions") return "caption-render";
   return null;
 }

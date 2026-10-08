@@ -1,0 +1,237 @@
+{
+  "label": "FINAL CUT, MUSIC ALTERNATIVE: the saved Liam take over a composed background bed. Reviewed by MASTER #7; human gates open. Not approved, not scheduled, not published.",
+  "video": {
+    "path": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final-music/gpu-upgrade-final.mp4",
+    "sha256": "a2ae3a278204c5db099580f003722ef695144756cf8f3c0b7fb44f6360e27395",
+    "bytes": 1165255
+  },
+  "take": {
+    "manifest": "/home/user/nv-wt/artifacts/SpecSmith/scripts/content-automator/nextVideoGpuUpgrade/take/gpu-upgrade-liam.json",
+    "audioSha256": "714123290712ec494e6c51d51050c67919e63c8298f2baeeb72f6bb2baabf8a3",
+    "providerTextSha256": "fd154a03bcda906e7901b6a97be7d879c9ae4d1e0098ec1777364e692a82d19e",
+    "scriptTextSha256": "d677f8ddbf17d5598bff79fe28bd083a300cb78cc5bedfdd4a06622322871686",
+    "providerReportedCharacterCost": 126
+  },
+  "beats": [
+    {
+      "index": 0,
+      "id": "hook",
+      "startSecond": 0,
+      "endSecond": 2.8,
+      "lineStart": 0,
+      "lineEnd": 2.136,
+      "caption": "Same CPU. New GPU.",
+      "narration": "Which game gets the bigger percentage boost?"
+    },
+    {
+      "index": 1,
+      "id": "fps-aw",
+      "startSecond": 2.8,
+      "endSecond": 8.4,
+      "lineStart": 2.949,
+      "lineEnd": 7.814,
+      "caption": "Alan Wake 2: 43 → 65 Estimated FPS",
+      "narration": "Alan Wake 2: 43 to 65 estimated FPS."
+    },
+    {
+      "index": 2,
+      "id": "fps-val",
+      "startSecond": 8.4,
+      "endSecond": 12.4,
+      "lineStart": 8.51,
+      "lineEnd": 11.9,
+      "caption": "Valorant: 263 → 305 Estimated FPS",
+      "narration": "Valorant: 263 to 305."
+    },
+    {
+      "index": 3,
+      "id": "percent",
+      "startSecond": 12.4,
+      "endSecond": 18.6,
+      "lineStart": 12.597,
+      "lineEnd": 18.1,
+      "caption": "Estimated percentage boost: 51% vs 16%",
+      "narration": "That's an estimated 51% boost for Alan Wake 2, and 16% for Valorant."
+    },
+    {
+      "index": 4,
+      "id": "explain",
+      "startSecond": 18.6,
+      "endSecond": 21.4,
+      "lineStart": 18.796,
+      "lineEnd": 20.805,
+      "caption": "Same upgrade. Different gains by game.",
+      "narration": "Same upgrade, different gains by game."
+    },
+    {
+      "index": 5,
+      "id": "ask",
+      "startSecond": 21.4,
+      "endSecond": 24.5,
+      "lineStart": 21.501,
+      "lineEnd": 23.22,
+      "caption": "Which game would you upgrade for? specsmithpc.com/compare",
+      "narration": "Which game would you upgrade for?"
+    }
+  ],
+  "mix": {
+    "target": {
+      "integratedLufs": -16,
+      "truePeakDbtp": -1.5,
+      "toleranceLu": 0.3
+    },
+    "final": {
+      "integratedLufs": -16.2,
+      "truePeakDbtp": -1.9
+    },
+    "meetsTarget": true,
+    "mastering": {
+      "loudnessTargetLufs": -16,
+      "truePeakCeilingDbtp": -1.5,
+      "mixIntegratedLufsBefore": -24.1,
+      "mixTruePeakDbtpBefore": -4.1,
+      "masterGainDb": 8.5,
+      "limiterCeilingDbfs": -2,
+      "masteredIntegratedLufs": -16.1,
+      "masteredTruePeakDbtp": -2,
+      "finalIntegratedLufs": -16.2,
+      "finalTruePeakDbtp": -1.9,
+      "masteringPasses": 2,
+      "masteringMethod": "constant gain + 4x-oversampled lookahead limiter (alimiter, level=false, latency=true); EBU R128 measured on the encode"
+    },
+    "before": {
+      "voice": {
+        "integratedLufs": -24.1,
+        "peakDbfs": -4.4
+      },
+      "soundEffectsAsMixed": {
+        "integratedLufs": -36.7,
+        "peakDbfs": -20.2
+      },
+      "effectsPeakBelowVoicePeakDb": 15.8,
+      "effectsPeakAboveVoiceLoudnessDb": 3.9
+    },
+    "after": {
+      "voice": {
+        "integratedLufs": -16.1,
+        "peakDbfs": -2
+      },
+      "soundEffectsAsMixed": {
+        "integratedLufs": -28.2,
+        "peakDbfs": -11.7
+      },
+      "effectsPeakBelowVoicePeakDb": 9.7,
+      "effectsPeakAboveVoiceLoudnessDb": 4.4
+    },
+    "cues": [
+      {
+        "atSecond": 0.05,
+        "kind": "whoosh",
+        "reason": "the RTX 4060 -> RTX 5070 arrow draws"
+      },
+      {
+        "atSecond": 2.75,
+        "kind": "whoosh",
+        "reason": "cut to beat 2"
+      },
+      {
+        "atSecond": 3.4,
+        "kind": "tick",
+        "reason": "65 estimated FPS appears"
+      },
+      {
+        "atSecond": 8.35,
+        "kind": "whoosh",
+        "reason": "cut to beat 3"
+      },
+      {
+        "atSecond": 9,
+        "kind": "tick",
+        "reason": "305 estimated FPS appears"
+      },
+      {
+        "atSecond": 12.35,
+        "kind": "whoosh",
+        "reason": "cut to beat 4"
+      },
+      {
+        "atSecond": 13.2,
+        "kind": "pop",
+        "reason": "+51% appears"
+      },
+      {
+        "atSecond": 13.45,
+        "kind": "pop",
+        "reason": "+16% appears"
+      },
+      {
+        "atSecond": 18.55,
+        "kind": "whoosh",
+        "reason": "cut to beat 5"
+      },
+      {
+        "atSecond": 21.35,
+        "kind": "whoosh",
+        "reason": "cut to beat 6"
+      }
+    ],
+    "music": {
+      "bedFile": "youtube-shorts-audio__bed.wav",
+      "wholeAsMastered": {
+        "integratedLufs": -39,
+        "peakDbfs": -21.9
+      },
+      "belowVoiceLu": 22.9,
+      "openStretch": {
+        "integratedLufs": -34.7,
+        "peakDbfs": -24.3
+      },
+      "duckedStretch": {
+        "integratedLufs": -41.8,
+        "peakDbfs": -28.4
+      },
+      "duckDepthDb": 7.1
+    }
+  },
+  "frameCheck": {
+    "ok": true,
+    "samples": 14,
+    "failures": []
+  },
+  "controls": [
+    {
+      "control": "disclosure-blanked-after-2s",
+      "refused": true,
+      "failures": [
+        "At 3.00s the disclosure band does not show the verified disclosure panel (error 27.8).",
+        "At 5.60s the disclosure band does not show the verified disclosure panel (error 27.8).",
+        "At 8.60s the disclosure band does not show the verified disclosure panel (error 27.8).",
+        "At 10.40s the disclosure band does not show the verified disclosure panel (error 27.8)."
+      ]
+    },
+    {
+      "control": "disclosure-drawn-over-story",
+      "refused": true,
+      "failures": [
+        "At 0.00s the story band does not match beat 1's motion graphic (error 9.1, 3.19% of pixels changed): something is drawn over it, or it shows another picture.",
+        "At 0.20s the story band does not match beat 1's motion graphic (error 9.1, 3.18% of pixels changed): something is drawn over it, or it shows another picture.",
+        "At 1.40s the story band does not match beat 1's motion graphic (error 10.2, 3.97% of pixels changed): something is drawn over it, or it shows another picture.",
+        "At 3.00s the story band does not match beat 2's motion graphic (error 8.5, 3.15% of pixels changed): something is drawn over it, or it shows another picture."
+      ]
+    },
+    {
+      "control": "beat-2-repeats-beat-1-capture",
+      "refused": true,
+      "failures": [
+        "At 3.00s the story band does not match beat 2's motion graphic (error 29.3, 13.58% of pixels changed): something is drawn over it, or it shows another picture.",
+        "At 5.60s the story band does not match beat 2's motion graphic (error 29.6, 13.87% of pixels changed): something is drawn over it, or it shows another picture."
+      ]
+    }
+  ],
+  "reviewPacket": {
+    "json": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final-music/review/review-packet.json",
+    "text": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final-music/review/review-packet.txt",
+    "verdict": "awaiting-human-review"
+  },
+  "renderReport": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final-music/render/render-report.json"
+}

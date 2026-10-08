@@ -8,7 +8,7 @@ import { parseUiRenderRequest, stateIdentifier } from "../../uiRender/uiRenderSt
 import { buildProductionPlanPackage } from "../../productionPlan.ts";
 import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
-import type { SoundCue } from "../../soundEffects.ts";
+import type { MusicBedState, SoundCue } from "../../soundEffects.ts";
 import type { LoudnessTarget } from "../../motionCompositor.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
@@ -188,7 +188,7 @@ export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateI
 export function buildCreativeProposalProductionPlan(
   base: Omit<ScriptStoryboardPackage, "scripts">,
   proposal: NonNullable<ReturnType<typeof runCreativeProposalPass>["selected"]>,
-  options: { readonly soundEffects?: readonly SoundCue[]; readonly loudness?: LoudnessTarget } = {},
+  options: { readonly soundEffects?: readonly SoundCue[]; readonly musicBed?: MusicBedState; readonly loudness?: LoudnessTarget } = {},
 ) {
   if (!proposal.contractEligible) throw new Error("A blocked proposal cannot enter the production contract.");
   const viewById = new Map(proposal.views.map((view) => [view.stateIdentifier, view] as const));
@@ -238,8 +238,13 @@ export function buildCreativeProposalProductionPlan(
     const compose = platform.tasks.find((task) => task.capability === "motion-compositor") as ProductionTask & { compositorState?: Record<string, unknown> };
     const captions = platform.tasks.find((task) => task.capability === "caption-render") as ProductionTask & { captionRenderState?: Record<string, unknown> };
     if (music && options.soundEffects && options.soundEffects.length > 0) {
-      (music as ProductionTask & { soundEffectsState?: unknown }).soundEffectsState = { cues: [...options.soundEffects] };
-      music.purpose = "Restrained synthesized sound effects under the narration: cuts and figure reveals only. No music.";
+      (music as ProductionTask & { soundEffectsState?: unknown }).soundEffectsState = {
+        cues: [...options.soundEffects], ...(options.musicBed ? { musicBed: { ...options.musicBed, ducks: [...options.musicBed.ducks] } } : {}),
+      };
+      music.purpose = options.musicBed
+        ? "Restrained synthesized sound effects, and a quiet composed background bed ducked under the figures."
+        : "Restrained synthesized sound effects under the narration: cuts and figure reveals only. No music.";
+      if (options.musicBed) platform.qualityChecks.push(`Background bed composed in this repository (musicBed.ts), ducked in ${options.musicBed.ducks.length} window(s), at ${options.musicBed.levelLufsAsMixed} LUFS once mixed.`);
       platform.qualityChecks.push(`Sound effects: ${options.soundEffects.length} synthesized cues (no music, no samples), mixed under the narration at the compositor's music gain.`);
     } else if (music) {
       platform.tasks = platform.tasks.filter((task) => task !== music);

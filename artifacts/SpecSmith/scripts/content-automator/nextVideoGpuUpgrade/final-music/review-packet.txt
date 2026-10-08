@@ -1,0 +1,44 @@
+QUALITY AND INTEGRITY REVIEW — gpu-upgrade-gains-by-game-1440p-high/boost-guess-the-game / youtube-shorts-1080x1920-30
+Verdict: awaiting-human-review
+  AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 4 question(s) only a person can answer; final approval is impossible until these are resolved: rights-unknown.
+  What this means: No machine-found defect in this exact cut. People must still decide every open gate; this is not an approval, and the cut may not be published or scheduled.
+Media: /home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final-music/render/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4
+  sha256 a2ae3a278204c5db099580f003722ef695144756cf8f3c0b7fb44f6360e27395 · 1080x1920 · 30 fps · 24.5s · h264/aac
+Research: gpu-upgrade-gains-by-game-1440p-high (production)
+Only a person can decide (4):
+  - [narration-timing-under-music] 0.00-23.22s — A background bed plays under the narration, so the pauses between lines cannot be measured as silence. Listen through: each line must be heard over its own screen and nothing but the bed and the declared effects between them.
+      evidence: a declared music bed fills the pauses
+      owner: narration; recheck: narration.timing, voice-and-mix
+  - [safe-area-unverified] platform cut — Whether the platform's own interface covers the disclosure or captions is unknown; check on a real phone in the app.
+      evidence: youtube-shorts-1080x1920-30
+      owner: platform-cut; recheck: disclosure.safe-area, readable-at-size
+  - [rendered-text-unread] on-screen text — Read every caption, number and game name on a phone at real size.
+      evidence: no OCR
+      owner: human-review; recheck: text.ocr, readable-at-size
+  - [spoken-words-unheard] narration — Listen to the full narration: every number and name must be pronounced as written.
+      evidence: no ASR
+      owner: human-review; recheck: audio.asr, voice-and-mix
+Forbids final approval regardless of review (2):
+  - [rights-unknown] asset youtube-shorts-voice — Its license is unknown, so the cut cannot be approved for publication.
+      evidence: ElevenLabs text-to-speech, voice Liam (TX3LPaxmHKxFdv7VOQHJ), model eleven_multilingual_v2; saved take 714123290712ec494e6c51d51050c67919e63c8298f2baeeb72f6bb2b
+      owner: rights; recheck: rights.assets, rights-and-publication
+  - [rights-unknown] asset youtube-shorts-audio — Its license is unknown, so the cut cannot be approved for publication.
+      evidence: Composed and synthesized in this repository: musicBed.ts (pad chords from sine partials, a soft eighth-note pulse, seeded filtered noise; no samples, no melody)
+      owner: rights; recheck: rights.assets, rights-and-publication
+Checks completed: media.bytes passed; media.decode passed; media.format passed; media.blank-frozen passed; media.audio-levels passed; media.ending passed; frames.bands passed; captions.rendered-text passed; narration.binding passed; narration.timing passed; disclosure.content passed; disclosure.coverage passed; claims.model passed; claims.presentation passed; claims.screen passed; claims.undeclared passed; claims.research passed; storyboard.quality passed; research.provenance passed; cta.destination passed; rights.assets passed; rights.placeholders passed; decisions.binding passed
+Checks not available:
+  - disclosure.safe-area (unavailable): No verified safe-area insets are recorded for youtube-shorts; guessed numbers are not used.
+  - captures.current (not-applicable): No Compare capture in this cut.
+  - graphics.integrity (not-applicable): No editorial graphics declared.
+  - text.ocr (unavailable): No OCR engine is part of this pipeline. Caption and disclosure wording is checked in the files that were burned in, and their presence in pixels, but not read back from the frames.
+  - audio.asr (unavailable): No speech recogniser is part of this pipeline. The audio is bound to its script by hash; what is actually said is not transcribed.
+Human gates (none can close here):
+  - hook-on-phone [open] Watched on a phone at real size: is the hook understood within the first two seconds?
+  - factual-takeaway [open] Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?
+  - readable-at-size [open] Are all text, numbers and game names readable at real size, inside the visible area?
+  - pacing [open] Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?
+  - style-fits-audience [open] Does the style suit a beginner choosing a gaming PC?
+  - voice-and-mix [open] After a full listen: is every word pronounced correctly, and is the mix clear?
+  - disclosures-in-context [open] Is each disclosure understandable in context, while the claim it qualifies is on screen?
+  - rights-and-publication [open] Are the rights to every asset signed off, and is publication of this exact cut authorised?
+Approval mechanism: no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks.

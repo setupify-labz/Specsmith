@@ -66,6 +66,30 @@ export function narrationSpans(segments: readonly { readonly startSecond: number
   return spans;
 }
 
+/** Unexplained sound split into what lies wholly under a declared bed (a listener's question) and what does not (a defect). */
+export function partitionUnderBed(
+  unexplained: readonly { readonly start: number; readonly end: number }[],
+  beds: readonly { readonly startSecond: number; readonly endSecond: number }[],
+): { underBed: { start: number; end: number }[]; outside: { start: number; end: number }[] } {
+  const underBed: { start: number; end: number }[] = [], outside: { start: number; end: number }[] = [];
+  for (const interval of unexplained) {
+    (beds.some((bed) => interval.start >= bed.startSecond - 0.05 && interval.end <= bed.endSecond + 0.05) ? underBed : outside).push({ ...interval });
+  }
+  return { underBed, outside };
+}
+
+/** Where a declared music bed plays, from its renderer's recorded musicBed metadata. */
+export function musicBedSpans(musicBed: unknown): { startSecond: number; endSecond: number }[] {
+  if (typeof musicBed !== "string") return [];
+  try {
+    const bed = JSON.parse(musicBed) as { playsFromSecond?: unknown; silentFromSecond?: unknown };
+    const start = Number(bed.playsFromSecond), end = Number(bed.silentFromSecond);
+    return Number.isFinite(start) && Number.isFinite(end) && end > start ? [{ startSecond: start, endSecond: end }] : [];
+  } catch {
+    return [];
+  }
+}
+
 /** The windows a sound-effect asset declares it plays in, from its renderer's recorded cue list. */
 export function declaredEffectWindows(cueList: unknown): { startSecond: number; endSecond: number }[] {
   if (typeof cueList !== "string") return [];
@@ -485,12 +509,20 @@ export async function reviewCreative(submission: ReviewSubmission, options: Revi
       // Sound is explained by a placed line, or by a sound effect the render
       // declares (its asset's recorded cue windows), and only when that asset's
       // bytes verified. Anything else is sound the plan did not place.
-      const effects = manifest.assets
-        .filter((asset) => asset.role === "sound-effect" && assetOk.get(asset.assetId))
-        .flatMap((asset) => declaredEffectWindows(asset.metadata.cueList));
-      for (const interval of unexplainedSound(sound, narrationSpans(manifest.narrationSegments), effects)) {
+      const soundAssets = manifest.assets.filter((asset) => (asset.role === "sound-effect" || asset.role === "music") && assetOk.get(asset.assetId));
+      const effects = soundAssets.flatMap((asset) => declaredEffectWindows(asset.metadata.cueList));
+      // A declared background bed fills the pauses, so silence between lines
+      // cannot be measured under it. Sound there is not passed: it becomes a
+      // question only a listener can answer. Sound outside the bed still blocks.
+      const beds = soundAssets.flatMap((asset) => musicBedSpans(asset.metadata.musicBed));
+      const { underBed, outside } = partitionUnderBed(unexplainedSound(sound, narrationSpans(manifest.narrationSegments), effects), beds);
+      for (const interval of outside) {
         block("narration.timing", "sound-outside-segments", `${interval.start.toFixed(2)}-${interval.end.toFixed(2)}s`, "silencedetect",
           "Audio plays where neither a placed narration line nor a declared sound effect is; a line may be running over the next screen.", "narration", ["narration.timing", "claims.screen"]);
+      }
+      if (underBed.length > 0) {
+        needsPerson("narration.timing", "narration-timing-under-music", "voice-and-mix", underBed.map((interval) => `${interval.start.toFixed(2)}-${interval.end.toFixed(2)}s`).join(", "), "a declared music bed fills the pauses",
+          "A background bed plays under the narration, so the pauses between lines cannot be measured as silence. Listen through: each line must be heard over its own screen and nothing but the bed and the declared effects between them.", "narration");
       }
     }
 

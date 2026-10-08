@@ -18,11 +18,14 @@
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./rendering.ts";
+import { measureLoudness } from "./motionCompositor.ts";
+import { composeBed, MUSIC_BED, PROGRESSION, renderBed, type DuckWindow } from "./musicBed.ts";
 
 export type SoundCueKind = "whoosh" | "tick" | "pop";
 
@@ -96,41 +99,101 @@ export function soundTrackArgs(cues: readonly SoundCue[], durationSeconds: numbe
   return ["-v", "error", "-y", "-filter_complex", graph, "-map", "[out]", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", outputPath];
 }
 
+/** A composed background bed under the effects (musicBed.ts): where to duck it, and how loud it sits once mixed. */
+export interface MusicBedState {
+  readonly ducks: readonly DuckWindow[];
+  /** Integrated loudness of the unducked bed once mixed at SOUND_MIX_GAIN, LUFS (before the final mastering gain). */
+  readonly levelLufsAsMixed: number;
+}
+
+const runFfmpeg = (ffmpegPath: string, args: string[]) => new Promise<void>((done, fail) => {
+  const child = spawn(ffmpegPath, args, { stdio: ["ignore", "ignore", "pipe"] });
+  const err: Buffer[] = [];
+  child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
+  child.on("error", fail);
+  child.on("close", (code) => code === 0 ? done() : fail(new SoundEffectsError(Buffer.concat(err).toString("utf8").slice(-600))));
+});
+
 export function createSoundEffectsAdapter(options: { readonly outputDir: string; readonly ffmpegPath?: string }): RenderAdapter {
   const ffmpegPath = options.ffmpegPath ?? process.env.SPECSMITH_FFMPEG_PATH ?? "ffmpeg";
   return {
     name: "specsmith-synth-sound-effects",
     capability: "music-sfx",
     async render(context: RenderTaskContext): Promise<RenderArtifact[]> {
-      const state = (context.task as { soundEffectsState?: { cues?: SoundCue[] } }).soundEffectsState;
+      const state = (context.task as { soundEffectsState?: { cues?: SoundCue[]; musicBed?: MusicBedState } }).soundEffectsState;
       if (!state || !Array.isArray(state.cues)) throw new SoundEffectsError(`Task ${context.task.taskId} has no soundEffectsState; sounds are never guessed.`);
       const seconds = context.targetDurationSeconds;
       if (!Number.isFinite(seconds) || seconds <= 0) throw new SoundEffectsError("The sound track needs the planned duration.");
       await mkdir(options.outputDir, { recursive: true });
-      const path = resolve(options.outputDir, `${context.task.taskId}__sfx.wav`);
-      await new Promise<void>((done, fail) => {
-        const child = spawn(ffmpegPath, soundTrackArgs(state.cues!, seconds, path), { stdio: ["ignore", "ignore", "pipe"] });
-        const err: Buffer[] = [];
-        child.stderr.on("data", (chunk: Buffer) => err.push(chunk));
-        child.on("error", fail);
-        child.on("close", (code) => code === 0 ? done() : fail(new SoundEffectsError(Buffer.concat(err).toString("utf8").slice(-600))));
-      });
-      const sha256 = createHash("sha256").update(await readFile(path)).digest("hex");
+      const effectsPath = resolve(options.outputDir, `${context.task.taskId}__sfx.wav`);
+      await runFfmpeg(ffmpegPath, soundTrackArgs(state.cues, seconds, effectsPath));
+      const cueList = JSON.stringify(state.cues.map((cue) => ({ ...cue, seconds: SOUND_RECIPES[cue.kind].seconds })));
+
+      if (!state.musicBed) {
+        const sha256 = createHash("sha256").update(await readFile(effectsPath)).digest("hex");
+        return [{
+          artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-sfx`,
+          taskId: context.task.taskId,
+          kind: "audio",
+          uri: pathToFileURL(effectsPath).toString(),
+          mimeType: "audio/wav",
+          metadata: {
+            renderer: "specsmith-synth-sound-effects",
+            generator: "ffmpeg lavfi (anoisesrc, sine)",
+            cues: state.cues.length,
+            // Each effect's window, so a review can tell a declared effect from stray sound.
+            cueList,
+            isMusic: false,
+            isLicensedSample: false,
+            sha256,
+          },
+        }];
+      }
+
+      // The bed: composed, measured at a constant level, scaled to its target
+      // once mixed, then ducked and faded. The effects layer is untouched.
+      const bed = state.musicBed;
+      if (!Number.isFinite(bed.levelLufsAsMixed) || bed.levelLufsAsMixed > -30 || bed.levelLufsAsMixed < -70) {
+        throw new SoundEffectsError("A music bed needs levelLufsAsMixed in [-70, -30]: a bed is background, never foreground.");
+      }
+      const rawPath = resolve(options.outputDir, `${context.task.taskId}__bed-raw.f32`);
+      writeFileSync(rawPath, Buffer.from(composeBed(seconds).buffer));
+      const levelPath = resolve(options.outputDir, `${context.task.taskId}__bed-level.wav`);
+      await runFfmpeg(ffmpegPath, ["-v", "error", "-y", "-f", "f32le", "-ar", String(MUSIC_BED.sampleRate), "-ac", "1", "-i", rawPath, "-c:a", "pcm_s24le", levelPath]);
+      const composed = await measureLoudness(ffmpegPath, levelPath);
+      const targetInFile = bed.levelLufsAsMixed - 20 * Math.log10(SOUND_MIX_GAIN);
+      const gain = Math.pow(10, (targetInFile - composed.integratedLufs) / 20);
+      const shaped = renderBed(seconds, bed.ducks, gain);
+      writeFileSync(rawPath, Buffer.from(shaped.buffer));
+      const bedPath = resolve(options.outputDir, `${context.task.taskId}__bed.wav`);
+      await runFfmpeg(ffmpegPath, ["-v", "error", "-y", "-f", "f32le", "-ar", String(MUSIC_BED.sampleRate), "-ac", "1", "-i", rawPath, "-c:a", "pcm_s24le", bedPath]);
+      const path = resolve(options.outputDir, `${context.task.taskId}__music-and-sfx.wav`);
+      await runFfmpeg(ffmpegPath, ["-v", "error", "-y", "-i", effectsPath, "-i", bedPath, "-filter_complex",
+        `[0:a][1:a]amix=inputs=2:duration=first:normalize=0,atrim=0:${seconds.toFixed(3)}[out]`, "-map", "[out]", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s24le", path]);
+      const sha = (file: string) => readFile(file).then((bytes) => createHash("sha256").update(bytes).digest("hex"));
       return [{
-        artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-sfx`,
+        artifactId: `${context.packageId}-${context.platform}-${context.task.taskId}-music-sfx`,
         taskId: context.task.taskId,
         kind: "audio",
         uri: pathToFileURL(path).toString(),
         mimeType: "audio/wav",
         metadata: {
-          renderer: "specsmith-synth-sound-effects",
-          generator: "ffmpeg lavfi (anoisesrc, sine)",
+          renderer: "specsmith-synth-music-and-effects",
+          generator: "musicBed.ts (sample arithmetic: sine partials, seeded noise, biquad high-pass) + ffmpeg lavfi effects",
           cues: state.cues.length,
-          // Each effect's window, so a review can tell a declared effect from stray sound.
-          cueList: JSON.stringify(state.cues.map((cue) => ({ ...cue, seconds: SOUND_RECIPES[cue.kind].seconds }))),
-          isMusic: false,
+          cueList,
+          isMusic: true,
           isLicensedSample: false,
-          sha256,
+          // Where the bed plays, so a review knows silence cannot be measured under it.
+          musicBed: JSON.stringify({
+            progression: PROGRESSION.map((chord) => chord.name), bpm: MUSIC_BED.bpm, ducks: bed.ducks,
+            levelLufsAsMixed: bed.levelLufsAsMixed, composedLufs: composed.integratedLufs, gainDb: Number((20 * Math.log10(gain)).toFixed(2)),
+            playsFromSecond: 0, silentFromSecond: Number((seconds - MUSIC_BED.endSilence).toFixed(3)),
+            fadeIn: MUSIC_BED.fadeIn, fadeOut: MUSIC_BED.fadeOut, duckGain: MUSIC_BED.duckGain,
+          }),
+          effectsSha256: await sha(effectsPath),
+          bedSha256: await sha(bedPath),
+          sha256: await sha(path),
         },
       }];
     },

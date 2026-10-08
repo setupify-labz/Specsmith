@@ -10,7 +10,7 @@ import { DEMO_PAIRING } from "../../leadsVsAverage/facts.ts";
 import { CREATIVE_DISCLOSURES } from "../creative/concept.ts";
 import { checkClaims, type PresentationContext } from "./claimChecks.ts";
 import { REQUIRED_USE, type AssetRightsRecord, type PresentedClaim, type RenderManifestAsset } from "./inputs.ts";
-import { declaredEffectWindows, narrationSpans, plannedCaptionCues, unexplainedSound } from "./reviewCreative.ts";
+import { declaredEffectWindows, musicBedSpans, narrationSpans, partitionUnderBed, plannedCaptionCues, unexplainedSound } from "./reviewCreative.ts";
 import { FIXTURE_CLAIMS, FIXTURE_CONTRACT, FIXTURE_STORYBOARD } from "./reviewFixture.ts";
 import { checkRights } from "./rightsChecks.ts";
 
@@ -88,6 +88,24 @@ describe("sound outside the narration", () => {
   });
 });
 
+describe("a declared music bed", () => {
+  const bed = musicBedSpans(JSON.stringify({ playsFromSecond: 0, silentFromSecond: 24.1 }));
+
+  it("turns sound under it into a listener's question, not a pass", () => {
+    expect(bed).toEqual([{ startSecond: 0, endSecond: 24.1 }]);
+    const { underBed, outside } = partitionUnderBed([{ start: 0.1, end: 23.6 }], bed);
+    expect(underBed).toEqual([{ start: 0.1, end: 23.6 }]);
+    expect(outside).toEqual([]);
+  });
+
+  it("still blocks sound outside where the bed plays, or with no bed declared", () => {
+    expect(partitionUnderBed([{ start: 23.9, end: 24.4 }], bed).outside).toEqual([{ start: 23.9, end: 24.4 }]);
+    expect(partitionUnderBed([{ start: 1, end: 2 }], []).outside).toEqual([{ start: 1, end: 2 }]);
+    expect(musicBedSpans(undefined)).toEqual([]);
+    expect(musicBedSpans(JSON.stringify({ playsFromSecond: 5, silentFromSecond: 5 }))).toEqual([]);
+  });
+});
+
 describe("synthesized sound effects", () => {
   const asset = (renderer: string, isLicensedSample: boolean | undefined): RenderManifestAsset => ({
     assetId: "sfx", role: "sound-effect", path: "/x.wav", sha256: "0".repeat(64),
@@ -107,6 +125,12 @@ describe("synthesized sound effects", () => {
   it("need evidence otherwise: any other renderer, or one that used a licensed sample", () => {
     expect(codes(asset("some-library", undefined), record("sound-effect"))).toContain("repo-ownership-unsupported");
     expect(codes(asset("specsmith-synth-sound-effects", true), record("sound-effect"))).toContain("repo-ownership-unsupported");
+  });
+
+  it("a track carrying the composed bed is music, and its ownership is not assumed", () => {
+    const music: RenderManifestAsset = { assetId: "sfx", role: "music", path: "/m.wav", sha256: "0".repeat(64), metadata: { renderer: "specsmith-synth-music-and-effects", isLicensedSample: false } };
+    expect(codes(music, record("sound-effect"))).toContain("asset-kind-mismatch");
+    expect(codes(music, record("music"))).toContain("repo-ownership-unsupported");
   });
 
   it("must be described as what they are", () => {

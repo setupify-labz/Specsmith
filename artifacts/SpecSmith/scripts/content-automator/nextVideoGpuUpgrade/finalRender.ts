@@ -43,6 +43,12 @@ export const FINAL_CONCEPT = "boost-guess-the-game";
 /** The saved take, checked in: the one paid generation, reused by every render. */
 export const SAVED_TAKE_DIR = join(here, "take");
 export const FINAL_DIR = resolve(here, "../../../render-output/gpu-upgrade-final");
+/** The alternative with the composed background bed, kept beside the current cut for comparison. */
+export const FINAL_MUSIC_DIR = resolve(here, "../../../render-output/gpu-upgrade-final-music");
+/** The bed once mixed (before mastering): about 20 LU under the take's -24.1 LUFS, so comfortably beneath Liam. */
+export const MUSIC_BED_LEVEL_LUFS_AS_MIXED = -44;
+/** The beats the bed ducks under: the FPS figures and the percentage reveal. */
+export const MUSIC_DUCK_BEATS = Object.freeze(["fps-aw", "fps-val", "percent"] as const);
 const ffmpegPath = process.env.SPECSMITH_FFMPEG_PATH ?? "ffmpeg";
 const ffprobePath = process.env.SPECSMITH_FFPROBE_PATH ?? "ffprobe";
 
@@ -102,12 +108,36 @@ export function presentedClaims(beats: readonly { readonly id: string }[]): Pres
 /** The final mix: about -16 LUFS integrated, true peak no higher than -1.5 dBTP, on the encode. */
 export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp: -1.5, toleranceLu: 0.3 });
 
+/**
+ * How loud the bed is against the voice, measured on the files that were
+ * mixed and through the same mastering chain: overall, and inside and outside
+ * the duck windows (each measured on that stretch of the bed alone).
+ */
+export function musicMeasures(sfxDir: string, chain: string, voiceAfter: { integratedLufs: number | null }, ducks: readonly { startSecond: number; endSecond: number }[]) {
+  const bedFile = readdirSync(sfxDir).find((file) => file.endsWith("__bed.wav"));
+  if (!bedFile) throw new Error("No music bed was rendered.");
+  const bedPath = join(sfxDir, bedFile);
+  const asMixed = `volume=${SFX_MIX_GAIN},${chain}`;
+  const whole = loudness(bedPath, asMixed);
+  const firstDuck = ducks[0];
+  const ducked = firstDuck ? loudness(bedPath, `atrim=${(firstDuck.startSecond + 0.5).toFixed(2)}:${(firstDuck.endSecond - 0.5).toFixed(2)},${asMixed}`) : null;
+  const open = firstDuck ? loudness(bedPath, `atrim=1.6:${(firstDuck.startSecond - 0.5).toFixed(2)},${asMixed}`) : null;
+  const under = (level: number | null | undefined) => voiceAfter.integratedLufs !== null && level !== null && level !== undefined ? Math.round((voiceAfter.integratedLufs - level) * 10) / 10 : null;
+  return {
+    bedFile, wholeAsMastered: whole,
+    belowVoiceLu: under(whole.integratedLufs),
+    openStretch: open, duckedStretch: ducked,
+    duckDepthDb: open?.integratedLufs !== null && open?.integratedLufs !== undefined && ducked?.integratedLufs !== null && ducked?.integratedLufs !== undefined
+      ? Math.round((open.integratedLufs - ducked.integratedLufs) * 10) / 10 : null,
+  };
+}
+
 /** The compositor's fixed gain for the music-sfx track (motionCompositor.muxFinal). */
 export const SFX_MIX_GAIN = 0.14;
 
 /** The final cut from the saved take: loaded and verified, never generated. */
-export async function renderFinal(takeDir = SAVED_TAKE_DIR, outputDir = FINAL_DIR) {
-  return renderFromLoadedTake(await loadGpuUpgradeTake(takeDir), outputDir);
+export async function renderFinal(takeDir = SAVED_TAKE_DIR, outputDir = FINAL_DIR, options: { readonly music?: boolean } = {}) {
+  return renderFromLoadedTake(await loadGpuUpgradeTake(takeDir), outputDir, { music: options.music });
 }
 
 /**
@@ -115,16 +145,21 @@ export async function renderFinal(takeDir = SAVED_TAKE_DIR, outputDir = FINAL_DI
  * only for proving the edit's mechanics before a take exists: its voice must
  * be a labelled local fixture, and every output says DRY RUN.
  */
-export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir: string, options: { readonly dryRun?: boolean } = {}) {
+export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir: string, options: { readonly dryRun?: boolean; readonly music?: boolean } = {}) {
   const dryRun = options.dryRun === true;
   if (dryRun !== (take.take.provider === "local-fixture")) throw new Error("A dry run uses a local fixture voice, and only a dry run may.");
   mkdirSync(outputDir, { recursive: true });
   const { beats, workflowDir } = writeRetimedWorkflow(take, outputDir);
   const soundEffects = soundCuesFor(beats);
+  const musicBed = options.music ? {
+    levelLufsAsMixed: MUSIC_BED_LEVEL_LUFS_AS_MIXED,
+    ducks: beats.filter((beat) => (MUSIC_DUCK_BEATS as readonly string[]).includes(beat.id))
+      .map((beat) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, reason: `${beat.id} figures on screen` })),
+  } : undefined;
   const { mission, result } = gpuUpgradeMission();
   const renderDir = join(outputDir, "render");
   const { report, reportPath } = await renderProposalOffline(workflowDir, FINAL_CONCEPT, renderDir, {
-    mission, narration: "saved-take", savedTake: take.take, narrationSegments: narrationSegmentsFor(beats), soundEffects, loudness: FINAL_LOUDNESS,
+    mission, narration: "saved-take", savedTake: take.take, narrationSegments: narrationSegmentsFor(beats), soundEffects, musicBed, loudness: FINAL_LOUDNESS,
   });
 
   // The mix. The compositor mastered it and recorded how (gain, limiter
@@ -136,7 +171,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const gainDb = Number(meta.masterGainDb), ceilingDbfs = Number(meta.limiterCeilingDbfs);
   if (!Number.isFinite(gainDb) || !Number.isFinite(ceilingDbfs)) throw new Error("The compositor recorded no mastering; refusing to call the mix mastered.");
   const chain = masterChain(gainDb, ceilingDbfs);
-  const sfxFile = readdirSync(join(renderDir, "sfx")).find((file) => file.endsWith(".wav"));
+  const sfxFile = readdirSync(join(renderDir, "sfx")).find((file) => file.endsWith("__sfx.wav"));
   if (!sfxFile) throw new Error("No sound-effect track was rendered.");
   const sfxPath = join(renderDir, "sfx", sfxFile);
   const voiceBefore = loudness(take.take.audioPath), voiceAfter = loudness(take.take.audioPath, chain);
@@ -154,6 +189,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
     before: { voice: voiceBefore, soundEffectsAsMixed: sfxBefore, ...gap(voiceBefore, sfxBefore) },
     after: { voice: voiceAfter, soundEffectsAsMixed: sfxAfter, ...gap(voiceAfter, sfxAfter) },
     cues: soundEffects,
+    music: musicBed ? musicMeasures(join(renderDir, "sfx"), chain, voiceAfter, musicBed.ducks) : null,
   };
 
   // MASTER #7: review the exact MP4.
@@ -162,7 +198,7 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const plan = buildCreativeProposalProductionPlan({
     packageId: `master6-${FINAL_CONCEPT}`, ideaId: FINAL_CONCEPT, campaignId: mission.missionId,
     feature: "compare", route: mission.productDestination, subjectIds: [],
-  }, proposal, { soundEffects, loudness: FINAL_LOUDNESS }).platforms[0];
+  }, proposal, { soundEffects, musicBed, loudness: FINAL_LOUDNESS }).platforms[0];
   const manifestPath = String(report.renderManifest);
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as RenderManifest;
   const storyboard = proposal.storyboard;
@@ -181,6 +217,16 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
       case "disclosure-panel": return repo(asset.assetId, "disclosure-panel", "disclosureOverlay.ts, browser-measured", "disclosure-overlay (Chromium)");
       case "captions": return repo(asset.assetId, "caption-render", "captionRender.buildAssDocument", "caption-render (ASS)");
       case "sound-effect": return repo(asset.assetId, "sound-effect", "soundEffects.ts, synthesized from noise and sine tones", "ffmpeg lavfi");
+      // The composed bed: how it was made is recorded; who owns it and whether
+      // it is clear to publish is not decided by having synthesized it.
+      case "music": return {
+        assetId: asset.assetId, kind: "music",
+        source: "Composed and synthesized in this repository: musicBed.ts (pad chords from sine partials, a soft eighth-note pulse, seeded filtered noise; no samples, no melody), mixed with the soundEffects.ts effects",
+        license: { kind: "unknown", evidence: null, permittedUse: [], attribution: null, expiresAt: null, scope: null },
+        generation: { generator: "musicBed.ts + soundEffects.ts (sample arithmetic and ffmpeg lavfi)", inputs: `generic progression ${String(asset.metadata.musicBed ?? "")}` },
+        transformations: ["ducked under the figure beats, faded in and out", "mixed under the narration at the compositor's music gain", "mastered with the mix"],
+        placeholder: { isPlaceholder: false, why: null },
+      };
       case "narration": return {
         assetId: asset.assetId, kind: "narration",
         source: dryRun ? `DRY RUN fixture voice ${take.take.sha256}` : `ElevenLabs text-to-speech, voice Liam (${take.take.voiceId}), model ${take.take.modelId}; saved take ${take.take.sha256}`,
@@ -222,6 +268,8 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
   const summary = {
     label: dryRun
       ? "DRY RUN of the final edit with a FIXTURE voice. Not a take, not for review, not for publication."
+      : musicBed
+      ? "FINAL CUT, MUSIC ALTERNATIVE: the saved Liam take over a composed background bed. Reviewed by MASTER #7; human gates open. Not approved, not scheduled, not published."
       : "FINAL CUT, narrated by the saved Liam take. Reviewed by MASTER #7; human gates open. Not approved, not scheduled, not published.",
     video: { path: finalMp4, sha256: report.video.sha256, bytes: report.video.bytes },
     take: { manifest: take.manifestPath, audioSha256: take.take.sha256, providerTextSha256: take.take.providerTextSha256, scriptTextSha256: take.take.scriptTextSha256, providerReportedCharacterCost: take.providerReportedCharacterCost },
@@ -239,7 +287,9 @@ export async function renderFromLoadedTake(take: LoadedGpuUpgradeTake, outputDir
 
 const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).toString();
 if (isMain) {
-  renderFinal(process.argv[2] ? resolve(process.argv[2]) : SAVED_TAKE_DIR).then(({ summary, summaryPath }) => {
+  const music = process.argv.includes("--music");
+  const takeArg = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
+  renderFinal(takeArg ? resolve(takeArg) : SAVED_TAKE_DIR, music ? FINAL_MUSIC_DIR : FINAL_DIR, { music }).then(({ summary, summaryPath }) => {
     console.log(summary.label);
     console.log(`video: ${summary.video.path}`);
     console.log(`sha256: ${summary.video.sha256}`);
@@ -247,6 +297,7 @@ if (isMain) {
     for (const control of summary.controls) console.log(`control ${control.control}: ${control.refused ? "refused" : "NOT REFUSED"}`);
     console.log(`loudness: ${summary.mix.final.integratedLufs} LUFS, true peak ${summary.mix.final.truePeakDbtp} dBTP (target ${summary.mix.target.integratedLufs} LUFS, <= ${summary.mix.target.truePeakDbtp} dBTP): ${summary.mix.meetsTarget ? "met" : "NOT MET"}`);
     console.log(`balance: effects peak ${summary.mix.before.effectsPeakAboveVoiceLoudnessDb} dB vs voice loudness before, ${summary.mix.after.effectsPeakAboveVoiceLoudnessDb} dB after; effects peak ${summary.mix.before.effectsPeakBelowVoicePeakDb} / ${summary.mix.after.effectsPeakBelowVoicePeakDb} dB under the voice peak`);
+    if (summary.mix.music) console.log(`music: ${JSON.stringify(summary.mix.music)}`);
     console.log(`review packet: ${summary.reviewPacket.verdict} (${summary.reviewPacket.text})`);
     console.log(`report: ${summaryPath}`);
     if (!summary.frameCheck.ok || summary.controls.some((control) => !control.refused) || !summary.mix.meetsTarget) process.exitCode = 1;

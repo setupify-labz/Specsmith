@@ -40,7 +40,7 @@ import { createDisclosureOverlayAdapter } from "./uiRender/disclosureOverlay.ts"
 import { createDataMotionGraphicAdapter } from "./v2/creative/dataMotionGraphicRender.ts";
 import { createSilentNarrationAdapter } from "./silentNarration.ts";
 import { createSavedTakeNarrationAdapter, type SavedTake } from "./savedTakeNarration.ts";
-import { createSoundEffectsAdapter, type SoundCue } from "./soundEffects.ts";
+import { createSoundEffectsAdapter, type MusicBedState, type SoundCue } from "./soundEffects.ts";
 import type { CreativeMissionInput } from "./v2/creative/proposalPass.ts";
 import { checkBandedFrames, type BandedFrameExpectation } from "./bandedFrameCheck.ts";
 import { DISCLOSURE_BANDED_LAYOUT } from "./bandedLayout.ts";
@@ -79,6 +79,8 @@ export interface OfflineRenderOptions {
   readonly narrationSegments?: readonly { readonly beatIndex: number; readonly startSecond: number; readonly endSecond: number }[];
   /** Synthesized sound effects under the narration (soundEffects.ts). None by default. */
   readonly soundEffects?: readonly SoundCue[];
+  /** A composed background bed under the effects (musicBed.ts). None by default. */
+  readonly musicBed?: MusicBedState;
   /** Master the final mix to this loudness (motionCompositor). Unmastered by default. */
   readonly loudness?: LoudnessTarget;
 }
@@ -102,7 +104,7 @@ export async function renderProposalOffline(directory: string, conceptId: string
   const pkg = buildCreativeProposalProductionPlan({
     packageId: `master6-${conceptId}`, ideaId: conceptId, campaignId: mission.missionId,
     feature: "compare", route: mission.productDestination, subjectIds: [],
-  }, proposal, { soundEffects: options.soundEffects, loudness: options.loudness });
+  }, proposal, { soundEffects: options.soundEffects, musicBed: options.musicBed, loudness: options.loudness });
   const plan = pkg.platforms[0];
   if (narration === "saved-take" && !options.savedTake) throw new Error("narration \"saved-take\" needs the saved take; nothing is generated here.");
   await rm(outputDir, { recursive: true, force: true });
@@ -228,7 +230,11 @@ export async function renderProposalOffline(directory: string, conceptId: string
     // beat as one continuous take, and a silent track has nothing to time.
     narrationSegments: options.narrationSegments ? [...options.narrationSegments] : null,
     beats: storyboard.beats.map((beat, index) => ({ startSecond: beat.startSecond, endSecond: beat.endSecond, captures: [fileOf(visualTasks[index].taskId)] })),
-    otherAssets: plan.tasks.filter((task) => task.capability === "music-sfx").map((task) => ({ ...fileOf(task.taskId), role: "sound-effect" as const })),
+    // A track carrying the composed bed is music, and is recorded as music.
+    otherAssets: plan.tasks.filter((task) => task.capability === "music-sfx").map((task) => {
+      const file = fileOf(task.taskId);
+      return { ...file, role: file.metadata.isMusic === true ? "music" as const : "sound-effect" as const };
+    }),
   }));
 
   const media = verifyRenderedMedia(videoPath);

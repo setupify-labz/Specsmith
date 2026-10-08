@@ -381,6 +381,23 @@ The sample peak is −1.96 dBFS and there is no clipping (flat factor 0).
 
 **Checks:** the frame check passed and its three controls were refused. MASTER #7 is `awaiting-human-review`, with the same open items as before.
 
+## Music alternative (2026-10-08), for comparison by ear
+
+**Why composed here.** No third-party free track could be verified: the environment's network policy blocks every free-music source. So the bed was composed and synthesized in this repository instead. See `final-music/MUSIC_PROVENANCE.md` for how it was made, and for what that does not establish: synthesis is not proof of exclusive ownership or clearance, so its licence is recorded as unknown.
+
+**The two versions:**
+
+| | Current (no music) | Music alternative |
+|---|---|---|
+| File | `render-output/gpu-upgrade-final/gpu-upgrade-final.mp4` | `render-output/gpu-upgrade-final-music/gpu-upgrade-final.mp4` |
+| SHA-256 | `d78538cb…` (unchanged; re-rendered to the same bytes) | `a2ae3a27…` |
+| Loudness | −16.1 LUFS, −2.0 dBTP | −16.2 LUFS, −1.9 dBTP |
+| MASTER #7 | `awaiting-human-review` | `awaiting-human-review`, plus a listening question on narration timing and the music's unknown rights |
+
+**Same in both:** the take, timing, pictures (frame-identical), captions and effects (byte-identical effects file).
+
+**The bed's level:** 22.9 LU under the voice overall, about 19 LU in open stretches and about 26 LU under the figures (ducked 7.1 dB).
+
 ## Open before production
 
 - **Voice:** none generated. Any voice, especially a paid one, needs its own approval.
