@@ -8,8 +8,11 @@ import { parseUiRenderRequest, stateIdentifier } from "../../uiRender/uiRenderSt
 import { buildProductionPlanPackage } from "../../productionPlan.ts";
 import type { ProductionTask, ScriptStoryboardPackage } from "../../types.ts";
 import { DISCLOSURE_BANDED_LAYOUT, storyViewport } from "../../bandedLayout.ts";
+import type { MusicBedState, SoundCue } from "../../soundEffects.ts";
+import type { LoudnessTarget } from "../../motionCompositor.ts";
 import { CREATIVE_DISCLOSURES, persistentDisclosuresOf, toStoryboardBeats, type CreativeConcept, type ConceptBeatPlan } from "./concept.ts";
 import { missionCaptureViews, type CompareViewSetting } from "./captureViews.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, describeShown, resolveDataMotionGraphic, stageNoteText, unsupportedGraphicValues, verticalOverflow, withConsistentColours, type ResolvedDataMotionGraphic } from "./dataMotionGraphic.ts";
 import { critiqueConceptSet } from "./conceptCritique.ts";
 import { retrieveCreativeMemory, type CreativeMemoryEntry, type RetrievalQuery } from "./memory.ts";
 
@@ -95,7 +98,7 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     requiredDisclosures: ids,
     disclosureTextByBeat: Object.fromEntries(partial.beats.map((_, index) => [index, ids.map((id) => CREATIVE_DISCLOSURES[id])])),
   } as CreativeConcept));
-  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture"], guaranteedDisclosureIds: ["disclosure.fps-estimate", "disclosure.model-range"] });
+  const set = critiqueConceptSet({ concepts: plans, availableCapabilityIds: ["render.compare-surface-capture", DATA_MOTION_GRAPHIC_CAPABILITY], guaranteedDisclosureIds: ["disclosure.fps-estimate", "disclosure.model-range"] });
   const proposals = plans.map((concept) => {
     const storyboard: PlatformScriptStoryboard = { platform: input.platform,
       title: input.viewerQuestion, targetDurationSeconds: concept.beats.at(-1)!.endSecond,
@@ -108,16 +111,43 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
     const allowedClaims = new Set(approved.map((claim) => claim.claimId));
     const grounded = concept.beats.some((beat) => beat.factDependencies.length > 0) &&
       concept.beats.every((beat) => beat.factDependencies.every((id) => allowedClaims.has(id)));
-    // This production adapter renders only the exact Compare capture. Declared
-    // illustrations must stay blocked, not be silently replaced with screenshots.
-    const exactCapture = concept.visuals.length > 0 && concept.visuals.every((visual) => visual.kind === "real-product-capture" &&
-      visual.surface === "compare" && viewIds.has(visual.stateIdentifier));
+    // Data motion graphics: every value computed from the primary view, and
+    // every figure shown covered by an approved claim bound on that beat.
+    let motionGraphics: ResolvedDataMotionGraphic[] = [];
+    const motionGraphicProblems: string[] = [];
+    for (const visual of concept.visuals) {
+      if (visual.kind !== "data-motion-graphic") continue;
+      try { motionGraphics.push(resolveDataMotionGraphic(visual, views, { viewerQuestion: input.viewerQuestion, productDestination: concept.productDestination })); }
+      catch (error) { motionGraphicProblems.push((error as Error).message); }
+    }
+    // Games in order of first appearance on screen, beat by beat.
+    const appearance = concept.beats.flatMap((beat) => beat.visualIds)
+      .flatMap((id) => motionGraphics.find((graphic) => graphic.visualId === id)?.games.map((game) => game.gameId) ?? []);
+    motionGraphics = withConsistentColours(motionGraphics, appearance);
+    // Each graphic must fit the band it will be rendered into, at readable sizes.
+    const storyHeight = persistentDisclosuresOf(concept).length > 0 ? DISCLOSURE_BANDED_LAYOUT.story.height : DISCLOSURE_BANDED_LAYOUT.height;
+    for (const graphic of motionGraphics) {
+      const overflow = verticalOverflow(graphic, storyHeight);
+      if (overflow) motionGraphicProblems.push(overflow);
+    }
+    try {
+      for (const entry of unsupportedGraphicValues({ beats: concept.beats, graphics: motionGraphics, approvedClaims: approved })) {
+        motionGraphicProblems.push(`Beat ${entry.beat}: motion graphic "${entry.visualId}" shows ${describeShown(entry.shown)}, and no approved claim bound on that beat covers that game, setting, pairing, direction and those values together. Bind the claim whose evidence states exactly this, or show a template without values.`);
+      }
+    } catch (error) { motionGraphicProblems.push((error as Error).message); }
+    // This production adapter renders the exact Compare capture and data
+    // motion graphics computed from it. Declared illustrations must stay
+    // blocked, not be silently replaced with screenshots.
+    const exactCapture = concept.visuals.length > 0 && concept.visuals.every((visual) =>
+      (visual.kind === "real-product-capture" && visual.surface === "compare" && viewIds.has(visual.stateIdentifier)) ||
+      (visual.kind === "data-motion-graphic" && motionGraphics.some((graphic) => graphic.visualId === visual.visualId)));
     // A claim was established for the primary view only. A beat that states
     // one while showing another setting would pair it with numbers it was
     // never checked against.
     const claimsOnPrimaryView = claimBeatsOffPrimaryView(concept, captureStateIdentifier).length === 0;
     return { concept, storyboard, critique, evidenceFindings, reviewRequired: true, synthetic: input.researchSynthetic, renderRequest, views,
-      contractEligible: grounded && exactCapture && claimsOnPrimaryView && concept.productDestination === input.productDestination &&
+      motionGraphics, motionGraphicProblems,
+      contractEligible: grounded && exactCapture && claimsOnPrimaryView && motionGraphicProblems.length === 0 && concept.productDestination === input.productDestination &&
         set.divergent && critique.ready && !evidenceFindings.some((finding) => finding.severity === "hard-fail") };
   });
   // Only verified, directly applicable guidance affects the choice. Context never
@@ -133,7 +163,8 @@ export function runCreativeProposalPass(input: CreativeMissionInput) {
 /** Beats (1-based) that state a claim while showing a view other than the primary one. */
 export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateIdentifier: string): number[] {
   const stateOf = new Map(concept.visuals.map((visual) =>
-    [visual.visualId, visual.kind === "real-product-capture" ? visual.stateIdentifier : null] as const));
+    [visual.visualId, visual.kind === "real-product-capture" ? visual.stateIdentifier
+      : visual.kind === "data-motion-graphic" ? visual.sourceStateIdentifier : null] as const));
   return concept.beats.flatMap((beat, index) =>
     beat.factDependencies.length > 0 && beat.visualIds.some((id) => {
       const state = stateOf.get(id);
@@ -149,12 +180,15 @@ export function claimBeatsOffPrimaryView(concept: CreativeConcept, primaryStateI
  * - With required disclosures, the frame is banded (bandedLayout.ts): captures
  *   render at the story band's size, a disclosure-overlay task renders the
  *   disclosures verbatim for the whole video, and captions sit in their own band.
- * - No music task: this path has no licensed or offline music capability, and a
- *   silent placeholder would pass for a sound design decision that was never made.
+ * - No music. The music-sfx task is dropped unless `soundEffects` are given: a
+ *   silent placeholder would pass for a sound design decision that was never
+ *   made. Given cues, it renders those synthesized effects (soundEffects.ts),
+ *   and still no music.
  */
 export function buildCreativeProposalProductionPlan(
   base: Omit<ScriptStoryboardPackage, "scripts">,
   proposal: NonNullable<ReturnType<typeof runCreativeProposalPass>["selected"]>,
+  options: { readonly soundEffects?: readonly SoundCue[]; readonly musicBed?: MusicBedState; readonly loudness?: LoudnessTarget } = {},
 ) {
   if (!proposal.contractEligible) throw new Error("A blocked proposal cannot enter the production contract.");
   const viewById = new Map(proposal.views.map((view) => [view.stateIdentifier, view] as const));
@@ -165,6 +199,24 @@ export function buildCreativeProposalProductionPlan(
     for (const task of platform.tasks) {
       if (task.sourceBeat !== null && (task.capability === "video-generation" || task.capability === "deterministic-ui-render")) {
         const beat = proposal.concept.beats[task.sourceBeat];
+        const graphics = proposal.motionGraphics.filter((graphic) => beat.visualIds.includes(graphic.visualId));
+        if (graphics.length > 0) {
+          if (graphics.length !== 1 || beat.visualIds.length !== 1) {
+            throw new Error(`Beat ${task.sourceBeat + 1} mixes a motion graphic with other visuals; a visual task renders exactly one.`);
+          }
+          // Rendered from the resolved values, sized to the band it fills.
+          task.capability = "data-motion-graphic";
+          (task as ProductionTask & { dataMotionGraphicState?: unknown }).dataMotionGraphicState = {
+            graphic: graphics[0],
+            durationSeconds: beat.endSecond - beat.startSecond,
+            width: DISCLOSURE_BANDED_LAYOUT.width,
+            height: banded ? DISCLOSURE_BANDED_LAYOUT.story.height : DISCLOSURE_BANDED_LAYOUT.height,
+          };
+          delete task.uiRenderState;
+          delete task.videoGenerationState;
+          delete task.fallbackCapability;
+          continue;
+        }
         const captures = beat.visualIds
           .map((id) => proposal.concept.visuals.find((visual) => visual.visualId === id))
           .filter((visual) => visual?.kind === "real-product-capture") as { stateIdentifier: string }[];
@@ -185,12 +237,44 @@ export function buildCreativeProposalProductionPlan(
     const music = platform.tasks.find((task) => task.capability === "music-sfx");
     const compose = platform.tasks.find((task) => task.capability === "motion-compositor") as ProductionTask & { compositorState?: Record<string, unknown> };
     const captions = platform.tasks.find((task) => task.capability === "caption-render") as ProductionTask & { captionRenderState?: Record<string, unknown> };
-    if (music) {
+    if (music && options.soundEffects && options.soundEffects.length > 0) {
+      (music as ProductionTask & { soundEffectsState?: unknown }).soundEffectsState = {
+        cues: [...options.soundEffects], ...(options.musicBed ? { musicBed: { ...options.musicBed, ducks: [...options.musicBed.ducks] } } : {}),
+      };
+      music.purpose = options.musicBed
+        ? "Restrained synthesized sound effects, and a quiet composed background bed ducked under the figures."
+        : "Restrained synthesized sound effects under the narration: cuts and figure reveals only. No music.";
+      if (options.musicBed) platform.qualityChecks.push(`Background bed composed in this repository (musicBed.ts), ducked in ${options.musicBed.ducks.length} window(s), at ${options.musicBed.levelLufsAsMixed} LUFS once mixed.`);
+      platform.qualityChecks.push(`Sound effects: ${options.soundEffects.length} synthesized cues (no music, no samples), mixed under the narration at the compositor's music gain.`);
+    } else if (music) {
       platform.tasks = platform.tasks.filter((task) => task !== music);
       platform.renderOrder = platform.renderOrder.filter((id) => id !== music.taskId);
       compose.inputRequirements = compose.inputRequirements.filter((id) => id !== music.taskId);
       delete compose.compositorState!.musicTaskId;
       platform.qualityChecks.push("No music track: this path has no licensed or offline music capability. Narration only; sound design remains a human decision.");
+    }
+
+    // A beat whose caption is exactly the line its graphic draws is captioned
+    // by the graphic: burning the same words into the caption band as well
+    // would show them twice. Only an exact match is dropped, so a caption can
+    // never vanish because a graphic says something similar.
+    if (captions?.captionRenderState) {
+      const carried = new Set(proposal.concept.beats.flatMap((beat, index) => {
+        const graphic = proposal.motionGraphics.find((entry) => beat.visualIds.includes(entry.visualId));
+        const note = graphic ? stageNoteText(graphic) : null;
+        return note !== null && note === beat.onScreenText ? [index] : [];
+      }));
+      if (carried.size > 0) {
+        const cues = (captions.captionRenderState.cues as { startSecond: number }[]).filter((cue) =>
+          !proposal.concept.beats.some((beat, index) => carried.has(index) && beat.startSecond === cue.startSecond));
+        captions.captionRenderState = { ...captions.captionRenderState, cues };
+        platform.qualityChecks.push(`Beat ${[...carried].map((index) => index + 1).join(", ")}: the caption is the line the motion graphic draws, so it is shown once, in the graphic.`);
+      }
+    }
+
+    if (options.loudness) {
+      compose.compositorState = { ...compose.compositorState, loudness: { ...options.loudness } };
+      platform.qualityChecks.push(`Final mix mastered to ${options.loudness.integratedLufs} LUFS with true peak at most ${options.loudness.truePeakDbtp} dBTP, measured on the encode.`);
     }
 
     if (banded) {

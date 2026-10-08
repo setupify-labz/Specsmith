@@ -81,14 +81,18 @@ export const CHECKS = {
   "media.audio-levels": { title: "Audio present and not clipped", bindsTo: ["media"] },
   "media.ending": { title: "The video reaches its planned end and the narration is not cut off", bindsTo: ["media", "script"] },
   "frames.bands": { title: "Sampled frames: disclosure band, story band against each beat's capture, caption ink, distinct cuts", bindsTo: ["media", "assets", "disclosure", "captions", "manifest.layout", "manifest.timeline", "manifest.captures", "manifest.disclosurePanel", "manifest.captions"] },
-  "captions.rendered-text": { title: "Burned-in caption file matches the storyboard text and beat windows", bindsTo: ["captions", "script", "manifest.captions"] },
+  // The planned caption set is the production plan's own cues when it has them (plannedCaptionCues).
+  "captions.rendered-text": { title: "Burned-in caption file matches the planned caption cues and beat windows", bindsTo: ["captions", "script", "productionPlan", "manifest.captions"] },
   "narration.binding": { title: "Narration audio was synthesised from this script", bindsTo: ["script", "assets", "manifest.narration"] },
-  "narration.timing": { title: "Each narration line is spoken inside its beat's window", bindsTo: ["script", "media", "manifest.narration"] },
+  // Sound outside the placed lines is explained only by a declared sound effect (manifest.otherAssets), whose bytes verified (assets).
+  "narration.timing": { title: "Each narration line is spoken inside its beat's window, and no other sound plays but declared effects", bindsTo: ["script", "media", "assets", "manifest.narration", "manifest.otherAssets"] },
   "disclosure.content": { title: "The rendered disclosure panel carries the planned disclosure, verbatim, legibly", bindsTo: ["disclosure", "assets", "claims", "manifest.disclosurePanel"] },
   "disclosure.coverage": { title: "The disclosure is on screen for every claim, for the whole video", bindsTo: ["disclosure", "media", "claims"] },
   "disclosure.safe-area": { title: "Disclosure and captions stay inside the platform cut's safe area", bindsTo: ["platformCut", "disclosure", "captions", "manifest.layout"] },
   "claims.model": { title: "Every figure agrees with the model it comes from, ties kept apart from leads", bindsTo: ["claims", "evidence", "script", "captions", "title", "description", "graphics", "manifest.captions"] },
-  "claims.presentation": { title: "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact", bindsTo: ["claims", "script", "captions", "evidence", "title", "description", "graphics", "disclosure", "manifest.captions"] },
+  // A beat's text includes the labels its motion graphic draws, read from the capture records
+  // (timeline -> asset id -> metadata.onScreenText) and only for assets whose bytes verified.
+  "claims.presentation": { title: "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact", bindsTo: ["claims", "script", "captions", "evidence", "title", "description", "graphics", "disclosure", "assets", "manifest.timeline", "manifest.captures", "manifest.captions"] },
   "claims.screen": { title: "A figure is presented over a screen showing the build, settings and game it is about", bindsTo: ["claims", "assets", "script", "captions", "graphics", "manifest.timeline", "manifest.captures", "manifest.captions"] },
   "claims.undeclared": { title: "No figure appears in text without a declared, checkable claim", bindsTo: ["claims", "script", "captions", "graphics", "title", "description", "manifest.captions"] },
   "claims.research": { title: "Script, title and description against the research contract, through the strict gate (MASTER #2)", bindsTo: ["research", "script", "title", "description"] },

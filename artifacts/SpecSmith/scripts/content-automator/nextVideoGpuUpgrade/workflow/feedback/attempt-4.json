@@ -1,0 +1,35 @@
+{
+  "version": "creative-file-workflow-v1",
+  "attempt": 4,
+  "briefHash": "278a7916094e8074d9debcf2399a42f979ed0a789f7e39e3c72b3745cc5a6a5c",
+  "status": "awaiting-human-review",
+  "reason": "Three generator-authored treatments passed the #6 workflow checks and MASTER #1's storyboard review; no creative score, rendered-media approval or publishing permission is inferred.",
+  "concepts": [
+    {
+      "conceptId": "gpu-gains-guess-the-game",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-read-your-games",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    },
+    {
+      "conceptId": "gpu-gains-more-frames-smaller-boost",
+      "contractEligible": true,
+      "required": [],
+      "advisory": [],
+      "missionBlockers": [],
+      "blockedOutsideAuthor": []
+    }
+  ],
+  "setFindings": [],
+  "nextStep": "All three treatments passed the machine checks. This batch is ready for human review. It is NOT approved."
+}

@@ -35,7 +35,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { UNSAFE_FOR_CREATIVE } from "../research/model.ts";
-import { contractDeclaresSynthetic } from "../research/creativeContract.ts";
+import { contractDeclaresSynthetic, type ClaimEvidenceValues } from "../research/creativeContract.ts";
 import { normalizeForMatching } from "../research/claimMention.ts";
 import { assessDivergence } from "./divergence.ts";
 import { checkRenderDeliverability, SURFACE_CONTENT, type CaptureType } from "./renderDeliverability.ts";
@@ -53,6 +53,8 @@ import type { CreativeGenerator, CreativeGeneratorRequest } from "./generationPa
 import { CREATIVE_GENERATOR_INSTRUCTIONS } from "./instructions.ts";
 import { missionCaptureViews } from "./captureViews.ts";
 import { claimBeatsOffPrimaryView } from "./proposalPass.ts";
+import { DATA_MOTION_GRAPHIC_CAPABILITY, DATA_MOTION_TEMPLATES, graphicLabels, PERCENT_CHANGE_STAGES, STAGE_LINES } from "./dataMotionGraphic.ts";
+import catalogGames from "../../../../src/data/games.json" with { type: "json" };
 import type { CreativeMissionInput, runCreativeProposalPass } from "./proposalPass.ts";
 
 export const FILE_WORKFLOW_VERSION = "creative-file-workflow-v1";
@@ -118,11 +120,24 @@ export interface ExportedBrief {
     readonly state: string;
     readonly requiredWording: readonly string[];
     readonly attribution: string | null;
+    /** The structured evidence a graphic's values must match, as one tuple. */
+    readonly evidence: readonly ClaimEvidenceValues[];
   }[];
   /** Named so an author can see what was considered and refused. */
   readonly refusedClaims: readonly { readonly claimId: string; readonly reason: string }[];
   readonly requiredDisclosures: readonly { readonly id: string; readonly text: string }[];
   readonly availableCapabilityIds: readonly string[];
+  /**
+   * Data motion graphics this mission can draw. The author picks a template
+   * and catalog game ids; every figure is computed from the primary view, and
+   * each one shown must be stated by an approved claim bound on that beat.
+   */
+  readonly motionGraphics: {
+    readonly capabilityId: string;
+    readonly sourceStateIdentifier: string;
+    readonly templates: readonly string[];
+    readonly games: readonly { readonly id: string; readonly name: string }[];
+  };
   readonly allowedAxisValues: {
     readonly audienceExperience: readonly string[];
     readonly explanatoryStructure: readonly string[];
@@ -189,13 +204,20 @@ export function buildCreativeBrief(
       state: claim.state,
       requiredWording: claim.requiredWording,
       attribution: claim.attribution ?? null,
+      evidence: claim.evidence ?? [],
     })),
     refusedClaims: [
       ...input.research.unsafeClaims.map((claim) => ({ claimId: claim.claimId, reason: claim.reason })),
       ...input.research.disputedClaims.map((claim) => ({ claimId: claim.claimId, reason: claim.reason })),
     ],
     requiredDisclosures: disclosureIds.map((id) => ({ id, text: CREATIVE_DISCLOSURES[id] })),
-    availableCapabilityIds: ["render.compare-surface-capture"],
+    availableCapabilityIds: ["render.compare-surface-capture", DATA_MOTION_GRAPHIC_CAPABILITY],
+    motionGraphics: {
+      capabilityId: DATA_MOTION_GRAPHIC_CAPABILITY,
+      sourceStateIdentifier: stateIdentifier(renderRequest),
+      templates: [...DATA_MOTION_TEMPLATES],
+      games: (catalogGames as { id: string; name: string }[]).map((game) => ({ id: game.id, name: game.name })),
+    },
     allowedAxisValues: {
       audienceExperience: [...AUDIENCE_EXPERIENCES],
       explanatoryStructure: [...EXPLANATORY_STRUCTURES],
@@ -252,17 +274,32 @@ export function conceptSchema(brief: ExportedBrief): unknown {
         type: "array",
         minItems: 1,
         $comment:
-          "This production adapter renders only the exact validated Compare capture. Every visual must be a " +
-          "real-product-capture naming that state. A declared illustration stays blocked rather than being " +
-          "silently replaced with a screenshot.",
+          "This production adapter renders the validated Compare capture and data motion graphics computed from " +
+          "the primary view. A declared illustration stays blocked rather than being silently replaced.",
         items: {
-          type: "object",
-          required: ["kind", "visualId", "surface", "stateIdentifier"],
-          properties: {
-            kind: { const: "real-product-capture" },
-            surface: { const: "compare" },
-            stateIdentifier: { const: brief.captureStateIdentifier },
-          },
+          oneOf: [
+            {
+              type: "object",
+              required: ["kind", "visualId", "surface", "stateIdentifier"],
+              properties: {
+                kind: { const: "real-product-capture" },
+                surface: { const: "compare" },
+                stateIdentifier: { enum: brief.captureViews.map((view) => view.stateIdentifier) },
+              },
+            },
+            {
+              type: "object",
+              required: ["kind", "visualId", "template", "sourceStateIdentifier", "games", "baseline"],
+              properties: {
+                kind: { const: "data-motion-graphic" },
+                template: { enum: brief.motionGraphics.templates },
+                sourceStateIdentifier: { const: brief.motionGraphics.sourceStateIdentifier },
+                games: { type: "array", minItems: 1, maxItems: 3, items: { enum: brief.motionGraphics.games.map((game) => game.id) } },
+                baseline: { enum: ["A", "B"] },
+                stage: { enum: [...PERCENT_CHANGE_STAGES] },
+              },
+            },
+          ],
         },
       },
       beats: {
@@ -335,13 +372,13 @@ export function authoringGuide(brief: ExportedBrief): string {
   }
   lines.push("## Disclosures");
   lines.push("");
-  lines.push("Every beat showing the product capture must carry these verbatim in `disclosureTextByBeat`:");
+  lines.push("Every beat showing the product capture or a data motion graphic must carry these verbatim in `disclosureTextByBeat`:");
   lines.push("");
   for (const disclosure of brief.requiredDisclosures) lines.push(`- \`${disclosure.id}\`: ${disclosure.text}`);
   lines.push("");
-  lines.push("## The one capture state");
+  lines.push("## The capture state");
   lines.push("");
-  lines.push(`Every visual must be a \`real-product-capture\` of \`${brief.captureSurface}\` at exactly:`);
+  lines.push(`Every product visual must be a \`real-product-capture\` of \`${brief.captureSurface}\` at exactly:`);
   lines.push("");
   lines.push(`    ${brief.captureStateIdentifier}`);
   lines.push("");
@@ -364,6 +401,25 @@ export function authoringGuide(brief: ExportedBrief): string {
     lines.push("");
     for (const item of brief.captureDoesNotShow) lines.push(`- ${item}`);
   }
+  lines.push("");
+  lines.push("## Data motion graphics");
+  lines.push("");
+  lines.push(`Capability \`${brief.motionGraphics.capabilityId}\`. A visual of kind \`data-motion-graphic\` draws an animated scene from the primary view:`);
+  lines.push("");
+  lines.push(`    sourceStateIdentifier: ${brief.motionGraphics.sourceStateIdentifier}`);
+  lines.push("");
+  lines.push(`- \`template\`: one of ${brief.motionGraphics.templates.map((template) => `\`${template}\``).join(", ")}.`);
+  lines.push("  - `upgrade-intro`: the mission's question as a headline, the GPU upgrade shown once, then the games' full names as large panels. No figures.");
+  lines.push("  - `game-labels`: the games' full names, animated in. No figures.");
+  lines.push("  - `fps-change`: per game, the before and after estimated FPS Compare shows.");
+  lines.push("  - `percent-change`: per game, the estimated percentage boost beside the two estimates it is computed from, with the formula.");
+  lines.push("    Optional `stage` keeps that comparison on screen, settled, and adds one fixed line its values make true:");
+  lines.push(`    \`reveal\` (default) the bars grow and the percentages appear; \`explain\` adds "${STAGE_LINES.explain.join(" ")}" (two or more games with different percentages); \`ask\` adds "${STAGE_LINES.ask.join(" ")}" and the product destination as a small link line.`);
+  lines.push("    A beat showing the explain or ask stage may set its `onScreenText` to exactly that line (for ask, the question, a space and the link); the graphic then carries it and the caption band does not repeat it.");
+  lines.push("- `games`: one to three catalog game ids, in display order. Names are taken from the catalog.");
+  lines.push('- `baseline`: which Compare build is "before" ("B" means B → A).');
+  lines.push("");
+  lines.push("You never type a number into a graphic. Every value it shows is computed, and each game's values must be covered, as one tuple, by the `evidence` of an approved claim bound in that beat's `factDependencies`: the same game, setting, CPU, before and after GPU, and the same values. Matching digits elsewhere is not enough; otherwise the beat is refused. A graphic carries the estimate disclosure like the capture. Each template and game set is its own picture for shot variety; no other setting is needed.");
   lines.push("");
   lines.push("## Constraints");
   lines.push("");
@@ -495,6 +551,18 @@ export function parseAuthoredConcept(raw: unknown, source: string): CreativeConc
   const visuals = requireArray(record.visuals, source, "visuals").map((entry, index) => {
     const visual = requireObject(entry, source, `visuals[${index}]`);
     const kind = requireString(visual.kind, source, `visuals[${index}].kind`);
+    if (kind === "data-motion-graphic") {
+      return {
+        kind: "data-motion-graphic" as const,
+        visualId: requireString(visual.visualId, source, `visuals[${index}].visualId`),
+        template: requireEnum(visual.template, DATA_MOTION_TEMPLATES, source, `visuals[${index}].template`),
+        sourceStateIdentifier: requireString(visual.sourceStateIdentifier, source, `visuals[${index}].sourceStateIdentifier`),
+        games: requireArray(visual.games, source, `visuals[${index}].games`).map((id, position) =>
+          requireString(id, source, `visuals[${index}].games[${position}]`)),
+        baseline: requireEnum(visual.baseline, ["A", "B"] as const, source, `visuals[${index}].baseline`),
+        ...(visual.stage === undefined ? {} : { stage: requireEnum(visual.stage, PERCENT_CHANGE_STAGES, source, `visuals[${index}].stage`) }),
+      };
+    }
     if (kind !== "real-product-capture") {
       // Other kinds exist in the model, but this production adapter can only
       // render the exact Compare capture. Accepting one here would import a
@@ -502,7 +570,7 @@ export function parseAuthoredConcept(raw: unknown, source: string): CreativeConc
       // at the boundary.
       throw new CreativeImportError(
         source,
-        `visuals[${index}].kind must be "real-product-capture" for a Compare mission; got "${kind}". ` +
+        `visuals[${index}].kind must be "real-product-capture" or "data-motion-graphic" for a Compare mission; got "${kind}". ` +
           "Declare a missing capability instead of describing a visual this adapter cannot render.",
       );
     }
@@ -725,7 +793,7 @@ export interface FeedbackExpectations {
    * Required wording per approved claim.
    *
    * MASTER #2's contract enforces `requiredWording` only for two specific
-   * requirement shapes ("Estimated FPS" and the live-price caveat); any other
+   * requirement shapes ("Estimated FPS" / "Estimated percentage boost" and the live-price caveat); any other
    * required wording is carried but never checked. This workflow enforces the
    * general rule — a beat that binds a claim must carry that claim's required
    * wording — rather than modifying the audited gate to do it.
@@ -816,8 +884,12 @@ export function buildRevisionFeedback(
       (expectations.requiredWordingByClaimId[id] ?? []).some((wording) => /editorial.*subtotal/i.test(wording)));
     const wordingLines = [
       { location: "title", text: proposal.storyboard.title, bindings: [] as readonly string[] },
+      // A beat's text is everything the viewer hears or reads on it: the
+      // narration, the caption and the labels its motion graphic draws.
       ...proposal.concept.beats.map((beat, index) => ({ location: `beat-${index + 1}`,
-        text: `${beat.narration} ${beat.onScreenText}`, bindings: beat.factDependencies })),
+        text: [beat.narration, beat.onScreenText,
+          ...proposal.motionGraphics.filter((graphic) => beat.visualIds.includes(graphic.visualId)).flatMap(graphicLabels)].join(" "),
+        bindings: beat.factDependencies })),
       { location: "cta", text: proposal.storyboard.finalCta, bindings: [] as readonly string[] },
     ];
     for (const line of wordingLines) {
@@ -883,6 +955,7 @@ export function buildRevisionFeedback(
         required.push(text);
       }
     }
+    for (const problem of proposal.motionGraphicProblems) required.push(problem);
     for (const beat of claimBeatsOffPrimaryView(proposal.concept, expectations.captureStateIdentifier)) {
       required.push(
         `Beat ${beat} states a claim while showing a view other than the primary one (${expectations.captureStateIdentifier}). ` +
@@ -899,7 +972,8 @@ export function buildRevisionFeedback(
       );
       const wrongState = concept.visuals.filter(
         (visual) =>
-          visual.kind !== "real-product-capture" || !expectations.captureViewIds.includes(visual.stateIdentifier),
+          visual.kind !== "data-motion-graphic" &&
+          (visual.kind !== "real-product-capture" || !expectations.captureViewIds.includes(visual.stateIdentifier)),
       );
 
       if (!bound) {
@@ -913,7 +987,7 @@ export function buildRevisionFeedback(
       }
       for (const visual of wrongState) {
         required.push(
-          `Visual "${visual.visualId}" must be a real-product-capture of one of the brief's validated views: ` +
+          `Visual "${visual.visualId}" must be a real-product-capture of one of the brief's validated views, or a data motion graphic: ` +
             `${expectations.captureViewIds.join(", ")}.`,
         );
       }
@@ -942,7 +1016,8 @@ export function buildRevisionFeedback(
       concept: proposal.concept,
       storyboard: proposal.storyboard,
       ctaRoute: expectations.productDestination,
-      permittedPictures: expectations.captureViewIds.length,
+      // Each motion-graphic template is a further picture the author can choose.
+      permittedPictures: expectations.captureViewIds.length + DATA_MOTION_TEMPLATES.length,
     });
     required.push(...quality.required);
 

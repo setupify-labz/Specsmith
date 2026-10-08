@@ -29,8 +29,11 @@
 // repository has never simulated anything.
 
 import { UI_RENDER_SURFACES, type UiRenderSurface } from "../../uiRender/uiRenderState.ts";
+import { dataMotionGraphicDefects, type DataMotionGraphic } from "./dataMotionGraphic.ts";
 
-export type VisualKind = "real-product-capture" | "derived-illustration" | "decorative";
+export type { DataMotionGraphic } from "./dataMotionGraphic.ts";
+
+export type VisualKind = "real-product-capture" | "derived-illustration" | "decorative" | "data-motion-graphic";
 
 /**
  * Subjects where an illustration is especially likely to be read as a
@@ -94,7 +97,7 @@ export interface DecorativeVisual {
   readonly description: string;
 }
 
-export type DeclaredVisual = RealProductCapture | DerivedIllustration | DecorativeVisual;
+export type DeclaredVisual = RealProductCapture | DerivedIllustration | DecorativeVisual | DataMotionGraphic;
 
 export type VisualHonestyCode =
   | "unsupported-surface"
@@ -103,7 +106,8 @@ export type VisualHonestyCode =
   | "numbers-without-source"
   | "implies-measurement"
   | "decorative-carries-information"
-  | "duplicate-visual-id";
+  | "duplicate-visual-id"
+  | "invalid-motion-graphic";
 
 export interface VisualHonestyFinding {
   readonly code: VisualHonestyCode;
@@ -180,6 +184,14 @@ function checkOne(visual: DeclaredVisual): readonly VisualHonestyFinding[] {
           "trust a real capture is supposed to carry.",
       });
     }
+    return findings;
+  }
+
+  if (visual.kind === "data-motion-graphic") {
+    // Its figures are computed, not typed, so the checks here are about what
+    // it is computed FROM; the mission-specific checks (primary state, claim
+    // binding) run where the mission is known.
+    for (const detail of dataMotionGraphicDefects(visual)) findings.push({ code: "invalid-motion-graphic", visualId: visual.visualId, detail });
     return findings;
   }
 

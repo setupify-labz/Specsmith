@@ -1,0 +1,122 @@
+{
+  "conceptId": "gpu-gains-guess-the-game",
+  "axes": {
+    "audienceExperience": "participant",
+    "explanatoryStructure": "prediction-then-reveal",
+    "visualMechanism": "single-surface-hold"
+  },
+  "viewerQuestion": "Will a new GPU make every game faster by the same amount?",
+  "viewerTakeaway": "The same GPU upgrade can add a lot in one game and much less in another, so I check the games I play, not one average.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "guess-capture",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "Same CPU, new GPU. Which game gets the bigger boost?",
+      "onScreenText": "Same CPU. New GPU. Which game gains more?",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "commitment",
+      "startSecond": 3,
+      "endSecond": 6,
+      "narration": "Alan Wake 2, or Valorant? Pick one now.",
+      "onScreenText": "Alan Wake 2 or Valorant?",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 6,
+      "endSecond": 12.5,
+      "narration": "In SpecSmith's model estimates, going from an RTX 4060 to an RTX 5070, with the same Ryzen 5 7600 at 1440p High, takes Alan Wake 2 from 43 to 65 FPS.",
+      "onScreenText": "Alan Wake 2: 43 \u2192 65 Estimated FPS",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 12.5,
+      "endSecond": 17.5,
+      "narration": "The same upgrade takes Valorant from 263 to 305 FPS.",
+      "onScreenText": "Valorant: 263 \u2192 305 Estimated FPS",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 17.5,
+      "endSecond": 23.0,
+      "narration": "SpecSmith's model weights each game by how much it leans on the GPU, and it gives Alan Wake 2 far more GPU weight than Valorant.",
+      "onScreenText": "Same upgrade. Different games, different gains.",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": [
+        "model-weights-games"
+      ]
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 23.0,
+      "endSecond": 26.5,
+      "narration": "So check the games you actually play before you upgrade.",
+      "onScreenText": "Check your games \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "guess-capture"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "5": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

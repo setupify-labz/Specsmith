@@ -35,6 +35,8 @@ function kindFromRenderer(asset: RenderManifestAsset): AssetKind | null {
   if (renderer === "specsmith-deterministic-ui-render" && asset.metadata.realUi === true) return "specsmith-ui-capture";
   if (renderer === "specsmith-disclosure-overlay") return "disclosure-panel";
   if (asset.role === "narration") return "narration";
+  if (renderer === "specsmith-synth-sound-effects") return "sound-effect";
+  if (renderer === "specsmith-synth-music-and-effects") return "music";
   if (asset.role === "captions") return "caption-render";
   return null;
 }
@@ -81,6 +83,9 @@ export function checkRights(input: {
         `This ${asset.role} is a placeholder (${record.placeholder.why ?? evidence ?? record.kind}). It may be reviewed for craft but never published.`, "rights.placeholders");
     }
 
+    // A sound effect is repo-made only when its renderer says it synthesized it here (soundEffects.ts): no samples.
+    const synthesizedHere = record.kind === "sound-effect" && asset.metadata.renderer === "specsmith-synth-sound-effects" && asset.metadata.isLicensedSample === false;
+
     // Permission.
     const license = record.license;
     if (!record.source.trim()) add("source-missing", "blocks-final-approval", asset.assetId, "(empty)", "The record does not say where the asset came from.");
@@ -89,7 +94,7 @@ export function checkRights(input: {
     } else if (license.kind === "unknown") {
       add("rights-unknown", "blocks-final-approval", asset.assetId, record.source, "Its license is unknown, so the cut cannot be approved for publication.");
     } else if (license.kind === "repo-owned") {
-      if (!REPO_CREATED.includes(record.kind) && !GENERATED.includes(record.kind) && record.kind !== "narration" && record.kind !== "test-fixture") {
+      if (!REPO_CREATED.includes(record.kind) && !GENERATED.includes(record.kind) && record.kind !== "narration" && record.kind !== "test-fixture" && !synthesizedHere) {
         add("repo-ownership-unsupported", "blocks-final-approval", asset.assetId, record.kind,
           `A ${record.kind} is not something the repository makes; repo ownership needs evidence it was created here.`);
       }
@@ -111,7 +116,7 @@ export function checkRights(input: {
     }
 
     // Generated and repo-made assets keep their generation record.
-    if ((GENERATED.includes(record.kind) || REPO_CREATED.includes(record.kind)) && (!record.generation?.generator.trim() || !record.generation.inputs.trim())) {
+    if ((GENERATED.includes(record.kind) || REPO_CREATED.includes(record.kind) || synthesizedHere) && (!record.generation?.generator.trim() || !record.generation.inputs.trim())) {
       add("generation-record-missing", "blocks-final-approval", asset.assetId, record.kind,
         "A generated or repo-made asset must say what made it and from what; without that it is not reviewable.");
     }

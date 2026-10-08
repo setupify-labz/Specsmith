@@ -73,6 +73,10 @@ on:
       # evidence at its exact head, and workflow_dispatch cannot reach a
       # workflow file that is not on the default branch. Removed when it merges.
       - chatgpt/master2-research-audit
+      # Data motion graphics and the GPU-upgrade draft (draft PR #176, stacked
+      # on #175, so no pull_request workflow reaches it). Same reason as above:
+      # exact-head evidence before review. Removed when it merges.
+      - claude/next-video-gpu-upgrade-brief
     paths:
       - '.github/workflows/content-e2e-offline.yml'
       - 'artifacts/SpecSmith/scripts/content-automator/**'
@@ -133,6 +137,14 @@ jobs:
           set -o pipefail
           pnpm install --frozen-lockfile 2>&1 | tee "${RUNNER_TEMP}/e2e/install.log"
 
+      # Before the tests: the render, review-fixture and silent-narration tests
+      # call ffmpeg, and fail with ENOENT when it is installed only later.
+      - name: Install ffmpeg and espeak-ng
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
+
       - name: Typecheck
         run: |
           set -o pipefail
@@ -166,12 +178,6 @@ jobs:
 
       # ffmpeg/ffprobe compose the real MP4; espeak-ng is the offline TTS
       # fixture (see localFixtureTts.ts) — neither needs a credential.
-      - name: Install ffmpeg and espeak-ng
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
-
       - name: Serve the built application
         working-directory: artifacts/SpecSmith
         run: |

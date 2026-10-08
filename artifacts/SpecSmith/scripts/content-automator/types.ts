@@ -182,7 +182,8 @@ export type ProductionCapability =
   | "music-sfx"
   | "motion-compositor"
   | "caption-render"
-  | "disclosure-overlay";
+  | "disclosure-overlay"
+  | "data-motion-graphic";
 
 export interface ProductionTask {
   taskId: string;

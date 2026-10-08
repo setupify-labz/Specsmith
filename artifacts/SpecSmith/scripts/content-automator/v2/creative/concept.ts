@@ -214,7 +214,8 @@ export function assessConcept(input: AssessmentInput): ConceptAssessment {
   // delivery layer guarantees that disclosure. Deferring it to a trailing
   // frame is exactly the failure mode the brief forbids.
   const disclosureVisuals = new Set([...visualHonesty.requiresOnScreenDisclosure,
-    ...concept.visuals.filter((visual) => visual.kind === "real-product-capture" && visual.surface === "compare").map((visual) => visual.visualId)]);
+    ...concept.visuals.filter((visual) => (visual.kind === "real-product-capture" && visual.surface === "compare") || visual.kind === "data-motion-graphic")
+      .map((visual) => visual.visualId)]);
   for (const visualId of disclosureVisuals) {
     const visual = concept.visuals.find((entry) => entry.visualId === visualId);
     const required = requiredDisclosureIdsFor(visual);
@@ -308,6 +309,8 @@ export function showsEstimateRange(visual: DeclaredVisual | undefined): boolean 
  */
 export function requiredDisclosureIdsFor(visual: DeclaredVisual | undefined): string[] {
   if (visual?.kind === "real-product-capture" && visual.surface === "compare") return ["disclosure.fps-estimate"];
+  // Computed from Compare's estimates, single values, no range.
+  if (visual?.kind === "data-motion-graphic") return ["disclosure.fps-estimate"];
   if (showsEstimateRange(visual)) return ["disclosure.fps-estimate", "disclosure.model-range"];
   return ["disclosure.illustration"];
 }
@@ -335,5 +338,7 @@ function describeVisual(visual: DeclaredVisual): string {
       return `${visual.explains}${visual.explanatoryLabel === null ? "" : ` On-screen label: ${visual.explanatoryLabel}`}`;
     case "decorative":
       return visual.description;
+    case "data-motion-graphic":
+      return `Data motion graphic (${visual.template}) of ${visual.games.join(", ")}, computed from ${visual.sourceStateIdentifier}.`;
   }
 }

@@ -1,0 +1,32 @@
+{
+  "version": "creative-file-workflow-v1",
+  "missionId": "gpu-upgrade-gains-by-game-1440p-high",
+  "briefHash": "0987dd8dcfd370aed22849143999d2055c19440fd791e992fb7e9fd85d62be3a",
+  "attempt": 5,
+  "generatorName": "local-file-authored-batch",
+  "status": "awaiting-human-review",
+  "machineChecksPassed": true,
+  "humanReviewReady": true,
+  "approved": false,
+  "outstandingApprovals": [
+    "Creative review: is this actually worth a viewer's time, original, and clear?",
+    "Readability review: caption density, legibility and pacing at the real output size.",
+    "Rendered-media review: nothing here has been rendered, so no frames have been seen.",
+    "Audio review: PR #92's human audio gate is untouched and unsatisfied by this workflow.",
+    "Rights and disclosure sign-off on the final media.",
+    "Publishing authorization, which this workflow neither requests nor implies."
+  ],
+  "syntheticResearch": false,
+  "conceptIds": [
+    "boost-guess-the-game",
+    "boost-read-the-percentage",
+    "boost-more-frames-smaller-boost"
+  ],
+  "batchHash": "f49f18a228e34515188b069c0feaef08ceab49905d44740e8f588afc7e9b03de",
+  "notes": [
+    "Machine checks bind claims to evidence and enforce structure, disclosure and capture state. They do not measure originality, entertainment value or factual completeness.",
+    "MASTER #1's storyboard review measures caption length and speed, pacing, narration density and the CTA route from the storyboard's text and timing. Passing it does not show that a rendered video looks or sounds good: nothing has been rendered, seen or heard.",
+    "Authorship by a model is not evidence. These concepts passed the same gates a provider's output would.",
+    "No network call, credential, paid service, rendering, scheduling or publishing occurred in producing this packet."
+  ]
+}

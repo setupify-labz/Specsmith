@@ -1,0 +1,450 @@
+{
+  "version": "quality-integrity-review-packet-v1",
+  "packetId": "ed3d42b5aec391b08ddd6b99",
+  "reviewedAt": "2026-10-07T14:12:27.227Z",
+  "creativeId": "gpu-upgrade-gains-by-game-1440p-high/boost-guess-the-game",
+  "platformVariantId": "youtube-shorts-1080x1920-30",
+  "verdict": "awaiting-human-review",
+  "summary": "AWAITING HUMAN REVIEW (not approved): no machine-found defect; 8 human gate(s) open, 3 question(s) only a person can answer; final approval is impossible until these are resolved: rights-unknown.",
+  "verdictMeaning": "No machine-found defect in this exact cut. People must still decide every open gate; this is not an approval, and the cut may not be published or scheduled.",
+  "identities": {
+    "researchContractSha256": "a8733b99187e2a5bc49ded8518664cd34702d4b64766af65c66143986543269a",
+    "researchQuestionId": "gpu-upgrade-gains-by-game-1440p-high",
+    "researchKind": "production",
+    "evidenceSnapshotIds": [
+      "specsmith-model-f434ab70dde4e6fa"
+    ],
+    "modelSnapshotSha256": "60da28cfd1d13c59914ed870e33a200161903622247b5067cf77a4e6d4e165e2",
+    "conceptId": "boost-guess-the-game",
+    "conceptSha256": "4bf756b31bfaecca48be85065ec829acb01c9a1d8b70a6d00afe7725931a89e3",
+    "storyboardSha256": "32ec6ca0ede581accd5e0b8adf75a0d20e94b58a170387456d6a07b5e2f7b548",
+    "narrationSha256": "d677f8ddbf17d5598bff79fe28bd083a300cb78cc5bedfdd4a06622322871686",
+    "captionsSha256": "c1a41a8829414cd49301dd9f270ba3e40a614be2224178b03ee1c3ae92166416",
+    "disclosuresSha256": "cbe091622f36dd2c217cf684766c89aa544f41b6b784d52beb905eec39116ec5",
+    "claimsSha256": "4c20a0cdfffbb3b0491be89315ba2b7171f6259b622788f503c587ea8003f31d",
+    "graphicsSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "productionPlanSha256": "473c84591802da85320825f35a359c6a3aa80026e94252cab3289eccbf39cc64",
+    "titleSha256": "0ab91901630292ad32a9bc75d6d89c90fea6699725c788a593e6692e81930011",
+    "descriptionSha256": "8e438ec9152c9eb20a044b87916085f2db8c70eaaada5cdfb15e594e756b6bfd",
+    "approvedDestination": "/compare",
+    "renderManifestSha256": "9a71b18a498392e266f154487ce04f960b844fd1dfc20f1552d192fbb5a5fa3e",
+    "assetsSha256": "152d8b291a7ae7651557246a6fc74a71dbcaf6958199ced18325c800c7e3a143",
+    "rightsManifestSha256": "ebc2dab185778346954de6ff1d68151e2e387d17b2c61eaaafa56148714d6da2",
+    "platformCutSha256": "dcf1aa0670ec7902b0217eaad1517dc86936d029b84c4c02067d097a1382edb0"
+  },
+  "media": {
+    "path": "/home/user/nv-wt/artifacts/SpecSmith/render-output/gpu-upgrade-final/render/master6-boost-guess-the-game-youtube-shorts-youtube-shorts-compose.mp4",
+    "sha256": "d78538cbc5e06673b593c6a70ddab21df90aafebb3a4f38096d3ee837a07d2eb",
+    "bytes": 1156428,
+    "durationSeconds": 24.5,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "videoCodec": "h264",
+    "audioCodec": "aac",
+    "audioChannels": 1
+  },
+  "assets": [
+    {
+      "assetId": "youtube-shorts-disclosure-overlay",
+      "role": "disclosure-panel",
+      "sha256": "5f2094bc40f306b3fbb32274ca041f5d70857db217dcab0826022260425ae9d5",
+      "kind": "disclosure-panel",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-captions",
+      "role": "captions",
+      "sha256": "c1a41a8829414cd49301dd9f270ba3e40a614be2224178b03ee1c3ae92166416",
+      "kind": "caption-render",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-voice",
+      "role": "narration",
+      "sha256": "714123290712ec494e6c51d51050c67919e63c8298f2baeeb72f6bb2baabf8a3",
+      "kind": "narration",
+      "rights": "unknown"
+    },
+    {
+      "assetId": "youtube-shorts-beat-1-visual",
+      "role": "capture",
+      "sha256": "72e1aff01063363adcc14d2689ef8b713a41fb0604bf9c9b6c1ebf75daebbb65",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-2-visual",
+      "role": "capture",
+      "sha256": "4c96f31afae98a3a7166befc93f472ac87b21e49748e1ba34b21882675ac3eda",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-3-visual",
+      "role": "capture",
+      "sha256": "f9af8a8354184b7d52621e41d1607e4d9c8581bd2c30044372da3deed9275880",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-4-visual",
+      "role": "capture",
+      "sha256": "d9fbb814a409440eeb635ef03e706778486bed77235bd6af2c3141372288b4f4",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-5-visual",
+      "role": "capture",
+      "sha256": "b225e429305e7334d9f65d559f0ee05b79467933489ae62658a8149fec9b91a0",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-beat-6-visual",
+      "role": "capture",
+      "sha256": "043efbb4634d36052041829b95baafaed125433097fe0fef8f1a47c2fe32da92",
+      "kind": "repo-generated-graphic",
+      "rights": "repo-owned"
+    },
+    {
+      "assetId": "youtube-shorts-audio",
+      "role": "sound-effect",
+      "sha256": "315ae24ad6b42b9b0e9f971f6f5b08690981ec1a8653d2709cf8237e2d9f0d63",
+      "kind": "sound-effect",
+      "rights": "repo-owned"
+    }
+  ],
+  "findings": [
+    {
+      "code": "safe-area-unverified",
+      "severity": "needs-person",
+      "check": "disclosure.safe-area",
+      "location": "platform cut",
+      "evidence": "youtube-shorts-1080x1920-30",
+      "message": "Whether the platform's own interface covers the disclosure or captions is unknown; check on a real phone in the app.",
+      "owner": "platform-cut",
+      "recheck": [
+        "disclosure.safe-area",
+        "readable-at-size"
+      ],
+      "gate": "readable-at-size"
+    },
+    {
+      "code": "rendered-text-unread",
+      "severity": "needs-person",
+      "check": "text.ocr",
+      "location": "on-screen text",
+      "evidence": "no OCR",
+      "message": "Read every caption, number and game name on a phone at real size.",
+      "owner": "human-review",
+      "recheck": [
+        "text.ocr",
+        "readable-at-size"
+      ],
+      "gate": "readable-at-size"
+    },
+    {
+      "code": "spoken-words-unheard",
+      "severity": "needs-person",
+      "check": "audio.asr",
+      "location": "narration",
+      "evidence": "no ASR",
+      "message": "Listen to the full narration: every number and name must be pronounced as written.",
+      "owner": "human-review",
+      "recheck": [
+        "audio.asr",
+        "voice-and-mix"
+      ],
+      "gate": "voice-and-mix"
+    },
+    {
+      "code": "rights-unknown",
+      "severity": "blocks-final-approval",
+      "check": "rights.assets",
+      "location": "asset youtube-shorts-voice",
+      "evidence": "ElevenLabs text-to-speech, voice Liam (TX3LPaxmHKxFdv7VOQHJ), model eleven_multilingual_v2; saved take 714123290712ec494e6c51d51050c67919e63c8298f2baeeb72f6bb2baabf8a3",
+      "message": "Its license is unknown, so the cut cannot be approved for publication.",
+      "owner": "rights",
+      "recheck": [
+        "rights.assets",
+        "rights-and-publication"
+      ]
+    }
+  ],
+  "checksCompleted": [
+    {
+      "check": "media.bytes",
+      "status": "passed",
+      "detail": "File exists, is not empty, and its bytes match the render manifest's hash; the render was made from this script and plan"
+    },
+    {
+      "check": "media.decode",
+      "status": "passed",
+      "detail": "Every frame and audio packet decodes"
+    },
+    {
+      "check": "media.format",
+      "status": "passed",
+      "detail": "1080x1920, 30 fps, 24.5s, h264/aac"
+    },
+    {
+      "check": "media.blank-frozen",
+      "status": "passed",
+      "detail": "7 still hold(s) found; holds inside a static capture beat are intended"
+    },
+    {
+      "check": "media.audio-levels",
+      "status": "passed",
+      "detail": "max -2 dBFS, mean -17.6 dBFS. Levels describe the signal, not whether the voice sounds natural."
+    },
+    {
+      "check": "media.ending",
+      "status": "passed",
+      "detail": "The video reaches its planned end and the narration is not cut off"
+    },
+    {
+      "check": "frames.bands",
+      "status": "passed",
+      "detail": "14 sampled frames, including the first and last"
+    },
+    {
+      "check": "captions.rendered-text",
+      "status": "passed",
+      "detail": "Burned-in caption file matches the planned caption cues and beat windows"
+    },
+    {
+      "check": "narration.binding",
+      "status": "passed",
+      "detail": "Narration audio was synthesised from this script"
+    },
+    {
+      "check": "narration.timing",
+      "status": "passed",
+      "detail": "Each narration line is spoken inside its beat's window, and no other sound plays but declared effects"
+    },
+    {
+      "check": "disclosure.content",
+      "status": "passed",
+      "detail": "The rendered disclosure panel carries the planned disclosure, verbatim, legibly"
+    },
+    {
+      "check": "disclosure.coverage",
+      "status": "passed",
+      "detail": "The disclosure is on screen for every claim, for the whole video"
+    },
+    {
+      "check": "claims.model",
+      "status": "passed",
+      "detail": "Every figure agrees with the model it comes from, ties kept apart from leads"
+    },
+    {
+      "check": "claims.presentation",
+      "status": "passed",
+      "detail": "Estimates are labelled as estimates, conditions stated, nothing generalised or made exact"
+    },
+    {
+      "check": "claims.screen",
+      "status": "passed",
+      "detail": "A figure is presented over a screen showing the build, settings and game it is about"
+    },
+    {
+      "check": "claims.undeclared",
+      "status": "passed",
+      "detail": "No figure appears in text without a declared, checkable claim"
+    },
+    {
+      "check": "claims.research",
+      "status": "passed",
+      "detail": "Script, title and description against the research contract, through the strict gate (MASTER #2)"
+    },
+    {
+      "check": "storyboard.quality",
+      "status": "passed",
+      "detail": "0 recommended fix(es). The aggregate production score is not used by this verdict."
+    },
+    {
+      "check": "research.provenance",
+      "status": "passed",
+      "detail": "Research identity, and synthetic research kept marked as synthetic"
+    },
+    {
+      "check": "cta.destination",
+      "status": "passed",
+      "detail": "The call to action names the approved destination"
+    },
+    {
+      "check": "rights.assets",
+      "status": "passed",
+      "detail": "Every asset in the render has source, permission, permitted use and scope"
+    },
+    {
+      "check": "rights.placeholders",
+      "status": "passed",
+      "detail": "Placeholder voice, fixture audio and mock images stay identified"
+    },
+    {
+      "check": "decisions.binding",
+      "status": "passed",
+      "detail": "Recorded human decisions name these exact bytes and this cut"
+    }
+  ],
+  "checksUnavailable": [
+    {
+      "check": "disclosure.safe-area",
+      "status": "unavailable",
+      "detail": "No verified safe-area insets are recorded for youtube-shorts; guessed numbers are not used."
+    },
+    {
+      "check": "captures.current",
+      "status": "not-applicable",
+      "detail": "No Compare capture in this cut."
+    },
+    {
+      "check": "graphics.integrity",
+      "status": "not-applicable",
+      "detail": "No editorial graphics declared."
+    },
+    {
+      "check": "text.ocr",
+      "status": "unavailable",
+      "detail": "No OCR engine is part of this pipeline. Caption and disclosure wording is checked in the files that were burned in, and their presence in pixels, but not read back from the frames."
+    },
+    {
+      "check": "audio.asr",
+      "status": "unavailable",
+      "detail": "No speech recogniser is part of this pipeline. The audio is bound to its script by hash; what is actually said is not transcribed."
+    }
+  ],
+  "humanGates": [
+    {
+      "gate": "hook-on-phone",
+      "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "factual-takeaway",
+      "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+      "bindsTo": [
+        "media",
+        "script",
+        "claims",
+        "evidence",
+        "graphics",
+        "title",
+        "description"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "readable-at-size",
+      "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "captions",
+        "disclosure"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "pacing",
+      "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+      "bindsTo": [
+        "media",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "style-fits-audience",
+      "question": "Does the style suit a beginner choosing a gaming PC?",
+      "bindsTo": [
+        "media"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "voice-and-mix",
+      "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+      "bindsTo": [
+        "media",
+        "script"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "disclosures-in-context",
+      "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+      "bindsTo": [
+        "media",
+        "disclosure",
+        "claims"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    },
+    {
+      "gate": "rights-and-publication",
+      "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+      "bindsTo": [
+        "media",
+        "platformCut",
+        "assets",
+        "rights",
+        "title",
+        "description",
+        "ctaDestination",
+        "manifest.captures",
+        "manifest.disclosurePanel",
+        "manifest.captions",
+        "manifest.narration",
+        "manifest.otherAssets"
+      ],
+      "status": "open",
+      "recordedDecisions": []
+    }
+  ],
+  "approvalMechanism": {
+    "trustedApprovalAvailable": false,
+    "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+  },
+  "bindings": {
+    "manifest.target": "1da9e61ec8a869840cc24cc80203340cfa90d1d9f5029b1231e8265484a364ae",
+    "manifest.layout": "7bb0f1a48dd3c97c44edaf4b4baeb330fda3bd73224c02eae5faea645ea64269",
+    "manifest.timeline": "a14f3f92746814923b0212a30e10a45c36f884d6ea1479f9ed1fba8d5a7813d7",
+    "manifest.captures": "72108a624e5ce1ba01c5cffa3b47e4b2f2d6fbbfba0e6630cbaae98a13d29fce",
+    "manifest.disclosurePanel": "dfc95c37f691da64265cdcd110e7b5c099f9afa34e0bc1a97ac9322bca7dd404",
+    "manifest.captions": "29d2e34b46888ac9491a5e4a64270fbce56f3f4e60fc1dd68ff3d39706b72ece",
+    "manifest.narration": "d5055c3e03339ad0895c5fd7c49b4cafa54f89ed704cf4b6cc137e0da996b262",
+    "manifest.otherAssets": "68d82d49cf195fa5b34c8ed546fca4f0b5cff9a9e609441f159f42acb6d7a19f",
+    "productionPlan": "473c84591802da85320825f35a359c6a3aa80026e94252cab3289eccbf39cc64",
+    "media": "d78538cbc5e06673b593c6a70ddab21df90aafebb3a4f38096d3ee837a07d2eb",
+    "platformCut": "dcf1aa0670ec7902b0217eaad1517dc86936d029b84c4c02067d097a1382edb0",
+    "script": "32ec6ca0ede581accd5e0b8adf75a0d20e94b58a170387456d6a07b5e2f7b548",
+    "captions": "c1a41a8829414cd49301dd9f270ba3e40a614be2224178b03ee1c3ae92166416",
+    "disclosure": "ccfb4fe1bf09ea8eef784046098de6d40e5bf8f1eee0c3636df98632b66f5425",
+    "claims": "4c20a0cdfffbb3b0491be89315ba2b7171f6259b622788f503c587ea8003f31d",
+    "evidence": "bcb1fd5fa07161a10fd8b9c872a05b76505f4d42020c7f97f9e206f70e7de0c7",
+    "research": "d23574057dc1aae715f5fb102f7fe5aea5fce85451acd06b2c10d1eeaecf5af4",
+    "graphics": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "assets": "152d8b291a7ae7651557246a6fc74a71dbcaf6958199ced18325c800c7e3a143",
+    "rights": "ebc2dab185778346954de6ff1d68151e2e387d17b2c61eaaafa56148714d6da2",
+    "decisions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "title": "0ab91901630292ad32a9bc75d6d89c90fea6699725c788a593e6692e81930011",
+    "description": "8e438ec9152c9eb20a044b87916085f2db8c70eaaada5cdfb15e594e756b6bfd",
+    "ctaDestination": "a00971334b056054e1e69d472fe00ec05157634995151654b0f5e5dfb20b4e4f"
+  }
+}

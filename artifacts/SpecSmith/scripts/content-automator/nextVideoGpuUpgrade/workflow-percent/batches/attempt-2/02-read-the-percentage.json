@@ -1,0 +1,157 @@
+{
+  "conceptId": "boost-read-the-percentage",
+  "axes": {
+    "audienceExperience": "investigator",
+    "explanatoryStructure": "question-evidence-boundary",
+    "visualMechanism": "annotated-static-card"
+  },
+  "viewerQuestion": "Which game gets the bigger percentage boost?",
+  "viewerTakeaway": "To judge an upgrade for my games, I compare the estimated percentage boost, and I know these are estimates, not a buying verdict.",
+  "productDestination": "/compare",
+  "visuals": [
+    {
+      "kind": "real-product-capture",
+      "visualId": "compare-1440p-high",
+      "surface": "compare",
+      "stateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "labels-aw-val",
+      "template": "game-labels",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "labels-val-aw",
+      "template": "game-labels",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "valorant",
+        "alanwake2"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "fps-both",
+      "template": "fps-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    },
+    {
+      "kind": "data-motion-graphic",
+      "visualId": "pct-aw-val",
+      "template": "percent-change",
+      "sourceStateIdentifier": "compare_rtx5070_r5-7600_vs_rtx4060_r5-7600_1440p_high_static_540x960-2",
+      "games": [
+        "alanwake2",
+        "valorant"
+      ],
+      "baseline": "B"
+    }
+  ],
+  "requiredCapabilities": [
+    {
+      "capabilityId": "render.compare-surface-capture",
+      "description": "Existing deterministic static Compare UI capture."
+    },
+    {
+      "capabilityId": "render.data-motion-graphic",
+      "description": "Data motion graphics computed from the primary Compare state."
+    }
+  ],
+  "requiredDisclosures": [
+    "disclosure.fps-estimate"
+  ],
+  "beats": [
+    {
+      "purpose": "hook",
+      "startSecond": 0,
+      "endSecond": 3,
+      "narration": "A new GPU won't boost every game equally.",
+      "onScreenText": "A new GPU won't boost every game equally",
+      "visualIds": [
+        "compare-1440p-high"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 3,
+      "endSecond": 9,
+      "narration": "In SpecSmith's model estimates, same Ryzen 5 7600 at 1440p High: Alan Wake 2 goes 43 to 65, Valorant 263 to 305.",
+      "onScreenText": "Same upgrade, two games \u00b7 Estimated FPS",
+      "visualIds": [
+        "fps-both"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-gpu-heavy-game",
+        "gpu-upgrade-cpu-heavy-game"
+      ]
+    },
+    {
+      "purpose": "evidence",
+      "startSecond": 9,
+      "endSecond": 14,
+      "narration": "As an estimated boost, that's 51% against 16%.",
+      "onScreenText": "51% vs 16% \u00b7 Estimated FPS",
+      "visualIds": [
+        "pct-aw-val"
+      ],
+      "factDependencies": [
+        "gpu-upgrade-percent-gpu-heavy-game",
+        "gpu-upgrade-percent-cpu-heavy-game",
+        "bigger-percentage-boost"
+      ]
+    },
+    {
+      "purpose": "payoff",
+      "startSecond": 14,
+      "endSecond": 19,
+      "narration": "Model estimates, not benchmarks. They can't tell you if it's worth it.",
+      "onScreenText": "Estimates, not a verdict",
+      "visualIds": [
+        "labels-aw-val"
+      ],
+      "factDependencies": []
+    },
+    {
+      "purpose": "cta",
+      "startSecond": 19,
+      "endSecond": 22,
+      "narration": "Look up the games you play first.",
+      "onScreenText": "Look up your games \u00b7 specsmithpc.com/compare",
+      "visualIds": [
+        "labels-val-aw"
+      ],
+      "factDependencies": []
+    }
+  ],
+  "disclosureTextByBeat": {
+    "0": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "1": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "2": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "3": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ],
+    "4": [
+      "FPS values are SpecSmith model estimates, not measured benchmarks of these exact systems."
+    ]
+  }
+}

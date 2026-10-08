@@ -26,6 +26,12 @@ export interface BandedBeatSources {
   readonly endSecond: number;
   /** PNG files the story band may show during this beat (one per static capture). */
   readonly sources: readonly string[];
+  /**
+   * A moving source (a data motion graphic clip) instead of stills: the story
+   * band is compared with the clip's own frame at the same offset into the
+   * beat, allowing one frame of encode timing either side.
+   */
+  readonly clip?: string;
 }
 
 export interface BandedFrameExpectation {
@@ -91,9 +97,9 @@ async function frameAt(ffmpegPath: string, videoPath: string, atSecond: number, 
   return raw;
 }
 
-/** An image decoded to grey at exactly `width` x `height`, fitted as the compositor fits it. */
-async function imageAt(ffmpegPath: string, path: string, width: number, height: number): Promise<Buffer> {
-  const raw = await run(ffmpegPath, ["-v", "error", "-i", path, "-frames:v", "1", "-vf",
+/** An image (or a clip's frame at `offset`) decoded to grey at exactly `width` x `height`, fitted as the compositor fits it. */
+async function imageAt(ffmpegPath: string, path: string, width: number, height: number, offset?: number): Promise<Buffer> {
+  const raw = await run(ffmpegPath, ["-v", "error", ...(offset === undefined ? [] : ["-ss", Math.max(0, offset).toFixed(3)]), "-i", path, "-frames:v", "1", "-vf",
     `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,format=gray`,
     "-f", "rawvideo", "-"]);
   if (raw.length !== width * height) throw new Error(`${path} decoded to ${raw.length} bytes, not ${width}x${height}.`);
@@ -157,8 +163,16 @@ export async function checkBandedFrames(
 
     const disclosureError = meanError(rows(frame, layout.width, layout.disclosure), panel);
     const story = rows(frame, layout.width, layout.story);
-    const storyError = Math.min(...beat.sources.map((source) => meanError(story, sources.get(source)!)));
-    const storyChange = Math.min(...beat.sources.map((source) => strongChange(story, sources.get(source)!)));
+    const references = beat.clip
+      ? await Promise.all([-1 / 30, 0, 1 / 30].map((shift) => {
+          // Inside the clip: the final beat may hold past its planned end, and the clip ends with it.
+          const lastFrame = beat.endSecond - beat.startSecond - 1 / 30 - 0.002;
+          return imageAt(ffmpegPath, beat.clip!, layout.width, layout.story.height, Math.max(0, Math.min(lastFrame, atSecond - beat.startSecond + shift)));
+        }))
+      : beat.sources.map((source) => sources.get(source)!);
+    if (references.length === 0) throw new Error(`Beat ${index + 1} has no source to check the story band against.`);
+    const storyError = Math.min(...references.map((reference) => meanError(story, reference)));
+    const storyChange = Math.min(...references.map((reference) => strongChange(story, reference)));
     const cueActive = expectation.captionCues.some((cue) => atSecond >= cue.startSecond && atSecond < cue.endSecond);
     const captionInk = cueActive ? ink(rows(frame, layout.width, layout.captions)) : null;
 
@@ -166,7 +180,7 @@ export async function checkBandedFrames(
       failures.push(`At ${atSecond.toFixed(2)}s the disclosure band does not show the verified disclosure panel (error ${disclosureError.toFixed(1)}).`);
     }
     if (storyError > BAND_MATCH_MAX_ERROR || storyChange > STORY_MAX_STRONG_CHANGE) {
-      failures.push(`At ${atSecond.toFixed(2)}s the story band does not match beat ${index + 1}'s capture (error ${storyError.toFixed(1)}, ${(storyChange * 100).toFixed(2)}% of pixels changed): something is drawn over it, or it shows another picture.`);
+      failures.push(`At ${atSecond.toFixed(2)}s the story band does not match beat ${index + 1}'s ${beat.clip ? "motion graphic" : "capture"} (error ${storyError.toFixed(1)}, ${(storyChange * 100).toFixed(2)}% of pixels changed): something is drawn over it, or it shows another picture.`);
     }
     if (captionInk !== null && captionInk < CAPTION_INK_MIN) {
       failures.push(`At ${atSecond.toFixed(2)}s a caption cue is active but the caption band is empty.`);

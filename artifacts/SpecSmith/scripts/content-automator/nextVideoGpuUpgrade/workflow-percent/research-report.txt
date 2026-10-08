@@ -1,0 +1,57 @@
+CONTENT_RESEARCH_REPORT research-gpu-upgrade-gains-by-game-1440p-high-2026-10-06T20:51:00.000Z
+  question:      With the same CPU, does SpecSmith's model estimate that a GPU upgrade raises every game's FPS by a similar share?
+  informs:       Which per-game contrast the next Short may state, and in what words.
+  stopped:       insufficient-evidence (a correct outcome)
+  evidence:      1 snapshot(s), 8 observation(s), 9 atomic claim(s)
+  safe to say:   7
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, moving from an RTX 4060 to an RTX 5070 takes Alan Wake 2 from 43 to 65 FPS.
+        required wording: Estimated FPS
+        attribute to: SpecSmith
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade takes Valorant from 263 to 305 FPS.
+        required wording: Estimated FPS
+        attribute to: SpecSmith
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 4060 to RTX 5070 upgrade gives Alan Wake 2 an estimated 51% boost: from 43 to 65 FPS, (65 − 43) ÷ 43.
+        required wording: Estimated FPS
+        required wording: Estimated percentage boost
+        attribute to: SpecSmith
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the same upgrade gives Valorant an estimated 16% boost: from 263 to 305 FPS, (305 − 263) ÷ 263.
+        required wording: Estimated FPS
+        required wording: Estimated percentage boost
+        attribute to: SpecSmith
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, Alan Wake 2 gets the bigger percentage boost from the RTX 4060 to RTX 5070 upgrade: 51% against Valorant's 16%.
+        required wording: Estimated FPS
+        required wording: Estimated percentage boost
+        attribute to: SpecSmith
+    [strongly-supported] SpecSmith's model weights each game by how much it leans on the GPU; it gives Alan Wake 2 far more GPU weight than Valorant.
+        attribute to: SpecSmith
+    [strongly-supported] In SpecSmith's model estimates at 1440p High with the same Ryzen 5 7600, the RTX 5070 build has the higher estimate in all 20 games.
+        required wording: Estimated FPS
+        attribute to: SpecSmith
+  NOT safe:      2
+    [unknown] One of these two graphics cards is the better purchase.
+        why: A high-risk recommendation claim needs strongly-supported; this is unknown. No evidence of any kind has been linked to this claim.
+        would become safe if: Any observation bearing on "One of these two graphics cards is the better purchase." would establish a first position.
+    [insufficient-evidence] SpecSmith measured these frame rates on real hardware.
+        why: A high-risk performance-measured claim needs strongly-supported; this is insufficient-evidence. No applicable observation is fully current; the best available evidence is aging. 0 independent origin(s) for a high-risk claim, which needs 2. 0 independent origin(s), none sharing a publisher or declared upstream source. The best evidence applies only unknownly to this claim's configuration.
+        would become safe if: A current observation would remove the age caveat.
+        would become safe if: An observation from a genuinely independent second origin would meet the bar.
+  gap [blocking]: missing-evidence — No supporting evidence for: One of these two graphics cards is the better purchase.
+  gap [blocking]: missing-evidence — No supporting evidence for: SpecSmith measured these frame rates on real hardware.
+  budget:        1 source(s), 0 duplicate(s) skipped, 0 cached reuse(s)
+  limitation:    2 blocking knowledge gap(s) remain: missing-evidence, missing-evidence.
+
+Model files (sha256): {
+  "src/lib/fps.ts": "2370a43f0c0b76c43f9a1606f3b50d46805951f76f9d82191ba5c8fdbeb44731",
+  "src/lib/compareValue.ts": "f0581c6abe95431b6710e1e0bab1a7a4ec4a2dfec8309b749cff74d8486ca024",
+  "src/lib/compareTally.ts": "f2f6e410d2871109cebb8f239036a2a29ff6b5bf73681b14366a433a0d722a2a",
+  "src/data/gpus.json": "4d0ed7348e4d64aa7bb0762153860155e47f4b76039b53ac411811f71c5bf3ba",
+  "src/data/cpus.json": "db51ff62f2ec5205624e4382fccd67297acc663dea37435ffc2e2c75b350697f",
+  "src/data/games.json": "ab3f2e06727f26a3bde3f0d32dd562658698fade4065c0b045eeec9ff183ce1e"
+}
+
+Refused angles (not in the contract, so no concept may use them):
+  - "Your CPU matters less at 4K, so a GPU upgrade helps more there." False of SpecSmith's model: each game's GPU weight is fixed and does not change with resolution, so the after/before ratio is identical at 1080p, 1440p and 4K (obs-resolution-invariance). True or not on real hardware, the model cannot show it.
+  - "The RTX 5070 is the upgrade to buy." (contract: better-purchase) A recommendation needs live prices and a buyer profile; the model knows neither, and Compare shows no prices.
+  - "A real RTX 5070 runs Alan Wake 2 at 65 FPS." (contract: measured-on-hardware) 65 is a model estimate, not a measurement; no measured benchmark of this configuration is in evidence.
+
+Learning input: published-post report external-fb62299dbff66267 (posts instagram-reels:DeIi5pZDWew, instagram-reels:DeKLo_0kw7C, tiktok:7693352089078058271, tiktok:7693587971584429343, youtube-shorts:648FsZLefnc, youtube-shorts:cSDhjFC-CI8; trusted observations 0).
