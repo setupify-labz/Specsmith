@@ -1,9 +1,12 @@
 #!/usr/bin/env tsx
-// "New PC not working? Check these two spots." A 12.3 s silent Short that
+// "New PC not working? Check these two spots." A 12.25 s silent Short that
 // joins the PSU-switch cut and the monitor-port animation into one story about
 // ONE stylized PC, which the camera turns rather than cutting between clips:
 //
-//   1. Won't power on: a dead press at the front; turn to the back; the power
+//   Open (first second): a dead press at the front, "NO POWER?"; then a fast
+//      glimpse of the other symptom, the PC lit beside a dark monitor, "ON, NO
+//      PICTURE?" (a dark screen only: no message, no result); back to the dead PC.
+//   1. Won't power on: turn to the back; the power
 //      supply's switch, O to I; turn to the front; press; it lights up.
 //   2. On, but no picture: turn to the back again; the monitor cable is in the
 //      motherboard's ports; one move to the graphics card's ports.
@@ -44,11 +47,12 @@ export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, 
 
 /** Every event, in seconds. One PC, three turns, two checks. */
 export const TIMING = Object.freeze({
-  durationSeconds: 12.3,
-  press1: 0.15, turn1: [1.2, 1.55], hold1: [1.55, 2.5], zoomIn: [2.5, 2.8], flip: 3.4, zoomOut: [3.9, 4.2],
-  turn2: [4.2, 4.55], press2: 4.7, light: 4.8,
-  turn3: [5.55, 5.9], hold2: [5.9, 6.8], pull: 6.8, travel: 7.0, push: 8.4, seated: 8.6,
-  final: 10.0,
+  durationSeconds: 12.25,
+  press1: 0.1, glimpse: [0.55, 1.1],
+  turn1: [1.15, 1.5], hold1: [1.5, 2.45], zoomIn: [2.45, 2.75], flip: 3.35, zoomOut: [3.85, 4.15],
+  turn2: [4.15, 4.5], press2: 4.65, light: 4.75,
+  turn3: [5.5, 5.85], hold2: [5.85, 6.75], pull: 6.75, travel: 6.95, push: 8.35, seated: 8.55,
+  final: 9.95,
 });
 
 export const COPY = Object.freeze({
@@ -56,13 +60,13 @@ export const COPY = Object.freeze({
   line: "Stylized example · not a fix for every PC",
   chapters: ["1 · WON'T POWER ON", "2 · ON, BUT NO PICTURE"],
   captions: [
-    { from: 0, to: 2.4, text: "New PC not working? Check these two spots." },
-    { from: 2.4, to: 5.55, text: "1. Power supply switch: O is off, I is on." },
-    { from: 5.55, to: 7.0, text: "2. PC on, but no picture?" },
-    { from: 7.0, to: 10.0, text: "Is your monitor plugged into the graphics card?" },
-    { from: 10.0, to: 12.3, text: "Check these two spots first." },
+    { from: 0, to: 2.35, text: "New PC not working? Check these two spots." },
+    { from: 2.35, to: 5.5, text: "1. Power supply switch: O is off, I is on." },
+    { from: 5.5, to: 6.95, text: "2. PC on, but no picture?" },
+    { from: 6.95, to: 9.95, text: "Is your monitor plugged into the graphics card?" },
+    { from: 9.95, to: 12.25, text: "Check these two spots first." },
   ],
-  labels: { psu: "PSU SWITCH", motherboard: "MOTHERBOARD PORTS", graphicsCard: "GRAPHICS CARD PORTS", cable: "MONITOR CABLE", noPower: "NOTHING HAPPENS", on: "ON" },
+  labels: { psu: "PSU SWITCH", motherboard: "MOTHERBOARD PORTS", graphicsCard: "GRAPHICS CARD PORTS", cable: "MONITOR CABLE", noPower: "NO POWER?", noPicture: "ON, NO PICTURE?", on: "ON" },
   site: "specsmithpc.com",
 });
 
@@ -231,9 +235,27 @@ const SW_C = [SW.x + SW.w / 2, SW.y + SW.h / 2];
 // The whole back of the case in frame, power supply included, so both spots are always visible.
 const BACK_FRAME = [540, 700, 1.0];
 
+// The opening's glimpse of symptom 2: the same front, lit, beside a monitor whose screen stays dark.
+function glimpse(t) {
+  const k = 1.04 - 0.04 * out(span(t, [T.glimpse[0], T.glimpse[0] + 0.12]));
+  ctx.save(); ctx.translate(W / 2, STORY.y + 800); ctx.scale(k, k); ctx.translate(-W / 2, -(STORY.y + 800));
+  ctx.save(); ctx.translate(40, 560); ctx.scale(0.75, 0.75); ctx.translate(-CASE_F.x, -CASE_F.y); front(1, 0); ctx.restore();
+  const M = { x: 450, y: 904, w: 600, h: 350 };
+  rr(M.x + M.w / 2 - 30, M.y + M.h, 60, 150, 6, '#1C1C26', '#55556A', 3);
+  rr(M.x + M.w / 2 - 130, M.y + M.h + 140, 260, 36, 12, '#1C1C26', '#55556A', 3);
+  rr(M.x, M.y, M.w, M.h, 18, '#1C1C26', '#55556A', 4);
+  rr(M.x + 18, M.y + 18, M.w - 36, M.h - 54, 8, '#050508');
+  ctx.restore();
+}
+
 function story(t) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, STORY.y, W, STORY.height); ctx.clip();
   ctx.fillStyle = C.background; ctx.fillRect(0, STORY.y, W, STORY.height);
+  if (t >= T.glimpse[0] && t < T.glimpse[1]) {
+    glimpse(t); ctx.restore();
+    pill(S.copy.labels.noPicture, W / 2, STORY.y + 230, CYAN, '#0A0A0F', 84, 1);
+    ctx.restore(); return;
+  }
   const f = face(t);
   const on = t >= T.flip, powered = t >= T.light;
   const zIn = t < T.zoomIn[0] || t >= T.turn2[0] ? 0 : t < T.zoomOut[0] ? ease(span(t, T.zoomIn)) : 1 - ease(span(t, T.zoomOut));
@@ -265,7 +287,7 @@ function story(t) {
     }
   } else {
     front(powered ? out((t - T.light) / 0.3) : 0, pressAt(t, T.press1) + pressAt(t, T.press2));
-    const f1 = t < 1.0 ? 1 - clamp((t - 0.8) / 0.2) : 0;
+    const f1 = t < T.glimpse[0] ? 1 - clamp((t - (T.glimpse[0] - 0.12)) / 0.12) : 0;
     if (f1 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, T.press1) + 90 * (1 - out(t / 0.12)), BTN.y, f1);
     const f2 = t >= T.turn2[1] ? clamp((t - T.turn2[1]) / 0.06) * (1 - clamp((t - (T.press2 + 0.35)) / 0.15)) : 0;
     if (f2 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, T.press2), BTN.y, f2);
@@ -274,7 +296,7 @@ function story(t) {
 
   // Screen-space labels: large, fixed size through the zoom.
   const backY = (y) => STORY.y + STORY.height / 2 + (y - BACK_FRAME[1]) * BACK_FRAME[2], backX = (x) => W / 2 + (x - BACK_FRAME[0]) * BACK_FRAME[2];
-  pill(S.copy.labels.noPower, W / 2, STORY.y + 440, RED, '#0A0A0F', 64, t >= 0.3 && t < T.turn1[0] + 0.05 ? out((t - 0.3) / 0.12) : 0);
+  pill(S.copy.labels.noPower, W / 2, STORY.y + 425, RED, '#0A0A0F', 96, t >= T.press1 + 0.1 && t < T.glimpse[0] ? out((t - T.press1 - 0.1) / 0.08) : 0);
   if (f.backSide && t < T.turn2[0]) {
     const a = t >= T.hold1[0] && t < T.zoomIn[0] + 0.1 ? out((t - T.hold1[0]) / 0.2) : 0;
     if (a > 0) {
@@ -304,8 +326,8 @@ function story(t) {
     ctx.save(); ctx.globalAlpha = a * 0.9; text(S.copy.site, W / 2, backY(1060), 600, 42, 42, C.textSecondary, 'center', 600); ctx.restore();
   }
   // Chapter tag: which symptom this is.
-  const chapter = t < T.turn3[0] - 0.1 ? 0 : t < T.final ? 1 : -1;
-  if (chapter >= 0 && t >= 0) {
+  const chapter = t < T.glimpse[1] ? -1 : t < T.turn3[0] - 0.1 ? 0 : t < T.final ? 1 : -1;
+  if (chapter >= 0) {
     const a = chapter === 0 ? 1 : out((t - (T.turn3[0] - 0.1)) / 0.25);
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = '700 42px Inter'; const w = ctx.measureText(S.copy.chapters[chapter]).width + 44;

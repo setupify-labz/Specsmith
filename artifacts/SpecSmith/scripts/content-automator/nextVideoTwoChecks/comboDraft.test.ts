@@ -13,10 +13,17 @@ describe("the two-spots Short", () => {
     for (const bad of ["Motherboard ports give no signal", "Get 30 more FPS", "This always fixes it"]) expect(comboCopyProblems([bad]).length).toBeGreaterThan(0);
   });
 
+  it("opens on the dead press, then the glimpse, inside the first ~1.1 s", () => {
+    expect(TIMING.press1).toBeLessThan(0.3);
+    expect(TIMING.glimpse[0]).toBeGreaterThan(TIMING.press1 + 0.25);
+    expect(TIMING.glimpse[1]).toBeLessThanOrEqual(1.1);
+    expect(COPY.labels).toMatchObject({ noPower: "NO POWER?", noPicture: "ON, NO PICTURE?" });
+  });
+
   it("runs dead press, switch, power-on, then the cable move, inside 12–15 s", () => {
     expect(TIMING.durationSeconds).toBeGreaterThanOrEqual(12);
     expect(TIMING.durationSeconds).toBeLessThanOrEqual(15);
-    const order = [TIMING.press1, TIMING.flip, TIMING.light, TIMING.pull, TIMING.seated, TIMING.final];
+    const order = [TIMING.press1, TIMING.glimpse[0], TIMING.glimpse[1], TIMING.turn1[0], TIMING.flip, TIMING.light, TIMING.pull, TIMING.seated, TIMING.final];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(TIMING.turn3[0]).toBeGreaterThan(TIMING.light);
   });
