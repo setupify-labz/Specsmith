@@ -1,4 +1,4 @@
-// "Where to plug in your gaming monitor": a 13-second SpecSmith Short.
+// "Where to plug in your gaming monitor": a 9-second SpecSmith Short.
 //
 // This file is the single source for what the Short may show and say, and the
 // guards that keep it honest:
@@ -15,7 +15,9 @@
 //     gain, bottleneck or performance loss is claimed unless measured here,
 //     same game and settings, both ways.
 
-export const DURATION_SECONDS = 13;
+export const DURATION_SECONDS = 9;
+export const MIN_SECONDS = 8;
+export const MAX_SECONDS = 10;
 export const FPS = 30;
 
 export const SOURCES = Object.freeze([
@@ -70,11 +72,11 @@ export class MonitorPortStoryError extends Error {
   }
 }
 
-export const HOOK = "You bought a graphics card. Is your monitor plugged into it?";
-export const LABELS = Object.freeze({ motherboard: "MOTHERBOARD", graphicsCard: "GRAPHICS CARD" });
-export const INSTRUCTION = "If you have a dedicated GPU, check its display ports.";
+export const HOOK = "Bought a graphics card. Is your monitor plugged into it?";
+export const LABELS = Object.freeze({ motherboard: "MOTHERBOARD PORTS", graphicsCard: "GRAPHICS CARD PORTS" });
+export const INSTRUCTION = "Check where your monitor cable goes.";
 export const SITE_LINE = "specsmithpc.com";
-export const ILLUSTRATIVE_LABEL = Object.freeze({ badge: "ILLUSTRATIVE DIAGRAM", line: "Not real hardware · real footage replaces it" });
+export const ILLUSTRATIVE_LABEL = Object.freeze({ badge: "ILLUSTRATION", line: "Stylized hardware · not a real PC" });
 
 export interface Caption { readonly startSecond: number; readonly endSecond: number; readonly text: string }
 
@@ -84,12 +86,10 @@ export interface Caption { readonly startSecond: number; readonly endSecond: num
  */
 export function beats(record: PcRecord | null = PC_RECORD) {
   return [
-    { id: "hook", startSecond: 0, endSecond: 2.6, caption: HOOK },
-    { id: "motherboard", startSecond: 2.6, endSecond: 4.6, caption: "Motherboard ports use the CPU's graphics" },
-    { id: "graphics-card", startSecond: 4.6, endSecond: 6.6, caption: "Graphics card ports use the card you bought" },
-    { id: "move", startSecond: 6.6, endSecond: 8.6, caption: "Move the cable to the graphics card" },
-    { id: "result", startSecond: 8.6, endSecond: 10.4, caption: resultCaption(record) },
-    { id: "instruction", startSecond: 10.4, endSecond: DURATION_SECONDS, caption: INSTRUCTION },
+    { id: "hook", startSecond: 0, endSecond: 2.8, caption: HOOK },
+    // One move: out of the motherboard at 2.8 s, seated in the graphics card by 4.0 s.
+    { id: "move", startSecond: 2.8, endSecond: 5.0, caption: "Move it to the graphics card" },
+    { id: "close", startSecond: 5.0, endSecond: DURATION_SECONDS, caption: INSTRUCTION },
   ] as const;
 }
 
@@ -129,15 +129,15 @@ export function copyProblems(texts: readonly string[], record: PcRecord | null =
 /**
  * The narration proposed for review. Not voiced. The result line is added
  * only once PC_RECORD says what the screen showed. At the saved GPU take's
- * pace (about 13.5 characters a second) the four lines run about 12.6 s; a
+ * pace (about 13.5 characters a second) these lines run about 8.4 s; a
  * result line would need the edit to grow toward 15 s.
  */
 export function proposedNarration(record: PcRecord | null = PC_RECORD): string {
   const lines = [
-    "You bought a graphics card. Is your monitor plugged into it?",
-    "These are motherboard ports. Move it to the graphics card.",
+    "Bought a graphics card? Is your monitor plugged into it?",
+    "Move it to the graphics card.",
     ...(record ? [`On this PC, that gives ${record.graphicsCardPort.monitorShowed}.`] : []),
-    "If you have a dedicated GPU, check its display ports.",
+    "Check where your monitor cable goes.",
   ];
   return lines.join(" ");
 }
@@ -169,6 +169,6 @@ export function storyProblems(record: PcRecord | null = PC_RECORD): string[] {
   if (list[0].startSecond !== 0 || list[0].caption !== HOOK) problems.push("The hook must be on screen from frame 0.");
   for (let index = 1; index < list.length; index += 1) if (list[index].startSecond !== list[index - 1].endSecond) problems.push(`Gap before "${list[index].id}".`);
   if (list.at(-1)!.caption !== INSTRUCTION || list.at(-1)!.endSecond !== DURATION_SECONDS) problems.push("The Short must end on the instruction.");
-  if (DURATION_SECONDS < 12 || DURATION_SECONDS > 15) problems.push(`Duration ${DURATION_SECONDS}s is outside 12–15 s.`);
+  if (DURATION_SECONDS < MIN_SECONDS || DURATION_SECONDS > MAX_SECONDS) problems.push(`Duration ${DURATION_SECONDS}s is outside ${MIN_SECONDS}–${MAX_SECONDS} s.`);
   return problems;
 }

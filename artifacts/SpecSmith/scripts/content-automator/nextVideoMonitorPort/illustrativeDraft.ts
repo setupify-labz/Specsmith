@@ -34,7 +34,7 @@ export const FONT_DIR = resolve(here, "../nextVideoRefreshRate/fonts");
 const FONT_FILES = { 400: "inter-latin-400-normal.woff2", 600: "inter-latin-600-normal.woff2", 700: "inter-latin-700-normal.woff2" } as const;
 export const MIN_FINAL_PX = 42;
 export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, height: 200 }, story: { y: 200, height: 1400 }, captions: { y: 1600, height: 320 } });
-export const KEY_FRAME_SECONDS = [0, 1.3, 3.6, 5.6, 6.95, 7.4, 8.2, 9.5, 11.7] as const;
+export const KEY_FRAME_SECONDS = [0, 1.4, 2.95, 3.35, 3.75, 4.3, 5.4, 7.0, 8.7] as const;
 
 function pageScript(state: unknown): string {
   return `
@@ -93,7 +93,7 @@ function usb(x, y) { rr(x, y, 76, 30, 4, '#0B0B10', '#55556A', 3); rr(x + 10, y 
 function row(r, label, colour, lit, kind) {
   rr(r.x, r.y, r.w, r.h, 26, '#1A1A24', lit > 0 ? colour : '#33333F', lit > 0 ? 3 + 4 * lit : 3);
   if (lit > 0) { ctx.save(); ctx.globalAlpha = 0.10 * lit; rr(r.x, r.y, r.w, r.h, 26, colour); ctx.restore(); }
-  pill(label, r.x + 40 + labelWidth(label) / 2, r.y - 4, colour, 46);
+  pill(label, r.x + 40 + labelWidth(label) / 2, r.y - 4, colour, 48);
   const vy = r.y + 80, portColour = lit > 0 ? colour : '#C9C9D6';
   if (kind === 'mb') {
     usb(r.x + 60, vy + 4); usb(r.x + 60, vy + 50); usb(r.x + 160, vy + 4); usb(r.x + 160, vy + 50);
@@ -107,12 +107,12 @@ function row(r, label, colour, lit, kind) {
     hdmi(GPU_PORT, portColour, 5);
   }
 }
-const labelWidth = (s) => { ctx.font = '700 46px Inter'; return ctx.measureText(s).width + 56; };
+const labelWidth = (s) => { ctx.font = '700 48px Inter'; return ctx.measureText(s).width + 56; };
 
 /** The cable: plug position as a function of time, one decisive move. */
 function plugAt(t) {
   const a = { x: MB_PORT.x + MB_PORT.w / 2, y: MB_PORT.y + MB_PORT.h / 2 }, b = { x: GPU_PORT.x + GPU_PORT.w / 2, y: GPU_PORT.y + GPU_PORT.h / 2 };
-  const pull = 6.6, travel = 6.82, push = 7.62, done = 7.82;
+  const pull = 2.8, travel = 3.0, push = 3.8, done = 4.0;
   if (t < pull) return { ...a, out: 0 };
   if (t < travel) return { ...a, y: a.y + 70 * out((t - pull) / (travel - pull)), out: 1 };
   if (t < push) {
@@ -138,32 +138,21 @@ function story(t, beat) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, STORY.y, W, STORY.height); ctx.clip();
   ctx.fillStyle = C.background; ctx.fillRect(0, STORY.y, W, STORY.height);
   // Camera: whole diagram, a punch-in on each row, back out for the move.
-  const shots = { hook: [540, 600, 1.15], motherboard: [540, 380, 1.18], 'graphics-card': [540, 930, 1.18], move: [540, 700, 1.0], result: [540, 760, 1.0], instruction: [540, 700, 1.05] };
+  const shots = { hook: [540, 600, 1.15], move: [540, 620, 1.12], close: [540, 640, 1.08] };
   const order = S.beats.map((b) => b.id), i = order.indexOf(beat.id), prev = shots[order[Math.max(0, i - 1)]], cur = shots[beat.id];
   const k = i === 0 ? 1 : ease((t - beat.startSecond) / 0.35);
   const cx = lerp(prev[0], cur[0], k), cy = lerp(prev[1], cur[1], k), z = lerp(prev[2], cur[2], k);
   ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(z, z); ctx.translate(-cx, -cy); zoom = z;
 
-  const mbLit = beat.id === 'motherboard' ? out((t - 2.6) / 0.25) : 0;
-  const gpuLit = beat.id === 'graphics-card' || beat.id === 'instruction' ? out((t - beat.startSecond) / 0.25) : beat.id === 'move' || beat.id === 'result' ? 0.6 : 0;
+  // The problem lit in frame one; the graphics card lit as the plug seats.
+  const mbLit = t < 2.8 ? 1 : 1 - out((t - 2.8) / 0.3);
+  const gpuLit = t < 3.9 ? 0 : out((t - 3.9) / 0.25);
   row(MB, S.labels.motherboard, PURPLE, mbLit, 'mb');
   row(GPU, S.labels.graphicsCard, CYAN, gpuLit, 'gpu');
-  // Result beat: a monitor whose screen is a labelled placeholder, never a guessed outcome.
-  if (beat.id === 'result' || beat.id === 'instruction') {
-    const a = beat.id === 'result' ? out((t - 8.6) / 0.3) : 1 - out((t - 10.4) / 0.3);
-    if (a > 0) {
-      ctx.save(); ctx.globalAlpha = a;
-      rr(190, 1130, 700, 300, 22, '#121219', '#55556A', 5);
-      ctx.setLineDash([18, 12]); rr(214, 1152, 652, 256, 12, null, C.amber, 4); ctx.setLineDash([]);
-      text(S.resultPlaceholder[0], 540, 1245, 600, 48, 42, C.amber, 'center', 700);
-      text(S.resultPlaceholder[1], 540, 1318, 600, 44, 42, C.text, 'center', 600);
-      ctx.restore();
-    }
-  }
   const p = cable(t);
   // The one decisive moment: a ring as the plug seats in the graphics card.
-  if (t >= 7.82 && t < 8.6) {
-    const k2 = clamp((t - 7.82) / 0.6);
+  if (t >= 4.0 && t < 4.6) {
+    const k2 = clamp((t - 4.0) / 0.6);
     ctx.save(); ctx.globalAlpha = 1 - k2; ctx.strokeStyle = CYAN; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.arc(p.x, p.y + 6, 90 + 70 * k2, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
@@ -173,7 +162,7 @@ function story(t, beat) {
     const k = clamp((t - 0.5) / 0.9);
     if (k > 0 && k < 1) { ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = C.amber; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(p.x, p.y + 6, 90 + 60 * k, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
   }
-  if (t >= 10.4) { ctx.save(); ctx.globalAlpha = out((t - 10.6) / 0.4) * 0.9; text(S.site, 540, 1300, 600, 42, 42, C.textSecondary, 'center', 600); ctx.restore(); }
+  if (t >= 5.0) { ctx.save(); ctx.globalAlpha = out((t - 5.1) / 0.4) * 0.9; text(S.site, 540, 1180, 600, 42, 42, C.textSecondary, 'center', 600); ctx.restore(); }
   ctx.restore(); zoom = 1;
 }
 
@@ -253,7 +242,7 @@ export async function renderIllustrativeDraft(outputDir = DRAFT_DIR) {
   }
   const state = {
     layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, labels: LABELS, site: SITE_LINE, label: ILLUSTRATIVE_LABEL,
-    beats: beats(PC_RECORD), resultPlaceholder: ["RESULT SHOT", "filmed on the real PC"],
+    beats: beats(PC_RECORD),
   };
   const count = Math.round(DURATION_SECONDS * FPS);
   let minFinalPx = Infinity;
@@ -294,7 +283,7 @@ export async function renderIllustrativeDraft(outputDir = DRAFT_DIR) {
   await rm(work, { recursive: true, force: true });
 
   const report = {
-    label: "ILLUSTRATIVE DIAGRAM DRAFT: schematic ports, not real hardware. Silent. Not for publication.",
+    label: "ILLUSTRATION: stylized hardware, not a real PC. Silent. Not for publication.",
     video: { path: videoPath, sha256: sha256(await readFile(videoPath)), durationSeconds: DURATION_SECONDS, width: LAYOUT.width, height: LAYOUT.height, fps: FPS, audio: "silent" },
     minFinalPx, keyFrames, contactSheet,
     beats: state.beats,

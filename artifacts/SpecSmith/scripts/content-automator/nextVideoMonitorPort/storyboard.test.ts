@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  allCopy, beats, copyProblems, DURATION_SECONDS, finalCutProblems, HOOK, INSTRUCTION, proposedNarration, resultCaption, storyProblems,
+  allCopy, beats, copyProblems, DURATION_SECONDS, finalCutProblems, proposedNarration, storyProblems,
   type PcRecord,
 } from "./storyboard.ts";
 
@@ -17,26 +17,28 @@ const record = (motherboardShowed: string, igpu = true): PcRecord => ({
   measuredPerformance: null,
 });
 
-describe("the story with no PC verified yet", () => {
-  it("renders, opens on the hook, ends on the instruction, inside 12–15 s", () => {
+describe("the animated cut", () => {
+  it("renders, opens on the hook, ends on the closing line, inside 8–10 s", () => {
     expect(storyProblems(null)).toEqual([]);
-    expect(beats(null)[0]).toMatchObject({ startSecond: 0, caption: HOOK });
-    expect(beats(null).at(-1)).toMatchObject({ endSecond: DURATION_SECONDS, caption: INSTRUCTION });
+    expect(beats(null)[0]).toMatchObject({ startSecond: 0, caption: "Bought a graphics card. Is your monitor plugged into it?" });
+    expect(beats(null).at(-1)).toMatchObject({ endSecond: DURATION_SECONDS, caption: "Check where your monitor cable goes." });
+    expect(DURATION_SECONDS).toBeGreaterThanOrEqual(8);
+    expect(DURATION_SECONDS).toBeLessThanOrEqual(10);
   });
 
-  it("shows a labelled placeholder for the result, never a guessed outcome", () => {
-    expect(resultCaption(null)).toBe("Result on screen: filmed on the real PC");
-    expect(proposedNarration(null)).not.toMatch(/on this pc/i);
+  it("shows no result scene and says no outcome: no placeholder, no NO SIGNAL, no FPS", () => {
+    expect(beats(null).map((beat) => beat.id)).toEqual(["hook", "move", "close"]);
+    for (const text of allCopy(null)) expect(text).not.toMatch(/result|no signal|fps|on this pc/i);
   });
 
-  it("is not a final cut until the PC and both connections are recorded", () => {
+  it("is not a final footage cut until the PC and both connections are recorded", () => {
     expect(finalCutProblems(null)).toHaveLength(1);
     expect(finalCutProblems(record("the Windows desktop"))).toEqual([]);
   });
 
   it("proposes narration short enough for the cut", () => {
-    expect(proposedNarration(null)).toBe("You bought a graphics card. Is your monitor plugged into it? These are motherboard ports. Move it to the graphics card. If you have a dedicated GPU, check its display ports.");
-    expect(proposedNarration(null).length).toBe(173);
+    expect(proposedNarration(null)).toBe("Bought a graphics card? Is your monitor plugged into it? Move it to the graphics card. Check where your monitor cable goes.");
+    expect(proposedNarration(null).length).toBe(123);
   });
 });
 
