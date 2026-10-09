@@ -1,5 +1,6 @@
 #!/usr/bin/env tsx
-// A 7-second silent cut of "PC won't turn on? Check this switch first."
+// An 8-second silent cut of "PC won't turn on?", timed to the proposed script:
+//   "PC won't turn on? Check the switch on the back. O is off. I is on."
 //
 // A stylized example, never footage: a flat PC drawn in outlines. Frame one is
 // the case power button being pressed with no response; the case turns to show
@@ -27,22 +28,27 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const OUTPUT_DIR = resolve(here, "../../../render-output/power-switch-opening-test");
 const FONT_DIR = resolve(here, "../nextVideoRefreshRate/fonts");
 const FONT_FILES = { 400: "inter-latin-400-normal.woff2", 600: "inter-latin-600-normal.woff2", 700: "inter-latin-700-normal.woff2" } as const;
-export const DURATION_SECONDS = 7;
+export const DURATION_SECONDS = 8;
 export const FPS = 30;
 export const MIN_FINAL_PX = 42;
 export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, height: 200 }, story: { y: 200, height: 1400 }, captions: { y: 1600, height: 320 } });
 export const COPY = Object.freeze({
   badge: "ILLUSTRATION",
   line: "Stylized example · not a fix for every PC",
-  caption: "PC won't turn on?",
-  captionThen: "Check this switch first.",
+  // One caption per scripted line, on the picture that line describes.
+  captions: [
+    { from: 0, to: 1.7, text: "PC won't turn on?" },
+    { from: 1.7, to: 4.0, text: "Check the switch on the back." },
+    { from: 4.0, to: 4.7, text: "O is off." },
+    { from: 4.7, to: 8, text: "I is on." },
+  ],
   back: "BACK OF THE PC",
-  example: "In this example, it was the switch.",
   noPower: "NOTHING HAPPENS",
   switchLabel: "PSU SWITCH",
   on: "ON",
 });
-export const KEY_FRAME_SECONDS = [0, 0.5, 1.4, 2.0, 2.6, 3.3, 3.95, 4.9, 5.5, 6.8] as const;
+export const SCRIPT = "PC won't turn on? Check the switch on the back. O is off. I is on.";
+export const KEY_FRAME_SECONDS = [0, 0.6, 1.5, 2.5, 3.6, 4.2, 4.8, 5.6, 6.4, 7.8] as const;
 
 function pageScript(state: unknown): string {
   return `
@@ -138,8 +144,10 @@ function rocker(on) {
 // Front: dead press. Turn. HOLD on the whole back with the switch called out,
 // so its location registers. Zoom in, flip O to I. Zoom out, turn back, press,
 // the PC lights up: this example's result, labelled as such.
-const PRESS1 = 0.15, TURN1 = [1.2, 1.6], BACK_HOLD = [1.6, 2.8], ZOOM_IN = [2.8, 3.15], FLIP = 3.8,
-  ZOOM_OUT = [4.35, 4.65], TURN2 = [4.65, 5.05], PRESS2 = 5.2, LIGHT = 5.3;
+// Timed to the proposed script, one line per beat (see SCRIPT): each line's
+// caption sits on the picture it describes, and the lit PC holds 2 s at the end.
+const PRESS1 = 0.15, TURN1 = [1.3, 1.7], BACK_HOLD = [1.7, 3.4], ZOOM_IN = [3.4, 3.75], FLIP = 4.6,
+  ZOOM_OUT = [5.05, 5.35], TURN2 = [5.35, 5.75], PRESS2 = 5.9, LIGHT = 6.0;
 const pressAt = (t, at) => (t >= at && t < at + 0.25 ? Math.sin(((t - at) / 0.25) * Math.PI) : 0);
 const span = (t, sp) => clamp((t - sp[0]) / (sp[1] - sp[0]));
 const BACK_FRAME = [540, 760, 1.12];
@@ -174,13 +182,13 @@ function story(t) {
     }
   } else front(t >= LIGHT ? out((t - LIGHT) / 0.3) : 0, pressAt(t, PRESS1) + pressAt(t, PRESS2));
   // The fingers: the first press, the flip, the second press.
-  const f1 = t < 1.0 ? 1 - clamp((t - 0.8) / 0.2) : 0;
+  const f1 = t < 1.1 ? 1 - clamp((t - 0.9) / 0.2) : 0;
   if (!showBack && f1 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS1) + 90 * (1 - out(t / 0.12)), BTN.y, f1);
-  if (showBack && t > 3.3 && t < 4.3) {
-    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - 3.3) / (FLIP - 3.3))) : SW.y + 30;
-    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - 4.1) / 0.15));
+  if (showBack && t > 3.9 && t < 5.0) {
+    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - 3.9) / (FLIP - 3.9))) : SW.y + 30;
+    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - 4.85) / 0.15));
   }
-  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - 5.55) / 0.15)) : 0;
+  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - 6.25) / 0.15)) : 0;
   if (!showBack && f3 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS2), BTN.y, f3);
   ctx.restore();
 
@@ -195,12 +203,6 @@ function story(t) {
   }
   const lit = t >= LIGHT + 0.1 ? out((t - LIGHT - 0.1) / 0.15) : 0;
   pill(S.copy.on, W / 2, STORY.y + 440, GREEN, '#0A0A0F', 64, lit);
-  if (lit > 0) {
-    // On a solid plate, never over the lit fans.
-    ctx.save(); ctx.globalAlpha = out((t - LIGHT - 0.3) / 0.3);
-    rr(70, STORY.y + 1262, W - 140, 104, 24, C.surface, '#33333F', 2);
-    text(S.copy.example, W / 2, STORY.y + 1314, W - 200, 46, 42, C.text, 600); ctx.restore();
-  }
   ctx.restore();
 }
 
@@ -213,7 +215,17 @@ function labelBand() {
 }
 function captionBand(t) {
   ctx.fillStyle = C.background; ctx.fillRect(0, CAP.y, W, CAP.height);
-  text(t < 2.8 ? S.copy.caption : S.copy.captionThen, W / 2, CAP.y + CAP.height / 2, W - 120, 88, 72, C.text, 700);
+  const cap = S.copy.captions.find((c) => t >= c.from && t < c.to) || S.copy.captions.at(-1);
+  // One line when it fits at 72 px or more; otherwise two balanced lines, never smaller.
+  ctx.font = '700 72px Inter';
+  if (ctx.measureText(cap.text).width <= W - 120) { text(cap.text, W / 2, CAP.y + CAP.height / 2, W - 120, 88, 72, C.text, 700); return; }
+  const words = cap.text.split(' '); let best = null;
+  for (let i = 1; i < words.length; i += 1) {
+    const a = words.slice(0, i).join(' '), b = words.slice(i).join(' ');
+    const worst = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+    if (!best || worst < best.worst) best = { lines: [a, b], worst };
+  }
+  best.lines.forEach((line, i) => text(line, W / 2, CAP.y + CAP.height / 2 + (i - 0.5) * 92, W - 120, 80, 72, C.text, 700));
 }
 
 window.renderAt = (t) => {
