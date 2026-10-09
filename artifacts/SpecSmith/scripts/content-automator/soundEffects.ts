@@ -27,7 +27,7 @@ import type { RenderAdapter, RenderArtifact, RenderTaskContext } from "./renderi
 import { measureLoudness } from "./motionCompositor.ts";
 import { composeBed, MUSIC_BED, PROGRESSION, renderBed, type DuckWindow } from "./musicBed.ts";
 
-export type SoundCueKind = "whoosh" | "tick" | "pop";
+export type SoundCueKind = "whoosh" | "tick" | "pop" | "click" | "startup";
 
 export interface SoundCue {
   readonly atSecond: number;
@@ -54,12 +54,25 @@ export const SOUND_RECIPES: Readonly<Record<SoundCueKind, { readonly seconds: nu
     seconds: 0.12,
     chain: () => "sine=f=660:d=0.12:r=48000,afade=t=out:st=0.01:d=0.11:curve=exp,volume=14dB",
   },
+  // A dry, band-limited noise snap: a rocker switch clicking over.
+  click: {
+    seconds: 0.05,
+    chain: (seed) => `anoisesrc=d=0.05:c=white:r=48000:a=0.5:seed=${seed},highpass=f=1200,lowpass=f=6000,afade=t=out:st=0.004:d=0.046:curve=exp,volume=4.4dB`,
+  },
+  // A soft tone gliding up from 220 to 550 Hz, then settling and fading over
+  // about a second: something powering on, not a jingle. Long enough to carry
+  // a held final shot without another line.
+  startup: {
+    seconds: 1.4,
+    chain: () => "aevalsrc=0.5*sin(2*PI*(220*t+330*min(t\\,0.5)*min(t\\,0.5)+330*max(t-0.5\\,0))):d=1.4:s=48000," +
+      "afade=t=in:st=0:d=0.06,afade=t=out:st=0.45:d=0.95:curve=qsin,volume=0.1dB",
+  },
 };
 
 /** The compositor's fixed gain for this track (motionCompositor.muxFinal). */
 export const SOUND_MIX_GAIN = 0.14;
 /** Each effect's intended sample peak once mixed at SOUND_MIX_GAIN, in dBFS. */
-export const SOUND_PEAKS_AS_MIXED_DBFS: Readonly<Record<SoundCueKind, number>> = { whoosh: -22, tick: -24, pop: -21 };
+export const SOUND_PEAKS_AS_MIXED_DBFS: Readonly<Record<SoundCueKind, number>> = { whoosh: -22, tick: -24, pop: -21, click: -21, startup: -23 };
 
 export class SoundEffectsError extends Error {
   constructor(message: string) {

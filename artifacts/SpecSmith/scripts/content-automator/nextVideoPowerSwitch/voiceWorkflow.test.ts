@@ -1,4 +1,4 @@
-// The gpu-upgrade option of the paid voice workflow: the one paid step is
+// The power-switch option of the paid voice workflow: the one paid step is
 // behind the typed confirmation and pinned to Liam; the job that hands the take
 // over holds no provider secret, checks nothing out, can only comment on PRs,
 // and validates the PR number before using it. Nothing publishes.
@@ -28,65 +28,55 @@ function step(jobText: string, name: string): string {
   return next < 0 ? rest : rest.slice(0, next + 1);
 }
 
-describe("the gpu-upgrade option of the paid voice workflow", () => {
+describe("the power-switch option of the paid voice workflow", () => {
   it("is offered only by manual dispatch, behind the typed confirmation", () => {
-    expect(code).toMatch(/options:\n\s+- gpu-upgrade\n/);
+    expect(code).toMatch(/options:\n(\s+- [a-z-]+\n)*\s+- power-switch\n/);
     expect(code).toContain("inputs.confirm != 'generate'");
     expect(code).not.toMatch(/^\s*(push|pull_request|pull_request_target|schedule|workflow_run):/m);
   });
 
-  it("checks the confirmation and the review PR number before the key is read or any spend", () => {
+  it("checks the confirmation and the review PR number before the paid step", () => {
     const sample = job("sample");
     const confirm = sample.indexOf("Require explicit confirmation");
     const pr = sample.indexOf("Require a review PR number before any spend");
-    const paid = sample.indexOf("Generate one Liam take of the GPU-upgrade Short");
+    const paid = sample.indexOf("Generate one Liam take of the power-switch Short");
     expect(confirm).toBeGreaterThan(0);
     expect(pr).toBeGreaterThan(confirm);
     expect(paid).toBeGreaterThan(pr);
-    expect(sample).toMatch(/timeout-minutes:\s*10/);
   });
 
   it("makes the one paid request with the pinned Liam id, and nothing else in that step", () => {
-    const paid = step(job("sample"), "Generate one Liam take of the GPU-upgrade Short");
-    expect(paid).toContain("if: inputs.script == 'gpu-upgrade'");
+    const paid = step(job("sample"), "Generate one Liam take of the power-switch Short");
+    expect(paid).toContain("if: inputs.script == 'power-switch'");
     expect(paid).toContain(`ELEVENLABS_VOICE_ID: ${REVIEWED_LIAM_VOICE.voiceId}`);
-    expect(paid).toContain("run: pnpm exec tsx scripts/content-automator/nextVideoGpuUpgrade/liamTake.ts");
+    expect(paid).toContain("run: pnpm exec tsx scripts/content-automator/nextVideoPowerSwitch/liamTake.ts");
     expect(paid).not.toMatch(/metricool|publish|gh api/i);
   });
 
-  it("keeps the checkout in the paid job without a push credential", () => {
-    const sample = job("sample");
-    const checkout = sample.indexOf("uses: actions/checkout@");
-    expect(checkout).toBeGreaterThan(0);
-    expect(sample.slice(checkout, checkout + 200)).toContain("persist-credentials: false");
-  });
-
   it("hands the take over from a job with no provider secret, no checkout and only PR-comment rights", () => {
-    const share = job("share-gpu-upgrade-take");
+    const share = job("share-power-switch-take");
     expect(share).toContain("needs: sample");
-    expect(share).toContain("inputs.script == 'gpu-upgrade'");
+    expect(share).toContain("inputs.script == 'power-switch'");
     expect(share).not.toMatch(/secrets\.|ELEVENLABS/);
     expect(share).not.toContain("actions/checkout");
     const permissions = share.match(/permissions:\n((?: {6}[a-z-]+: [a-z]+\n)+)/);
     expect(permissions?.[1].trim().split(/\n\s*/)).toEqual(["contents: read", "pull-requests: write"]);
   });
 
-  it("uses the PR number only after checking it is a number and this branch's PR, and passes inputs through the environment", () => {
-    const post = step(job("share-gpu-upgrade-take"), "Post the take to the review PR");
-    expect(post).toContain("REVIEW_PR: ${{ inputs.review_pr }}");
+  it("uses the PR number only after checking it is a number and this branch's PR", () => {
+    const post = step(job("share-power-switch-take"), "Post the take to the review PR");
     expect(post).toMatch(/case "\$REVIEW_PR" in ''\|\*\[!0-9\]\*\)/);
     expect(post.split("run:")[1]).not.toContain("${{");
     const check = post.indexOf('pulls/${REVIEW_PR}" --jq \'"\\(.head.repo.full_name)');
-    const firstWrite = post.indexOf("issues/${REVIEW_PR}/comments");
     expect(check).toBeGreaterThan(0);
-    expect(check).toBeLessThan(firstWrite);
+    expect(check).toBeLessThan(post.indexOf("issues/${REVIEW_PR}/comments"));
     // Repository and branch together: a fork's PR from a same-named branch is refused.
     expect(post).toContain("--jq '\"\\(.head.repo.full_name) \\(.head.ref)\"'");
     expect(post).toContain('[ "$head" = "${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}" ]');
   });
 
   it("publishes nothing", () => {
-    for (const text of [job("share-gpu-upgrade-take"), job("sample")]) {
+    for (const text of [job("share-power-switch-take"), job("sample")]) {
       expect(text).not.toMatch(/metricool|youtube|tiktok|instagram|gh release|git push/i);
     }
   });

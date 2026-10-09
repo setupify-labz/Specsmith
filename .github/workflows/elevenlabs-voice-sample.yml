@@ -5,7 +5,10 @@
 #
 #   - `workflow_dispatch` only. No push, pull_request, or schedule trigger.
 #   - The operator must type the word `generate` to confirm.
-#   - On this branch it generates ONE approved narration and stops:
+#   - It generates ONE approved narration and stops:
+#     `power-switch` is ONE Liam take of the "PC won't turn on?" Short's
+#     66-character script, approved word for word (nextVideoPowerSwitch/
+#     liamTake.ts), behind the same spending guards.
 #     `gpu-upgrade` is ONE Liam take of the GPU-upgrade Short's six approved
 #     lines (nextVideoGpuUpgrade/liamTake.ts). Before any spend it recomputes
 #     every figure the lines speak from the Compare model, checks each line is
@@ -40,6 +43,7 @@ on:
         default: gpu-upgrade
         options:
           - gpu-upgrade
+          - power-switch
       review_pr:
         description: 'The draft PR number the take is posted to for review (this branch''s PR)'
         required: true
@@ -123,6 +127,26 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Generate one Liam take of the power-switch Short
+        if: inputs.script == 'power-switch'
+        working-directory: artifacts/SpecSmith
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: TX3LPaxmHKxFdv7VOQHJ
+          ELEVENLABS_MODEL_ID: ${{ vars.ELEVENLABS_MODEL_ID }}
+          ELEVENLABS_OUTPUT_FORMAT: ${{ vars.ELEVENLABS_OUTPUT_FORMAT }}
+        run: pnpm exec tsx scripts/content-automator/nextVideoPowerSwitch/liamTake.ts
+
+      - name: Upload the power-switch take
+        # Uploaded even if the timestamps were unusable: the paid audio is kept.
+        if: ${{ always() && inputs.script == 'power-switch' && hashFiles('artifacts/SpecSmith/render-output/power-switch-liam-take/*') != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: specsmith-power-switch-liam-take
+          path: artifacts/SpecSmith/render-output/power-switch-liam-take/
+          if-no-files-found: error
+          retention-days: 30
+
   # Posts the take to its review PR so it can be timed and rendered where
   # artifact downloads are not reachable. No provider secret, no checkout, no
   # repository write: its token can only comment on pull requests. The take is
@@ -149,8 +173,9 @@ jobs:
         run: |
           case "$REVIEW_PR" in ''|*[!0-9]*) echo "::error::review_pr must be a PR number."; exit 1;; esac
           # Before any write: the number must be a pull request, and the one for this branch.
-          head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REVIEW_PR}" --jq .head.ref) || { echo "::error::#${REVIEW_PR} is not a pull request; nothing posted."; exit 1; }
-          [ "$head" = "$GITHUB_REF_NAME" ] || { echo "::error::#${REVIEW_PR} is the PR for ${head}, not ${GITHUB_REF_NAME}; nothing posted."; exit 1; }
+          # Repository and branch together: a fork can open a PR from a branch with the same name.
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REVIEW_PR}" --jq '"\(.head.repo.full_name) \(.head.ref)"') || { echo "::error::#${REVIEW_PR} is not a pull request; nothing posted."; exit 1; }
+          [ "$head" = "${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}" ] || { echo "::error::#${REVIEW_PR} is the PR for ${head}, not ${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}; nothing posted."; exit 1; }
           tar -czf take.tgz -C take .
           sum=$(sha256sum take.tgz | cut -d' ' -f1)
           { base64 -w0 take.tgz | fold -w 60000; echo; } > parts.txt
@@ -159,6 +184,45 @@ jobs:
           while IFS= read -r chunk; do
             i=$((i+1))
             printf 'gpu-upgrade-take %s/%s sha256 %s\n<!-- take-part -->\n```\n%s\n```\n' "$i" "$total" "$sum" "$chunk" > body.md
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${REVIEW_PR}/comments" -F body=@body.md --silent
+          done < parts.txt
+          echo "Posted ${total} part(s) of take.tgz (sha256 ${sum}) to #${REVIEW_PR}."
+
+  # The same hand-over for the power-switch take: no provider secret, no
+  # checkout, PR comments only, on this branch's own PR.
+  share-power-switch-take:
+    needs: sample
+    if: ${{ always() && inputs.script == 'power-switch' && needs.sample.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download the take
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: specsmith-power-switch-liam-take
+          path: take
+
+      - name: Post the take to the review PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_PR: ${{ inputs.review_pr }}
+        run: |
+          case "$REVIEW_PR" in ''|*[!0-9]*) echo "::error::review_pr must be a PR number."; exit 1;; esac
+          # Before any write: the number must be a pull request, and the one for this branch.
+          # Repository and branch together: a fork can open a PR from a branch with the same name.
+          head=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${REVIEW_PR}" --jq '"\(.head.repo.full_name) \(.head.ref)"') || { echo "::error::#${REVIEW_PR} is not a pull request; nothing posted."; exit 1; }
+          [ "$head" = "${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}" ] || { echo "::error::#${REVIEW_PR} is the PR for ${head}, not ${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}; nothing posted."; exit 1; }
+          tar -czf take.tgz -C take .
+          sum=$(sha256sum take.tgz | cut -d' ' -f1)
+          { base64 -w0 take.tgz | fold -w 60000; echo; } > parts.txt
+          total=$(wc -l < parts.txt)
+          i=0
+          while IFS= read -r chunk; do
+            i=$((i+1))
+            printf 'power-switch-take %s/%s sha256 %s\n<!-- take-part -->\n```\n%s\n```\n' "$i" "$total" "$sum" "$chunk" > body.md
             gh api "repos/${GITHUB_REPOSITORY}/issues/${REVIEW_PR}/comments" -F body=@body.md --silent
           done < parts.txt
           echo "Posted ${total} part(s) of take.tgz (sha256 ${sum}) to #${REVIEW_PR}."
