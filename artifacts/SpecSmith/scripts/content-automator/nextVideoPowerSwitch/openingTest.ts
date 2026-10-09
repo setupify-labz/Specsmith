@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-// A THREE-SECOND silent opening test for "PC won't turn on?".
+// A 7-second silent cut of "PC won't turn on? Check this switch first."
 //
 // A stylized example, never footage: a flat PC drawn in outlines. Frame one is
 // the case power button being pressed with no response; the case turns to show
@@ -27,7 +27,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const OUTPUT_DIR = resolve(here, "../../../render-output/power-switch-opening-test");
 const FONT_DIR = resolve(here, "../nextVideoRefreshRate/fonts");
 const FONT_FILES = { 400: "inter-latin-400-normal.woff2", 600: "inter-latin-600-normal.woff2", 700: "inter-latin-700-normal.woff2" } as const;
-export const DURATION_SECONDS = 3;
+export const DURATION_SECONDS = 7;
 export const FPS = 30;
 export const MIN_FINAL_PX = 42;
 export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, height: 200 }, story: { y: 200, height: 1400 }, captions: { y: 1600, height: 320 } });
@@ -35,11 +35,14 @@ export const COPY = Object.freeze({
   badge: "ILLUSTRATION",
   line: "Stylized example · not a fix for every PC",
   caption: "PC won't turn on?",
+  captionThen: "Check this switch first.",
+  back: "BACK OF THE PC",
+  example: "In this example, it was the switch.",
   noPower: "NOTHING HAPPENS",
   switchLabel: "PSU SWITCH",
   on: "ON",
 });
-export const KEY_FRAME_SECONDS = [0, 0.35, 0.75, 1.05, 1.3, 1.6, 2.0, 2.4, 2.8] as const;
+export const KEY_FRAME_SECONDS = [0, 0.5, 1.4, 2.0, 2.6, 3.3, 3.95, 4.9, 5.5, 6.8] as const;
 
 function pageScript(state: unknown): string {
   return `
@@ -132,44 +135,72 @@ function rocker(on) {
 }
 
 // ---- The edit, by time. ----
-const PRESS1 = 0.1, TURN1 = [0.8, 1.1], FLIP = 1.55, TURN2 = [1.95, 2.25], PRESS2 = 2.35, LIGHT = 2.45;
+// Front: dead press. Turn. HOLD on the whole back with the switch called out,
+// so its location registers. Zoom in, flip O to I. Zoom out, turn back, press,
+// the PC lights up: this example's result, labelled as such.
+const PRESS1 = 0.15, TURN1 = [1.2, 1.6], BACK_HOLD = [1.6, 2.8], ZOOM_IN = [2.8, 3.15], FLIP = 3.8,
+  ZOOM_OUT = [4.35, 4.65], TURN2 = [4.65, 5.05], PRESS2 = 5.2, LIGHT = 5.3;
 const pressAt = (t, at) => (t >= at && t < at + 0.25 ? Math.sin(((t - at) / 0.25) * Math.PI) : 0);
+const span = (t, sp) => clamp((t - sp[0]) / (sp[1] - sp[0]));
+const BACK_FRAME = [540, 760, 1.12];
+/** Where a story-space y lands on screen in the wide back view. */
+const backScreenY = (y) => STORY.y + STORY.height / 2 + (y - BACK_FRAME[1]) * BACK_FRAME[2];
 
 function story(t) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, STORY.y, W, STORY.height); ctx.clip();
   ctx.fillStyle = C.background; ctx.fillRect(0, STORY.y, W, STORY.height);
   // Turning the case: squeeze to the edge, swap faces, open out.
-  const turn = (span) => clamp((t - span[0]) / (span[1] - span[0]));
-  const k1 = turn(TURN1), k2 = turn(TURN2);
-  const showBack = (k1 >= 0.5 && t < TURN2[0]) || (t >= TURN2[0] && k2 < 0.5);
+  const k1 = span(t, TURN1), k2 = span(t, TURN2);
+  const showBack = (t >= TURN1[0] && k1 >= 0.5 && t < TURN2[0]) || (t >= TURN2[0] && k2 < 0.5);
   const sx = t < TURN1[0] ? 1 : t < TURN2[0] ? Math.abs(Math.cos(k1 * Math.PI)) : Math.abs(Math.cos(k2 * Math.PI));
-  // On the back: punch in on the switch so I and O read at phone size.
-  const zIn = t < TURN1[1] ? 0 : t < 1.3 ? ease((t - TURN1[1]) / 0.2) : t < 1.8 ? 1 : 1 - ease((t - 1.8) / 0.15);
+  // On the back: hold wide, then punch in on the switch so I and O read at phone size.
+  const zIn = t < ZOOM_IN[0] ? 0 : t < ZOOM_OUT[0] ? ease(span(t, ZOOM_IN)) : 1 - ease(span(t, ZOOM_OUT));
   // The front is framed tight on the button; the swap happens at zero width, so the change of framing is never seen.
-  const base = showBack ? [540, 720, 1.0] : [540, 600, 1.45];
+  const base = showBack ? BACK_FRAME : [540, 600, 1.45];
   const z = lerp(base[2], 2.6, zIn), cx = lerp(base[0], SW.x + SW.w / 2, zIn), cy = lerp(base[1], SW.y + SW.h / 2, zIn);
   ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(z * Math.max(sx, 0.02), z); ctx.translate(-cx, -cy);
   const on = t >= FLIP + 0.08;
-  if (showBack) back(on);
-  else front(t >= LIGHT ? out((t - LIGHT) / 0.3) : 0, pressAt(t, PRESS1) + pressAt(t, PRESS2));
+  if (showBack) {
+    back(on);
+    // Establishing beat: the switch's place on the back, pulsing amber.
+    const hold = t >= BACK_HOLD[0] && t < ZOOM_IN[1] ? out((t - BACK_HOLD[0]) / 0.25) * (1 - span(t, ZOOM_IN)) : 0;
+    if (hold > 0) {
+      const pulse = 0.6 + 0.4 * Math.sin((t - BACK_HOLD[0]) * 7);
+      ctx.save(); ctx.globalAlpha = hold * pulse; rr(SW.x - 26, SW.y - 26, SW.w + 52, SW.h + 52, 18, null, C.amber, 9); ctx.restore();
+      ctx.save(); ctx.globalAlpha = hold; ctx.strokeStyle = C.amber; ctx.lineWidth = 8; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(SW.x + SW.w / 2, 930); ctx.lineTo(SW.x + SW.w / 2, SW.y - 34); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(SW.x + SW.w / 2 - 20, SW.y - 56); ctx.lineTo(SW.x + SW.w / 2, SW.y - 34); ctx.lineTo(SW.x + SW.w / 2 + 20, SW.y - 56); ctx.stroke();
+      ctx.restore();
+    }
+  } else front(t >= LIGHT ? out((t - LIGHT) / 0.3) : 0, pressAt(t, PRESS1) + pressAt(t, PRESS2));
   // The fingers: the first press, the flip, the second press.
-  const f1 = t < 0.6 ? 1 - clamp((t - 0.45) / 0.15) : 0;
-  if (!showBack && f1 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS1) + 90 * (1 - out(t / 0.1)), BTN.y, f1);
-  if (showBack && t > 1.3 && t < 1.85) {
-    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - 1.3) / (FLIP - 1.3))) : SW.y + 30;
-    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - 1.72) / 0.12));
+  const f1 = t < 1.0 ? 1 - clamp((t - 0.8) / 0.2) : 0;
+  if (!showBack && f1 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS1) + 90 * (1 - out(t / 0.12)), BTN.y, f1);
+  if (showBack && t > 3.3 && t < 4.3) {
+    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - 3.3) / (FLIP - 3.3))) : SW.y + 30;
+    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - 4.1) / 0.15));
   }
-  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - 2.62) / 0.15)) : 0;
+  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - 5.55) / 0.15)) : 0;
   if (!showBack && f3 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS2), BTN.y, f3);
   ctx.restore();
 
   // Large labels in screen space, so they stay the same size through the zoom.
-  pill(S.copy.noPower, W / 2, STORY.y + 440, RED, '#0A0A0F', 64, t >= 0.22 && t < TURN1[0] + 0.05 ? out((t - 0.22) / 0.12) : 0);
+  pill(S.copy.noPower, W / 2, STORY.y + 440, RED, '#0A0A0F', 64, t >= 0.3 && t < TURN1[0] + 0.05 ? out((t - 0.3) / 0.12) : 0);
+  const holdLabels = showBack && t >= BACK_HOLD[0] && t < ZOOM_IN[0] + 0.1 ? out((t - BACK_HOLD[0]) / 0.2) : 0;
+  pill(S.copy.back, W / 2, STORY.y + 110, C.text, '#0A0A0F', 56, holdLabels);
+  pill(S.copy.switchLabel, W / 2 + 60, backScreenY(880), C.amber, '#0A0A0F', 60, holdLabels);
   if (showBack && zIn > 0.6) {
     pill(S.copy.switchLabel, W / 2, STORY.y + 150, C.amber, '#0A0A0F', 60, 1);
-    ctx.save(); text(on ? 'I = ON' : 'O = OFF', W / 2, STORY.y + 1290, W - 160, 84, 84, on ? GREEN : RED, 700); ctx.restore();
+    text(on ? 'I = ON' : 'O = OFF', W / 2, STORY.y + 1290, W - 160, 84, 84, on ? GREEN : RED, 700);
   }
-  pill(S.copy.on, W / 2, STORY.y + 440, GREEN, '#0A0A0F', 64, t >= LIGHT + 0.1 ? out((t - LIGHT - 0.1) / 0.15) : 0);
+  const lit = t >= LIGHT + 0.1 ? out((t - LIGHT - 0.1) / 0.15) : 0;
+  pill(S.copy.on, W / 2, STORY.y + 440, GREEN, '#0A0A0F', 64, lit);
+  if (lit > 0) {
+    // On a solid plate, never over the lit fans.
+    ctx.save(); ctx.globalAlpha = out((t - LIGHT - 0.3) / 0.3);
+    rr(70, STORY.y + 1262, W - 140, 104, 24, C.surface, '#33333F', 2);
+    text(S.copy.example, W / 2, STORY.y + 1314, W - 200, 46, 42, C.text, 600); ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -180,14 +211,14 @@ function labelBand() {
   text(S.copy.badge, W / 2, 73, w, 44, 44, '#0A0A0F', 700);
   text(S.copy.line, W / 2, 152, W - 120, 42, 42, C.text, 600);
 }
-function captionBand() {
+function captionBand(t) {
   ctx.fillStyle = C.background; ctx.fillRect(0, CAP.y, W, CAP.height);
-  text(S.copy.caption, W / 2, CAP.y + CAP.height / 2, W - 120, 92, 72, C.text, 700);
+  text(t < 2.8 ? S.copy.caption : S.copy.captionThen, W / 2, CAP.y + CAP.height / 2, W - 120, 88, 72, C.text, 700);
 }
 
 window.renderAt = (t) => {
   ctx.fillStyle = C.background; ctx.fillRect(0, 0, W, L.height);
-  labelBand(); ctx.save(); story(t); captionBand();
+  labelBand(); ctx.save(); story(t); captionBand(t);
   return canvas.toDataURL('image/png');
 };
 window.measured = () => measured;
@@ -242,7 +273,7 @@ export async function renderOpeningTest(outputDir = OUTPUT_DIR) {
   for (const second of KEY_FRAME_SECONDS) {
     await run("ffmpeg", ["-v", "error", "-y", "-ss", second.toFixed(3), "-i", videoPath, "-frames:v", "1", "-vf", "scale=360:640:flags=lanczos", join(outputDir, `phone-${second.toFixed(2).replace(".", "_")}s.png`)]);
   }
-  await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=10,scale=180:320:flags=lanczos,tile=10x3:padding=4:color=0x2A2A33", "-frames:v", "1", join(outputDir, "phone-every-0.1s.png")]);
+  await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=5,scale=180:320:flags=lanczos,tile=10x4:padding=4:color=0x2A2A33", "-frames:v", "1", join(outputDir, "phone-every-0.2s.png")]);
   await rm(framesDir, { recursive: true, force: true });
   return { videoPath, sha256: sha256(await readFile(videoPath)), minFinalPx };
 }
