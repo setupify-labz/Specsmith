@@ -39,14 +39,26 @@ export const COPY = Object.freeze({
   captions: [
     { from: 0, to: 1.7, text: "PC won't turn on?" },
     { from: 1.7, to: 4.0, text: "Check the switch on the back." },
-    { from: 4.0, to: 4.7, text: "O is off." },
-    { from: 4.7, to: 8, text: "I is on." },
+    { from: 4.0, to: 4.6, text: "O is off." },
+    { from: 4.6, to: 8, text: "I is on." },
   ],
   back: "BACK OF THE PC",
   noPower: "NOTHING HAPPENS",
   switchLabel: "PSU SWITCH",
   on: "ON",
 });
+/** When each event happens, in seconds. The silent cut's own; a voiced cut derives one from the take. */
+export interface CutTiming {
+  readonly durationSeconds: number;
+  readonly press1: number; readonly turn1: readonly [number, number]; readonly backHold: readonly [number, number];
+  readonly zoomIn: readonly [number, number]; readonly flip: number; readonly zoomOut: readonly [number, number];
+  readonly turn2: readonly [number, number]; readonly press2: number; readonly light: number;
+  readonly captions: readonly { readonly from: number; readonly to: number; readonly text: string }[];
+}
+export const SILENT_TIMING: CutTiming = Object.freeze({
+  durationSeconds: 8, press1: 0.15, turn1: [1.3, 1.7], backHold: [1.7, 3.4], zoomIn: [3.4, 3.75], flip: 4.6,
+  zoomOut: [5.05, 5.35], turn2: [5.35, 5.75], press2: 5.9, light: 6.0, captions: COPY.captions,
+} as CutTiming);
 export const SCRIPT = "PC won't turn on? Check the switch on the back. O is off. I is on.";
 export const KEY_FRAME_SECONDS = [0, 0.6, 1.5, 2.5, 3.6, 4.2, 4.8, 5.6, 6.4, 7.8] as const;
 
@@ -146,8 +158,9 @@ function rocker(on) {
 // the PC lights up: this example's result, labelled as such.
 // Timed to the proposed script, one line per beat (see SCRIPT): each line's
 // caption sits on the picture it describes, and the lit PC holds 2 s at the end.
-const PRESS1 = 0.15, TURN1 = [1.3, 1.7], BACK_HOLD = [1.7, 3.4], ZOOM_IN = [3.4, 3.75], FLIP = 4.6,
-  ZOOM_OUT = [5.05, 5.35], TURN2 = [5.35, 5.75], PRESS2 = 5.9, LIGHT = 6.0;
+const T = S.timing;
+const PRESS1 = T.press1, TURN1 = T.turn1, BACK_HOLD = T.backHold, ZOOM_IN = T.zoomIn, FLIP = T.flip,
+  ZOOM_OUT = T.zoomOut, TURN2 = T.turn2, PRESS2 = T.press2, LIGHT = T.light;
 const pressAt = (t, at) => (t >= at && t < at + 0.25 ? Math.sin(((t - at) / 0.25) * Math.PI) : 0);
 const span = (t, sp) => clamp((t - sp[0]) / (sp[1] - sp[0]));
 const BACK_FRAME = [540, 760, 1.12];
@@ -167,7 +180,8 @@ function story(t) {
   const base = showBack ? BACK_FRAME : [540, 600, 1.45];
   const z = lerp(base[2], 2.6, zIn), cx = lerp(base[0], SW.x + SW.w / 2, zIn), cy = lerp(base[1], SW.y + SW.h / 2, zIn);
   ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(z * Math.max(sx, 0.02), z); ctx.translate(-cx, -cy);
-  const on = t >= FLIP + 0.08;
+  // The switch reads I from the flip frame on, with its click and its caption.
+  const on = t >= FLIP;
   if (showBack) {
     back(on);
     // Establishing beat: the switch's place on the back, pulsing amber.
@@ -182,13 +196,13 @@ function story(t) {
     }
   } else front(t >= LIGHT ? out((t - LIGHT) / 0.3) : 0, pressAt(t, PRESS1) + pressAt(t, PRESS2));
   // The fingers: the first press, the flip, the second press.
-  const f1 = t < 1.1 ? 1 - clamp((t - 0.9) / 0.2) : 0;
+  const f1 = t < TURN1[0] - 0.2 ? 1 - clamp((t - (TURN1[0] - 0.4)) / 0.2) : 0;
   if (!showBack && f1 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS1) + 90 * (1 - out(t / 0.12)), BTN.y, f1);
-  if (showBack && t > 3.9 && t < 5.0) {
-    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - 3.9) / (FLIP - 3.9))) : SW.y + 30;
-    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - 4.85) / 0.15));
+  if (showBack && t > FLIP - 0.7 && t < FLIP + 0.4) {
+    const tip = t < FLIP ? lerp(SW.y + 150, SW.y + 30, ease((t - (FLIP - 0.7)) / 0.7)) : SW.y + 30;
+    finger(SW.x + SW.w + 4, tip, 1 - clamp((t - (FLIP + 0.25)) / 0.15));
   }
-  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - 6.25) / 0.15)) : 0;
+  const f3 = t >= TURN2[1] ? clamp((t - TURN2[1]) / 0.06) * (1 - clamp((t - (PRESS2 + 0.35)) / 0.15)) : 0;
   if (!showBack && f3 > 0) finger(BTN.x + BTN.r - 6 - 18 * pressAt(t, PRESS2), BTN.y, f3);
   ctx.restore();
 
@@ -215,7 +229,7 @@ function labelBand() {
 }
 function captionBand(t) {
   ctx.fillStyle = C.background; ctx.fillRect(0, CAP.y, W, CAP.height);
-  const cap = S.copy.captions.find((c) => t >= c.from && t < c.to) || S.copy.captions.at(-1);
+  const cap = S.captions.find((c) => t >= c.from && t < c.to) || S.captions.at(-1);
   // One line when it fits at 72 px or more; otherwise two balanced lines, never smaller.
   ctx.font = '700 72px Inter';
   if (ctx.measureText(cap.text).width <= W - 120) { text(cap.text, W / 2, CAP.y + CAP.height / 2, W - 120, 88, 72, C.text, 700); return; }
@@ -248,7 +262,7 @@ function run(command: string, args: string[]): Promise<void> {
 }
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
-export async function renderOpeningTest(outputDir = OUTPUT_DIR) {
+export async function renderOpeningTest(outputDir = OUTPUT_DIR, timing: CutTiming = SILENT_TIMING, videoName = "power-switch-opening-test.mp4") {
   await mkdir(outputDir, { recursive: true });
   const framesDir = join(outputDir, "work");
   await rm(framesDir, { recursive: true, force: true });
@@ -257,8 +271,9 @@ export async function renderOpeningTest(outputDir = OUTPUT_DIR) {
   for (const [weight, file] of Object.entries(FONT_FILES)) {
     faces.push(`@font-face{font-family:Inter;font-weight:${weight};src:url(data:font/woff2;base64,${(await readFile(join(FONT_DIR, file))).toString("base64")}) format('woff2');}`);
   }
-  const state = { layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, copy: COPY };
-  const count = Math.round(DURATION_SECONDS * FPS);
+  const state = { layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, copy: COPY, timing, captions: timing.captions };
+  const duration = timing.durationSeconds;
+  const count = Math.round(duration * FPS);
   let minFinalPx = Infinity;
   const session = await launchBrowser({ width: LAYOUT.width, height: LAYOUT.height, deviceScaleFactor: 1 });
   try {
@@ -277,17 +292,17 @@ export async function renderOpeningTest(outputDir = OUTPUT_DIR) {
     await session.close();
   }
   if (minFinalPx < MIN_FINAL_PX) throw new Error(`Smallest type is ${minFinalPx}px, under ${MIN_FINAL_PX}px.`);
-  const videoPath = join(outputDir, "power-switch-opening-test.mp4");
+  const videoPath = join(outputDir, videoName);
   await run("ffmpeg", ["-v", "error", "-y", "-framerate", String(FPS), "-i", join(framesDir, "f-%04d.png"),
     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000", "-map", "0:v", "-map", "1:a",
     "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-    "-t", DURATION_SECONDS.toFixed(3), "-movflags", "+faststart", videoPath]);
-  for (const second of KEY_FRAME_SECONDS) {
+    "-t", duration.toFixed(3), "-movflags", "+faststart", videoPath]);
+  for (const second of KEY_FRAME_SECONDS.filter((value) => value < duration)) {
     await run("ffmpeg", ["-v", "error", "-y", "-ss", second.toFixed(3), "-i", videoPath, "-frames:v", "1", "-vf", "scale=360:640:flags=lanczos", join(outputDir, `phone-${second.toFixed(2).replace(".", "_")}s.png`)]);
   }
   await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=5,scale=180:320:flags=lanczos,tile=10x4:padding=4:color=0x2A2A33", "-frames:v", "1", join(outputDir, "phone-every-0.2s.png")]);
   await rm(framesDir, { recursive: true, force: true });
-  return { videoPath, sha256: sha256(await readFile(videoPath)), minFinalPx };
+  return { videoPath, sha256: sha256(await readFile(videoPath)), minFinalPx, durationSeconds: duration };
 }
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
