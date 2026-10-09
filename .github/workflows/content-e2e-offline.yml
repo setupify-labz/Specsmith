@@ -145,6 +145,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng
 
+      # No API key, no account, no paid provider — just a browser binary, the
+      # same way any other Playwright-based test in this repo would get one.
+      # Before the tests: the refresh-rate recording-edit test draws its caption
+      # band in Chromium, and the pipeline run below needs it too.
+      - name: Install Playwright Chromium
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -o pipefail
+          pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
+
       - name: Typecheck
         run: |
           set -o pipefail
@@ -167,14 +177,6 @@ jobs:
         run: |
           set -o pipefail
           pnpm run build 2>&1 | tee "${RUNNER_TEMP}/e2e/build.log"
-
-      # No API key, no account, no paid provider — just a browser binary, the
-      # same way any other Playwright-based test in this repo would get one.
-      - name: Install Playwright Chromium
-        working-directory: artifacts/SpecSmith
-        run: |
-          set -o pipefail
-          pnpm exec playwright install --with-deps chromium 2>&1 | tee "${RUNNER_TEMP}/e2e/playwright-install.log"
 
       # ffmpeg/ffprobe compose the real MP4; espeak-ng is the offline TTS
       # fixture (see localFixtureTts.ts) — neither needs a credential.
