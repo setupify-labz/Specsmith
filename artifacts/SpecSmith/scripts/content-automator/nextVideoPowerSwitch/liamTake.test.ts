@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 import { REVIEWED_LIAM_VOICE } from "../liamVoice.ts";
 import { MAX_SAMPLE_CHARACTERS } from "../voiceSpendGuards.ts";
-import { assertPowerSwitchScript, generateLiamPowerSwitchTake, lineTimingsFromAlignment, loadPowerSwitchTake, type Alignment } from "./liamTake.ts";
+import { APPROVED_TAKE, assertPowerSwitchScript, generateLiamPowerSwitchTake, lineTimingsFromAlignment, loadPowerSwitchTake, type Alignment, type TakePin } from "./liamTake.ts";
 import { COPY } from "./openingTest.ts";
 import { APPROVED_POWER_SWITCH_LINES, POWER_SWITCH_TAKE_TEXT } from "./script.ts";
 
@@ -28,6 +28,12 @@ function uniformAlignment(text = POWER_SWITCH_TAKE_TEXT, perChar = 0.06): Alignm
     character_start_times_seconds: characters.map((_, i) => Math.round(i * perChar * 1000) / 1000),
     character_end_times_seconds: characters.map((_, i) => Math.round((i + 1) * perChar * 1000) / 1000),
   };
+}
+
+/** The pin of a fixture take written by these tests: never the approved take. */
+function fixturePin(dir: string): TakePin {
+  const manifest = JSON.parse(readFileSync(join(dir, "power-switch-liam.json"), "utf8"));
+  return { audioSha256: manifest.audio.sha256, alignmentSha256: createHash("sha256").update(JSON.stringify(manifest.alignment)).digest("hex") };
 }
 
 /** A stand-in provider: subscription, voices and one timestamped take. TEST RESPONSES, never a real take. */
@@ -86,7 +92,9 @@ describe("nothing is sent unless every guard holds", () => {
     expect(result).toMatchObject({ charactersSent: 66, providerReportedCharacterCost: 66, alignmentError: null });
     expect(readdirSync(outputDir).sort()).toEqual(["power-switch-liam.json", "power-switch-liam.mp3", "power-switch-liam.response.json"]);
     expect(readFileSync(join(outputDir, "power-switch-liam.json"), "utf8")).not.toContain(LIAM_ENV.ELEVENLABS_API_KEY);
-    const take = await loadPowerSwitchTake(outputDir);
+    // A fixture take is consistent with its own manifest, but it is not the approved take.
+    await expect(loadPowerSwitchTake(outputDir)).rejects.toThrow(/not the approved take/);
+    const take = await loadPowerSwitchTake(outputDir, fixturePin(outputDir));
     expect(take.sha256).toBe(result.sha256);
     expect(take.lineTimings.map((line) => line.id)).toEqual(["hook", "where", "off", "on"]);
   });
@@ -126,7 +134,31 @@ describe("line timings and the loader", () => {
   it("refuses a saved take whose audio bytes no longer match its manifest", async () => {
     const outputDir = tempDir();
     await generateLiamPowerSwitchTake({ env: LIAM_ENV, fetchImpl: provider().fetchImpl, outputDir });
+    const pin = fixturePin(outputDir);
     writeFileSync(join(outputDir, "power-switch-liam.mp3"), "DIFFERENT BYTES");
-    await expect(loadPowerSwitchTake(outputDir)).rejects.toThrow(/do not match its manifest/);
+    await expect(loadPowerSwitchTake(outputDir, pin)).rejects.toThrow(/do not match its manifest/);
+  });
+
+  it("accepts the committed take only as the pinned approved one: audio and timestamps both", async () => {
+    const committed = join(import.meta.dirname, "take");
+    await expect(loadPowerSwitchTake(committed)).resolves.toMatchObject({ sha256: APPROVED_TAKE.audioSha256 });
+    // Swap in other timestamps (as another rendering would bring): refused even though the audio is unchanged.
+    const dir = tempDir();
+    const manifest = JSON.parse(readFileSync(join(committed, "power-switch-liam.json"), "utf8"));
+    writeFileSync(join(dir, "power-switch-liam.mp3"), readFileSync(join(committed, "power-switch-liam.mp3")));
+    manifest.alignment.character_start_times_seconds = manifest.alignment.character_start_times_seconds.map((t: number) => t + 0.01);
+    writeFileSync(join(dir, "power-switch-liam.json"), JSON.stringify(manifest));
+    await expect(loadPowerSwitchTake(dir)).rejects.toThrow(/timestamps are not the approved take's/);
+  });
+
+  it("refuses other audio with the approved timestamps, even when its manifest vouches for it", async () => {
+    const committed = join(import.meta.dirname, "take");
+    const dir = tempDir();
+    const other = Buffer.from("ANOTHER RENDERING'S BYTES");
+    const manifest = JSON.parse(readFileSync(join(committed, "power-switch-liam.json"), "utf8"));
+    manifest.audio.sha256 = createHash("sha256").update(other).digest("hex");
+    writeFileSync(join(dir, "power-switch-liam.mp3"), other);
+    writeFileSync(join(dir, "power-switch-liam.json"), JSON.stringify(manifest));
+    await expect(loadPowerSwitchTake(dir)).rejects.toThrow(/The saved audio is not the approved take\./);
   });
 });

@@ -76,11 +76,13 @@ describe("the gpu-upgrade option of the paid voice workflow", () => {
     expect(post).toContain("REVIEW_PR: ${{ inputs.review_pr }}");
     expect(post).toMatch(/case "\$REVIEW_PR" in ''\|\*\[!0-9\]\*\)/);
     expect(post.split("run:")[1]).not.toContain("${{");
-    const check = post.indexOf('pulls/${REVIEW_PR}" --jq .head.ref');
+    const check = post.indexOf('pulls/${REVIEW_PR}" --jq \'"\\(.head.repo.full_name)');
     const firstWrite = post.indexOf("issues/${REVIEW_PR}/comments");
     expect(check).toBeGreaterThan(0);
     expect(check).toBeLessThan(firstWrite);
-    expect(post).toContain('[ "$head" = "$GITHUB_REF_NAME" ]');
+    // Repository and branch together: a fork's PR from a same-named branch is refused.
+    expect(post).toContain("--jq '\"\\(.head.repo.full_name) \\(.head.ref)\"'");
+    expect(post).toContain('[ "$head" = "${GITHUB_REPOSITORY} ${GITHUB_REF_NAME}" ]');
   });
 
   it("publishes nothing", () => {

@@ -4,7 +4,9 @@
 // Nothing here generates audio: the take is loaded from take/ (bytes checked
 // against its manifest, text and voice checked against the approval) and the
 // picture is timed to Liam's actual delivery, from the provider's character
-// timestamps. Each caption changes when its line starts; the case turns to the
+// timestamps. The hook caption is on screen from frame one, before the voice;
+// each later caption appears with its line or up to 0.2 s ahead of it (the
+// second lands as the case finishes turning, just before "Check…"); the case turns to the
 // back as "Check the switch…" begins, the zoom lands as "O is off." starts,
 // the switch flips on "I", and the PC lights up after the last word, then
 // holds. A synthesized click marks each press and the flip, and a soft startup

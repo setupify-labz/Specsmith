@@ -1,6 +1,7 @@
 // The voiced cut is timed to the saved take: the turn, the held back view,
-// the zoom, the flip and the light-up follow Liam's line timings, each caption
-// starts with its line, the switch changes on the flip frame, and the sounds
+// the zoom, the flip and the light-up follow Liam's line timings, the hook
+// caption is up from frame one and every later caption appears with its line or
+// at most 0.25 s ahead of it (never after), the switch changes on the flip frame, and the sounds
 // sit on the events they mark without overlapping.
 
 import { describe, expect, it } from "vitest";
@@ -35,6 +36,12 @@ describe("timing from the saved take", () => {
     expect(timing.light).toBeGreaterThan(lastWord);
     expect(timing.durationSeconds - timing.light).toBeGreaterThanOrEqual(1.7);
     expect(timing.captions.map((caption) => caption.text)).toEqual(APPROVED_POWER_SWITCH_LINES.map((line) => line.spoken));
+    expect(timing.captions[0].from).toBe(0);
+    for (const [index, id] of [[1, "where"], [2, "off"], [3, "on"]] as const) {
+      const lead = at(id) - timing.captions[index].from;
+      expect(lead).toBeGreaterThanOrEqual(-0.001);
+      expect(lead).toBeLessThanOrEqual(0.25);
+    }
     expect(timing.captions[2].from).toBeCloseTo(at("off"), 3);
     expect(timing.captions[3].from).toBe(timing.flip);
     for (let i = 1; i < timing.captions.length; i += 1) expect(timing.captions[i].from).toBe(timing.captions[i - 1].to);

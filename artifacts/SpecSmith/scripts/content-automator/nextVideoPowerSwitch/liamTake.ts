@@ -172,6 +172,18 @@ export async function generateLiamPowerSwitchTake(options: { fetchImpl?: FetchLi
   return { audioPath, manifestPath, bytes: audio.byteLength, sha256, voiceName: voice.name, remainingBefore: subscription.remaining, charactersSent: characters, providerReportedCharacterCost: reportedCost, alignmentError };
 }
 
+/**
+ * The ONE approved take, pinned here so that replacing the saved audio and its
+ * manifest together (another Liam rendering, new timestamps) is refused: the
+ * manifest beside the take is not trusted to vouch for itself. Run 37992618639.
+ */
+export const APPROVED_TAKE = Object.freeze({
+  audioSha256: "1aabe1884ccbe2f51aba32b0de310f6eb7ffaad2c8ad94facfc3495e70d20b85",
+  /** SHA-256 of JSON.stringify(manifest.alignment): the provider's character timestamps. */
+  alignmentSha256: "ed4736402ea7936cb2aebe17926487c17f84a143abcb87e05b57dc782ee2d123",
+});
+export interface TakePin { readonly audioSha256: string; readonly alignmentSha256: string }
+
 export interface LoadedPowerSwitchTake {
   readonly audioPath: string;
   readonly sha256: string;
@@ -179,8 +191,12 @@ export interface LoadedPowerSwitchTake {
   readonly manifest: Record<string, unknown>;
 }
 
-/** Loads a saved take, refusing one whose bytes, text or timings are not the approved take's. */
-export async function loadPowerSwitchTake(dir: string): Promise<LoadedPowerSwitchTake> {
+/**
+ * Loads a saved take, refusing one whose bytes, text, voice or timings are not
+ * the approved take's. `pin` defaults to the approved take; tests pass their
+ * own fixture take's pin, and the production cut never does.
+ */
+export async function loadPowerSwitchTake(dir: string, pin: TakePin = APPROVED_TAKE): Promise<LoadedPowerSwitchTake> {
   const manifest = JSON.parse(await readFile(join(dir, POWER_SWITCH_TAKE_MANIFEST), "utf8")) as Record<string, unknown> & {
     text: string; isFixture: boolean; voiceId: string; audio: { file: string; sha256: string }; alignment: Alignment | null;
   };
@@ -190,7 +206,11 @@ export async function loadPowerSwitchTake(dir: string): Promise<LoadedPowerSwitc
   const audioPath = join(dir, manifest.audio.file);
   const sha256 = createHash("sha256").update(await readFile(audioPath)).digest("hex");
   if (sha256 !== manifest.audio.sha256) throw new Error("The saved audio's bytes do not match its manifest.");
+  if (sha256 !== pin.audioSha256) throw new Error("The saved audio is not the approved take.");
   if (!manifest.alignment) throw new Error("The saved take has no timestamps to time the edit to.");
+  if (createHash("sha256").update(JSON.stringify(manifest.alignment)).digest("hex") !== pin.alignmentSha256) {
+    throw new Error("The saved timestamps are not the approved take's.");
+  }
   return { audioPath, sha256, lineTimings: lineTimingsFromAlignment(manifest.alignment), manifest };
 }
 
