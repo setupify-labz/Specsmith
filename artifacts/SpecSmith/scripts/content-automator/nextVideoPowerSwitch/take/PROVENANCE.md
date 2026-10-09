@@ -30,3 +30,49 @@ The owner approved this take word for word on 2026-10-09.
 This is the only take. If a render fails, the edit reuses it; there is no second generation.
 
 It is not a publish approval.
+
+## Rights (recorded 2026-10-09)
+
+**Status:** cleared for commercial posting on YouTube, TikTok and Instagram, with AI disclosure. No attribution is required.
+
+### Plan: paid (ElevenLabs Starter)
+
+**What the workflow's own subscription read proves.** The take step read the account's subscription before spending (`readSubscription` in `voiceSpendGuards.ts`). It passed only because:
+- the account **cannot extend its character limit** (`can_extend_character_limit: false`), so there is no overage billing;
+- it had **66,337 included characters remaining** before the request.
+
+The manifest records that remaining figure as `includedCharactersRemainingBefore`.
+
+**What it does not record.** The workflow did not save the plan's *name*: the take script reads `tier` but never wrote or printed it. The job log is also not readable from this environment.
+
+**Why that still means a paid plan.**
+- ElevenLabs' free plan grants 10,000 credits a month.
+- Rollover of unused credits (up to two months' worth) is a paid-plan feature.
+- A balance of 66,337 is therefore not reachable on the free plan.
+- It is consistent with Starter: 30,000 a month plus up to two months' rollover, so up to 90,000.
+
+**The plan's name.** The owner stated "Starter" on 2026-10-09.
+
+**Sources.** These were read through search excerpts, because elevenlabs.io is blocked from this environment:
+- [Pricing](https://elevenlabs.io/pricing): Starter, 30,000 credits, Commercial License.
+- [Billing](https://elevenlabs.io/docs/overview/administration/billing): commercial rights on paid plans; up to two months' rollover.
+- [Can I publish the content I generate?](https://help.elevenlabs.io/hc/en-us/articles/13313564601361-Can-I-publish-the-content-I-generate-on-the-platform): every paid plan includes a commercial licence, outside Beta Services; free-plan output is non-commercial and needs "elevenlabs.io" attribution.
+
+### Commercial use
+
+Paid-plan output carries commercial rights, and the paid plan does not require attribution. The use must still comply with ElevenLabs' Prohibited Use Policy. This video, a PC troubleshooting tip with no impersonation, no deception and no real person's voice, is within it. The model used, `eleven_multilingual_v2`, is a generally available model, not a Beta Service.
+
+### Voice-specific restrictions
+
+**None found.** "Liam" (`TX3LPaxmHKxFdv7VOQHJ`) is ElevenLabs' premade voice (see `liamVoice.ts`), not a Voice Library voice:
+- **Owner restrictions:** the per-voice restrictions ElevenLabs describes come from a Voice Library voice's owner, so they don't apply to a premade voice.
+- **Credit multiplier:** the take's charge (26) shows none.
+- **Pages read:** [Voices](https://elevenlabs.io/docs/overview/capabilities/voices) and [Terms of Service](https://elevenlabs.io/terms-of-use), via search excerpts.
+
+**Watch item, not a blocker for this video.** ElevenLabs says its Default (premade) voices will **expire on 31 December 2026**, and are being replaced with voices usable in perpetuity. That affects generating new Liam takes after that date. Nothing found says it withdraws rights to audio already generated on a paid plan, but this should be re-checked before any Liam take is generated after 2026.
+
+### Disclosure
+
+The voice is AI-generated text-to-speech, and every post discloses it (`POSTING_PACKAGE.md`):
+- **TikTok and Instagram:** the platform's AI-content label is turned on.
+- **YouTube:** an "AI voiceover" line in the description, and the altered/synthetic label switched on as a transparency choice.
