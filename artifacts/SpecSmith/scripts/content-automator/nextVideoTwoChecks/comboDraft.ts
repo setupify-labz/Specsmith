@@ -47,8 +47,20 @@ export const FPS = 30;
 export const MIN_FINAL_PX = 42;
 export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, height: 200 }, story: { y: 200, height: 1400 }, captions: { y: 1600, height: 320 } });
 
+type Span = readonly [number, number];
+/** Every event of a cut, in seconds. `head2` is when the second symptom's headline comes in (default: just after the light-up). */
+export interface ComboTiming {
+  readonly durationSeconds: number;
+  readonly press1: number; readonly glimpse: Span;
+  readonly pullOut: Span; readonly turn1: Span; readonly zoomIn: Span; readonly finger: number; readonly flip: number; readonly zoomOut: Span;
+  readonly turn2: Span; readonly press2: number; readonly light: number;
+  readonly turn3: Span; readonly zoomPorts: Span; readonly pull: number; readonly travel: number; readonly push: number; readonly seated: number;
+  readonly zoomOut2: Span; readonly final: number;
+  readonly head2?: number;
+}
+
 /** Every event, in seconds. One PC, one camera, three turns, two checks. */
-export const TIMING = Object.freeze({
+export const TIMING: ComboTiming = Object.freeze<ComboTiming>({
   durationSeconds: 12.3,
   // Open: the dead press (close on the button), then the glimpse of symptom 2.
   press1: 0.12, glimpse: [0.55, 1.15],
@@ -92,6 +104,8 @@ function pageScript(state: unknown): string {
   return `
 const S = ${JSON.stringify(state)};
 const C = S.colours, L = S.layout, W = L.width, STORY = L.story, CAP = L.captions, TOP = L.label, T = S.timing;
+// When the second symptom's headline comes in: on the voice's line in the voiced cut, just after the light-up in the silent one.
+const HEAD2 = T.head2 ?? T.light + 0.25;
 const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d');
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
@@ -343,7 +357,7 @@ function story(t) {
   if (t < T.glimpse[0]) pill(S.copy.labels.noPower, W / 2, HEAD, RED, '#0A0A0F', 76, 1);
   else if (inGlimpse) pill(S.copy.labels.noPicture, W / 2, HEAD, CYAN, '#0A0A0F', 76, 1);
   else if (t < T.light + 0.2) pill(S.copy.chapters[0], W / 2, HEAD, RED, '#0A0A0F', 64, t < T.light ? 1 : 1 - (t - T.light) / 0.2);
-  else if (t < T.zoomPorts[1]) pill(S.copy.chapters[1], W / 2, HEAD, CYAN, '#0A0A0F', 64, out((t - T.light - 0.25) / 0.2) * (1 - span(t, [T.zoomPorts[0] + 0.1, T.zoomPorts[1]])));
+  else if (t >= HEAD2 && t < T.zoomPorts[1]) pill(S.copy.chapters[1], W / 2, HEAD, CYAN, '#0A0A0F', 64, out((t - HEAD2) / 0.2) * (1 - span(t, [T.zoomPorts[0] + 0.1, T.zoomPorts[1]])));
 
   // Check 1 on the switch: its name while the camera closes in, and its state, large.
   if (t >= T.zoomIn[0] && t < T.zoomOut[1]) {
@@ -386,6 +400,7 @@ function labelBand() {
 function captionBand(t) {
   ctx.fillStyle = C.background; ctx.fillRect(0, CAP.y, W, CAP.height);
   const cap = S.copy.captions.find((c) => t >= c.from && t < c.to) || S.copy.captions.at(-1);
+  if (!cap.text) return;
   ctx.font = '700 76px Inter';
   if (ctx.measureText(cap.text).width <= W - 120) { text(cap.text, W / 2, CAP.y + CAP.height / 2, W - 120, 80, 76, C.text, 'center', 700); return; }
   // Two lines: the most balanced word break.
@@ -417,8 +432,17 @@ function run(command: string, args: string[]): Promise<void> {
   });
 }
 
-export async function renderComboDraft(outputDir = OUTPUT_DIR) {
-  const problems = comboCopyProblems();
+export interface ComboCut {
+  readonly timing: ComboTiming;
+  readonly captions: readonly { readonly from: number; readonly to: number; readonly text: string }[];
+  readonly videoName: string;
+}
+/** The silent draft: its own timing and short captions. */
+export const SILENT_CUT: ComboCut = { timing: TIMING, captions: COPY.captions, videoName: "two-checks-silent.mp4" };
+
+export async function renderComboDraft(outputDir = OUTPUT_DIR, cut: ComboCut = SILENT_CUT) {
+  const copy = { ...COPY, captions: cut.captions };
+  const problems = comboCopyProblems([...copy.captions.map((c) => c.text).filter(Boolean), ...COPY.chapters, ...Object.values(COPY.labels), PROPOSED_NARRATION]);
   if (problems.length) throw new Error(`Copy breaks the rules:\n- ${problems.join("\n- ")}`);
   await mkdir(outputDir, { recursive: true });
   const framesDir = join(outputDir, "work");
@@ -428,8 +452,8 @@ export async function renderComboDraft(outputDir = OUTPUT_DIR) {
   for (const [weight, file] of Object.entries(FONT_FILES)) {
     faces.push(`@font-face{font-family:Inter;font-weight:${weight};src:url(data:font/woff2;base64,${(await readFile(join(FONT_DIR, file))).toString("base64")}) format('woff2');}`);
   }
-  const state = { layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, copy: COPY, timing: TIMING, duration: TIMING.durationSeconds };
-  const duration = TIMING.durationSeconds, count = Math.round(duration * FPS);
+  const state = { layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, copy, timing: cut.timing, duration: cut.timing.durationSeconds };
+  const duration = cut.timing.durationSeconds, count = Math.round(duration * FPS);
   let minFinalPx = Infinity;
   const session = await launchBrowser({ width: LAYOUT.width, height: LAYOUT.height, deviceScaleFactor: 1 });
   try {
@@ -448,12 +472,12 @@ export async function renderComboDraft(outputDir = OUTPUT_DIR) {
     await session.close();
   }
   if (minFinalPx < MIN_FINAL_PX) throw new Error(`Smallest type is ${minFinalPx}px, under ${MIN_FINAL_PX}px.`);
-  const videoPath = join(outputDir, "two-checks-silent.mp4");
+  const videoPath = join(outputDir, cut.videoName);
   await run("ffmpeg", ["-v", "error", "-y", "-framerate", String(FPS), "-i", join(framesDir, "f-%04d.png"),
     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000", "-map", "0:v", "-map", "1:a",
     "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
     "-t", duration.toFixed(3), "-movflags", "+faststart", videoPath]);
-  await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=4,scale=180:320:flags=lanczos,tile=13x4:padding=4:color=0x2A2A33", "-frames:v", "1", join(outputDir, "phone-every-0.25s.png")]);
+  if (cut === SILENT_CUT) await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=4,scale=180:320:flags=lanczos,tile=13x4:padding=4:color=0x2A2A33", "-frames:v", "1", join(outputDir, "phone-every-0.25s.png")]);
   await rm(framesDir, { recursive: true, force: true });
   return { videoPath, sha256: createHash("sha256").update(await readFile(videoPath)).digest("hex"), minFinalPx, durationSeconds: duration };
 }
