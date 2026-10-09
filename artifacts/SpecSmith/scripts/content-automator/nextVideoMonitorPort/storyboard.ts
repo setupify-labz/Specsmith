@@ -1,4 +1,4 @@
-// "Where to plug in your gaming monitor": a 9-second SpecSmith Short.
+// "Where to plug in your gaming monitor": an 8-second SpecSmith Short.
 //
 // This file is the single source for what the Short may show and say, and the
 // guards that keep it honest:
@@ -15,7 +15,7 @@
 //     gain, bottleneck or performance loss is claimed unless measured here,
 //     same game and settings, both ways.
 
-export const DURATION_SECONDS = 9;
+export const DURATION_SECONDS = 8;
 export const MIN_SECONDS = 8;
 export const MAX_SECONDS = 10;
 export const FPS = 30;
@@ -86,10 +86,11 @@ export interface Caption { readonly startSecond: number; readonly endSecond: num
  */
 export function beats(record: PcRecord | null = PC_RECORD) {
   return [
-    { id: "hook", startSecond: 0, endSecond: 2.8, caption: HOOK },
-    // One move: out of the motherboard at 2.8 s, seated in the graphics card by 4.0 s.
-    { id: "move", startSecond: 2.8, endSecond: 5.0, caption: "Move it to the graphics card" },
-    { id: "close", startSecond: 5.0, endSecond: DURATION_SECONDS, caption: INSTRUCTION },
+    // One move: out of the motherboard at 0.6 s, seated in the graphics card by 2.75 s.
+    { id: "hook", startSecond: 0, endSecond: 2.85, caption: HOOK },
+    { id: "motherboard", startSecond: 2.85, endSecond: 4.35, caption: "Motherboard ports: up here" },
+    { id: "graphics-card", startSecond: 4.35, endSecond: 5.85, caption: "Graphics card ports: down here" },
+    { id: "close", startSecond: 5.85, endSecond: DURATION_SECONDS, caption: INSTRUCTION },
   ] as const;
 }
 
@@ -129,15 +130,15 @@ export function copyProblems(texts: readonly string[], record: PcRecord | null =
 /**
  * The narration proposed for review. Not voiced. The result line is added
  * only once PC_RECORD says what the screen showed. At the saved GPU take's
- * pace (about 13.5 characters a second) these lines run about 8.4 s; a
+ * pace (about 13.5 characters a second) these lines run about 8.3 s; a
  * result line would need the edit to grow toward 15 s.
  */
 export function proposedNarration(record: PcRecord | null = PC_RECORD): string {
   const lines = [
     "Bought a graphics card? Is your monitor plugged into it?",
-    "Move it to the graphics card.",
+    "Use the ports down here, on the card.",
     ...(record ? [`On this PC, that gives ${record.graphicsCardPort.monitorShowed}.`] : []),
-    "Check where your monitor cable goes.",
+    "Check where yours goes.",
   ];
   return lines.join(" ");
 }

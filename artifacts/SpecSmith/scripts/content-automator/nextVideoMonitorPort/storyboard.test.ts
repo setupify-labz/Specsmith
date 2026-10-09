@@ -27,7 +27,7 @@ describe("the animated cut", () => {
   });
 
   it("shows no result scene and says no outcome: no placeholder, no NO SIGNAL, no FPS", () => {
-    expect(beats(null).map((beat) => beat.id)).toEqual(["hook", "move", "close"]);
+    expect(beats(null).map((beat) => beat.id)).toEqual(["hook", "motherboard", "graphics-card", "close"]);
     for (const text of allCopy(null)) expect(text).not.toMatch(/result|no signal|fps|on this pc/i);
   });
 
@@ -37,8 +37,8 @@ describe("the animated cut", () => {
   });
 
   it("proposes narration short enough for the cut", () => {
-    expect(proposedNarration(null)).toBe("Bought a graphics card? Is your monitor plugged into it? Move it to the graphics card. Check where your monitor cable goes.");
-    expect(proposedNarration(null).length).toBe(123);
+    expect(proposedNarration(null)).toBe("Bought a graphics card? Is your monitor plugged into it? Use the ports down here, on the card. Check where yours goes.");
+    expect(proposedNarration(null).length).toBe(118);
   });
 });
 

@@ -34,7 +34,7 @@ export const FONT_DIR = resolve(here, "../nextVideoRefreshRate/fonts");
 const FONT_FILES = { 400: "inter-latin-400-normal.woff2", 600: "inter-latin-600-normal.woff2", 700: "inter-latin-700-normal.woff2" } as const;
 export const MIN_FINAL_PX = 42;
 export const LAYOUT = Object.freeze({ width: 1080, height: 1920, label: { y: 0, height: 200 }, story: { y: 200, height: 1400 }, captions: { y: 1600, height: 320 } });
-export const KEY_FRAME_SECONDS = [0, 1.4, 2.95, 3.35, 3.75, 4.3, 5.4, 7.0, 8.7] as const;
+export const KEY_FRAME_SECONDS = [0, 0.7, 1.4, 2.2, 2.9, 3.8, 5.2, 6.6, 7.8] as const;
 
 function pageScript(state: unknown): string {
   return `
@@ -71,12 +71,16 @@ function pill(s, cx, cy, colour, size) {
   text(s, cx, cy + 2, w, size, size, '#0A0A0F', 'center', 700);
 }
 
-// ---- The diagram, in story coordinates (1080 × 1400). Schematic outlines only. ----
-const MB = { x: 110, y: 250, w: 860, h: 230 };   // motherboard port row
-const GPU = { x: 110, y: 800, w: 860, h: 230 };  // graphics card port row
-// The video port the cable starts in (motherboard HDMI) and the one it ends in (graphics card HDMI).
-const MB_PORT = { x: 470, y: MB.y + 80, w: 130, h: 56 };
-const GPU_PORT = { x: 760, y: GPU.y + 80, w: 130, h: 56 };
+// ---- A stylized tower, seen from the back, in story coordinates (1080 × 1400). ----
+// Flat outlines, not any real product: the motherboard's port panel top-left,
+// the exhaust fan beside it, the expansion slots below with the graphics card
+// in the top two, and the power supply at the bottom.
+const CASE = { x: 150, y: 30, w: 780, h: 1340 };
+const IO = { x: 200, y: 200, w: 230, h: 470 };          // motherboard port panel
+const GPU = { x: 200, y: 740, w: 690, h: 96 };           // graphics card bracket (two slots)
+const MB_PORT = { x: 250, y: 300, w: 130, h: 56 };       // motherboard HDMI
+const GPU_PORT = { x: 740, y: 760, w: 130, h: 56 };      // graphics card HDMI
+const T = { pull: 0.6, travel: 0.8, push: 2.55, done: 2.75 };
 
 function hdmi(p, colour, lw) {
   ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.w, p.y); ctx.lineTo(p.x + p.w, p.y + p.h * 0.6);
@@ -88,81 +92,100 @@ function dp(p, colour, lw) {
   ctx.lineTo(p.x + 18, p.y + p.h); ctx.lineTo(p.x, p.y + p.h - 18); ctx.closePath();
   ctx.fillStyle = '#0B0B10'; ctx.fill(); ctx.strokeStyle = colour; ctx.lineWidth = lw; ctx.stroke();
 }
-function usb(x, y) { rr(x, y, 76, 30, 4, '#0B0B10', '#55556A', 3); rr(x + 10, y + 8, 56, 8, 2, '#55556A'); }
-
-function row(r, label, colour, lit, kind) {
-  rr(r.x, r.y, r.w, r.h, 26, '#1A1A24', lit > 0 ? colour : '#33333F', lit > 0 ? 3 + 4 * lit : 3);
-  if (lit > 0) { ctx.save(); ctx.globalAlpha = 0.10 * lit; rr(r.x, r.y, r.w, r.h, 26, colour); ctx.restore(); }
-  pill(label, r.x + 40 + labelWidth(label) / 2, r.y - 4, colour, 48);
-  const vy = r.y + 80, portColour = lit > 0 ? colour : '#C9C9D6';
-  if (kind === 'mb') {
-    usb(r.x + 60, vy + 4); usb(r.x + 60, vy + 50); usb(r.x + 160, vy + 4); usb(r.x + 160, vy + 50);
-    hdmi(MB_PORT, portColour, 5); dp({ x: 630, y: vy, w: 120, h: 56 }, portColour, 5);
-    rr(790, vy - 4, 64, 64, 8, '#0B0B10', '#55556A', 3);
-    for (let i = 0; i < 3; i += 1) { ctx.beginPath(); ctx.arc(890 + (i % 2) * 0, vy - 6 + i * 34, 13, 0, Math.PI * 2); ctx.strokeStyle = '#55556A'; ctx.lineWidth = 3; ctx.stroke(); }
-  } else {
-    // Expansion-slot brackets with vent slots, then the card's display outputs.
-    for (let i = 0; i < 9; i += 1) rr(r.x + 50 + i * 22, vy - 10, 10, 90, 5, '#2A2A36');
-    dp({ x: 340, y: vy, w: 120, h: 56 }, portColour, 5); dp({ x: 480, y: vy, w: 120, h: 56 }, portColour, 5); dp({ x: 620, y: vy, w: 120, h: 56 }, portColour, 5);
-    hdmi(GPU_PORT, portColour, 5);
-  }
+function usb(x, y) { rr(x, y, 80, 30, 4, '#0B0B10', '#55556A', 3); rr(x + 10, y + 8, 60, 8, 2, '#55556A'); }
+function glow(r, colour, k) {
+  if (k <= 0) return;
+  ctx.save(); ctx.globalAlpha = k; rr(r.x - 12, r.y - 12, r.w + 24, r.h + 24, 18, null, colour, 8);
+  ctx.globalAlpha = 0.12 * k; rr(r.x - 12, r.y - 12, r.w + 24, r.h + 24, 18, colour); ctx.restore();
 }
-const labelWidth = (s) => { ctx.font = '700 48px Inter'; return ctx.measureText(s).width + 56; };
 
-/** The cable: plug position as a function of time, one decisive move. */
+function pcBack(t, mbLit, gpuLit) {
+  rr(CASE.x, CASE.y, CASE.w, CASE.h, 34, '#15151E', '#3A3A4A', 6);
+  for (const [x, y] of [[CASE.x + 30, CASE.y + 30], [CASE.x + CASE.w - 30, CASE.y + 30], [CASE.x + 30, CASE.y + CASE.h - 30], [CASE.x + CASE.w - 30, CASE.y + CASE.h - 30]]) {
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fillStyle = '#3A3A4A'; ctx.fill();
+  }
+  // Motherboard port panel.
+  rr(IO.x, IO.y, IO.w, IO.h, 12, '#1D1D28', '#44445A', 3);
+  const mbColour = mbLit > 0 ? PURPLE : '#C9C9D6';
+  usb(IO.x + 25, IO.y + 30); usb(IO.x + 125, IO.y + 30); usb(IO.x + 25, IO.y + 72); usb(IO.x + 125, IO.y + 72);
+  hdmi(MB_PORT, mbColour, 5); dp({ x: 255, y: 380, w: 120, h: 56 }, mbColour, 5);
+  rr(IO.x + 80, IO.y + 270, 70, 64, 8, '#0B0B10', '#55556A', 3);
+  for (let i = 0; i < 3; i += 1) { ctx.beginPath(); ctx.arc(IO.x + 60 + i * 55, IO.y + 405, 17, 0, Math.PI * 2); ctx.strokeStyle = '#55556A'; ctx.lineWidth = 4; ctx.stroke(); }
+  // Exhaust fan, turning slowly: the only idle motion.
+  const fx = 690, fy = 390, fr = 175;
+  ctx.beginPath(); ctx.arc(fx, fy, fr + 14, 0, Math.PI * 2); ctx.strokeStyle = '#33333F'; ctx.lineWidth = 6; ctx.stroke();
+  for (const r of [fr * 0.45, fr * 0.75, fr]) { ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.strokeStyle = '#2A2A36'; ctx.lineWidth = 4; ctx.stroke(); }
+  ctx.save(); ctx.translate(fx, fy); ctx.rotate(t * 1.6);
+  for (let b = 0; b < 7; b += 1) {
+    ctx.rotate((Math.PI * 2) / 7); ctx.beginPath(); ctx.moveTo(30, 0); ctx.quadraticCurveTo(110, 40, fr - 12, 10); ctx.quadraticCurveTo(110, -10, 30, 0);
+    ctx.fillStyle = '#262632'; ctx.fill();
+  }
+  ctx.restore(); ctx.beginPath(); ctx.arc(fx, fy, 36, 0, Math.PI * 2); ctx.fillStyle = '#2E2E3C'; ctx.fill();
+  // Expansion slots: the graphics card in the top two, blank covers below.
+  rr(GPU.x, GPU.y, GPU.w, GPU.h, 8, '#22222E', '#4A4A5E', 3);
+  const gpuColour = gpuLit > 0 ? CYAN : '#C9C9D6';
+  for (let v = 0; v < 6; v += 1) rr(GPU.x + 18 + v * 14, GPU.y + 16, 7, 64, 3, '#33333F');
+  dp({ x: 330, y: 760, w: 120, h: 56 }, gpuColour, 5); dp({ x: 465, y: 760, w: 120, h: 56 }, gpuColour, 5); dp({ x: 600, y: 760, w: 120, h: 56 }, gpuColour, 5);
+  hdmi(GPU_PORT, gpuColour, 5);
+  for (let k = 0; k < 4; k += 1) {
+    const y = 870 + k * 52; rr(GPU.x, y, GPU.w, 42, 6, '#1B1B25', '#33333F', 2);
+    for (let v = 0; v < 10; v += 1) rr(GPU.x + 120 + v * 46, y + 15, 30, 12, 6, '#2A2A36');
+  }
+  // Power supply.
+  rr(200, 1110, 690, 230, 12, '#1B1B25', '#3A3A4A', 3);
+  for (const r of [40, 70, 95]) { ctx.beginPath(); ctx.arc(390, 1225, r, 0, Math.PI * 2); ctx.strokeStyle = '#2E2E3A'; ctx.lineWidth = 4; ctx.stroke(); }
+  rr(640, 1180, 120, 90, 10, '#0B0B10', '#55556A', 3); rr(790, 1195, 40, 60, 6, '#2E2E3A');
+  glow(IO, PURPLE, mbLit); glow(GPU, CYAN, gpuLit);
+}
+
+/** The cable: plug position as a function of time, one move, seated by T.done. */
 function plugAt(t) {
   const a = { x: MB_PORT.x + MB_PORT.w / 2, y: MB_PORT.y + MB_PORT.h / 2 }, b = { x: GPU_PORT.x + GPU_PORT.w / 2, y: GPU_PORT.y + GPU_PORT.h / 2 };
-  const pull = 2.8, travel = 3.0, push = 3.8, done = 4.0;
-  if (t < pull) return { ...a, out: 0 };
-  if (t < travel) return { ...a, y: a.y + 70 * out((t - pull) / (travel - pull)), out: 1 };
-  if (t < push) {
-    const k = ease((t - travel) / (push - travel));
-    return { x: lerp(a.x, b.x, k), y: lerp(a.y + 70, b.y + 70, k) - Math.sin(k * Math.PI) * 120, out: 1 };
+  if (t < T.pull) return { ...a, out: 0 };
+  if (t < T.travel) return { ...a, y: a.y + 70 * out((t - T.pull) / (T.travel - T.pull)), out: 1 };
+  if (t < T.push) {
+    const k = ease((t - T.travel) / (T.push - T.travel));
+    return { x: lerp(a.x, b.x, k), y: lerp(a.y + 70, b.y + 70, k) - Math.sin(k * Math.PI) * 90, out: 1 };
   }
-  return { ...b, y: b.y + 70 * (1 - back((t - push) / (done - push))), out: t < done ? 1 : 0 };
+  return { ...b, y: b.y + 70 * (1 - back((t - T.push) / (T.done - T.push))), out: t < T.done ? 1 : 0 };
 }
-function cable(t) {
-  const p = plugAt(t);
-  // From the monitor, below the frame, up to the plug.
-  ctx.strokeStyle = '#4A4A5C'; ctx.lineWidth = 30; ctx.lineCap = 'round';
-  // It leaves the frame to the right, between the rows, so it never crosses a label.
-  ctx.beginPath(); ctx.moveTo(p.x, p.y + 40); ctx.bezierCurveTo(p.x, p.y + 200, 980, p.y + 170, 1180, p.y + 190); ctx.stroke();
-  ctx.strokeStyle = '#6A6A80'; ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.moveTo(p.x - 10, p.y + 40); ctx.bezierCurveTo(p.x - 10, p.y + 190, 975, p.y + 160, 1180, p.y + 180); ctx.stroke();
+function cable(p) {
+  // Out to the right edge, dropping less the lower the plug is, so it never crosses a label.
+  const k = clamp((p.y - 328) / (788 - 328)), drop = lerp(170, 20, k), c1 = lerp(100, 30, k);
+  const path = (dx) => { ctx.beginPath(); ctx.moveTo(p.x + dx, p.y + 40); ctx.bezierCurveTo(p.x + 20 + dx, p.y + c1, lerp(p.x, 1180, 0.45), p.y + drop, 1180, p.y + drop); ctx.stroke(); };
+  ctx.lineCap = 'round'; ctx.strokeStyle = '#4A4A5C'; ctx.lineWidth = 30; path(0);
+  ctx.strokeStyle = '#6A6A80'; ctx.lineWidth = 6; path(-10);
   rr(p.x - 76, p.y - 34, 152, 92, 14, '#2E2E3C', '#8A8AA0', 3);
   rr(p.x - 60, p.y - 28 - 26 * p.out, 120, 30, 6, '#9A9AB0');
-  return p;
 }
 
 function story(t, beat) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, STORY.y, W, STORY.height); ctx.clip();
   ctx.fillStyle = C.background; ctx.fillRect(0, STORY.y, W, STORY.height);
-  // Camera: whole diagram, a punch-in on each row, back out for the move.
-  const shots = { hook: [540, 600, 1.15], move: [540, 620, 1.12], close: [540, 640, 1.08] };
-  const order = S.beats.map((b) => b.id), i = order.indexOf(beat.id), prev = shots[order[Math.max(0, i - 1)]], cur = shots[beat.id];
-  const k = i === 0 ? 1 : ease((t - beat.startSecond) / 0.35);
-  const cx = lerp(prev[0], cur[0], k), cy = lerp(prev[1], cur[1], k), z = lerp(prev[2], cur[2], k);
+  // Camera by time: the whole PC back, a punch-in on each port group, back out.
+  const keys = [[0, 540, 650, 1.12], [2.85, 540, 650, 1.12], [3.25, 455, 430, 1.32], [4.35, 455, 430, 1.32], [4.75, 560, 800, 1.32], [5.85, 560, 800, 1.32], [6.25, 540, 650, 1.12]];
+  let a = keys[0], b = keys[0];
+  for (let i = 0; i < keys.length; i += 1) { if (t >= keys[i][0]) { a = keys[i]; b = keys[Math.min(i + 1, keys.length - 1)]; } }
+  const k = b === a ? 1 : ease((t - a[0]) / (b[0] - a[0]));
+  const cx = lerp(a[1], b[1], k), cy = lerp(a[2], b[2], k), z = lerp(a[3], b[3], k);
   ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(z, z); ctx.translate(-cx, -cy); zoom = z;
 
-  // The problem lit in frame one; the graphics card lit as the plug seats.
-  const mbLit = t < 2.8 ? 1 : 1 - out((t - 2.8) / 0.3);
-  const gpuLit = t < 3.9 ? 0 : out((t - 3.9) / 0.25);
-  row(MB, S.labels.motherboard, PURPLE, mbLit, 'mb');
-  row(GPU, S.labels.graphicsCard, CYAN, gpuLit, 'gpu');
-  const p = cable(t);
-  // The one decisive moment: a ring as the plug seats in the graphics card.
-  if (t >= 4.0 && t < 4.6) {
-    const k2 = clamp((t - 4.0) / 0.6);
+  // Frame one: the cable in the lit motherboard panel. Then each port group gets its own moment.
+  const mbLit = t < T.pull ? 1 : t < 2.85 ? 1 - out((t - T.pull) / 0.4) : t < 4.35 ? out((t - 2.85) / 0.3) : 1 - out((t - 4.35) / 0.3);
+  const gpuLit = t < 2.6 ? 0 : t < 2.85 ? out((t - 2.6) / 0.25) : t < 4.35 ? 0.35 : 1;
+  pcBack(t, mbLit, gpuLit);
+  const p = plugAt(t); cable(p);
+  if (t >= T.done && t < T.done + 0.6) {
+    const k2 = clamp((t - T.done) / 0.6);
     ctx.save(); ctx.globalAlpha = 1 - k2; ctx.strokeStyle = CYAN; ctx.lineWidth = 8;
     ctx.beginPath(); ctx.arc(p.x, p.y + 6, 90 + 70 * k2, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
-  if (beat.id === 'hook') {
-    pill('MONITOR CABLE', 800, 640, C.amber, 42);
-    // One pulse on the plugged port, so the eye lands on where the cable is now.
-    const k = clamp((t - 0.5) / 0.9);
-    if (k > 0 && k < 1) { ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = C.amber; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(p.x, p.y + 6, 90 + 60 * k, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-  }
-  if (t >= 5.0) { ctx.save(); ctx.globalAlpha = out((t - 5.1) / 0.4) * 0.9; text(S.site, 540, 1180, 600, 42, 42, C.textSecondary, 'center', 600); ctx.restore(); }
+  // Large labels at their port groups, clear of the cable's path.
+  const labelAt = (s, x, y, colour, alpha) => { if (alpha <= 0) return; ctx.save(); ctx.globalAlpha = alpha; pill(s, x, y, colour, 48); ctx.restore(); };
+  labelAt(S.labels.motherboard, 470, 140, PURPLE, 1);
+  labelAt(S.labels.graphicsCard, 540, 880, CYAN, 1);
+  if (t < T.pull + 0.2) labelAt('MONITOR CABLE', 740, 640, C.amber, 1 - clamp((t - T.pull) / 0.2));
+  if (t >= 6.25) { ctx.save(); ctx.globalAlpha = out((t - 6.3) / 0.4) * 0.9; text(S.site, 540, 1060, 600, 42, 42, C.textSecondary, 'center', 600); ctx.restore(); }
   ctx.restore(); zoom = 1;
 }
 
