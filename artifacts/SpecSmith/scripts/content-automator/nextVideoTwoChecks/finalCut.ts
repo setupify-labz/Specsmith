@@ -45,9 +45,11 @@ export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp:
 export const CLOSE_HOLD_SECONDS = 0.55;
 /**
  * The voiced cut's opening, slower than the silent draft's so each beat registers at full speed on a phone:
- * the dead press with "NO POWER?" on screen for 1.2 s, then 1.25 s on the lit PC beside the dark monitor.
+ * the dead press with "NO POWER?" on screen for 1.2 s, then 0.85 s on the lit PC beside the dark monitor.
  */
-export const VOICED_OPENING = Object.freeze({ press1: 0.3, glimpse: [1.2, 2.45] as const, hookAt: 0.45, returnLead: 0.05 });
+export const VOICED_OPENING = Object.freeze({ press1: 0.3, glimpse: [1.2, 2.05] as const, hookAt: 0.45, returnLead: 0.05 });
+/** A split of the take must sit in at least this much silence, so its 10 ms fades touch no word. */
+export const MIN_SPLIT_SILENCE_SECONDS = 0.06;
 /** The cable's three motions: out of the motherboard port, carried across, pushed into the graphics card's. */
 export const FLIP_HALF_THROW_SECONDS = 0.05;
 export const UNPLUG_SECONDS = 0.25, SEAT_SECONDS = 0.2, MIN_CARRY_SECONDS = 0.45;
@@ -61,6 +63,12 @@ export function phraseTimes(alignment: Alignment, phrase: string): { start: numb
   const at = TWO_CHECKS_TAKE_TEXT.indexOf(phrase);
   if (at < 0 || TWO_CHECKS_TAKE_TEXT.indexOf(phrase, at + 1) >= 0) throw new Error(`"${phrase}" is not a unique phrase of the approved text.`);
   return { start: alignment.character_start_times_seconds[at], end: alignment.character_end_times_seconds[at + phrase.length - 1] };
+}
+
+/** The midpoint of the silence between two words, refused if that silence is too short to cut in cleanly. */
+function splitInSilence(wordEnd: number, nextStart: number, between: string): number {
+  if (nextStart - wordEnd < MIN_SPLIT_SILENCE_SECONDS) throw new Error(`Only ${round(nextStart - wordEnd)} s of silence between ${between}; the take cannot be split there without touching a word.`);
+  return round((wordEnd + nextStart) / 2);
 }
 
 /** One stretch of the take placed on the cut's timeline: take seconds [from, to) play from `from + offset`. */
@@ -83,8 +91,9 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   const hookStart = Math.min(hookAt, glimpse[0] - 0.05 - hookLength);
   if (hookStart < press1 + 0.02) throw new Error("\"No power?\" is too long to fit between the dead press and the glimpse.");
   const offsetHook = round(hookStart - raw("No power?").start);
-  const split1 = round((raw("No power?").end + raw("Check the power supply switch.").start) / 2);
-  const offsetA = round(glimpse[1] + returnLead - raw("Check the power supply switch.").start);
+  const split1 = splitInSilence(raw("No power?").end, raw("Check the power supply switch.").start, "\"No power?\" and \"Check the power supply switch.\"");
+  // Never earlier than the first stretch's placement: the stretches share split1, so a smaller offset would overlap them.
+  const offsetA = round(Math.max(offsetHook, glimpse[1] + returnLead - raw("Check the power supply switch.").start));
   const a = (phrase: string) => ({ start: round(raw(phrase).start + offsetA), end: round(raw(phrase).end + offsetA) });
   const pullOutEnd = round(glimpse[1] + 0.35);
 
@@ -95,8 +104,9 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   if (turnLength < 0.45) throw new Error("\"O is off.\" comes too soon after the opening to turn the case to the back.");
   const turn1: [number, number] = turnLength <= 0.85 ? [pullOutEnd, zoomIn[0]] : [round(zoomIn[0] - 0.8), zoomIn[0]];
   const pullOut: [number, number] = [glimpse[1], round(Math.min(Math.max(turn1[0], pullOutEnd), glimpse[1] + 0.6))];
-  // The rocker takes 0.1 s to throw and shows I from halfway: start it so the I appears on Liam's "I".
-  const flip = round(on.start - FLIP_HALF_THROW_SECONDS);
+  // The rocker takes 0.1 s to throw and shows I from halfway. Snap that halfway point to the rendered frame on
+  // screen when Liam's "I" begins, so that frame already shows I.
+  const flip = round(Math.floor(on.start * FPS + 1e-6) / FPS - FLIP_HALF_THROW_SECONDS - 0.002); // 2 ms margin for rounding
   if (flip < zoomIn[1] + 0.25) throw new Error("\"I is on.\" comes before the close-up on the switch has landed.");
   const finger = round(Math.max(flip - 0.55, zoomIn[1] + 0.05));
 
@@ -105,7 +115,7 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   const zoomOut: [number, number] = [round(flip + 0.5), round(flip + 0.8)];
   const turn2: [number, number] = [zoomOut[1], round(zoomOut[1] + 0.55)];
   const press2 = round(turn2[1] + 0.15), light = round(press2 + 0.1);
-  const split = round((raw("I is on.").end + raw("PC on, but no picture?").start) / 2);
+  const split = splitInSilence(raw("I is on.").end, raw("PC on, but no picture?").start, "\"I is on.\" and \"PC on, but no picture?\"");
   const offsetB = round(Math.max(offsetA, light + 0.3 - raw("PC on, but no picture?").start));
   const b = (phrase: string) => ({ start: round(raw(phrase).start + offsetB), end: round(raw(phrase).end + offsetB) });
   const symptom = b("PC on, but no picture?"), cable = b("If you have a graphics card,"), check = b("check that your monitor"), last = b("into its ports.");

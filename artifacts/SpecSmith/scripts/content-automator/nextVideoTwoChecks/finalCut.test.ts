@@ -9,6 +9,7 @@ import { TIMING } from "./comboDraft.ts";
 import { join } from "node:path";
 
 import { cutFromTake, FLIP_HALF_THROW_SECONDS, phraseTimes, soundCuesFor, VOICED_OPENING } from "./finalCut.ts";
+import { FPS } from "./comboDraft.ts";
 import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
 import { APPROVED_TWO_CHECKS_LINES, TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 
@@ -23,6 +24,9 @@ function fixtureAlignment(cps: number, gap: number, lead = 0.05): Alignment {
   });
   return { characters, character_start_times_seconds: starts, character_end_times_seconds: ends };
 }
+
+/** The renderer's rocker state at a rendered frame: I once its 0.1 s throw is halfway (comboDraft.ts rocker). */
+const rockerShowsIAt = (flip: number, frame: number) => Math.max(0, Math.min(1, (Number((frame / FPS).toFixed(4)) - flip) / 0.1)) >= 0.5;
 
 const paces = { fast: fixtureAlignment(21, 0.4), typical: fixtureAlignment(18.5, 0.5), slow: fixtureAlignment(16.5, 0.6) };
 
@@ -40,7 +44,8 @@ describe("the voiced cut follows Liam's words", () => {
       expect(voice[1].offset).toBeGreaterThanOrEqual(voice[0].offset);
       expect(voice[2].offset).toBeGreaterThanOrEqual(voice[1].offset);
       expect(TWO_CHECKS_TAKE_TEXT[TWO_CHECKS_TAKE_TEXT.indexOf("I is on.")]).toBe("I");
-      expect(timing.flip + FLIP_HALF_THROW_SECONDS).toBeCloseTo(at("I is on.").start, 2);
+      expect(rockerShowsIAt(timing.flip, Math.floor(at("I is on.").start * FPS + 1e-6))).toBe(true);
+      expect(rockerShowsIAt(timing.flip, Math.floor(at("I is on.").start * FPS + 1e-6) - 1)).toBe(false);
       // The unplug starts on "that your monitor" itself (never moved earlier to make room for the carry) and is out before the phrase ends.
       expect(timing.pull).toBeCloseTo(at("that your monitor").start, 3);
       expect(timing.travel).toBeLessThanOrEqual(at("that your monitor").end);
@@ -48,10 +53,11 @@ describe("the voiced cut follows Liam's words", () => {
       expect(timing.seated).toBeLessThanOrEqual(at("into its ports.").end);
       expect(timing.zoomIn[1]).toBeLessThanOrEqual(at("O is off.").start);
       expect(timing.light).toBeLessThan(at("PC on, but no picture?").start);
-      // The slower opening: the dead press with "NO POWER?" for over a second, then over a second on the glimpse.
+      // The slower opening: the dead press with "NO POWER?" for over a second, then 0.8-0.9 s on the glimpse.
       expect([timing.press1, timing.glimpse]).toEqual([VOICED_OPENING.press1, [...VOICED_OPENING.glimpse]]);
       expect(timing.glimpse[0]).toBeGreaterThanOrEqual(1.0);
-      expect(timing.glimpse[1] - timing.glimpse[0]).toBeGreaterThanOrEqual(1.1);
+      expect(timing.glimpse[1] - timing.glimpse[0]).toBeGreaterThanOrEqual(0.8);
+      expect(timing.glimpse[1] - timing.glimpse[0]).toBeLessThanOrEqual(0.9);
       expect(at("No power?").start).toBeGreaterThan(timing.press1);
       expect(at("No power?").end).toBeLessThanOrEqual(timing.glimpse[0]);
       expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(timing.glimpse[1] - 0.001);
@@ -77,7 +83,27 @@ describe("the voiced cut follows Liam's words", () => {
     expect(timing.seated).toBeGreaterThanOrEqual(into.start + offset);
     expect(timing.seated).toBeLessThanOrEqual(into.end + offset);
     // The flip on the "I".
-    expect(timing.flip + FLIP_HALF_THROW_SECONDS).toBeCloseTo(phraseTimes(alignment, "I is on.").start + voice[1].offset, 3);
+    // On the rendered frame showing when "I" begins, the rocker already shows I; on the frame before, still O.
+    const iFrame = Math.floor((phraseTimes(alignment, "I is on.").start + voice[1].offset) * FPS + 1e-6);
+    expect(rockerShowsIAt(timing.flip, iFrame)).toBe(true);
+    expect(rockerShowsIAt(timing.flip, iFrame - 1)).toBe(false);
+  });
+
+  it("never overlaps the take's stretches, even with a longer pause after \"No power?\"", () => {
+    const alignment = fixtureAlignment(18.5, 0.5);
+    const at = TWO_CHECKS_TAKE_TEXT.indexOf("Check the power supply switch.");
+    const shifted: Alignment = {
+      characters: alignment.characters,
+      character_start_times_seconds: alignment.character_start_times_seconds.map((s, i) => i >= at ? s + 1 : s),
+      character_end_times_seconds: alignment.character_end_times_seconds.map((e, i) => i >= at ? e + 1 : e),
+    };
+    const { voice } = cutFromTake(shifted);
+    for (let i = 1; i < voice.length; i += 1) expect(voice[i].from + voice[i].offset).toBeGreaterThanOrEqual(voice[i - 1].to + voice[i - 1].offset);
+  });
+
+  it("refuses to split the take where the silence is too short for the fades", () => {
+    const alignment = fixtureAlignment(18.5, 0.01);
+    expect(() => cutFromTake(alignment)).toThrow(/cannot be split there without touching a word/);
   });
 
   it("captions the spoken lines, continuously, with no caption over the glimpse", () => {
