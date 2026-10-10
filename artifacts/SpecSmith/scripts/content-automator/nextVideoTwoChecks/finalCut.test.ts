@@ -8,16 +8,17 @@ import { describe, expect, it } from "vitest";
 import { TIMING } from "./comboDraft.ts";
 import { join } from "node:path";
 
-import { cutFromTake, FLIP_HALF_THROW_SECONDS, phraseTimes, soundCuesFor, VOICED_OPENING } from "./finalCut.ts";
+import { cutFromTake, FLIP_HALF_THROW_SECONDS, phraseTimes, soundCuesFor, V2_PROFILE, VOICED_OPENING } from "./finalCut.ts";
+import { APPROVED_TWO_CHECKS_V2_LINES, TWO_CHECKS_V2_TAKE_TEXT } from "./scriptV2.ts";
 import { FPS } from "./comboDraft.ts";
 import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
 import { APPROVED_TWO_CHECKS_LINES, TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 
 /** A stand-in take: each line at `cps` characters a second, `gap` seconds between lines. FIXTURE. */
-function fixtureAlignment(cps: number, gap: number, lead = 0.05): Alignment {
+function fixtureAlignment(cps: number, gap: number, lead = 0.05, lines: readonly { readonly spoken: string }[] = APPROVED_TWO_CHECKS_LINES): Alignment {
   const characters: string[] = [], starts: number[] = [], ends: number[] = [];
   let t = lead;
-  APPROVED_TWO_CHECKS_LINES.forEach((line, index) => {
+  lines.forEach((line, index) => {
     if (index > 0) { characters.push(" "); starts.push(t); ends.push(t + gap); t += gap; }
     const per = line.spoken.length < 12 ? 0.8 / line.spoken.length : 1 / cps;
     for (const char of line.spoken) { characters.push(char); starts.push(t); ends.push(t + per); t += per; }
@@ -125,4 +126,31 @@ describe("the voiced cut follows Liam's words", () => {
     wrong.characters[0] = "N" === wrong.characters[0] ? "M" : "N";
     expect(() => cutFromTake(wrong)).toThrow(/do not spell the approved text/);
   });
+});
+
+describe("the second narration's voiced cut follows its words", () => {
+  for (const [name, cps, gap] of [["fast", 21, 0.4], ["typical", 18.5, 0.5], ["slow", 16.5, 0.6]] as const) {
+    it(`(${name} fixture) shows I on the "I" of "flip it to I.", unplugs on "your monitor" and seats on "into it."`, () => {
+      const alignment = fixtureAlignment(cps, gap, 0.05, APPROVED_TWO_CHECKS_V2_LINES);
+      const { timing, voice, captions } = cutFromTake(alignment, V2_PROFILE);
+      const at = (phrase: string) => { const p = phraseTimes(alignment, phrase, TWO_CHECKS_V2_TAKE_TEXT); const seg = voice.find((v) => p.start >= v.from && p.start < v.to)!; return { start: p.start + seg.offset, end: p.end + seg.offset }; };
+      const iTime = at("to I.").start + (alignment.character_start_times_seconds[TWO_CHECKS_V2_TAKE_TEXT.indexOf("to I.") + 3] - alignment.character_start_times_seconds[TWO_CHECKS_V2_TAKE_TEXT.indexOf("to I.")]);
+      expect(TWO_CHECKS_V2_TAKE_TEXT[TWO_CHECKS_V2_TAKE_TEXT.indexOf("to I.") + 3]).toBe("I");
+      expect(rockerShowsIAt(timing.flip, Math.floor(iTime * FPS + 1e-6))).toBe(true);
+      expect(rockerShowsIAt(timing.flip, Math.floor(iTime * FPS + 1e-6) - 1)).toBe(false);
+      expect(timing.zoomIn[1]).toBeLessThanOrEqual(at("If it's on O,").start);
+      expect(timing.pull).toBeCloseTo(at("your monitor").start, 3);
+      expect(timing.seated).toBeGreaterThanOrEqual(at("into it.").start);
+      expect(timing.seated).toBeLessThanOrEqual(at("into it.").end);
+      // The longer hook fits the dead press beat, before the glimpse; "Check…" starts as the picture returns.
+      expect(at("PC won't turn on?").start).toBeGreaterThan(timing.press1);
+      expect(at("PC won't turn on?").end).toBeLessThanOrEqual(timing.glimpse[0]);
+      expect(timing.glimpse[1] - timing.glimpse[0]).toBeCloseTo(0.85, 3);
+      expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(timing.glimpse[1] - 0.001);
+      expect(timing.light).toBeLessThan(at("PC on, but no picture?").start);
+      for (let i = 1; i < voice.length; i += 1) expect(voice[i].from + voice[i].offset).toBeGreaterThanOrEqual(voice[i - 1].to + voice[i - 1].offset);
+      for (let i = 1; i < captions.length; i += 1) expect(captions[i].from).toBe(captions[i - 1].to);
+      expect(captions.map((c) => c.text).filter(Boolean).join(" ")).toBe(TWO_CHECKS_V2_TAKE_TEXT);
+    });
+  }
 });
