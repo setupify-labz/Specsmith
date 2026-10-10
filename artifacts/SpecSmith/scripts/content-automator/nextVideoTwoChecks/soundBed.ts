@@ -25,8 +25,8 @@ export function bedSpans(timing: ComboTiming) {
   return { tone, fan };
 }
 
-/** The ffmpeg arguments that write the bed as one mono track of the cut's length. */
-export function bedTrackArgs(timing: ComboTiming, outputPath: string): string[] {
+/** The ffmpeg arguments that write the bed as one mono track of the cut's length. `tone: false` leaves only the fan (the music version). */
+export function bedTrackArgs(timing: ComboTiming, outputPath: string, layers: { tone?: boolean } = {}): string[] {
   const d = timing.durationSeconds, { tone, fan } = bedSpans(timing);
   const toneLen = tone.to - tone.from, fanLen = fan.to - fan.from;
   const toneChain = `aevalsrc=0.5*sin(2*PI*220*t)+0.32*sin(2*PI*330*t)+0.18*sin(2*PI*440*t):d=${toneLen.toFixed(3)}:s=48000,` +
@@ -35,7 +35,15 @@ export function bedTrackArgs(timing: ComboTiming, outputPath: string): string[] 
   const fanChain = `anoisesrc=d=${fanLen.toFixed(3)}:c=brown:r=48000:a=0.5:seed=7,highpass=f=${BED.fan.lowHz},lowpass=f=${BED.fan.highHz},` +
     `afade=t=in:st=0:d=${BED.fan.fadeIn}:curve=qsin,afade=t=out:st=${(fanLen - BED.fan.fadeOut).toFixed(3)}:d=${BED.fan.fadeOut},` +
     `volume=${BED.fan.gainDb}dB,adelay=${Math.round(fan.from * 1000)}:all=1`;
-  const graph = `anullsrc=r=48000:cl=mono,atrim=0:${d.toFixed(3)}[base];${toneChain}[tone];${fanChain}[fan];` +
-    `[base][tone][fan]amix=inputs=3:duration=first:normalize=0,atrim=0:${d.toFixed(3)}[out]`;
+  const withTone = layers.tone ?? true;
+  const graph = `anullsrc=r=48000:cl=mono,atrim=0:${d.toFixed(3)}[base];${withTone ? `${toneChain}[tone];` : ""}${fanChain}[fan];` +
+    `[base]${withTone ? "[tone]" : ""}[fan]amix=inputs=${withTone ? 3 : 2}:duration=first:normalize=0,atrim=0:${d.toFixed(3)}[out]`;
   return ["-v", "error", "-y", "-filter_complex", graph, "-map", "[out]", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", outputPath];
 }
+
+/**
+ * The calm music version: the composed, synthesized bed from musicBed.ts (pad chords and a soft pulse; no samples),
+ * faded in and out by that module, dipped to half level under every spoken line, and set this far below the voice
+ * once mixed (LUFS of the unducked bed at the compositor's fixed gain, before mastering).
+ */
+export const MUSIC_LEVEL_LUFS_AS_MIXED = -40;

@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import { cutFromTake, V2_PROFILE } from "./finalCut.ts";
-import { BED, bedSpans, bedTrackArgs } from "./soundBed.ts";
+import { BED, bedSpans, bedTrackArgs, MUSIC_LEVEL_LUFS_AS_MIXED } from "./soundBed.ts";
 import { loadTwoChecksV2Take, type Alignment } from "./liamTakeV2.ts";
 import { join } from "node:path";
 
@@ -31,5 +31,13 @@ describe("the background layer of the v2 cut", async () => {
     expect(BED.tone.gainDb).toBeLessThanOrEqual(-15);
     expect(BED.fan.gainDb).toBeLessThanOrEqual(0);
     expect(BED.fan.highHz).toBeLessThanOrEqual(1000);
+  });
+
+  it("leaves only the fan under the music version (the music carries the glimpse), at a background level", () => {
+    const graph = bedTrackArgs(timing, "/tmp/bed.wav", { tone: false }).join(" ");
+    expect(graph).not.toContain("aevalsrc");
+    expect(graph).toContain("anoisesrc");
+    expect(MUSIC_LEVEL_LUFS_AS_MIXED).toBeLessThanOrEqual(-35);
+    expect(MUSIC_LEVEL_LUFS_AS_MIXED).toBeGreaterThanOrEqual(-70);
   });
 });
