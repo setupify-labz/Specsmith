@@ -4,12 +4,13 @@
 // Nothing here generates audio: the take is loaded from take/ (bytes and
 // timestamps checked against the pin in liamTake.ts) and the picture is timed
 // to Liam's actual words, from the provider's character timestamps:
-//   - the opening (dead press, the glimpse) keeps its silent-draft timing; the
-//     voice is offset so "No power?" lands on the dead press and "Check the
-//     power supply switch." begins as the picture returns to the dead PC;
-//   - the take is placed in two stretches, split in Liam's silence before "PC
-//     on, but no picture?", so that line waits for the light-up (the picture
-//     needs ~1.8 s after "I is on."); no word is cut, stretched or re-spoken;
+//   - the opening is slower than the silent draft's (VOICED_OPENING): the dead
+//     press with "NO POWER?" for 1.2 s, then 1.25 s on the lit PC beside the
+//     dark monitor; "No power?" follows the dead press, the glimpse has no
+//     voice, and "Check the power supply switch." begins as the picture returns;
+//   - so the take is placed in three stretches, split in Liam's silences after
+//     "No power?" and before "PC on, but no picture?" (that line waits for the
+//     light-up); no word is cut, stretched or re-spoken;
 //   - the zoom lands on the switch as "O is off." starts, and the switch flips
 //     on the "I" of "I is on.";
 //   - the PC lights up just before "PC on, but no picture?", whose headline
@@ -42,7 +43,13 @@ export const FINAL_DIR = resolve(here, "../../../render-output/two-checks-final"
 export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp: -1.5, toleranceLu: 0.3 });
 /** How long the closing view holds once the camera has backed out: the breath after the last word. */
 export const CLOSE_HOLD_SECONDS = 0.55;
+/**
+ * The voiced cut's opening, slower than the silent draft's so each beat registers at full speed on a phone:
+ * the dead press with "NO POWER?" on screen for 1.2 s, then 1.25 s on the lit PC beside the dark monitor.
+ */
+export const VOICED_OPENING = Object.freeze({ press1: 0.3, glimpse: [1.2, 2.45] as const, hookAt: 0.45, returnLead: 0.05 });
 /** The cable's three motions: out of the motherboard port, carried across, pushed into the graphics card's. */
+export const FLIP_HALF_THROW_SECONDS = 0.05;
 export const UNPLUG_SECONDS = 0.25, SEAT_SECONDS = 0.2, MIN_CARRY_SECONDS = 0.45;
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
@@ -67,20 +74,29 @@ export interface VoiceSegment { readonly from: number; readonly to: number; read
  */
 export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: readonly VoiceSegment[] } {
   const raw = (phrase: string) => phraseTimes(alignment, phrase);
-  // The opening is fixed (dead press 0-0.55 s, glimpse 0.55-1.15 s). "No power?" lands on the dead press; the
-  // second line must not start over the glimpse.
-  const offsetA = round(Math.max(0.15 - raw("No power?").start, 1.15 - raw("Check the power supply switch.").start));
-  if (raw("No power?").start + offsetA > 0.45) throw new Error("The take's first pause is too long: \"No power?\" would miss the dead press.");
+  // The opening (VOICED_OPENING): "No power?" just after the dead press; the glimpse plays without a voice; the
+  // take's next stretch starts in the silence after "No power?" so "Check the power supply switch." begins as the
+  // picture returns to the dead PC.
+  const { press1, glimpse, hookAt, returnLead } = VOICED_OPENING;
+  // "No power?" starts at hookAt, or earlier if it would otherwise run into the glimpse, but never before the press.
+  const hookLength = raw("No power?").end - raw("No power?").start;
+  const hookStart = Math.min(hookAt, glimpse[0] - 0.05 - hookLength);
+  if (hookStart < press1 + 0.02) throw new Error("\"No power?\" is too long to fit between the dead press and the glimpse.");
+  const offsetHook = round(hookStart - raw("No power?").start);
+  const split1 = round((raw("No power?").end + raw("Check the power supply switch.").start) / 2);
+  const offsetA = round(glimpse[1] + returnLead - raw("Check the power supply switch.").start);
   const a = (phrase: string) => ({ start: round(raw(phrase).start + offsetA), end: round(raw(phrase).end + offsetA) });
+  const pullOutEnd = round(glimpse[1] + 0.35);
 
   const where = a("Check the power supply switch."), off = a("O is off."), on = a("I is on.");
   // Check 1: turn, then close on the switch as "O is off." starts; flip on "I".
   const zoomIn: [number, number] = [round(off.start - 0.55), round(off.start - 0.05)];
-  const turnLength = zoomIn[0] - 1.5;
+  const turnLength = zoomIn[0] - pullOutEnd;
   if (turnLength < 0.45) throw new Error("\"O is off.\" comes too soon after the opening to turn the case to the back.");
-  const turn1: [number, number] = turnLength <= 0.85 ? [1.5, zoomIn[0]] : [round(zoomIn[0] - 0.8), zoomIn[0]];
-  const pullOut: [number, number] = [1.15, round(Math.min(Math.max(turn1[0], 1.5), 1.75))];
-  const flip = on.start;
+  const turn1: [number, number] = turnLength <= 0.85 ? [pullOutEnd, zoomIn[0]] : [round(zoomIn[0] - 0.8), zoomIn[0]];
+  const pullOut: [number, number] = [glimpse[1], round(Math.min(Math.max(turn1[0], pullOutEnd), glimpse[1] + 0.6))];
+  // The rocker takes 0.1 s to throw and shows I from halfway: start it so the I appears on Liam's "I".
+  const flip = round(on.start - FLIP_HALF_THROW_SECONDS);
   if (flip < zoomIn[1] + 0.25) throw new Error("\"I is on.\" comes before the close-up on the switch has landed.");
   const finger = round(Math.max(flip - 0.55, zoomIn[1] + 0.05));
 
@@ -115,13 +131,13 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   const durationSeconds = toFrame(final + CLOSE_HOLD_SECONDS);
 
   const timing: ComboTiming = {
-    durationSeconds, press1: 0.12, glimpse: [0.55, 1.15],
+    durationSeconds, press1, glimpse: [glimpse[0], glimpse[1]],
     pullOut, turn1, zoomIn, finger, flip, zoomOut, turn2, press2, light,
     turn3, zoomPorts, pull, travel, push, seated, zoomOut2, final, head2,
   };
   const captions = [
-    { from: 0, to: 0.55, text: "No power?" },
-    { from: 0.55, to: where.start, text: "" },
+    { from: 0, to: glimpse[0], text: "No power?" },
+    { from: glimpse[0], to: where.start, text: "" },
     { from: where.start, to: off.start, text: "Check the power supply switch." },
     { from: off.start, to: flip, text: "O is off." },
     { from: flip, to: round(symptom.start - 0.1), text: "I is on." },
@@ -129,7 +145,7 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
     { from: cable.start, to: check.start, text: "If you have a graphics card," },
     { from: check.start, to: durationSeconds, text: "check that your monitor is plugged into its ports." },
   ];
-  const voice: VoiceSegment[] = [{ from: 0, to: split, offset: offsetA }, { from: split, to: Infinity, offset: offsetB }];
+  const voice: VoiceSegment[] = [{ from: 0, to: split1, offset: offsetHook }, { from: split1, to: split, offset: offsetA }, { from: split, to: Infinity, offset: offsetB }];
   return { timing, captions, videoName: "two-checks-picture.mp4", voice };
 }
 

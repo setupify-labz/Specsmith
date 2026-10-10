@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { TIMING } from "./comboDraft.ts";
 import { join } from "node:path";
 
-import { cutFromTake, phraseTimes, soundCuesFor } from "./finalCut.ts";
+import { cutFromTake, FLIP_HALF_THROW_SECONDS, phraseTimes, soundCuesFor, VOICED_OPENING } from "./finalCut.ts";
 import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
 import { APPROVED_TWO_CHECKS_LINES, TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 
@@ -31,13 +31,16 @@ describe("the voiced cut follows Liam's words", () => {
     it(`(${name} fixture) lands the flip on "I" and the seat on "into its ports", keeping the opening`, () => {
       const { timing, voice } = cutFromTake(alignment);
       const at = (phrase: string) => { const p = phraseTimes(alignment, phrase); const seg = voice.find((v) => p.start >= v.from && p.start < v.to)!; return { start: p.start + seg.offset, end: p.end + seg.offset }; };
-      // Two stretches, split in the silence between "I is on." and "PC on…"; the second never moves earlier.
-      expect(voice).toHaveLength(2);
-      expect(voice[0].to).toBeGreaterThan(phraseTimes(alignment, "I is on.").end);
-      expect(voice[0].to).toBeLessThan(phraseTimes(alignment, "PC on, but no picture?").start);
+      // Three stretches, split in the silences after "No power?" and before "PC on…"; later stretches never move earlier.
+      expect(voice).toHaveLength(3);
+      expect(voice[0].to).toBeGreaterThan(phraseTimes(alignment, "No power?").end);
+      expect(voice[0].to).toBeLessThan(phraseTimes(alignment, "Check the power supply switch.").start);
+      expect(voice[1].to).toBeGreaterThan(phraseTimes(alignment, "I is on.").end);
+      expect(voice[1].to).toBeLessThan(phraseTimes(alignment, "PC on, but no picture?").start);
       expect(voice[1].offset).toBeGreaterThanOrEqual(voice[0].offset);
+      expect(voice[2].offset).toBeGreaterThanOrEqual(voice[1].offset);
       expect(TWO_CHECKS_TAKE_TEXT[TWO_CHECKS_TAKE_TEXT.indexOf("I is on.")]).toBe("I");
-      expect(timing.flip).toBeCloseTo(at("I is on.").start, 2);
+      expect(timing.flip + FLIP_HALF_THROW_SECONDS).toBeCloseTo(at("I is on.").start, 2);
       // The unplug starts on "that your monitor" itself (never moved earlier to make room for the carry) and is out before the phrase ends.
       expect(timing.pull).toBeCloseTo(at("that your monitor").start, 3);
       expect(timing.travel).toBeLessThanOrEqual(at("that your monitor").end);
@@ -45,9 +48,13 @@ describe("the voiced cut follows Liam's words", () => {
       expect(timing.seated).toBeLessThanOrEqual(at("into its ports.").end);
       expect(timing.zoomIn[1]).toBeLessThanOrEqual(at("O is off.").start);
       expect(timing.light).toBeLessThan(at("PC on, but no picture?").start);
-      expect([timing.press1, timing.glimpse]).toEqual([TIMING.press1, TIMING.glimpse]);
-      expect(at("No power?").start).toBeLessThan(TIMING.glimpse[0]);
-      expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(TIMING.glimpse[1] - 0.001);
+      // The slower opening: the dead press with "NO POWER?" for over a second, then over a second on the glimpse.
+      expect([timing.press1, timing.glimpse]).toEqual([VOICED_OPENING.press1, [...VOICED_OPENING.glimpse]]);
+      expect(timing.glimpse[0]).toBeGreaterThanOrEqual(1.0);
+      expect(timing.glimpse[1] - timing.glimpse[0]).toBeGreaterThanOrEqual(1.1);
+      expect(at("No power?").start).toBeGreaterThan(timing.press1);
+      expect(at("No power?").end).toBeLessThanOrEqual(timing.glimpse[0]);
+      expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(timing.glimpse[1] - 0.001);
       const order = [timing.press1, timing.glimpse[1], timing.turn1[0], timing.zoomIn[0], timing.finger, timing.flip, timing.zoomOut[0], timing.turn2[0], timing.press2, timing.light, timing.turn3[0], timing.zoomPorts[0], timing.pull, timing.travel, timing.push, timing.seated, timing.zoomOut2[0], timing.final, timing.durationSeconds];
       expect([...order].sort((a, b) => a - b)).toEqual(order);
       // The close backs out on the last word and holds briefly: no long empty ending.
@@ -62,7 +69,7 @@ describe("the voiced cut follows Liam's words", () => {
     const take = await loadTwoChecksTake(join(import.meta.dirname, "take"));
     const alignment = take.manifest.alignment as Alignment;
     const { timing, voice } = cutFromTake(alignment);
-    const offset = voice[1].offset;
+    const offset = voice[2].offset;
     const that = phraseTimes(alignment, "that your monitor"), into = phraseTimes(alignment, "into its ports.");
     expect(timing.pull).toBeCloseTo(that.start + offset, 3);
     expect(timing.pull).toBeGreaterThan(phraseTimes(alignment, "check").start + offset);
@@ -70,7 +77,7 @@ describe("the voiced cut follows Liam's words", () => {
     expect(timing.seated).toBeGreaterThanOrEqual(into.start + offset);
     expect(timing.seated).toBeLessThanOrEqual(into.end + offset);
     // The flip on the "I".
-    expect(timing.flip).toBeCloseTo(phraseTimes(alignment, "I is on.").start + voice[0].offset, 3);
+    expect(timing.flip + FLIP_HALF_THROW_SECONDS).toBeCloseTo(phraseTimes(alignment, "I is on.").start + voice[1].offset, 3);
   });
 
   it("captions the spoken lines, continuously, with no caption over the glimpse", () => {
@@ -78,7 +85,7 @@ describe("the voiced cut follows Liam's words", () => {
     expect(captions[0]).toMatchObject({ from: 0, text: "No power?" });
     for (let i = 1; i < captions.length; i += 1) expect(captions[i].from).toBe(captions[i - 1].to);
     expect(captions.at(-1)!.to).toBe(timing.durationSeconds);
-    expect(captions.find((c) => c.from <= TIMING.glimpse[0] + 0.1 && c.to > TIMING.glimpse[0] + 0.1)!.text).toBe("");
+    expect(captions.find((c) => c.from <= timing.glimpse[0] + 0.1 && c.to > timing.glimpse[0] + 0.1)!.text).toBe("");
     expect(captions.map((c) => c.text).filter(Boolean).join(" ")).toBe(TWO_CHECKS_TAKE_TEXT);
   });
 

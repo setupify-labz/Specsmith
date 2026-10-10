@@ -292,7 +292,8 @@ function pcBox(t, th) {
   ctx.save();
   if (c > 0) {
     ctx.translate(MID + hd * s, 0); ctx.scale(c, 1); ctx.translate(-MID, 0);
-    const dead = t >= T.press1 + 0.12 && t < T.glimpse[0] ? (Math.sin((t - T.press1 - 0.12) * Math.PI * 2 / 0.2) > -0.3 ? 1 : 0.25) : 0;
+    // After the press the button flashes red for up to 0.6 s, then stays red until the glimpse.
+    const dead = t >= T.press1 + 0.12 && t < T.glimpse[0] ? (t - T.press1 - 0.12 >= 0.6 || Math.sin((t - T.press1 - 0.12) * Math.PI * 2 / 0.2) > -0.3 ? 1 : 0.25) : 0;
     front(t, lit, pressAt(t, T.press1) + pressAt(t, T.press2), dead);
     // The finger: in from the right for each press, gone before the turn.
     const f1 = t < T.glimpse[0] ? out(t / 0.08) : 0;
