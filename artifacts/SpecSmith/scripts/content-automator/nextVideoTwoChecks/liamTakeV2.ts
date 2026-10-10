@@ -173,11 +173,15 @@ export async function generateLiamTwoChecksV2Take(options: { fetchImpl?: FetchLi
 }
 
 /**
- * The ONE approved v2 take, pinned here once it is saved, so that replacing the
- * saved audio and its manifest together is refused. Until it is pinned, the
- * loader refuses every take.
+ * The ONE approved v2 take, pinned here so that replacing the saved audio and
+ * its manifest together (another Liam rendering, new timestamps) is refused.
+ * Run 38022470641.
  */
-export const APPROVED_TAKE: TakePin | null = null;
+export const APPROVED_TAKE: TakePin | null = Object.freeze({
+  audioSha256: "9893c21bab90ba2899ded254c1e7fc20453a9ee2a53e5ab944f25ec0d445a796",
+  /** SHA-256 of JSON.stringify(manifest.alignment): the provider's character timestamps. */
+  alignmentSha256: "33e7e5a2873be0d4aa9cf37d932a056c1d8cb674f5f1ce4f4d0db8cf87f254f1",
+});
 export interface TakePin { readonly audioSha256: string; readonly alignmentSha256: string }
 
 export interface LoadedTwoChecksV2Take {

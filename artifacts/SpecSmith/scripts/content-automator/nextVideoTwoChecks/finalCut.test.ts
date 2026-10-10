@@ -12,6 +12,7 @@ import { cutFromTake, FLIP_HALF_THROW_SECONDS, phraseTimes, soundCuesFor, V2_PRO
 import { APPROVED_TWO_CHECKS_V2_LINES, TWO_CHECKS_V2_TAKE_TEXT } from "./scriptV2.ts";
 import { FPS } from "./comboDraft.ts";
 import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
+import { loadTwoChecksV2Take } from "./liamTakeV2.ts";
 import { APPROVED_TWO_CHECKS_LINES, TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 
 /** A stand-in take: each line at `cps` characters a second, `gap` seconds between lines. FIXTURE. */
@@ -129,6 +130,26 @@ describe("the voiced cut follows Liam's words", () => {
 });
 
 describe("the second narration's voiced cut follows its words", () => {
+  it("(the saved v2 take) lands every beat on its word and runs 13-15 s", async () => {
+    const take = await loadTwoChecksV2Take(join(import.meta.dirname, "takeV2"));
+    const alignment = take.manifest.alignment as Alignment;
+    const { timing, voice } = cutFromTake(alignment, V2_PROFILE);
+    const place = (t0: number) => t0 + voice.find((v) => t0 >= v.from && t0 < v.to)!.offset;
+    const I = place(alignment.character_start_times_seconds[TWO_CHECKS_V2_TAKE_TEXT.indexOf("to I.") + 3]);
+    expect(rockerShowsIAt(timing.flip, Math.floor(I * FPS + 1e-6))).toBe(true);
+    expect(rockerShowsIAt(timing.flip, Math.floor(I * FPS + 1e-6) - 1)).toBe(false);
+    expect(timing.pull).toBeCloseTo(place(phraseTimes(alignment, "your monitor", TWO_CHECKS_V2_TAKE_TEXT).start), 3);
+    const into = phraseTimes(alignment, "into it.", TWO_CHECKS_V2_TAKE_TEXT);
+    expect(timing.seated).toBeGreaterThanOrEqual(place(into.start));
+    expect(timing.seated).toBeLessThanOrEqual(place(into.start) + (into.end - into.start));
+    expect(timing.durationSeconds).toBeGreaterThanOrEqual(13);
+    expect(timing.durationSeconds).toBeLessThanOrEqual(15);
+    for (let c = 0; c < alignment.characters.length; c += 1) {
+      if (alignment.characters[c] === " ") continue;
+      expect(voice.some((v) => alignment.character_start_times_seconds[c] >= v.from && alignment.character_end_times_seconds[c] <= v.to)).toBe(true);
+    }
+  });
+
   for (const [name, cps, gap] of [["fast", 21, 0.4], ["typical", 18.5, 0.5], ["slow", 16.5, 0.6]] as const) {
     it(`(${name} fixture) shows I on the "I" of "flip it to I.", unplugs on "your monitor" and seats on "into it."`, () => {
       const alignment = fixtureAlignment(cps, gap, 0.05, APPROVED_TWO_CHECKS_V2_LINES);
@@ -148,7 +169,13 @@ describe("the second narration's voiced cut follows its words", () => {
       expect(timing.glimpse[1] - timing.glimpse[0]).toBeCloseTo(0.85, 3);
       expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(timing.glimpse[1] - 0.001);
       expect(timing.light).toBeLessThan(at("PC on, but no picture?").start);
-      for (let i = 1; i < voice.length; i += 1) expect(voice[i].from + voice[i].offset).toBeGreaterThanOrEqual(voice[i - 1].to + voice[i - 1].offset);
+      for (let i = 1; i < voice.length; i += 1) expect(voice[i].from + voice[i].offset).toBeGreaterThanOrEqual(voice[i - 1].to + voice[i - 1].offset - 1e-9);
+      // Every character of the take is inside a placed stretch: only silence is ever dropped.
+      for (let c = 0; c < alignment.characters.length; c += 1) {
+        if (alignment.characters[c] === " ") continue;
+        const [s0, e0] = [alignment.character_start_times_seconds[c], alignment.character_end_times_seconds[c]];
+        expect(voice.some((v) => s0 >= v.from && e0 <= v.to)).toBe(true);
+      }
       for (let i = 1; i < captions.length; i += 1) expect(captions[i].from).toBe(captions[i - 1].to);
       expect(captions.map((c) => c.text).filter(Boolean).join(" ")).toBe(TWO_CHECKS_V2_TAKE_TEXT);
     });

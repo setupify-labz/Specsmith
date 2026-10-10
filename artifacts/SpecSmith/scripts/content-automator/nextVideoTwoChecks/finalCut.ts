@@ -67,16 +67,18 @@ export const V1_PROFILE: NarrationProfile = Object.freeze<NarrationProfile>({
   cableRest: "check that your monitor is plugged into its ports.", cableRestFrom: "check that your monitor",
 });
 /**
- * The second approved narration (scriptV2.ts). Its hook, "PC won't turn on?", is longer, so the "NO POWER?" beat
- * runs 1.65 s; the glimpse keeps its 0.85 s. The switch shows I on the "I" of "flip it to I."; the plug leaves
+ * The second approved narration (scriptV2.ts). Its hook, "PC won't turn on?", is longer (1.32 s in the take), so the "NO POWER?"
+ * beat runs 1.75 s; the glimpse keeps its 0.85 s. The switch shows I on the "I" of "flip it to I."; the plug leaves
  * on "your monitor" and is seated on "into it.".
  */
 export const V2_PROFILE: NarrationProfile = Object.freeze<NarrationProfile>({
-  text: TWO_CHECKS_V2_TAKE_TEXT, opening: { press1: 0.3, glimpse: [1.65, 2.5] as const, hookAt: 0.4, returnLead: 0.05 },
+  text: TWO_CHECKS_V2_TAKE_TEXT, opening: { press1: 0.3, glimpse: [1.75, 2.6] as const, hookAt: 0.4, returnLead: 0.05 },
   hook: "PC won't turn on?", where: "Check the power supply switch.", off: "If it's on O,", flip: "to I.", flipChar: 3, check1End: "flip it to I.",
   symptom: "PC on, but no picture?", cableLead: "If you have a graphics card,", gfx: "graphics card", pull: "your monitor", seat: "into it.",
   check1Captions: [["If it's on O, flip it to I.", "off"]],
   cableRest: "make sure your monitor is plugged into it.", cableRestFrom: "make sure your monitor",
+  // Liam's take pauses 0.81 s and 0.60 s here; 0.45 s keeps a natural breath and the cut inside 13-15 s.
+  maxPauseCheck1: 0.45, maxPauseCheck2: 0.45,
 });
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
@@ -100,6 +102,23 @@ export interface NarrationProfile {
   readonly check1Captions: readonly (readonly [string, "off" | "flip"])[];
   /** The last line's second caption (from `pull`'s line onwards). */
   readonly cableRest: string; readonly cableRestFrom: string;
+  /**
+   * Optional: the longest pause kept between `where` and `off`, and between `symptom` and `cableLead`. A longer
+   * pause in the take is shortened by cutting silence out of its middle (never a word); unset keeps Liam's pause.
+   */
+  readonly maxPauseCheck1?: number; readonly maxPauseCheck2?: number;
+}
+
+/**
+ * Shortens the silence between two words to `keep` seconds by dropping its middle: returns the end of the
+ * stretch before, the start of the stretch after, and how much earlier the after-stretch plays. No-op if the
+ * pause is already short enough.
+ */
+function trimPause(wordEnd: number, nextStart: number, keep: number | undefined): { cutFrom: number; cutTo: number; saved: number } | null {
+  if (keep === undefined || nextStart - wordEnd <= keep) return null;
+  if (keep < MIN_SPLIT_SILENCE_SECONDS) throw new Error(`A kept pause of ${keep} s is too short for the 10 ms fades.`);
+  const cutFrom = round(wordEnd + keep / 2), cutTo = round(nextStart - keep / 2);
+  return { cutFrom, cutTo, saved: round(cutTo - cutFrom) };
 }
 
 /** Where a phrase of the approved text starts and ends in the take (seconds, before the offset). */
@@ -143,7 +162,11 @@ export function cutFromTake(alignment: Alignment, profile: NarrationProfile = V1
   const a = (phrase: string) => ({ start: round(raw(phrase).start + offsetA), end: round(raw(phrase).end + offsetA) });
   const pullOutEnd = round(glimpse[1] + 0.35);
 
-  const where = a(P.where), off = a(P.off), flipWord = round(alignment.character_start_times_seconds[P.text.indexOf(P.flip) + P.flipChar] + offsetA);
+  // Optionally shorten Liam's pause between `where` and `off`: from there on the take plays `trim1.saved` earlier.
+  const trim1 = trimPause(raw(P.where).end, raw(P.off).start, P.maxPauseCheck1);
+  const offsetA2 = round(offsetA - (trim1?.saved ?? 0));
+  const a2 = (phrase: string) => ({ start: round(raw(phrase).start + offsetA2), end: round(raw(phrase).end + offsetA2) });
+  const where = a(P.where), off = a2(P.off), flipWord = round(alignment.character_start_times_seconds[P.text.indexOf(P.flip) + P.flipChar] + offsetA2);
   // Check 1: turn, then close on the switch as "O is off." starts; flip on "I".
   const zoomIn: [number, number] = [round(off.start - 0.55), round(off.start - 0.05)];
   const turnLength = zoomIn[0] - pullOutEnd;
@@ -162,20 +185,24 @@ export function cutFromTake(alignment: Alignment, profile: NarrationProfile = V1
   const turn2: [number, number] = [zoomOut[1], round(zoomOut[1] + 0.55)];
   const press2 = round(turn2[1] + 0.15), light = round(press2 + 0.1);
   const split = splitInSilence(raw(P.check1End).end, raw(P.symptom).start, `"${P.check1End}" and "${P.symptom}"`);
-  const offsetB = round(Math.max(offsetA, light + 0.3 - raw(P.symptom).start));
+  const offsetB = round(Math.max(offsetA2, light + 0.3 - raw(P.symptom).start));
   const b = (phrase: string) => ({ start: round(raw(phrase).start + offsetB), end: round(raw(phrase).end + offsetB) });
-  const symptom = b(P.symptom), cable = b(P.cableLead), check = b(P.cableRestFrom), last = b(P.seat);
+  // Optionally shorten Liam's pause between `symptom` and `cableLead`.
+  const trim2 = trimPause(raw(P.symptom).end, raw(P.cableLead).start, P.maxPauseCheck2);
+  const offsetB2 = round(offsetB - (trim2?.saved ?? 0));
+  const b2 = (phrase: string) => ({ start: round(raw(phrase).start + offsetB2), end: round(raw(phrase).end + offsetB2) });
+  const symptom = b(P.symptom), cable = b2(P.cableLead), check = b2(P.cableRestFrom), last = b2(P.seat);
   const head2 = round(Math.max(light + 0.2, symptom.start - 0.1));
 
   // Check 2: turn during the question; a slow push to the ports lands on "graphics card".
   const turn3: [number, number] = [round(Math.max(head2 + 0.15, symptom.start + 0.15)), 0];
   turn3[1] = round(turn3[0] + 0.6);
-  const gfx = b(P.gfx).start;
+  const gfx = b2(P.gfx).start;
   const zoomPortsEnd = round(Math.max(turn3[1] + 0.35, gfx - 0.1));
   const zoomPorts: [number, number] = [round(Math.max(turn3[1], zoomPortsEnd - 0.9)), zoomPortsEnd];
   // The cable: the unplug starts exactly on "that your monitor" and the plug is seated on "into its ports". Both
   // ends are fixed to the words; the carry between them takes whatever time Liam leaves (never moving the unplug).
-  const pull = b(P.pull).start, travel = round(pull + UNPLUG_SECONDS);
+  const pull = b2(P.pull).start, travel = round(pull + UNPLUG_SECONDS);
   const seated = round(last.start + 0.1), push = round(seated - SEAT_SECONDS);
   if (push - travel < MIN_CARRY_SECONDS) throw new Error(`Only ${round(push - travel)} s between "${P.pull}" and "${P.seat}" to carry the cable; it needs ${MIN_CARRY_SECONDS} s.`);
   if (pull < zoomPorts[1] + 0.15) throw new Error("The cable would move before the ports close-up has landed.");
@@ -201,7 +228,11 @@ export function cutFromTake(alignment: Alignment, profile: NarrationProfile = V1
     { from: cable.start, to: check.start, text: P.cableLead },
     { from: check.start, to: durationSeconds, text: P.cableRest },
   ];
-  const voice: VoiceSegment[] = [{ from: 0, to: split1, offset: offsetHook }, { from: split1, to: split, offset: offsetA }, { from: split, to: Infinity, offset: offsetB }];
+  const voice: VoiceSegment[] = [
+    { from: 0, to: split1, offset: offsetHook },
+    ...(trim1 ? [{ from: split1, to: trim1.cutFrom, offset: offsetA }, { from: trim1.cutTo, to: split, offset: offsetA2 }] : [{ from: split1, to: split, offset: offsetA }]),
+    ...(trim2 ? [{ from: split, to: trim2.cutFrom, offset: offsetB }, { from: trim2.cutTo, to: Infinity, offset: offsetB2 }] : [{ from: split, to: Infinity, offset: offsetB }]),
+  ];
   return { timing, captions, videoName: "two-checks-picture.mp4", voice };
 }
 

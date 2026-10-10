@@ -87,7 +87,7 @@ describe("nothing is sent unless every guard holds", () => {
     expect(readdirSync(outputDir).sort()).toEqual(["two-checks-v2-liam.json", "two-checks-v2-liam.mp3", "two-checks-v2-liam.response.json"]);
     expect(readFileSync(join(outputDir, "two-checks-v2-liam.json"), "utf8")).not.toContain(LIAM_ENV.ELEVENLABS_API_KEY);
     // A fixture take is consistent with its own manifest, but it is not the approved take.
-    await expect(loadTwoChecksV2Take(outputDir)).rejects.toThrow(APPROVED_TAKE === null ? /No two-checks v2 take is pinned/ : /not the approved take/);
+    await expect(loadTwoChecksV2Take(outputDir)).rejects.toThrow(/not the approved take/);
     const take = await loadTwoChecksV2Take(outputDir, fixturePin(outputDir));
     expect(take.sha256).toBe(result.sha256);
     expect(take.lineTimings.map((line) => line.id)).toEqual(["hook", "where", "flip", "symptom", "cable"]);
@@ -131,6 +131,18 @@ describe("line timings and the loader", () => {
     const pin = fixturePin(outputDir);
     writeFileSync(join(outputDir, "two-checks-v2-liam.mp3"), "DIFFERENT BYTES");
     await expect(loadTwoChecksV2Take(outputDir, pin)).rejects.toThrow(/do not match its manifest/);
+  });
+
+  it("accepts the committed v2 take only as the pinned approved one", async () => {
+    const committed = join(import.meta.dirname, "takeV2");
+    const take = await loadTwoChecksV2Take(committed);
+    expect(take.sha256).toBe(APPROVED_TAKE!.audioSha256);
+    const dir = tempDir();
+    const manifest = JSON.parse(readFileSync(join(committed, "two-checks-v2-liam.json"), "utf8"));
+    writeFileSync(join(dir, "two-checks-v2-liam.mp3"), readFileSync(join(committed, "two-checks-v2-liam.mp3")));
+    manifest.alignment.character_start_times_seconds = manifest.alignment.character_start_times_seconds.map((t: number) => t + 0.01);
+    writeFileSync(join(dir, "two-checks-v2-liam.json"), JSON.stringify(manifest));
+    await expect(loadTwoChecksV2Take(dir)).rejects.toThrow(/timestamps are not the approved take's/);
   });
 
   it("refuses everything when no take is pinned", async () => {
