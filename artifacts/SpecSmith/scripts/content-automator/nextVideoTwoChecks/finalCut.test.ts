@@ -45,10 +45,11 @@ describe("the voiced cut follows Liam's words", () => {
       expect(at("Check the power supply switch.").start).toBeGreaterThanOrEqual(TIMING.glimpse[1] - 0.001);
       const order = [timing.press1, timing.glimpse[1], timing.turn1[0], timing.zoomIn[0], timing.finger, timing.flip, timing.zoomOut[0], timing.turn2[0], timing.press2, timing.light, timing.turn3[0], timing.zoomPorts[0], timing.pull, timing.travel, timing.push, timing.seated, timing.zoomOut2[0], timing.final, timing.durationSeconds];
       expect([...order].sort((a, b) => a - b)).toEqual(order);
-      // The close breathes about a second after the last word, no more.
+      // The close backs out on the last word and holds briefly: no long empty ending.
       const breath = timing.durationSeconds - at("into its ports.").end;
-      expect(breath).toBeGreaterThan(0.8);
-      expect(breath).toBeLessThan(1.4);
+      expect(breath).toBeGreaterThan(0.5);
+      expect(breath).toBeLessThan(1.2);
+      expect(timing.durationSeconds - timing.final).toBeGreaterThanOrEqual(0.5);
     });
   }
 

@@ -87,7 +87,7 @@ describe("nothing is sent unless every guard holds", () => {
     expect(readdirSync(outputDir).sort()).toEqual(["two-checks-liam.json", "two-checks-liam.mp3", "two-checks-liam.response.json"]);
     expect(readFileSync(join(outputDir, "two-checks-liam.json"), "utf8")).not.toContain(LIAM_ENV.ELEVENLABS_API_KEY);
     // A fixture take is consistent with its own manifest, but it is not the approved take.
-    await expect(loadTwoChecksTake(outputDir)).rejects.toThrow(/not the approved take|No two-checks take is pinned/);
+    await expect(loadTwoChecksTake(outputDir)).rejects.toThrow(/not the approved take/);
     const take = await loadTwoChecksTake(outputDir, fixturePin(outputDir));
     expect(take.sha256).toBe(result.sha256);
     expect(take.lineTimings.map((line) => line.id)).toEqual(["hook", "where", "off", "on", "symptom", "cable"]);
@@ -133,10 +133,33 @@ describe("line timings and the loader", () => {
     await expect(loadTwoChecksTake(outputDir, pin)).rejects.toThrow(/do not match its manifest/);
   });
 
-  it("refuses every take until the one approved take is pinned", async () => {
-    const outputDir = tempDir();
-    await generateLiamTwoChecksTake({ env: LIAM_ENV, fetchImpl: provider().fetchImpl, outputDir });
-    if (APPROVED_TAKE === null) await expect(loadTwoChecksTake(outputDir)).rejects.toThrow(/No two-checks take is pinned/);
-    else await expect(loadTwoChecksTake(outputDir)).rejects.toThrow(/not the approved take/);
+  it("accepts the committed take only as the pinned approved one: audio and timestamps both", async () => {
+    const committed = join(import.meta.dirname, "take");
+    expect(APPROVED_TAKE).not.toBeNull();
+    const take = await loadTwoChecksTake(committed);
+    expect(take.sha256).toBe(APPROVED_TAKE!.audioSha256);
+    expect(take.lineTimings.map((line) => line.id)).toEqual(["hook", "where", "off", "on", "symptom", "cable"]);
+    // Other timestamps with the same audio (as another rendering would bring): refused.
+    const dir = tempDir();
+    const manifest = JSON.parse(readFileSync(join(committed, "two-checks-liam.json"), "utf8"));
+    writeFileSync(join(dir, "two-checks-liam.mp3"), readFileSync(join(committed, "two-checks-liam.mp3")));
+    manifest.alignment.character_start_times_seconds = manifest.alignment.character_start_times_seconds.map((t: number) => t + 0.01);
+    writeFileSync(join(dir, "two-checks-liam.json"), JSON.stringify(manifest));
+    await expect(loadTwoChecksTake(dir)).rejects.toThrow(/timestamps are not the approved take's/);
+  });
+
+  it("refuses other audio with the approved timestamps, even when its manifest vouches for it", async () => {
+    const committed = join(import.meta.dirname, "take");
+    const dir = tempDir();
+    const other = Buffer.from("ANOTHER RENDERING'S BYTES");
+    const manifest = JSON.parse(readFileSync(join(committed, "two-checks-liam.json"), "utf8"));
+    manifest.audio.sha256 = createHash("sha256").update(other).digest("hex");
+    writeFileSync(join(dir, "two-checks-liam.mp3"), other);
+    writeFileSync(join(dir, "two-checks-liam.json"), JSON.stringify(manifest));
+    await expect(loadTwoChecksTake(dir)).rejects.toThrow(/The saved audio is not the approved take\./);
+  });
+
+  it("refuses everything when no take is pinned", async () => {
+    await expect(loadTwoChecksTake(join(import.meta.dirname, "take"), null)).rejects.toThrow(/No two-checks take is pinned/);
   });
 });

@@ -41,7 +41,7 @@ export const TAKE_DIR = join(here, "take");
 export const FINAL_DIR = resolve(here, "../../../render-output/two-checks-final");
 export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp: -1.5, toleranceLu: 0.3 });
 /** How long the closing view holds once the camera has backed out: the breath after the last word. */
-export const CLOSE_HOLD_SECONDS = 0.65;
+export const CLOSE_HOLD_SECONDS = 0.55;
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
 const toFrame = (x: number) => Math.round(x * FPS) / FPS;
@@ -82,23 +82,23 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   if (flip < zoomIn[1] + 0.25) throw new Error("\"I is on.\" comes before the close-up on the switch has landed.");
   const finger = round(Math.max(flip - 0.55, zoomIn[1] + 0.05));
 
-  // Back to the front: "I = ON" holds 0.6 s, then out, turn, press, light. The second stretch of the take starts
-  // so "PC on, but no picture?" begins 0.35 s after the light-up (or later, if Liam's own pause is longer).
-  const zoomOut: [number, number] = [round(flip + 0.6), round(flip + 0.95)];
-  const turn2: [number, number] = [zoomOut[1], round(zoomOut[1] + 0.6)];
+  // Back to the front: "I = ON" holds 0.5 s, then out, turn, press, light. The second stretch of the take starts
+  // so "PC on, but no picture?" begins 0.3 s after the light-up (or later, if Liam's own pause is longer).
+  const zoomOut: [number, number] = [round(flip + 0.5), round(flip + 0.8)];
+  const turn2: [number, number] = [zoomOut[1], round(zoomOut[1] + 0.55)];
   const press2 = round(turn2[1] + 0.15), light = round(press2 + 0.1);
   const split = round((raw("I is on.").end + raw("PC on, but no picture?").start) / 2);
-  const offsetB = round(Math.max(offsetA, light + 0.35 - raw("PC on, but no picture?").start));
+  const offsetB = round(Math.max(offsetA, light + 0.3 - raw("PC on, but no picture?").start));
   const b = (phrase: string) => ({ start: round(raw(phrase).start + offsetB), end: round(raw(phrase).end + offsetB) });
   const symptom = b("PC on, but no picture?"), cable = b("If you have a graphics card,"), check = b("check that your monitor"), last = b("into its ports.");
   const head2 = round(Math.max(light + 0.2, symptom.start - 0.1));
 
-  // Check 2: turn during the question; the ports close-up lands on "graphics card".
+  // Check 2: turn during the question; a slow push to the ports lands on "graphics card".
   const turn3: [number, number] = [round(Math.max(head2 + 0.15, symptom.start + 0.15)), 0];
   turn3[1] = round(turn3[0] + 0.6);
   const gfx = b("graphics card").start;
   const zoomPortsEnd = round(Math.max(turn3[1] + 0.35, gfx - 0.1));
-  const zoomPorts: [number, number] = [round(Math.max(turn3[1], zoomPortsEnd - 0.5)), zoomPortsEnd];
+  const zoomPorts: [number, number] = [round(Math.max(turn3[1], zoomPortsEnd - 0.9)), zoomPortsEnd];
   // The cable: out on "that your monitor", seated on "into its ports".
   const seated = round(last.start + 0.1), push = round(seated - 0.25);
   let pull = b("that your monitor").start;
@@ -107,7 +107,8 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   if (pull < zoomPorts[1] + 0.15) throw new Error("The cable would move before the ports close-up has landed.");
   const travel = round(pull + 0.3);
 
-  const zoomOut2: [number, number] = [round(Math.max(last.end + 0.05, seated + 0.35)), 0];
+  // The camera backs out on the last word (its timestamp runs past where the sound fades), then holds briefly.
+  const zoomOut2: [number, number] = [round(Math.max(last.end - 0.35, seated + 0.35)), 0];
   zoomOut2[1] = round(zoomOut2[0] + 0.4);
   const final = zoomOut2[1];
   const durationSeconds = toFrame(final + CLOSE_HOLD_SECONDS);
