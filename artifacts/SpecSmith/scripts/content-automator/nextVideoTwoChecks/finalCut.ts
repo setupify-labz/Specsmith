@@ -23,7 +23,7 @@
 // -1.5 dBTP, measured on the encode. The silent draft is left as it is.
 //
 //   SPECSMITH_RENDER_CHROMIUM=/opt/pw-browsers/chromium \
-//   pnpm exec tsx scripts/content-automator/nextVideoTwoChecks/finalCut.ts [--v2]
+//   pnpm exec tsx scripts/content-automator/nextVideoTwoChecks/finalCut.ts [--v2] [--bed]
 
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -36,6 +36,7 @@ import { SOUND_RECIPES, soundTrackArgs, type SoundCue } from "../soundEffects.ts
 import { FPS, renderComboDraft, type ComboCut, type ComboTiming } from "./comboDraft.ts";
 import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
 import { loadTwoChecksV2Take } from "./liamTakeV2.ts";
+import { bedSpans, bedTrackArgs } from "./soundBed.ts";
 import { TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 import { TWO_CHECKS_V2_TAKE_TEXT } from "./scriptV2.ts";
 
@@ -268,7 +269,7 @@ function run(command: string, args: string[]): Promise<void> {
 const sha256 = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
 
 /** Which narration to render: "v1" (the first take) or "v2" (the second). Each keeps its own output folder. */
-export async function renderFinalCut(version: "v1" | "v2" = "v1", outputDir = version === "v1" ? FINAL_DIR : FINAL_V2_DIR) {
+export async function renderFinalCut(version: "v1" | "v2" = "v1", outputDir = version === "v1" ? FINAL_DIR : FINAL_V2_DIR, options: { bed?: boolean } = {}) {
   const take = version === "v1" ? await loadTwoChecksTake(TAKE_DIR) : await loadTwoChecksV2Take(TAKE_V2_DIR);
   const alignment = take.manifest.alignment as Alignment;
   const cut = cutFromTake(alignment, version === "v1" ? V1_PROFILE : V2_PROFILE);
@@ -283,9 +284,17 @@ export async function renderFinalCut(version: "v1" | "v2" = "v1", outputDir = ve
   await run("ffmpeg", ["-v", "error", "-y", "-i", take.audioPath, "-filter_complex", voicePlacementFilter(cut.voice), "-map", "[out]", "-t", duration.toFixed(3), "-ar", "48000", "-ac", "1", "-c:a", "pcm_s24le", voice]);
   const cues = soundCuesFor(cut.timing);
   await run("ffmpeg", soundTrackArgs(cues, duration, sfx));
-  await mixAudio({ ffmpegPath: "ffmpeg", voicePath: voice, musicPath: sfx, durationSeconds: duration, outputPath: mix, timeoutMs: 120_000 });
+  // Optional background layer (soundBed.ts), summed into the effects track before its fixed mix gain.
+  let effects = sfx;
+  if (options.bed) {
+    const bed = join(work, "bed.wav"), sfxBed = join(work, "sfx-bed.wav");
+    await run("ffmpeg", bedTrackArgs(cut.timing, bed));
+    await run("ffmpeg", ["-v", "error", "-y", "-i", sfx, "-i", bed, "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first:normalize=0[out]", "-map", "[out]", "-ac", "1", "-ar", "48000", "-c:a", "pcm_s16le", sfxBed]);
+    effects = sfxBed;
+  }
+  await mixAudio({ ffmpegPath: "ffmpeg", voicePath: voice, musicPath: effects, durationSeconds: duration, outputPath: mix, timeoutMs: 120_000 });
 
-  const videoPath = join(outputDir, "two-checks-final.mp4");
+  const videoPath = join(outputDir, options.bed ? "two-checks-final-bed.mp4" : "two-checks-final.mp4");
   const mastering = await masterToLoudness({
     ffmpegPath: "ffmpeg", mixPath: mix, masteredPath: mastered, target: FINAL_LOUDNESS, timeoutMs: 120_000,
     encode: async (masteredPath) => {
@@ -295,7 +304,7 @@ export async function renderFinalCut(version: "v1" | "v2" = "v1", outputDir = ve
     },
   });
   const final = await measureLoudness("ffmpeg", videoPath);
-  const sheet = join(outputDir, "phone-every-0.25s.png");
+  const sheet = join(outputDir, options.bed ? "phone-every-0.25s-bed.png" : "phone-every-0.25s.png");
   await run("ffmpeg", ["-v", "error", "-y", "-i", videoPath, "-vf", "fps=4,scale=180:320:flags=lanczos,tile=14x4:padding=4:color=0x2A2A33", "-frames:v", "1", sheet]);
   await rm(work, { recursive: true, force: true });
 
@@ -306,16 +315,17 @@ export async function renderFinalCut(version: "v1" | "v2" = "v1", outputDir = ve
     take: { file: version === "v1" ? "nextVideoTwoChecks/take/two-checks-liam.mp3" : "nextVideoTwoChecks/takeV2/two-checks-v2-liam.mp3", sha256: take.sha256, lineTimings: take.lineTimings, voicePlacement: cut.voice.map((segment) => ({ ...segment, to: Number.isFinite(segment.to) ? segment.to : "end" })) },
     timing: cut.timing,
     captions: cut.captions,
-    sound: { cues: cues.map((cue) => ({ ...cue, seconds: SOUND_RECIPES[cue.kind].seconds })), madeBy: "soundEffects.ts (synthesized by ffmpeg; no samples)" },
+    sound: { cues: cues.map((cue) => ({ ...cue, seconds: SOUND_RECIPES[cue.kind].seconds })), madeBy: "soundEffects.ts (synthesized by ffmpeg; no samples)", bed: options.bed ? { ...bedSpans(cut.timing), madeBy: "soundBed.ts (synthesized by ffmpeg; no samples)" } : null },
     loudness: { ...mastering, measuredOnDelivered: final },
     phoneSheet: sheet,
   };
-  await writeFile(join(outputDir, "final-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+  await writeFile(join(outputDir, options.bed ? "final-report-bed.json" : "final-report.json"), `${JSON.stringify(report, null, 2)}\n`);
   return report;
 }
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  renderFinalCut(process.argv.includes("--v2") ? "v2" : "v1").then((report) => {
+  const version = process.argv.includes("--v2") ? "v2" : "v1";
+  renderFinalCut(version, version === "v1" ? FINAL_DIR : FINAL_V2_DIR, { bed: process.argv.includes("--bed") }).then((report) => {
     console.log(report.label);
     console.log(`video: ${report.video.path} (${report.video.durationSeconds.toFixed(2)} s)`);
     console.log(`sha256: ${report.video.sha256}`);
