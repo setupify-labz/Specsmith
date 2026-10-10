@@ -42,6 +42,8 @@ export const FINAL_DIR = resolve(here, "../../../render-output/two-checks-final"
 export const FINAL_LOUDNESS = Object.freeze({ integratedLufs: -16, truePeakDbtp: -1.5, toleranceLu: 0.3 });
 /** How long the closing view holds once the camera has backed out: the breath after the last word. */
 export const CLOSE_HOLD_SECONDS = 0.55;
+/** The cable's three motions: out of the motherboard port, carried across, pushed into the graphics card's. */
+export const UNPLUG_SECONDS = 0.25, SEAT_SECONDS = 0.2, MIN_CARRY_SECONDS = 0.45;
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
 const toFrame = (x: number) => Math.round(x * FPS) / FPS;
@@ -99,13 +101,12 @@ export function cutFromTake(alignment: Alignment): ComboCut & { readonly voice: 
   const gfx = b("graphics card").start;
   const zoomPortsEnd = round(Math.max(turn3[1] + 0.35, gfx - 0.1));
   const zoomPorts: [number, number] = [round(Math.max(turn3[1], zoomPortsEnd - 0.9)), zoomPortsEnd];
-  // The cable: out on "that your monitor", seated on "into its ports".
-  const seated = round(last.start + 0.1), push = round(seated - 0.25);
-  let pull = b("that your monitor").start;
-  if (push - (pull + 0.3) > 1.8) pull = round(push - 2.1);
-  if (push - (pull + 0.3) < 0.8) pull = round(push - 1.1);
+  // The cable: the unplug starts exactly on "that your monitor" and the plug is seated on "into its ports". Both
+  // ends are fixed to the words; the carry between them takes whatever time Liam leaves (never moving the unplug).
+  const pull = b("that your monitor").start, travel = round(pull + UNPLUG_SECONDS);
+  const seated = round(last.start + 0.1), push = round(seated - SEAT_SECONDS);
+  if (push - travel < MIN_CARRY_SECONDS) throw new Error(`Only ${round(push - travel)} s between "that your monitor" and "into its ports" to carry the cable; it needs ${MIN_CARRY_SECONDS} s.`);
   if (pull < zoomPorts[1] + 0.15) throw new Error("The cable would move before the ports close-up has landed.");
-  const travel = round(pull + 0.3);
 
   // The camera backs out on the last word (its timestamp runs past where the sound fades), then holds briefly.
   const zoomOut2: [number, number] = [round(Math.max(last.end - 0.35, seated + 0.35)), 0];

@@ -6,8 +6,10 @@
 import { describe, expect, it } from "vitest";
 
 import { TIMING } from "./comboDraft.ts";
+import { join } from "node:path";
+
 import { cutFromTake, phraseTimes, soundCuesFor } from "./finalCut.ts";
-import type { Alignment } from "./liamTake.ts";
+import { loadTwoChecksTake, type Alignment } from "./liamTake.ts";
 import { APPROVED_TWO_CHECKS_LINES, TWO_CHECKS_TAKE_TEXT } from "./script.ts";
 
 /** A stand-in take: each line at `cps` characters a second, `gap` seconds between lines. FIXTURE. */
@@ -36,6 +38,9 @@ describe("the voiced cut follows Liam's words", () => {
       expect(voice[1].offset).toBeGreaterThanOrEqual(voice[0].offset);
       expect(TWO_CHECKS_TAKE_TEXT[TWO_CHECKS_TAKE_TEXT.indexOf("I is on.")]).toBe("I");
       expect(timing.flip).toBeCloseTo(at("I is on.").start, 2);
+      // The unplug starts on "that your monitor" itself (never moved earlier to make room for the carry) and is out before the phrase ends.
+      expect(timing.pull).toBeCloseTo(at("that your monitor").start, 3);
+      expect(timing.travel).toBeLessThanOrEqual(at("that your monitor").end);
       expect(timing.seated).toBeGreaterThanOrEqual(at("into its ports.").start);
       expect(timing.seated).toBeLessThanOrEqual(at("into its ports.").end);
       expect(timing.zoomIn[1]).toBeLessThanOrEqual(at("O is off.").start);
@@ -52,6 +57,21 @@ describe("the voiced cut follows Liam's words", () => {
       expect(timing.durationSeconds - timing.final).toBeGreaterThanOrEqual(0.5);
     });
   }
+
+  it("(the saved Liam take) starts the unplug on \"that your monitor\" and seats the plug in \"into its ports.\"", async () => {
+    const take = await loadTwoChecksTake(join(import.meta.dirname, "take"));
+    const alignment = take.manifest.alignment as Alignment;
+    const { timing, voice } = cutFromTake(alignment);
+    const offset = voice[1].offset;
+    const that = phraseTimes(alignment, "that your monitor"), into = phraseTimes(alignment, "into its ports.");
+    expect(timing.pull).toBeCloseTo(that.start + offset, 3);
+    expect(timing.pull).toBeGreaterThan(phraseTimes(alignment, "check").start + offset);
+    expect(timing.travel).toBeLessThanOrEqual(that.end + offset);
+    expect(timing.seated).toBeGreaterThanOrEqual(into.start + offset);
+    expect(timing.seated).toBeLessThanOrEqual(into.end + offset);
+    // The flip on the "I".
+    expect(timing.flip).toBeCloseTo(phraseTimes(alignment, "I is on.").start + voice[0].offset, 3);
+  });
 
   it("captions the spoken lines, continuously, with no caption over the glimpse", () => {
     const { captions, timing } = cutFromTake(paces.typical);
