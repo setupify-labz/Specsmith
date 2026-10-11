@@ -12,7 +12,8 @@
 // - v2/review/humanGates.ts HUMAN_GATES and APPROVAL_MECHANISM: every gate is
 //   listed unresolved, with the repository's stated reason no gate can close.
 // One check is new and stated as such: on-screen text at most 20 characters a
-// second of its beat, so frame text stays readable on a phone.
+// second, so frame text stays readable on a phone. For an animated topic it is
+// measured per label, over the span that label is actually visible in the cut.
 
 import { scanForSlop } from "../v2/antiSlop.ts";
 import type { ResearchCreativeContract } from "../v2/research/creativeContract.ts";
@@ -20,6 +21,7 @@ import { checkScriptAgainstResearchStrict } from "../v2/research/strictEvidenceG
 import { APPROVAL_MECHANISM, HUMAN_GATES } from "../v2/review/humanGates.ts";
 import { FORBIDDEN_CLAIMS } from "../nextVideoMonitorPort/storyboard.ts";
 import type { PlatformScriptStoryboard } from "../types.ts";
+import { TEMPLATES } from "./animations.ts";
 import type { Topic } from "./topics.ts";
 
 export const PERSISTENT_DISCLOSURES = ["ILLUSTRATION", "Stylized example · not a fix for every PC"] as const;
@@ -27,8 +29,29 @@ export const MAX_ON_SCREEN_CHARS_PER_SECOND = 20;
 
 export interface GateFinding { readonly gate: string; readonly severity: "hard-fail" | "warning"; readonly location: string; readonly message: string }
 
-/** The topic's beats, scaled to the target length, as the pipeline's storyboard type. */
+/**
+ * The topic's beats as the pipeline's storyboard type. An animated topic's
+ * storyboard is its template's, at the template's exact timing (targetSeconds
+ * is ignored: the cut has one length); any other topic is scaled to the target.
+ */
 export function buildStoryboard(topic: Topic, targetSeconds: number): PlatformScriptStoryboard {
+  const template = topic.animation ? TEMPLATES[topic.animation] : undefined;
+  if (template) {
+    return {
+      platform: "youtube-shorts",
+      targetDurationSeconds: template.durationSeconds,
+      title: topic.title,
+      narrationStyle: "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+      beats: template.beats.map((beat) => ({
+        startSecond: beat.from, endSecond: beat.to, purpose: beat.purpose,
+        narration: beat.caption, visualDirection: beat.visualDirection, onScreenText: beat.onScreenText,
+        factDependencies: topic.claims.map((claim) => claim.id),
+      })),
+      finalCta: topic.finalCta,
+      factualGuardrails: topic.riskyClaims.map((risky) => `Never say: ${risky.proposition} (${risky.why})`),
+      persistentDisclosures: [...template.disclosures],
+    };
+  }
   const total = topic.beats.reduce((sum, beat) => sum + beat.seconds, 0);
   const scale = targetSeconds / total;
   let t = 0;
@@ -82,10 +105,17 @@ export function runGates(storyboard: PlatformScriptStoryboard, topic: Topic, now
   for (const { location, text } of lines) {
     for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location, message: `"${text}": ${why}` });
   }
-  storyboard.beats.forEach((beat, i) => {
-    const cps = beat.onScreenText.length / (beat.endSecond - beat.startSecond);
-    if (cps > MAX_ON_SCREEN_CHARS_PER_SECOND) findings.push({ gate: "on-screen reading speed (new in this job)", severity: "hard-fail", location: `beat-${i + 1}.onScreenText`, message: `${cps.toFixed(1)} characters a second; at most ${MAX_ON_SCREEN_CHARS_PER_SECOND}.` });
-  });
+  const template = topic.animation ? TEMPLATES[topic.animation] : undefined;
+  const spans = template
+    ? template.labels.map((label) => ({ location: `label "${label.text}" ${label.from.toFixed(2)}-${label.to.toFixed(2)} s`, text: label.text, seconds: label.to - label.from }))
+    : storyboard.beats.map((beat, i) => ({ location: `beat-${i + 1}.onScreenText`, text: beat.onScreenText, seconds: beat.endSecond - beat.startSecond }));
+  for (const { location, text, seconds } of spans) {
+    const cps = text.length / seconds;
+    if (cps > MAX_ON_SCREEN_CHARS_PER_SECOND) findings.push({ gate: "on-screen reading speed (new in this job)", severity: "hard-fail", location, message: `${cps.toFixed(1)} characters a second; at most ${MAX_ON_SCREEN_CHARS_PER_SECOND}.` });
+  }
+  if (template) for (const label of template.labels) {
+    for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(label.text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location: `label "${label.text}"`, message: why });
+  }
   return { findings, passed: !findings.some((f) => f.severity === "hard-fail") };
 }
 

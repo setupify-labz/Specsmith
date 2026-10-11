@@ -63,7 +63,7 @@ export const TIMING = Object.freeze({
   // POWER OFF: shut down (fans stop), then the cord comes out of the power supply.
   offPress: [1.45, 1.8] as const, fansOff: [1.75, 2.15] as const, toRear: [2.15, 2.35] as const, unplug: [2.5, 2.85] as const,
   // LOCATION: panel off, straight to the memory slots.
-  toSide: [3.2, 3.4] as const, panelOff: [3.4, 3.75] as const, zoomSlots: [3.75, 4.4] as const, flag: 4.4,
+  toSide: [3.2, 3.4] as const, panelOff: [3.4, 3.75] as const, zoomSlots: [3.75, 4.4] as const, flag: 4.2,
   // ACTION (side profile of the slot)
   toProfile: [4.85, 5.05] as const, align: [5.2, 5.8] as const, lower: [5.9, 6.4] as const,
   thumbsIn: [6.5, 6.75] as const, press2: [6.8, 7.25] as const, clips: [7.07, 7.27] as const, thumbsOut: [7.75, 8.0] as const,
@@ -80,6 +80,20 @@ export const BEATS = Object.freeze([
   { name: "payoff", from: TIMING.seated, to: TIMING.toBoard[1] },
   { name: "power-back", from: TIMING.toBoard[1], to: TIMING.toFront[0] },
   { name: "try-again", from: TIMING.toFront[0], to: TIMING.durationSeconds },
+] as const);
+
+/** When each label is on screen (mirrors the drawing code below), for the reading-speed check. */
+export const LABEL_WINDOWS = Object.freeze([
+  { key: "problem", from: 0, to: TIMING.offPress[0] },
+  { key: "unplug", from: TIMING.offPress[0], to: TIMING.toSide[0] },
+  { key: "slots", from: TIMING.zoomSlots[1] - 0.2, to: TIMING.toProfile[0] },
+  { key: "notSeated", from: TIMING.flag, to: TIMING.toProfile[0] },
+  { key: "view", from: TIMING.toProfile[0], to: TIMING.clips[0] },
+  { key: "notch", from: TIMING.toProfile[0], to: TIMING.thumbsIn[0] },
+  { key: "pressure", from: TIMING.thumbsIn[0], to: TIMING.seated },
+  { key: "clips", from: TIMING.clips[0], to: TIMING.seated },
+  { key: "seated", from: TIMING.seated, to: TIMING.toRearAgain[0] },
+  { key: "plugIn", from: TIMING.toRearAgain[0], to: TIMING.toFront[0] },
 ] as const);
 
 export const COPY = Object.freeze({
@@ -348,11 +362,13 @@ function story(t) {
     if (t >= T.flag) pill(S.copy.labels.notSeated, W / 2, STORY.y + 1290, AMBER, '#0A0A0F', 60, out((t - T.flag) / 0.2));
   } else if (t >= T.toProfile[0] && t < T.toBoard[0]) {
     const a = span(t, T.toProfile);
-    ctx.save(); ctx.globalAlpha = a; text(S.copy.labels.view, W / 2, STORY.y + 1340, W - 160, 42, 42, C.textSecondary, 'center', 600); ctx.restore();
+    // The pressure label stays up through the snap (long enough to read); the clips label joins it at the
+    // bottom, in place of the view caption, while the clips close.
+    if (t < T.clips[0]) { ctx.save(); ctx.globalAlpha = a; text(S.copy.labels.view, W / 2, STORY.y + 1340, W - 160, 42, 42, C.textSecondary, 'center', 600); ctx.restore(); }
     if (t < T.thumbsIn[0]) pill(S.copy.labels.notch, W / 2, HEAD, AMBER, '#0A0A0F', 64, a);
-    else if (t < T.clips[0]) pill(S.copy.labels.pressure, W / 2, HEAD, CYAN, '#0A0A0F', 64, out((t - T.thumbsIn[0]) / 0.15));
-    else if (t < T.seated) pill(S.copy.labels.clips, W / 2, HEAD, GREEN, '#0A0A0F', 64, out((t - T.clips[0]) / 0.15));
+    else if (t < T.seated) pill(S.copy.labels.pressure, W / 2, HEAD, CYAN, '#0A0A0F', 64, out((t - T.thumbsIn[0]) / 0.15));
     else pill(S.copy.labels.seated, W / 2, HEAD, GREEN, '#0A0A0F', 72, out((t - T.seated) / 0.25));
+    if (t >= T.clips[0] && t < T.seated) pill(S.copy.labels.clips, W / 2, STORY.y + 1290, GREEN, '#0A0A0F', 60, out((t - T.clips[0]) / 0.15));
   } else if (t >= T.toBoard[0] && t < T.toRearAgain[0]) pill(S.copy.labels.seated, W / 2, HEAD, GREEN, '#0A0A0F', 64, 1);
   else if (t >= T.toRearAgain[0] && t < T.toFront[0]) pill(S.copy.labels.plugIn, W / 2, HEAD, CYAN, '#0A0A0F', 64, out((t - T.toRearAgain[0]) / 0.15));
 }

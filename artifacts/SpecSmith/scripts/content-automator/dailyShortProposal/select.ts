@@ -8,8 +8,11 @@
 //    from videos with at least MIN_ANALYTICS_VIEWS analytics views: smaller
 //    samples are recorded but excluded, as is any "unknown").
 // 3. The fastest troubleshooting Short's symptom family sets the family; the
-//    best-retained Short's length sets the target length.
-// 4. Topics an existing title already covers are dropped. Among the rest, the
+//    best-retained Short's length sets the target length (recorded; an animated
+//    topic keeps its template's length, and the record says so).
+// 4. Topics without a registered animation template are dropped ("no animation
+//    template yet": the job only proposes what it can render), and so are
+//    topics an existing title already covers. Among the rest, the
 //    family match comes first, then the editorial prior (labelled as editorial
 //    judgement, not data), then the topic list's order.
 // TikTok and Instagram rows are recorded as channel context only: Metricool's
@@ -18,6 +21,7 @@
 
 import type { ChannelSnapshot, Metric, YouTubeVideo } from "./snapshot.ts";
 import { DailyProposalError } from "./snapshot.ts";
+import { TEMPLATES } from "./animations.ts";
 import { TOPICS, type Family, type Topic } from "./topics.ts";
 
 export const MIN_ANALYTICS_VIEWS = 300;
@@ -50,7 +54,10 @@ export interface VideoSignal {
 
 export interface Selection {
   readonly topic: Topic;
+  /** The Short's length: the template's. */
   readonly targetSeconds: number;
+  /** The length the retention data pointed to (recorded, not imposed on the cut). */
+  readonly dataTargetSeconds: number;
   readonly signals: readonly VideoSignal[];
   readonly themeSummary: Readonly<Record<"troubleshooting" | "comparison", { videos: number; medianViewsPerDay: Metric; medianAverageViewPercentage: Metric; medianEngagedShare: Metric }>>;
   readonly influences: readonly InfluenceRecord[];
@@ -84,7 +91,7 @@ function signalOf(video: YouTubeVideo, now: Date): VideoSignal {
   };
 }
 
-export function selectTopic(snapshot: ChannelSnapshot, now: Date): Selection {
+export function selectTopic(snapshot: ChannelSnapshot, now: Date, topics: readonly Topic[] = TOPICS): Selection {
   const yt = snapshot.sources.youtube;
   const signals = yt.videos.map((video) => signalOf(video, now));
   const influences: InfluenceRecord[] = [];
@@ -136,20 +143,23 @@ export function selectTopic(snapshot: ChannelSnapshot, now: Date): Selection {
     for (const row of source.byPublishDay) for (const [key, value] of Object.entries(row)) if (value === "unknown") unknowns.push(`${name} ${row.date} ${key}: unknown (not returned by Metricool).`);
   }
 
-  // Topics: drop covered ones, then rank.
+  // Topics: drop the ones the job cannot render and the covered ones, then rank.
   const titles = yt.videos.map((v) => v.title).join("\n");
   const excluded: { topicId: string; why: string }[] = [];
-  const open = TOPICS.filter((topic) => {
+  const open = topics.filter((topic) => {
+    if (!topic.animation || !TEMPLATES[topic.animation]) { excluded.push({ topicId: topic.id, why: "no animation template yet (the job proposes only what it can render)" }); return false; }
     const hit = topic.coveredBy.find((re) => re.test(titles));
     if (hit) excluded.push({ topicId: topic.id, why: `an existing title matches ${hit}` });
     return !hit;
   });
-  if (open.length === 0) throw new DailyProposalError("no-topic", "Every topic in the library is already covered by a published Short. Add topics to dailyShortProposal/topics.ts.");
+  if (open.length === 0) throw new DailyProposalError("no-topic", `No producible topic is left: ${excluded.map((e) => `${e.topicId} (${e.why})`).join("; ")}. Build an animation template for an uncovered topic (animations.ts) before the next run.`);
   const ranking = open.map((topic, order) => ({ topic, order, familyMatch: families.has(topic.family) }))
     .sort((a, b) => Number(b.familyMatch) - Number(a.familyMatch) || b.topic.editorialPrior - a.topic.editorialPrior || a.order - b.order);
   influences.push({ metric: "editorial prior (NOT data)", source: "dailyShortProposal/topics.ts", value: ranking[0].topic.editorialPrior, usedFor: "tie-break among topics in the same family" });
+  const template = TEMPLATES[ranking[0].topic.animation!];
+  influences.push({ metric: "animation template length (not data)", source: `dailyShortProposal/animations.ts (${template.id})`, value: `${template.durationSeconds} s`, usedFor: `the Short's length; the data pointed to ${targetSeconds} s, recorded only, since the cut's timing is not stretched` });
   return {
-    topic: ranking[0].topic, targetSeconds, signals, themeSummary, influences, unknowns, excluded,
+    topic: ranking[0].topic, targetSeconds: template.durationSeconds, dataTargetSeconds: targetSeconds, signals, themeSummary, influences, unknowns, excluded,
     ranking: ranking.map(({ topic, familyMatch }) => ({ topicId: topic.id, familyMatch, editorialPrior: topic.editorialPrior })),
   };
 }

@@ -7,26 +7,34 @@
 //
 // It reads one channel-metrics snapshot (collected through the Metricool and
 // vidIQ connectors, see README.md), proposes ONE beginner PC troubleshooting
-// Short, and writes everything a person needs to review it into one folder:
+// Short that it can render, renders that Short's animated cut from the
+// proposal's template, checks the exported files, and writes everything a
+// person needs to review into one folder:
 //   PROPOSAL.md       evidence, frame-one hook, script, storyboard, metrics that
-//                     influenced the choice, unknowns, gate results, human gates
+//                     influenced the choice, unknowns, gate results, render
+//                     verification, human gates
 //   proposal.json     the same, machine-readable
-//   preview-silent.mp4, preview-phone-sheet.png   the silent storyboard preview
+//   <id>-silent.mp4   the finished animated cut, silent (the deliverable)
+//   <id>-sfx.mp4      the same picture with its synced sound effects (no voice)
+//   beats-phone.png, phone-every-0.25s.png   exported frames at phone size
+//   verification.json checks on the exported files: size, length, frame count,
+//                     distinct beats, every sound cue, silence between cues
 //   run-report.json   stage timings, spend, exit status, snapshot hash
 //
 // It calls no paid provider, generates no voice, schedules nothing and
 // publishes nothing: none of those modules is imported (a test checks).
-// Exit codes: 0 proposal ready for human review; 2 written but a gate blocked
-// it (revise the topic); 1 refused (missing or stale snapshot, unavailable
-// source or renderer: nothing usable was produced).
+// Exit codes: 0 proposal and cut ready for human review; 2 written but an
+// automated gate or a render check blocked it (nothing is rendered when a gate
+// blocks); 1 refused (missing or stale snapshot, unavailable source or
+// renderer, no producible topic left: nothing usable was produced).
 
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join, resolve, dirname } from "node:path";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildStoryboard, humanGatesUnresolved, PERSISTENT_DISCLOSURES, runGates } from "./proposal.ts";
-import { renderPreview } from "./preview.ts";
+import { assertRendererAvailable, renderTemplate, TEMPLATES, verifyRender, type Verification } from "./animations.ts";
+import { buildStoryboard, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { selectTopic } from "./select.ts";
 import { DailyProposalError, loadSnapshot } from "./snapshot.ts";
 
@@ -47,41 +55,60 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     const t0 = performance.now();
     try { return await fn(); } finally { stages[name] = Math.round(performance.now() - t0); }
   };
-  const spend = { elevenLabs: "not called", publishing: "not called", scheduling: "not called", metricool: "not called by the job (snapshot input)", vidiq: "not called by the job (snapshot input)" };
+  const spend = { elevenLabs: "not called (no voice)", publishing: "not called", scheduling: "not called", metricool: "not called by the job (snapshot input)", vidiq: "not called by the job (snapshot input)" };
   try {
     const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, arg("--max-age-hours", argv) ? Number(arg("--max-age-hours", argv)) : undefined));
+    await time("check-renderer", () => assertRendererAvailable());
     const selection = await time("select-topic", () => selectTopic(snapshot, now));
+    const template = TEMPLATES[selection.topic.animation!];
     const storyboard = buildStoryboard(selection.topic, selection.targetSeconds);
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
     const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
     const outDir = resolve(arg("--out", argv) ?? join(DEFAULT_OUT_ROOT, `${stamp}-${selection.topic.id}`));
     await mkdir(outDir, { recursive: true });
-    const preview = await time("render-silent-preview", () => renderPreview(storyboard, PERSISTENT_DISCLOSURES, outDir));
-    const status = gates.passed ? "ready-for-human-review" : "blocked-by-gate";
+    let cut: { silent: string; sfx: string; silentSha256: string; sfxSha256: string } | undefined;
+    let verification: Verification | undefined;
+    if (gates.passed) {
+      const files = await time("render-animated-cut", () => renderTemplate(template, outDir));
+      // Name the outputs after the template, so a folder never holds two cuts' files under one name.
+      const silent = join(outDir, `${template.id}-silent.mp4`), sfx = join(outDir, `${template.id}-sfx.mp4`);
+      if (files.silentPath !== silent) await rename(files.silentPath, silent);
+      if (files.sfxPath !== sfx) await rename(files.sfxPath, sfx);
+      const sha = async (path: string) => createHash("sha256").update(await readFile(path)).digest("hex");
+      cut = { silent: basename(silent), sfx: basename(sfx), silentSha256: await sha(silent), sfxSha256: await sha(sfx) };
+      verification = await time("verify-exported-files", () => verifyRender(template, { silentPath: silent, sfxPath: sfx }, outDir));
+      await writeFile(join(outDir, "verification.json"), `${JSON.stringify(verification, null, 2)}\n`);
+    }
+    const passed = gates.passed && verification?.passed === true;
+    const status = !gates.passed ? "blocked-by-gate" : passed ? "ready-for-human-review" : "blocked-by-render-check";
     const proposal = {
-      kind: "daily-short-proposal", version: "daily-short-proposal-v1", generatedAt: now.toISOString(), status,
+      kind: "daily-short-proposal", version: "daily-short-proposal-v2", generatedAt: now.toISOString(), status,
       notPublished: true, noVoiceGenerated: true, notScheduled: true,
       snapshot: { collectedAt: snapshot.collectedAt, collectedBy: snapshot.collectedBy, sha256: createHash("sha256").update(bytes).digest("hex"), cost: snapshot.cost ?? "unknown" },
-      topic: { id: selection.topic.id, family: selection.topic.family, symptom: selection.topic.symptom, title: selection.topic.title },
+      topic: { id: selection.topic.id, family: selection.topic.family, symptom: selection.topic.symptom, title: selection.topic.title, animation: template.id },
       hook: { frameOne: selection.topic.hook },
       script: storyboard.beats.map((b) => b.narration).join(" "),
       storyboard,
+      storyBeats: template.beats.map((b) => ({ storyBeat: b.storyBeat, from: b.from, to: b.to })),
+      onScreenLabels: template.labels,
+      soundCues: template.cues,
       evidence: {
         channelSignals: selection.signals, themeSummary: selection.themeSummary,
-        claims: selection.topic.claims, riskyClaimsBlocked: selection.topic.riskyClaims,
+        claims: selection.topic.claims, riskyClaimsBlocked: selection.topic.riskyClaims, sources: template.sources,
       },
       metricsThatInfluencedTheChoice: selection.influences,
       unknown: selection.unknowns,
       topicsExcluded: selection.excluded, ranking: selection.ranking,
       gates: { passed: gates.passed, findings: gates.findings },
+      animatedCut: cut ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures } : { notRendered: "an automated gate blocked the proposal" },
+      verification: verification ?? null,
       humanGates: humanGatesUnresolved(),
-      preview: { file: "preview-silent.mp4", phoneSheet: "preview-phone-sheet.png", sha256: preview.sha256, minFontPx: preview.minFontPx, label: "STORYBOARD PREVIEW · NOT FINAL ART" },
     };
     await writeFile(join(outDir, "proposal.json"), `${JSON.stringify(proposal, null, 2)}\n`);
     await writeFile(join(outDir, "PROPOSAL.md"), proposalMarkdown(proposal));
-    const report = { status, exitCode: gates.passed ? 0 : 2, outDir, totalMs: Math.round(performance.now() - started), stagesMs: stages, spend, snapshotCost: snapshot.cost ?? "unknown" };
+    const report = { status, exitCode: passed ? 0 : 2, outDir, files: cut ? [cut.silent, cut.sfx, "beats-phone.png", "phone-every-0.25s.png", "verification.json"] : [], totalMs: Math.round(performance.now() - started), stagesMs: stages, spend, snapshotCost: snapshot.cost ?? "unknown" };
     await writeFile(join(outDir, "run-report.json"), `${JSON.stringify(report, null, 2)}\n`);
-    return { exitCode: gates.passed ? 0 : 2, outDir, report };
+    return { exitCode: passed ? 0 : 2, outDir, report };
   } catch (error) {
     if (error instanceof DailyProposalError) {
       return { exitCode: 1, report: { status: "refused", code: error.code, reason: error.message, totalMs: Math.round(performance.now() - started), stagesMs: stages, spend } };
@@ -98,18 +125,20 @@ function proposalMarkdown(p: Proposal): string {
 
 **Status: ${p.status}.** Not published, not scheduled, no voice generated. Every human gate below is unresolved.
 
+Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
+
 Generated ${p.generatedAt} from the snapshot collected ${p.snapshot.collectedAt} (sha256 \`${p.snapshot.sha256.slice(0, 16)}…\`).
 
 ## Frame-one hook
 > **${p.hook.frameOne}**
 
-## Proposed script (not voiced)
+## Script (burned-in captions; not voiced)
 > ${p.script}
 
 ## Storyboard (${sb.targetDurationSeconds} s, YouTube Shorts)
 | Beat | Time | On screen | Narration | Visual |
 |---|---|---|---|---|
-${sb.beats.map((b: any, i: number) => `| ${i + 1} ${b.purpose} | ${b.startSecond.toFixed(1)}–${b.endSecond.toFixed(1)} s | ${b.onScreenText} | ${b.narration} | ${b.visualDirection} |`).join("\n")}
+${sb.beats.map((b: any, i: number) => `| ${i + 1} ${b.purpose} | ${b.startSecond.toFixed(2)}–${b.endSecond.toFixed(2)} s | ${b.onScreenText} | ${b.narration} | ${b.visualDirection} |`).join("\n")}
 
 Persistent disclosure on every frame: ${sb.persistentDisclosures.map((d: string) => `"${d}"`).join(", ")}. CTA: "${sb.finalCta}".
 
@@ -122,7 +151,7 @@ ${rows(p.evidence.channelSignals.map((s: any) => ({ ...s, title: s.title, durati
 
 Theme medians: ${JSON.stringify(p.evidence.themeSummary)}
 
-**Claims in the script** (editorial knowledge; to be fact-checked against a manual):
+**Claims in the script** (each with its basis; the factual-takeaway gate re-checks them):
 ${p.evidence.claims.map((c: any) => `- ${c.proposition}. _${c.basis}_`).join("\n")}
 
 **Claims the gates block:**
@@ -143,13 +172,35 @@ ${p.unknown.length ? p.unknown.map((u: string) => `- ${u}`).join("\n") : "- noth
 **${p.gates.passed ? "All automated gates passed." : "Blocked: see the hard failures below."}**
 ${p.gates.findings.length ? p.gates.findings.map((f: any) => `- [${f.severity}] ${f.gate} · ${f.location}: ${f.message}`).join("\n") : "- no findings"}
 
+## Animated cut
+${p.animatedCut.notRendered ? `Not rendered: ${p.animatedCut.notRendered}.` : `- **\`${p.animatedCut.silent}\`**: the finished cut, silent (sha256 \`${p.animatedCut.silentSha256.slice(0, 16)}…\`).
+- \`${p.animatedCut.sfx}\`: the same picture with synced sound effects, no voice (sha256 \`${p.animatedCut.sfxSha256.slice(0, 16)}…\`).
+- \`beats-phone.png\`: the middle frame of every beat at phone size; \`phone-every-0.25s.png\`: every quarter second.
+- ${p.animatedCut.durationSeconds} s at ${p.animatedCut.fps} fps, 1080x1920. Every frame carries ${p.animatedCut.disclosures.map((d: string) => `"${d}"`).join(" / ")}.`}
+
+**On-screen labels, as drawn:** ${p.onScreenLabels.map((l: any) => `${l.text} (${l.from.toFixed(2)}–${l.to.toFixed(2)} s)`).join("; ")}.
+
+**Sound cues:** ${p.soundCues.map((c: any) => `${c.at.toFixed(2)} s ${c.kind}: ${c.reason}`).join("; ")}.
+
+**Sources:** ${p.evidence.sources.join("; ")}.
+
+## Render verification (checks on the exported files)
+${p.verification ? `**${p.verification.passed ? "All checks passed." : "FAILED: see below."}**
+
+| Check | Result | Detail |
+|---|---|---|
+${p.verification.checks.map((c: any) => `| ${c.check} | ${c.passed ? "pass" : "FAIL"} | ${String(c.detail).replace(/\|/g, "/")} |`).join("\n")}
+
+| Cue | At | Measured peak |
+|---|---|---|
+${p.verification.cuePeaks.map((c: any) => `| ${c.kind} | ${c.at.toFixed(2)} s | ${c.peakDbfs.toFixed(1)} dBFS |`).join("\n")}
+
+Measured peaks are after the AAC encode; they are not loudness-normalized, so a narration mastered to -16 LUFS sits above them.` : "Not run: nothing was rendered."}
+
 ## Human gates (unresolved)
 ${p.humanGates.mechanism.why}
 
 ${p.humanGates.gates.map((g: any) => `- **${g.gate}**: ${g.question}`).join("\n")}
-
-## Silent preview
-\`${p.preview.file}\` (sha256 \`${p.preview.sha256.slice(0, 16)}…\`), phone sheet \`${p.preview.phoneSheet}\`. Every frame is labelled "${p.preview.label}".
 `;
 }
 

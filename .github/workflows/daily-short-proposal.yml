@@ -6,8 +6,10 @@
 # and uploads the proposal folder for human review.
 #
 #   - workflow_dispatch only: no schedule, push or pull_request trigger.
-#   - No secrets: it reads a file, renders a silent preview, and stops. It calls
-#     no paid provider, generates no voice, schedules nothing, publishes nothing.
+#   - No secrets: it reads a file, renders the proposal's animated cut (silent,
+#     plus a sound-effects version), checks the exported files, and stops. It
+#     calls no paid provider, generates no voice, schedules nothing, publishes
+#     nothing.
 #   - It fails if the snapshot is missing, stale or lacks a needed source, or if
 #     Chromium or ffmpeg is unavailable.
 #
@@ -36,7 +38,7 @@ concurrency:
 jobs:
   propose:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

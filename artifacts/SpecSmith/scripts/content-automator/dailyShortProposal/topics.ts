@@ -8,8 +8,13 @@
 // as editorial knowledge that a person must check against a manual before the
 // Short goes further (the fact-check human gate never closes on its own).
 //
+// Only a topic with an `animation` (a template registered in animations.ts) is
+// ever proposed; the rest wait here until someone builds their animation.
+//
 // `editorialPrior` is an editorial judgement of how often beginners hit the
 // symptom. It is NOT data, and the proposal record says so wherever it is used.
+
+import { TEMPLATES } from "./animations.ts";
 
 export type Family = "wont-turn-on" | "on-no-picture" | "compatibility";
 
@@ -35,36 +40,39 @@ export interface Topic {
   /** Claims this Short must never make (blocked by the strict research gate). */
   readonly riskyClaims: readonly { readonly id: string; readonly proposition: string; readonly why: string }[];
   readonly editorialPrior: number;
+  /** The registered animation template that renders this Short (animations.ts). Without one, the topic is never proposed. */
+  readonly animation?: string;
 }
+
+const CRUCIAL = "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.";
+const RAM_CUT = TEMPLATES["ram-seat"];
 
 const MANUAL = "Editorial knowledge of standard desktop assembly; to be checked against a motherboard or case manual (fact-check gate).";
 
 export const TOPICS: readonly Topic[] = [
   {
+    // Rendered by the ram-seat template: beats, captions and labels are the cut's own.
     id: "ram-not-seated",
     family: "on-no-picture",
-    title: "Fans Spin, No Display? Check Your RAM First",
-    symptom: "The PC powers on and the fans spin, but the monitor shows nothing.",
-    hook: "FANS SPIN, NO DISPLAY?",
-    beats: [
-      { seconds: 2.0, onScreenText: "FANS SPIN, NO DISPLAY?", narration: "Fans spin, but no display?", visualDirection: "The stylized PC from the two-checks Short, fans lit, beside a dark monitor. Large label on frame one." },
-      { seconds: 3.0, onScreenText: "CHECK THE RAM", narration: "Check your RAM.", visualDirection: "Side panel off; the camera closes on the memory slots. One stick sits slightly raised, its clip open." },
-      { seconds: 4.0, onScreenText: "PRESS UNTIL BOTH CLIPS CLOSE", narration: "Press each stick straight down until the clips snap shut.", visualDirection: "Thumbs press the raised stick down; both clips close; a soft click; amber outline on the clips." },
-      { seconds: 4.0, onScreenText: "WHICH SLOTS? CHECK THE MANUAL", narration: "Your motherboard manual shows which slots to use first.", visualDirection: "A manual page icon beside the slots; two slots highlighted and labelled 'example only: check your board'." },
-    ],
-    finalCta: "Save this for your next build.",
-    coveredBy: [/\bram\b.*\b(seat|clip|click|slot)/i, /\b(seat|reseat)\w*\b.*\bram\b/i],
+    title: "Added RAM, Now It Won't Boot? Check It's Fully Seated",
+    symptom: "After adding or moving memory, the PC powers on but does not boot to a picture.",
+    hook: RAM_CUT.beats[0].onScreenText,
+    beats: RAM_CUT.beats.map((b) => ({ seconds: Math.round((b.to - b.from) * 100) / 100, onScreenText: b.onScreenText, narration: b.caption, visualDirection: b.visualDirection })),
+    finalCta: "Then try booting again.",
+    coveredBy: [/\bram\b.*\b(seat|clip|click|slot)/i, /\b(seat|reseat)\w*\b.*\bram\b/i, /\b(added|new)\b.*\bram\b.*\bboot/i],
     claims: [
-      { id: "ram-seating", proposition: "a RAM stick that is not fully seated can stop the PC from showing a picture", basis: MANUAL },
-      { id: "ram-clips", proposition: "the slot clips close when the stick is fully inserted", basis: MANUAL },
-      { id: "ram-slots", proposition: "the motherboard manual shows which slots to use first", basis: MANUAL },
+      { id: "ram-power-off", proposition: "shut the system down and unplug the power cable before installing memory", basis: CRUCIAL },
+      { id: "ram-notch", proposition: "line up the notch on the module with the ridge in the slot", basis: CRUCIAL },
+      { id: "ram-clips", proposition: "press with firm, even pressure until the clips on the side of the slot snap into place", basis: CRUCIAL },
+      { id: "ram-reseat", proposition: "if the system beeps or shows errors after installing memory, remove and reinstall the modules", basis: CRUCIAL },
     ],
     riskyClaims: [
-      { id: "ram-always-cause", proposition: "always the sole culprit behind blank screens", why: "No display has many causes; RAM is one check." },
-      { id: "ram-fixes-all", proposition: "guaranteed cure for blank screens", why: "It may not work; the Short offers a check, never a guaranteed fix." },
-      { id: "ram-slot-universal", proposition: "identical slot order across all boards", why: "Slot order varies by board; the manual decides." },
+      { id: "ram-always-cause", proposition: "always the sole culprit behind boot failures", why: "A PC can fail to boot for many reasons; seating is one check." },
+      { id: "ram-fixes-all", proposition: "guaranteed cure for boot failures", why: "It may not work; the Short offers a check, never a guaranteed fix." },
+      { id: "ram-boot-shown", proposition: "successfully boots straight into Windows afterwards", why: "The cut ends before anyone presses the button; no boot is shown or promised." },
     ],
     editorialPrior: 0.9,
+    animation: "ram-seat",
   },
   {
     id: "cpu-power-cable",

@@ -1,8 +1,10 @@
 # Daily Short proposal
 
-Proposes **one** beginner PC troubleshooting Short a day, for a person to review.
+Proposes **one** beginner PC troubleshooting Short a day and renders its finished animated cut, for a person to review.
 
-The job writes the proposal and a silent storyboard preview. It calls no paid provider, generates no voice (no ElevenLabs), schedules nothing and publishes nothing.
+From one snapshot, the job writes the proposal, renders the proposal's animated cut (silent, plus a version with synced sound effects), and checks the exported files. It calls no paid provider, generates no voice (no ElevenLabs), schedules nothing and publishes nothing.
+
+**It proposes only topics it can render.** A topic needs a registered animation template (`animations.ts`). Today only `ram-seat` exists (the RAM-seating cut, `nextVideoRamSeat/`); the other topics are recorded as "no animation template yet". Once the RAM Short is published, the coverage check drops it and the job refuses with `no-topic` until a new template is built. It never falls back to text cards.
 
 ## 1. Collect today's snapshot (in an assistant session with the connectors)
 The owner's Metricool plan has no REST API, and vidIQ has no API in this repository. The numbers therefore come from the **Metricool** and **vidIQ connectors**, through read-only calls, saved as `snapshots/<YYYY-MM-DD>.json` (format: `channel-metrics-snapshot-v1`; see `snapshot.ts`).
@@ -33,7 +35,14 @@ You can also run it with the **Daily Short proposal (manual)** workflow, by disp
 **Exit codes:**
 - `0`: ready for human review.
 - `2`: written, but an automated gate blocked it.
-- `1`: refused, with the reason printed. Causes are a missing, invalid or stale (older than 36 h) snapshot, a needed source marked unavailable, or Chromium, ffmpeg or the fonts missing.
+- `2` also covers a render check that failed (see `verification.json`). When a gate blocks, nothing is rendered.
+- `1`: refused, with the reason printed. Causes are:
+  - a missing, invalid or stale (older than 36 h) snapshot;
+  - a needed source marked unavailable;
+  - Chromium, ffmpeg, ffprobe or the fonts missing;
+  - no producible topic left (`no-topic`).
+
+A run takes about 35 s here: about 22 s to render, about 11 s to verify.
 
 ## 3. Review the folder (`render-output/daily-proposals/<time>-<topic>/`)
 - `PROPOSAL.md` (and `proposal.json`):
@@ -43,12 +52,23 @@ You can also run it with the **Daily Short proposal (manual)** workflow, by disp
   - **unknowns**;
   - automated gate findings;
   - every human gate, unresolved.
-- `preview-silent.mp4` and `preview-phone-sheet.png`: a storyboard animatic labelled "STORYBOARD PREVIEW · NOT FINAL ART" on every frame.
+- `<template>-silent.mp4`: the finished animated cut, silent. This is the deliverable.
+- `<template>-sfx.mp4`: the same picture with synced sound effects. No voice, no music.
+- `beats-phone.png` (the middle frame of every beat) and `phone-every-0.25s.png`: exported frames at phone size.
+- `verification.json`: checks on the exported files.
+  - Both MP4s: 1080×1920, the template's length, and the exact frame count.
+  - Every beat's middle frame is distinct.
+  - Every sound cue sounds, each measured clear of overlapping cues.
+  - Silence between cues, so there is no stray or boot sound.
+  - The template's clearest cue (the clip snap) is at least 6 dB above the rest.
+  - The silent MP4 is silent.
+  - The effects stay well below a −16 LUFS narration.
 - `run-report.json`: stage timings and spend.
 
 ## How the topic is chosen (`select.ts`)
+0. Topics without an animation template are dropped.
 1. The fastest troubleshooting Short (public views per day) sets the symptom family.
-2. The best-retained Short sets the length, using only analytics samples of at least 300 views (clamped to 10–15 s).
+2. The best-retained Short's length is recorded, using only analytics samples of at least 300 views (clamped to 10–15 s). The cut keeps its template's length; its timing is never stretched.
 3. Topics an existing title already covers are dropped.
 4. Ties are broken by an editorial prior, which is recorded as editorial judgement, not data.
 5. TikTok and Instagram rows are recorded as context only. Metricool's rows are per publish day, not per video.
@@ -59,6 +79,13 @@ You can also run it with the **Daily Short proposal (manual)** workflow, by disp
 - `nextVideoMonitorPort/storyboard.ts` `FORBIDDEN_CLAIMS`
 - `v2/review/humanGates.ts`: all gates unresolved; no gate can close without a trusted approval record
 
-One new check: on-screen text at no more than 20 characters per second.
+One new check: on-screen text at no more than 20 characters per second. For an animated topic, it is measured per label, over the time that label is actually visible.
 
-The topics' factual claims are editorial knowledge. The **factual-takeaway** human gate must check them against a manual.
+The RAM topic's claims come from Crucial's "How to Install Memory in Your Desktop" guide. The other topics' claims are editorial knowledge. Either way, the **factual-takeaway** human gate must re-check them.
+
+## What still needs a person each day
+1. **Collect the snapshot** in an assistant session with the Metricool and vidIQ connectors (about 5–10 vidIQ credits).
+2. **Review the proposal and fact-check it.** The factual-takeaway gate and every other human gate stay unresolved.
+3. **Watch both MP4s on a phone**, with sound, for the hook, pacing and readability. The checks prove the files are well formed and the cues land; they do not prove the Short is good.
+4. **Build an animation template for each new topic.** This is hand work, and it is the bottleneck.
+5. **Approve any voice script and its spend**, then **publish by hand**. The job does neither.

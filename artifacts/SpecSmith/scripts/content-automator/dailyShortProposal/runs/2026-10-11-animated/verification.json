@@ -1,0 +1,145 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "silent MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "silent MP4 length",
+      "passed": true,
+      "detail": "12.400 s (expected 12.4 s)"
+    },
+    {
+      "check": "silent MP4 frame count",
+      "passed": true,
+      "detail": "372 frames (expected 372)"
+    },
+    {
+      "check": "sound-effects MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "sound-effects MP4 length",
+      "passed": true,
+      "detail": "12.400 s (expected 12.4 s)"
+    },
+    {
+      "check": "sound-effects MP4 frame count",
+      "passed": true,
+      "detail": "372 frames (expected 372)"
+    },
+    {
+      "check": "every beat's middle frame is distinct",
+      "passed": true,
+      "detail": "7 distinct of 7"
+    },
+    {
+      "check": "every cue sounds",
+      "passed": true,
+      "detail": "0.20s button -26.1 dBFS; 0.35s fan -37.0 dBFS; 1.50s button -26.2 dBFS; 2.54s plug -23.1 dBFS; 5.80s tick -32.9 dBFS; 6.40s tap -29.0 dBFS; 7.25s snap -12.4 dBFS; 7.28s snap -12.4 dBFS; 9.99s plug -23.0 dBFS"
+    },
+    {
+      "check": "silence between cues (no stray sound, no boot sound at the end)",
+      "passed": true,
+      "detail": "0.02-0.17 s: -91.0 dBFS; 2.25-2.51 s: -91.0 dBFS; 2.84-5.77 s: -91.0 dBFS; 5.93-6.37 s: -91.0 dBFS; 6.54-7.22 s: -91.0 dBFS; 7.44-9.96 s: -91.0 dBFS; 10.29-12.38 s: -91.0 dBFS"
+    },
+    {
+      "check": "\"snap\" is the clearest cue",
+      "passed": true,
+      "detail": "-12.4 dBFS vs next -23.0 dBFS"
+    },
+    {
+      "check": "the silent MP4 is silent",
+      "passed": true,
+      "detail": "-91.0 dBFS"
+    },
+    {
+      "check": "sound effects stay below a -16 LUFS narration",
+      "passed": true,
+      "detail": "-36.5 LUFS integrated, -12.4 dBFS peak"
+    }
+  ],
+  "cuePeaks": [
+    {
+      "kind": "button",
+      "at": 0.2,
+      "reason": "the power button is pressed: the PC turns on",
+      "measuredFrom": 0.19,
+      "measuredTo": 0.31,
+      "peakDbfs": -26.1
+    },
+    {
+      "kind": "fan",
+      "at": 0.35,
+      "reason": "the fans spin, then slow to a stop at shutdown",
+      "measuredFrom": 0.33999999999999997,
+      "measuredTo": 1.49,
+      "peakDbfs": -37
+    },
+    {
+      "kind": "button",
+      "at": 1.5,
+      "reason": "the power button is pressed again: shut down",
+      "measuredFrom": 1.49,
+      "measuredTo": 1.61,
+      "peakDbfs": -26.2
+    },
+    {
+      "kind": "plug",
+      "at": 2.54,
+      "reason": "the cord leaves the power supply",
+      "measuredFrom": 2.5300000000000002,
+      "measuredTo": 2.8000000000000003,
+      "peakDbfs": -23.1
+    },
+    {
+      "kind": "tick",
+      "at": 5.8,
+      "reason": "the notch lines up with the slot's ridge",
+      "measuredFrom": 5.79,
+      "measuredTo": 5.89,
+      "peakDbfs": -32.9
+    },
+    {
+      "kind": "tap",
+      "at": 6.4,
+      "reason": "the stick settles onto the slot",
+      "measuredFrom": 6.390000000000001,
+      "measuredTo": 6.5,
+      "peakDbfs": -29
+    },
+    {
+      "kind": "snap",
+      "at": 7.25,
+      "reason": "the first clip snaps shut",
+      "measuredFrom": 7.24,
+      "measuredTo": 7.369999999999999,
+      "peakDbfs": -12.4
+    },
+    {
+      "kind": "snap",
+      "at": 7.284999999999999,
+      "reason": "the second clip snaps shut",
+      "measuredFrom": 7.2749999999999995,
+      "measuredTo": 7.4049999999999985,
+      "peakDbfs": -12.4
+    },
+    {
+      "kind": "plug",
+      "at": 9.99,
+      "reason": "the cord goes back into the power supply",
+      "measuredFrom": 9.98,
+      "measuredTo": 10.25,
+      "peakDbfs": -23
+    }
+  ],
+  "loudness": {
+    "integratedLufs": -36.5,
+    "peakDbfs": -12.4
+  },
+  "beatSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-animated/beats-phone.png",
+  "phoneSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-animated/phone-every-0.25s.png"
+}
