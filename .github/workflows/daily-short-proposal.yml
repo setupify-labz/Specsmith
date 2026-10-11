@@ -27,6 +27,10 @@ on:
         description: 'Refuse a snapshot older than this many hours'
         required: true
         default: '36'
+      topic:
+        description: 'Optional topic id instead of the data''s pick (recorded as an operator choice), e.g. cpu-power-cable'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -69,10 +73,14 @@ jobs:
         env:
           SNAPSHOT: ${{ inputs.snapshot }}
           MAX_AGE_HOURS: ${{ inputs.max_age_hours }}
+          TOPIC: ${{ inputs.topic }}
         run: |
           set -euo pipefail
           case "$MAX_AGE_HOURS" in ''|*[!0-9]*) echo "::error::max_age_hours must be a whole number."; exit 1;; esac
-          pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts --snapshot "$SNAPSHOT" --max-age-hours "$MAX_AGE_HOURS" --out render-output/daily-proposal
+          case "$TOPIC" in *[!a-z0-9-]*) echo "::error::topic must be a topic id (a-z, 0-9, -)."; exit 1;; esac
+          set -- --snapshot "$SNAPSHOT" --max-age-hours "$MAX_AGE_HOURS" --out render-output/daily-proposal
+          if [ -n "$TOPIC" ]; then set -- "$@" --topic "$TOPIC"; fi
+          pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts "$@"
 
       - name: Upload the proposal for review
         if: ${{ always() && hashFiles('artifacts/SpecSmith/render-output/daily-proposal/*') != '' }}

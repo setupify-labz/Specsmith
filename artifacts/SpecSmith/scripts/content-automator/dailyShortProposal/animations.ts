@@ -21,6 +21,9 @@ import { fileURLToPath } from "node:url";
 
 import { BEATS as RAM_BEATS, COPY as RAM_COPY, FPS as RAM_FPS, LABEL_WINDOWS as RAM_LABELS, TIMING as RAM_TIMING } from "../nextVideoRamSeat/silentCut.ts";
 import { cues as ramCues, renderWithSound as renderRam } from "../nextVideoRamSeat/soundMix.ts";
+import { renderCut } from "../animationScenes/renderCut.ts";
+import type { CutSpec } from "../animationScenes/spec.ts";
+import { CPU_POWER_CUT } from "../nextVideoCpuPower/cut.ts";
 import { DailyProposalError } from "./snapshot.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,7 +61,35 @@ const ramLabels: TemplateLabel[] = RAM_LABELS.map((w) => ({ text: RAM_COPY.label
 /** The labels that first appear within a span, in order of appearance. */
 const labelsIn = (labels: readonly TemplateLabel[], from: number, to: number) => labels.filter((l) => l.from >= from - 1e-6 && l.from < to - 1e-6).map((l) => l.text);
 
+/**
+ * Any spec-driven Short (animationScenes/spec.ts) as a template: its beats,
+ * labels, cues and sources come straight from the spec, and it renders through
+ * the one shared renderer. A new topic needs a spec, not code here.
+ */
+export function templateFromSpec(spec: CutSpec): AnimationTemplate {
+  const labels: TemplateLabel[] = spec.labels.map((l) => ({ text: l.text, from: l.from, to: l.to }));
+  return {
+    id: spec.id,
+    durationSeconds: spec.durationSeconds,
+    fps: spec.fps,
+    disclosures: [spec.badge, spec.line],
+    beats: spec.captions.map((caption, i) => ({
+      from: caption.from, to: caption.to, storyBeat: spec.beats[i].storyBeat, purpose: spec.beats[i].purpose, caption: caption.text,
+      onScreenText: labelsIn(labels, caption.from, caption.to).join(" → ") || "(no label: caption only)",
+      visualDirection: spec.beats[i].visualDirection,
+    })),
+    labels,
+    cues: spec.cues,
+    clearestCue: spec.clearestCue,
+    sources: spec.sources.map((s) => `${s.publisher}, ${s.title}: ${s.url}`),
+    render: async (outputDir) => { const r = await renderCut(spec, outputDir); return { silentPath: r.silentPath, sfxPath: r.sfxPath }; },
+  };
+}
+
 export const TEMPLATES: Readonly<Record<string, AnimationTemplate>> = {
+  // Spec-driven: the shared scene library and renderer.
+  "cpu-power": templateFromSpec(CPU_POWER_CUT),
+  // Hand-built before the scene library existed (nextVideoRamSeat/silentCut.ts); kept as reviewed.
   "ram-seat": {
     id: "ram-seat",
     durationSeconds: RAM_TIMING.durationSeconds,

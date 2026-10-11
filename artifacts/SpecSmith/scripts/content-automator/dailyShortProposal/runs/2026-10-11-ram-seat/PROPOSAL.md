@@ -2,9 +2,9 @@
 
 **Status: ready-for-human-review.** Not published, not scheduled, no voice generated. Every human gate below is unresolved.
 
-Animation template: `ram-seat`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
+Topic chosen by **the data**. Animation template: `ram-seat`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated 2026-10-11T22:08:47.357Z from the snapshot collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
+Generated 2026-10-11T23:40:57.719Z from the snapshot collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
 
 ## Frame-one hook
 > **WON'T BOOT?**
@@ -30,12 +30,12 @@ Persistent disclosure on every frame: "ILLUSTRATION", "Stylized example · not a
 
 | Short | Theme | Views/day | Avg view % | Engaged share | Length |
 |---|---|---|---|---|---|
-| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 1131.8 | unknown | unknown | 15 s |
-| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 405.5 | 52.59 | 0.373 | 25 s |
-| 20 Game Leads… Only 4 FPS Apart? | comparison | 240.3 | 74.93 | 0.34 | 19 s |
-| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 235.7 | 87.65 | 0.578 | 14 s |
+| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 1091.1 | unknown | unknown | 15 s |
+| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 396.8 | 52.59 | 0.373 | 25 s |
+| 20 Game Leads… Only 4 FPS Apart? | comparison | 237.4 | 74.93 | 0.34 | 19 s |
+| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 233.8 | 87.65 | 0.578 | 14 s |
 
-Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":683.8,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":322.9,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
+Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":662.4,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":317.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
 
 **Claims in the script** (each with its basis; the factual-takeaway gate re-checks them):
 - shut the system down and unplug the power cable before installing memory. _Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it._
@@ -51,28 +51,28 @@ Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":683.8,"medianA
 ## Metrics that influenced the choice
 | Metric | Source | Value | Used for |
 |---|---|---|---|
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 1131.8 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 405.5 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 1091.1 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 396.8 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 52.59 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 240.3 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 237.4 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 74.93 | ranking "20 Game Leads… Only 4 FPS Apart?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 235.7 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 233.8 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 87.65 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the target length |
-| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":683.8,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":322.9,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
-| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (1131.8 views/day) | symptom family: wont-turn-on |
+| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":662.4,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":317.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
+| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (1091.1 views/day) | symptom family: wont-turn-on |
 | best-retained Short's length | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s | target length 14 s (clamped to 10-15 s) |
 | tiktok views by publish day (sum) | tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542) | 1803 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
 | instagram views by publish day (sum) | instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542) | 691 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
 | editorial prior (NOT data) | dailyShortProposal/topics.ts | 0.9 | tie-break among topics in the same family |
 | animation template length (not data) | dailyShortProposal/animations.ts (ram-seat) | 12.4 s | the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched |
 
-Topic ranking: ram-not-seated (family match no, editorial prior 0.9).
-Excluded as already covered: cpu-power-cable (no animation template yet (the job proposes only what it can render)); monitor-input-source (no animation template yet (the job proposes only what it can render)); front-panel-power-pins (no animation template yet (the job proposes only what it can render)).
+Topic ranking: ram-not-seated (family match no, editorial prior 0.9); cpu-power-cable (family match no, editorial prior 0.8).
+Excluded as already covered: monitor-input-source (no animation template yet (the job proposes only what it can render)); front-panel-power-pins (no animation template yet (the job proposes only what it can render)).
 
 ## Unknown
 - Retention for "PC Won't Turn On? Check These 2 Spots First": analytics sample under 300 views (or unknown), excluded rather than trusted.
 - YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).
-- "PC Won't Turn On? Check These 2 Spots First" has been live 1.72 days: its views per day are an early figure and may fall as it ages.
+- "PC Won't Turn On? Check These 2 Spots First" has been live 1.78 days: its views per day are an early figure and may fall as it ages.
 - Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).
 - instagram 2026-10-06 saves: unknown (not returned by Metricool).
 - instagram 2026-10-06 shares: unknown (not returned by Metricool).

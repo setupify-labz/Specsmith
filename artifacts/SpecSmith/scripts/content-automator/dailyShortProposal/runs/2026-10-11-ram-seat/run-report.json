@@ -1,7 +1,7 @@
 {
   "status": "ready-for-human-review",
   "exitCode": 0,
-  "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-animated",
+  "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-ram-seat",
   "files": [
     "ram-seat-silent.mp4",
     "ram-seat-sfx.mp4",
@@ -9,14 +9,14 @@
     "phone-every-0.25s.png",
     "verification.json"
   ],
-  "totalMs": 32111,
+  "totalMs": 30509,
   "stagesMs": {
-    "load-and-validate-snapshot": 4,
-    "check-renderer": 153,
+    "load-and-validate-snapshot": 8,
+    "check-renderer": 114,
     "select-topic": 2,
-    "run-gates": 15,
-    "render-animated-cut": 21070,
-    "verify-exported-files": 10848
+    "run-gates": 14,
+    "render-animated-cut": 19649,
+    "verify-exported-files": 10704
   },
   "spend": {
     "elevenLabs": "not called (no voice)",

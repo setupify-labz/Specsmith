@@ -14,6 +14,7 @@
 // `editorialPrior` is an editorial judgement of how often beginners hit the
 // symptom. It is NOT data, and the proposal record says so wherever it is used.
 
+import { CPU_POWER_CUT } from "../nextVideoCpuPower/cut.ts";
 import { TEMPLATES } from "./animations.ts";
 
 export type Family = "wont-turn-on" | "on-no-picture" | "compatibility";
@@ -46,6 +47,8 @@ export interface Topic {
 
 const CRUCIAL = "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.";
 const RAM_CUT = TEMPLATES["ram-seat"];
+const CPU_CUT = TEMPLATES["cpu-power"];
+const sourceOf = (url: string) => { const src = CPU_POWER_CUT.sources.find((s) => s.url === url)!; return `${src.publisher}, "${src.title}" (${src.url}): "${src.quote}" Checked ${CPU_POWER_CUT.sourcesChecked.on} via search excerpts; the factual-takeaway gate re-reads it.`; };
 
 const MANUAL = "Editorial knowledge of standard desktop assembly; to be checked against a motherboard or case manual (fact-check gate).";
 
@@ -75,27 +78,29 @@ export const TOPICS: readonly Topic[] = [
     animation: "ram-seat",
   },
   {
+    // Rendered from nextVideoCpuPower/cut.ts by the shared scene library: beats, captions and labels are the cut's own.
     id: "cpu-power-cable",
     family: "on-no-picture",
-    title: "Fans Spin, No Display? Check the CPU Power Cable",
-    symptom: "The PC powers on, but there is no picture and it never reaches the BIOS.",
-    hook: "FANS ON, NOTHING ON SCREEN?",
-    beats: [
-      { seconds: 2.0, onScreenText: "FANS ON, NOTHING ON SCREEN?", narration: "Fans on, but nothing on screen?", visualDirection: "The stylized PC, fans lit, beside a dark monitor." },
-      { seconds: 3.5, onScreenText: "CHECK THE CPU POWER CABLE", narration: "Check the CPU power cable.", visualDirection: "Side panel off; close on the top-left corner of the motherboard; an empty 8-pin socket glows amber." },
-      { seconds: 4.0, onScreenText: "TOP CORNER, 4+4 OR 8-PIN", narration: "It's a separate plug near the top of the board.", visualDirection: "The 4+4-pin cable from the power supply clicks into the socket." },
-      { seconds: 3.5, onScreenText: "YOUR MANUAL SHOWS WHERE", narration: "Your motherboard manual shows exactly where.", visualDirection: "A manual page icon beside the socket, 'example only: check your board'." },
-    ],
-    finalCta: "Save this for your next build.",
-    coveredBy: [/\bcpu power\b/i, /\b(eps|8-pin|4\+4)\b/i],
+    title: "New Build Won't Boot? Check the CPU Power Cable",
+    symptom: "A newly built PC does not boot.",
+    hook: CPU_CUT.beats[0].onScreenText,
+    beats: CPU_CUT.beats.map((b) => ({ seconds: Math.round((b.to - b.from) * 100) / 100, onScreenText: b.onScreenText, narration: b.caption, visualDirection: b.visualDirection })),
+    finalCta: "Then try booting again.",
+    coveredBy: [/\bcpu power\b/i, /\b(eps|eps12v|8-pin|4\+4)\b/i],
     claims: [
-      { id: "cpu-cable-needed", proposition: "most desktop motherboards need a separate CPU power cable", basis: MANUAL },
-      { id: "cpu-cable-place", proposition: "the CPU power socket is usually near the top of the board", basis: MANUAL },
+      { id: "cpu-unplug", proposition: "unplug the power cable before working inside the PC", basis: sourceOf("https://www.crucial.com/support/install-memory-desktop") },
+      { id: "cpu-cable-needed", proposition: "a missing CPU power cable can stop a PC from booting", basis: `${sourceOf("https://www.asus.com/us/support/faq/1042632/")} Also: ${sourceOf("https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/")}` },
+      { id: "cpu-socket-near", proposition: "the CPU power socket on the motherboard is next to the CPU", basis: sourceOf("https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/do-i-need-to-plug-in-both-cpu-power-cables/") },
+      { id: "cpu-not-pcie", proposition: "a PCIe cable is not the CPU power cable and does not belong in that socket", basis: sourceOf("https://www.corsair.com/ca/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/") },
     ],
     riskyClaims: [
-      { id: "cpu-fixes-all", proposition: "guaranteed cure for blank screens", why: "It may not work; one check, never a guaranteed fix." },
+      { id: "cpu-fixes-all", proposition: "guaranteed cure for boot failures", why: "It may not work; one check, never a guaranteed fix." },
+      { id: "cpu-sole-cause", proposition: "always the sole culprit behind boot failures", why: "A PC can fail to boot for many reasons; this is one check." },
+      { id: "cpu-header-universal", proposition: "identical header placement on all motherboards", why: "Positions vary; the layout is labelled as an example and the manual decides." },
+      { id: "cpu-boot-shown", proposition: "successfully boots straight into Windows afterwards", why: "The cut ends before anyone presses the button; no boot is shown or promised." },
     ],
     editorialPrior: 0.8,
+    animation: "cpu-power",
   },
   {
     id: "monitor-input-source",

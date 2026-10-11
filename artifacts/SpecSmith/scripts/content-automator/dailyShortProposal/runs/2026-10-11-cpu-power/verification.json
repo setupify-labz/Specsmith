@@ -1,0 +1,113 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "silent MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "silent MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "silent MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "sound-effects MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "sound-effects MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "sound-effects MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "every beat's middle frame is distinct",
+      "passed": true,
+      "detail": "7 distinct of 7"
+    },
+    {
+      "check": "every cue sounds",
+      "passed": true,
+      "detail": "0.30s button -26.0 dBFS; 2.24s plug -23.1 dBFS; 7.80s tap -29.0 dBFS; 8.38s snap -12.5 dBFS; 10.24s plug -23.1 dBFS"
+    },
+    {
+      "check": "silence between cues (no stray sound, no boot sound at the end)",
+      "passed": true,
+      "detail": "0.02-0.27 s: -91.0 dBFS; 0.45-2.21 s: -91.0 dBFS; 2.54-7.77 s: -91.0 dBFS; 7.94-8.35 s: -91.0 dBFS; 8.54-10.21 s: -91.0 dBFS; 10.54-12.58 s: -91.0 dBFS"
+    },
+    {
+      "check": "\"snap\" is the clearest cue",
+      "passed": true,
+      "detail": "-12.5 dBFS vs next -23.1 dBFS"
+    },
+    {
+      "check": "the silent MP4 is silent",
+      "passed": true,
+      "detail": "-91.0 dBFS"
+    },
+    {
+      "check": "sound effects stay below a -16 LUFS narration",
+      "passed": true,
+      "detail": "-36.3 LUFS integrated, -12.5 dBFS peak"
+    }
+  ],
+  "cuePeaks": [
+    {
+      "kind": "button",
+      "at": 0.3,
+      "reason": "the power button is pressed (nothing happens on screen)",
+      "measuredFrom": 0.29,
+      "measuredTo": 0.41,
+      "peakDbfs": -26
+    },
+    {
+      "kind": "plug",
+      "at": 2.24,
+      "reason": "the cord leaves the power supply",
+      "measuredFrom": 2.2300000000000004,
+      "measuredTo": 2.5000000000000004,
+      "peakDbfs": -23.1
+    },
+    {
+      "kind": "tap",
+      "at": 7.8,
+      "reason": "the plug lands on the socket",
+      "measuredFrom": 7.79,
+      "measuredTo": 7.8999999999999995,
+      "peakDbfs": -29
+    },
+    {
+      "kind": "snap",
+      "at": 8.38,
+      "reason": "the plug's latch hooks over the socket's tab (stylized)",
+      "measuredFrom": 8.370000000000001,
+      "measuredTo": 8.500000000000002,
+      "peakDbfs": -12.5
+    },
+    {
+      "kind": "plug",
+      "at": 10.24,
+      "reason": "the cord goes back into the power supply",
+      "measuredFrom": 10.23,
+      "measuredTo": 10.5,
+      "peakDbfs": -23.1
+    }
+  ],
+  "loudness": {
+    "integratedLufs": -36.3,
+    "peakDbfs": -12.5
+  },
+  "beatSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-cpu-power/beats-phone.png",
+  "phoneSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-cpu-power/phone-every-0.25s.png"
+}

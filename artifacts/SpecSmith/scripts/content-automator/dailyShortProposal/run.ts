@@ -4,6 +4,7 @@
 //   SPECSMITH_RENDER_CHROMIUM=/opt/pw-browsers/chromium \
 //   pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
 //     --snapshot scripts/content-automator/dailyShortProposal/snapshots/<date>.json [--out <dir>] [--max-age-hours 36]
+//     [--topic <topic id>]   an operator's choice instead of the data's pick (recorded as such)
 //
 // It reads one channel-metrics snapshot (collected through the Metricool and
 // vidIQ connectors, see README.md), proposes ONE beginner PC troubleshooting
@@ -59,7 +60,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
   try {
     const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, arg("--max-age-hours", argv) ? Number(arg("--max-age-hours", argv)) : undefined));
     await time("check-renderer", () => assertRendererAvailable());
-    const selection = await time("select-topic", () => selectTopic(snapshot, now));
+    const selection = await time("select-topic", () => selectTopic(snapshot, now, { topicId: arg("--topic", argv) }));
     const template = TEMPLATES[selection.topic.animation!];
     const storyboard = buildStoryboard(selection.topic, selection.targetSeconds);
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
@@ -85,7 +86,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       kind: "daily-short-proposal", version: "daily-short-proposal-v2", generatedAt: now.toISOString(), status,
       notPublished: true, noVoiceGenerated: true, notScheduled: true,
       snapshot: { collectedAt: snapshot.collectedAt, collectedBy: snapshot.collectedBy, sha256: createHash("sha256").update(bytes).digest("hex"), cost: snapshot.cost ?? "unknown" },
-      topic: { id: selection.topic.id, family: selection.topic.family, symptom: selection.topic.symptom, title: selection.topic.title, animation: template.id },
+      topic: { id: selection.topic.id, family: selection.topic.family, symptom: selection.topic.symptom, title: selection.topic.title, animation: template.id, chosenBy: selection.chosenBy, dataPick: selection.dataPick },
       hook: { frameOne: selection.topic.hook },
       script: storyboard.beats.map((b) => b.narration).join(" "),
       storyboard,
@@ -125,7 +126,7 @@ function proposalMarkdown(p: Proposal): string {
 
 **Status: ${p.status}.** Not published, not scheduled, no voice generated. Every human gate below is unresolved.
 
-Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
+Topic chosen by **${p.topic.chosenBy === "operator" ? `the operator (--topic), not the data; the data's own pick was ${p.topic.dataPick}` : "the data"}**. Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
 Generated ${p.generatedAt} from the snapshot collected ${p.snapshot.collectedAt} (sha256 \`${p.snapshot.sha256.slice(0, 16)}…\`).
 

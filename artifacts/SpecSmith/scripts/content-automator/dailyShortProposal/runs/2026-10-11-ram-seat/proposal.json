@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-11T22:08:47.357Z",
+  "generatedAt": "2026-10-11T23:40:57.719Z",
   "status": "ready-for-human-review",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -21,7 +21,9 @@
     "family": "on-no-picture",
     "symptom": "After adding or moving memory, the PC powers on but does not boot to a picture.",
     "title": "Added RAM, Now It Won't Boot? Check It's Fully Seated",
-    "animation": "ram-seat"
+    "animation": "ram-seat",
+    "chosenBy": "data",
+    "dataPick": "ram-not-seated"
   },
   "hook": {
     "frameOne": "WON'T BOOT?"
@@ -297,8 +299,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 1.72,
-        "viewsPerDay": 1131.8,
+        "ageDays": 1.78,
+        "viewsPerDay": 1091.1,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -309,8 +311,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 2.92,
-        "viewsPerDay": 405.5,
+        "ageDays": 2.99,
+        "viewsPerDay": 396.8,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -321,8 +323,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 5.25,
-        "viewsPerDay": 240.3,
+        "ageDays": 5.31,
+        "viewsPerDay": 237.4,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -335,8 +337,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.09,
-        "viewsPerDay": 235.7,
+        "ageDays": 8.15,
+        "viewsPerDay": 233.8,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -346,13 +348,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 683.8,
+        "medianViewsPerDay": 662.4,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 322.9,
+        "medianViewsPerDay": 317.1,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -404,13 +406,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 1131.8,
+      "value": 1091.1,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 405.5,
+      "value": 396.8,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -422,7 +424,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 240.3,
+      "value": 237.4,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -434,7 +436,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 235.7,
+      "value": 233.8,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -446,13 +448,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":683.8,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":322.9,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":662.4,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":317.1,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (1131.8 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1091.1 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -489,7 +491,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.72 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.78 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
@@ -500,10 +502,6 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "topicsExcluded": [
-    {
-      "topicId": "cpu-power-cable",
-      "why": "no animation template yet (the job proposes only what it can render)"
-    },
     {
       "topicId": "monitor-input-source",
       "why": "no animation template yet (the job proposes only what it can render)"
@@ -518,6 +516,11 @@
       "topicId": "ram-not-seated",
       "familyMatch": false,
       "editorialPrior": 0.9
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "familyMatch": false,
+      "editorialPrior": 0.8
     }
   ],
   "gates": {
@@ -678,8 +681,8 @@
       "integratedLufs": -36.5,
       "peakDbfs": -12.4
     },
-    "beatSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-animated/beats-phone.png",
-    "phoneSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-animated/phone-every-0.25s.png"
+    "beatSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-ram-seat/beats-phone.png",
+    "phoneSheet": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-ram-seat/phone-every-0.25s.png"
   },
   "humanGates": {
     "mechanism": {

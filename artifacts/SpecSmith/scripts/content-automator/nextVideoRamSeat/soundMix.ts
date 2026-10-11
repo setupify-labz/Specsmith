@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
+import { RECIPES as SHARED } from "../animationScenes/sound.ts";
 import { OUTPUT_DIR, renderSilentCut, TIMING } from "./silentCut.ts";
 
 export type CueKind = "button" | "fan" | "plug" | "tick" | "tap" | "snap";
@@ -37,14 +38,12 @@ export const PEAK_DBFS: Readonly<Record<CueKind, number>> = { snap: -12, plug: -
 const fanSeconds = TIMING.fansOff[1] - TIMING.light;
 /** Each kind's sound as an ffmpeg lavfi source, before level. */
 export const RECIPES: Readonly<Record<CueKind, string>> = {
-  button: "anoisesrc=d=0.05:c=white:r=48000:a=0.5:seed=11,highpass=f=1500,lowpass=f=7000,afade=t=out:st=0.003:d=0.047:curve=exp",
+  // The shared recipes (animationScenes/sound.ts); only the fan hum is this cut's own, timed to its shutdown.
+  button: SHARED.button, plug: SHARED.plug, tick: SHARED.tick, tap: SHARED.tap,
+  // One clip snapping shut; the cue places two, 35 ms apart (left and right clip).
+  snap: SHARED.snap,
   fan: `anoisesrc=d=${fanSeconds.toFixed(3)}:c=brown:r=48000:a=0.5:seed=7,highpass=f=180,lowpass=f=900,afade=t=in:st=0:d=0.35,` +
     `afade=t=out:st=${(TIMING.fansOff[0] - TIMING.light).toFixed(3)}:d=${(TIMING.fansOff[1] - TIMING.fansOff[0]).toFixed(3)}:curve=qsin`,
-  plug: "aevalsrc='0.6*sin(2*PI*120*t)*exp(-t*28)+0.45*sin(2*PI*420*t)*exp(-t*45)+0.2*sin(2*PI*900*t)*exp(-t*70)':d=0.2:s=48000",
-  tick: "sine=f=1800:d=0.03:r=48000,afade=t=out:st=0.004:d=0.026",
-  tap: "anoisesrc=d=0.04:c=pink:r=48000:a=0.5:seed=5,highpass=f=300,lowpass=f=1800,afade=t=out:st=0.003:d=0.037:curve=exp",
-  // One clip: a short bright transient over a fast-decaying ring. The cue places two, 35 ms apart (left and right clip).
-  snap: "aevalsrc='(0.9*sin(2*PI*2600*t)+0.5*sin(2*PI*4100*t))*exp(-t*110)+0.35*(random(0)*2-1)*exp(-t*400)':d=0.06:s=48000,highpass=f=900",
 };
 
 /** The cues, each on the frame its action is seen. */

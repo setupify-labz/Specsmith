@@ -54,6 +54,10 @@ export interface VideoSignal {
 
 export interface Selection {
   readonly topic: Topic;
+  /** Whether the data picked the topic, or an operator chose it (--topic). */
+  readonly chosenBy: "data" | "operator";
+  /** The topic the data alone would have picked. */
+  readonly dataPick: string;
   /** The Short's length: the template's. */
   readonly targetSeconds: number;
   /** The length the retention data pointed to (recorded, not imposed on the cut). */
@@ -91,7 +95,18 @@ function signalOf(video: YouTubeVideo, now: Date): VideoSignal {
   };
 }
 
-export function selectTopic(snapshot: ChannelSnapshot, now: Date, topics: readonly Topic[] = TOPICS): Selection {
+export interface SelectOptions {
+  readonly topics?: readonly Topic[];
+  /**
+   * An operator's choice of topic (run.ts --topic). It must still be producible
+   * and uncovered; the record says the topic was chosen by a person, not by the
+   * data, and the data's own pick is recorded next to it.
+   */
+  readonly topicId?: string;
+}
+
+export function selectTopic(snapshot: ChannelSnapshot, now: Date, options: SelectOptions = {}): Selection {
+  const topics = options.topics ?? TOPICS;
   const yt = snapshot.sources.youtube;
   const signals = yt.videos.map((video) => signalOf(video, now));
   const influences: InfluenceRecord[] = [];
@@ -156,10 +171,20 @@ export function selectTopic(snapshot: ChannelSnapshot, now: Date, topics: readon
   const ranking = open.map((topic, order) => ({ topic, order, familyMatch: families.has(topic.family) }))
     .sort((a, b) => Number(b.familyMatch) - Number(a.familyMatch) || b.topic.editorialPrior - a.topic.editorialPrior || a.order - b.order);
   influences.push({ metric: "editorial prior (NOT data)", source: "dailyShortProposal/topics.ts", value: ranking[0].topic.editorialPrior, usedFor: "tie-break among topics in the same family" });
-  const template = TEMPLATES[ranking[0].topic.animation!];
+  let chosen = ranking[0].topic;
+  if (options.topicId !== undefined) {
+    const forced = ranking.find((r) => r.topic.id === options.topicId)?.topic;
+    if (!forced) {
+      const why = excluded.find((e) => e.topicId === options.topicId)?.why ?? "not in the topic library";
+      throw new DailyProposalError("no-topic", `The requested topic "${options.topicId}" cannot be proposed: ${why}.`);
+    }
+    influences.push({ metric: "operator's topic choice (NOT data)", source: "run.ts --topic", value: forced.id, usedFor: `the topic; the data's own pick on this snapshot was ${ranking[0].topic.id}` });
+    chosen = forced;
+  }
+  const template = TEMPLATES[chosen.animation!];
   influences.push({ metric: "animation template length (not data)", source: `dailyShortProposal/animations.ts (${template.id})`, value: `${template.durationSeconds} s`, usedFor: `the Short's length; the data pointed to ${targetSeconds} s, recorded only, since the cut's timing is not stretched` });
   return {
-    topic: ranking[0].topic, targetSeconds: template.durationSeconds, dataTargetSeconds: targetSeconds, signals, themeSummary, influences, unknowns, excluded,
+    topic: chosen, chosenBy: options.topicId !== undefined ? "operator" : "data", dataPick: ranking[0].topic.id, targetSeconds: template.durationSeconds, dataTargetSeconds: targetSeconds, signals, themeSummary, influences, unknowns, excluded,
     ranking: ranking.map(({ topic, familyMatch }) => ({ topicId: topic.id, familyMatch, editorialPrior: topic.editorialPrior })),
   };
 }

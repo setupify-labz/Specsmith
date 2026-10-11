@@ -50,12 +50,22 @@ describe("the pick records what influenced it and what was unknown", () => {
   const selection = selectTopic(parseSnapshot(raw(), NOW), NOW);
   it("is deterministic on the committed snapshot, and picks only a topic it can render", () => {
     expect(selection.topic.id).toBe("ram-not-seated");
-    expect(selection.topic.animation).toBe("ram-seat");
+    expect(selection.chosenBy).toBe("data");
     expect(selection.targetSeconds).toBe(TEMPLATES["ram-seat"].durationSeconds);
     expect(selection.dataTargetSeconds).toBe(14);
-    for (const id of ["cpu-power-cable", "monitor-input-source", "front-panel-power-pins"]) {
+    expect(selection.ranking.map((r) => r.topicId)).toEqual(["ram-not-seated", "cpu-power-cable"]);
+    for (const id of ["monitor-input-source", "front-panel-power-pins"]) {
       expect(selection.excluded).toContainEqual({ topicId: id, why: expect.stringContaining("no animation template yet") });
     }
+  });
+  it("takes an operator's topic choice, records it as not data, and still refuses one it cannot render", () => {
+    const forced = selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "cpu-power-cable" });
+    expect(forced).toMatchObject({ chosenBy: "operator", dataPick: "ram-not-seated", targetSeconds: TEMPLATES["cpu-power"].durationSeconds });
+    expect(forced.topic.id).toBe("cpu-power-cable");
+    expect(forced.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.metric).toContain("NOT data");
+    const error = refusal(() => selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "front-panel-power-pins" }));
+    expect(error.code).toBe("no-topic");
+    expect(error.message).toContain("no animation template yet");
   });
   it("labels the editorial prior and the template length as not data, and keeps cross-platform rows as context only", () => {
     expect(selection.influences.find((i) => i.metric.includes("editorial prior"))?.metric).toContain("NOT data");
@@ -67,34 +77,39 @@ describe("the pick records what influenced it and what was unknown", () => {
     expect(selection.unknowns.some((u) => u.includes("instagram") && u.includes("saves: unknown"))).toBe(true);
     expect(selection.signals.find((s) => s.id === "46uG78uXmHg")?.averageViewPercentage).toBe("unknown");
   });
-  it("refuses with no-topic once the only producible topic is covered (no text-card fallback)", () => {
+  it("moves to the next producible topic once one is covered, and refuses with no-topic when none is left (no text-card fallback)", () => {
     const doc = raw(); doc.sources.youtube.videos[0].title = "Added RAM, now it won't boot? Reseat the RAM";
+    expect(selectTopic(parseSnapshot(doc, NOW), NOW).topic.id).toBe("cpu-power-cable");
+    doc.sources.youtube.videos[1].title = "New build won't boot? Check the CPU power cable";
     const error = refusal(() => selectTopic(parseSnapshot(doc, NOW), NOW));
     expect(error.code).toBe("no-topic");
     expect(error.message).toContain("ram-not-seated (an existing title matches");
+    expect(error.message).toContain("cpu-power-cable (an existing title matches");
     expect(error.message).toContain("animation template");
   });
 });
 
-describe("the storyboard is the cut's own", () => {
-  const topic = TOPICS.find((t) => t.id === "ram-not-seated")!;
-  const template = TEMPLATES["ram-seat"];
+describe.each([["ram-not-seated", "ram-seat"], ["cpu-power-cable", "cpu-power"]])("the storyboard of %s is the cut's own", (topicId, templateId) => {
+  const topic = TOPICS.find((t) => t.id === topicId)!;
+  const template = TEMPLATES[templateId];
   const storyboard = buildStoryboard(topic, 14);
+  it("is the topic's registered template", () => expect(topic.animation).toBe(templateId));
   it("uses the template's captions and exact timing, not a scaled plan", () => {
     expect(storyboard.targetDurationSeconds).toBe(template.durationSeconds);
     expect(storyboard.beats.map((b) => [b.startSecond, b.endSecond, b.narration])).toEqual(template.beats.map((b) => [b.from, b.to, b.caption]));
     expect(storyboard.beats.at(-1)!.endSecond).toBe(template.durationSeconds);
     expect(storyboard.persistentDisclosures).toEqual(["ILLUSTRATION", "Stylized example · not a fix for every PC"]);
   });
-  it("shows power off and unplug before the case opens, and power back before the try-again line", () => {
-    const at = (text: string) => template.labels.find((l) => l.text === text)!.from;
-    expect(at("SHUT DOWN, THEN UNPLUG")).toBeLessThan(at("RAM SLOTS"));
-    expect(at("POWER CORD BACK IN")).toBeLessThan(template.beats.find((b) => b.caption === "Then try booting again.")!.from);
+  it("unplugs before the case opens, and plugs back in before the try-again line", () => {
+    const unplug = template.beats.find((b) => /unplug/i.test(b.caption))!, opens = template.beats.find((b) => b.storyBeat === "location")!;
+    expect(unplug.to).toBeLessThanOrEqual(opens.from);
+    expect(template.labels.find((l) => l.text === "POWER CORD BACK IN")!.from).toBeLessThan(template.beats.find((b) => b.caption === "Then try booting again.")!.from);
+    expect(storyboard.beats.at(-1)!.narration).toBe("Then try booting again.");
   });
-  it("has every claim sourced to the Crucial guide, and a sound cue only for things that are seen", () => {
-    for (const claim of topic.claims) expect(claim.basis).toContain("crucial.com/support/install-memory-desktop");
-    expect(new Set(template.cues.map((c) => c.kind))).toEqual(new Set(["button", "fan", "plug", "tick", "tap", "snap"]));
+  it("has every claim sourced to a named page, and the snap as the clearest cue", () => {
+    for (const claim of topic.claims) expect(claim.basis).toMatch(/https?:\/\/|crucial\.com\/support/);
     expect(template.clearestCue).toBe("snap");
+    expect(template.cues.some((c) => c.kind === "snap")).toBe(true);
   });
   it("gives every label at least 1 s per 20 characters of its own on-screen span", () => {
     for (const label of template.labels) expect(label.text.length / (label.to - label.from)).toBeLessThanOrEqual(20);
@@ -159,7 +174,7 @@ describe("it never reaches a paid provider, a scheduler or a publisher", () => {
 });
 
 describe("the render check reads the exported files (committed 2026-10-11 run)", () => {
-  const RUN = join(here, "runs", "2026-10-11-animated");
+  const RUN = join(here, "runs", "2026-10-11-ram-seat");
   const files = { silentPath: join(RUN, "ram-seat-silent.mp4"), sfxPath: join(RUN, "ram-seat-sfx.mp4") };
   const hasFfmpeg = spawnSync("ffmpeg", ["-version"]).status === 0 && existsSync(files.sfxPath);
   const scratch = () => mkdtempSync(join(tmpdir(), "daily-verify-"));

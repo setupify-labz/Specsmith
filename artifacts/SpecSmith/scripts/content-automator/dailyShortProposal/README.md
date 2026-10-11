@@ -4,7 +4,31 @@ Proposes **one** beginner PC troubleshooting Short a day and renders its finishe
 
 From one snapshot, the job writes the proposal, renders the proposal's animated cut (silent, plus a version with synced sound effects), and checks the exported files. It calls no paid provider, generates no voice (no ElevenLabs), schedules nothing and publishes nothing.
 
-**It proposes only topics it can render.** A topic needs a registered animation template (`animations.ts`). Today only `ram-seat` exists (the RAM-seating cut, `nextVideoRamSeat/`); the other topics are recorded as "no animation template yet". Once the RAM Short is published, the coverage check drops it and the job refuses with `no-topic` until a new template is built. It never falls back to text cards.
+**It proposes only topics it can render.** A topic needs a registered animation template (`animations.ts`). Two exist:
+
+| Template | Topic | How it is built |
+|---|---|---|
+| `cpu-power` | "New build won't boot? Check the CPU power cable" (12.6 s) | A **spec** (`nextVideoCpuPower/cut.ts`): data only, rendered by the shared scene library |
+| `ram-seat` | "Added RAM, now it won't boot?" (12.4 s) | Hand-built (`nextVideoRamSeat/`), kept exactly as reviewed |
+
+The other topics are recorded as "no animation template yet". When every producible topic is covered by a published title, the job refuses with `no-topic`. It never falls back to text cards.
+
+### Adding a topic: a spec, not a renderer
+`animationScenes/` is the shared scene library, in the style of the recent PC Shorts:
+
+| Scene | What it shows |
+|---|---|
+| `powerButton` | The PC, its button and the monitor |
+| `psuRear` | The back of the power supply: switch, cord out or in |
+| `caseOpen` | The side panel off or on, a camera move, an outlined part |
+| `connectorCompare` | A right and a wrong cable end, face-on |
+| `connectorInsert` | A plug pressed home, its latch catching |
+
+A new Short is a `CutSpec`:
+- captions, beats, a timeline of those scenes, labels and sound cues;
+- the sources its claims rest on, each with a quote.
+
+`templateFromSpec()` turns it into a template. `specProblems()` refuses a spec before anything renders: a caption gap, a frame without a scene, a label too brief to read or overlapping another, a cue outside the cut, or a forbidden claim. A topic that needs a part the library cannot draw needs a new scene added to `library.ts`.
 
 ## 1. Collect today's snapshot (in an assistant session with the connectors)
 The owner's Metricool plan has no REST API, and vidIQ has no API in this repository. The numbers therefore come from the **Metricool** and **vidIQ connectors**, through read-only calls, saved as `snapshots/<YYYY-MM-DD>.json` (format: `channel-metrics-snapshot-v1`; see `snapshot.ts`).
@@ -30,7 +54,11 @@ pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
   --snapshot scripts/content-automator/dailyShortProposal/snapshots/2026-10-11.json
 ```
 
-You can also run it with the **Daily Short proposal (manual)** workflow, by dispatch only, once it is on the default branch.
+Add `--topic <topic id>` to propose a specific topic instead of the data's pick. It must still be producible and uncovered. The proposal records it as the operator's choice, with the data's own pick beside it. The 2026-10-11 demo used this to run both templates from one snapshot:
+- `runs/2026-10-11-ram-seat`: the data's pick;
+- `runs/2026-10-11-cpu-power`: `--topic cpu-power-cable`.
+
+You can also run it with the **Daily Short proposal (manual)** workflow, by dispatch only, once it is on the default branch. The workflow takes an optional `topic` input.
 
 **Exit codes:**
 - `0`: ready for human review.
@@ -42,7 +70,7 @@ You can also run it with the **Daily Short proposal (manual)** workflow, by disp
   - Chromium, ffmpeg, ffprobe or the fonts missing;
   - no producible topic left (`no-topic`).
 
-A run takes about 35 s here: about 22 s to render, about 11 s to verify.
+A run takes about 30 s here: about 20 s to render, about 10 s to verify.
 
 ## 3. Review the folder (`render-output/daily-proposals/<time>-<topic>/`)
 - `PROPOSAL.md` (and `proposal.json`):
@@ -81,11 +109,15 @@ A run takes about 35 s here: about 22 s to render, about 11 s to verify.
 
 One new check: on-screen text at no more than 20 characters per second. For an animated topic, it is measured per label, over the time that label is actually visible.
 
-The RAM topic's claims come from Crucial's "How to Install Memory in Your Desktop" guide. The other topics' claims are editorial knowledge. Either way, the **factual-takeaway** human gate must re-check them.
+Each producible topic's claims cite named pages:
+- **RAM topic:** Crucial's desktop memory install guide.
+- **CPU power topic:** an ASUS no-boot FAQ, an ASUS manual warning (quoted on a forum), two Corsair guides and Crucial's unplug step.
+
+These pages were checked from web-search excerpts. This environment cannot open asus.com or corsair.com, so a person must read them. The other topics' claims are editorial knowledge. Either way, the **factual-takeaway** human gate must re-check them.
 
 ## What still needs a person each day
 1. **Collect the snapshot** in an assistant session with the Metricool and vidIQ connectors (about 5–10 vidIQ credits).
 2. **Review the proposal and fact-check it.** The factual-takeaway gate and every other human gate stay unresolved.
 3. **Watch both MP4s on a phone**, with sound, for the hook, pacing and readability. The checks prove the files are well formed and the cues land; they do not prove the Short is good.
-4. **Build an animation template for each new topic.** This is hand work, and it is the bottleneck.
+4. **Write a spec for each new topic** (about 60 lines of data), and fact-check it. Add a scene to the library only when the topic shows a part it cannot draw yet. This is still the bottleneck: the job has two producible topics.
 5. **Approve any voice script and its spend**, then **publish by hand**. The job does neither.
