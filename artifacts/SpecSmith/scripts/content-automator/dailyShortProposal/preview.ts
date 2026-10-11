@@ -114,20 +114,10 @@ export async function renderPreview(storyboard: PlatformScriptStoryboard, disclo
     await page.setContent(`<!doctype html><html><head><style>${faces.join("")}</style></head><body style="margin:0"><canvas id="c" width="1080" height="1920"></canvas><script>${pageScript({ colours: SPECSMITH_MOTION_COLOURS, storyboard, disclosures, label: PREVIEW_LABEL })}</script></body></html>`);
     await page.evaluate(`Promise.all([400, 700].map((w) => document.fonts.load(w + ' 48px Inter')))`);
     if (!(await page.evaluate(`[400, 700].every((w) => document.fonts.check(w + ' 48px Inter'))`))) throw new DailyProposalError("renderer-unavailable", "Inter did not load; refusing to render in a fallback font.");
-    // Frames change only at beat changes and during each 0.2 s fade: render those, reuse the rest.
-    let previous = "";
+    // Every frame rendered fresh, in index order: no cache keyed on strings that could collide.
     for (let index = 0; index < count; index += 1) {
-      const t = index / PREVIEW_FPS;
-      const beat = storyboard.beats.find((b) => t >= b.startSecond && t < b.endSecond) ?? storyboard.beats.at(-1)!;
-      const key = t - beat.startSecond < 0.2 ? `${index}` : `${beat.startSecond}`;
-      const target = join(work, `f-${String(index).padStart(4, "0")}.png`);
-      if (key !== previous || !previous) {
-        const url = await page.evaluate(`window.renderAt(${t.toFixed(4)})`) as string;
-        await writeFile(target, Buffer.from(url.split(",")[1], "base64"));
-      } else {
-        await writeFile(target, await readFile(join(work, `f-${String(index - 1).padStart(4, "0")}.png`)));
-      }
-      previous = key;
+      const url = await page.evaluate(`window.renderAt(${(index / PREVIEW_FPS).toFixed(4)})`) as string;
+      await writeFile(join(work, `f-${String(index).padStart(4, "0")}.png`), Buffer.from(url.split(",")[1], "base64"));
     }
     measured = await page.evaluate("window.measured()") as { minPx: number; misfits: string[] };
   } finally {
