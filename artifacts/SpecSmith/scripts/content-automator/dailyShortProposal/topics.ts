@@ -87,7 +87,8 @@ export const TOPICS: readonly Topic[] = [
     hook: CPU_CUT.beats[0].onScreenText,
     beats: CPU_CUT.beats.map((b) => ({ seconds: Math.round((b.to - b.from) * 100) / 100, onScreenText: b.onScreenText, narration: b.caption, visualDirection: b.visualDirection })),
     finalCta: "Then try booting again.",
-    coveredBy: [/\bcpu power\b/i, /\b(eps|eps12v|8-pin|4\+4)\b/i],
+    // "8-pin" alone also names GPU/PCIe connectors, so it counts only beside "CPU"; EPS is CPU-specific.
+    coveredBy: [/\bcpu power\b/i, /\beps(12v)?\b/i, /\bcpu\b.*\b(8-pin|4\+4)/i, /\b(8-pin|4\+4).*\bcpu\b/i],
     claims: [
       { id: "cpu-unplug", proposition: "unplug the power cable before working inside the PC", basis: sourceOf("https://www.crucial.com/support/install-memory-desktop") },
       { id: "cpu-cable-needed", proposition: "a missing CPU power cable can leave a new PC with no power or no boot", basis: `${sourceOf("https://www.asus.com/us/support/faq/1042632/")} Also: ${sourceOf("https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/")}` },

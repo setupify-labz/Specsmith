@@ -99,6 +99,14 @@ describe("the pick records what influenced it and what was unknown", () => {
     expect(selection.unknowns.some((u) => u.includes("instagram") && u.includes("saves: unknown"))).toBe(true);
     expect(selection.signals.find((s) => s.id === "46uG78uXmHg")?.averageViewPercentage).toBe("unknown");
   });
+  it("counts an 8-pin title as CPU coverage only with CPU/EPS context, not a GPU/PCIe one", () => {
+    const covers = (title: string) => {
+      const doc = raw(); doc.sources.youtube.videos[0].title = title;
+      return selectTopic(parseSnapshot(doc, NOW)).excluded.some((e) => e.topicId === "cpu-power-cable");
+    };
+    for (const title of ["Your GPU's 8-pin PCIe cable, explained", "RTX 5070: 8-pin or 12V-2x6?", "6+2 vs 8-pin PCIe power"]) expect(covers(title)).toBe(false);
+    for (const title of ["CPU 8-pin cable: is yours plugged in?", "8-pin CPU power: one or two?", "EPS12V vs PCIe cables", "4+4 pin CPU connector", "No CPU power? Check this"]) expect(covers(title)).toBe(true);
+  });
   it("moves to the next producible topic once one is covered, and refuses with no-topic when none is left (no text-card fallback)", () => {
     const doc = raw(); doc.sources.youtube.videos[0].title = "Added RAM, now it won't boot? Reseat the RAM";
     expect(selectTopic(parseSnapshot(doc, NOW)).topic.id).toBe("cpu-power-cable");
