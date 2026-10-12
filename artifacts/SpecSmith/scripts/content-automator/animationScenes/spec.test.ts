@@ -13,7 +13,12 @@ describe("spec checks", () => {
   it("accept the CPU power cut", () => expect(specProblems(CPU_POWER_CUT)).toEqual([]));
   it("refuse a caption gap and a frame with no scene", () => {
     expect(broken((s) => { s.captions[2].from = 3.5; })).toContainEqual(expect.stringContaining("caption 3 does not start"));
-    expect(broken((s) => { s.shots[1].to = 2.0; s.shots[2].from = 3.5; })).toContainEqual(expect.stringContaining("no scene at"));
+    expect(broken((s) => { s.shots[1].to = 2.0; s.shots[2].from = 3.5; })).toContainEqual(expect.stringContaining("no scene drawn at"));
+  });
+  it("refuse a frame whose only scene is at zero opacity (first frame of a fade-in; Codex P2)", () => {
+    expect(broken((s) => { s.shots[0].fadeIn = 0.2; })).toContainEqual("no scene drawn at 0.000 s");
+    // The next shot starts exactly where the previous ends, fading in: its first frame is blank.
+    expect(broken((s) => { s.shots[0].to = 1.6; s.shots[0].fadeOut = 0; })).toContainEqual(expect.stringContaining("no scene drawn at 1.6"));
   });
   it("refuse a label shown too briefly to read, and two labels in one place", () => {
     expect(broken((s) => { s.labels[2].from = 5.0; })).toContainEqual(expect.stringContaining("characters a second"));

@@ -7,13 +7,13 @@
 
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { TEMPLATES, verifyRender } from "./animations.ts";
 import { buildStoryboard, contractFor, humanGatesUnresolved, runGates } from "./proposal.ts";
-import { runDailyProposal } from "./run.ts";
+import { prepareOutDir, runDailyProposal } from "./run.ts";
 import { selectTopic } from "./select.ts";
 import { DailyProposalError, parseSnapshot } from "./snapshot.ts";
 import { TOPICS } from "./topics.ts";
@@ -164,6 +164,21 @@ describe("the job fails clearly", () => {
   it("refuses without a snapshot", async () => {
     const result = await runDailyProposal([], NOW);
     expect(result).toMatchObject({ exitCode: 1, report: { status: "refused", code: "snapshot-missing" } });
+  });
+  it("refuses a max-age that would switch off the stale check (Codex P2)", async () => {
+    for (const bad of ["nope", "Infinity", "-1"]) {
+      const result = await runDailyProposal(["--snapshot", SNAPSHOT_PATH, "--max-age-hours", bad], NOW);
+      expect(result).toMatchObject({ exitCode: 1, report: { status: "refused", code: "bad-argument" } });
+    }
+  });
+  it("clears a reused run folder of the previous run's outputs, and refuses one holding anything else (Codex P2)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-out-"));
+    for (const name of ["PROPOSAL.md", "verification.json", "ram-seat-silent.mp4", "ram-seat-sfx.mp4", "beats-phone.png"]) writeFileSync(join(dir, name), "old");
+    await prepareOutDir(dir);
+    expect(readdirSync(dir)).toEqual([]);
+    writeFileSync(join(dir, "notes.txt"), "keep me");
+    await expect(prepareOutDir(dir)).rejects.toMatchObject({ code: "output-not-empty" });
+    expect(readdirSync(dir)).toEqual(["notes.txt"]);
   });
   it("refuses when the renderer is unavailable, before writing a proposal", async () => {
     const out = join(here, "..", "..", "..", "render-output", "daily-proposal-test");

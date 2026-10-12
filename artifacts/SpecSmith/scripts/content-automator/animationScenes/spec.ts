@@ -62,11 +62,14 @@ export function specProblems(spec: CutSpec): string[] {
     if (!SCENE_NAMES.includes(shot.scene)) problems.push(`unknown scene "${shot.scene}"`);
     if (shot.to <= shot.from) problems.push(`shot ${shot.scene} ${shot.from}-${shot.to} has no length`);
   }
-  // Every frame needs at least one shot at full strength or mid-fade.
+  // Every frame needs at least one shot drawn with positive opacity: a shot at the first frame of its fade-in
+  // (or the last of its fade-out) renders at zero, so it does not count (library.ts story()).
   const frames = Math.round(d * spec.fps);
+  const opacity = (s: SpecShot, t: number) => (t < s.from || t >= s.to) ? 0
+    : Math.min(1, s.fadeIn ? (t - s.from) / s.fadeIn : 1) * Math.min(1, s.fadeOut ? (s.to - t) / s.fadeOut : 1);
   for (let f = 0; f < frames; f += 1) {
     const t = f / spec.fps;
-    if (!spec.shots.some((s) => t >= s.from && t < s.to)) { problems.push(`no scene at ${t.toFixed(3)} s`); break; }
+    if (!spec.shots.some((s) => opacity(s, t) > 0)) { problems.push(`no scene drawn at ${t.toFixed(3)} s`); break; }
   }
   for (const label of spec.labels) {
     if (!(label.to > label.from)) { problems.push(`label "${label.text}" has no positive span (${label.from}-${label.to} s)`); continue; }

@@ -31,7 +31,7 @@
 // renderer, no producible topic left: nothing usable was produced).
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,6 +48,18 @@ function arg(name: string, argv: readonly string[]): string | undefined {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
+/** Files this job writes into a run folder. A reused folder holding only these is cleared first; anything else refuses. */
+const GENERATED = [/^PROPOSAL\.md$/, /^proposal\.json$/, /^run-report\.json$/, /^verification\.json$/, /^beats-phone\.png$/, /^phone-every-0\.25s\.png$/, /^[a-z0-9-]+-(silent|sfx)\.mp4$/, /^[a-z0-9-]+-(frames|sound-work)$/, /^(work|sound-work)$/];
+export async function prepareOutDir(outDir: string): Promise<void> {
+  let entries: string[] = [];
+  try { entries = await readdir(outDir); } catch { /* does not exist yet */ }
+  const foreign = entries.filter((name) => !GENERATED.some((re) => re.test(name)));
+  if (foreign.length) throw new DailyProposalError("output-not-empty", `${outDir} holds files this job did not write (${foreign.slice(0, 5).join(", ")}); choose an empty or new --out folder.`);
+  // Clear the previous run's outputs so no MP4 or verification from an earlier run sits beside this proposal.
+  for (const name of entries) await rm(join(outDir, name), { recursive: true, force: true });
+  await mkdir(outDir, { recursive: true });
+}
+
 export interface RunResult { readonly exitCode: 0 | 1 | 2; readonly outDir?: string; readonly report: Record<string, unknown> }
 
 export async function runDailyProposal(argv: readonly string[], now = new Date()): Promise<RunResult> {
@@ -59,7 +71,11 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
   };
   const spend = { elevenLabs: "not called (no voice)", publishing: "not called", scheduling: "not called", metricool: "not called by the job (snapshot input)", vidiq: "not called by the job (snapshot input)" };
   try {
-    const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, arg("--max-age-hours", argv) ? Number(arg("--max-age-hours", argv)) : undefined));
+    const maxAgeArg = arg("--max-age-hours", argv);
+    const maxAgeHours = maxAgeArg === undefined ? undefined : Number(maxAgeArg);
+    // A typo must not switch off the stale-snapshot check: NaN or Infinity would never compare as too old.
+    if (maxAgeHours !== undefined && !(Number.isFinite(maxAgeHours) && maxAgeHours >= 0)) throw new DailyProposalError("bad-argument", `--max-age-hours must be a finite number of hours, 0 or more (got "${maxAgeArg}").`);
+    const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, maxAgeHours));
     await time("check-renderer", () => assertRendererAvailable());
     const selection = await time("select-topic", () => selectTopic(snapshot, now, { topicId: arg("--topic", argv) }));
     const template = TEMPLATES[selection.topic.animation!];
@@ -67,7 +83,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
     const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
     const outDir = resolve(arg("--out", argv) ?? join(DEFAULT_OUT_ROOT, `${stamp}-${selection.topic.id}`));
-    await mkdir(outDir, { recursive: true });
+    await prepareOutDir(outDir);
     let cut: { silent: string; sfx: string; silentSha256: string; sfxSha256: string } | undefined;
     let verification: Verification | undefined;
     if (gates.passed) {
