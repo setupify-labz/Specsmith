@@ -54,6 +54,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'audit-retailer-links.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
+      'daily-short-proposal.yml',
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',
       'refresh-retail-prices.yml',
@@ -95,6 +96,16 @@ describe('the validation workflow exists and is wired to the right events', () =
       .filter((l) => !/^\s*#/.test(l))
       .join('\n');
     expect(contentE2eOffline).not.toContain('secrets.');
+
+    // The daily Short proposal reads a committed snapshot and renders locally: no secrets, manual trigger only.
+    const dailyShortProposal = fs
+      .readFileSync(path.join(repoRoot, '.github', 'workflows', 'daily-short-proposal.yml'), 'utf-8')
+      .split('\n')
+      .filter((l) => !/^\s*#/.test(l))
+      .join('\n');
+    expect(dailyShortProposal).not.toContain('secrets.');
+    expect(dailyShortProposal).toMatch(/^on:\n  workflow_dispatch:/m);
+    expect(dailyShortProposal).not.toMatch(/^\s*(schedule|push|pull_request|pull_request_target):/m);
 
     const measuredTestsCi = fs
       .readFileSync(path.join(repoRoot, '.github', 'workflows', 'measured-tests-ci.yml'), 'utf-8')
