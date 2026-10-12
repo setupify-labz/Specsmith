@@ -51,3 +51,22 @@ describe("spec checks", () => {
     expect(CPU_POWER_CUT.sourcesChecked.method).toContain("A person must read each page");
   });
 });
+
+describe("a failed render leaves no temporary frames behind (Codex P2)", () => {
+  it("removes the frames folder when the spec is refused mid-render", async () => {
+    const { mkdtempSync, readdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { renderCut } = await import("./renderCut.ts");
+    const dir = mkdtempSync(join(tmpdir(), "cut-fail-"));
+    // A missing Chromium path makes the render fail after the frames folder has been created.
+    const previous = process.env.SPECSMITH_RENDER_CHROMIUM;
+    process.env.SPECSMITH_RENDER_CHROMIUM = "/nonexistent/chromium";
+    try {
+      await expect(renderCut(CPU_POWER_CUT, dir)).rejects.toThrow();
+    } finally {
+      if (previous === undefined) delete process.env.SPECSMITH_RENDER_CHROMIUM; else process.env.SPECSMITH_RENDER_CHROMIUM = previous;
+    }
+    expect(readdirSync(dir)).toEqual([]);
+  }, 60_000);
+});

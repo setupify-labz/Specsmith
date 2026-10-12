@@ -32,6 +32,9 @@ export async function renderCut(spec: CutSpec, outputDir: string) {
   const framesDir = join(outputDir, `${spec.id}-frames`);
   await rm(framesDir, { recursive: true, force: true });
   await mkdir(framesDir, { recursive: true });
+  // The full-size frames and the sound work folder are temporary: removed on failure as well as success, so a
+  // failed render leaves a small report folder, not hundreds of PNGs.
+  try {
   const faces: string[] = [];
   for (const [weight, file] of Object.entries(FONT_FILES)) faces.push(`@font-face{font-family:Inter;font-weight:${weight};src:url(data:font/woff2;base64,${(await readFile(join(FONT_DIR, file))).toString("base64")}) format('woff2');}`);
   const state = { layout: LAYOUT, colours: SPECSMITH_MOTION_COLOURS, spec };
@@ -65,4 +68,8 @@ export async function renderCut(spec: CutSpec, outputDir: string) {
   await mixCues(spec.cues.map((c) => ({ recipe: RECIPES[c.kind], peakDbfs: PEAK_DBFS[c.kind], at: c.at })), spec.durationSeconds, silentPath, sfxPath, join(outputDir, `${spec.id}-sound-work`));
   const sha = async (path: string) => createHash("sha256").update(await readFile(path)).digest("hex");
   return { silentPath, sfxPath, silentSha256: await sha(silentPath), sfxSha256: await sha(sfxPath), minFinalPx: measured.minFinalPx, frames: count };
+  } finally {
+    await rm(framesDir, { recursive: true, force: true });
+    await rm(join(outputDir, `${spec.id}-sound-work`), { recursive: true, force: true });
+  }
 }

@@ -15,7 +15,7 @@
 // template's clearest cue as the loudest.
 
 import { spawn } from "node:child_process";
-import { access } from "node:fs/promises";
+import { access, rm } from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -104,7 +104,11 @@ export const TEMPLATES: Readonly<Record<string, AnimationTemplate>> = {
     cues: ramCues(),
     clearestCue: "snap",
     sources: RAM_COPY.sources,
-    render: async (outputDir) => { const r = await renderRam(outputDir); return { silentPath: r.silentPath, sfxPath: r.videoPath }; },
+    // The RAM renderer's temporary folders ("work" frames, "sound-work") are removed on failure as well as success.
+    render: async (outputDir) => {
+      try { const r = await renderRam(outputDir); return { silentPath: r.silentPath, sfxPath: r.videoPath }; }
+      finally { for (const dir of ["work", "sound-work"]) await rm(join(outputDir, dir), { recursive: true, force: true }); }
+    },
   },
 };
 /** The RAM cut's story beats, for the record (problem, power-off, location, action, payoff, power-back, try-again). */
