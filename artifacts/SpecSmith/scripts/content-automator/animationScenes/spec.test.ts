@@ -70,3 +70,17 @@ describe("a failed render leaves no temporary frames behind (Codex P2)", () => {
     expect(readdirSync(dir)).toEqual([]);
   }, 60_000);
 });
+
+describe("a label pill wider than the frame is refused, not clipped", () => {
+  const chromium = process.env.SPECSMITH_RENDER_CHROMIUM;
+  it.skipIf(!chromium)("refuses the CPU hook at 72 px (it overflowed a phone frame) and leaves no frames behind", async () => {
+    const { mkdtempSync, readdirSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { renderCut } = await import("./renderCut.ts");
+    const dir = mkdtempSync(join(tmpdir(), "cut-pill-"));
+    const spec = { ...CPU_POWER_CUT, labels: CPU_POWER_CUT.labels.map((l, i) => (i === 0 ? { ...l, size: 72 } : l)) };
+    await expect(renderCut(spec, dir)).rejects.toThrow("NEW BUILD WON'T TURN ON?");
+    expect(readdirSync(dir)).toEqual([]);
+  }, 120_000);
+});

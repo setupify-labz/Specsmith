@@ -4,7 +4,8 @@ Proposes **one** beginner PC troubleshooting Short and renders its animated cut 
 
 **What it can and cannot do today.**
 - It renders **two known topics**, each from a hand-written description with sourced facts. It picks between them from the channel data.
-- In the 2026-10-11 demo, the data picked the RAM Short. The CPU-power Short was rendered by an operator's `--topic` choice.
+- In the 2026-10-11 demo, the data picks the CPU-power Short. The channel's fastest troubleshooting Short is "PC Won't Turn On?", and the CPU topic is filed as "won't turn on" (owner's decision, 2026-10-12). The RAM Short was rendered by an operator's `--topic` choice.
+- No third topic exists yet.
 - Every new topic still needs a written description and facts a person has approved.
 - This is progress toward automation, not an endless daily video maker.
 
@@ -14,7 +15,7 @@ From one snapshot, the job writes the proposal, renders the proposal's animated 
 
 | Template | Topic | How it is built |
 |---|---|---|
-| `cpu-power` | "New build won't boot? Check the CPU power cable" (12.6 s) | A **spec** (`nextVideoCpuPower/cut.ts`): data only, rendered by the shared scene library |
+| `cpu-power` | "New build won't turn on? Check the CPU power cable" (12.6 s) | A **spec** (`nextVideoCpuPower/cut.ts`): data only, rendered by the shared scene library |
 | `ram-seat` | "Added RAM, now it won't boot?" (12.4 s) | Hand-built (`nextVideoRamSeat/`), kept exactly as reviewed |
 
 The other topics are recorded as "no animation template yet". When every producible topic is covered by a published title, the job refuses with `no-topic`. It never falls back to text cards.
@@ -63,8 +64,8 @@ pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
 `--out` must name a new or empty folder; the job refuses anything else and never deletes files.
 
 Add `--topic <topic id>` to propose a specific topic instead of the data's pick. It must still be producible and uncovered. The proposal records it as the operator's choice, with the data's own pick beside it. The 2026-10-11 demo used this to run both templates from one snapshot:
-- `runs/2026-10-11-ram-seat`: the data's pick;
-- `runs/2026-10-11-cpu-power`: `--topic cpu-power-cable`.
+- `runs/2026-10-11-cpu-power`: the data's pick;
+- `runs/2026-10-11-ram-seat`: `--topic ram-not-seated`.
 
 You can also run it with the **Daily Short proposal (manual)** workflow, by dispatch only, once it is on the default branch. The workflow takes an optional `topic` input.
 
@@ -123,7 +124,28 @@ The strict research gate runs twice:
 - **Blocking:** risky claims. Any mention stops the run.
 - **Fact check:** the topic's own claims, recorded as `requires-human-judgment`. The run lists the lines that rest on them, and no claim is ever filed as safe.
 
-One new check: on-screen text at no more than 20 characters per second. For an animated topic, it is measured per label, over the time that label is actually visible.
+Two new checks:
+- **Reading speed:** on-screen text at no more than 20 characters per second. For an animated topic, it is measured per label, over the time that label is actually visible.
+- **Outcome promise (an early warning, not proof).** It blocks lines claiming the PC boots, loads, works or is fixed afterwards.
+  - It is a finite pattern list and has missed six rewordings, so passing it never means a video is safe to publish. The factual-takeaway human gate stays required.
+  - Instructions such as "Then try booting again." are allowed.
+  - Claims that the PC boots or works afterwards are not allowed unless a real result is shown and verified.
+  - No more one-off phrase patches: the structured replacement is proposed below.
+
+### Proposed: structured line types instead of phrase patterns
+Every caption and label in a `CutSpec` declares what kind of line it is, and the checks act on that declaration, not on wording:
+
+| `kind` | Meaning | Rule |
+|---|---|---|
+| `symptom` | The problem before any check ("New build won't turn on?") | Must come before the first `instruction`; may not appear after it |
+| `instruction` | Something for the viewer to do ("Push it all the way in.", "Then try booting again.") | Must be imperative: no grammatical subject, and it opens with a verb (or "Then" plus a verb) from the spec's allowed verbs |
+| `result` | An outcome ("It boots now.") | Must cite a `verifiedResult`: a recorded real outcome (capture file SHA-256, hardware, date) that a person has signed off. Today none exist, so any `result` line blocks the run |
+
+This turns the open question, "does this sentence claim a result?", into two checkable ones:
+- **Is the declared kind consistent with the line's grammar?** Imperative mood can be checked with a small parser, or a fixed verb list per spec.
+- **Does every `result` line point at verified evidence?**
+
+A line mislabelled as an `instruction` to dodge the rule fails the imperative check. The human reviewer sees each line's declared kind in `PROPOSAL.md`. The current pattern list would stay only as a cross-check: it flags an `instruction` or `symptom` line whose wording looks like a result, for the human to look at.
 
 Each producible topic's claims cite named pages:
 - **RAM topic:** Crucial's desktop memory install guide.

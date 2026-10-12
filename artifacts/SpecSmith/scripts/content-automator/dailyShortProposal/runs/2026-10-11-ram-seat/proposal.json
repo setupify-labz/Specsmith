@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-12T01:47:52.521Z",
+  "generatedAt": "2026-10-12T18:53:51.018Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -24,8 +24,8 @@
     "symptom": "After adding or moving memory, the PC powers on but does not boot to a picture.",
     "title": "Added RAM, Now It Won't Boot? Check It's Fully Seated",
     "animation": "ram-seat",
-    "chosenBy": "data",
-    "dataPick": "ram-not-seated"
+    "chosenBy": "operator",
+    "dataPick": "cpu-power-cable"
   },
   "hook": {
     "frameOne": "WON'T BOOT?"
@@ -301,8 +301,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 1.87,
-        "viewsPerDay": 1039.8,
+        "ageDays": 2.58,
+        "viewsPerDay": 753.1,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -313,8 +313,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 3.08,
-        "viewsPerDay": 385.4,
+        "ageDays": 3.79,
+        "viewsPerDay": 313,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -325,8 +325,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 5.4,
-        "viewsPerDay": 233.5,
+        "ageDays": 6.11,
+        "viewsPerDay": 206.3,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -339,8 +339,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.24,
-        "viewsPerDay": 231.3,
+        "ageDays": 8.95,
+        "viewsPerDay": 212.9,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -350,13 +350,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 635.6,
+        "medianViewsPerDay": 483,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 309.5,
+        "medianViewsPerDay": 259.7,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -408,13 +408,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 1039.8,
+      "value": 753.1,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 385.4,
+      "value": 313,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -426,7 +426,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 233.5,
+      "value": 206.3,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -438,7 +438,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 231.3,
+      "value": 212.9,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -450,13 +450,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":635.6,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":309.5,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":483,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":259.7,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (1039.8 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (753.1 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -480,8 +480,14 @@
     {
       "metric": "editorial prior (NOT data)",
       "source": "dailyShortProposal/topics.ts",
-      "value": 0.9,
+      "value": 0.8,
       "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "operator's topic choice (NOT data)",
+      "source": "run.ts --topic",
+      "value": "ram-not-seated",
+      "usedFor": "the topic; the data's own pick on this snapshot was cpu-power-cable"
     },
     {
       "metric": "animation template length (not data)",
@@ -493,7 +499,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.87 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 2.58 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
@@ -515,14 +521,14 @@
   ],
   "ranking": [
     {
+      "topicId": "cpu-power-cable",
+      "familyMatch": true,
+      "editorialPrior": 0.8
+    },
+    {
       "topicId": "ram-not-seated",
       "familyMatch": false,
       "editorialPrior": 0.9
-    },
-    {
-      "topicId": "cpu-power-cable",
-      "familyMatch": false,
-      "editorialPrior": 0.8
     }
   ],
   "gates": {

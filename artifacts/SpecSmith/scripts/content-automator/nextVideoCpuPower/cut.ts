@@ -1,9 +1,12 @@
-// "New build won't boot? Check the CPU power cable." A 12.6 s Short, as DATA:
+// "New build won't turn on? Check the CPU power cable." A 12.6 s Short, as DATA:
 // a timeline of the reusable scenes in animationScenes/library.ts, rendered by
 // animationScenes/renderCut.ts. There is no drawing code here.
 //
-//   PROBLEM     a finger presses the PC's button; the monitor stays dark. No
-//               other symptom is shown (it varies: some boards show no lights).
+//   PROBLEM     a finger presses the PC's button and nothing happens: the PC
+//               stays unlit and the monitor dark. Filed as "won't turn on"
+//               (owner's decision, 2026-10-12); the hook and title match this
+//               dead-button opening. A missing CPU cable can also show as fans
+//               on with no picture; this cut shows the no-power case only.
 //   UNPLUG      at the back, the power cord comes out of the power supply.
 //   LOCATION    panel off; the camera closes on an empty 8-pin socket in an
 //               example layout, labelled POSITION VARIES: the caption sends the
@@ -31,7 +34,7 @@ export const CPU_POWER_CUT: CutSpec = {
   badge: "ILLUSTRATION",
   line: "Stylized example · not a fix for every PC",
   captions: [
-    { from: 0, to: 1.6, text: "New build won't boot?" },
+    { from: 0, to: 1.6, text: "New build won't turn on?" },
     { from: 1.6, to: 3.4, text: "Unplug it before opening the case." },
     { from: 3.4, to: 5.2, text: "Check your manual for the CPU power socket." },
     { from: 5.2, to: 7.1, text: "Use your PSU's own CPU cable, not PCIe." },
@@ -59,7 +62,7 @@ export const CPU_POWER_CUT: CutSpec = {
     { scene: "powerButton", from: 10.8, to: 12.6, fadeIn: 0.2, params: { pulseFrom: 11.0 } },
   ],
   labels: [
-    { text: "NEW BUILD WON'T BOOT?", from: 0, to: 1.6, colour: "red", at: "head", size: 72 },
+    { text: "NEW BUILD WON'T TURN ON?", from: 0, to: 1.6, colour: "red", at: "head", size: 60 },
     { text: "UNPLUG FIRST", from: 1.6, to: 3.4, colour: "amber", at: "head" },
     { text: "CPU POWER SOCKET", from: 4.35, to: 5.2, colour: "purple", at: "head" },
     { text: "POSITION VARIES", from: 4.35, to: 5.2, colour: "amber", at: "foot" },

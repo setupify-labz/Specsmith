@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-12T01:48:33.158Z",
+  "generatedAt": "2026-10-12T18:55:05.156Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -20,30 +20,30 @@
   },
   "topic": {
     "id": "cpu-power-cable",
-    "family": "on-no-picture",
-    "symptom": "A newly built PC does not boot.",
-    "title": "New Build Won't Boot? Check the CPU Power Cable",
+    "family": "wont-turn-on",
+    "symptom": "Pressing the power button on a newly built PC does nothing.",
+    "title": "New Build Won't Turn On? Check the CPU Power Cable",
     "animation": "cpu-power",
-    "chosenBy": "operator",
-    "dataPick": "ram-not-seated"
+    "chosenBy": "data",
+    "dataPick": "cpu-power-cable"
   },
   "hook": {
-    "frameOne": "NEW BUILD WON'T BOOT?"
+    "frameOne": "NEW BUILD WON'T TURN ON?"
   },
-  "script": "New build won't boot? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.",
+  "script": "New build won't turn on? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.",
   "storyboard": {
     "platform": "youtube-shorts",
     "targetDurationSeconds": 12.6,
-    "title": "New Build Won't Boot? Check the CPU Power Cable",
+    "title": "New Build Won't Turn On? Check the CPU Power Cable",
     "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
     "beats": [
       {
         "startSecond": 0,
         "endSecond": 1.6,
         "purpose": "hook",
-        "narration": "New build won't boot?",
+        "narration": "New build won't turn on?",
         "visualDirection": "A finger presses the stylized PC's power button and rests there; the monitor beside it stays dark. No other symptom is shown.",
-        "onScreenText": "NEW BUILD WON'T BOOT?",
+        "onScreenText": "NEW BUILD WON'T TURN ON?",
         "factDependencies": [
           "cpu-unplug",
           "cpu-cable-needed",
@@ -202,7 +202,7 @@
   ],
   "onScreenLabels": [
     {
-      "text": "NEW BUILD WON'T BOOT?",
+      "text": "NEW BUILD WON'T TURN ON?",
       "from": 0,
       "to": 1.6
     },
@@ -288,8 +288,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 1.87,
-        "viewsPerDay": 1039.5,
+        "ageDays": 2.58,
+        "viewsPerDay": 752.8,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -300,8 +300,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 3.08,
-        "viewsPerDay": 385.4,
+        "ageDays": 3.79,
+        "viewsPerDay": 312.9,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -312,8 +312,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 5.4,
-        "viewsPerDay": 233.5,
+        "ageDays": 6.11,
+        "viewsPerDay": 206.3,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -326,8 +326,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.24,
-        "viewsPerDay": 231.3,
+        "ageDays": 8.95,
+        "viewsPerDay": 212.9,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -337,13 +337,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 635.4,
+        "medianViewsPerDay": 482.9,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 309.5,
+        "medianViewsPerDay": 259.6,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -356,7 +356,7 @@
       },
       {
         "id": "cpu-cable-needed",
-        "proposition": "a missing CPU power cable can stop a PC from booting",
+        "proposition": "a missing CPU power cable can leave a new PC with no power or no boot",
         "basis": "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Some motherboard may contain 8-pin EATX12V_1, 4-pin EATX12V_2 and 24-pin EATXPWR, we suggest to connect all three connectors to the power supply.\" Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS (H87M-PRO user manual, p. 1-24, as quoted on a forum), \"H87M-PRO user manual\" (https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/): \"Do not forget to connect the 4-pin/8-pin EATX 12V power plug. Otherwise, the system will not boot.\" Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it."
       },
       {
@@ -420,13 +420,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 1039.5,
+      "value": 752.8,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 385.4,
+      "value": 312.9,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -438,7 +438,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 233.5,
+      "value": 206.3,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -450,7 +450,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 231.3,
+      "value": 212.9,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -462,13 +462,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":635.4,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":309.5,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":482.9,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":259.6,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (1039.5 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (752.8 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -492,14 +492,8 @@
     {
       "metric": "editorial prior (NOT data)",
       "source": "dailyShortProposal/topics.ts",
-      "value": 0.9,
+      "value": 0.8,
       "usedFor": "tie-break among topics in the same family"
-    },
-    {
-      "metric": "operator's topic choice (NOT data)",
-      "source": "run.ts --topic",
-      "value": "cpu-power-cable",
-      "usedFor": "the topic; the data's own pick on this snapshot was ram-not-seated"
     },
     {
       "metric": "animation template length (not data)",
@@ -511,7 +505,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.87 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 2.58 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
@@ -533,14 +527,14 @@
   ],
   "ranking": [
     {
+      "topicId": "cpu-power-cable",
+      "familyMatch": true,
+      "editorialPrior": 0.8
+    },
+    {
       "topicId": "ram-not-seated",
       "familyMatch": false,
       "editorialPrior": 0.9
-    },
-    {
-      "topicId": "cpu-power-cable",
-      "familyMatch": false,
-      "editorialPrior": 0.8
     }
   ],
   "gates": {
@@ -550,7 +544,7 @@
   "factCheckRequired": [
     {
       "location": "title",
-      "line": "New Build Won't Boot? Check the CPU Power Cable",
+      "line": "New Build Won't Turn On? Check the CPU Power Cable",
       "claimIds": [
         "cpu-unplug",
         "cpu-cable-needed",
@@ -600,11 +594,9 @@
       "location": "beat-4.onScreenText",
       "line": "CPU CABLE FROM YOUR PSU → NOT A PCIe CABLE",
       "claimIds": [
-        "cpu-cable-needed",
         "cpu-not-pcie"
       ],
       "bases": [
-        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Some motherboard may contain 8-pin EATX12V_1, 4-pin EATX12V_2 and 24-pin EATXPWR, we suggest to connect all three connectors to the power supply.\" Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS (H87M-PRO user manual, p. 1-24, as quoted on a forum), \"H87M-PRO user manual\" (https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/): \"Do not forget to connect the 4-pin/8-pin EATX 12V power plug. Otherwise, the system will not boot.\" Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.",
         "Corsair, \"Can I use a PCI-e cable in the 8-pin motherboard plug?\" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): \"The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header. … The connector is physically different, but also because the cables are wired differently and might damage your components.\" Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it."
       ]
     },
@@ -622,8 +614,8 @@
   "animatedCut": {
     "silent": "cpu-power-silent.mp4",
     "sfx": "cpu-power-sfx.mp4",
-    "silentSha256": "fe69ff28ca42f402a6f1c235cf3f6ce5dbc0b818c204f08483b13da89a4d5ad2",
-    "sfxSha256": "c730a5e355bf50577812598b9f041b96fab6fecf0b847f9f847ae3a9da0ffd04",
+    "silentSha256": "b91d233d1674008246b4ed54dfca3bd904aeaebec3126a462059ca635931d39e",
+    "sfxSha256": "720b3a067028d800e124357638d76e95a1f8ecd73f4122c0f3a48bc64bd21848",
     "durationSeconds": 12.6,
     "fps": 30,
     "disclosures": [

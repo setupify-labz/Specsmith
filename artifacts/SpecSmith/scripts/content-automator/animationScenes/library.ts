@@ -61,6 +61,7 @@ function pill(s, cx, cy, fill, ink, size, alpha) {
   if (alpha <= 0) return;
   ctx.save(); ctx.globalAlpha *= alpha;
   ctx.font = '700 ' + size + 'px Inter'; const w = ctx.measureText(s).width + 60;
+  if (w > W - 48) measured.misfits.push(s);   // a pill wider than the frame (with a 24 px margin) is clipped on a phone
   rr(cx - w / 2, cy - size * 0.82, w, size * 1.64, size * 0.82, fill);
   text(s, cx, cy + 2, w, size, size, ink, 'center', 700);
   ctx.restore();

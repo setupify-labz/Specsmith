@@ -55,19 +55,24 @@ describe("the snapshot is validated before anything uses it", () => {
 describe("the pick records what influenced it and what was unknown", () => {
   const selection = selectTopic(parseSnapshot(raw(), NOW), NOW);
   it("is deterministic on the committed snapshot, and picks only a topic it can render", () => {
-    expect(selection.topic.id).toBe("ram-not-seated");
+    // The fastest troubleshooting Short is "PC Won't Turn On? ..." (family wont-turn-on); the CPU-power topic is
+    // filed as wont-turn-on (owner's decision, 2026-10-12), so the family match picks it over the RAM topic.
+    expect(selection.topic.id).toBe("cpu-power-cable");
     expect(selection.chosenBy).toBe("data");
-    expect(selection.targetSeconds).toBe(TEMPLATES["ram-seat"].durationSeconds);
+    expect(selection.targetSeconds).toBe(TEMPLATES["cpu-power"].durationSeconds);
     expect(selection.dataTargetSeconds).toBe(14);
-    expect(selection.ranking.map((r) => r.topicId)).toEqual(["ram-not-seated", "cpu-power-cable"]);
+    expect(selection.ranking).toEqual([
+      { topicId: "cpu-power-cable", familyMatch: true, editorialPrior: 0.8 },
+      { topicId: "ram-not-seated", familyMatch: false, editorialPrior: 0.9 },
+    ]);
     for (const id of ["monitor-input-source", "front-panel-power-pins"]) {
       expect(selection.excluded).toContainEqual({ topicId: id, why: expect.stringContaining("no animation template yet") });
     }
   });
   it("takes an operator's topic choice, records it as not data, and still refuses one it cannot render", () => {
-    const forced = selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "cpu-power-cable" });
-    expect(forced).toMatchObject({ chosenBy: "operator", dataPick: "ram-not-seated", targetSeconds: TEMPLATES["cpu-power"].durationSeconds });
-    expect(forced.topic.id).toBe("cpu-power-cable");
+    const forced = selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "ram-not-seated" });
+    expect(forced).toMatchObject({ chosenBy: "operator", dataPick: "cpu-power-cable", targetSeconds: TEMPLATES["ram-seat"].durationSeconds });
+    expect(forced.topic.id).toBe("ram-not-seated");
     expect(forced.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.metric).toContain("NOT data");
     const error = refusal(() => selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "front-panel-power-pins" }));
     expect(error.code).toBe("no-topic");
@@ -274,8 +279,8 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
   }, 60_000);
   it.skipIf(!hasFfmpeg)("a run whose render cannot be verified is blocked, presents no cut, and lists only files that exist (Codex P2)", async () => {
     const templates = TEMPLATES as Record<string, (typeof TEMPLATES)[string]>;
-    const original = templates["ram-seat"];
-    templates["ram-seat"] = { ...original, render: async (out: string) => { const a = join(out, "x-silent.mp4"), b = join(out, "x-sfx.mp4"); writeFileSync(a, "not a video"); writeFileSync(b, "not a video"); return { silentPath: a, sfxPath: b }; } };
+    const original = templates["cpu-power"];   // the data's pick on the committed snapshot
+    templates["cpu-power"] = { ...original, render: async (out: string) => { const a = join(out, "x-silent.mp4"), b = join(out, "x-sfx.mp4"); writeFileSync(a, "not a video"); writeFileSync(b, "not a video"); return { silentPath: a, sfxPath: b }; } };
     try {
       const out = join(mkdtempSync(join(tmpdir(), "daily-blocked-")), "run");
       const result = await runDailyProposal(["--snapshot", SNAPSHOT_PATH, "--out", out], NOW);
@@ -287,7 +292,7 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
       for (const name of listed) expect(existsSync(join(out, name))).toBe(true);
       expect(existsSync(join(out, ".daily-proposal.lock"))).toBe(false);
     } finally {
-      templates["ram-seat"] = original;
+      templates["cpu-power"] = original;
     }
   }, 60_000);
   it.skipIf(!hasFfmpeg)("measures a short cue at 0 s without a negative pre-roll (Codex P2)", async () => {

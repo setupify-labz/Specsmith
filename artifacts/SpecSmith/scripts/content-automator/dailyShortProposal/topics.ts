@@ -80,16 +80,17 @@ export const TOPICS: readonly Topic[] = [
   {
     // Rendered from nextVideoCpuPower/cut.ts by the shared scene library: beats, captions and labels are the cut's own.
     id: "cpu-power-cable",
-    family: "on-no-picture",
-    title: "New Build Won't Boot? Check the CPU Power Cable",
-    symptom: "A newly built PC does not boot.",
+    // Filed as "won't turn on" (owner's decision, 2026-10-12): the cut opens on a dead button.
+    family: "wont-turn-on",
+    title: "New Build Won't Turn On? Check the CPU Power Cable",
+    symptom: "Pressing the power button on a newly built PC does nothing.",
     hook: CPU_CUT.beats[0].onScreenText,
     beats: CPU_CUT.beats.map((b) => ({ seconds: Math.round((b.to - b.from) * 100) / 100, onScreenText: b.onScreenText, narration: b.caption, visualDirection: b.visualDirection })),
     finalCta: "Then try booting again.",
     coveredBy: [/\bcpu power\b/i, /\b(eps|eps12v|8-pin|4\+4)\b/i],
     claims: [
       { id: "cpu-unplug", proposition: "unplug the power cable before working inside the PC", basis: sourceOf("https://www.crucial.com/support/install-memory-desktop") },
-      { id: "cpu-cable-needed", proposition: "a missing CPU power cable can stop a PC from booting", basis: `${sourceOf("https://www.asus.com/us/support/faq/1042632/")} Also: ${sourceOf("https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/")}` },
+      { id: "cpu-cable-needed", proposition: "a missing CPU power cable can leave a new PC with no power or no boot", basis: `${sourceOf("https://www.asus.com/us/support/faq/1042632/")} Also: ${sourceOf("https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/")}` },
       { id: "cpu-manual-location", proposition: "the motherboard manual shows the CPU power connector", basis: `${sourceOf("https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/")} (the manual documents the EATX12V plug; positions vary by board, so the cut sends viewers to their own manual)` },
       { id: "cpu-not-pcie", proposition: "the cable marked CPU goes to the motherboard's CPU power connector, not a PCIe cable, and the wrong cable can damage components", basis: sourceOf("https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/") },
       { id: "cpu-own-psu-cable", proposition: "use the CPU cable supplied with that power supply, since modular cables can differ between models", basis: sourceOf("https://knowledge.seasonic.com/article/68-cable-compatibility") },

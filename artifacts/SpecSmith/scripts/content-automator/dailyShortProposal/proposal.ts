@@ -37,8 +37,16 @@ export const MAX_ON_SCREEN_CHARS_PER_SECOND = 20;
  * Lines that state an outcome: the PC boots, loads, works or is fixed. The strict research gate matches risky
  * claims by shared words, so a paraphrase ("It loads Windows after that") can slip past it; these block the
  * outcome itself, whatever the wording. Instructions ("Then try booting again.") and the symptom ("now it won't
- * boot?") do not match. A backstop, not a semantic checker: the factual-takeaway human gate reads every line.
+ * boot?") do not match.
+ *
+ * EARLY WARNING ONLY (owner's decision, 2026-10-12). A match blocks the run, but passing this check is not
+ * evidence that a video makes no outcome claim: it is a finite pattern list and has missed six rewordings.
+ * Lines claiming the PC boots or works afterwards are not allowed unless a real result is shown and verified,
+ * and only the factual-takeaway human gate can establish that. No more one-off phrase patches: the proposed
+ * replacement is a structured line type on every caption and label (instruction / symptom / result, with a
+ * verified-evidence reference required for any result), described in dailyShortProposal/README.md.
  */
+export const OUTCOME_GATE = "outcome promise (early warning; a pass is not proof)";
 export const OUTCOME_PROMISES: readonly { readonly pattern: RegExp; readonly why: string }[] = [
   // Subject + optional auxiliary/copula + outcome verb in its base, -s, -ing or -ed form:
   // "it loads", "your PC will boot", "the PC is working now", "it's booting again", "it has started".
@@ -147,7 +155,7 @@ export function runGates(storyboard: PlatformScriptStoryboard, topic: Topic, now
     ...storyboard.beats.flatMap((beat, i) => [{ location: `beat-${i + 1}.narration`, text: beat.narration }, { location: `beat-${i + 1}.onScreenText`, text: beat.onScreenText }])];
   for (const { location, text } of lines) {
     for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location, message: `"${text}": ${why}` });
-    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(text)) findings.push({ gate: "outcome promise (new in this job)", severity: "hard-fail", location, message: `"${text}": ${why}` });
+    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(text)) findings.push({ gate: OUTCOME_GATE, severity: "hard-fail", location, message: `"${text}": ${why}` });
   }
   const template = topic.animation ? TEMPLATES[topic.animation] : undefined;
   const spans = template
@@ -159,7 +167,7 @@ export function runGates(storyboard: PlatformScriptStoryboard, topic: Topic, now
   }
   if (template) for (const label of template.labels) {
     for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(label.text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location: `label "${label.text}"`, message: why });
-    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(label.text)) findings.push({ gate: "outcome promise (new in this job)", severity: "hard-fail", location: `label "${label.text}"`, message: why });
+    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(label.text)) findings.push({ gate: OUTCOME_GATE, severity: "hard-fail", location: `label "${label.text}"`, message: why });
   }
   return { findings, passed: !findings.some((f) => f.severity === "hard-fail"), factCheck };
 }
