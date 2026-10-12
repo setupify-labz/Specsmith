@@ -1,10 +1,10 @@
 # Daily Short proposal: Added RAM, Now It Won't Boot? Check It's Fully Seated
 
-**Status: ready-for-human-review.** Not published, not scheduled, no voice generated. Every human gate below is unresolved.
+**Status: awaiting-fact-check.** Not published, not scheduled, no voice generated. Every human gate below is unresolved, and no claim is verified until a person reads its source.
 
 Topic chosen by **the data**. Animation template: `ram-seat`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated 2026-10-11T23:40:57.719Z from the snapshot collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
+Generated 2026-10-12T00:29:52.232Z from the snapshot collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
 
 ## Frame-one hook
 > **WON'T BOOT?**
@@ -30,12 +30,12 @@ Persistent disclosure on every frame: "ILLUSTRATION", "Stylized example · not a
 
 | Short | Theme | Views/day | Avg view % | Engaged share | Length |
 |---|---|---|---|---|---|
-| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 1091.1 | unknown | unknown | 15 s |
-| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 396.8 | 52.59 | 0.373 | 25 s |
-| 20 Game Leads… Only 4 FPS Apart? | comparison | 237.4 | 74.93 | 0.34 | 19 s |
-| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 233.8 | 87.65 | 0.578 | 14 s |
+| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 1070.7 | unknown | unknown | 15 s |
+| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 392.3 | 52.59 | 0.373 | 25 s |
+| 20 Game Leads… Only 4 FPS Apart? | comparison | 235.9 | 74.93 | 0.34 | 19 s |
+| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 232.9 | 87.65 | 0.578 | 14 s |
 
-Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":662.4,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":317.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
+Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":651.8,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":314.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
 
 **Claims in the script** (each with its basis; the factual-takeaway gate re-checks them):
 - shut the system down and unplug the power cable before installing memory. _Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it._
@@ -51,15 +51,15 @@ Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":662.4,"medianA
 ## Metrics that influenced the choice
 | Metric | Source | Value | Used for |
 |---|---|---|---|
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 1091.1 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 396.8 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 1070.7 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 392.3 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 52.59 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 237.4 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 235.9 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 74.93 | ranking "20 Game Leads… Only 4 FPS Apart?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 233.8 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 232.9 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 87.65 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the target length |
-| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":662.4,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":317.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
-| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (1091.1 views/day) | symptom family: wont-turn-on |
+| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":651.8,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":314.1,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
+| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (1070.7 views/day) | symptom family: wont-turn-on |
 | best-retained Short's length | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s | target length 14 s (clamped to 10-15 s) |
 | tiktok views by publish day (sum) | tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542) | 1803 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
 | instagram views by publish day (sum) | instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542) | 691 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
@@ -72,7 +72,7 @@ Excluded as already covered: monitor-input-source (no animation template yet (th
 ## Unknown
 - Retention for "PC Won't Turn On? Check These 2 Spots First": analytics sample under 300 views (or unknown), excluded rather than trusted.
 - YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).
-- "PC Won't Turn On? Check These 2 Spots First" has been live 1.78 days: its views per day are an early figure and may fall as it ages.
+- "PC Won't Turn On? Check These 2 Spots First" has been live 1.82 days: its views per day are an early figure and may fall as it ages.
 - Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).
 - instagram 2026-10-06 saves: unknown (not returned by Metricool).
 - instagram 2026-10-06 shares: unknown (not returned by Metricool).
@@ -83,8 +83,25 @@ Excluded as already covered: monitor-input-source (no animation template yet (th
 - instagram 2026-10-10 shares: unknown (not returned by Metricool).
 
 ## Gates
-**All automated gates passed.**
+**No blocking findings (risky claims, slop, forbidden claims, reading speed). This does not verify any claim: see the fact-check list.**
 - no findings
+
+## Fact check required (no claim is verified yet)
+Each line below rests on a claim no person has yet read against its source. The cut is a draft until they do.
+
+- **beat-2.narration** "Shut it down and unplug it first.": ram-power-off
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+- **beat-2.onScreenText** "SHUT DOWN, THEN UNPLUG": ram-power-off
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+- **beat-4.narration** "Line up the notch with the slot.": ram-notch
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+- **beat-4.onScreenText** "SIDE VIEW OF THE SLOT → LINE UP THE NOTCH": ram-notch, ram-clips
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+- **beat-5.narration** "Press firmly until the clips snap shut.": ram-clips
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
+- **beat-5.onScreenText** "FIRM, EVEN PRESSURE → CLIPS SNAP SHUT → FULLY SEATED": ram-clips
+  - Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.
 
 ## Animated cut
 - **`ram-seat-silent.mp4`**: the finished cut, silent (sha256 `8d3673841add40a3…`).
@@ -109,8 +126,12 @@ Excluded as already covered: monitor-input-source (no animation template yet (th
 | sound-effects MP4 is 1080x1920 | pass | 1080x1920 |
 | sound-effects MP4 length | pass | 12.400 s (expected 12.4 s) |
 | sound-effects MP4 frame count | pass | 372 frames (expected 372) |
-| every beat's middle frame is distinct | pass | 7 distinct of 7 |
+| every beat's artwork is drawn | pass | beat 1: 16.9%; beat 2: 50.1%; beat 3: 76.9%; beat 4: 32.3%; beat 5: 35.6%; beat 6: 50.3%; beat 7: 15.0% of the art region not background (at least 5%) |
+| every beat's artwork differs from every other beat's | pass | closest pair: beats 1 and 7, mean difference 3.1 grey levels (at least 2) |
+| the ILLUSTRATION band is on every sampled frame | pass | 9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels |
+| every sampled frame has caption text | pass | lowest 2.9% of the caption band lit |
 | every cue sounds | pass | 0.20s button -26.1 dBFS; 0.35s fan -37.0 dBFS; 1.50s button -26.2 dBFS; 2.54s plug -23.1 dBFS; 5.80s tick -32.9 dBFS; 6.40s tap -29.0 dBFS; 7.25s snap -12.4 dBFS; 7.28s snap -12.4 dBFS; 9.99s plug -23.0 dBFS |
+| every short cue has its own onset | pass | 0.200s button +64.9 dB; 1.500s button +15.8 dB; 2.540s plug +67.9 dB; 5.800s tick +58.1 dB; 6.400s tap +62.0 dB; 7.250s snap +78.6 dB; 7.285s snap +15.0 dB; 9.990s plug +68.0 dB |
 | silence between cues (no stray sound, no boot sound at the end) | pass | 0.02-0.17 s: -91.0 dBFS; 2.25-2.51 s: -91.0 dBFS; 2.84-5.77 s: -91.0 dBFS; 5.93-6.37 s: -91.0 dBFS; 6.54-7.22 s: -91.0 dBFS; 7.44-9.96 s: -91.0 dBFS; 10.29-12.38 s: -91.0 dBFS |
 | "snap" is the clearest cue | pass | -12.4 dBFS vs next -23.0 dBFS |
 | the silent MP4 is silent | pass | -91.0 dBFS |

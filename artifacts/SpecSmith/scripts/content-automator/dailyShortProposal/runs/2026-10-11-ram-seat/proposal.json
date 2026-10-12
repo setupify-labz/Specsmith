@@ -1,8 +1,8 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-11T23:40:57.719Z",
-  "status": "ready-for-human-review",
+  "generatedAt": "2026-10-12T00:29:52.232Z",
+  "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
   "notScheduled": true,
@@ -299,8 +299,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 1.78,
-        "viewsPerDay": 1091.1,
+        "ageDays": 1.82,
+        "viewsPerDay": 1070.7,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -311,8 +311,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 2.99,
-        "viewsPerDay": 396.8,
+        "ageDays": 3.02,
+        "viewsPerDay": 392.3,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -323,8 +323,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 5.31,
-        "viewsPerDay": 237.4,
+        "ageDays": 5.35,
+        "viewsPerDay": 235.9,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -337,8 +337,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.15,
-        "viewsPerDay": 233.8,
+        "ageDays": 8.19,
+        "viewsPerDay": 232.9,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -348,13 +348,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 662.4,
+        "medianViewsPerDay": 651.8,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 317.1,
+        "medianViewsPerDay": 314.1,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -406,13 +406,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 1091.1,
+      "value": 1070.7,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 396.8,
+      "value": 392.3,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -424,7 +424,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 237.4,
+      "value": 235.9,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -436,7 +436,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 233.8,
+      "value": 232.9,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -448,13 +448,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":662.4,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":317.1,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":651.8,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":314.1,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (1091.1 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1070.7 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -491,7 +491,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.78 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.82 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
@@ -527,6 +527,70 @@
     "passed": true,
     "findings": []
   },
+  "factCheckRequired": [
+    {
+      "location": "beat-2.narration",
+      "line": "Shut it down and unplug it first.",
+      "claimIds": [
+        "ram-power-off"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    },
+    {
+      "location": "beat-2.onScreenText",
+      "line": "SHUT DOWN, THEN UNPLUG",
+      "claimIds": [
+        "ram-power-off"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "Line up the notch with the slot.",
+      "claimIds": [
+        "ram-notch"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    },
+    {
+      "location": "beat-4.onScreenText",
+      "line": "SIDE VIEW OF THE SLOT → LINE UP THE NOTCH",
+      "claimIds": [
+        "ram-notch",
+        "ram-clips"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.",
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    },
+    {
+      "location": "beat-5.narration",
+      "line": "Press firmly until the clips snap shut.",
+      "claimIds": [
+        "ram-clips"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    },
+    {
+      "location": "beat-5.onScreenText",
+      "line": "FIRM, EVEN PRESSURE → CLIPS SNAP SHUT → FULLY SEATED",
+      "claimIds": [
+        "ram-clips"
+      ],
+      "bases": [
+        "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it."
+      ]
+    }
+  ],
   "animatedCut": {
     "silent": "ram-seat-silent.mp4",
     "sfx": "ram-seat-sfx.mp4",
@@ -573,14 +637,34 @@
         "detail": "372 frames (expected 372)"
       },
       {
-        "check": "every beat's middle frame is distinct",
+        "check": "every beat's artwork is drawn",
         "passed": true,
-        "detail": "7 distinct of 7"
+        "detail": "beat 1: 16.9%; beat 2: 50.1%; beat 3: 76.9%; beat 4: 32.3%; beat 5: 35.6%; beat 6: 50.3%; beat 7: 15.0% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 1 and 7, mean difference 3.1 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 2.9% of the caption band lit"
       },
       {
         "check": "every cue sounds",
         "passed": true,
         "detail": "0.20s button -26.1 dBFS; 0.35s fan -37.0 dBFS; 1.50s button -26.2 dBFS; 2.54s plug -23.1 dBFS; 5.80s tick -32.9 dBFS; 6.40s tap -29.0 dBFS; 7.25s snap -12.4 dBFS; 7.28s snap -12.4 dBFS; 9.99s plug -23.0 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "0.200s button +64.9 dB; 1.500s button +15.8 dB; 2.540s plug +67.9 dB; 5.800s tick +58.1 dB; 6.400s tap +62.0 dB; 7.250s snap +78.6 dB; 7.285s snap +15.0 dB; 9.990s plug +68.0 dB"
       },
       {
         "check": "silence between cues (no stray sound, no boot sound at the end)",

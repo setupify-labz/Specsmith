@@ -1,6 +1,12 @@
 # Daily Short proposal
 
-Proposes **one** beginner PC troubleshooting Short a day and renders its finished animated cut, for a person to review.
+Proposes **one** beginner PC troubleshooting Short and renders its animated cut as a draft, for a person to fact-check and review.
+
+**What it can and cannot do today.**
+- It renders **two known topics**, each from a hand-written description with sourced facts. It picks between them from the channel data.
+- In the 2026-10-11 demo, the data picked the RAM Short. The CPU-power Short was rendered by an operator's `--topic` choice.
+- Every new topic still needs a written description and facts a person has approved.
+- This is progress toward automation, not an endless daily video maker.
 
 From one snapshot, the job writes the proposal, renders the proposal's animated cut (silent, plus a version with synced sound effects), and checks the exported files. It calls no paid provider, generates no voice (no ElevenLabs), schedules nothing and publishes nothing.
 
@@ -61,7 +67,9 @@ Add `--topic <topic id>` to propose a specific topic instead of the data's pick.
 You can also run it with the **Daily Short proposal (manual)** workflow, by dispatch only, once it is on the default branch. The workflow takes an optional `topic` input.
 
 **Exit codes:**
-- `0`: ready for human review.
+- `0`: the draft is rendered and its status is `awaiting-fact-check`.
+  - The job never reports "ready": nothing in it can verify a source.
+  - The proposal lists every line that rests on an unverified claim, with the page to read.
 - `2`: written, but an automated gate blocked it.
 - `2` also covers a render check that failed (see `verification.json`). When a gate blocks, nothing is rendered.
 - `1`: refused, with the reason printed. Causes are:
@@ -85,7 +93,9 @@ A run takes about 30 s here: about 20 s to render, about 10 s to verify.
 - `beats-phone.png` (the middle frame of every beat) and `phone-every-0.25s.png`: exported frames at phone size.
 - `verification.json`: checks on the exported files.
   - Both MP4s: 1080×1920, the template's length, and the exact frame count.
-  - Every beat's middle frame is distinct.
+  - Every beat's artwork is drawn, and differs from every other beat's.
+  - The ILLUSTRATION band is on every sampled frame, and caption text is present.
+  - Every short cue has its own onset, so two clicks 35 ms apart each need their own sound.
   - Every sound cue sounds, each measured clear of overlapping cues.
   - Silence between cues, so there is no stray or boot sound.
   - The template's clearest cue (the clip snap) is at least 6 dB above the rest.
@@ -107,13 +117,20 @@ A run takes about 30 s here: about 20 s to render, about 10 s to verify.
 - `nextVideoMonitorPort/storyboard.ts` `FORBIDDEN_CLAIMS`
 - `v2/review/humanGates.ts`: all gates unresolved; no gate can close without a trusted approval record
 
+The strict research gate runs twice:
+- **Blocking:** risky claims. Any mention stops the run.
+- **Fact check:** the topic's own claims, recorded as `requires-human-judgment`. The run lists the lines that rest on them, and no claim is ever filed as safe.
+
 One new check: on-screen text at no more than 20 characters per second. For an animated topic, it is measured per label, over the time that label is actually visible.
 
 Each producible topic's claims cite named pages:
 - **RAM topic:** Crucial's desktop memory install guide.
-- **CPU power topic:** an ASUS no-boot FAQ, an ASUS manual warning (quoted on a forum), two Corsair guides and Crucial's unplug step.
+- **CPU power topic:** an ASUS no-boot FAQ, an ASUS manual warning (quoted on a forum), Corsair's PCIe-versus-CPU page and connector guide, Seasonic's cable-compatibility article, and Crucial's unplug step. Following the owner's review on 2026-10-12:
+  - The cut says to use the power supply's own CPU/EPS cable.
+  - It says to check the manual for the socket.
+  - It no longer turns Corsair's "closest to the CPU" advice into a positioning rule. That advice is about a board with two CPU sockets and only one cable.
 
-These pages were checked from web-search excerpts. This environment cannot open asus.com or corsair.com, so a person must read them. The other topics' claims are editorial knowledge. Either way, the **factual-takeaway** human gate must re-check them.
+These pages were checked from web-search excerpts. This environment cannot open asus.com, corsair.com or seasonic.com, so a person must read them. The other topics' claims are editorial knowledge. Either way, the **factual-takeaway** human gate must re-check them.
 
 ## What still needs a person each day
 1. **Collect the snapshot** in an assistant session with the Metricool and vidIQ connectors (about 5–10 vidIQ credits).

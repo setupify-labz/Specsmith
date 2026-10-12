@@ -165,10 +165,25 @@ async function peakIn(path: string, from: number, to: number): Promise<number> {
   const m = log.match(/max_volume: (-?[\d.]+|-inf) dB/);
   return !m || m[1] === "-inf" ? -Infinity : Number(m[1]);
 }
-async function frameHash(path: string, at: number): Promise<string> {
-  const out = await run("ffmpeg", ["-v", "error", "-ss", at.toFixed(3), "-i", path, "-frames:v", "1", "-vf", "scale=90:160", "-f", "md5", "-"]);
-  return out.trim();
+/** One frame's region, decoded to raw pixels at a tenth of its size. */
+function region(path: string, at: number, crop: { y: number; h: number }, format: "gray" | "rgb24"): Promise<Buffer> {
+  return new Promise((done, fail) => {
+    const child = spawn("ffmpeg", ["-v", "error", "-ss", at.toFixed(3), "-i", path, "-frames:v", "1", "-vf", `crop=1080:${crop.h}:0:${crop.y},scale=108:${Math.round(crop.h / 10)},format=${format}`, "-f", "rawvideo", "-"], { stdio: ["ignore", "pipe", "pipe"] });
+    const out: Buffer[] = [];
+    child.stdout.on("data", (c: Buffer) => out.push(c));
+    child.on("error", fail);
+    child.on("close", (code) => {
+      const pixels = Buffer.concat(out), expected = 108 * Math.round(crop.h / 10) * (format === "rgb24" ? 3 : 1);
+      if (code !== 0 || pixels.length !== expected) fail(new Error(`No frame decoded at ${at}s (ffmpeg exit ${code}, ${pixels.length} of ${expected} bytes).`)); else done(pixels);
+    });
+  });
 }
+// The frame's layout bands: ILLUSTRATION band, the artwork between the head and foot labels, and the captions.
+const BAND = { y: 0, h: 200 }, ART = { y: 340, h: 1090 }, CAPTIONS = { y: 1600, h: 320 };
+const BACKGROUND_Y = 10;   // #0A0A0F in luma
+const share = (pixels: Buffer, test: (v: number) => boolean) => { let n = 0; for (const v of pixels) if (test(v)) n += 1; return n / pixels.length; };
+const meanAbsDiff = (a: Buffer, b: Buffer) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += Math.abs(a[i] - b[i]); return sum / a.length; };
+export const MIN_ART_SHARE = 0.05;
 
 /** Checks the exported files, not the plan. */
 export async function verifyRender(template: AnimationTemplate, files: { silentPath: string; sfxPath: string }, outputDir: string): Promise<Verification> {
@@ -180,10 +195,35 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
     add(`${name} MP4 length`, Math.abs(p.duration - template.durationSeconds) < 0.05, `${p.duration.toFixed(3)} s (expected ${template.durationSeconds} s)`);
     add(`${name} MP4 frame count`, p.frames === Math.round(template.durationSeconds * template.fps), `${p.frames} frames (expected ${Math.round(template.durationSeconds * template.fps)})`);
   }
-  // One frame from the middle of every beat: all distinct, so every beat really shows something new.
+  // One frame from the middle of every beat. Uniqueness alone proves little (changing captions make every
+  // frame unique), so each band is checked for what it must contain:
+  //   artwork   the region between the head and foot labels is drawn (at least MIN_ART_SHARE of it is not
+  //             background), and differs from beat to beat, so every beat shows its own picture;
+  //   band      the ILLUSTRATION band is on every sampled frame, unchanged, with its amber badge;
+  //   captions  every sampled frame carries caption text.
   const mids = template.beats.map((b) => (b.from + b.to) / 2);
-  const hashes = await Promise.all(mids.map((t) => frameHash(files.silentPath, t)));
-  add("every beat's middle frame is distinct", new Set(hashes).size === hashes.length, `${new Set(hashes).size} distinct of ${hashes.length}`);
+  const samples = [0, ...mids, template.durationSeconds - 0.1];
+  try {
+    await contentChecks();
+  } catch (error) {
+    add("every sampled frame decodes", false, (error as Error).message);
+  }
+  async function contentChecks() {
+    const art = await Promise.all(mids.map((t) => region(files.silentPath, t, ART, "gray")));
+    const artShares = art.map((px) => share(px, (v) => Math.abs(v - BACKGROUND_Y) > 12));
+    add("every beat's artwork is drawn", artShares.every((x) => x >= MIN_ART_SHARE), artShares.map((x, i) => `beat ${i + 1}: ${(x * 100).toFixed(1)}%`).join("; ") + ` of the art region not background (at least ${MIN_ART_SHARE * 100}%)`);
+    let closest = Infinity, pair = "";
+    for (let i = 0; i < art.length; i += 1) for (let j = i + 1; j < art.length; j += 1) { const d = meanAbsDiff(art[i], art[j]); if (d < closest) { closest = d; pair = `${i + 1} and ${j + 1}`; } }
+    add("every beat's artwork differs from every other beat's", closest >= 2, `closest pair: beats ${pair}, mean difference ${closest.toFixed(1)} grey levels (at least 2)`);
+    const bands = await Promise.all(samples.map((t) => region(files.silentPath, t, BAND, "rgb24")));
+    const amber = bands.map((px) => { let n = 0; for (let i = 0; i < px.length; i += 3) if (px[i] > 200 && px[i + 1] > 140 && px[i + 2] < 90) n += 1; return n / (px.length / 3); });
+    const bandDrift = Math.max(...bands.map((px) => meanAbsDiff(px, bands[0])));
+    add("the ILLUSTRATION band is on every sampled frame", amber.every((x) => x > 0.01) && bandDrift < 3, `${samples.length} frames; amber badge ${(Math.min(...amber) * 100).toFixed(1)}%+ of the band; largest change ${bandDrift.toFixed(2)} levels`);
+    const caps = await Promise.all(samples.map((t) => region(files.silentPath, t, CAPTIONS, "gray")));
+    const capShares = caps.map((px) => share(px, (v) => v > 150));
+    add("every sampled frame has caption text", capShares.every((x) => x > 0.01), `lowest ${(Math.min(...capShares) * 100).toFixed(1)}% of the caption band lit`);
+
+  }
   const beatSheet = join(outputDir, "beats-phone.png");
   const select = mids.map((t) => `eq(n\\,${Math.round(t * template.fps)})`).join("+");
   await run("ffmpeg", ["-v", "error", "-y", "-i", files.silentPath, "-vf", `select='${select}',scale=360:640:flags=lanczos,tile=${mids.length}x1:padding=6:color=0x2A2A33`, "-frames:v", "1", beatSheet]);
@@ -205,6 +245,14 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
     cuePeaks.push({ kind: cue.kind, at: cue.at, reason: cue.reason, measuredFrom: a, measuredTo: b, peakDbfs: await peakIn(files.sfxPath, a, b) });
   }
   add("every cue sounds", cuePeaks.every((c) => c.peakDbfs > -60), cuePeaks.map((c) => `${c.at.toFixed(2)}s ${c.kind} ${c.peakDbfs.toFixed(1)} dBFS`).join("; "));
+  // A short cue must have its own onset: a rise of at least 6 dB in the 15 ms from its frame over the 15 ms
+  // before it. Two clicks 35 ms apart each need their own; a cue that only catches the previous one's tail fails.
+  const onsets = [];
+  for (const cue of template.cues.filter((c) => c.seconds < 0.3)) {
+    const before = await peakIn(files.sfxPath, Math.max(0, cue.at - 0.02), cue.at - 0.005), at = await peakIn(files.sfxPath, cue.at - 0.003, cue.at + 0.012);
+    onsets.push({ cue, rise: at - before, at });
+  }
+  add("every short cue has its own onset", onsets.every((o) => o.rise >= 6 && o.at > -60), onsets.map((o) => `${o.cue.at.toFixed(3)}s ${o.cue.kind} +${Number.isFinite(o.rise) ? o.rise.toFixed(1) : "inf"} dB`).join("; "));
   const windows = [...template.cues].map((c) => [c.at - 0.01, c.at + c.seconds + 0.08]).sort((a, b) => a[0] - b[0]);
   const gaps: [number, number][] = [];
   let cursor = 0;

@@ -24,7 +24,8 @@
 //
 // It calls no paid provider, generates no voice, schedules nothing and
 // publishes nothing: none of those modules is imported (a test checks).
-// Exit codes: 0 proposal and cut ready for human review; 2 written but an
+// Exit codes: 0 proposal and cut rendered, awaiting fact-check and human review
+// (status "awaiting-fact-check": nothing here can verify a source); 2 written but an
 // automated gate or a render check blocked it (nothing is rendered when a gate
 // blocks); 1 refused (missing or stale snapshot, unavailable source or
 // renderer, no producible topic left: nothing usable was produced).
@@ -81,7 +82,8 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       await writeFile(join(outDir, "verification.json"), `${JSON.stringify(verification, null, 2)}\n`);
     }
     const passed = gates.passed && verification?.passed === true;
-    const status = !gates.passed ? "blocked-by-gate" : passed ? "ready-for-human-review" : "blocked-by-render-check";
+    // Never "ready": no claim is verified until a person reads its source, so a clean run is a draft awaiting that.
+    const status = !gates.passed ? "blocked-by-gate" : passed ? "awaiting-fact-check" : "blocked-by-render-check";
     const proposal = {
       kind: "daily-short-proposal", version: "daily-short-proposal-v2", generatedAt: now.toISOString(), status,
       notPublished: true, noVoiceGenerated: true, notScheduled: true,
@@ -101,6 +103,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       unknown: selection.unknowns,
       topicsExcluded: selection.excluded, ranking: selection.ranking,
       gates: { passed: gates.passed, findings: gates.findings },
+      factCheckRequired: gates.factCheck,
       animatedCut: cut ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures } : { notRendered: "an automated gate blocked the proposal" },
       verification: verification ?? null,
       humanGates: humanGatesUnresolved(),
@@ -124,7 +127,7 @@ function proposalMarkdown(p: Proposal): string {
   const rows = (items: any[], cols: string[]) => items.map((it) => `| ${cols.map((c) => String(it[c] ?? "").replace(/\|/g, "/")).join(" | ")} |`).join("\n");
   return `# Daily Short proposal: ${p.topic.title}
 
-**Status: ${p.status}.** Not published, not scheduled, no voice generated. Every human gate below is unresolved.
+**Status: ${p.status}.** Not published, not scheduled, no voice generated. Every human gate below is unresolved, and no claim is verified until a person reads its source.
 
 Topic chosen by **${p.topic.chosenBy === "operator" ? `the operator (--topic), not the data; the data's own pick was ${p.topic.dataPick}` : "the data"}**. Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
@@ -170,8 +173,13 @@ Excluded as already covered: ${p.topicsExcluded.length ? p.topicsExcluded.map((e
 ${p.unknown.length ? p.unknown.map((u: string) => `- ${u}`).join("\n") : "- nothing recorded as unknown"}
 
 ## Gates
-**${p.gates.passed ? "All automated gates passed." : "Blocked: see the hard failures below."}**
+**${p.gates.passed ? "No blocking findings (risky claims, slop, forbidden claims, reading speed). This does not verify any claim: see the fact-check list." : "Blocked: see the hard failures below."}**
 ${p.gates.findings.length ? p.gates.findings.map((f: any) => `- [${f.severity}] ${f.gate} · ${f.location}: ${f.message}`).join("\n") : "- no findings"}
+
+## Fact check required (no claim is verified yet)
+Each line below rests on a claim no person has yet read against its source. The cut is a draft until they do.
+
+${p.factCheckRequired.length ? p.factCheckRequired.map((f: any) => `- **${f.location}** "${f.line}": ${f.claimIds.join(", ") || "(claim not matched)"}\n${f.bases.map((b: string) => `  - ${b}`).join("\n")}`).join("\n") : "- No line matched a listed claim. The claims below still need checking."}
 
 ## Animated cut
 ${p.animatedCut.notRendered ? `Not rendered: ${p.animatedCut.notRendered}.` : `- **\`${p.animatedCut.silent}\`**: the finished cut, silent (sha256 \`${p.animatedCut.silentSha256.slice(0, 16)}…\`).

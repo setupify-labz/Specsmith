@@ -24,6 +24,16 @@ describe("spec checks", () => {
     expect(broken((s) => { s.cues[0].at = 12.59; })).toContainEqual(expect.stringContaining("outside the cut"));
     expect(broken((s) => { s.cues = s.cues.filter((c: any) => c.kind !== "snap"); })).toContainEqual(expect.stringContaining("never sounds"));
   });
+  it("refuse a reversed or empty label window and a zero-length cue (Codex P2)", () => {
+    expect(broken((s) => { s.labels[0].to = s.labels[0].from; })).toContainEqual(expect.stringContaining("has no positive span"));
+    expect(broken((s) => { s.labels[3].from = 5.2; s.labels[3].to = 4.4; })).toContainEqual(expect.stringContaining("has no positive span"));
+    expect(broken((s) => { s.cues[1].seconds = 0; })).toContainEqual(expect.stringContaining("has no length"));
+  });
+  it("refuse a band that is not the standard disclosure, or that makes a forbidden claim (Codex P1)", () => {
+    const problems = broken((s) => { s.line = "Guaranteed to fix it"; });
+    expect(problems).toContainEqual(expect.stringContaining("the band on every frame must read"));
+    expect(problems.some((p) => p.startsWith('"Guaranteed to fix it"'))).toBe(true);
+  });
   it("refuse a forbidden claim in a caption or label", () => {
     expect(broken((s) => { s.captions[6].text = "Guaranteed to fix it."; }).some((p) => p.startsWith('"Guaranteed to fix it."'))).toBe(true);
   });

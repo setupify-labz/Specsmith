@@ -1,5 +1,5 @@
 {
-  "status": "ready-for-human-review",
+  "status": "awaiting-fact-check",
   "exitCode": 0,
   "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-cpu-power",
   "files": [
@@ -9,14 +9,14 @@
     "phone-every-0.25s.png",
     "verification.json"
   ],
-  "totalMs": 28539,
+  "totalMs": 31526,
   "stagesMs": {
     "load-and-validate-snapshot": 9,
-    "check-renderer": 110,
+    "check-renderer": 112,
     "select-topic": 2,
-    "run-gates": 22,
-    "render-animated-cut": 19318,
-    "verify-exported-files": 9058
+    "run-gates": 24,
+    "render-animated-cut": 19197,
+    "verify-exported-files": 12166
   },
   "spend": {
     "elevenLabs": "not called (no voice)",

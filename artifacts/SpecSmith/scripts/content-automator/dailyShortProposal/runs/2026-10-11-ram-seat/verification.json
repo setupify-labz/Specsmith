@@ -32,14 +32,34 @@
       "detail": "372 frames (expected 372)"
     },
     {
-      "check": "every beat's middle frame is distinct",
+      "check": "every beat's artwork is drawn",
       "passed": true,
-      "detail": "7 distinct of 7"
+      "detail": "beat 1: 16.9%; beat 2: 50.1%; beat 3: 76.9%; beat 4: 32.3%; beat 5: 35.6%; beat 6: 50.3%; beat 7: 15.0% of the art region not background (at least 5%)"
+    },
+    {
+      "check": "every beat's artwork differs from every other beat's",
+      "passed": true,
+      "detail": "closest pair: beats 1 and 7, mean difference 3.1 grey levels (at least 2)"
+    },
+    {
+      "check": "the ILLUSTRATION band is on every sampled frame",
+      "passed": true,
+      "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+    },
+    {
+      "check": "every sampled frame has caption text",
+      "passed": true,
+      "detail": "lowest 2.9% of the caption band lit"
     },
     {
       "check": "every cue sounds",
       "passed": true,
       "detail": "0.20s button -26.1 dBFS; 0.35s fan -37.0 dBFS; 1.50s button -26.2 dBFS; 2.54s plug -23.1 dBFS; 5.80s tick -32.9 dBFS; 6.40s tap -29.0 dBFS; 7.25s snap -12.4 dBFS; 7.28s snap -12.4 dBFS; 9.99s plug -23.0 dBFS"
+    },
+    {
+      "check": "every short cue has its own onset",
+      "passed": true,
+      "detail": "0.200s button +64.9 dB; 1.500s button +15.8 dB; 2.540s plug +67.9 dB; 5.800s tick +58.1 dB; 6.400s tap +62.0 dB; 7.250s snap +78.6 dB; 7.285s snap +15.0 dB; 9.990s plug +68.0 dB"
     },
     {
       "check": "silence between cues (no stray sound, no boot sound at the end)",

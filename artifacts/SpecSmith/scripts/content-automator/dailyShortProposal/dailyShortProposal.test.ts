@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { TEMPLATES, verifyRender } from "./animations.ts";
-import { buildStoryboard, humanGatesUnresolved, runGates } from "./proposal.ts";
+import { buildStoryboard, contractFor, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { runDailyProposal } from "./run.ts";
 import { selectTopic } from "./select.ts";
 import { DailyProposalError, parseSnapshot } from "./snapshot.ts";
@@ -117,8 +117,31 @@ describe.each([["ram-not-seated", "ram-seat"], ["cpu-power-cable", "cpu-power"]]
 });
 
 describe("the existing gates run on every topic, and block what they should", () => {
-  it("passes every library topic as written", () => {
+  it("passes every library topic as written (no blocking finding)", () => {
     for (const topic of TOPICS) expect(runGates(buildStoryboard(topic, 14), topic, NOW).findings).toEqual([]);
+  });
+  it("never files a topic claim as safe, and lists the lines that rest on unverified claims", () => {
+    for (const topic of TOPICS) {
+      expect(contractFor(topic, NOW, "blocking").safeClaims).toEqual([]);
+      expect(contractFor(topic, NOW, "fact-check").safeClaims).toEqual([]);
+      expect(contractFor(topic, NOW, "fact-check").unsafeClaims.map((c) => c.state)).toEqual(topic.claims.map(() => "requires-human-judgment"));
+    }
+    const cpu = TOPICS.find((t) => t.id === "cpu-power-cable")!;
+    const { factCheck } = runGates(buildStoryboard(cpu, 14), cpu, NOW);
+    expect(factCheck.length).toBeGreaterThan(0);
+    expect(factCheck.flatMap((f) => f.claimIds)).toEqual(expect.arrayContaining(["cpu-not-pcie"]));
+  });
+  it("flags an unsupported claim added to a topic (Codex P1)", () => {
+    const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
+    const topic = { ...ram, claims: [...ram.claims, { id: "made-up", proposition: "reseating memory doubles gaming frame rates", basis: "none" }] };
+    const storyboard = buildStoryboard(topic, 14);
+    storyboard.beats[4] = { ...storyboard.beats[4], narration: "Reseating memory doubles gaming frame rates." };
+    expect(runGates(storyboard, topic, NOW).factCheck.some((f) => f.claimIds.includes("made-up"))).toBe(true);
+  });
+  it("blocks a forbidden claim in the persistent disclosure band (Codex P1)", () => {
+    const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
+    const storyboard = { ...buildStoryboard(ram, 14), persistentDisclosures: ["ILLUSTRATION", "Guaranteed to fix it"] };
+    expect(runGates(storyboard, ram, NOW).findings.some((f) => f.location === "disclosure-2")).toBe(true);
   });
   it("blocks a risky claim (strict research gate) and a guaranteed fix (forbidden claims)", () => {
     const topic = TOPICS.find((t) => t.id === "ram-not-seated")!;
@@ -188,6 +211,20 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     const broken = { ...t, durationSeconds: 13, cues: [...t.cues, { kind: "tick", at: 11.5, seconds: 0.03, reason: "a cue the mix lacks" }], clearestCue: "plug" };
     const failed = (await verifyRender(broken, files, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);
     expect(failed).toEqual(expect.arrayContaining(["silent MP4 length", "every cue sounds", "\"plug\" is the clearest cue"]));
+  }, 60_000);
+  it.skipIf(!hasFfmpeg)("fails a cue that only catches the previous click's tail (Codex P2: two snaps 35 ms apart)", async () => {
+    const t = TEMPLATES["ram-seat"];
+    const lastSnap = t.cues.filter((c) => c.kind === "snap").at(-1)!;
+    const ghost = { ...t, cues: [...t.cues, { ...lastSnap, at: lastSnap.at + 0.035, reason: "a third clip the mix lacks" }] };
+    const failed = (await verifyRender(ghost, files, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);
+    expect(failed).toContain("every short cue has its own onset");
+  }, 60_000);
+  it.skipIf(!hasFfmpeg)("fails a cut whose artwork is missing even though captions still change (Codex P1)", async () => {
+    const dir = scratch(), blank = join(dir, "blank.mp4");
+    // Black out the art region, keeping the band and captions, as if story() stopped drawing.
+    spawnSync("ffmpeg", ["-v", "error", "-y", "-i", files.silentPath, "-vf", "drawbox=x=0:y=330:w=1080:h=1110:color=0x0A0A0F:t=fill", "-c:a", "copy", blank]);
+    const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: blank, sfxPath: files.sfxPath }, dir)).checks.filter((c) => !c.passed).map((c) => c.check);
+    expect(failed).toEqual(expect.arrayContaining(["every beat's artwork is drawn", "every beat's artwork differs from every other beat's"]));
   }, 60_000);
   it.skipIf(!hasFfmpeg)("fails a sound-effects file standing in for the silent one", async () => {
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);

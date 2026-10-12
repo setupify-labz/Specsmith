@@ -6,7 +6,7 @@
 // time t and the shot's params, all times absolute seconds in the cut, so a
 // new Short is a timeline of these scenes (see spec.ts), not new drawing code.
 //
-//   powerButton       the PC beside its monitor; a finger press; optional fans
+//   powerButton       the PC beside its monitor; a finger press (optionally held); optional fans
 //                     lit; optional amber "press here" pulse (never the cyan of
 //                     a powered PC)
 //   psuRear           the back of the power supply: rocker switch I/O, the
@@ -243,7 +243,9 @@ const SCENES = {
     if (pulse > 0) { ring(BTN.x, BTN.y, BTN.r + 34 + 16 * Math.sin(t * 6), AMBER, 18, pulse * (0.6 + 0.4 * Math.sin(t * 6))); ring(BTN.x, BTN.y, BTN.r + 6, AMBER, 10, pulse); }
     ctx.restore();
     monitor();
-    if (p.press !== undefined) finger(pressed, t >= p.press - 0.3 && t < p.press + 0.7 ? clamp((t - (p.press - 0.3)) / 0.12) * (1 - clamp((t - (p.press + 0.45)) / 0.2)) : 0);
+    // The finger arrives, presses, and rests on the button until holdUntil (default: leaves right after the press).
+    const leave = p.holdUntil ?? p.press + 0.45;
+    if (p.press !== undefined) finger(pressed, t >= p.press - 0.3 && t < leave + 0.25 ? clamp((t - (p.press - 0.3)) / 0.12) * (1 - clamp((t - leave) / 0.2)) : 0);
   },
   psuRear(t, p) {
     ctx.translate(540, 900); ctx.scale(1.2, 1.2); ctx.translate(-560, -870);
