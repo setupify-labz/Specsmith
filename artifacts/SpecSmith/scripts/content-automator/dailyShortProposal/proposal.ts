@@ -43,6 +43,9 @@ export const OUTCOME_PROMISES: readonly { readonly pattern: RegExp; readonly why
   // Subject + optional auxiliary/copula + outcome verb in its base, -s, -ing or -ed form:
   // "it loads", "your PC will boot", "the PC is working now", "it's booting again", "it has started".
   { pattern: /\b(it|it's|your pc|the pc|your computer|the computer|that|this|the build|your build|everything)\s+((will|should|would|then|now|is|are|was|has|have|has been|will be|should be)\s+)*(boot(s|ing|ed)?|load(s|ing|ed)?|start(s|ing|ed)?(\s+up)?|power(s|ing|ed)?\s+on|post(s|ing|ed)?|work(s|ing|ed)?|run(s|ning)?|ran|turn(s|ing|ed)?\s+on)\b/i, why: "States that the PC boots, loads or works afterwards; the Shorts show a check, never an outcome." },
+  // Independent of the subject: a finite outcome verb followed by an outcome word ("PC boots now", "my PC works
+  // again", "it runs fine"). "-ing" forms are left out so the instruction "Then try booting again." passes.
+  { pattern: /\b(boots|booted|works|worked|loads|loaded|starts|started|runs|ran|posts|posted)\s+(up\s+)?(now|again|fine|properly|normally|perfectly|first time|straight away|right away)\b/i, why: "States that the PC boots, loads or works afterwards; the Shorts show a check, never an outcome." },
   { pattern: /\b(fixed|solved|problem solved|back to normal|good as new|up and running)\b/i, why: "States that the problem is fixed; the Shorts offer one check, never a fix." },
   { pattern: /\b(loads?|boots?\s+(in)?to|straight\s+(in)?to)\s+windows\b/i, why: "Shows or promises a successful boot into Windows, which no cut shows." },
 ];

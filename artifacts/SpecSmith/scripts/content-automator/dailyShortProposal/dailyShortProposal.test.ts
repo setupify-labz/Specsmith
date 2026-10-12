@@ -146,7 +146,7 @@ describe("the existing gates run on every topic, and block what they should", ()
   });
   it("blocks an outcome promise whatever its wording, and leaves instructions and symptoms alone (Codex P2)", () => {
     const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
-    for (const line of ["It loads Windows after that.", "Your PC will boot now.", "Problem solved.", "That should work.", "The PC is working now.", "It is booting again.", "It's working.", "Everything works."]) {
+    for (const line of ["It loads Windows after that.", "Your PC will boot now.", "Problem solved.", "That should work.", "The PC is working now.", "It is booting again.", "It's working.", "Everything works.", "PC boots now.", "My PC works now.", "Boots fine after that."]) {
       const storyboard = buildStoryboard(ram, 14);
       storyboard.beats[6] = { ...storyboard.beats[6], narration: line };
       expect(runGates(storyboard, ram, NOW).findings.some((f) => f.gate.startsWith("outcome promise"))).toBe(true);
@@ -289,6 +289,14 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     } finally {
       templates["ram-seat"] = original;
     }
+  }, 60_000);
+  it.skipIf(!hasFfmpeg)("measures a short cue at 0 s without a negative pre-roll (Codex P2)", async () => {
+    const t = TEMPLATES["ram-seat"];
+    const atZero = { ...t, cues: [{ kind: "button", at: 0, seconds: 0.05, reason: "a cue at the very start (none in this mix)" }, ...t.cues] };
+    const v = await verifyRender(atZero, files, scratch());
+    const onset = v.checks.find((c) => c.check === "every short cue has its own onset")!;
+    expect(onset.detail).toContain("0.000s button");
+    expect(v.checks.some((c) => c.check === "every sampled frame decodes")).toBe(false);
   }, 60_000);
   it.skipIf(!hasFfmpeg)("fails a sound-effects file standing in for the silent one", async () => {
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);

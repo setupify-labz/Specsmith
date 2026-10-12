@@ -273,7 +273,9 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
   // before it. Two clicks 35 ms apart each need their own; a cue that only catches the previous one's tail fails.
   const onsets = [];
   for (const cue of template.cues.filter((c) => c.seconds < 0.3)) {
-    const before = await peakIn(files.sfxPath, Math.max(0, cue.at - 0.02), cue.at - 0.005), at = await peakIn(files.sfxPath, cue.at - 0.003, cue.at + 0.012);
+    // A cue in the first 5 ms has no pre-roll to measure: the time before the cut starts counts as silence.
+    const before = cue.at - 0.005 <= 0 ? -Infinity : await peakIn(files.sfxPath, Math.max(0, cue.at - 0.02), cue.at - 0.005);
+    const at = await peakIn(files.sfxPath, Math.max(0, cue.at - 0.003), cue.at + 0.012);
     onsets.push({ cue, rise: at - before, at });
   }
   add("every short cue has its own onset", onsets.every((o) => o.rise >= 6 && o.at > -60), onsets.map((o) => `${o.cue.at.toFixed(3)}s ${o.cue.kind} +${Number.isFinite(o.rise) ? o.rise.toFixed(1) : "inf"} dB`).join("; "));
