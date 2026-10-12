@@ -183,7 +183,8 @@ function region(path: string, at: number, crop: { y: number; h: number }, format
   });
 }
 // The frame's layout bands: ILLUSTRATION band, the artwork between the head and foot labels, and the captions.
-const BAND = { y: 0, h: 200 }, ART = { y: 340, h: 1090 }, CAPTIONS = { y: 1600, h: 320 };
+// DISCLOSURE_LINE is the band's lower line ("Stylized example · not a fix for every PC", drawn at y 152).
+const BAND = { y: 0, h: 200 }, DISCLOSURE_LINE = { y: 125, h: 60 }, ART = { y: 340, h: 1090 }, CAPTIONS = { y: 1600, h: 320 };
 const BACKGROUND_Y = 10;   // #0A0A0F in luma
 const share = (pixels: Buffer, test: (v: number) => boolean) => { let n = 0; for (const v of pixels) if (test(v)) n += 1; return n / pixels.length; };
 const meanAbsDiff = (a: Buffer, b: Buffer) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += Math.abs(a[i] - b[i]); return sum / a.length; };
@@ -227,7 +228,8 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
   // frame unique), so each band is checked for what it must contain:
   //   artwork   the region between the head and foot labels is drawn (at least MIN_ART_SHARE of it is not
   //             background), and differs from beat to beat, so every beat shows its own picture;
-  //   band      the ILLUSTRATION band is on every sampled frame, unchanged, with its amber badge;
+  //   band      the ILLUSTRATION band is on every sampled frame, unchanged, with its amber badge, and its
+  //             disclosure line ("not a fix for every PC") is drawn: the badge alone does not pass;
   //   captions  every sampled frame carries caption text.
   const mids = template.beats.map((b) => (b.from + b.to) / 2);
   const samples = [0, ...mids, template.durationSeconds - 0.1];
@@ -247,6 +249,9 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
     const amber = bands.map((px) => { let n = 0; for (let i = 0; i < px.length; i += 3) if (px[i] > 200 && px[i + 1] > 140 && px[i + 2] < 90) n += 1; return n / (px.length / 3); });
     const bandDrift = Math.max(...bands.map((px) => meanAbsDiff(px, bands[0])));
     add("the ILLUSTRATION band is on every sampled frame", amber.every((x) => x > 0.01) && bandDrift < 3, `${samples.length} frames; amber badge ${(Math.min(...amber) * 100).toFixed(1)}%+ of the band; largest change ${bandDrift.toFixed(2)} levels`);
+    const lines = await Promise.all(samples.map((t) => region(files.silentPath, t, DISCLOSURE_LINE, "gray")));
+    const lineShares = lines.map((px) => share(px, (v) => v > 150));
+    add("the disclosure line is on every sampled frame", lineShares.every((x) => x > 0.03), `lowest ${(Math.min(...lineShares) * 100).toFixed(1)}% of the disclosure line's area lit (at least 3%)`);
     const caps = await Promise.all(samples.map((t) => region(files.silentPath, t, CAPTIONS, "gray")));
     const capShares = caps.map((px) => share(px, (v) => v > 150));
     add("every sampled frame has caption text", capShares.every((x) => x > 0.01), `lowest ${(Math.min(...capShares) * 100).toFixed(1)}% of the caption band lit`);

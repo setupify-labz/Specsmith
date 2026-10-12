@@ -303,6 +303,14 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     expect(onset.detail).toContain("0.000s button");
     expect(v.checks.some((c) => c.check === "every sampled frame decodes")).toBe(false);
   }, 60_000);
+  it.skipIf(!hasFfmpeg)("fails a cut whose disclosure line is missing even though the badge is there (Codex P2)", async () => {
+    const dir = scratch(), noLine = join(dir, "no-line.mp4");
+    spawnSync("ffmpeg", ["-v", "error", "-y", "-i", files.silentPath, "-vf", "drawbox=x=0:y=120:w=1080:h=70:color=0x13131A:t=fill", "-c:a", "copy", noLine]);
+    const v = await verifyRender(TEMPLATES["ram-seat"], { silentPath: noLine, sfxPath: files.sfxPath }, dir);
+    const failed = v.checks.filter((c) => !c.passed).map((c) => c.check);
+    expect(failed).toContain("the disclosure line is on every sampled frame");
+    expect(failed).not.toContain("the ILLUSTRATION band is on every sampled frame");   // the badge alone still reads as present
+  }, 60_000);
   it.skipIf(!hasFfmpeg)("fails a sound-effects file standing in for the silent one", async () => {
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);
     expect(failed).toContain("the silent MP4 is silent");

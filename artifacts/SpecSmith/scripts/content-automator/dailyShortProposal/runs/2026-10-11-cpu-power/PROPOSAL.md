@@ -4,7 +4,7 @@
 
 Topic chosen by **the data**. Animation template: `cpu-power`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated 2026-10-12T18:55:05.156Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
+Generated 2026-10-12T19:10:53.816Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
 
 ## Frame-one hook
 > **NEW BUILD WON'T TURN ON?**
@@ -30,12 +30,12 @@ Persistent disclosure on every frame: "ILLUSTRATION", "Stylized example · not a
 
 | Short | Theme | Views/day | Avg view % | Engaged share | Length |
 |---|---|---|---|---|---|
-| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 752.8 | unknown | unknown | 15 s |
-| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 312.9 | 52.59 | 0.373 | 25 s |
-| 20 Game Leads… Only 4 FPS Apart? | comparison | 206.3 | 74.93 | 0.34 | 19 s |
-| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 212.9 | 87.65 | 0.578 | 14 s |
+| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 749.6 | unknown | unknown | 15 s |
+| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 312 | 52.59 | 0.373 | 25 s |
+| 20 Game Leads… Only 4 FPS Apart? | comparison | 205.9 | 74.93 | 0.34 | 19 s |
+| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 212.6 | 87.65 | 0.578 | 14 s |
 
-Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":482.9,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":259.6,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
+Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":481.1,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":259,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
 
 **Claims in the script** (each with its basis; the factual-takeaway gate re-checks them):
 - unplug the power cable before working inside the PC. _Crucial, "How to Install Memory in Your Desktop" (https://www.crucial.com/support/install-memory-desktop): "Shut down your system. Once your system has been powered off, unplug the power cable." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it._
@@ -55,15 +55,15 @@ Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":482.9,"medianA
 ## Metrics that influenced the choice
 | Metric | Source | Value | Used for |
 |---|---|---|---|
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 752.8 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 312.9 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 749.6 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 312 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 52.59 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 206.3 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 205.9 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 74.93 | ranking "20 Game Leads… Only 4 FPS Apart?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 212.9 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 212.6 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 87.65 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the target length |
-| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":482.9,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":259.6,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
-| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (752.8 views/day) | symptom family: wont-turn-on |
+| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":481.1,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":259,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
+| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (749.6 views/day) | symptom family: wont-turn-on |
 | best-retained Short's length | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s | target length 14 s (clamped to 10-15 s) |
 | tiktok views by publish day (sum) | tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542) | 1803 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
 | instagram views by publish day (sum) | instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542) | 691 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
@@ -76,7 +76,7 @@ Excluded as already covered: monitor-input-source (no animation template yet (th
 ## Unknown
 - Retention for "PC Won't Turn On? Check These 2 Spots First": analytics sample under 300 views (or unknown), excluded rather than trusted.
 - YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).
-- "PC Won't Turn On? Check These 2 Spots First" has been live 2.58 days: its views per day are an early figure and may fall as it ages.
+- "PC Won't Turn On? Check These 2 Spots First" has been live 2.6 days: its views per day are an early figure and may fall as it ages.
 - Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).
 - instagram 2026-10-06 saves: unknown (not returned by Metricool).
 - instagram 2026-10-06 shares: unknown (not returned by Metricool).
@@ -136,6 +136,7 @@ Each line below rests on a claim no person has yet read against its source. The 
 | every beat's artwork is drawn | pass | beat 1: 15.1%; beat 2: 49.7%; beat 3: 86.5%; beat 4: 29.4%; beat 5: 25.8%; beat 6: 50.7%; beat 7: 14.2% of the art region not background (at least 5%) |
 | every beat's artwork differs from every other beat's | pass | closest pair: beats 1 and 7, mean difference 2.2 grey levels (at least 2) |
 | the ILLUSTRATION band is on every sampled frame | pass | 9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels |
+| the disclosure line is on every sampled frame | pass | lowest 3.1% of the disclosure line's area lit (at least 3%) |
 | every sampled frame has caption text | pass | lowest 2.9% of the caption band lit |
 | every cue sounds | pass | 0.30s button -26.0 dBFS; 2.24s plug -23.1 dBFS; 7.80s tap -29.0 dBFS; 8.38s snap -12.5 dBFS; 10.04s plug -23.0 dBFS |
 | every short cue has its own onset | pass | 0.300s button +65.0 dB; 2.240s plug +67.9 dB; 7.800s tap +62.0 dB; 8.380s snap +78.5 dB; 10.040s plug +68.0 dB |
