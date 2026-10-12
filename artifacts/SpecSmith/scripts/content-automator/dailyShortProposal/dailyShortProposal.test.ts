@@ -53,6 +53,20 @@ describe("the snapshot is validated before anything uses it", () => {
 });
 
 describe("a video cannot be newer than the snapshot", () => {
+  it("refuses negative metrics instead of ranking on them", () => {
+    const edits: ((doc: any) => void)[] = [
+      (doc) => { doc.sources.youtube.videos[0].public.views = -1; },
+      (doc) => { doc.sources.youtube.videos[0].durationSeconds = -1; },
+      (doc) => { doc.sources.youtube.videos[0].analytics.averageViewPercentage = -5; },
+      (doc) => { doc.sources.youtube.subscribers = -3; },
+      (doc) => { doc.sources.tiktok.followers = -1; },
+      (doc) => { doc.sources.instagram.byPublishDay[0].views = -10; },
+    ];
+    for (const edit of edits) {
+      const doc = raw(); edit(doc);
+      expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("non-negative") });
+    }
+  });
   it("refuses a publishedAt later than collectedAt instead of ranking an impossible video", () => {
     const doc = raw(); doc.sources.youtube.videos[0].publishedAt = "2027-10-01T12:00:00Z";
     expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("after the snapshot was collected") });

@@ -56,13 +56,15 @@ export interface ChannelSnapshot {
   };
 }
 
-const isMetric = (v: unknown): v is Metric => v === "unknown" || (typeof v === "number" && Number.isFinite(v));
+// Every metric in a snapshot is a count, a length or a percentage, so a negative value is malformed input, not data.
+// (Average view percentage may exceed 100 on looping Shorts, so there is no upper bound.)
+const isMetric = (v: unknown): v is Metric => v === "unknown" || (typeof v === "number" && Number.isFinite(v) && v >= 0);
 
 function requireMetrics(where: string, record: unknown, keys: readonly string[]): void {
   if (!record || typeof record !== "object") throw new DailyProposalError("snapshot-invalid", `${where} is missing.`);
   for (const key of keys) {
     const value = (record as Record<string, unknown>)[key];
-    if (!isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${where}.${key} must be a number or "unknown", not ${JSON.stringify(value)}.`);
+    if (!isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${where}.${key} must be a non-negative number or "unknown", not ${JSON.stringify(value)}.`);
   }
 }
 
@@ -95,7 +97,7 @@ export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): Channe
   }
   const yt = doc.sources.youtube;
   if (!Array.isArray(yt.videos) || yt.videos.length === 0) throw new DailyProposalError("source-unavailable", "The YouTube source lists no videos; there is nothing to learn from.");
-  if (!isMetric(yt.subscribers)) throw new DailyProposalError("snapshot-invalid", "youtube.subscribers must be a number or \"unknown\".");
+  if (!isMetric(yt.subscribers)) throw new DailyProposalError("snapshot-invalid", "youtube.subscribers must be a non-negative number or \"unknown\".");
   yt.videos.forEach((video: any, i: number) => {
     if (typeof video.id !== "string" || typeof video.title !== "string" || !Number.isFinite(Date.parse(video.publishedAt))) {
       throw new DailyProposalError("snapshot-invalid", `youtube.videos[${i}] needs an id, a title and a publishedAt.`);
@@ -110,11 +112,11 @@ export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): Channe
   });
   for (const name of ["tiktok", "instagram"] as const) {
     const source = doc.sources[name];
-    if (!isMetric(source.followers)) throw new DailyProposalError("snapshot-invalid", `${name}.followers must be a number or "unknown".`);
+    if (!isMetric(source.followers)) throw new DailyProposalError("snapshot-invalid", `${name}.followers must be a non-negative number or "unknown".`);
     if (!Array.isArray(source.byPublishDay)) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay must be a list (empty if nothing was published).`);
     source.byPublishDay.forEach((row: any, i: number) => {
       if (typeof row.date !== "string") throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}] needs a date.`);
-      for (const [key, value] of Object.entries(row)) if (key !== "date" && !isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}].${key} must be a number or "unknown".`);
+      for (const [key, value] of Object.entries(row)) if (key !== "date" && !isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}].${key} must be a non-negative number or "unknown".`);
     });
   }
   return doc as ChannelSnapshot;
