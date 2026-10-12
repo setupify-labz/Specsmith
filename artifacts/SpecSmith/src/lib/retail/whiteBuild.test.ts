@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import catalogData from '../../../public/data/retail-parts.json';
-import { parseAffiliatePartCatalog } from './partCatalog';
+import { catalogueContaining, titledListing } from './__fixtures__/catalogFixture';
+import { parseAffiliatePartCatalog, type AffiliatePart } from './partCatalog';
 import {
   COLOR_NEUTRAL_CATEGORIES,
   isColorNeutralCategory,
@@ -15,6 +16,28 @@ import {
 const parsed = parseAffiliatePartCatalog(catalogData);
 if (!parsed.ok) throw new Error(`published catalogue invalid: ${parsed.problem}`);
 const catalog = parsed.catalog;
+
+/**
+ * A schema-valid catalogue holding exactly the listings given, plus colourless
+ * fillers. The live file rotates with the feed, so behaviour that depends on
+ * WHICH listings exist (a white keyboard, an empty category) is pinned here.
+ */
+const fixtureParts = (...listings: AffiliatePart[]): AffiliatePart[] => {
+  const result = parseAffiliatePartCatalog(catalogueContaining(...listings));
+  if (!result.ok) throw new Error(`fixture catalogue invalid: ${result.problem}`);
+  return result.catalog.parts;
+};
+
+/** Keyboards as merchants title them: two white boards, three that only mention white. */
+const WHITE_KEYBOARDS = [
+  titledListing('keyboard', 'offwhite', 'Logitech Alto Keys K98M Wireless Mechanical Keyboard, Off-white'),
+  titledListing('keyboard', 'white-gaming', 'womier L65 60% Mechanical Keyboard Wireless with Knob, White Gaming Keyboard'),
+];
+const KEYBOARDS_ONLY_MENTIONING_WHITE = [
+  titledListing('keyboard', 'backlight', 'Keychron K8 Wireless Mechanical Keyboard, White Backlight, Gateron Red'),
+  titledListing('keyboard', 'keycaps', 'Gaming Keyboard with Black White Keycaps, Wired'),
+  titledListing('keyboard', 'switch', 'Mechanical Keyboard Optical Red Switch/White Backlit'),
+];
 
 describe('a white finish is admitted only when the merchant title says so', () => {
   it('accepts the ways a retailer actually writes it', () => {
@@ -120,15 +143,21 @@ describe('against the real published catalogue', () => {
     const white = whiteParts(catalog.parts);
     expect(white.length).toBeGreaterThan(0);
     expect(white.length).toBeLessThan(catalog.parts.length / 10);
-    // A feed refresh may remove every keyboard that mentions white. When any
-    // are present, none may enter the collection merely because the word
-    // describes a backlight, keycap or switch; the unit cases above keep this
-    // assertion non-vacuous even when today's rotating feed has none.
-    const keyboardsMentioningWhite = catalog.parts.filter(
-      (part) => part.category === 'keyboard' && /white/i.test(part.name),
-    );
-    expect(keyboardsMentioningWhite.every((part) => !classifyWhiteFinish(part.name).white)).toBe(true);
-    expect(white.some((part) => part.category === 'keyboard')).toBe(false);
+    // Whatever today's feed holds, nothing enters on a backlight, keycap or
+    // switch mention: every admitted listing carries the claim in its title.
+    for (const part of white) expect(classifyWhiteFinish(part.name).white, part.name).toBe(true);
+  });
+
+  it('admits a white keyboard and refuses one that only has a white backlight, keycaps or switch', () => {
+    // Pinned with fixtures: the live feed may hold no white keyboard one week
+    // and three the next. A keyboard is eligible exactly when its title states
+    // a white finish, like any other visible part.
+    const parts = fixtureParts(...WHITE_KEYBOARDS, ...KEYBOARDS_ONLY_MENTIONING_WHITE);
+    const keyboards = whiteParts(parts).filter((part) => part.category === 'keyboard');
+    expect(keyboards.map((part) => part.id).sort()).toEqual(WHITE_KEYBOARDS.map((part) => part.id).sort());
+    for (const part of KEYBOARDS_ONLY_MENTIONING_WHITE) {
+      expect(classifyWhiteFinish(part.name), part.name).toEqual({ white: false, refusal: 'describes-something-else' });
+    }
   });
 
   it('keeps each SKU exactly as it is — price, image and link', () => {
@@ -157,9 +186,17 @@ describe('against the real published catalogue', () => {
     for (const [category, count] of Object.entries(counts)) {
       expect(count, category).toBeGreaterThan(0);
     }
-    // At least one category genuinely has none — that is the empty state the
-    // interface has to be honest about rather than pad.
-    expect(Object.keys(counts).length).toBeLessThan(12);
+  });
+
+  it('leaves a category with no stated-white listing out of the counts (fixture)', () => {
+    // Whether the live feed has an empty category this week is not the
+    // behaviour; this is. Only gpu and keyboard state white here.
+    const parts = fixtureParts(
+      titledListing('gpu', 'white', 'ZOTAC SOLID OC White Edition GeForce RTX 5080 Graphics Card'),
+      ...WHITE_KEYBOARDS,
+      ...KEYBOARDS_ONLY_MENTIONING_WHITE,
+    );
+    expect(whiteCountsByCategory(parts)).toEqual({ gpu: 1, keyboard: 2 });
   });
 
   it('has an empty state that explains itself instead of apologising', () => {
@@ -211,27 +248,35 @@ describe('the White build can still complete a PC', () => {
     }
   });
 
-  it('still shows an honest absence where a visible category has no white product', () => {
+  it('shows each visible category exactly its stated-white listings, against the live catalogue', () => {
     // DERIVED, NOT LISTED. This used to name motherboard, ram, keyboard and
     // mouse, and a catalogue refresh broke it the moment a genuine white RAM
     // kit appeared — "Built-in Panel, White, for AMD EXPO", correctly
     // matched. The property is not "these four are empty"; it is that a
     // visible category shows exactly its stated-white listings and nothing
-    // invented, so a category with none stays empty. That survives a refresh.
+    // invented, so a category with none stays empty. That survives a refresh;
+    // the empty state itself is pinned with a fixture in the next case.
     const visible = [...new Set(parts.map((part) => part.category))].filter(
       (category) => !isColorNeutralCategory(category),
     );
-    const emptied: string[] = [];
     for (const category of visible) {
       const stated = parts.filter(
         (part) => part.category === category && classifyWhiteFinish(part.name).white,
       ).length;
       expect(countIn(inView, category), category).toBe(stated);
-      if (stated === 0) emptied.push(category);
     }
-    // And the honest-absence path is still exercised by real data, rather
-    // than being trivially satisfied by a catalogue where everything matches.
-    expect(emptied.length, 'some visible category has no stated-white listing').toBeGreaterThan(0);
+  });
+
+  it('shows nothing in a visible category with no stated-white listing, and keeps neutral ones whole (fixture)', () => {
+    // The honest-absence path, exercised on a catalogue built to have one,
+    // rather than hoping the live feed still does.
+    const parts = fixtureParts(...KEYBOARDS_ONLY_MENTIONING_WHITE, titledListing('gpu', 'white', 'ASUS PRIME GeForce RTX 5070 Graphics Card PRIME-RTX5070-O12G-WHITE'));
+    const view = whiteBuildParts(parts);
+    expect(countIn(parts, 'keyboard')).toBeGreaterThan(0);
+    expect(countIn(view, 'keyboard')).toBe(0);
+    expect(countIn(view, 'mouse')).toBe(0);
+    expect(countIn(view, 'gpu')).toBe(1);
+    for (const category of COLOR_NEUTRAL_CATEGORIES) expect(countIn(view, category), category).toBe(countIn(parts, category));
   });
 
   it('keeps the white filter itself unchanged for counting purposes', () => {
