@@ -11,8 +11,8 @@
 //   LOCATION    panel off; the camera closes on an empty 8-pin socket in an
 //               example layout, labelled POSITION VARIES: the caption sends the
 //               viewer to their manual. No positioning rule is stated.
-//   ACTION      two cable ends: the CPU cable from the PC's own power supply is
-//               right, a PCIe cable is wrong; then the CPU plug pressed fully
+//   ACTION      two cable ends: the CPU/EPS cable from the PC's own power supply
+//               is right, a PCIe cable is wrong; then the CPU plug pressed fully
 //               into the socket, its latch hooking over the tab.
 //   POWER BACK  panel back on with the cable in; the cord back in.
 //   TRY AGAIN   the unlit PC, its button pulsing amber. No boot is shown.
@@ -37,7 +37,7 @@ export const CPU_POWER_CUT: CutSpec = {
     { from: 0, to: 1.6, text: "New build won't turn on?" },
     { from: 1.6, to: 3.4, text: "Unplug it before opening the case." },
     { from: 3.4, to: 5.2, text: "Check your manual for the CPU power socket." },
-    { from: 5.2, to: 7.1, text: "Use your PSU's own CPU cable, not PCIe." },
+    { from: 5.2, to: 7.1, text: "Use your PSU's own CPU/EPS cable, not PCIe." },
     { from: 7.1, to: 9.0, text: "Push it all the way in." },
     { from: 9.0, to: 10.8, text: "Plug it back in." },
     { from: 10.8, to: 12.6, text: "Then try booting again." },
@@ -46,8 +46,8 @@ export const CPU_POWER_CUT: CutSpec = {
     { storyBeat: "problem", purpose: "hook", visualDirection: "A finger presses the stylized PC's power button and rests there; the monitor beside it stays dark. No other symptom is shown." },
     { storyBeat: "unplug", purpose: "commitment", visualDirection: "At the back of the power supply, the power cord comes out of the inlet." },
     { storyBeat: "location", purpose: "evidence", visualDirection: "The glass side panel slides off; the camera closes on an empty 8-pin socket in an example layout, outlined amber, marked POSITION VARIES." },
-    { storyBeat: "action", purpose: "payoff", visualDirection: "Two cable ends face-on: the 4+4-pin end marked CPU, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross." },
-    { storyBeat: "action", purpose: "payoff", visualDirection: "Side view: the CPU plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green." },
+    { storyBeat: "action", purpose: "payoff", visualDirection: "Two cable ends face-on: the 4+4-pin end marked CPU/EPS, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross." },
+    { storyBeat: "action", purpose: "payoff", visualDirection: "Side view: the CPU/EPS plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green." },
     { storyBeat: "power-back", purpose: "cta", visualDirection: "The camera pulls back from the filled socket; the panel slides back on; at the back, the cord goes back in." },
     { storyBeat: "try-again", purpose: "cta", visualDirection: "The unlit PC beside the dark monitor, its power button pulsing amber. No one presses it; no boot is shown." },
   ],
@@ -56,7 +56,7 @@ export const CPU_POWER_CUT: CutSpec = {
     { scene: "psuRear", from: 1.6, to: 3.6, fadeIn: 0.2, fadeOut: 0.2, params: { unplug: [2.2, 2.55] } },
     { scene: "caseOpen", from: 3.4, to: 5.4, fadeIn: 0.2, fadeOut: 0.2, params: { panelOff: [3.55, 3.9], zoom: { from: [540, 700, 0.9], to: [430, 300, 2.2], during: [3.9, 4.5] }, highlight: "cpuSocket", highlightFrom: 4.4 } },
     { scene: "connectorCompare", from: 5.2, to: 7.3, fadeIn: 0.2, fadeOut: 0.2, params: { from: 5.25, left: "cpu", leftOk: true, right: "pcie", rightOk: false, verdictLeft: 5.95, verdictRight: 6.25 } },
-    { scene: "connectorInsert", from: 7.1, to: 9.2, fadeIn: 0.2, fadeOut: 0.2, params: { lower: [7.3, 7.8], thumbsIn: [7.85, 8.05], press: [8.05, 8.35], latch: [8.25, 8.4], thumbsOut: [8.75, 8.95], seatedFrom: 8.45, stamp: "CPU" } },
+    { scene: "connectorInsert", from: 7.1, to: 9.2, fadeIn: 0.2, fadeOut: 0.2, params: { lower: [7.3, 7.8], thumbsIn: [7.85, 8.05], press: [8.05, 8.35], latch: [8.25, 8.4], thumbsOut: [8.75, 8.95], seatedFrom: 8.45, stamp: "CPU/EPS" } },
     { scene: "caseOpen", from: 9.0, to: 9.65, fadeIn: 0.2, fadeOut: 0.2, params: { zoom: { from: [430, 300, 2.2], to: [540, 700, 0.9], during: [9.0, 9.25] }, panelOn: [9.2, 9.45], highlight: "cpuSocket", highlightFrom: 99, seatedFrom: 9.0, socketFilledFrom: 0 } },
     { scene: "psuRear", from: 9.45, to: 10.95, fadeIn: 0.2, fadeOut: 0.2, params: { startPlugged: false, plugIn: [9.75, 10.1] } },
     { scene: "powerButton", from: 10.8, to: 12.6, fadeIn: 0.2, params: { pulseFrom: 11.0 } },
@@ -66,7 +66,7 @@ export const CPU_POWER_CUT: CutSpec = {
     { text: "UNPLUG FIRST", from: 1.6, to: 3.4, colour: "amber", at: "head" },
     { text: "CPU POWER SOCKET", from: 4.35, to: 5.2, colour: "purple", at: "head" },
     { text: "POSITION VARIES", from: 4.35, to: 5.2, colour: "amber", at: "foot" },
-    { text: "CPU CABLE FROM YOUR PSU", from: 5.3, to: 7.1, colour: "cyan", at: "head" },
+    { text: "YOUR PSU'S CPU/EPS CABLE", from: 5.3, to: 7.1, colour: "cyan", at: "head" },
     { text: "NOT A PCIe CABLE", from: 6.25, to: 7.1, colour: "red", at: "foot" },
     { text: "PUSH IT ALL THE WAY IN", from: 7.2, to: 8.45, colour: "cyan", at: "head" },
     { text: "FULLY IN", from: 8.45, to: 9.45, colour: "green", at: "head", size: 72 },

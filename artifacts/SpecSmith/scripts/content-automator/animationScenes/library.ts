@@ -183,7 +183,7 @@ function connectorFace(cx, cy, kind, ok, reveal) {
   const cell = 64, gap = 26, total = groups.reduce((s, g) => s + g[1] * cell, 0) + gap;
   let x = cx - total / 2;
   rr(cx - total / 2 - 30, cy - 260, total + 60, 230, 18, '#2E2E3C', '#8A8AA0', 4);
-  sceneText(kind === 'cpu' ? 'CPU' : 'PCIe', cx, cy - 145, total + 40, 72, kind === 'cpu' ? '#F0F0FF' : '#B8B8CC', 'center', 700);
+  sceneText(kind === 'cpu' ? 'CPU/EPS' : 'PCIe', cx, cy - 145, total + 40, 60, kind === 'cpu' ? '#F0F0FF' : '#B8B8CC', 'center', 700);
   groups.forEach((g) => {
     rr(x - 8, cy - 8, g[1] * cell + 16, g[0] * cell + 16, 10, '#16161F', '#55556A', 3);
     for (let r = 0; r < g[0]; r += 1) for (let c = 0; c < g[1]; c += 1) {
@@ -214,7 +214,8 @@ function insertArt(t, p) {
     ctx.beginPath(); ctx.moveTo(px + 60 + i * 100, top); ctx.lineTo(px + 60 + i * 100, top - 700); ctx.stroke(); }
   const seated = p.seatedFrom !== undefined && t >= p.seatedFrom ? out((t - p.seatedFrom) / 0.3) : 0;
   rr(px, top, pw, ph, 14, '#2E2E3C', seated > 0 ? 'rgba(0,230,118,' + (0.4 + 0.6 * seated) + ')' : '#8A8AA0', seated > 0 ? 6 : 4);
-  sceneText(p.stamp || 'CPU', px + pw / 2, top + ph / 2 - 10, pw - 40, 84, '#F0F0FF', 'center', 700);
+  // Offset right and sized so the open latch lever (left side) never crosses the stamp.
+  sceneText(p.stamp || 'CPU', px + pw / 2 + 40, top + ph / 2 - 10, pw - 130, 64, '#F0F0FF', 'center', 700);
   // The latch: a lever on the plug's side, open until pressed home, then it hooks over the tab.
   const latchK = t < p.latch[0] ? 0 : out(span(t, p.latch));
   const latchColour = latchK >= 1 ? '#C5C5D6' : '#8A8AA0';

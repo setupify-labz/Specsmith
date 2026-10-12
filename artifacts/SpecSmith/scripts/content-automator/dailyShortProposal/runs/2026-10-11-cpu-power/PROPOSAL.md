@@ -4,13 +4,13 @@
 
 Topic chosen by **the data**. Animation template: `cpu-power`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated 2026-10-12T19:17:06.335Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
+Generated 2026-10-12T20:03:42.896Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
 
 ## Frame-one hook
 > **NEW BUILD WON'T TURN ON?**
 
 ## Script (burned-in captions; not voiced)
-> New build won't turn on? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.
+> New build won't turn on? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU/EPS cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.
 
 ## Storyboard (12.6 s, YouTube Shorts)
 | Beat | Time | On screen | Narration | Visual |
@@ -18,8 +18,8 @@ Generated 2026-10-12T19:17:06.335Z from the snapshot of **specsmithpc** (YouTube
 | 1 hook | 0.00–1.60 s | NEW BUILD WON'T TURN ON? | New build won't turn on? | A finger presses the stylized PC's power button and rests there; the monitor beside it stays dark. No other symptom is shown. |
 | 2 commitment | 1.60–3.40 s | UNPLUG FIRST | Unplug it before opening the case. | At the back of the power supply, the power cord comes out of the inlet. |
 | 3 evidence | 3.40–5.20 s | CPU POWER SOCKET → POSITION VARIES | Check your manual for the CPU power socket. | The glass side panel slides off; the camera closes on an empty 8-pin socket in an example layout, outlined amber, marked POSITION VARIES. |
-| 4 payoff | 5.20–7.10 s | CPU CABLE FROM YOUR PSU → NOT A PCIe CABLE | Use your PSU's own CPU cable, not PCIe. | Two cable ends face-on: the 4+4-pin end marked CPU, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross. |
-| 5 payoff | 7.10–9.00 s | PUSH IT ALL THE WAY IN → FULLY IN | Push it all the way in. | Side view: the CPU plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green. |
+| 4 payoff | 5.20–7.10 s | YOUR PSU'S CPU/EPS CABLE → NOT A PCIe CABLE | Use your PSU's own CPU/EPS cable, not PCIe. | Two cable ends face-on: the 4+4-pin end marked CPU/EPS, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross. |
+| 5 payoff | 7.10–9.00 s | PUSH IT ALL THE WAY IN → FULLY IN | Push it all the way in. | Side view: the CPU/EPS plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green. |
 | 6 cta | 9.00–10.80 s | POWER CORD BACK IN | Plug it back in. | The camera pulls back from the filled socket; the panel slides back on; at the back, the cord goes back in. |
 | 7 cta | 10.80–12.60 s | (no label: caption only) | Then try booting again. | The unlit PC beside the dark monitor, its power button pulsing amber. No one presses it; no boot is shown. |
 
@@ -30,12 +30,12 @@ Persistent disclosure on every frame: "ILLUSTRATION", "Stylized example · not a
 
 | Short | Theme | Views/day | Avg view % | Engaged share | Length |
 |---|---|---|---|---|---|
-| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 748.4 | unknown | unknown | 15 s |
-| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 311.6 | 52.59 | 0.373 | 25 s |
-| 20 Game Leads… Only 4 FPS Apart? | comparison | 205.7 | 74.93 | 0.34 | 19 s |
-| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 212.5 | 87.65 | 0.578 | 14 s |
+| PC Won't Turn On? Check These 2 Spots First | troubleshooting | 739.2 | unknown | unknown | 15 s |
+| RTX 4060 → RTX 5070: Which Game Gains More? | comparison | 309 | 52.59 | 0.373 | 25 s |
+| 20 Game Leads… Only 4 FPS Apart? | comparison | 204.7 | 74.93 | 0.34 | 19 s |
+| DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix | troubleshooting | 211.8 | 87.65 | 0.578 | 14 s |
 
-Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":480.5,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":258.7,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
+Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":475.5,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":256.9,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}}
 
 **Claims in the script** (each with its basis; the factual-takeaway gate re-checks them):
 - unplug the power cable before working inside the PC. _Crucial, "How to Install Memory in Your Desktop" (https://www.crucial.com/support/install-memory-desktop): "Shut down your system. Once your system has been powered off, unplug the power cable." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it._
@@ -55,15 +55,15 @@ Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":480.5,"medianA
 ## Metrics that influenced the choice
 | Metric | Source | Value | Used for |
 |---|---|---|---|
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 748.4 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 311.6 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 739.2 | ranking "PC Won't Turn On? Check These 2 Spots First" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 309 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 52.59 | ranking "RTX 4060 → RTX 5070: Which Game Gains More?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 205.7 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 204.7 | ranking "20 Game Leads… Only 4 FPS Apart?" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 74.93 | ranking "20 Game Leads… Only 4 FPS Apart?" for the target length |
-| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 212.5 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
+| views per day (public views / days live) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | 211.8 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the family choice |
 | average view percentage | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | 87.65 | ranking "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix" for the target length |
-| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":480.5,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":258.7,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
-| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (748.4 views/day) | symptom family: wont-turn-on |
+| theme medians (views/day, avg view %, engaged %) | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | {"troubleshooting":{"videos":2,"medianViewsPerDay":475.5,"medianAverageViewPercentage":87.7,"medianEngagedShare":57.8},"comparison":{"videos":2,"medianViewsPerDay":256.9,"medianAverageViewPercentage":63.8,"medianEngagedShare":35.7}} | recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked) |
+| fastest troubleshooting Short | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) | PC Won't Turn On? Check These 2 Spots First (739.2 views/day) | symptom family: wont-turn-on |
 | best-retained Short's length | YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics) | DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s | target length 14 s (clamped to 10-15 s) |
 | tiktok views by publish day (sum) | tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542) | 1803 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
 | instagram views by publish day (sum) | instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542) | 691 | context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick |
@@ -76,7 +76,7 @@ Excluded as already covered: monitor-input-source (no animation template yet (th
 ## Unknown
 - Retention for "PC Won't Turn On? Check These 2 Spots First": analytics sample under 300 views (or unknown), excluded rather than trusted.
 - YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).
-- "PC Won't Turn On? Check These 2 Spots First" has been live 2.6 days: its views per day are an early figure and may fall as it ages.
+- "PC Won't Turn On? Check These 2 Spots First" has been live 2.63 days: its views per day are an early figure and may fall as it ages.
 - Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).
 - instagram 2026-10-06 saves: unknown (not returned by Metricool).
 - instagram 2026-10-06 shares: unknown (not returned by Metricool).
@@ -102,21 +102,21 @@ Each line below rests on a claim no person has yet read against its source. The 
   - Crucial, "How to Install Memory in Your Desktop" (https://www.crucial.com/support/install-memory-desktop): "Shut down your system. Once your system has been powered off, unplug the power cable." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.
 - **beat-3.narration** "Check your manual for the CPU power socket.": cpu-manual-location
   - ASUS (H87M-PRO user manual, p. 1-24, as quoted on a forum), "H87M-PRO user manual" (https://www.hometheaterforum.com/community/threads/mobo-wont-power-8-pin-cpu-atx-12v.253413/): "Do not forget to connect the 4-pin/8-pin EATX 12V power plug. Otherwise, the system will not boot." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it. (the manual documents the EATX12V plug; positions vary by board, so the cut sends viewers to their own manual)
-- **beat-4.narration** "Use your PSU's own CPU cable, not PCIe.": cpu-not-pcie, cpu-own-psu-cable
+- **beat-4.narration** "Use your PSU's own CPU/EPS cable, not PCIe.": cpu-not-pcie, cpu-own-psu-cable
   - Corsair, "Can I use a PCI-e cable in the 8-pin motherboard plug?" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): "The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header. … The connector is physically different, but also because the cables are wired differently and might damage your components." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.
   - Seasonic, "Which cables are compatible with my Power Supply? (Knowledge Base 68)" (https://knowledge.seasonic.com/article/68-cable-compatibility): "Cables are often not compatible between brands, and even within a brand, modular cables may differ between series and models. Seasonic recommends using the DC cables supplied with the power supply." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.
-- **beat-4.onScreenText** "CPU CABLE FROM YOUR PSU → NOT A PCIe CABLE": cpu-not-pcie
+- **beat-4.onScreenText** "YOUR PSU'S CPU/EPS CABLE → NOT A PCIe CABLE": cpu-not-pcie
   - Corsair, "Can I use a PCI-e cable in the 8-pin motherboard plug?" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): "The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header. … The connector is physically different, but also because the cables are wired differently and might damage your components." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.
 - **beat-5.onScreenText** "PUSH IT ALL THE WAY IN → FULLY IN": cpu-fully-in
   - Corsair, "PSU: How to Avoid Current Overload/Connector Issues" (https://help.corsair.com/hc/en-us/articles/10700487373197-PSU-How-to-Avoid-Current-Overload-Connector-Issues): "Make sure connectors click fully into place." Checked 2026-10-11 via search excerpts; the factual-takeaway gate re-reads it.
 
 ## Animated cut
-- **`cpu-power-silent.mp4`**: the finished cut, silent (sha256 `b91d233d16740082…`).
-- `cpu-power-sfx.mp4`: the same picture with synced sound effects, no voice (sha256 `720b3a067028d800…`).
+- **`cpu-power-silent.mp4`**: the finished cut, silent (sha256 `a5bbe3a452ea35de…`).
+- `cpu-power-sfx.mp4`: the same picture with synced sound effects, no voice (sha256 `ca09b5a823633129…`).
 - `beats-phone.png`: the middle frame of every beat at phone size; `phone-every-0.25s.png`: every quarter second.
 - 12.6 s at 30 fps, 1080x1920. Every frame carries "ILLUSTRATION" / "Stylized example · not a fix for every PC".
 
-**On-screen labels, as drawn:** NEW BUILD WON'T TURN ON? (0.00–1.60 s); UNPLUG FIRST (1.60–3.40 s); CPU POWER SOCKET (4.35–5.20 s); POSITION VARIES (4.35–5.20 s); CPU CABLE FROM YOUR PSU (5.30–7.10 s); NOT A PCIe CABLE (6.25–7.10 s); PUSH IT ALL THE WAY IN (7.20–8.45 s); FULLY IN (8.45–9.45 s); POWER CORD BACK IN (9.45–10.80 s).
+**On-screen labels, as drawn:** NEW BUILD WON'T TURN ON? (0.00–1.60 s); UNPLUG FIRST (1.60–3.40 s); CPU POWER SOCKET (4.35–5.20 s); POSITION VARIES (4.35–5.20 s); YOUR PSU'S CPU/EPS CABLE (5.30–7.10 s); NOT A PCIe CABLE (6.25–7.10 s); PUSH IT ALL THE WAY IN (7.20–8.45 s); FULLY IN (8.45–9.45 s); POWER CORD BACK IN (9.45–10.80 s).
 
 **Sound cues:** 0.30 s button: the power button is pressed (nothing happens on screen); 2.24 s plug: the cord leaves the power supply; 7.80 s tap: the plug lands on the socket; 8.38 s snap: the plug's latch hooks over the socket's tab (stylized); 10.04 s plug: the cord goes back into the power supply.
 

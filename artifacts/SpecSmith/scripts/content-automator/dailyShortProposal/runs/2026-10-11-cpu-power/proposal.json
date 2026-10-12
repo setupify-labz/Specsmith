@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-12T19:17:06.335Z",
+  "generatedAt": "2026-10-12T20:03:42.896Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -30,7 +30,7 @@
   "hook": {
     "frameOne": "NEW BUILD WON'T TURN ON?"
   },
-  "script": "New build won't turn on? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.",
+  "script": "New build won't turn on? Unplug it before opening the case. Check your manual for the CPU power socket. Use your PSU's own CPU/EPS cable, not PCIe. Push it all the way in. Plug it back in. Then try booting again.",
   "storyboard": {
     "platform": "youtube-shorts",
     "targetDurationSeconds": 12.6,
@@ -89,9 +89,9 @@
         "startSecond": 5.2,
         "endSecond": 7.1,
         "purpose": "payoff",
-        "narration": "Use your PSU's own CPU cable, not PCIe.",
-        "visualDirection": "Two cable ends face-on: the 4+4-pin end marked CPU, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross.",
-        "onScreenText": "CPU CABLE FROM YOUR PSU → NOT A PCIe CABLE",
+        "narration": "Use your PSU's own CPU/EPS cable, not PCIe.",
+        "visualDirection": "Two cable ends face-on: the 4+4-pin end marked CPU/EPS, from the PC's own power supply, gets a green tick; the 6+2-pin end marked PCIe gets a red cross.",
+        "onScreenText": "YOUR PSU'S CPU/EPS CABLE → NOT A PCIe CABLE",
         "factDependencies": [
           "cpu-unplug",
           "cpu-cable-needed",
@@ -106,7 +106,7 @@
         "endSecond": 9,
         "purpose": "payoff",
         "narration": "Push it all the way in.",
-        "visualDirection": "Side view: the CPU plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green.",
+        "visualDirection": "Side view: the CPU/EPS plug lowers onto the socket, thumbs press it home, its latch hooks over the socket's tab; outlined green.",
         "onScreenText": "PUSH IT ALL THE WAY IN → FULLY IN",
         "factDependencies": [
           "cpu-unplug",
@@ -222,7 +222,7 @@
       "to": 5.2
     },
     {
-      "text": "CPU CABLE FROM YOUR PSU",
+      "text": "YOUR PSU'S CPU/EPS CABLE",
       "from": 5.3,
       "to": 7.1
     },
@@ -288,8 +288,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 2.6,
-        "viewsPerDay": 748.4,
+        "ageDays": 2.63,
+        "viewsPerDay": 739.2,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -300,8 +300,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 3.81,
-        "viewsPerDay": 311.6,
+        "ageDays": 3.84,
+        "viewsPerDay": 309,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -312,8 +312,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 6.13,
-        "viewsPerDay": 205.7,
+        "ageDays": 6.16,
+        "viewsPerDay": 204.7,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -326,8 +326,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.97,
-        "viewsPerDay": 212.5,
+        "ageDays": 9,
+        "viewsPerDay": 211.8,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -337,13 +337,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 480.5,
+        "medianViewsPerDay": 475.5,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 258.7,
+        "medianViewsPerDay": 256.9,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -420,13 +420,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 748.4,
+      "value": 739.2,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 311.6,
+      "value": 309,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -438,7 +438,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 205.7,
+      "value": 204.7,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -450,7 +450,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 212.5,
+      "value": 211.8,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -462,13 +462,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":480.5,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":258.7,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":475.5,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":256.9,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (748.4 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (739.2 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -505,7 +505,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 2.6 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 2.63 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
@@ -580,7 +580,7 @@
     },
     {
       "location": "beat-4.narration",
-      "line": "Use your PSU's own CPU cable, not PCIe.",
+      "line": "Use your PSU's own CPU/EPS cable, not PCIe.",
       "claimIds": [
         "cpu-not-pcie",
         "cpu-own-psu-cable"
@@ -592,7 +592,7 @@
     },
     {
       "location": "beat-4.onScreenText",
-      "line": "CPU CABLE FROM YOUR PSU → NOT A PCIe CABLE",
+      "line": "YOUR PSU'S CPU/EPS CABLE → NOT A PCIe CABLE",
       "claimIds": [
         "cpu-not-pcie"
       ],
@@ -614,8 +614,8 @@
   "animatedCut": {
     "silent": "cpu-power-silent.mp4",
     "sfx": "cpu-power-sfx.mp4",
-    "silentSha256": "b91d233d1674008246b4ed54dfca3bd904aeaebec3126a462059ca635931d39e",
-    "sfxSha256": "720b3a067028d800e124357638d76e95a1f8ecd73f4122c0f3a48bc64bd21848",
+    "silentSha256": "a5bbe3a452ea35de13d00fb1f01f99c0d8151775485639fd2c68276aabdd0481",
+    "sfxSha256": "ca09b5a8236331296c5457610f9e971daa9da08293bf54b49adac13f7ebfc912",
     "durationSeconds": 12.6,
     "fps": 30,
     "disclosures": [
