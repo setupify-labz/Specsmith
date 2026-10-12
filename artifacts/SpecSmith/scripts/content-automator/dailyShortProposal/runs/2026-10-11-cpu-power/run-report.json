@@ -1,0 +1,35 @@
+{
+  "status": "awaiting-fact-check",
+  "exitCode": 0,
+  "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-cpu-power",
+  "files": [
+    "PROPOSAL.md",
+    "beats-phone.png",
+    "cpu-power-sfx.mp4",
+    "cpu-power-silent.mp4",
+    "phone-every-0.25s.png",
+    "proposal.json",
+    "run-report.json",
+    "verification.json"
+  ],
+  "totalMs": 29691,
+  "stagesMs": {
+    "load-and-validate-snapshot": 7,
+    "check-renderer": 99,
+    "select-topic": 2,
+    "run-gates": 18,
+    "render-and-verify": 29554
+  },
+  "spend": {
+    "elevenLabs": "not called (no voice)",
+    "publishing": "not called",
+    "scheduling": "not called",
+    "metricool": "not called by the job (snapshot input)",
+    "vidiq": "not called by the job (snapshot input)"
+  },
+  "snapshotCost": {
+    "vidiqCreditsBefore": 135,
+    "vidiqCreditsAfter": 130,
+    "metricool": "no per-call cost reported"
+  }
+}

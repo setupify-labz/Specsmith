@@ -154,6 +154,14 @@ export interface PlatformScriptStoryboard {
   beats: StoryboardBeat[];
   finalCta: string;
   factualGuardrails: string[];
+  /**
+   * Disclosures that must stay on screen for the whole video, verbatim.
+   *
+   * Rendered as their own overlay band, never as timed captions: burned into a
+   * two-line caption they overflow it and scroll past before anyone can read
+   * them. Absent for storyboards that carry no required disclosure.
+   */
+  persistentDisclosures?: string[];
 }
 
 export interface ScriptStoryboardPackage {
