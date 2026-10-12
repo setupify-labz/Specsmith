@@ -149,6 +149,19 @@ const filler = (category: RetailPartCategory, index: number): AffiliatePart => (
 });
 
 /**
+ * A listing with a chosen merchant title, for tests about what a title says
+ * (the White build reads nothing else). Everything else is filler-shaped, and
+ * the id, image and link are derived from `key` so they stay unique.
+ */
+export const titledListing = (category: RetailPartCategory, key: string, name: string): AffiliatePart => ({
+  ...filler(category, 0),
+  id: `newegg-${category}-fixture-${key}`,
+  name,
+  imageUrl: `https://c1.neweggimages.com/${category}-${key}.jpg`,
+  trackedAffiliateUrl: `https://click.linksynergy.com/link?id=fixture&offerid=${category}-${key}`,
+});
+
+/**
  * A complete catalogue meeting every per-category target, with the caller's
  * listings substituted in at the front of their categories.
  *

@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 
 import catalogData from '../../../public/data/retail-parts.json';
 import { parseAffiliatePartCatalog, type AffiliatePart, type RetailPartCategory } from '../../lib/retail/partCatalog';
+import { catalogueContaining, titledListing } from '../../lib/retail/__fixtures__/catalogFixture';
 import { whiteParts } from '../../lib/retail/whiteBuild';
 import ProductDetailDrawer from './ProductDetailDrawer';
 import RetailBuildSummary from './RetailBuildSummary';
@@ -130,10 +131,21 @@ describe('the White build collection', () => {
     expect(screen.getByTestId('category-rail-gpu').textContent).toContain(String(counts.get('gpu')));
   });
 
+  // Which keyboards the live feed carries changes with every refresh, so the
+  // keyboard cases render a fixture catalogue built to have the case in it.
+  const renderFixtureBuilder = (...listings: AffiliatePart[]) => {
+    const fixture = parseAffiliatePartCatalog(catalogueContaining(...listings));
+    if (!fixture.ok) throw new Error(`fixture catalogue invalid: ${fixture.problem}`);
+    const now = Math.max(...fixture.catalog.parts.map((part) => Date.parse(part.fetchedAt))) + 60_000;
+    render(<RetailBuilder parts={fixture.catalog.parts} selection={{}} onSelect={vi.fn()} now={now} />);
+  };
+  const BACKLIGHT_ONLY = titledListing('keyboard', 'backlight', 'Keychron K8 Wireless Mechanical Keyboard, White Backlight, Gateron Red');
+  const WHITE_KEYBOARD = titledListing('keyboard', 'offwhite', 'Logitech Alto Keys K98M Wireless Mechanical Keyboard, Off-white');
+
   it('is honest when a category has no verified white product', () => {
-    // Keyboards mention white in three titles and none of them is a white
+    // Keyboards here mention white only as a backlight: none is a white
     // keyboard, so this is the case that must not be padded.
-    renderBuilder();
+    renderFixtureBuilder(BACKLIGHT_ONLY);
     fireEvent.click(screen.getByTestId('white-build-toggle'));
     fireEvent.click(screen.getByTestId('category-rail-keyboard'));
 
@@ -141,6 +153,16 @@ describe('the White build collection', () => {
     const empty = screen.getByTestId('catalog-empty');
     expect(empty.textContent).toContain('white finish');
     expect(empty.textContent!.toLowerCase()).not.toContain('out of stock');
+  });
+
+  it('shows a keyboard whose own title states a white finish, and only that one', () => {
+    renderFixtureBuilder(WHITE_KEYBOARD, BACKLIGHT_ONLY);
+    fireEvent.click(screen.getByTestId('white-build-toggle'));
+    fireEvent.click(screen.getByTestId('category-rail-keyboard'));
+
+    const shown = screen.getAllByTestId('retail-product-card').map((card) => card.getAttribute('data-part-id'));
+    expect(shown).toEqual([WHITE_KEYBOARD.id]);
+    expect(screen.queryByTestId('catalog-empty')).toBeNull();
   });
 
   it('explains what the collection is, where it is switched on', () => {
