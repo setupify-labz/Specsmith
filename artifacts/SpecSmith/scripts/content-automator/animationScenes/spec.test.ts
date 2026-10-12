@@ -20,6 +20,9 @@ describe("spec checks", () => {
     // The next shot starts exactly where the previous ends, fading in: its first frame is blank.
     expect(broken((s) => { s.shots[0].to = 1.6; s.shots[0].fadeOut = 0; })).toContainEqual(expect.stringContaining("no scene drawn at 1.6"));
   });
+  it("refuse negative fade durations (Codex P2)", () => {
+    expect(broken((s) => { s.shots[1].fadeIn = -0.2; s.shots[1].fadeOut = -0.2; })).toContainEqual(expect.stringContaining("negative or invalid fadeIn"));
+  });
   it("refuse a label shown too briefly to read, and two labels in one place", () => {
     expect(broken((s) => { s.labels[2].from = 5.0; })).toContainEqual(expect.stringContaining("characters a second"));
     expect(broken((s) => { s.labels[1].from = 1.0; })).toContainEqual(expect.stringContaining("overlap at the head"));

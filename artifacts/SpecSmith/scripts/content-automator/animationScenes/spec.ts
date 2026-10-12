@@ -46,6 +46,7 @@ export const MAX_LABEL_CHARS_PER_SECOND = 20;
 /** The band on every frame of every Short: the badge and the line under it. */
 export const REQUIRED_DISCLOSURES = ["ILLUSTRATION", "Stylized example · not a fix for every PC"] as const;
 const EPS = 1e-6;
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 export function specProblems(spec: CutSpec): string[] {
   const problems: string[] = [];
@@ -61,12 +62,13 @@ export function specProblems(spec: CutSpec): string[] {
   for (const shot of spec.shots) {
     if (!SCENE_NAMES.includes(shot.scene)) problems.push(`unknown scene "${shot.scene}"`);
     if (shot.to <= shot.from) problems.push(`shot ${shot.scene} ${shot.from}-${shot.to} has no length`);
+    for (const fade of ["fadeIn", "fadeOut"] as const) if (shot[fade] !== undefined && !(shot[fade]! >= 0)) problems.push(`shot ${shot.scene} ${shot.from}-${shot.to} has a negative or invalid ${fade}`);
   }
   // Every frame needs at least one shot drawn with positive opacity: a shot at the first frame of its fade-in
   // (or the last of its fade-out) renders at zero, so it does not count (library.ts story()).
   const frames = Math.round(d * spec.fps);
   const opacity = (s: SpecShot, t: number) => (t < s.from || t >= s.to) ? 0
-    : Math.min(1, s.fadeIn ? (t - s.from) / s.fadeIn : 1) * Math.min(1, s.fadeOut ? (s.to - t) / s.fadeOut : 1);
+    : clamp01(s.fadeIn ? (t - s.from) / s.fadeIn : 1) * clamp01(s.fadeOut ? (s.to - t) / s.fadeOut : 1);
   for (let f = 0; f < frames; f += 1) {
     const t = f / spec.fps;
     if (!spec.shots.some((s) => opacity(s, t) > 0)) { problems.push(`no scene drawn at ${t.toFixed(3)} s`); break; }

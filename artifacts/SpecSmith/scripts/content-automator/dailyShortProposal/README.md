@@ -60,6 +60,8 @@ pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
   --snapshot scripts/content-automator/dailyShortProposal/snapshots/2026-10-11.json
 ```
 
+`--out` must name a new or empty folder; the job refuses anything else and never deletes files.
+
 Add `--topic <topic id>` to propose a specific topic instead of the data's pick. It must still be producible and uncovered. The proposal records it as the operator's choice, with the data's own pick beside it. The 2026-10-11 demo used this to run both templates from one snapshot:
 - `runs/2026-10-11-ram-seat`: the data's pick;
 - `runs/2026-10-11-cpu-power`: `--topic cpu-power-cable`.

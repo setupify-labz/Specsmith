@@ -31,7 +31,7 @@
 // renderer, no producible topic left: nothing usable was produced).
 
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,15 +48,14 @@ function arg(name: string, argv: readonly string[]): string | undefined {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
-/** Files this job writes into a run folder. A reused folder holding only these is cleared first; anything else refuses. */
-const GENERATED = [/^PROPOSAL\.md$/, /^proposal\.json$/, /^run-report\.json$/, /^verification\.json$/, /^beats-phone\.png$/, /^phone-every-0\.25s\.png$/, /^[a-z0-9-]+-(silent|sfx)\.mp4$/, /^[a-z0-9-]+-(frames|sound-work)$/, /^(work|sound-work)$/];
+/**
+ * The run folder must be new or empty. Nothing is ever deleted: a file's name does not prove this job wrote
+ * it, so a reused folder is refused rather than cleared (no earlier MP4 can sit beside a new proposal).
+ */
 export async function prepareOutDir(outDir: string): Promise<void> {
   let entries: string[] = [];
   try { entries = await readdir(outDir); } catch { /* does not exist yet */ }
-  const foreign = entries.filter((name) => !GENERATED.some((re) => re.test(name)));
-  if (foreign.length) throw new DailyProposalError("output-not-empty", `${outDir} holds files this job did not write (${foreign.slice(0, 5).join(", ")}); choose an empty or new --out folder.`);
-  // Clear the previous run's outputs so no MP4 or verification from an earlier run sits beside this proposal.
-  for (const name of entries) await rm(join(outDir, name), { recursive: true, force: true });
+  if (entries.length) throw new DailyProposalError("output-not-empty", `${outDir} is not empty (${entries.slice(0, 5).join(", ")}${entries.length > 5 ? ", …" : ""}); choose a new or empty --out folder. Nothing was deleted.`);
   await mkdir(outDir, { recursive: true });
 }
 
