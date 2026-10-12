@@ -56,16 +56,36 @@ export interface ChannelSnapshot {
   };
 }
 
-// Every metric in a snapshot is a count, a length or a percentage, so a negative value is malformed input, not data.
-// (Average view percentage may exceed 100 on looping Shorts, so there is no upper bound.)
-const isMetric = (v: unknown): v is Metric => v === "unknown" || (typeof v === "number" && Number.isFinite(v) && v >= 0);
+// Each metric field has a kind. A count (views, likes, followers, a duration, a percentage) cannot be negative, so a
+// negative value is malformed input and is refused. A net change (gained minus lost over a period) can be negative.
+// Checked field by field on 2026-10-12: every metric YouTube (vidIQ) and Metricool supply today is a count; none is a
+// net change (YouTube's subscribersGained is gains only). Average view percentage can exceed 100 on looping Shorts, so
+// no metric has an upper bound.
+export type MetricKind = "count" | "net-change";
 
-function requireMetrics(where: string, record: unknown, keys: readonly string[]): void {
+/** A problem with one metric value of the given kind, or null if it is valid ("unknown" is always valid). */
+export function metricProblem(value: unknown, kind: MetricKind): string | null {
+  if (value === "unknown") return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) return `must be a number or "unknown", not ${JSON.stringify(value)}`;
+  if (kind === "count" && value < 0) return `is a count and cannot be negative (${value})`;
+  return null;
+}
+
+/** Metricool per-publish-day rows: every field a row may carry, with its kind. A field not listed is refused, so a new
+ *  connector field is classified on purpose (count or net change) rather than assumed. */
+export const DAY_ROW_FIELDS: Readonly<Record<string, MetricKind>> = Object.freeze({
+  videos: "count", reels: "count", views: "count", likes: "count", comments: "count", shares: "count",
+  saves: "count", reach: "count", interactions: "count",
+});
+
+function requireMetric(where: string, value: unknown, kind: MetricKind): void {
+  const problem = metricProblem(value, kind);
+  if (problem) throw new DailyProposalError("snapshot-invalid", `${where} ${problem}.`);
+}
+
+function requireMetrics(where: string, record: unknown, keys: readonly string[], kind: MetricKind = "count"): void {
   if (!record || typeof record !== "object") throw new DailyProposalError("snapshot-invalid", `${where} is missing.`);
-  for (const key of keys) {
-    const value = (record as Record<string, unknown>)[key];
-    if (!isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${where}.${key} must be a non-negative number or "unknown", not ${JSON.stringify(value)}.`);
-  }
+  for (const key of keys) requireMetric(`${where}.${key}`, (record as Record<string, unknown>)[key], kind);
 }
 
 /** The account this job proposes for: a snapshot from any other brand or channel is refused, not ranked. */
@@ -97,7 +117,7 @@ export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): Channe
   }
   const yt = doc.sources.youtube;
   if (!Array.isArray(yt.videos) || yt.videos.length === 0) throw new DailyProposalError("source-unavailable", "The YouTube source lists no videos; there is nothing to learn from.");
-  if (!isMetric(yt.subscribers)) throw new DailyProposalError("snapshot-invalid", "youtube.subscribers must be a non-negative number or \"unknown\".");
+  requireMetric("youtube.subscribers", yt.subscribers, "count");
   yt.videos.forEach((video: any, i: number) => {
     if (typeof video.id !== "string" || typeof video.title !== "string" || !Number.isFinite(Date.parse(video.publishedAt))) {
       throw new DailyProposalError("snapshot-invalid", `youtube.videos[${i}] needs an id, a title and a publishedAt.`);
@@ -112,11 +132,16 @@ export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): Channe
   });
   for (const name of ["tiktok", "instagram"] as const) {
     const source = doc.sources[name];
-    if (!isMetric(source.followers)) throw new DailyProposalError("snapshot-invalid", `${name}.followers must be a non-negative number or "unknown".`);
+    requireMetric(`${name}.followers`, source.followers, "count");
     if (!Array.isArray(source.byPublishDay)) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay must be a list (empty if nothing was published).`);
     source.byPublishDay.forEach((row: any, i: number) => {
       if (typeof row.date !== "string") throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}] needs a date.`);
-      for (const [key, value] of Object.entries(row)) if (key !== "date" && !isMetric(value)) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}].${key} must be a non-negative number or "unknown".`);
+      for (const [key, value] of Object.entries(row)) {
+        if (key === "date") continue;
+        const kind = Object.hasOwn(DAY_ROW_FIELDS, key) ? DAY_ROW_FIELDS[key] : undefined;
+        if (!kind) throw new DailyProposalError("snapshot-invalid", `${name}.byPublishDay[${i}].${key} is not a known metric; classify it in DAY_ROW_FIELDS as a count or a net change before using it.`);
+        requireMetric(`${name}.byPublishDay[${i}].${key}`, value, kind);
+      }
     });
   }
   return doc as ChannelSnapshot;

@@ -15,7 +15,7 @@ import { renderAndVerify, TEMPLATES, verifyRender } from "./animations.ts";
 import { buildStoryboard, contractFor, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { prepareOutDir, runDailyProposal } from "./run.ts";
 import { selectTopic } from "./select.ts";
-import { DailyProposalError, parseSnapshot } from "./snapshot.ts";
+import { DAY_ROW_FIELDS, DailyProposalError, metricProblem, parseSnapshot } from "./snapshot.ts";
 import { TOPICS } from "./topics.ts";
 
 const here = import.meta.dirname;
@@ -53,19 +53,40 @@ describe("the snapshot is validated before anything uses it", () => {
 });
 
 describe("a video cannot be newer than the snapshot", () => {
-  it("refuses negative metrics instead of ranking on them", () => {
+  it("refuses negative counts and durations instead of ranking on them", () => {
     const edits: ((doc: any) => void)[] = [
       (doc) => { doc.sources.youtube.videos[0].public.views = -1; },
       (doc) => { doc.sources.youtube.videos[0].durationSeconds = -1; },
+      (doc) => { doc.sources.youtube.videos[0].analytics.averageViewDurationSeconds = -2; },
       (doc) => { doc.sources.youtube.videos[0].analytics.averageViewPercentage = -5; },
+      (doc) => { doc.sources.youtube.videos[0].analytics.subscribersGained = -1; },
       (doc) => { doc.sources.youtube.subscribers = -3; },
       (doc) => { doc.sources.tiktok.followers = -1; },
       (doc) => { doc.sources.instagram.byPublishDay[0].views = -10; },
     ];
     for (const edit of edits) {
       const doc = raw(); edit(doc);
-      expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("non-negative") });
+      expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("is a count and cannot be negative") });
     }
+  });
+  it("lets a net change be negative but never a count, and classifies every field the snapshot carries", () => {
+    // The kinds themselves: a net change (gained minus lost) may be negative; a count may not; neither may be non-finite.
+    expect(metricProblem(-12, "net-change")).toBeNull();
+    expect(metricProblem(-12, "count")).toContain("cannot be negative");
+    expect(metricProblem(0, "count")).toBeNull();
+    expect(metricProblem(107.42, "count")).toBeNull(); // average view percentage above 100 on a looping Short
+    for (const kind of ["count", "net-change"] as const) {
+      expect(metricProblem("unknown", kind)).toBeNull();
+      expect(metricProblem(Number.NaN, kind)).toContain("must be a number");
+    }
+    // Field by field: every day-row field in the committed snapshot is classified, and today none is a net change.
+    const doc = raw();
+    for (const name of ["tiktok", "instagram"]) for (const row of doc.sources[name].byPublishDay) {
+      for (const key of Object.keys(row).filter((k) => k !== "date")) expect(DAY_ROW_FIELDS[key]).toBe("count");
+    }
+    // A field nobody has classified is refused rather than assumed to be a count or a net change.
+    doc.sources.tiktok.byPublishDay[0].followersDelta = -4;
+    expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("followersDelta is not a known metric") });
   });
   it("refuses a publishedAt later than collectedAt instead of ranking an impossible video", () => {
     const doc = raw(); doc.sources.youtube.videos[0].publishedAt = "2027-10-01T12:00:00Z";
