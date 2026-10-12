@@ -53,7 +53,7 @@ describe("the snapshot is validated before anything uses it", () => {
 });
 
 describe("the pick records what influenced it and what was unknown", () => {
-  const selection = selectTopic(parseSnapshot(raw(), NOW), NOW);
+  const selection = selectTopic(parseSnapshot(raw(), NOW));
   it("is deterministic on the committed snapshot, and picks only a topic it can render", () => {
     // The fastest troubleshooting Short is "PC Won't Turn On? ..." (family wont-turn-on); the CPU-power topic is
     // filed as wont-turn-on (owner's decision, 2026-10-12), so the family match picks it over the RAM topic.
@@ -69,12 +69,23 @@ describe("the pick records what influenced it and what was unknown", () => {
       expect(selection.excluded).toContainEqual({ topicId: id, why: expect.stringContaining("no animation template yet") });
     }
   });
+  it("measures each video's age to the snapshot's collection time, so a later run of the same snapshot ranks the same", () => {
+    // parseSnapshot accepts a snapshot up to its max age; selection must not depend on when within that window it runs.
+    const later = selectTopic(parseSnapshot(raw(), new Date(NOW.getTime() + 30 * 3_600_000)));
+    expect(later.signals).toEqual(selection.signals);
+    expect(later.ranking).toEqual(selection.ranking);
+    const collected = Date.parse(raw().collectedAt);
+    for (const [i, v] of raw().sources.youtube.videos.entries()) {
+      const days = Math.max(1, (collected - Date.parse(v.publishedAt)) / 86_400_000);
+      expect(selection.signals[i].ageDays).toBeCloseTo(days, 2);
+    }
+  });
   it("takes an operator's topic choice, records it as not data, and still refuses one it cannot render", () => {
-    const forced = selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "ram-not-seated" });
+    const forced = selectTopic(parseSnapshot(raw(), NOW), { topicId: "ram-not-seated" });
     expect(forced).toMatchObject({ chosenBy: "operator", dataPick: "cpu-power-cable", targetSeconds: TEMPLATES["ram-seat"].durationSeconds });
     expect(forced.topic.id).toBe("ram-not-seated");
     expect(forced.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.metric).toContain("NOT data");
-    const error = refusal(() => selectTopic(parseSnapshot(raw(), NOW), NOW, { topicId: "front-panel-power-pins" }));
+    const error = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "front-panel-power-pins" }));
     expect(error.code).toBe("no-topic");
     expect(error.message).toContain("no animation template yet");
   });
@@ -90,9 +101,9 @@ describe("the pick records what influenced it and what was unknown", () => {
   });
   it("moves to the next producible topic once one is covered, and refuses with no-topic when none is left (no text-card fallback)", () => {
     const doc = raw(); doc.sources.youtube.videos[0].title = "Added RAM, now it won't boot? Reseat the RAM";
-    expect(selectTopic(parseSnapshot(doc, NOW), NOW).topic.id).toBe("cpu-power-cable");
+    expect(selectTopic(parseSnapshot(doc, NOW)).topic.id).toBe("cpu-power-cable");
     doc.sources.youtube.videos[1].title = "New build won't boot? Check the CPU power cable";
-    const error = refusal(() => selectTopic(parseSnapshot(doc, NOW), NOW));
+    const error = refusal(() => selectTopic(parseSnapshot(doc, NOW)));
     expect(error.code).toBe("no-topic");
     expect(error.message).toContain("ram-not-seated (an existing title matches");
     expect(error.message).toContain("cpu-power-cable (an existing title matches");

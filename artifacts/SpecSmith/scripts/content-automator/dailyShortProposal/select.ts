@@ -78,8 +78,10 @@ function median(values: number[]): Metric {
   return round(s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2);
 }
 
-function signalOf(video: YouTubeVideo, now: Date): VideoSignal {
-  const ageDays = Math.max(1, (now.getTime() - Date.parse(video.publishedAt)) / 86_400_000);
+// Age is measured to the snapshot's collection time, when its view counts were read, not to when the job runs:
+// the same snapshot gives the same views per day (and the same pick) whenever it is processed.
+function signalOf(video: YouTubeVideo, collectedAt: number): VideoSignal {
+  const ageDays = Math.max(1, (collectedAt - Date.parse(video.publishedAt)) / 86_400_000);
   const a = video.analytics;
   const sampleOk = num(a.views) && a.views >= MIN_ANALYTICS_VIEWS;
   return {
@@ -105,10 +107,10 @@ export interface SelectOptions {
   readonly topicId?: string;
 }
 
-export function selectTopic(snapshot: ChannelSnapshot, now: Date, options: SelectOptions = {}): Selection {
+export function selectTopic(snapshot: ChannelSnapshot, options: SelectOptions = {}): Selection {
   const topics = options.topics ?? TOPICS;
   const yt = snapshot.sources.youtube;
-  const signals = yt.videos.map((video) => signalOf(video, now));
+  const signals = yt.videos.map((video) => signalOf(video, Date.parse(snapshot.collectedAt)));
   const influences: InfluenceRecord[] = [];
   const unknowns: string[] = [];
   const ytSource = `YouTube via ${yt.provider}`;

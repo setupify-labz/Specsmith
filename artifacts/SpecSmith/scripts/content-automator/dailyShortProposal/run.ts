@@ -90,7 +90,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     if (maxAgeHours !== undefined && !(Number.isFinite(maxAgeHours) && maxAgeHours >= 0)) throw new DailyProposalError("bad-argument", `--max-age-hours must be a finite number of hours, 0 or more (got "${maxAgeArg}").`);
     const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, maxAgeHours));
     await time("check-renderer", () => assertRendererAvailable());
-    const selection = await time("select-topic", () => selectTopic(snapshot, now, { topicId: arg("--topic", argv) }));
+    const selection = await time("select-topic", () => selectTopic(snapshot, { topicId: arg("--topic", argv) }));
     const template = TEMPLATES[selection.topic.animation!];
     const storyboard = buildStoryboard(selection.topic, selection.targetSeconds);
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
