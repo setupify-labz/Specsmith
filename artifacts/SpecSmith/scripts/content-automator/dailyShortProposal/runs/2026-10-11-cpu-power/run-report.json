@@ -3,19 +3,22 @@
   "exitCode": 0,
   "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-cpu-power",
   "files": [
-    "cpu-power-silent.mp4",
-    "cpu-power-sfx.mp4",
+    "PROPOSAL.md",
     "beats-phone.png",
+    "cpu-power-sfx.mp4",
+    "cpu-power-silent.mp4",
     "phone-every-0.25s.png",
+    "proposal.json",
+    "run-report.json",
     "verification.json"
   ],
-  "totalMs": 33113,
+  "totalMs": 34253,
   "stagesMs": {
-    "load-and-validate-snapshot": 9,
-    "check-renderer": 132,
-    "select-topic": 3,
-    "run-gates": 26,
-    "render-and-verify": 32928
+    "load-and-validate-snapshot": 10,
+    "check-renderer": 130,
+    "select-topic": 4,
+    "run-gates": 33,
+    "render-and-verify": 34058
   },
   "spend": {
     "elevenLabs": "not called (no voice)",

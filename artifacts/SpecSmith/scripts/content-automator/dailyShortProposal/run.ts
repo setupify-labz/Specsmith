@@ -135,13 +135,17 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       topicsExcluded: selection.excluded, ranking: selection.ranking,
       gates: { passed: gates.passed, findings: gates.findings },
       factCheckRequired: gates.factCheck,
-      animatedCut: cut ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures } : { notRendered: gates.passed ? "the render failed (see verification)" : "an automated gate blocked the proposal" },
+      // Only a cut that passed every render check is presented as one; anything else is labelled unverified.
+      animatedCut: cut && verification?.passed ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures }
+        : { notRendered: !gates.passed ? "an automated gate blocked the proposal" : cut ? `the render check failed: ${cut.silent} and ${cut.sfx} are unverified and are not a finished cut (see verification)` : "the render failed (see verification)" },
       verification: verification ?? null,
       humanGates: humanGatesUnresolved(),
     };
     await writeFile(join(outDir, "proposal.json"), `${JSON.stringify(proposal, null, 2)}\n`);
     await writeFile(join(outDir, "PROPOSAL.md"), proposalMarkdown(proposal));
-    const report = { status, exitCode: passed ? 0 : 2, outDir, files: cut ? [cut.silent, cut.sfx, "beats-phone.png", "phone-every-0.25s.png", "verification.json"] : [], totalMs: Math.round(performance.now() - started), stagesMs: stages, spend, snapshotCost: snapshot.cost ?? "unknown" };
+    // The files actually in the folder (the report and proposal are added below), not a list of what should be there.
+    const files = [...(await readdir(outDir)).filter((name) => name !== RUN_LOCK), "run-report.json"].sort();
+    const report = { status, exitCode: passed ? 0 : 2, outDir, files, totalMs: Math.round(performance.now() - started), stagesMs: stages, spend, snapshotCost: snapshot.cost ?? "unknown" };
     await writeFile(join(outDir, "run-report.json"), `${JSON.stringify(report, null, 2)}\n`);
     return { exitCode: passed ? 0 : 2, outDir, report };
   } catch (error) {

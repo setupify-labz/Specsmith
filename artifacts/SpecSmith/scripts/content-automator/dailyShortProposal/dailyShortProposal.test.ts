@@ -272,6 +272,24 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     expect(broken.verification).toMatchObject({ passed: false, checks: [{ check: "the cut rendered" }] });
     await expect(renderAndVerify({ ...t, render: async () => { throw new DailyProposalError("renderer-unavailable", "no chromium"); } }, dir)).rejects.toMatchObject({ code: "renderer-unavailable" });
   }, 60_000);
+  it.skipIf(!hasFfmpeg)("a run whose render cannot be verified is blocked, presents no cut, and lists only files that exist (Codex P2)", async () => {
+    const templates = TEMPLATES as Record<string, (typeof TEMPLATES)[string]>;
+    const original = templates["ram-seat"];
+    templates["ram-seat"] = { ...original, render: async (out: string) => { const a = join(out, "x-silent.mp4"), b = join(out, "x-sfx.mp4"); writeFileSync(a, "not a video"); writeFileSync(b, "not a video"); return { silentPath: a, sfxPath: b }; } };
+    try {
+      const out = join(mkdtempSync(join(tmpdir(), "daily-blocked-")), "run");
+      const result = await runDailyProposal(["--snapshot", SNAPSHOT_PATH, "--out", out], NOW);
+      expect(result).toMatchObject({ exitCode: 2, report: { status: "blocked-by-render-check" } });
+      const proposal = JSON.parse(readFileSync(join(out, "proposal.json"), "utf8"));
+      expect(proposal.animatedCut.notRendered).toContain("unverified");
+      const listed = (result.report as { files: string[] }).files;
+      expect(listed).not.toContain("beats-phone.png");
+      for (const name of listed) expect(existsSync(join(out, name))).toBe(true);
+      expect(existsSync(join(out, ".daily-proposal.lock"))).toBe(false);
+    } finally {
+      templates["ram-seat"] = original;
+    }
+  }, 60_000);
   it.skipIf(!hasFfmpeg)("fails a sound-effects file standing in for the silent one", async () => {
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);
     expect(failed).toContain("the silent MP4 is silent");

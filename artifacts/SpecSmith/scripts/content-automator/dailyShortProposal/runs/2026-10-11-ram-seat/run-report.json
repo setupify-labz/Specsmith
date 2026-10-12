@@ -3,19 +3,22 @@
   "exitCode": 0,
   "outDir": "/home/user/dsp-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-11-ram-seat",
   "files": [
-    "ram-seat-silent.mp4",
-    "ram-seat-sfx.mp4",
+    "PROPOSAL.md",
     "beats-phone.png",
     "phone-every-0.25s.png",
+    "proposal.json",
+    "ram-seat-sfx.mp4",
+    "ram-seat-silent.mp4",
+    "run-report.json",
     "verification.json"
   ],
-  "totalMs": 39461,
+  "totalMs": 39022,
   "stagesMs": {
     "load-and-validate-snapshot": 8,
-    "check-renderer": 115,
-    "select-topic": 2,
-    "run-gates": 28,
-    "render-and-verify": 39290
+    "check-renderer": 120,
+    "select-topic": 3,
+    "run-gates": 19,
+    "render-and-verify": 38852
   },
   "spend": {
     "elevenLabs": "not called (no voice)",
