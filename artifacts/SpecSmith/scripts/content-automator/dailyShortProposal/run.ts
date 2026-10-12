@@ -31,7 +31,7 @@
 // renderer, no producible topic left: nothing usable was produced).
 
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -48,15 +48,28 @@ function arg(name: string, argv: readonly string[]): string | undefined {
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
+export const RUN_LOCK = ".daily-proposal.lock";
 /**
  * The run folder must be new or empty. Nothing is ever deleted: a file's name does not prove this job wrote
- * it, so a reused folder is refused rather than cleared (no earlier MP4 can sit beside a new proposal).
+ * it, so a reused folder is refused rather than cleared (no earlier MP4 can sit beside a new proposal). The
+ * folder is then claimed with an exclusively created lock file, so two runs that both found it empty cannot
+ * both render into it; the loser is refused. Returns the lock's path, removed when the run ends.
  */
-export async function prepareOutDir(outDir: string): Promise<void> {
+export async function prepareOutDir(outDir: string): Promise<string> {
   let entries: string[] = [];
   try { entries = await readdir(outDir); } catch { /* does not exist yet */ }
   if (entries.length) throw new DailyProposalError("output-not-empty", `${outDir} is not empty (${entries.slice(0, 5).join(", ")}${entries.length > 5 ? ", …" : ""}); choose a new or empty --out folder. Nothing was deleted.`);
   await mkdir(outDir, { recursive: true });
+  const lock = join(outDir, RUN_LOCK);
+  try {
+    await writeFile(lock, `${process.pid}\n`, { flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new DailyProposalError("output-not-empty", `Another run has claimed ${outDir}; choose a new --out folder. Nothing was deleted.`);
+    throw error;
+  }
+  const after = (await readdir(outDir)).filter((name) => name !== RUN_LOCK);
+  if (after.length) { await rm(lock, { force: true }); throw new DailyProposalError("output-not-empty", `${outDir} filled while it was being claimed (${after.slice(0, 5).join(", ")}); choose a new --out folder. Nothing was deleted.`); }
+  return lock;
 }
 
 export interface RunResult { readonly exitCode: 0 | 1 | 2; readonly outDir?: string; readonly report: Record<string, unknown> }
@@ -69,6 +82,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     try { return await fn(); } finally { stages[name] = Math.round(performance.now() - t0); }
   };
   const spend = { elevenLabs: "not called (no voice)", publishing: "not called", scheduling: "not called", metricool: "not called by the job (snapshot input)", vidiq: "not called by the job (snapshot input)" };
+  let lock: string | undefined;
   try {
     const maxAgeArg = arg("--max-age-hours", argv);
     const maxAgeHours = maxAgeArg === undefined ? undefined : Number(maxAgeArg);
@@ -82,7 +96,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
     const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, "-");
     const outDir = resolve(arg("--out", argv) ?? join(DEFAULT_OUT_ROOT, `${stamp}-${selection.topic.id}`));
-    await prepareOutDir(outDir);
+    lock = await prepareOutDir(outDir);
     let cut: { silent: string; sfx: string; silentSha256: string; sfxSha256: string } | undefined;
     let verification: Verification | undefined;
     if (gates.passed) {
@@ -133,6 +147,8 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       return { exitCode: 1, report: { status: "refused", code: error.code, reason: error.message, totalMs: Math.round(performance.now() - started), stagesMs: stages, spend } };
     }
     throw error;
+  } finally {
+    if (lock) await rm(lock, { force: true });
   }
 }
 

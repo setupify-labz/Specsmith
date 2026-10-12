@@ -33,6 +33,17 @@ import type { Topic } from "./topics.ts";
 export { REQUIRED_DISCLOSURES as PERSISTENT_DISCLOSURES } from "../animationScenes/spec.ts";
 import { REQUIRED_DISCLOSURES as PERSISTENT_DISCLOSURES } from "../animationScenes/spec.ts";
 export const MAX_ON_SCREEN_CHARS_PER_SECOND = 20;
+/**
+ * Lines that state an outcome: the PC boots, loads, works or is fixed. The strict research gate matches risky
+ * claims by shared words, so a paraphrase ("It loads Windows after that") can slip past it; these block the
+ * outcome itself, whatever the wording. Instructions ("Then try booting again.") and the symptom ("now it won't
+ * boot?") do not match. A backstop, not a semantic checker: the factual-takeaway human gate reads every line.
+ */
+export const OUTCOME_PROMISES: readonly { readonly pattern: RegExp; readonly why: string }[] = [
+  { pattern: /\b(it|your pc|the pc|your computer|the computer|that|this|the build|your build)\s+(will\s+|should\s+|then\s+|now\s+)?(boots?|loads?|starts?(\s+up)?|powers?\s+on|posts?|works?|runs?|turns?\s+on)\b/i, why: "States that the PC boots, loads or works afterwards; the Shorts show a check, never an outcome." },
+  { pattern: /\b(fixed|solved|problem solved|back to normal|good as new|up and running)\b/i, why: "States that the problem is fixed; the Shorts offer one check, never a fix." },
+  { pattern: /\b(loads?|boots?\s+(in)?to|straight\s+(in)?to)\s+windows\b/i, why: "Shows or promises a successful boot into Windows, which no cut shows." },
+];
 
 export interface GateFinding { readonly gate: string; readonly severity: "hard-fail" | "warning"; readonly location: string; readonly message: string }
 
@@ -131,6 +142,7 @@ export function runGates(storyboard: PlatformScriptStoryboard, topic: Topic, now
     ...storyboard.beats.flatMap((beat, i) => [{ location: `beat-${i + 1}.narration`, text: beat.narration }, { location: `beat-${i + 1}.onScreenText`, text: beat.onScreenText }])];
   for (const { location, text } of lines) {
     for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location, message: `"${text}": ${why}` });
+    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(text)) findings.push({ gate: "outcome promise (new in this job)", severity: "hard-fail", location, message: `"${text}": ${why}` });
   }
   const template = topic.animation ? TEMPLATES[topic.animation] : undefined;
   const spans = template
@@ -142,6 +154,7 @@ export function runGates(storyboard: PlatformScriptStoryboard, topic: Topic, now
   }
   if (template) for (const label of template.labels) {
     for (const { pattern, why } of FORBIDDEN_CLAIMS) if (pattern.test(label.text)) findings.push({ gate: "forbidden claims (nextVideoMonitorPort/storyboard.ts)", severity: "hard-fail", location: `label "${label.text}"`, message: why });
+    for (const { pattern, why } of OUTCOME_PROMISES) if (pattern.test(label.text)) findings.push({ gate: "outcome promise (new in this job)", severity: "hard-fail", location: `label "${label.text}"`, message: why });
   }
   return { findings, passed: !findings.some((f) => f.severity === "hard-fail"), factCheck };
 }

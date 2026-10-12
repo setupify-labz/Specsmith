@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -138,6 +138,15 @@ describe("the existing gates run on every topic, and block what they should", ()
     storyboard.beats[4] = { ...storyboard.beats[4], narration: "Reseating memory doubles gaming frame rates." };
     expect(runGates(storyboard, topic, NOW).factCheck.some((f) => f.claimIds.includes("made-up"))).toBe(true);
   });
+  it("blocks an outcome promise whatever its wording, and leaves instructions and symptoms alone (Codex P2)", () => {
+    const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
+    for (const line of ["It loads Windows after that.", "Your PC will boot now.", "Problem solved.", "That should work."]) {
+      const storyboard = buildStoryboard(ram, 14);
+      storyboard.beats[6] = { ...storyboard.beats[6], narration: line };
+      expect(runGates(storyboard, ram, NOW).findings.some((f) => f.gate.startsWith("outcome promise"))).toBe(true);
+    }
+    for (const topic of TOPICS) expect(runGates(buildStoryboard(topic, 14), topic, NOW).findings.filter((f) => f.gate.startsWith("outcome promise"))).toEqual([]);
+  });
   it("blocks a forbidden claim in the persistent disclosure band (Codex P1)", () => {
     const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
     const storyboard = { ...buildStoryboard(ram, 14), persistentDisclosures: ["ILLUSTRATION", "Guaranteed to fix it"] };
@@ -171,9 +180,15 @@ describe("the job fails clearly", () => {
       expect(result).toMatchObject({ exitCode: 1, report: { status: "refused", code: "bad-argument" } });
     }
   });
+  it("lets only one run claim a folder (Codex P2: two runs racing for the same --out)", async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "daily-race-")), "out");
+    const results = await Promise.allSettled([prepareOutDir(dir), prepareOutDir(dir)]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.find((r) => r.status === "rejected")).toMatchObject({ reason: { code: "output-not-empty" } });
+  });
   it("refuses a reused run folder and deletes nothing, whatever the files are named (Codex P1/P2)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "daily-out-"));
-    await prepareOutDir(dir);   // empty: fine
+    rmSync(await prepareOutDir(dir));   // empty: claimed, then released as a finished run would
     for (const name of ["proposal.json", "work", "demo-silent.mp4"]) writeFileSync(join(dir, name), "someone else's");
     await expect(prepareOutDir(dir)).rejects.toMatchObject({ code: "output-not-empty" });
     expect(readdirSync(dir).sort()).toEqual(["demo-silent.mp4", "proposal.json", "work"]);
