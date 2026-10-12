@@ -35,7 +35,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promise
 import { basename, join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assertRendererAvailable, renderTemplate, TEMPLATES, verifyRender, type Verification } from "./animations.ts";
+import { assertRendererAvailable, renderAndVerify, TEMPLATES, type Verification } from "./animations.ts";
 import { buildStoryboard, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { selectTopic } from "./select.ts";
 import { DailyProposalError, loadSnapshot } from "./snapshot.ts";
@@ -100,14 +100,16 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     let cut: { silent: string; sfx: string; silentSha256: string; sfxSha256: string } | undefined;
     let verification: Verification | undefined;
     if (gates.passed) {
-      const files = await time("render-animated-cut", () => renderTemplate(template, outDir));
-      // Name the outputs after the template, so a folder never holds two cuts' files under one name.
-      const silent = join(outDir, `${template.id}-silent.mp4`), sfx = join(outDir, `${template.id}-sfx.mp4`);
-      if (files.silentPath !== silent) await rename(files.silentPath, silent);
-      if (files.sfxPath !== sfx) await rename(files.sfxPath, sfx);
-      const sha = async (path: string) => createHash("sha256").update(await readFile(path)).digest("hex");
-      cut = { silent: basename(silent), sfx: basename(sfx), silentSha256: await sha(silent), sfxSha256: await sha(sfx) };
-      verification = await time("verify-exported-files", () => verifyRender(template, { silentPath: silent, sfxPath: sfx }, outDir));
+      const result = await time("render-and-verify", () => renderAndVerify(template, outDir));
+      verification = result.verification;
+      if (result.files) {
+        // Name the outputs after the template, so a folder never holds two cuts' files under one name.
+        const silent = join(outDir, `${template.id}-silent.mp4`), sfx = join(outDir, `${template.id}-sfx.mp4`);
+        if (result.files.silentPath !== silent) await rename(result.files.silentPath, silent);
+        if (result.files.sfxPath !== sfx) await rename(result.files.sfxPath, sfx);
+        const sha = async (path: string) => createHash("sha256").update(await readFile(path)).digest("hex");
+        cut = { silent: basename(silent), sfx: basename(sfx), silentSha256: await sha(silent), sfxSha256: await sha(sfx) };
+      }
       await writeFile(join(outDir, "verification.json"), `${JSON.stringify(verification, null, 2)}\n`);
     }
     const passed = gates.passed && verification?.passed === true;
@@ -116,7 +118,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     const proposal = {
       kind: "daily-short-proposal", version: "daily-short-proposal-v2", generatedAt: now.toISOString(), status,
       notPublished: true, noVoiceGenerated: true, notScheduled: true,
-      snapshot: { collectedAt: snapshot.collectedAt, collectedBy: snapshot.collectedBy, sha256: createHash("sha256").update(bytes).digest("hex"), cost: snapshot.cost ?? "unknown" },
+      snapshot: { brand: snapshot.brand, youtubeChannelId: snapshot.sources.youtube.channelId, collectedAt: snapshot.collectedAt, collectedBy: snapshot.collectedBy, sha256: createHash("sha256").update(bytes).digest("hex"), cost: snapshot.cost ?? "unknown" },
       topic: { id: selection.topic.id, family: selection.topic.family, symptom: selection.topic.symptom, title: selection.topic.title, animation: template.id, chosenBy: selection.chosenBy, dataPick: selection.dataPick },
       hook: { frameOne: selection.topic.hook },
       script: storyboard.beats.map((b) => b.narration).join(" "),
@@ -133,7 +135,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       topicsExcluded: selection.excluded, ranking: selection.ranking,
       gates: { passed: gates.passed, findings: gates.findings },
       factCheckRequired: gates.factCheck,
-      animatedCut: cut ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures } : { notRendered: "an automated gate blocked the proposal" },
+      animatedCut: cut ? { ...cut, durationSeconds: template.durationSeconds, fps: template.fps, disclosures: template.disclosures } : { notRendered: gates.passed ? "the render failed (see verification)" : "an automated gate blocked the proposal" },
       verification: verification ?? null,
       humanGates: humanGatesUnresolved(),
     };
@@ -162,7 +164,7 @@ function proposalMarkdown(p: Proposal): string {
 
 Topic chosen by **${p.topic.chosenBy === "operator" ? `the operator (--topic), not the data; the data's own pick was ${p.topic.dataPick}` : "the data"}**. Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated ${p.generatedAt} from the snapshot collected ${p.snapshot.collectedAt} (sha256 \`${p.snapshot.sha256.slice(0, 16)}…\`).
+Generated ${p.generatedAt} from the snapshot of **${p.snapshot.brand}** (YouTube channel \`${p.snapshot.youtubeChannelId}\`) collected ${p.snapshot.collectedAt} (sha256 \`${p.snapshot.sha256.slice(0, 16)}…\`).
 
 ## Frame-one hook
 > **${p.hook.frameOne}**

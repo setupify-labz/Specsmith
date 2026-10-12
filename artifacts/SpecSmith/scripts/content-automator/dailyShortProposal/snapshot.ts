@@ -66,11 +66,19 @@ function requireMetrics(where: string, record: unknown, keys: readonly string[])
   }
 }
 
+/** The account this job proposes for: a snapshot from any other brand or channel is refused, not ranked. */
+export const EXPECTED_ACCOUNT = Object.freeze({ brand: "specsmithpc", youtubeChannelId: "UC1DBOCQ4F0y-BP9he39b3Kg" });
+
 /** Validates a snapshot document; returns it typed, or throws a DailyProposalError saying exactly what is wrong. */
 export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): ChannelSnapshot {
   const doc = raw as Record<string, any>;
   if (!doc || doc.kind !== "channel-metrics-snapshot" || doc.version !== "channel-metrics-snapshot-v1") {
     throw new DailyProposalError("snapshot-invalid", "Not a channel-metrics-snapshot-v1 document.");
+  }
+  if (doc.brand !== EXPECTED_ACCOUNT.brand) throw new DailyProposalError("snapshot-invalid", `The snapshot is for brand "${doc.brand}", not "${EXPECTED_ACCOUNT.brand}"; another account's data must not choose SpecSmith's Short.`);
+  const youtube = doc.sources?.youtube;
+  if (youtube?.status === "available" && youtube.channelId !== EXPECTED_ACCOUNT.youtubeChannelId) {
+    throw new DailyProposalError("snapshot-invalid", `The snapshot's YouTube channel is "${youtube.channelId}", not SpecSmith's "${EXPECTED_ACCOUNT.youtubeChannelId}".`);
   }
   const collected = Date.parse(doc.collectedAt);
   if (!Number.isFinite(collected)) throw new DailyProposalError("snapshot-invalid", "collectedAt is not a timestamp.");

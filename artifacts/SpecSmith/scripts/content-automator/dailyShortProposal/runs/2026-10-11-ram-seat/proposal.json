@@ -1,12 +1,14 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-12T00:29:52.232Z",
+  "generatedAt": "2026-10-12T01:37:09.706Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
   "notScheduled": true,
   "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
     "collectedAt": "2026-10-11T20:38:30Z",
     "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
     "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
@@ -299,8 +301,8 @@
         "families": [
           "wont-turn-on"
         ],
-        "ageDays": 1.82,
-        "viewsPerDay": 1070.7,
+        "ageDays": 1.86,
+        "viewsPerDay": 1043.9,
         "averageViewPercentage": "unknown",
         "engagedShare": "unknown",
         "durationSeconds": 15,
@@ -311,8 +313,8 @@
         "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 3.02,
-        "viewsPerDay": 392.3,
+        "ageDays": 3.07,
+        "viewsPerDay": 386.4,
         "averageViewPercentage": 52.59,
         "engagedShare": 0.373,
         "durationSeconds": 25,
@@ -323,8 +325,8 @@
         "title": "20 Game Leads… Only 4 FPS Apart?",
         "theme": "comparison",
         "families": [],
-        "ageDays": 5.35,
-        "viewsPerDay": 235.9,
+        "ageDays": 5.39,
+        "viewsPerDay": 233.8,
         "averageViewPercentage": 74.93,
         "engagedShare": 0.34,
         "durationSeconds": 19,
@@ -337,8 +339,8 @@
         "families": [
           "compatibility"
         ],
-        "ageDays": 8.19,
-        "viewsPerDay": 232.9,
+        "ageDays": 8.23,
+        "viewsPerDay": 231.5,
         "averageViewPercentage": 87.65,
         "engagedShare": 0.578,
         "durationSeconds": 14,
@@ -348,13 +350,13 @@
     "themeSummary": {
       "troubleshooting": {
         "videos": 2,
-        "medianViewsPerDay": 651.8,
+        "medianViewsPerDay": 637.7,
         "medianAverageViewPercentage": 87.7,
         "medianEngagedShare": 57.8
       },
       "comparison": {
         "videos": 2,
-        "medianViewsPerDay": 314.1,
+        "medianViewsPerDay": 310.1,
         "medianAverageViewPercentage": 63.8,
         "medianEngagedShare": 35.7
       }
@@ -406,13 +408,13 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 1070.7,
+      "value": 1043.9,
       "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
     },
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 392.3,
+      "value": 386.4,
       "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
     },
     {
@@ -424,7 +426,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 235.9,
+      "value": 233.8,
       "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
     },
     {
@@ -436,7 +438,7 @@
     {
       "metric": "views per day (public views / days live)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": 232.9,
+      "value": 231.5,
       "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
     },
     {
@@ -448,13 +450,13 @@
     {
       "metric": "theme medians (views/day, avg view %, engaged %)",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":651.8,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":314.1,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":637.7,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":310.1,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
       "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
     },
     {
       "metric": "fastest troubleshooting Short",
       "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
-      "value": "PC Won't Turn On? Check These 2 Spots First (1070.7 views/day)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1043.9 views/day)",
       "usedFor": "symptom family: wont-turn-on"
     },
     {
@@ -491,7 +493,7 @@
   "unknown": [
     "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
     "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
-    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.82 days: its views per day are an early figure and may fall as it ages.",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.86 days: its views per day are an early figure and may fall as it ages.",
     "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
     "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
     "instagram 2026-10-06 shares: unknown (not returned by Metricool).",

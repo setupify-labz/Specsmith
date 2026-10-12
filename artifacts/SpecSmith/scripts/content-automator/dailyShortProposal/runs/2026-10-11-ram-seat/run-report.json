@@ -9,14 +9,13 @@
     "phone-every-0.25s.png",
     "verification.json"
   ],
-  "totalMs": 38980,
+  "totalMs": 39461,
   "stagesMs": {
-    "load-and-validate-snapshot": 7,
-    "check-renderer": 107,
+    "load-and-validate-snapshot": 8,
+    "check-renderer": 115,
     "select-topic": 2,
-    "run-gates": 17,
-    "render-animated-cut": 21096,
-    "verify-exported-files": 17729
+    "run-gates": 28,
+    "render-and-verify": 39290
   },
   "spend": {
     "elevenLabs": "not called (no voice)",

@@ -11,7 +11,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { TEMPLATES, verifyRender } from "./animations.ts";
+import { renderAndVerify, TEMPLATES, verifyRender } from "./animations.ts";
 import { buildStoryboard, contractFor, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { prepareOutDir, runDailyProposal } from "./run.ts";
 import { selectTopic } from "./select.ts";
@@ -39,6 +39,12 @@ describe("the snapshot is validated before anything uses it", () => {
       expect(error.code).toBe("source-unavailable");
       expect(error.message).toContain(name);
     }
+  });
+  it("refuses another account's snapshot (Codex P2)", () => {
+    const otherBrand = raw(); otherBrand.brand = "someone-else";
+    expect(refusal(() => parseSnapshot(otherBrand, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("brand") });
+    const otherChannel = raw(); otherChannel.sources.youtube.channelId = "UCsomeoneElse";
+    expect(refusal(() => parseSnapshot(otherChannel, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("YouTube channel") });
   });
   it("refuses a metric that is neither a number nor \"unknown\" (no silent fill-in)", () => {
     const doc = raw(); doc.sources.youtube.videos[0].analytics.averageViewPercentage = null;
@@ -253,6 +259,18 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     spawnSync("ffmpeg", ["-v", "error", "-y", "-i", files.silentPath, "-vf", "drawbox=x=0:y=330:w=1080:h=1110:color=0x0A0A0F:t=fill", "-c:a", "copy", blank]);
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: blank, sfxPath: files.sfxPath }, dir)).checks.filter((c) => !c.passed).map((c) => c.check);
     expect(failed).toEqual(expect.arrayContaining(["every beat's artwork is drawn", "every beat's artwork differs from every other beat's"]));
+  }, 60_000);
+  it.skipIf(!hasFfmpeg)("turns a render or verifier crash into a failed check, never a crash of the run (Codex P2)", async () => {
+    const t = TEMPLATES["ram-seat"];
+    const dir = scratch();
+    const garbage = { ...t, render: async (out: string) => { const a = join(out, "x-silent.mp4"), b = join(out, "x-sfx.mp4"); writeFileSync(a, "not a video"); writeFileSync(b, "not a video"); return { silentPath: a, sfxPath: b }; } };
+    const unreadable = await renderAndVerify(garbage, dir);
+    expect(unreadable.verification.passed).toBe(false);
+    expect(unreadable.verification.checks.map((c) => c.check)).toContain("the cut could be verified");
+    const broken = await renderAndVerify({ ...t, render: async () => { throw new Error("Text does not fit at a readable size"); } }, dir);
+    expect(broken.files).toBeUndefined();
+    expect(broken.verification).toMatchObject({ passed: false, checks: [{ check: "the cut rendered" }] });
+    await expect(renderAndVerify({ ...t, render: async () => { throw new DailyProposalError("renderer-unavailable", "no chromium"); } }, dir)).rejects.toMatchObject({ code: "renderer-unavailable" });
   }, 60_000);
   it.skipIf(!hasFfmpeg)("fails a sound-effects file standing in for the silent one", async () => {
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);

@@ -185,6 +185,30 @@ const share = (pixels: Buffer, test: (v: number) => boolean) => { let n = 0; for
 const meanAbsDiff = (a: Buffer, b: Buffer) => { let sum = 0; for (let i = 0; i < a.length; i += 1) sum += Math.abs(a[i] - b[i]); return sum / a.length; };
 export const MIN_ART_SHARE = 0.05;
 
+/**
+ * Renders the template and checks the exported files. Any failure after the renderer started (a text misfit,
+ * an encoder error, a malformed MP4 the verifier cannot read) becomes a failed check, so the run still writes
+ * its proposal and report as blocked-by-render-check; only a missing renderer is a refusal.
+ */
+export async function renderAndVerify(template: AnimationTemplate, outDir: string): Promise<{ files?: { silentPath: string; sfxPath: string }; verification: Verification }> {
+  const failed = (stage: string, error: unknown): Verification => ({
+    passed: false, checks: [{ check: `the cut ${stage}`, passed: false, detail: (error as Error).message.split("\n").slice(0, 3).join(" ") }],
+    cuePeaks: [], loudness: { integratedLufs: Number.NaN, peakDbfs: Number.NaN }, beatSheet: "", phoneSheet: "",
+  });
+  let files: { silentPath: string; sfxPath: string };
+  try {
+    files = await renderTemplate(template, outDir);
+  } catch (error) {
+    if (error instanceof DailyProposalError) throw error;
+    return { verification: failed("rendered", error) };
+  }
+  try {
+    return { files, verification: await verifyRender(template, files, outDir) };
+  } catch (error) {
+    return { files, verification: failed("could be verified", error) };
+  }
+}
+
 /** Checks the exported files, not the plan. */
 export async function verifyRender(template: AnimationTemplate, files: { silentPath: string; sfxPath: string }, outputDir: string): Promise<Verification> {
   const checks: { check: string; passed: boolean; detail: string }[] = [];
