@@ -251,7 +251,7 @@ export async function verifyRender(template: AnimationTemplate, files: { silentP
     add("the ILLUSTRATION band is on every sampled frame", amber.every((x) => x > 0.01) && bandDrift < 3, `${samples.length} frames; amber badge ${(Math.min(...amber) * 100).toFixed(1)}%+ of the band; largest change ${bandDrift.toFixed(2)} levels`);
     const lines = await Promise.all(samples.map((t) => region(files.silentPath, t, DISCLOSURE_LINE, "gray")));
     const lineShares = lines.map((px) => share(px, (v) => v > 150));
-    add("the disclosure line is on every sampled frame", lineShares.every((x) => x > 0.03), `lowest ${(Math.min(...lineShares) * 100).toFixed(1)}% of the disclosure line's area lit (at least 3%)`);
+    add("the disclosure line is on every sampled frame", lineShares.every((x) => x > 0.015), `lowest ${(Math.min(...lineShares) * 100).toFixed(1)}% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)`);
     const caps = await Promise.all(samples.map((t) => region(files.silentPath, t, CAPTIONS, "gray")));
     const capShares = caps.map((px) => share(px, (v) => v > 150));
     add("every sampled frame has caption text", capShares.every((x) => x > 0.01), `lowest ${(Math.min(...capShares) * 100).toFixed(1)}% of the caption band lit`);
