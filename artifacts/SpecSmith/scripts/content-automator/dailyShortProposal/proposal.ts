@@ -40,7 +40,9 @@ export const MAX_ON_SCREEN_CHARS_PER_SECOND = 20;
  * boot?") do not match. A backstop, not a semantic checker: the factual-takeaway human gate reads every line.
  */
 export const OUTCOME_PROMISES: readonly { readonly pattern: RegExp; readonly why: string }[] = [
-  { pattern: /\b(it|your pc|the pc|your computer|the computer|that|this|the build|your build)\s+(will\s+|should\s+|then\s+|now\s+)?(boots?|loads?|starts?(\s+up)?|powers?\s+on|posts?|works?|runs?|turns?\s+on)\b/i, why: "States that the PC boots, loads or works afterwards; the Shorts show a check, never an outcome." },
+  // Subject + optional auxiliary/copula + outcome verb in its base, -s, -ing or -ed form:
+  // "it loads", "your PC will boot", "the PC is working now", "it's booting again", "it has started".
+  { pattern: /\b(it|it's|your pc|the pc|your computer|the computer|that|this|the build|your build|everything)\s+((will|should|would|then|now|is|are|was|has|have|has been|will be|should be)\s+)*(boot(s|ing|ed)?|load(s|ing|ed)?|start(s|ing|ed)?(\s+up)?|power(s|ing|ed)?\s+on|post(s|ing|ed)?|work(s|ing|ed)?|run(s|ning)?|ran|turn(s|ing|ed)?\s+on)\b/i, why: "States that the PC boots, loads or works afterwards; the Shorts show a check, never an outcome." },
   { pattern: /\b(fixed|solved|problem solved|back to normal|good as new|up and running)\b/i, why: "States that the problem is fixed; the Shorts offer one check, never a fix." },
   { pattern: /\b(loads?|boots?\s+(in)?to|straight\s+(in)?to)\s+windows\b/i, why: "Shows or promises a successful boot into Windows, which no cut shows." },
 ];

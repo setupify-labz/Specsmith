@@ -140,7 +140,7 @@ describe("the existing gates run on every topic, and block what they should", ()
   });
   it("blocks an outcome promise whatever its wording, and leaves instructions and symptoms alone (Codex P2)", () => {
     const ram = TOPICS.find((t) => t.id === "ram-not-seated")!;
-    for (const line of ["It loads Windows after that.", "Your PC will boot now.", "Problem solved.", "That should work."]) {
+    for (const line of ["It loads Windows after that.", "Your PC will boot now.", "Problem solved.", "That should work.", "The PC is working now.", "It is booting again.", "It's working.", "Everything works."]) {
       const storyboard = buildStoryboard(ram, 14);
       storyboard.beats[6] = { ...storyboard.beats[6], narration: line };
       expect(runGates(storyboard, ram, NOW).findings.some((f) => f.gate.startsWith("outcome promise"))).toBe(true);
