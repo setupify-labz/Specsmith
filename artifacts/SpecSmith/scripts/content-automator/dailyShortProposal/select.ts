@@ -25,7 +25,9 @@ import { TEMPLATES } from "./animations.ts";
 import { TOPICS, type Family, type Topic } from "./topics.ts";
 
 export const MIN_ANALYTICS_VIEWS = 300;
-const TROUBLESHOOTING = /\b(won'?t|won’t|fix|check|turn on|no display|no picture|doesn'?t)\b/i;
+// Titles are matched after normalizeTitle(): typographic apostrophes (’ ‘ ʼ) become ', so a pattern written with ' matches both.
+export const normalizeTitle = (title: string) => title.replace(/[\u2018\u2019\u02BC]/g, "'");
+const TROUBLESHOOTING = /\b(won'?t|fix|check|turn on|no display|no picture|doesn'?t)\b/i;
 const FAMILY_OF: readonly [RegExp, Family][] = [
   [/\b(turn on|won'?t start|no power|power supply switch)\b/i, "wont-turn-on"],
   [/\b(no picture|no display|monitor|graphics card)\b/i, "on-no-picture"],
@@ -84,10 +86,11 @@ function signalOf(video: YouTubeVideo, collectedAt: number): VideoSignal {
   const ageDays = Math.max(1, (collectedAt - Date.parse(video.publishedAt)) / 86_400_000);
   const a = video.analytics;
   const sampleOk = num(a.views) && a.views >= MIN_ANALYTICS_VIEWS;
+  const title = normalizeTitle(video.title);
   return {
     id: video.id, title: video.title,
-    theme: TROUBLESHOOTING.test(video.title) ? "troubleshooting" : "comparison",
-    families: FAMILY_OF.filter(([re]) => re.test(video.title)).map(([, family]) => family),
+    theme: TROUBLESHOOTING.test(title) ? "troubleshooting" : "comparison",
+    families: FAMILY_OF.filter(([re]) => re.test(title)).map(([, family]) => family),
     ageDays: round(ageDays, 2),
     viewsPerDay: num(video.public.views) ? round(video.public.views / ageDays) : "unknown",
     averageViewPercentage: sampleOk && num(a.averageViewPercentage) ? a.averageViewPercentage : "unknown",
@@ -161,7 +164,7 @@ export function selectTopic(snapshot: ChannelSnapshot, options: SelectOptions = 
   }
 
   // Topics: drop the ones the job cannot render and the covered ones, then rank.
-  const titles = yt.videos.map((v) => v.title).join("\n");
+  const titles = yt.videos.map((v) => normalizeTitle(v.title)).join("\n");
   const excluded: { topicId: string; why: string }[] = [];
   const open = topics.filter((topic) => {
     if (!topic.animation || !TEMPLATES[topic.animation]) { excluded.push({ topicId: topic.id, why: "no animation template yet (the job proposes only what it can render)" }); return false; }

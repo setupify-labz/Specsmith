@@ -52,6 +52,13 @@ describe("the snapshot is validated before anything uses it", () => {
   });
 });
 
+describe("a video cannot be newer than the snapshot", () => {
+  it("refuses a publishedAt later than collectedAt instead of ranking an impossible video", () => {
+    const doc = raw(); doc.sources.youtube.videos[0].publishedAt = "2027-10-01T12:00:00Z";
+    expect(refusal(() => parseSnapshot(doc, NOW))).toMatchObject({ code: "snapshot-invalid", message: expect.stringContaining("after the snapshot was collected") });
+  });
+});
+
 describe("the pick records what influenced it and what was unknown", () => {
   const selection = selectTopic(parseSnapshot(raw(), NOW));
   it("is deterministic on the committed snapshot, and picks only a topic it can render", () => {
@@ -98,6 +105,14 @@ describe("the pick records what influenced it and what was unknown", () => {
     expect(selection.unknowns.some((u) => u.includes("analytics sample under 300"))).toBe(true);
     expect(selection.unknowns.some((u) => u.includes("instagram") && u.includes("saves: unknown"))).toBe(true);
     expect(selection.signals.find((s) => s.id === "46uG78uXmHg")?.averageViewPercentage).toBe("unknown");
+  });
+  it("reads typographic apostrophes as plain ones, so a curly “Won’t Start” title keeps its family", () => {
+    const doc = raw();
+    const lead = doc.sources.youtube.videos.find((v: { title: string }) => /won't turn on/i.test(v.title));
+    lead.title = "PC Won\u2019t Start? Check These 2 Spots First";
+    const selection = selectTopic(parseSnapshot(doc, NOW));
+    expect(selection.signals.find((s) => s.id === lead.id)?.families).toEqual(["wont-turn-on"]);
+    expect(selection.topic.id).toBe("cpu-power-cable");
   });
   it("counts an 8-pin title as CPU coverage only with CPU/EPS context, not a GPU/PCIe one", () => {
     const covers = (title: string) => {

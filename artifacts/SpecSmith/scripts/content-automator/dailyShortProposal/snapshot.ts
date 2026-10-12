@@ -100,6 +100,10 @@ export function parseSnapshot(raw: unknown, now: Date, maxAgeHours = 36): Channe
     if (typeof video.id !== "string" || typeof video.title !== "string" || !Number.isFinite(Date.parse(video.publishedAt))) {
       throw new DailyProposalError("snapshot-invalid", `youtube.videos[${i}] needs an id, a title and a publishedAt.`);
     }
+    // Its counts were read at collectedAt, so a video published after that is a data error (e.g. a mistyped year), not a signal.
+    if (Date.parse(video.publishedAt) > collected) {
+      throw new DailyProposalError("snapshot-invalid", `youtube.videos[${i}] was published (${video.publishedAt}) after the snapshot was collected (${doc.collectedAt}).`);
+    }
     requireMetrics(`youtube.videos[${i}]`, video, ["durationSeconds"]);
     requireMetrics(`youtube.videos[${i}].public`, video.public, ["views", "likes", "comments"]);
     requireMetrics(`youtube.videos[${i}].analytics`, video.analytics, ["views", "engagedViews", "averageViewPercentage", "averageViewDurationSeconds", "shares", "subscribersGained"]);
