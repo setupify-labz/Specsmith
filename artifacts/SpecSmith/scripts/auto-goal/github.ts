@@ -14,6 +14,8 @@ export interface GhCheckRun { readonly name: string; readonly status: string; re
 export interface GhPull { readonly number: number; readonly state: string; readonly draft: boolean; readonly merged: boolean; readonly head: { readonly sha: string; readonly ref: string }; readonly html_url: string }
 
 export interface GitHub {
+  /** The login this session acts as; only its comments can be goal records. */
+  whoami(): Promise<string>;
   pull(repo: string, pr: number): Promise<GhPull>;
   checkRuns(repo: string, sha: string): Promise<GhCheckRun[]>;
   issueComments(repo: string, issue: number): Promise<GhIssueComment[]>;
@@ -49,6 +51,7 @@ async function all<T>(path: string): Promise<T[]> {
 }
 
 export const ghCli: GitHub = {
+  whoami: async () => (await gh<{ login: string }>(["user"])).login,
   pull: (repo, pr) => gh([`repos/${repo}/pulls/${pr}`]),
   checkRuns: async (repo, sha) => (await gh<{ check_runs: GhCheckRun[] }>([`repos/${repo}/commits/${sha}/check-runs?per_page=100`])).check_runs,
   issueComments: (repo, issue) => all(`repos/${repo}/issues/${issue}/comments`),

@@ -77,7 +77,9 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
   const issueArg = a.one("--issue");
   const now = deps.now();
 
-  const storeFor = (goal: Pick<GoalRecord, "repo" | "issue">): GoalStore => goal.issue ? new IssueCommentStore(deps.github, goal.repo, goal.issue, mirror) : mirror;
+  let trusted: string | null = null;
+  const me = async () => (trusted ??= await deps.github.whoami());
+  const storeFor = async (goal: Pick<GoalRecord, "repo" | "issue">): Promise<GoalStore> => goal.issue ? new IssueCommentStore(deps.github, goal.repo, goal.issue, await me(), mirror) : mirror;
 
   if (command === "start") {
     const request = (await readFile(resolve(a.need("--request-file")), "utf8")).trim();
@@ -97,7 +99,7 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
       goal.issue = issue.number;
       addEvent(goal, "issue", `Opened ${issue.html_url} to hold the record.`, now);
     }
-    goal = await storeFor(goal).save(goal, now);
+    goal = await (await storeFor(goal)).save(goal, now);
     deps.out(JSON.stringify({ goal: id, issue: goal.issue, revision: goal.revision, next: decide(goal, now) }, null, 2));
     return 0;
   }
@@ -106,7 +108,14 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
   const local = await mirror.load(id).catch(() => null);
   const issue = issueArg ? Number(issueArg) : local?.issue ?? null;
   const repo = a.one("--repo") ?? local?.repo ?? "setupify-labz/Specsmith";
-  const store = issue ? new IssueCommentStore(deps.github, repo, issue, mirror) : mirror;
+  // Recovery from a fork must run before the (refusing) load below.
+  if (command === "resolve-fork") {
+    if (!issue) throw new GoalError("invalid", "resolve-fork needs the goal issue (--issue).");
+    const kept = await new IssueCommentStore(deps.github, repo, issue, await me(), mirror).resolveFork(id, Number(a.need("--keep")), now);
+    deps.out(`Continuing from revision ${kept.revision}.`);
+    return 0;
+  }
+  const store = issue ? new IssueCommentStore(deps.github, repo, issue, await me(), mirror) : mirror;
   let goal = await store.load(id);
   const save = async () => { goal = await store.save(goal, now); };
   const refuseIfDone = () => { if (goal.outcome) throw new GoalError("refused", `Goal ${id} is already ${goal.outcome.status}: ${goal.outcome.reason}`); };
@@ -193,7 +202,8 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
         round = goal.reviewRounds.at(-1)!;
       }
       const tag = `Auto Goal \`${id}\`, review round ${round.n} of at most ${goal.caps.maxReviewRounds}, for \`${round.requestedSha}\`.`;
-      const already = (await deps.github.issueComments(goal.repo, goal.pr!)).find((c) => c.body.startsWith("@codex review") && c.body.includes(tag));
+      const self = await me();
+      const already = (await deps.github.issueComments(goal.repo, goal.pr!)).find((c) => c.user.login === self && c.body.startsWith("@codex review") && c.body.includes(tag));
       const note = a.one("--note");
       const comment = already ?? await deps.github.createComment(goal.repo, goal.pr!, `@codex review\n\n${tag}${note ? `\n\n${note}` : ""}${FOOTER}`);
       round.requestUrl = comment.html_url;
@@ -202,12 +212,6 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
       addEvent(goal, "review-requested", `Round ${round.n} on ${round.requestedSha.slice(0, 10)}: ${comment.html_url}${already ? " (found already posted; not posted again)" : ""}`, now);
       await save();
       deps.out(comment.html_url);
-      return 0;
-    }
-    case "resolve-fork": {
-      if (!issue) throw new GoalError("invalid", "resolve-fork needs the goal issue (--issue).");
-      const kept = await new IssueCommentStore(deps.github, repo, issue, mirror).resolveFork(id, Number(a.need("--keep")), now);
-      deps.out(`Continuing from revision ${kept.revision}.`);
       return 0;
     }
     case "fixed":

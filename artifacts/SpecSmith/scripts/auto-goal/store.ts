@@ -8,6 +8,9 @@
 // cannot be stopped from both posting. Append-only makes that visible instead of lossy: both
 // copies stay, the writer that finds a rival comment at its revision fails, and every later load
 // refuses the fork until `resolve-fork` records which copy to keep. Nothing is silently dropped.
+// Only comments by the orchestrator's own login count as records (anyone else who can comment on
+// the issue could otherwise post a "higher revision" with a different check command), and the
+// request and acceptance criteria are pinned to revision 1: no later revision may change them.
 // A local file mirrors the latest revision for offline reads and tests.
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -95,15 +98,24 @@ export function parseRecordComment(body: string, id: string): GoalRecord | null 
 interface Entry { readonly commentId: number; readonly url: string; readonly goal: GoalRecord }
 
 export class IssueCommentStore implements GoalStore {
-  constructor(readonly github: GitHub, readonly repo: string, readonly issue: number, readonly mirrorTo?: FileStore) {}
+  /** `trustedLogin`: the GitHub login the orchestrator posts as (GitHub.whoami()). */
+  constructor(readonly github: GitHub, readonly repo: string, readonly issue: number, readonly trustedLogin: string, readonly mirrorTo?: FileStore) {}
 
-  /** Every saved revision of the goal, in posting order. */
+  /** Every revision of the goal saved by the trusted login, in posting order. Anyone else's marked comment is ignored. */
   private async entries(id: string): Promise<Entry[]> {
     const comments = await this.github.issueComments(this.repo, this.issue);
     const out: Entry[] = [];
     for (const c of comments) {
+      if (c.user.login !== this.trustedLogin) continue;
       const goal = parseRecordComment(c.body, id);
       if (goal) out.push({ commentId: c.id, url: c.html_url, goal });
+    }
+    const first = out.find((e) => e.goal.revision === Math.min(...out.map((x) => x.goal.revision)));
+    const pinned = first && JSON.stringify([first.goal.request, first.goal.acceptanceCriteria, first.goal.repo, first.goal.branch]);
+    for (const e of out) {
+      if (JSON.stringify([e.goal.request, e.goal.acceptanceCriteria, e.goal.repo, e.goal.branch]) !== pinned) {
+        throw new GoalError("invalid", `Goal ${id}'s record ${e.url} changes the request, acceptance criteria, repo or branch fixed at revision ${first!.goal.revision}; refusing it.`);
+      }
     }
     return out;
   }
@@ -144,7 +156,8 @@ export class IssueCommentStore implements GoalStore {
     const posted = await this.github.createComment(this.repo, this.issue, renderRecordComment(next, now));
     // No compare-and-swap exists for comments, so check afterwards: a rival at this revision means
     // two sessions saved from the same base. Both copies stay; this writer reports the fork.
-    const rivals = (await this.entries(goal.id)).filter((e) => e.goal.revision >= next.revision && e.commentId !== posted.id);
+    // Only another entry at this same revision is a rival; a later revision built on this one is a normal successor.
+    const rivals = (await this.entries(goal.id)).filter((e) => e.goal.revision === next.revision && e.commentId !== posted.id);
     if (rivals.length) throw new GoalError("conflict", `Another session saved goal ${goal.id} at the same time (${rivals.map((e) => e.url).join(", ")}; this save: ${posted.html_url}). Both are kept; choose one with resolve-fork --keep <comment id>.`);
     await this.mirrorTo?.mirror(next);
     return next;

@@ -43,6 +43,8 @@ GitHub offers no compare-and-swap for comments, and this session cannot write gi
 - the writer that finds a rival comment fails;
 - every later load refuses the fork until `resolve-fork --keep <comment id>` records which copy to continue from.
 
+Only comments posted by the orchestrator's own GitHub login count as records. Anyone else who can comment on the issue cannot inject a revision. The request, acceptance criteria, repo and branch are pinned to revision 1: a later revision that changes them is refused, so the commands `check` runs cannot be altered after the goal starts.
+
 A review request is saved as an in-flight round before Codex is asked. A session that stops in between adopts the request it already posted instead of asking twice.
 
 ## The decision
