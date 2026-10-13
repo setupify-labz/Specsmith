@@ -1449,3 +1449,11 @@ Explore incentives for people who contribute useful real-world performance runs 
 - Accuracy and share of tracked AI-search citations on a defined query set.
 - Social profile-to-site visits and subsequent useful actions.
 - Validated contributed benchmark runs, with rejection and abuse rates.
+
+### 25.6 Validated benchmarks as a page and video source
+
+The future desktop benchmark application can become a trustworthy content feed. A supported test on a real PC produces raw frame times and hardware context; validation decides whether the run is usable. Only an accepted, consented run or a well-defined aggregate enters a versioned public evidence record. A benchmark page and a video concept can then draw from that **same frozen record**, carrying its game, exact hardware, resolution, preset, game and driver versions, sample size, date, limitations, and evidence tier. The page provides details and comparisons; a Short explains one interesting, defensible finding and links back to it. Existing videos can also be embedded on the matching page with a useful written explanation and an accessible, lightweight fallback.
+
+This connects the **Test** journey to search, social content, and the **Build/Buy** journeys. It is more defensible than mass-producing near-identical videos from hypothetical combinations: a measured result can answer a real question, and repeated validated runs can show whether the result is typical. An isolated community run must not be presented as the FPS every owner will get. A model estimate remains clearly labelled as an estimate and never becomes a measured benchmark because it was rendered in a video.
+
+The content queue should rank candidates by user demand, evidence quality, distinct insight, freshness, and whether a useful page or video already exists. It should suppress duplicate pairings and stale claims, and hold uncertain or privacy-sensitive results for review. Never publish raw telemetry, personal identifiers, copyrighted gameplay, or a numerical claim without the required rights and evidence checks. Start with one validated benchmark → one useful page → one reviewed Short, and measure whether it helps people understand or use the site before scaling.
