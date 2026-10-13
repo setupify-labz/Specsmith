@@ -158,6 +158,13 @@ export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<
   goal.runs = [...runs, run];
   goal.step = next.action;
   addEvent(goal, "run-start", `Run ${run.n}/${max} by session ${run.sessionId} (started by ${run.startedBy}): ${next.action}: ${next.why}`, now);
+  if (next.action === "blocked") {
+    // The session stops on a blocked work order, so the blocker is recorded and the run closed here.
+    goal.outcome = { status: "blocked", at: now.toISOString(), reason: next.why, evidence: { head: goal.head, pr: goal.pr } };
+    run.endedAt = now.toISOString(); run.result = `blocked: ${next.why}`;
+    goal.step = "blocked";
+    addEvent(goal, "blocked", next.why, now);
+  }
   await save();
   deps.out(JSON.stringify(workOrder(goal, next, run), null, 2));
   return 0;

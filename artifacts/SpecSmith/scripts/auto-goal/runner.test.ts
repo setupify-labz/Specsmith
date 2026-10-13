@@ -204,6 +204,17 @@ describe("the unattended runner", () => {
     expect(h.record().outcome).toMatchObject({ status: "blocked" });
   });
 
+  it("records the blocker when begin finds a cap reached, instead of leaving the goal in progress (Codex P1 on #185)", async () => {
+    const h = harness();
+    await submit(h.github);
+    h.tick(25 * 60);   // past the 24 h cap
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    expect(h.last()).toMatchObject({ action: "blocked", why: expect.stringContaining("Time cap") });
+    expect(h.record()).toMatchObject({ outcome: { status: "blocked", reason: expect.stringContaining("Time cap") }, runs: [expect.objectContaining({ n: 1, endedAt: expect.any(String) })] });
+    await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
+    expect(h.last()).toMatchObject({ action: "done" });
+  });
+
   it("records a check whose file is missing as not run, never as proof of the defect (Codex P2 on #185)", async () => {
     const h = harness();
     await submit(h.github);
