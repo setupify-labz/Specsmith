@@ -40,10 +40,11 @@ export interface Commit { readonly sha: string; readonly subject: string; readon
 
 export interface ReviewRound {
   readonly n: number;
-  readonly requestedAt: string;
+  /** When the round was opened; replaced by the request comment's own timestamp once it is posted. */
+  requestedAt: string;
   readonly requestedSha: string;
-  /** The "@codex review" comment that asked for this round. */
-  readonly requestUrl: string;
+  /** The "@codex review" comment that asked for this round; null while the request is saved but not yet confirmed posted. */
+  requestUrl: string | null;
   verdict: "pending" | "clean" | "findings" | "unavailable";
   reviewedSha: string | null;
   completedAt: string | null;
@@ -134,6 +135,8 @@ export interface GoalRecord {
   fixAttempts: number;
   outcome: Outcome | null;
   events: GoalEvent[];
+  /** Revisions saved twice by concurrent sessions, resolved by choosing one copy (resolve-fork). */
+  resolvedForks?: number[];
 }
 
 export const DEFAULT_CAPS: Caps = { maxReviewRounds: 3, maxFixAttempts: 3, reviewTimeoutMinutes: 90, maxHours: 24, paidSpendUsd: 0 };

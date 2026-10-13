@@ -18,9 +18,10 @@
 //   dismiss          --finding <id> --reason <text>         record why a finding needs no change
 //   finalize         record "complete" if, and only if, decide() says complete
 //   block            --reason <text>                        record "blocked" with the exact reason
+//   resolve-fork     --keep <comment id>                    continue from one copy of a revision two sessions both saved
 //   status           print the record summary
 //
-// The record lives in one comment on the goal's issue (--issue), mirrored to
+// The record is an append-only log of comments on the goal's issue (--issue), mirrored to
 // --store-dir (default .auto-goal/ at the repo root, git-ignored). Nothing here merges, schedules,
 // publishes or calls a paid API.
 
@@ -179,15 +180,34 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
       await syncGoal(goal, deps.github, deps.git, now);
       const next = decide(goal, now);
       if (next.action !== "request-review") throw new GoalError("refused", `Not requesting a review: next action is ${next.action} (${next.why}).`);
-      const n = goal.reviewRounds.length + 1;
-      const head = goal.head!;
+      // Two phases, so a crash between them cannot trigger Codex without a record of it:
+      // 1. save the round as in flight (no request URL yet); 2. post, or adopt a request already
+      // posted for this round, and save its URL. A resumed session re-enters at phase 2.
+      let round = goal.reviewRounds.at(-1);
+      if (!round || round.requestUrl !== null || round.requestedSha !== goal.head) {
+        round = { n: goal.reviewRounds.length + 1, requestedAt: now.toISOString(), requestedSha: goal.head!, requestUrl: null, verdict: "pending", reviewedSha: null, completedAt: null, evidence: null };
+        goal.reviewRounds.push(round);
+        goal.step = "request-review";
+        addEvent(goal, "review-opening", `Round ${round.n} on ${round.requestedSha.slice(0, 10)}: saved before asking Codex.`, now);
+        await save();
+        round = goal.reviewRounds.at(-1)!;
+      }
+      const tag = `Auto Goal \`${id}\`, review round ${round.n} of at most ${goal.caps.maxReviewRounds}, for \`${round.requestedSha}\`.`;
+      const already = (await deps.github.issueComments(goal.repo, goal.pr!)).find((c) => c.body.startsWith("@codex review") && c.body.includes(tag));
       const note = a.one("--note");
-      const comment = await deps.github.createComment(goal.repo, goal.pr!, `@codex review\n\nAuto Goal \`${id}\`, review round ${n} of at most ${goal.caps.maxReviewRounds}, for \`${head}\`.${note ? `\n\n${note}` : ""}${FOOTER}`);
-      goal.reviewRounds.push({ n, requestedAt: comment.created_at, requestedSha: head, requestUrl: comment.html_url, verdict: "pending", reviewedSha: null, completedAt: null, evidence: null });
+      const comment = already ?? await deps.github.createComment(goal.repo, goal.pr!, `@codex review\n\n${tag}${note ? `\n\n${note}` : ""}${FOOTER}`);
+      round.requestUrl = comment.html_url;
+      round.requestedAt = comment.created_at;
       goal.step = "wait-review";
-      addEvent(goal, "review-requested", `Round ${n} on ${head.slice(0, 10)}: ${comment.html_url}`, now);
+      addEvent(goal, "review-requested", `Round ${round.n} on ${round.requestedSha.slice(0, 10)}: ${comment.html_url}${already ? " (found already posted; not posted again)" : ""}`, now);
       await save();
       deps.out(comment.html_url);
+      return 0;
+    }
+    case "resolve-fork": {
+      if (!issue) throw new GoalError("invalid", "resolve-fork needs the goal issue (--issue).");
+      const kept = await new IssueCommentStore(deps.github, repo, issue, mirror).resolveFork(id, Number(a.need("--keep")), now);
+      deps.out(`Continuing from revision ${kept.revision}.`);
       return 0;
     }
     case "fixed":

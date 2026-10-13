@@ -81,6 +81,8 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
 
   // 7. Codex must have reviewed the exact head.
   const latest = goal.reviewRounds.at(-1);
+  // A round saved but not confirmed posted (the session stopped in between) is finished, not repeated.
+  if (latest && latest.requestedSha === head && latest.requestUrl === null && latest.verdict === "pending") return { action: "request-review", why: `Round ${latest.n} was opened but its request is not confirmed posted; post it or adopt the one already posted.` };
   if (!latest || latest.requestedSha !== head) {
     if (goal.reviewRounds.length >= goal.caps.maxReviewRounds) return { action: "blocked", why: `Review cap reached (${goal.reviewRounds.length}/${goal.caps.maxReviewRounds}) and ${head.slice(0, 10)} has not been reviewed.` };
     return { action: "request-review", why: latest ? `The head moved to ${head.slice(0, 10)} after round ${latest.n}.` : "No Codex review requested yet." };

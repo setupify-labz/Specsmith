@@ -20,12 +20,12 @@ This directory adds only what was missing:
 
 ## The record
 
-It lives in one comment on the goal's GitHub issue, edited in place.
+It lives on GitHub as an append-only log of comments on the goal's issue.
+- Each save posts the next revision; no comment is ever edited.
 - It survives the container.
 - It needs no branch, so saving it triggers no CI or preview build.
-- GitHub keeps every edit.
 
-A copy is mirrored to `.auto-goal/<id>.json`, which is git-ignored.
+A copy of the latest revision is mirrored to `.auto-goal/<id>.json`, which is git-ignored.
 
 The record holds:
 - the original request, verbatim;
@@ -37,6 +37,13 @@ The record holds:
 - the fix count, caps and final outcome.
 
 Every save carries the revision it was based on. A stale save is refused, never merged over.
+
+GitHub offers no compare-and-swap for comments, and this session cannot write git refs, so two sessions saving from the same revision at the same moment cannot be prevented. Append-only makes that visible instead of lossy:
+- both copies stay on the issue;
+- the writer that finds a rival comment fails;
+- every later load refuses the fork until `resolve-fork --keep <comment id>` records which copy to continue from.
+
+A review request is saved as an in-flight round before Codex is asked. A session that stops in between adopts the request it already posted instead of asking twice.
 
 ## The decision
 

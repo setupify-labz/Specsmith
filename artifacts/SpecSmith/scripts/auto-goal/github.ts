@@ -21,8 +21,6 @@ export interface GitHub {
   reviewComments(repo: string, pr: number): Promise<GhReviewComment[]>;
   createIssue(repo: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
   createComment(repo: string, issue: number, body: string): Promise<GhIssueComment>;
-  updateComment(repo: string, commentId: number, body: string): Promise<GhIssueComment>;
-  getComment(repo: string, commentId: number): Promise<GhIssueComment>;
 }
 
 async function gh<T>(args: string[], input?: string): Promise<T> {
@@ -58,6 +56,4 @@ export const ghCli: GitHub = {
   reviewComments: (repo, pr) => all(`repos/${repo}/pulls/${pr}/comments`),
   createIssue: (repo, title, body) => gh(["-X", "POST", `repos/${repo}/issues`, "--input", "-"], JSON.stringify({ title, body })),
   createComment: (repo, issue, body) => gh(["-X", "POST", `repos/${repo}/issues/${issue}/comments`, "--input", "-"], JSON.stringify({ body })),
-  updateComment: (repo, id, body) => gh(["-X", "PATCH", `repos/${repo}/issues/comments/${id}`, "--input", "-"], JSON.stringify({ body })),
-  getComment: (repo, id) => gh([`repos/${repo}/issues/comments/${id}`]),
 };
