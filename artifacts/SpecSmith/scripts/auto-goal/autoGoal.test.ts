@@ -407,6 +407,43 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     expect(await h.cli("status", "--issue", String(issue))).toBe(0);
   });
 
+  it("keeps the chosen copy's descendants when resolving a fork, and refuses an ambiguous lineage (Codex P1, round 3)", async () => {
+    const github = new FakeGitHub(); github.issues.set(5, []);
+    const store = new IssueCommentStore(github, REPO, 5, ME);
+    const r1 = await store.save({ ...goalAt(), issue: 5 }, T0);
+    const c1 = github.issues.get(5)!.at(-1)!.id;
+    const post = (g: GoalRecord) => { const c = github.comment(renderRecordComment(g, at(1))); github.issues.get(5)!.push(c); return c.id; };
+    // A and C both save revision 2 from revision 1; B builds revision 3 on A before C's copy is seen.
+    const a = post({ ...structuredClone(r1), revision: 2, step: "A", parentComment: c1 });
+    post({ ...structuredClone(r1), revision: 2, step: "C", parentComment: c1 });
+    post({ ...structuredClone(r1), revision: 3, step: "B on A", parentComment: a, fixCommits: [sha(7)], fixAttempts: 1 });
+    expect((await refusal(store.load(r1.id))).code).toBe("conflict");
+    const resolved = await store.resolveFork(r1.id, a, at(2));
+    expect(resolved).toMatchObject({ revision: 4, step: "B on A", fixAttempts: 1, resolvedForks: [2] });   // B's work survives
+    expect((await store.load(r1.id)).step).toBe("B on A");
+
+    // Two descendants of the kept copy at the same revision: ambiguous, refused.
+    const g2 = new FakeGitHub(); g2.issues.set(5, []);
+    const s2 = new IssueCommentStore(g2, REPO, 5, ME);
+    const q1 = await s2.save({ ...goalAt(), issue: 5 }, T0);
+    const d1 = g2.issues.get(5)!.at(-1)!.id;
+    const post2 = (g: GoalRecord) => { const c = g2.comment(renderRecordComment(g, at(1))); g2.issues.get(5)!.push(c); return c.id; };
+    const keep = post2({ ...structuredClone(q1), revision: 2, step: "A", parentComment: d1 });
+    post2({ ...structuredClone(q1), revision: 2, step: "C", parentComment: d1 });
+    post2({ ...structuredClone(q1), revision: 3, step: "B1", parentComment: keep });
+    post2({ ...structuredClone(q1), revision: 3, step: "B2", parentComment: keep });
+    expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("branch again at revision 3") });
+    post2({ ...structuredClone(q1), revision: 4, step: "orphan" });
+    expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("record no parent") });
+  });
+
+  it("refuses to start a goal whose record would live only in the container (Codex P2, round 3)", async () => {
+    const h = harness();
+    const e = await refusal(h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK));
+    expect(e).toMatchObject({ code: "invalid", message: expect.stringContaining("--create-issue") });
+    expect(h.github.calls).toEqual([]);
+  });
+
   it("never asks Codex twice for one round, whether the session stops before or after posting (Codex P2)", async () => {
     const h = harness();
     await h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK, "--create-issue", "--title", "t");

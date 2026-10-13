@@ -85,8 +85,9 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
     const request = (await readFile(resolve(a.need("--request-file")), "utf8")).trim();
     const criteria = JSON.parse(await readFile(resolve(a.need("--criteria-file")), "utf8")) as Criterion[];
     let goal = createGoal({ id, request, acceptanceCriteria: criteria, repo: a.one("--repo") ?? "setupify-labz/Specsmith", baseBranch: a.one("--base") ?? "main", branch: a.need("--branch"), requiredChecks: a.many("--required-check"), now });
+    if (!issueArg && !a.has("--create-issue")) throw new GoalError("invalid", "start needs --issue <n> or --create-issue: the record must live on GitHub to survive the container (.auto-goal/ is only a local mirror).");
     if (issueArg) goal.issue = Number(issueArg);
-    else if (a.has("--create-issue")) {
+    else {
       const body = [
         `**Auto Goal \`${id}\`.** The request, as given:`, "", request.split("\n").map((l) => `> ${l}`).join("\n"), "",
         "**Acceptance criteria** (each check must fail before the fix and pass after it):", "",

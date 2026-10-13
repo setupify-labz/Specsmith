@@ -137,6 +137,8 @@ export interface GoalRecord {
   events: GoalEvent[];
   /** Revisions saved twice by concurrent sessions, resolved by choosing one copy (resolve-fork). */
   resolvedForks?: number[];
+  /** The record comment this revision was built on (absent on revision 1 and on records from before parents were kept). */
+  parentComment?: number | null;
 }
 
 export const DEFAULT_CAPS: Caps = { maxReviewRounds: 3, maxFixAttempts: 3, reviewTimeoutMinutes: 90, maxHours: 24, paidSpendUsd: 0 };

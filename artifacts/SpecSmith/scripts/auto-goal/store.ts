@@ -128,12 +128,12 @@ export class IssueCommentStore implements GoalStore {
     return new Map([...byRev].filter(([rev, list]) => list.length > 1 && !resolved.has(rev)));
   }
 
-  private current(id: string, entries: readonly Entry[]): GoalRecord {
+  private current(id: string, entries: readonly Entry[]): Entry {
     if (entries.length === 0) throw new GoalError("not-found", `No record for goal ${id} on ${this.repo}#${this.issue}.`);
     const top = Math.max(...entries.map((e) => e.goal.revision));
     const atTop = entries.filter((e) => e.goal.revision === top);
-    const latest = atTop[atTop.length - 1].goal;
-    const forks = IssueCommentStore.forks(entries, latest);
+    const latest = atTop[atTop.length - 1];
+    const forks = IssueCommentStore.forks(entries, latest.goal);
     if (forks.size) {
       const list = [...forks].map(([rev, es]) => `revision ${rev}: ${es.map((e) => e.url).join(", ")}`).join("; ");
       throw new GoalError("conflict", `Goal ${id} has diverging saves (${list}). Nothing was dropped; choose the copy to keep with resolve-fork --keep <comment id>.`);
@@ -142,7 +142,7 @@ export class IssueCommentStore implements GoalStore {
   }
 
   async load(id: string): Promise<GoalRecord> {
-    const goal = this.current(id, await this.entries(id));
+    const goal = this.current(id, await this.entries(id)).goal;
     await this.mirrorTo?.mirror(goal);
     return goal;
   }
@@ -150,9 +150,9 @@ export class IssueCommentStore implements GoalStore {
   async save(goal: GoalRecord, now = new Date()): Promise<GoalRecord> {
     const before = await this.entries(goal.id);
     const stored = before.length ? this.current(goal.id, before) : null;
-    const expected = stored?.revision ?? 0;
+    const expected = stored?.goal.revision ?? 0;
     if (goal.revision !== expected) throw new GoalError("conflict", `Goal ${goal.id} changed on GitHub (stored revision ${expected}, update based on ${goal.revision}). Reload and retry.`);
-    const next = bump(goal, now);
+    const next = bump({ ...goal, parentComment: stored?.commentId ?? null }, now);
     const posted = await this.github.createComment(this.repo, this.issue, renderRecordComment(next, now));
     // No compare-and-swap exists for comments, so check afterwards: a rival at this revision means
     // two sessions saved from the same base. Both copies stay; this writer reports the fork.
@@ -163,7 +163,12 @@ export class IssueCommentStore implements GoalStore {
     return next;
   }
 
-  /** Continues from the chosen copy of a forked revision, recording the fork as resolved. */
+  /**
+   * Continues from the chosen copy of a forked revision, recording the fork as resolved. Work saved
+   * on top of the chosen copy (its descendants, by parent comment) is kept: the goal continues from
+   * the newest of them. If that lineage branches again, or a later revision's parent is unknown,
+   * the choice is ambiguous and is refused rather than guessed.
+   */
   async resolveFork(id: string, keepCommentId: number, now = new Date()): Promise<GoalRecord> {
     const entries = await this.entries(id);
     const kept = entries.find((e) => e.commentId === keepCommentId);
@@ -171,10 +176,20 @@ export class IssueCommentStore implements GoalStore {
     const top = Math.max(...entries.map((e) => e.goal.revision));
     const forked = [...new Set(entries.map((e) => e.goal.revision).filter((rev, i, all) => all.indexOf(rev) !== i))];
     if (!forked.includes(kept.goal.revision)) throw new GoalError("refused", `Comment ${keepCommentId} is not one of the diverging copies (forked revisions: ${forked.join(", ") || "none"}).`);
-    const goal = structuredClone(kept.goal);
+    const later = entries.filter((e) => e.goal.revision > kept.goal.revision);
+    const unknown = later.filter((e) => e.goal.parentComment === undefined || e.goal.parentComment === null);
+    if (unknown.length) throw new GoalError("refused", `Cannot tell which later saves descend from ${kept.url}: ${unknown.map((e) => e.url).join(", ")} record no parent. Resolve by hand.`);
+    const lineage = new Set([kept.commentId]);
+    for (const e of [...later].sort((a, b) => a.goal.revision - b.goal.revision)) if (lineage.has(e.goal.parentComment!)) lineage.add(e.commentId);
+    const line = entries.filter((e) => lineage.has(e.commentId));
+    const tipRev = Math.max(...line.map((e) => e.goal.revision));
+    const tips = line.filter((e) => e.goal.revision === tipRev);
+    if (tips.length > 1) throw new GoalError("refused", `The saves built on ${kept.url} branch again at revision ${tipRev} (${tips.map((e) => e.url).join(", ")}); keep one of those instead.`);
+    const tip = tips[0];
+    const goal = structuredClone(tip.goal);
     goal.resolvedForks = [...new Set([...(goal.resolvedForks ?? []), ...forked])].sort((a, b) => a - b);
-    goal.events.push({ at: now.toISOString(), type: "fork-resolved", detail: `Kept ${kept.url} (revision ${kept.goal.revision}); the other copies stay on the issue, unused.` });
-    const next = bump({ ...goal, revision: top }, now);
+    goal.events.push({ at: now.toISOString(), type: "fork-resolved", detail: `Kept ${kept.url} (revision ${kept.goal.revision})${tip === kept ? "" : ` and its descendants up to ${tip.url} (revision ${tipRev})`}; the other copies stay on the issue, unused.` });
+    const next = bump({ ...goal, revision: top, parentComment: tip.commentId }, now);
     await this.github.createComment(this.repo, this.issue, renderRecordComment(next, now));
     await this.mirrorTo?.mirror(next);
     return next;
