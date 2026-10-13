@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-13T17:46:22.482Z",
+  "generatedAt": "2026-10-13T18:23:33.192Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -487,26 +487,23 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "usedTopicLedger": {
-    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
-    "sha256": "b59801736065ec2bcbabd1357f94ba3fd20c238bd1683437c97ee9d0c78935e3",
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "7860883ca9ab91cc8677c51e312683f72c4477bd1c651b81f7a6489f859c147b",
     "entries": [
       {
         "topicId": "cpu-power-cable",
-        "markedAt": "2026-10-13T17:45:17.776Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 1"
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "front-panel-power-pins",
-        "markedAt": "2026-10-13T17:45:49.159Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 2"
+        "markedAt": "2026-10-13T18:22:58.712Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "atx-24pin-cable",
-        "markedAt": "2026-10-13T17:46:21.224Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 3"
+        "markedAt": "2026-10-13T18:23:31.850Z",
+        "by": "queue demo (isolated ledger)"
       }
     ]
   },
@@ -517,15 +514,15 @@
     },
     {
       "topicId": "cpu-power-cable",
-      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "front-panel-power-pins",
-      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "atx-24pin-cable",
-      "why": "already taken for review (marked 2026-10-13T17:46:21.224Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:23:31.850Z by queue demo (isolated ledger))"
     }
   ],
   "ranking": [

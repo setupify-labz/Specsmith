@@ -171,7 +171,7 @@ function proposalMarkdown(p: Proposal): string {
 
 **Status: ${p.status}.** Not published, not scheduled, no voice generated. Every human gate below is unresolved, and no claim is verified until a person reads its source.
 
-Topic chosen by **${p.topic.chosenBy === "operator" ? `the operator (--topic), not the data; the data's own pick was ${p.topic.dataPick}` : "the data"}**. Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
+Topic chosen by **${p.topic.chosenBy === "operator" ? `the operator (--topic), not the data; the data's own pick was ${p.topic.dataPick ?? "none (no automatic topic is left)"}` : "the data"}**. Animation template: \`${p.topic.animation}\`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
 Generated ${p.generatedAt} from the snapshot of **${p.snapshot.brand}** (YouTube channel \`${p.snapshot.youtubeChannelId}\`) collected ${p.snapshot.collectedAt} (sha256 \`${p.snapshot.sha256.slice(0, 16)}…\`).
 

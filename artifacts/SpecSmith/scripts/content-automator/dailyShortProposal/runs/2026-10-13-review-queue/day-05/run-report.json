@@ -12,14 +12,14 @@
     "run-report.json",
     "verification.json"
   ],
-  "totalMs": 24337,
+  "totalMs": 24667,
   "stagesMs": {
-    "load-and-validate-snapshot": 8,
-    "check-renderer": 107,
+    "load-and-validate-snapshot": 7,
+    "check-renderer": 132,
     "load-used-ledger": 2,
-    "select-topic": 3,
-    "run-gates": 19,
-    "render-and-verify": 24188
+    "select-topic": 2,
+    "run-gates": 14,
+    "render-and-verify": 24498
   },
   "spend": {
     "elevenLabs": "not called (no voice)",

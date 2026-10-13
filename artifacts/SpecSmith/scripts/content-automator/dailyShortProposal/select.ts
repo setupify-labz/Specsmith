@@ -60,7 +60,8 @@ export interface Selection {
   /** Whether the data picked the topic, or an operator chose it (--topic). */
   readonly chosenBy: "data" | "operator";
   /** The topic the data alone would have picked. */
-  readonly dataPick: string;
+  /** The automatic queue's top topic on this snapshot; null when none is left (only an operator's --topic can then propose). */
+  readonly dataPick: string | null;
   /** The Short's length: the template's. */
   readonly targetSeconds: number;
   /** The length the retention data pointed to (recorded, not imposed on the cut). */
@@ -180,23 +181,29 @@ export function selectTopic(snapshot: ChannelSnapshot, options: SelectOptions = 
     return !hit;
   });
   if (open.length === 0) throw new DailyProposalError("no-topic", `No producible topic is left: ${excluded.map((e) => `${e.topicId} (${e.why})`).join("; ")}. Add a topic with a data-only cut to the review queue (reviewQueue/, topics.ts) before the next run.`);
-  const ranking = open.map((topic, order) => ({ topic, order, familyMatch: families.has(topic.family) }))
+  // The data's own ranking covers only the automatic queue: a hand-built cut that an operator named
+  // is a candidate for this run, never the data's pick, so it is kept out of `ranking` and `dataPick`.
+  const ranking = open.filter((topic) => topic.automatic !== false).map((topic, order) => ({ topic, order, familyMatch: families.has(topic.family) }))
     .sort((a, b) => Number(b.familyMatch) - Number(a.familyMatch) || b.topic.editorialPrior - a.topic.editorialPrior || a.order - b.order);
-  influences.push({ metric: "editorial prior (NOT data)", source: "dailyShortProposal/topics.ts", value: ranking[0].topic.editorialPrior, usedFor: "tie-break among topics in the same family" });
-  let chosen = ranking[0].topic;
+  const dataPick = ranking[0]?.topic;
+  if (dataPick) influences.push({ metric: "editorial prior (NOT data)", source: "dailyShortProposal/topics.ts", value: dataPick.editorialPrior, usedFor: "tie-break among topics in the same family" });
+  let chosen: Topic;
   if (options.topicId !== undefined) {
-    const forced = ranking.find((r) => r.topic.id === options.topicId)?.topic;
+    const forced = open.find((topic) => topic.id === options.topicId);
     if (!forced) {
       const why = excluded.find((e) => e.topicId === options.topicId)?.why ?? "not in the topic library";
       throw new DailyProposalError("no-topic", `The requested topic "${options.topicId}" cannot be proposed: ${why}.`);
     }
-    influences.push({ metric: "operator's topic choice (NOT data)", source: "run.ts --topic", value: forced.id, usedFor: `the topic; the data's own pick on this snapshot was ${ranking[0].topic.id}` });
+    influences.push({ metric: "operator's topic choice (NOT data)", source: "run.ts --topic", value: forced.id, usedFor: `the topic; the data's own pick on this snapshot was ${dataPick?.id ?? "none (no automatic topic is left)"}` });
     chosen = forced;
+  } else {
+    if (!dataPick) throw new DailyProposalError("no-topic", `No producible topic is left in the automatic queue: ${excluded.map((e) => `${e.topicId} (${e.why})`).join("; ")}. Add a topic with a data-only cut to the review queue (reviewQueue/, topics.ts) before the next run.`);
+    chosen = dataPick;
   }
   const template = TEMPLATES[chosen.animation!];
   influences.push({ metric: "animation template length (not data)", source: `dailyShortProposal/animations.ts (${template.id})`, value: `${template.durationSeconds} s`, usedFor: `the Short's length; the data pointed to ${targetSeconds} s, recorded only, since the cut's timing is not stretched` });
   return {
-    topic: chosen, chosenBy: options.topicId !== undefined ? "operator" : "data", dataPick: ranking[0].topic.id, targetSeconds: template.durationSeconds, dataTargetSeconds: targetSeconds, signals, themeSummary, influences, unknowns, excluded,
+    topic: chosen, chosenBy: options.topicId !== undefined ? "operator" : "data", dataPick: dataPick?.id ?? null, targetSeconds: template.durationSeconds, dataTargetSeconds: targetSeconds, signals, themeSummary, influences, unknowns, excluded,
     ranking: ranking.map(({ topic, familyMatch }) => ({ topicId: topic.id, familyMatch, editorialPrior: topic.editorialPrior })),
   };
 }

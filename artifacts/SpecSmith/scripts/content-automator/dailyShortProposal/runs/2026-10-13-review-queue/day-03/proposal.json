@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-13T17:45:50.410Z",
+  "generatedAt": "2026-10-13T18:22:59.976Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -456,20 +456,18 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "usedTopicLedger": {
-    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
-    "sha256": "8c1e32949953604ec69a0ce834f5c7907d56a5e2a65f59631917c803166e5c97",
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "2f8d4e605e9e742df235df3679b8ef8b5ad7b8be7a551c0aa49687f215f148cb",
     "entries": [
       {
         "topicId": "cpu-power-cable",
-        "markedAt": "2026-10-13T17:45:17.776Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 1"
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "front-panel-power-pins",
-        "markedAt": "2026-10-13T17:45:49.159Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 2"
+        "markedAt": "2026-10-13T18:22:58.712Z",
+        "by": "queue demo (isolated ledger)"
       }
     ]
   },
@@ -480,11 +478,11 @@
     },
     {
       "topicId": "cpu-power-cable",
-      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "front-panel-power-pins",
-      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))"
     }
   ],
   "ranking": [

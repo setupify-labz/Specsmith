@@ -2,7 +2,7 @@
 // Marks one topic as taken for review, so the next daily run proposes the next eligible topic:
 //
 //   pnpm exec tsx scripts/content-automator/dailyShortProposal/markUsed.ts \
-//     --topic <topic id> --by <your name> [--note "<why>"] [--ledger <path>]
+//     --topic <topic id> --by <your name> [--ledger <path>]
 //
 // --ledger defaults to the committed used-topics.json. It writes nothing else and
 // calls nothing outside this repository.
@@ -18,9 +18,10 @@ function arg(name: string, argv: readonly string[]): string | undefined {
 
 export async function main(argv: readonly string[], now = new Date()): Promise<number> {
   const topicId = arg("--topic", argv), by = arg("--by", argv);
-  if (!topicId || !by) { console.error("Usage: markUsed.ts --topic <topic id> --by <name> [--note <text>] [--ledger <path>]"); return 1; }
+  if (argv.includes("--note")) { console.error("The ledger records only the topic, who took it and when; --note is not accepted."); return 1; }
+  if (!topicId || !by) { console.error("Usage: markUsed.ts --topic <topic id> --by <name> [--ledger <path>]"); return 1; }
   try {
-    const ledger = await markTopicUsed(arg("--ledger", argv) ?? DEFAULT_USED_LEDGER, { topicId, by, note: arg("--note", argv) }, TOPICS.map((t) => t.id), now);
+    const ledger = await markTopicUsed(arg("--ledger", argv) ?? DEFAULT_USED_LEDGER, { topicId, by }, TOPICS.map((t) => t.id), now);
     console.log(`Marked ${topicId} as taken for review by ${by}. ${ledger.entries.length} topic(s) marked.`);
     return 0;
   } catch (error) {

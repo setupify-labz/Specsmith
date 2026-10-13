@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-13T17:44:46.480Z",
+  "generatedAt": "2026-10-13T18:21:59.587Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -516,7 +516,7 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "usedTopicLedger": {
-    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
     "sha256": "070f59cd535704481a26bb18b325a24c2a079404555f42703702c2b6afbe1e6f",
     "entries": []
   },

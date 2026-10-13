@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-13T17:45:19.058Z",
+  "generatedAt": "2026-10-13T18:22:30.352Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -450,14 +450,13 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "usedTopicLedger": {
-    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
-    "sha256": "c457a0e115ced680ba1e963676af5797fa14048063badabeba69a8542b7b8027",
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "871e5e2dad599b2a2571c48b17c7570d9d10f0d536f5fe7f4fbb4e23668a10da",
     "entries": [
       {
         "topicId": "cpu-power-cable",
-        "markedAt": "2026-10-13T17:45:17.776Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 1"
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
       }
     ]
   },
@@ -468,7 +467,7 @@
     },
     {
       "topicId": "cpu-power-cable",
-      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
     }
   ],
   "ranking": [

@@ -4,7 +4,7 @@
 
 Topic chosen by **the data**. Animation template: `atx-24pin`. The storyboard below is the cut's own beats, captions and labels at its exact timing.
 
-Generated 2026-10-13T17:45:50.410Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
+Generated 2026-10-13T18:22:59.976Z from the snapshot of **specsmithpc** (YouTube channel `UC1DBOCQ4F0y-BP9he39b3Kg`) collected 2026-10-11T20:38:30Z (sha256 `bf5242672917f6f4…`).
 
 ## Frame-one hook
 > **NEW BUILD WON'T TURN ON?**
@@ -66,9 +66,9 @@ Theme medians: {"troubleshooting":{"videos":2,"medianViewsPerDay":706.1,"medianA
 | animation template length (not data) | dailyShortProposal/animations.ts (atx-24pin) | 12.6 s | the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched |
 
 Topic ranking: atx-24pin-cable (family match yes, editorial prior 0.65); gpu-power-cable (family match no, editorial prior 0.75); monitor-input-source (family match no, editorial prior 0.6); cpu-fan-header (family match no, editorial prior 0.55); ram-two-stick-slots (family match no, editorial prior 0.5).
-Topics excluded: ram-not-seated (not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)); cpu-power-cable (already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))); front-panel-power-pins (already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))).
+Topics excluded: ram-not-seated (not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)); cpu-power-cable (already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))); front-panel-power-pins (already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))).
 
-Used-topic ledger: `/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json` (sha256 `8c1e32949953604e…`), 2 topic(s) taken for review: cpu-power-cable (2026-10-13T17:45:17.776Z, queue demo (isolated ledger)); front-panel-power-pins (2026-10-13T17:45:49.159Z, queue demo (isolated ledger)).
+Used-topic ledger: `/tmp/rq-demo-cygrbu0o/used.json` (sha256 `2f8d4e605e9e742d…`), 2 topic(s) taken for review: cpu-power-cable (2026-10-13T18:22:29.074Z, queue demo (isolated ledger)); front-panel-power-pins (2026-10-13T18:22:58.712Z, queue demo (isolated ledger)).
 
 ## Unknown
 - Retention for "PC Won't Turn On? Check These 2 Spots First": analytics sample under 300 views (or unknown), excluded rather than trusted.

@@ -1,7 +1,7 @@
 {
   "kind": "daily-short-proposal",
   "version": "daily-short-proposal-v2",
-  "generatedAt": "2026-10-13T17:47:21.927Z",
+  "generatedAt": "2026-10-13T18:24:34.392Z",
   "status": "awaiting-fact-check",
   "notPublished": true,
   "noVoiceGenerated": true,
@@ -462,38 +462,33 @@
     "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
   ],
   "usedTopicLedger": {
-    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
-    "sha256": "8ebbd0ccdc6c02c9408ba709c3ec60074ee83026a7d32db1af4aef31d9820c6c",
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "9b3e5897aee472052288c854e8c6309f34475d0a12760d52a553f88bbafc6316",
     "entries": [
       {
         "topicId": "cpu-power-cable",
-        "markedAt": "2026-10-13T17:45:17.776Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 1"
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "front-panel-power-pins",
-        "markedAt": "2026-10-13T17:45:49.159Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 2"
+        "markedAt": "2026-10-13T18:22:58.712Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "atx-24pin-cable",
-        "markedAt": "2026-10-13T17:46:21.224Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 3"
+        "markedAt": "2026-10-13T18:23:31.850Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "gpu-power-cable",
-        "markedAt": "2026-10-13T17:46:53.537Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 4"
+        "markedAt": "2026-10-13T18:24:05.670Z",
+        "by": "queue demo (isolated ledger)"
       },
       {
         "topicId": "monitor-input-source",
-        "markedAt": "2026-10-13T17:47:20.622Z",
-        "by": "queue demo (isolated ledger)",
-        "note": "demo step 5"
+        "markedAt": "2026-10-13T18:24:33.009Z",
+        "by": "queue demo (isolated ledger)"
       }
     ]
   },
@@ -504,23 +499,23 @@
     },
     {
       "topicId": "cpu-power-cable",
-      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "front-panel-power-pins",
-      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "atx-24pin-cable",
-      "why": "already taken for review (marked 2026-10-13T17:46:21.224Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:23:31.850Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "gpu-power-cable",
-      "why": "already taken for review (marked 2026-10-13T17:46:53.537Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:24:05.670Z by queue demo (isolated ledger))"
     },
     {
       "topicId": "monitor-input-source",
-      "why": "already taken for review (marked 2026-10-13T17:47:20.622Z by queue demo (isolated ledger))"
+      "why": "already taken for review (marked 2026-10-13T18:24:33.009Z by queue demo (isolated ledger))"
     }
   ],
   "ranking": [

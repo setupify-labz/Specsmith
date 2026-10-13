@@ -146,8 +146,20 @@ describe("the pick records what influenced it and what was unknown", () => {
     const unknown = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "no-such-topic" }));
     expect(unknown).toMatchObject({ code: "no-topic", message: expect.stringContaining("not in the topic library") });
     // A topic already taken for review is refused even when an operator names it.
-    const used = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "cpu-power-cable", used: [{ topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "test", note: "" }] }));
+    const used = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "cpu-power-cable", used: [{ topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "test" }] }));
     expect(used).toMatchObject({ code: "no-topic", message: expect.stringContaining("already taken for review") });
+  });
+  it("never reports an operator-only topic as the data's pick, even when it is the only one left (Codex P2)", () => {
+    const forced = selectTopic(parseSnapshot(raw(), NOW), { topicId: "ram-not-seated" });
+    expect(forced.ranking.map((r) => r.topicId)).not.toContain("ram-not-seated");
+    // Every automatic topic taken: a run without --topic refuses, and an operator's --topic proposes the
+    // hand-built cut with no data pick, instead of recording it as the data's own choice.
+    const used = TOPICS.filter((t) => t.automatic !== false).map((t) => ({ topicId: t.id, markedAt: NOW.toISOString(), by: "test" }));
+    expect(refusal(() => selectTopic(parseSnapshot(raw(), NOW), { used })).code).toBe("no-topic");
+    const last = selectTopic(parseSnapshot(raw(), NOW), { used, topicId: "ram-not-seated" });
+    expect(last).toMatchObject({ chosenBy: "operator", dataPick: null, ranking: [] });
+    expect(last.topic.id).toBe("ram-not-seated");
+    expect(last.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.usedFor).toContain("none (no automatic topic is left)");
   });
   it("labels the editorial prior and the template length as not data, and keeps cross-platform rows as context only", () => {
     expect(selection.influences.find((i) => i.metric.includes("editorial prior"))?.metric).toContain("NOT data");
@@ -189,7 +201,7 @@ describe("the pick records what influenced it and what was unknown", () => {
       const pick = selectTopic(snapshot, { used });
       expect(pick.chosenBy).toBe("data");
       picks.push(pick.topic.id);
-      used.push({ topicId: pick.topic.id, markedAt: new Date(NOW.getTime() + day * 60_000).toISOString(), by: "test", note: "" });
+      used.push({ topicId: pick.topic.id, markedAt: new Date(NOW.getTime() + day * 60_000).toISOString(), by: "test" });
     }
     expect(picks).toEqual(["cpu-power-cable", "front-panel-power-pins", "atx-24pin-cable", "gpu-power-cable", "monitor-input-source", "cpu-fan-header", "ram-two-stick-slots"]);
     const error = refusal(() => selectTopic(snapshot, { used }));
@@ -455,7 +467,7 @@ describe("the used-topic ledger", () => {
     expect(ledger.entries).toEqual([]);
   });
   it("refuses duplicates, unknown topics, a missing person and dates in the future", () => {
-    const entry = { topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "a", note: "" };
+    const entry = { topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "a" };
     const bad = (entries: unknown[]) => refusal(() => parseUsedLedger({ ...emptyLedger(), entries }, ids, NOW));
     expect(bad([entry, entry]).message).toContain("marked used twice");
     expect(bad([{ ...entry, topicId: "nope" }]).message).toContain("not in the topic library");
@@ -475,6 +487,46 @@ describe("the used-topic ledger", () => {
       expect(selectTopic(parseSnapshot(raw(), NOW), { used: ledger.entries }).topic.id).toBe("front-panel-power-pins");
       expect(readdirSync(dir)).toEqual(["used.json"]);   // the atomic write leaves no temporary file behind
       await expect(markTopicUsed(path, { topicId: "nope", by: "x" }, ids, NOW)).rejects.toMatchObject({ code: "ledger-invalid" });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("holds only the topic, who took it and when: a note or any other field is refused (Codex P2)", async () => {
+    const entry = { topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "a" };
+    for (const extra of [{ note: "approved for publishing" }, { approved: true }, { status: "published" }]) {
+      const error = refusal(() => parseUsedLedger({ ...emptyLedger(), entries: [{ ...entry, ...extra }] }, ids, NOW));
+      expect(error).toMatchObject({ code: "ledger-invalid", message: expect.stringContaining(Object.keys(extra)[0]) });
+    }
+    expect(refusal(() => parseUsedLedger({ ...emptyLedger(), reviewedBy: "x" }, ids, NOW)).code).toBe("ledger-invalid");
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester", "--note", "approved"], NOW)).toBe(1);
+      expect((await loadUsedLedger(path, ids, NOW)).ledger.entries).toEqual([]);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester"], NOW)).toBe(0);
+      expect(Object.keys((await loadUsedLedger(path, ids, NOW)).ledger.entries[0]).sort()).toEqual(["by", "markedAt", "topicId"]);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("keeps every entry when people mark different topics at the same time (Codex P2: no lost update)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      const automatic = TOPICS.filter((t) => t.automatic !== false).map((t) => t.id);
+      await Promise.all(automatic.map((topicId, i) => markTopicUsed(path, { topicId, by: `reviewer ${i}` }, ids, NOW)));
+      const { ledger } = await loadUsedLedger(path, ids, NOW);
+      expect(ledger.entries.map((e) => e.topicId).sort()).toEqual([...automatic].sort());
+      expect(readdirSync(dir)).toEqual(["used.json"]);   // the lock and temporary files are gone afterwards
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("refuses, rather than overwrites, while another process holds the ledger lock", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      writeFileSync(`${path}.lock`, "12345 2026-10-11T20:59:00Z\n");
+      await expect(markTopicUsed(path, { topicId: "cpu-power-cable", by: "x" }, ids, NOW, 50)).rejects.toMatchObject({ code: "ledger-busy", message: expect.stringContaining("used.json.lock") });
+      expect((await loadUsedLedger(path, ids, NOW)).ledger.entries).toEqual([]);
+      expect(readdirSync(dir).sort()).toEqual(["used.json", "used.json.lock"]);   // someone else's lock is left alone
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

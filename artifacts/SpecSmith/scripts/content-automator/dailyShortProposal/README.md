@@ -30,9 +30,9 @@ The won't-turn-on family comes first because the channel's fastest troubleshooti
 
 ### Marking a topic used
 ```
-pnpm exec tsx scripts/content-automator/dailyShortProposal/markUsed.ts --topic <topic id> --by <your name> [--note "<why>"]
+pnpm exec tsx scripts/content-automator/dailyShortProposal/markUsed.ts --topic <topic id> --by <your name>
 ```
-This appends one entry to `used-topics.json`: who took the topic for review, and when. It records nothing else. It does not say the Short was fact-checked, approved, voiced, scheduled or published. The committed ledger starts empty. The run reads it (or `--used <path>`), skips the marked topics even on `--topic`, and records the ledger's path, hash and entries in `proposal.json` and `PROPOSAL.md`. The ledger refuses unknown topics, duplicates, a missing name and future dates, and is written atomically.
+This appends one entry to `used-topics.json`: who took the topic for review, and when. It records nothing else. It does not say the Short was fact-checked, approved, voiced, scheduled or published. The committed ledger starts empty. The run reads it (or `--used <path>`), skips the marked topics even on `--topic`, and records the ledger's path, hash and entries in `proposal.json` and `PROPOSAL.md`. Each entry holds exactly `topicId`, `markedAt` and `by`; any other field (a note, an approval flag) is refused, so the ledger cannot carry a claim about the Short. The ledger refuses unknown topics, duplicates, a missing name and future dates. It is written atomically while holding `used-topics.json.lock`, so two people marking topics at once cannot drop each other's entry; a run that finds the lock waits up to 5 s, then refuses with `ledger-busy` (a lock left by a crashed run is named, not broken).
 
 **Demonstration** (`runs/2026-10-13-review-queue/`):
 - **Runs:** the job ran eight times with no `--topic`, marking each pick in a temporary copy of the ledger (`demo-ledger.json`, never the committed file).
@@ -87,7 +87,7 @@ pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
 
 `--out` must name a new or empty folder; the job refuses anything else and never deletes files.
 
-Add `--topic <topic id>` to propose a specific topic instead of the data's pick. It must still be producible and uncovered. The proposal records it as the operator's choice, with the data's own pick beside it. The 2026-10-11 demo used this to run both templates from one snapshot:
+Add `--topic <topic id>` to propose a specific topic instead of the data's pick. It must still be producible and uncovered. The proposal records it as the operator's choice, with the data's own pick beside it. The data's pick and ranking cover only the automatic queue, so a hand-built cut named with `--topic` is never reported as the data's choice (when no automatic topic is left, the data pick is recorded as none). The 2026-10-11 demo used this to run both templates from one snapshot:
 - `runs/2026-10-11-cpu-power`: the data's pick;
 - `runs/2026-10-11-ram-seat`: `--topic ram-not-seated`.
 

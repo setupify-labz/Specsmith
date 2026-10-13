@@ -10,7 +10,7 @@
 // mark topics in a temporary copy (--used <path>), never in the committed file.
 
 import { createHash } from "node:crypto";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { open, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,8 +25,11 @@ export interface UsedEntry {
   readonly markedAt: string;
   /** Who took it: a person's name or handle. */
   readonly by: string;
-  readonly note: string;
 }
+/** An entry holds exactly these fields. Anything else (a free-form note, an "approved" flag) is refused, so the ledger cannot carry a claim about the Short. */
+const ENTRY_KEYS = ["topicId", "markedAt", "by"] as const;
+const LEDGER_KEYS = ["kind", "version", "entries"] as const;
+const sameKeys = (value: object, keys: readonly string[]) => Object.keys(value).length === keys.length && keys.every((k) => Object.hasOwn(value, k));
 export interface UsedLedger { readonly kind: "daily-short-used-topics"; readonly version: 1; readonly entries: readonly UsedEntry[] }
 
 export function emptyLedger(): UsedLedger { return { kind: "daily-short-used-topics", version: 1, entries: [] }; }
@@ -34,13 +37,16 @@ export function emptyLedger(): UsedLedger { return { kind: "daily-short-used-top
 /** Validates a ledger document against the topic library; throws a DailyProposalError naming what is wrong. */
 export function parseUsedLedger(raw: unknown, knownTopicIds: readonly string[], now = new Date()): UsedLedger {
   const doc = raw as Partial<UsedLedger> | null;
-  if (!doc || doc.kind !== "daily-short-used-topics" || doc.version !== 1 || !Array.isArray(doc.entries)) {
+  if (!doc || typeof doc !== "object" || !sameKeys(doc, LEDGER_KEYS) || doc.kind !== "daily-short-used-topics" || doc.version !== 1 || !Array.isArray(doc.entries)) {
     throw new DailyProposalError("ledger-invalid", "The used-topic ledger must be {\"kind\": \"daily-short-used-topics\", \"version\": 1, \"entries\": [...]}.");
   }
   const seen = new Set<string>();
   doc.entries.forEach((e: Partial<UsedEntry>, i) => {
-    if (!e || typeof e.topicId !== "string" || typeof e.by !== "string" || typeof e.note !== "string" || typeof e.markedAt !== "string") {
-      throw new DailyProposalError("ledger-invalid", `Ledger entry ${i} needs topicId, markedAt, by and note.`);
+    if (!e || typeof e !== "object" || typeof e.topicId !== "string" || typeof e.by !== "string" || typeof e.markedAt !== "string") {
+      throw new DailyProposalError("ledger-invalid", `Ledger entry ${i} needs topicId, markedAt and by.`);
+    }
+    if (!sameKeys(e, ENTRY_KEYS)) {
+      throw new DailyProposalError("ledger-invalid", `Ledger entry ${i} may hold only topicId, markedAt and by; it has ${Object.keys(e).filter((k) => !(ENTRY_KEYS as readonly string[]).includes(k)).join(", ")}.`);
     }
     if (!knownTopicIds.includes(e.topicId)) throw new DailyProposalError("ledger-invalid", `Ledger entry ${i} names "${e.topicId}", which is not in the topic library.`);
     if (seen.has(e.topicId)) throw new DailyProposalError("ledger-invalid", `"${e.topicId}" is marked used twice.`);
@@ -61,13 +67,41 @@ export async function loadUsedLedger(path: string, knownTopicIds: readonly strin
   return { ledger: parseUsedLedger(raw, knownTopicIds, now), sha256: createHash("sha256").update(bytes).digest("hex"), path };
 }
 
-/** Adds one entry and rewrites the ledger atomically (a temporary file renamed into place). Refuses duplicates and unknown topics. */
-export async function markTopicUsed(path: string, entry: { topicId: string; by: string; note?: string }, knownTopicIds: readonly string[], now = new Date()): Promise<UsedLedger> {
-  const { ledger } = await loadUsedLedger(path, knownTopicIds, now);
-  const next: UsedLedger = { ...ledger, entries: [...ledger.entries, { topicId: entry.topicId, markedAt: now.toISOString(), by: entry.by, note: entry.note ?? "" }] };
-  parseUsedLedger(next, knownTopicIds, now);
-  const tmp = join(dirname(path), `.${Date.now()}-${process.pid}.used-topics.tmp`);
-  await writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`);
-  await rename(tmp, path);
-  return next;
+/** How long markTopicUsed waits for another writer before refusing. */
+export const LEDGER_LOCK_WAIT_MS = 5_000;
+
+/**
+ * Holds `<ledger>.lock` (created exclusively) around a read-modify-write, so two people marking
+ * topics at once cannot both read the same ledger and have the second rename drop the first entry.
+ * A lock left by a crashed run is not broken automatically: the refusal names the file to remove.
+ */
+async function withLedgerLock<T>(path: string, work: () => Promise<T>, waitMs = LEDGER_LOCK_WAIT_MS): Promise<T> {
+  const lock = `${path}.lock`;
+  const deadline = Date.now() + waitMs;
+  for (let delay = 10; ; delay = Math.min(delay * 2, 200)) {
+    try {
+      const handle = await open(lock, "wx");
+      await handle.writeFile(`${process.pid} ${new Date().toISOString()}\n`);
+      await handle.close();
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() >= deadline) throw new DailyProposalError("ledger-busy", `Another process is updating the used-topic ledger (${lock} exists). Try again; if no other run is active, remove ${lock}.`);
+      await new Promise((done) => setTimeout(done, delay));
+    }
+  }
+  try { return await work(); } finally { await unlink(lock).catch(() => undefined); }
+}
+
+/** Adds one entry and rewrites the ledger atomically (a temporary file renamed into place) under the ledger lock. Refuses duplicates and unknown topics. */
+export async function markTopicUsed(path: string, entry: { topicId: string; by: string }, knownTopicIds: readonly string[], now = new Date(), lockWaitMs = LEDGER_LOCK_WAIT_MS): Promise<UsedLedger> {
+  return withLedgerLock(path, async () => {
+    const { ledger } = await loadUsedLedger(path, knownTopicIds, now);
+    const next: UsedLedger = { ...ledger, entries: [...ledger.entries, { topicId: entry.topicId, markedAt: now.toISOString(), by: entry.by }] };
+    parseUsedLedger(next, knownTopicIds, now);
+    const tmp = join(dirname(path), `.${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2)}.used-topics.tmp`);
+    await writeFile(tmp, `${JSON.stringify(next, null, 2)}\n`);
+    await rename(tmp, path);
+    return next;
+  }, lockWaitMs);
 }
