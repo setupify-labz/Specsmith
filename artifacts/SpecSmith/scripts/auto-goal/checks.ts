@@ -72,13 +72,17 @@ export async function runCheck(repoRoot: string, spec: CheckSpec, timeoutMs: num
   const file = checkFile(spec);
   if (file && !existsSync(join(repoRoot, file))) return { exitCode: 127, tail: `${file} does not exist at this commit; nothing was run.`, timedOut: false, executed: false };
   let tail = "";
+  // One budget for the whole check: a build and its script share it, the timeout does not restart per step.
+  const deadline = Date.now() + timeoutMs;
   for (const step of steps) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return { exitCode: 1, tail: `Time budget of ${Math.round(timeoutMs / 60000)} min spent before ${step.argv.join(" ")}.`, timedOut: true, executed: true };
     const result = await new Promise<CheckResult>((done) => {
       const child = spawn(step.argv[0], step.argv.slice(1), { cwd: join(repoRoot, step.cwd), env, shell: false });
       let buf = "";
       const keep = (chunk: Buffer) => { buf = (buf + chunk.toString("utf8")).slice(-20_000); };
       child.stdout.on("data", keep); child.stderr.on("data", keep);
-      const timer = setTimeout(() => { child.kill("SIGKILL"); }, timeoutMs);
+      const timer = setTimeout(() => { child.kill("SIGKILL"); }, remaining);
       let timedOut = false;
       timer.unref?.();
       child.on("error", (e) => { clearTimeout(timer); done({ exitCode: 127, tail: String(e), timedOut: false, executed: false }); });

@@ -59,7 +59,7 @@ export function runnerPrompt(p: { goal: string; issue: number; repo: string; too
     `2. ${R} begin ${common} --session <this session id> --started-by "routine <trigger id>"`,
     "   It prints a JSON work order. If its action is done or blocked, stop here.",
     "3. If the action is reproduce, implement, fix-findings or fix-ci: make exactly the change its `todo` asks for, in /tmp/ag-goal on the branch `begin` checked out, and commit it (do not push; the runner pushes). Keep it small and in scope. For any other action, change nothing.",
-    `4. ${R} advance ${common}`,
+    `4. ${R} advance ${common} --session <this session id>`,
     "   It prints JSON with `rearmAt`, `nextName` and `nextPrompt`.",
     "5. If `rearmAt` is not null: call the claude-code-remote create_trigger tool with name = `nextName`, run_once_at = `rearmAt`, create_new_session_on_fire = true, initiation = \"human_schedule\", notifications = {}, and prompt = `nextPrompt` exactly as printed. Then run:",
     `   ${R} note-next ${common} --next "<the new trigger id> at <rearmAt>"`,
@@ -132,7 +132,8 @@ export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<
   const save = async () => { goal = await store.save(goal, now); };
   if (open && open.sessionId === a.need("--session")) {
     // The same session asking again (a retry, or its output was lost): replay its work order, do not count a new run.
-    deps.out(JSON.stringify(workOrder(goal, decide(goal, now), open), null, 2));
+    // Replay the action the run was opened with, not a fresh decision (which could differ, e.g. after a cap).
+    deps.out(JSON.stringify(workOrder(goal, { action: open.action, why: `Replayed run ${open.n}'s work order.` } as Action, open), null, 2));
     return 0;
   }
   if (open) {
@@ -186,6 +187,8 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   const save = async () => { goal = await store.save(goal, now); };
   const run = (goal.runs ?? []).find((r) => r.endedAt === null);
   if (!run) throw new GoalError("refused", `Goal ${id} has no open run; start one with \`begin\`.`);
+  const session = a.need("--session");
+  if (run.sessionId !== session) throw new GoalError("refused", `The open run ${run.n} belongs to session ${run.sessionId}, not ${session}; this session's run was closed and replaced.`);
   const criteria = trustedCriteria(goal);
   const timeoutMs = (goal.caps.maxRunMinutes ?? DEFAULT_RUN_MINUTES) * 60_000;
   const did: string[] = [];
@@ -242,7 +245,7 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
     }
     if (next.action === "open-pr") {
       // Adopt a PR an earlier, interrupted attempt already opened for this branch; create one only if none exists.
-      const existing = (await deps.github.openPullsFor(goal.repo, goal.branch)).find((p) => pullMismatch(p, goal) === null);
+      const existing = (await deps.github.openPullsFor(goal.repo, goal.branch)).find((p) => p.draft && pullMismatch(p, goal) === null);
       const pull = existing ? { number: existing.number, html_url: existing.html_url } : await deps.github.createDraftPull(goal.repo, goal.branch, goal.baseBranch, `Auto Goal ${goal.id}: ${goal.request.split("\n")[0].slice(0, 80)}`,
         `Opened by the unattended Auto Goal runner (run ${run.n}, session ${run.sessionId}).\n\nGoal record: #${goal.issue}. The request, acceptance checks and every run are recorded there.\n\nDraft; merging and deployment are off for this goal.${FOOTER}`);
       goal.pr = pull.number;
@@ -284,6 +287,8 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   } else if (next.action === "blocked") {
     goal.outcome = { status: "blocked", at: now.toISOString(), reason: next.why, evidence: { head: goal.head, pr: goal.pr } };
     addEvent(goal, "blocked", next.why, now);
+  } else if (next.action === "done") {
+    // Sync ended the goal during this run (for example, the PR was closed): nothing to schedule.
   } else if (next.action === "wait-review" || next.action === "wait-ci") rearmMinutes = NEXT_RUN_MINUTES.wait;
   else rearmMinutes = NEXT_RUN_MINUTES.code;
   // Saves replace the record object, so close the run on the current copy, not the one loaded above.
