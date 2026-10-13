@@ -70,6 +70,8 @@ export interface ReviewRound {
   completedAt: string | null;
   /** Where Codex answered (the review or comment URL), or, when unavailable, its exact words. */
   evidence: string | null;
+  /** Requests posted for this round that Codex has not answered yet (a duplicate request from a second session). */
+  outstanding?: number;
 }
 
 export interface Finding {

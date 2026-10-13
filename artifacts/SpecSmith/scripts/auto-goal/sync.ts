@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 import { codexVerdicts, verdictFor } from "./codex.ts";
-import type { GitHub } from "./github.ts";
+import { pullMismatch, type GitHub } from "./github.ts";
 import { addEvent, GoalError, type GoalRecord } from "./record.ts";
 
 const run = promisify(execFile);
@@ -44,7 +44,8 @@ export async function syncGoal(goal: GoalRecord, github: GitHub, git: Git, now =
   let head: string;
   if (goal.pr !== null) {
     const pull = await github.pull(goal.repo, goal.pr);
-    if (pull.head.ref !== goal.branch) throw new GoalError("invalid", `PR #${goal.pr} is from ${pull.head.ref}, not the goal branch ${goal.branch}.`);
+    const mismatch = pullMismatch(pull, goal);
+    if (mismatch) throw new GoalError("invalid", `PR #${goal.pr} ${mismatch}.`);
     if (pull.merged) { addEvent(goal, "pr-merged", `PR #${goal.pr} was merged by someone outside this goal; the orchestrator never merges.`, now); }
     else if (pull.state === "closed") {
       goal.outcome = { status: "blocked", at: now.toISOString(), reason: `PR #${goal.pr} was closed outside the goal.`, evidence: { pr: pull.html_url } };
@@ -79,9 +80,16 @@ export async function syncGoal(goal: GoalRecord, github: GitHub, git: Git, now =
       github.issueComments(goal.repo, goal.pr), github.reviews(goal.repo, goal.pr), github.reviewComments(goal.repo, goal.pr),
     ]);
     const verdicts = codexVerdicts(comments, reviews, reviewComments);
+    const self = await github.whoami();
     for (const round of live) {
       const since = Date.parse(round.requestedAt);
       const mine = verdicts.filter((v) => Date.parse(v.at) >= since && (v.kind === "unavailable" || round.requestedSha.startsWith(v.reviewedPrefix)));
+      // Every request posted for this round must be answered before the round can count: a second
+      // session's duplicate request may still be running when the first answer arrives.
+      const tag = `review round ${round.n} of at most ${goal.caps.maxReviewRounds}, for \`${round.requestedSha}\``;
+      const asked = comments.filter((c) => c.user.login === self && c.body.startsWith("@codex review") && c.body.includes(tag)).length;
+      const answered = mine.filter((v) => v.kind !== "unavailable").length;
+      round.outstanding = Math.max(0, asked - answered);
       if (round.verdict === "pending") {
         const v = verdictFor(verdicts, round.requestedSha, round.requestedAt);
         if (!v) continue;

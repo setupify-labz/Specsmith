@@ -23,6 +23,10 @@ const sha = (n: number) => n.toString(16).padStart(8, "0") + "b".repeat(32);
 const REPO = "setupify-labz/Specsmith";
 const CHECK = "Tests, typecheck and production build";
 const ME = "setupify-labz";
+const pr9 = (head: string, over: { headRepo?: string; base?: string } = {}): GhPull => ({
+  number: 9, state: "open", draft: true, merged: false, html_url: "pr9",
+  head: { sha: head, ref: "claude/fix", repo: { full_name: over.headRepo ?? REPO } }, base: { ref: over.base ?? "main", repo: { full_name: REPO } },
+});
 
 const CRITERIA = [
   { id: "a11y-name", text: "Each part search box is named after its part type.", command: "run-unit", kind: "unit" as const },
@@ -272,7 +276,7 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     expect(await h.cli("check", "--criterion", "browser", "--phase", "after")).toBe(0);
     await h.cli("sync"); expect(h.next()).toBe("open-pr");
 
-    h.github.pulls.set(9, { number: 9, state: "open", draft: true, merged: false, head: { sha: sha(2), ref: "claude/fix" }, html_url: "pr9" });
+    h.github.pulls.set(9, pr9(sha(2)));
     await h.cli("pr", "--number", "9"); expect(h.next()).toBe("request-review");
     expect((await refusal(h.cli("finalize"))).message).toContain("next action is request-review");
     h.tick(1); expect(await h.cli("request-review")).toBe(0);
@@ -321,7 +325,7 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     h.git.commit(1, "checks"); await h.cli("check", "--criterion", "a11y-name", "--phase", "before"); await h.cli("check", "--criterion", "browser", "--phase", "before");
     h.git.commit(2, "fix"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);
     await h.cli("check", "--criterion", "a11y-name", "--phase", "after"); await h.cli("check", "--criterion", "browser", "--phase", "after");
-    h.github.pulls.set(9, { number: 9, state: "open", draft: true, merged: false, head: { sha: sha(2), ref: "claude/fix" }, html_url: "pr9" });
+    h.github.pulls.set(9, pr9(sha(2)));
     await h.cli("pr", "--number", "9"); h.tick(1); await h.cli("request-review");
     h.tick(2); h.github.issues.get(9)!.push({ id: 1, user: codex, body: "To use Codex here, create an environment for this repo.", created_at: at(2).toISOString(), html_url: "env" });
     await h.cli("resume");
@@ -440,6 +444,35 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("record no parent") });
   });
 
+  it("accepts only a PR from the goal's own repository and branch into its base branch (Codex P2, independent review of 5f16e30)", async () => {
+    const h = harness();
+    await h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK, "--create-issue", "--title", "t");
+    h.git.commit(1, "checks");
+    h.github.pulls.set(9, pr9(sha(1), { headRepo: "mallory/Specsmith" }));
+    expect((await refusal(h.cli("pr", "--number", "9"))).message).toContain("is from mallory/Specsmith");
+    h.github.pulls.set(9, pr9(sha(1), { base: "release" }));
+    expect((await refusal(h.cli("pr", "--number", "9"))).message).toContain("targets setupify-labz/Specsmith:release");
+  });
+
+  it("waits for every posted request of a round to be answered before completing (Codex P1, independent review of 5f16e30)", async () => {
+    const h = harness();
+    await h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK, "--create-issue", "--title", "t");
+    h.git.commit(1, "checks"); await h.cli("check", "--criterion", "a11y-name", "--phase", "before"); await h.cli("check", "--criterion", "browser", "--phase", "before");
+    h.git.commit(2, "fix"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);
+    await h.cli("check", "--criterion", "a11y-name", "--phase", "after"); await h.cli("check", "--criterion", "browser", "--phase", "after");
+    h.github.pulls.set(9, pr9(sha(2)));
+    await h.cli("pr", "--number", "9"); h.tick(1); await h.cli("request-review");
+    // A second session posted the same round's request before seeing the first.
+    const first = h.github.issues.get(9)!.find((c) => c.body.startsWith("@codex review"))!;
+    h.github.issues.get(9)!.push(h.github.comment(first.body));
+    h.github.checks.set(sha(2), [{ name: CHECK, status: "completed", conclusion: "success", html_url: "ci" }]);
+    h.tick(5); h.github.codexClean(9, sha(2));
+    await h.cli("resume"); expect(JSON.parse(h.out.at(-1)!)).toMatchObject({ action: "wait-review", why: expect.stringContaining("1 request(s) unanswered") });
+    expect((await refusal(h.cli("finalize"))).message).toContain("wait-review");
+    h.tick(8); h.github.codexClean(9, sha(2));
+    await h.cli("resume"); expect(h.next()).toBe("complete");
+  });
+
   it("refuses an --issue that is not a positive issue number (Codex P2, independent review)", async () => {
     const h = harness();
     for (const bad of ["0", "nope", "-3", "1.5"]) {
@@ -455,7 +488,7 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     h.git.commit(1, "checks"); await h.cli("check", "--criterion", "a11y-name", "--phase", "before"); await h.cli("check", "--criterion", "browser", "--phase", "before");
     h.git.commit(2, "fix"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);
     await h.cli("check", "--criterion", "a11y-name", "--phase", "after"); await h.cli("check", "--criterion", "browser", "--phase", "after");
-    h.github.pulls.set(9, { number: 9, state: "open", draft: true, merged: false, head: { sha: sha(2), ref: "claude/fix" }, html_url: "pr9" });
+    h.github.pulls.set(9, pr9(sha(2)));
     await h.cli("pr", "--number", "9"); h.tick(1); await h.cli("request-review");
     // Two sessions both asked; Codex reviews twice. The first answer is clean...
     h.tick(5); h.github.codexClean(9, sha(2));
@@ -481,7 +514,7 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     h.git.commit(1, "checks"); await h.cli("check", "--criterion", "a11y-name", "--phase", "before"); await h.cli("check", "--criterion", "browser", "--phase", "before");
     h.git.commit(2, "fix"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);
     await h.cli("check", "--criterion", "a11y-name", "--phase", "after"); await h.cli("check", "--criterion", "browser", "--phase", "after");
-    h.github.pulls.set(9, { number: 9, state: "open", draft: true, merged: false, head: { sha: sha(2), ref: "claude/fix" }, html_url: "pr9" });
+    h.github.pulls.set(9, pr9(sha(2)));
     await h.cli("pr", "--number", "9");
     const asks = () => (h.github.issues.get(9) ?? []).filter((c) => c.body.startsWith("@codex review")).length;
 
