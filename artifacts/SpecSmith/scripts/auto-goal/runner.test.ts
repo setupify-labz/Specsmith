@@ -49,7 +49,7 @@ class FakeGitHub implements GitHub {
   private id = 5000;
   comment(body: string, login = ME): GhIssueComment { const id = this.id++; return { id, user: { login }, body, created_at: this.clock.toISOString(), html_url: `https://github.com/${REPO}/issues/c${id}` }; }
   async whoami() { return ME; }
-  async pull(): Promise<GhPull> { if (!this.pullHead) throw new GoalError("unavailable", "no PR"); return { number: this.pullNumber, state: "open", draft: true, merged: false, head: { sha: this.pullHead, ref: "claude/goal" }, html_url: "pr" }; }
+  async pull(): Promise<GhPull> { if (!this.pullHead) throw new GoalError("unavailable", "no PR"); return { number: this.pullNumber, state: "open", draft: true, merged: false, head: { sha: this.pullHead, ref: "claude/goal", repo: { full_name: REPO } }, base: { ref: "main", repo: { full_name: REPO } }, html_url: "pr" }; }
   async checkRuns(_r: string, s: string) { return this.checks.get(s) ?? []; }
   async issueComments(_r: string, n: number) { return structuredClone(this.comments.get(n) ?? []); }
   async reviews() { return structuredClone(this.reviewsBy); }
