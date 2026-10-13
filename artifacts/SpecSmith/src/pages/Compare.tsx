@@ -58,7 +58,7 @@ function BuildColumn({
       </div>
       <div className="space-y-3">
         <PartSelector
-          category="gpu" label="GPU" defaultOpen showShopping={false}
+          category="gpu" label="GPU" searchLabel={`Search ${title} GPU`} defaultOpen showShopping={false}
           parts={gpus} selectedId={gpuId} onSelect={onGpuSelect}
           getSpecs={p => {
             const g = p as GPU;
@@ -70,7 +70,7 @@ function BuildColumn({
           }}
         />
         <PartSelector
-          category="cpu" label="CPU" showShopping={false}
+          category="cpu" label="CPU" searchLabel={`Search ${title} CPU`} showShopping={false}
           parts={cpus} selectedId={cpuId} onSelect={onCpuSelect}
           getSpecs={p => {
             const c = p as CPU;

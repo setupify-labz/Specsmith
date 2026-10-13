@@ -16,8 +16,8 @@ const parts = [{ id: 'p1', name: 'First part', price_usd: 100, benchmark_score: 
 
 afterEach(() => cleanup());
 
-const selector = (category: string, label: string) => (
-  <PartSelector category={category} label={label} parts={parts} selectedId={null} onSelect={vi.fn()} getSpecs={() => []} defaultOpen showShopping={false} />
+const selector = (category: string, label: string, searchLabel?: string) => (
+  <PartSelector category={category} label={label} searchLabel={searchLabel} parts={parts} selectedId={null} onSelect={vi.fn()} getSpecs={() => []} defaultOpen showShopping={false} />
 );
 
 describe('the part search box', () => {
@@ -30,5 +30,10 @@ describe('the part search box', () => {
     render(<>{selector('gpu', 'GPU')}{selector('cpu', 'CPU')}</>);
     expect(screen.getAllByRole('textbox')).toHaveLength(2);
     expect(screen.getByRole('textbox', { name: 'Search GPU' })).not.toBe(screen.getByRole('textbox', { name: 'Search CPU' }));
+  });
+
+  it('tells apart two selectors with the same label when the page names them (Compare\'s Build A and Build B)', () => {
+    render(<>{selector('gpu', 'GPU', 'Search Build A GPU')}{selector('gpu', 'GPU', 'Search Build B GPU')}</>);
+    expect(screen.getByRole('textbox', { name: 'Search Build A GPU' })).not.toBe(screen.getByRole('textbox', { name: 'Search Build B GPU' }));
   });
 });
