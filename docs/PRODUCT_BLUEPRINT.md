@@ -1417,3 +1417,35 @@ New ideas belong in this blueprint or a linked idea issue, even when they are no
 5. **What would change the decision?** Name a result that would justify continuing, changing direction, or stopping.
 
 Use a scoped issue for the chosen proof, then update its status from actual evidence. This blueprint keeps the endgame visible; it does not authorize an agent to start every idea in it.
+
+
+---
+
+## 25. Growth, site utility, and contributor expansion
+
+These additional ideas from Aaron are part of the living vision. Existing sections cover the FPS estimator, game and resolution choices, compatibility rules, workload-specific bottleneck guidance, benchmark desktop app, structured comparison pages, and the Content Machine. The items below sharpen distribution and propose later integrations; they do not assert that these capabilities have shipped.
+
+### 25.1 Programmatic SEO and AI-assisted discovery
+
+Maintain useful structured hardware comparison pages, component hubs, compatibility answers, and upgrade paths. Treat index coverage and search clicks as separate measures: an indexed page does not by itself show that it helps a user or earns traffic. Aaron reported **350+ indexed pages on Bing/Edge**; verify that baseline in the relevant webmaster dashboard before using it as a public fact or growth target.
+
+Track whether high-intent queries such as PC builder and FPS calculator lead to accurate citations and visits from AI-assisted search, including Microsoft Copilot where measurable. Seek to be a useful, cited source; do not claim “AI search dominance” from an unverified sample. Review citations for factual accuracy and freshness, and measure referred visits and completed user journeys where attribution is available.
+
+### 25.2 Short-form discovery and site funnel
+
+Publish useful troubleshooting and hardware-comparison Shorts, Reels, and TikToks consistently when production and rights checks pass. Keep profile names, bios, calls to action, and direct links to `specsmithpc.com` aligned across platforms. Link each video to the most relevant useful site journey where the platform allows it. Measure platform retention, profile visits, attributable site sessions, builder starts, and qualified actions separately; views alone do not prove site traffic or revenue. Use tracked links where practical without making a video feel like an ad.
+
+### 25.3 Optional Steam library connection
+
+Investigate an opt-in Steam connection so users can select games they own for supported benchmark and recommendation journeys. Verify current API capabilities, authentication options, terms, and data access before implementation. Ask for only the access needed, explain what is imported, allow disconnection, and never require a linked account to use the core builder or estimator. A synced library identifies games; it does not prove a benchmark run or ownership of every playable title.
+
+### 25.4 Data Bounty proposal
+
+Explore incentives for people who contribute useful real-world performance runs through the desktop telemetry app, starting with a small non-monetary pilot. A contribution earns recognition or a reward only after consent, provenance, validation, duplicate and manipulation checks, and a clear review or appeal path. Define who may participate, what data can be shared or removed, how a reward is valued, fraud controls, moderation cost, and applicable legal and tax obligations before offering money or prizes. Keep raw submissions separate from trusted aggregate results.
+
+### 25.5 Added measures
+
+- Verified index coverage, search impressions, and clicks by search engine.
+- Accuracy and share of tracked AI-search citations on a defined query set.
+- Social profile-to-site visits and subsequent useful actions.
+- Validated contributed benchmark runs, with rejection and abuse rates.
