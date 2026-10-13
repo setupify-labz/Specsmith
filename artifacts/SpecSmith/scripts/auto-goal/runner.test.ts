@@ -49,14 +49,17 @@ class FakeGitHub implements GitHub {
   private id = 5000;
   comment(body: string, login = ME): GhIssueComment { const id = this.id++; return { id, user: { login }, body, created_at: this.clock.toISOString(), html_url: `https://github.com/${REPO}/issues/c${id}` }; }
   async whoami() { return ME; }
-  async pull(): Promise<GhPull> { if (!this.pullHead) throw new GoalError("unavailable", "no PR"); return { number: this.pullNumber, state: "open", draft: true, merged: false, head: { sha: this.pullHead, ref: "claude/goal", repo: { full_name: REPO } }, base: { ref: "main", repo: { full_name: REPO } }, html_url: "pr" }; }
+  async pull(): Promise<GhPull> { if (!this.pullHead) throw new GoalError("unavailable", "no PR"); return { number: this.pullNumber, state: this.closed ? "closed" : "open", draft: true, merged: false, head: { sha: this.pullHead, ref: "claude/goal", repo: { full_name: REPO } }, base: { ref: "main", repo: { full_name: REPO } }, html_url: "pr" }; }
   async checkRuns(_r: string, s: string) { return this.checks.get(s) ?? []; }
   async issueComments(_r: string, n: number) { return structuredClone(this.comments.get(n) ?? []); }
   async reviews() { return structuredClone(this.reviewsBy); }
   async reviewComments() { return structuredClone(this.reviewCommentsBy); }
   async createIssue() { return { number: 400, html_url: "issue" }; }
   async createComment(_r: string, n: number, body: string) { const c = this.comment(body); this.comments.set(n, [...(this.comments.get(n) ?? []), c]); return structuredClone(c); }
-  async createDraftPull(_r: string, head: string) { this.pullHead = this.headOf(head); return { number: this.pullNumber, html_url: `https://github.com/${REPO}/pull/${this.pullNumber}` }; }
+  created = 0;
+  closed = false;
+  async openPullsFor() { return this.pullHead ? [await this.pull()] : []; }
+  async createDraftPull(_r: string, head: string) { this.created += 1; this.pullHead = this.headOf(head); return { number: this.pullNumber, html_url: `https://github.com/${REPO}/pull/${this.pullNumber}` }; }
   headOf: (branch: string) => string = () => sha(0);
 }
 
@@ -213,6 +216,27 @@ describe("the unattended runner", () => {
     expect(h.record()).toMatchObject({ outcome: { status: "blocked", reason: expect.stringContaining("Time cap") }, runs: [expect.objectContaining({ n: 1, endedAt: expect.any(String) })] });
     await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
     expect(h.last()).toMatchObject({ action: "done" });
+  });
+
+  it("adopts a draft PR an interrupted attempt already opened, and opens no run once sync has ended the goal (Codex on 430e8bc)", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    h.commit(1, "checks"); await advance(h.argv, h.deps);
+    h.tick(2); await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
+    h.commit(2, "fix"); h.pass(UNIT, 0); h.pass(BROWSER, 0);
+    // The PR exists on GitHub (an earlier attempt's response was lost), but the record still says pr: null.
+    h.github.pullHead = sha(2);
+    await advance(h.argv, h.deps);
+    expect(h.github.created).toBe(0);
+    expect(h.record().pr).toBe(77);
+    expect(h.record().events.some((e) => e.detail.includes("Adopted the already-open"))).toBe(true);
+    // Someone closes the PR between runs: begin records the outcome and leaves no open run behind.
+    h.github.closed = true; h.tick(20);
+    await begin([...h.argv, "--session", "s3", "--started-by", "routine t3"], h.deps);
+    expect(h.last()).toMatchObject({ action: "done", why: expect.stringContaining("closed") });
+    expect(h.record().runs!.every((r) => r.endedAt !== null)).toBe(true);
+    expect(h.record().runs!.length).toBe(2);
   });
 
   it("records a check whose file is missing as not run, never as proof of the defect (Codex P2 on #185)", async () => {

@@ -25,7 +25,7 @@ import { promisify } from "node:util";
 
 import { runCheck, type CheckSpec } from "./checks.ts";
 import { decide, openMaterialFindings, type Action } from "./decide.ts";
-import { ghCli, type GitHub } from "./github.ts";
+import { ghCli, pullMismatch, type GitHub } from "./github.ts";
 import { addEvent, GoalError, type GoalRecord, type RunEntry } from "./record.ts";
 import { IssueCommentStore } from "./store.ts";
 import { localGit, syncGoal, type Git } from "./sync.ts";
@@ -150,6 +150,14 @@ export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<
   trustedCriteria(goal);
   await deps.git.ensureBranch(goal.branch, goal.baseBranch);
   await syncGoal(goal, deps.github, deps.git, now);
+  // syncGoal can set the outcome (TypeScript still holds the earlier null check, hence the explicit read).
+  const ended = goal.outcome as GoalRecord["outcome"];
+  if (ended) {
+    // Sync itself ended the goal (for example, the PR was closed): record that, open no run.
+    await save();
+    deps.out(JSON.stringify({ goal: id, action: "done", why: `Goal ${ended.status}: ${ended.reason}`, rearm: null }));
+    return 0;
+  }
   const next = decide(goal, now);
   const run: RunEntry = {
     n: runs.length + 1, sessionId: a.need("--session"), startedBy: a.need("--started-by"), startedAt: now.toISOString(), action: next.action, endedAt: null, result: null, head: goal.head, next: null,
@@ -233,11 +241,13 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
       continue;
     }
     if (next.action === "open-pr") {
-      const pull = await deps.github.createDraftPull(goal.repo, goal.branch, goal.baseBranch, `Auto Goal ${goal.id}: ${goal.request.split("\n")[0].slice(0, 80)}`,
+      // Adopt a PR an earlier, interrupted attempt already opened for this branch; create one only if none exists.
+      const existing = (await deps.github.openPullsFor(goal.repo, goal.branch)).find((p) => pullMismatch(p, goal) === null);
+      const pull = existing ? { number: existing.number, html_url: existing.html_url } : await deps.github.createDraftPull(goal.repo, goal.branch, goal.baseBranch, `Auto Goal ${goal.id}: ${goal.request.split("\n")[0].slice(0, 80)}`,
         `Opened by the unattended Auto Goal runner (run ${run.n}, session ${run.sessionId}).\n\nGoal record: #${goal.issue}. The request, acceptance checks and every run are recorded there.\n\nDraft; merging and deployment are off for this goal.${FOOTER}`);
       goal.pr = pull.number;
-      addEvent(goal, "pr", `Opened draft ${pull.html_url}.`, now);
-      did.push(`opened draft PR #${pull.number}`);
+      addEvent(goal, "pr", `${existing ? "Adopted the already-open" : "Opened draft"} ${pull.html_url}.`, now);
+      did.push(`${existing ? "adopted" : "opened draft"} PR #${pull.number}`);
       await save();
       continue;
     }
