@@ -67,6 +67,7 @@ function harness() {
   let pushed: string | null = null;
   let dirty = false;
   const results = new Map<string, number>();
+  const missing = new Set<string>();
   const ran: string[] = [];
   const out: string[] = [];
   let clock = T0;
@@ -82,7 +83,10 @@ function harness() {
       push: async () => { pushed = local; if (github.pullHead) github.pullHead = local; },
       ensureBranch: async () => { local ??= sha(0); },
     },
-    check: async (spec) => { ran.push(describeCheck(spec)); const code = results.get(JSON.stringify(spec)) ?? 1; return { exitCode: code, tail: `exit ${code}` }; },
+    check: async (spec) => {
+      if (missing.has(JSON.stringify(spec))) return { exitCode: 127, tail: "file missing; nothing was run", executed: false };
+      ran.push(describeCheck(spec)); const code = results.get(JSON.stringify(spec)) ?? 1; return { exitCode: code, tail: `exit ${code}`, executed: true };
+    },
     toolingSha: async () => "f".repeat(40),
     now: () => clock,
     out: (l) => out.push(l),
@@ -93,7 +97,7 @@ function harness() {
   const record = () => parseRecordComment(github.comments.get(400)!.at(-1)!.body, "aria-expanded")!;
   const last = () => JSON.parse(out.at(-1)!);
   const tick = (m: number) => { clock = new Date(T0.getTime() + m * 60_000); github.clock = clock; };
-  return { github, deps, commit, pass, argv, record, last, tick, ran, setDirty: (d: boolean) => { dirty = d; } };
+  return { github, deps, commit, pass, argv, record, last, tick, ran, setDirty: (d: boolean) => { dirty = d; }, setMissing: (spec: CheckSpec, m: boolean) => { if (m) missing.add(JSON.stringify(spec)); else missing.delete(JSON.stringify(spec)); } };
 }
 
 async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
@@ -140,27 +144,40 @@ describe("the unattended runner", () => {
     h.github.reviewCommentsBy.push({ id: 900, user: { login: CODEX_LOGIN }, body: "**<sub><sub>![P2 Badge](x)</sub></sub>  Keep aria-controls in sync**\n\nThe panel id is missing.\n\nUseful? React with 👍 / 👎.", pull_request_review_id: 1, path: "src/components/PartSelector.tsx", line: 210, html_url: "f900", commit_id: sha(2) });
     h.tick(10);
     await begin([...h.argv, "--session", "session_C", "--started-by", "routine trig_3"], h.deps);
-    expect(h.last()).toMatchObject({ action: "fix-findings", run: 3, findings: [expect.objectContaining({ id: "900", priority: "P2", title: "Keep aria-controls in sync" })] });
+    expect(h.last()).toMatchObject({ action: "fix-findings", run: 3, findings: [{ id: "900", priority: "P2", path: "src/components/PartSelector.tsx", line: 210, url: "f900" }] });
+    // The review text itself never enters the work order the unattended session acts on (Codex P1 on #185).
+    expect(JSON.stringify(h.last())).not.toContain("aria-controls in sync");
+    expect(JSON.stringify(h.last())).not.toContain("panel id is missing");
+    // A finding Codex posts after the work order was issued is not marked fixed by this run (Codex P1 on #185).
+    h.github.reviewCommentsBy.push({ id: 901, user: { login: CODEX_LOGIN }, body: "**<sub><sub>![P1 Badge](x)</sub></sub>  Late finding**\n\nArrived after begin.", pull_request_review_id: 1, path: "src/x.ts", line: 1, html_url: "f901", commit_id: sha(2) });
     h.commit(3, "Add aria-controls");
     await advance(h.argv, h.deps);
-    expect(h.last()).toMatchObject({ run: 3, next: "wait-review" });
-    expect(h.record()).toMatchObject({ fixAttempts: 1, findings: [expect.objectContaining({ status: "fixed", fixedIn: sha(3) })], reviewRounds: [expect.anything(), expect.objectContaining({ n: 2, requestedSha: sha(3) })] });
+    expect(h.record().findings.map((f) => [f.id, f.status, f.fixedIn])).toEqual([["900", "fixed", sha(3)], ["901", "open", null]]);
+    expect(h.record().fixAttempts).toBe(1);
+    expect(h.last()).toMatchObject({ next: "fix-findings" });   // the late finding goes to the next run instead
+    h.tick(12);
+    await begin([...h.argv, "--session", "session_C2", "--started-by", "routine trig_3b"], h.deps);
+    expect(h.last()).toMatchObject({ action: "fix-findings", findings: [expect.objectContaining({ id: "901" })] });
+    h.commit(4, "Late finding");
+    await advance(h.argv, h.deps);
+    expect(h.last()).toMatchObject({ next: "wait-review" });
+    expect(h.record()).toMatchObject({ fixAttempts: 2, reviewRounds: [expect.anything(), expect.objectContaining({ n: 2, requestedSha: sha(4) })] });
 
     // Clean review and green CI: run 4 completes the goal and schedules nothing.
     h.tick(14);
-    h.github.comments.get(77)!.push(h.github.comment(`Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${sha(3).slice(0, 10)}\``, CODEX_LOGIN));
-    h.github.checks.set(sha(3), [{ name: CHECK, status: "completed", conclusion: "success", html_url: "ci" }]);
+    h.github.comments.get(77)!.push(h.github.comment(`Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${sha(4).slice(0, 10)}\``, CODEX_LOGIN));
+    h.github.checks.set(sha(4), [{ name: CHECK, status: "completed", conclusion: "success", html_url: "ci" }]);
     h.tick(20);
     await begin([...h.argv, "--session", "session_D", "--started-by", "routine trig_4"], h.deps);
     await advance(h.argv, h.deps);
-    expect(h.last()).toMatchObject({ run: 4, next: "complete", outcome: "complete", rearmAt: null, nextPrompt: null });
+    expect(h.last()).toMatchObject({ run: 5, next: "complete", outcome: "complete", rearmAt: null, nextPrompt: null });
     const final = h.record();
     expect(final.runs!.map((r) => [r.n, r.sessionId, r.startedBy, r.action])).toEqual([
       [1, "session_A", "routine trig_1", "reproduce"], [2, "session_B", "routine trig_2", "implement"],
-      [3, "session_C", "routine trig_3", "fix-findings"], [4, "session_D", "routine trig_4", "complete"],
+      [3, "session_C", "routine trig_3", "fix-findings"], [4, "session_C2", "routine trig_3b", "fix-findings"], [5, "session_D", "routine trig_4", "complete"],
     ]);
     expect(final.runs![0].next).toBe("trig_2 at 2026-10-13T20:02:00Z");
-    expect(final.outcome).toMatchObject({ status: "complete", evidence: { head: sha(3), pr: 77, runs: 4 } });
+    expect(final.outcome).toMatchObject({ status: "complete", evidence: { head: sha(4), pr: 77, runs: 5 } });
     // The checks the runner ran are exactly the registry's, never anything from the record's text.
     expect(new Set(h.ran)).toEqual(new Set([describeCheck(UNIT), describeCheck(BROWSER)]));
     expect((await refusal(advance(h.argv, h.deps))).code).toBe("refused");
@@ -185,6 +202,26 @@ describe("the unattended runner", () => {
     await begin([...h.argv, "--session", "s3", "--started-by", "routine t3"], h.deps);
     expect(h.last()).toMatchObject({ action: "blocked", why: "Run cap reached (2/2 runner sessions).", rearm: null });
     expect(h.record().outcome).toMatchObject({ status: "blocked" });
+  });
+
+  it("records a check whose file is missing as not run, never as proof of the defect (Codex P2 on #185)", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    h.commit(1, "Only the unit check"); h.setMissing(BROWSER, true);
+    await advance(h.argv, h.deps);
+    expect(h.record().checks.map((c) => [c.criterionId, c.phase])).toEqual([["unit", "before"]]);
+    expect(h.last()).toMatchObject({ next: "reproduce", did: expect.stringContaining("browser before: not run") });
+  });
+
+  it("replays the work order when the same session asks again, without counting another run (Codex P2 on #185)", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    const first = h.last();
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    expect(h.last()).toEqual(first);
+    expect(h.record().runs!.map((r) => [r.n, r.sessionId, r.endedAt])).toEqual([[1, "s1", null]]);
   });
 
   it("will not advance over uncommitted work, and renders the next run's prompt from fixed text only", async () => {

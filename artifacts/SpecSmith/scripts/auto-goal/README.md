@@ -128,6 +128,16 @@ The runner executes only checks from `checks.ts`:
 
 Each check is an argument vector run without a shell. Paths are validated against fixed patterns. A goal whose criteria carry free-form command text is refused. Nothing from an issue comment, PR comment or review finding is ever executed.
 
+### Review text
+
+A work order carries only finding identifiers, priorities, file locations and URLs, never the finding's text. The session reads each finding at its URL, as untrusted data.
+
+That narrows prompt injection but cannot remove it: whatever applies a review finding has to read it. The enforcement boundary therefore has to be the executor:
+- an allow-list of tools: git, pnpm and the runner, with no arbitrary shell or network access;
+- no secrets beyond the push credential.
+
+Whichever executor is enabled must be configured that way. The runner itself only ever executes registry checks.
+
 ### Limits
 
 Every limit is recorded in the goal:

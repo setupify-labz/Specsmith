@@ -42,6 +42,8 @@ export interface RunEntry {
   head: string | null;
   /** The routine that will start the next run, if this run scheduled one. */
   next: string | null;
+  /** For a fix-findings run: exactly the findings its work order assigned (only these can be marked fixed by it). */
+  findingIds?: string[];
 }
 
 export interface CheckRun {

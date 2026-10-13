@@ -59,7 +59,8 @@ export function checkFile(spec: CheckSpec): string | null {
   return null;
 }
 
-export interface CheckResult { readonly exitCode: number; readonly tail: string; readonly timedOut: boolean }
+/** `executed: false` means nothing ran (the check's file is not in the commit): never evidence of anything. */
+export interface CheckResult { readonly exitCode: number; readonly tail: string; readonly timedOut: boolean; readonly executed: boolean }
 
 /**
  * Runs a trusted check in `repoRoot`. Each step has `timeoutMs`; a missing check file counts as a
@@ -69,7 +70,7 @@ export interface CheckResult { readonly exitCode: number; readonly tail: string;
 export async function runCheck(repoRoot: string, spec: CheckSpec, timeoutMs: number, env: NodeJS.ProcessEnv = process.env): Promise<CheckResult> {
   const steps = stepsFor(spec);
   const file = checkFile(spec);
-  if (file && !existsSync(join(repoRoot, file))) return { exitCode: 127, tail: `${file} does not exist at this commit.`, timedOut: false };
+  if (file && !existsSync(join(repoRoot, file))) return { exitCode: 127, tail: `${file} does not exist at this commit; nothing was run.`, timedOut: false, executed: false };
   let tail = "";
   for (const step of steps) {
     const result = await new Promise<CheckResult>((done) => {
@@ -80,15 +81,15 @@ export async function runCheck(repoRoot: string, spec: CheckSpec, timeoutMs: num
       const timer = setTimeout(() => { child.kill("SIGKILL"); }, timeoutMs);
       let timedOut = false;
       timer.unref?.();
-      child.on("error", (e) => { clearTimeout(timer); done({ exitCode: 127, tail: String(e), timedOut: false }); });
+      child.on("error", (e) => { clearTimeout(timer); done({ exitCode: 127, tail: String(e), timedOut: false, executed: false }); });
       child.on("close", (code, signal) => {
         clearTimeout(timer);
         timedOut = signal === "SIGKILL";
-        done({ exitCode: code ?? 1, tail: buf.replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-12).join("\n"), timedOut });
+        done({ exitCode: code ?? 1, tail: buf.replace(/\x1b\[[0-9;]*m/g, "").trim().split("\n").slice(-12).join("\n"), timedOut, executed: true });
       });
     });
     tail = result.tail;
     if (result.exitCode !== 0 || result.timedOut) return { ...result, exitCode: result.exitCode || 1, tail: result.timedOut ? `Timed out after ${Math.round(timeoutMs / 60000)} min.\n${tail}` : tail };
   }
-  return { exitCode: 0, tail, timedOut: false };
+  return { exitCode: 0, tail, timedOut: false, executed: true };
 }
