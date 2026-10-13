@@ -88,10 +88,10 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
     return { action: "request-review", why: latest ? `The head moved to ${head.slice(0, 10)} after round ${latest.n}.` : "No Codex review requested yet." };
   }
   if (latest.verdict === "unavailable") return { action: "blocked", why: `Codex could not review round ${latest.n}: ${latest.evidence ?? "no reason given"}.` };
-  if (latest.verdict === "pending") {
+  if (latest.verdict === "pending" || (latest.outstanding ?? 0) > 0) {
     const until = new Date(Date.parse(latest.requestedAt) + goal.caps.reviewTimeoutMinutes * 60_000);
     if (now > until) return { action: "blocked", why: `Codex did not answer review round ${latest.n} within ${goal.caps.reviewTimeoutMinutes} min (${latest.requestUrl}).` };
-    return { action: "wait-review", why: `Waiting for Codex on ${head.slice(0, 10)} (round ${latest.n}).`, until: until.toISOString() };
+    return { action: "wait-review", why: `Waiting for Codex on ${head.slice(0, 10)} (round ${latest.n}${(latest.outstanding ?? 0) > 0 ? `, ${latest.outstanding} request(s) unanswered` : ""}).`, until: until.toISOString() };
   }
   // A "findings" round on the head reaches here only when none of its findings is open and material
   // (step 3): they were nits, or dismissed with a recorded reason. A fixed finding would have moved the head.

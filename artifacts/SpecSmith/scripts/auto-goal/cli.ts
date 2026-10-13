@@ -30,7 +30,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { decide } from "./decide.ts";
-import { ghCli, type GitHub } from "./github.ts";
+import { ghCli, pullMismatch, type GitHub } from "./github.ts";
 import { addEvent, createGoal, GoalError, type Criterion, type GoalRecord } from "./record.ts";
 import { FileStore, IssueCommentStore, renderRecordComment, type GoalStore } from "./store.ts";
 import { localGit, syncGoal, type Git } from "./sync.ts";
@@ -179,7 +179,8 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
       refuseIfDone();
       const n = Number(a.need("--number"));
       const pull = await deps.github.pull(goal.repo, n);
-      if (pull.head.ref !== goal.branch) throw new GoalError("invalid", `PR #${n} is from ${pull.head.ref}, not ${goal.branch}.`);
+      const mismatch = pullMismatch(pull, goal);
+      if (mismatch) throw new GoalError("invalid", `PR #${n} ${mismatch}.`);
       goal.pr = n;
       addEvent(goal, "pr", `Attached ${pull.html_url} (draft: ${pull.draft}).`, now);
       await syncGoal(goal, deps.github, deps.git, now);

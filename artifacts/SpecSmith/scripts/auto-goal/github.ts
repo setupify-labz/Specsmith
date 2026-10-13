@@ -11,7 +11,19 @@ import { GoalError } from "./record.ts";
 const run = promisify(execFile);
 
 export interface GhCheckRun { readonly name: string; readonly status: string; readonly conclusion: string | null; readonly html_url: string }
-export interface GhPull { readonly number: number; readonly state: string; readonly draft: boolean; readonly merged: boolean; readonly head: { readonly sha: string; readonly ref: string }; readonly html_url: string }
+export interface GhPull {
+  readonly number: number; readonly state: string; readonly draft: boolean; readonly merged: boolean; readonly html_url: string;
+  readonly head: { readonly sha: string; readonly ref: string; readonly repo: { readonly full_name: string } | null };
+  readonly base: { readonly ref: string; readonly repo: { readonly full_name: string } };
+}
+
+/** The PR must come from the goal's own repository and branch and target the goal's base branch. */
+export function pullMismatch(pull: GhPull, goal: { repo: string; branch: string; baseBranch: string }): string | null {
+  if (pull.head.ref !== goal.branch) return `is from ${pull.head.ref}, not the goal branch ${goal.branch}`;
+  if (pull.head.repo?.full_name !== goal.repo) return `is from ${pull.head.repo?.full_name ?? "a deleted fork"}, not ${goal.repo}`;
+  if (pull.base.repo.full_name !== goal.repo || pull.base.ref !== goal.baseBranch) return `targets ${pull.base.repo.full_name}:${pull.base.ref}, not ${goal.repo}:${goal.baseBranch}`;
+  return null;
+}
 
 export interface GitHub {
   /** The login this session acts as; only its comments can be goal records. */
