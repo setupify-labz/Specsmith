@@ -23,6 +23,8 @@ export interface GitHub {
   reviewComments(repo: string, pr: number): Promise<GhReviewComment[]>;
   createIssue(repo: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
   createComment(repo: string, issue: number, body: string): Promise<GhIssueComment>;
+  /** Opens a draft PR (never ready for review, never merged here). */
+  createDraftPull(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
 }
 
 async function gh<T>(args: string[], input?: string): Promise<T> {
@@ -59,4 +61,5 @@ export const ghCli: GitHub = {
   reviewComments: (repo, pr) => all(`repos/${repo}/pulls/${pr}/comments`),
   createIssue: (repo, title, body) => gh(["-X", "POST", `repos/${repo}/issues`, "--input", "-"], JSON.stringify({ title, body })),
   createComment: (repo, issue, body) => gh(["-X", "POST", `repos/${repo}/issues/${issue}/comments`, "--input", "-"], JSON.stringify({ body })),
+  createDraftPull: (repo, head, base, title, body) => gh(["-X", "POST", `repos/${repo}/pulls`, "--input", "-"], JSON.stringify({ head, base, title, body, draft: true })),
 };

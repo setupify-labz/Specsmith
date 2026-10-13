@@ -74,6 +74,10 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
   // 5. Every acceptance check must pass on the exact head.
   const results = criteriaResults(goal, head);
   const unverified = goal.acceptanceCriteria.filter((c) => results.get(c.id) !== 0);
+  // Checks already run on this head and failed: the change is not done, so it goes back to implementation.
+  const failedHere = new Set(goal.checks.filter((r) => r.sha === head && r.criterionId && r.exitCode !== 0).map((r) => r.criterionId!));
+  const failing = unverified.filter((c) => results.has(c.id) || (failedHere.has(c.id) && !results.has(c.id)));
+  if (failing.length) return { action: "implement", why: `Acceptance check(s) ${failing.map((c) => c.id).join(", ")} fail on ${head.slice(0, 10)}.` };
   if (unverified.length) return { action: "verify", why: `Acceptance checks not yet passing on ${head.slice(0, 10)}.`, criteria: unverified.map((c) => c.id) };
 
   // 6. Review happens on a PR.

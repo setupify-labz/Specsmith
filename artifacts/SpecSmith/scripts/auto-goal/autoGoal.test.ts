@@ -261,7 +261,7 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     h.git.commit(1, "Add failing acceptance checks");
     expect(await h.cli("check", "--criterion", "a11y-name", "--phase", "before")).toBe(0);
     expect(await h.cli("check", "--criterion", "browser", "--phase", "before")).toBe(0);
-    await h.cli("sync"); expect(h.next()).toBe("verify");
+    await h.cli("sync"); expect(h.next()).toBe("implement");   // the checks fail on this head
 
     // Implement and verify on a clean tree.
     h.git.commit(2, "Name each part search box"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);

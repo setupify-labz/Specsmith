@@ -98,3 +98,58 @@ $CLI finalize --goal <id>                                 # refuses unless decid
 
 - **The implementer is a Claude Code session.** If no session is subscribed to the PR, nothing advances. The record still says exactly where the goal stands, and `resume` picks it up.
 - **Codex's formats come from what it posted on #180 and #182.** Any connector comment that is not a recognised verdict is treated as "unavailable" and quoted, never guessed.
+
+## The unattended runner (`runner.ts`, `checks.ts`)
+
+The runner is the half of a run that needs no judgement. A fresh Claude Code session uses it for one turn on a goal:
+
+1. **`begin`** loads the record from the goal issue and syncs it with the PR, CI and Codex. It opens a run entry recording the session id and what started it, then prints a work order:
+   - **reproduce:** write the failing checks;
+   - **implement:** make them pass;
+   - **fix-findings:** the open Codex findings, quoted as data;
+   - **fix-ci:** the failing check runs.
+2. The session makes and commits that change, and nothing else.
+3. **`advance`** then:
+   - pushes the commit;
+   - runs the goal's trusted checks;
+   - marks the findings that commit answers as fixed;
+   - performs every mechanical step that follows (verify, open the draft PR, ask Codex);
+   - stops when code is due again, Codex or CI must be waited for, or the goal completes or is blocked;
+   - prints when the next run should start, with the exact prompt for it, rendered from fixed text.
+4. **`note-next`** records which routine will start that next run.
+
+### Trusted checks
+
+The runner executes only checks from `checks.ts`:
+- one Vitest file under `src/`;
+- a production build followed by one script under `scripts/ui/`;
+- `typecheck`;
+- the full suite.
+
+Each check is an argument vector run without a shell. Paths are validated against fixed patterns. A goal whose criteria carry free-form command text is refused. Nothing from an issue comment, PR comment or review finding is ever executed.
+
+### Limits
+
+Every limit is recorded in the goal:
+
+| Limit | Default |
+| --- | --- |
+| Runner sessions (`caps.maxRuns`) | 10 |
+| Minutes per check (`caps.maxRunMinutes`) | 25 |
+| Codex review rounds | 3 |
+| Fix commits | 3 |
+| Total time | 24 hours |
+| Paid API spend | $0 |
+
+A run that a session started but never finished is closed as abandoned by the next `begin`.
+
+### What can start a run (audited 2026-10-13)
+
+| Mechanism | Fresh session? | Can push, comment and re-arm without a person? |
+| --- | --- | --- |
+| `send_later` and self-bound routines | No: they wake the existing chat (a reminder) | n/a |
+| Routine with `create_new_session_on_fire` | Yes (origin `scheduled_trigger`) | No. Created through the tool, it carries no repository (`config:no-git-repo`), and the three probe runs took no outward action. |
+| `create_session` with the repository attached | Yes, but started by an active session | No. The session ran the read-only checks, then held its GitHub comment and routine creation for a person's confirmation (`need_input`). |
+| Claude Code GitHub Action (headless, allow-listed tools) | Yes, on a GitHub event | Not installed: it needs a `CLAUDE_CODE_OAUTH_TOKEN` (or a paid `ANTHROPIC_API_KEY`) repository secret |
+
+Until one of those last two paths is enabled, the runner can be exercised only by tests (`runner.test.ts`). It has not been demonstrated unattended.
