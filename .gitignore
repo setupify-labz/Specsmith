@@ -61,3 +61,6 @@ Thumbs.db
 # per corpus, rewritten wholesale on every capture; the observation records
 # keep a content hash instead.
 .frametimes/
+
+# Auto Goal local mirror of goal records (the durable copy is the record comment on the goal issue)
+.auto-goal/
