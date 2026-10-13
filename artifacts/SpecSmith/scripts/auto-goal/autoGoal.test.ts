@@ -432,9 +432,39 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
     post2({ ...structuredClone(q1), revision: 2, step: "C", parentComment: d1 });
     post2({ ...structuredClone(q1), revision: 3, step: "B1", parentComment: keep });
     post2({ ...structuredClone(q1), revision: 3, step: "B2", parentComment: keep });
-    expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("branch again at revision 3") });
-    post2({ ...structuredClone(q1), revision: 4, step: "orphan" });
+    expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("branch again after revision 2") });
+    // A branch below the tip is a fork too: B1 has a revision-4 child, but B2's work at revision 3 must not be dropped.
+    post2({ ...structuredClone(q1), revision: 4, step: "C1 on B1", parentComment: g2.issues.get(5)!.find((c) => parseRecordComment(c.body, q1.id)?.step === "B1")!.id });
+    expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("branch again after revision 2") });
+    post2({ ...structuredClone(q1), revision: 5, step: "orphan" });
     expect(await refusal(s2.resolveFork(q1.id, keep, at(2)))).toMatchObject({ code: "refused", message: expect.stringContaining("record no parent") });
+  });
+
+  it("refuses an --issue that is not a positive issue number (Codex P2, independent review)", async () => {
+    const h = harness();
+    for (const bad of ["0", "nope", "-3", "1.5"]) {
+      const e = await refusal(h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK, "--issue", bad));
+      expect(e, bad).toMatchObject({ code: "invalid", message: expect.stringContaining("positive issue number") });
+    }
+    expect(readdirSync(h.store)).toEqual([]);
+  });
+
+  it("does not let a second Codex review of the same commit be hidden by the first one's clean verdict (Codex P1, independent review)", async () => {
+    const h = harness();
+    await h.cli("start", "--request-file", join(h.files, "request.txt"), "--criteria-file", join(h.files, "criteria.json"), "--branch", "claude/fix", "--required-check", CHECK, "--create-issue", "--title", "t");
+    h.git.commit(1, "checks"); await h.cli("check", "--criterion", "a11y-name", "--phase", "before"); await h.cli("check", "--criterion", "browser", "--phase", "before");
+    h.git.commit(2, "fix"); h.results.set("run-unit", 0); h.results.set("run-browser", 0);
+    await h.cli("check", "--criterion", "a11y-name", "--phase", "after"); await h.cli("check", "--criterion", "browser", "--phase", "after");
+    h.github.pulls.set(9, { number: 9, state: "open", draft: true, merged: false, head: { sha: sha(2), ref: "claude/fix" }, html_url: "pr9" });
+    await h.cli("pr", "--number", "9"); h.tick(1); await h.cli("request-review");
+    // Two sessions both asked; Codex reviews twice. The first answer is clean...
+    h.tick(5); h.github.codexClean(9, sha(2));
+    h.github.checks.set(sha(2), [{ name: CHECK, status: "completed", conclusion: "success", html_url: "ci" }]);
+    await h.cli("sync"); expect(h.next()).toBe("complete");
+    // ...the second has a finding: it reopens the goal instead of being ignored.
+    h.tick(7); h.github.codexFindings(9, sha(2), [["P1", "Second review found this"]]);
+    await h.cli("resume"); expect(h.next()).toBe("fix-findings");
+    expect((await refusal(h.cli("finalize"))).message).toContain("fix-findings");
   });
 
   it("refuses to start a goal whose record would live only in the container (Codex P2, round 3)", async () => {
@@ -508,5 +538,11 @@ describe("localGit against a real repository", () => {
     expect(await git.isClean()).toBe(true);
     writeFileSync(join(dir, "a.txt"), "3");
     expect(await git.isClean()).toBe(false);
+    g("checkout", "--", "a.txt");
+    expect(await git.isClean()).toBe(true);
+    writeFileSync(join(dir, "untracked.test.ts"), "x");   // a check could read it, so it is not clean (Codex P2, independent review)
+    expect(await git.isClean()).toBe(false);
+    writeFileSync(join(dir, ".gitignore"), "untracked.test.ts\n"); g("add", ".gitignore"); g("commit", "-qm", "ignore");
+    expect(await git.isClean()).toBe(true);   // ignored files (node_modules, dist, .auto-goal) do not count
   });
 });

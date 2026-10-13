@@ -182,10 +182,14 @@ export class IssueCommentStore implements GoalStore {
     const lineage = new Set([kept.commentId]);
     for (const e of [...later].sort((a, b) => a.goal.revision - b.goal.revision)) if (lineage.has(e.goal.parentComment!)) lineage.add(e.commentId);
     const line = entries.filter((e) => lineage.has(e.commentId));
+    // The kept lineage must be a single chain: any save in it with two children is a second fork,
+    // wherever it happens, and picking a tip would silently drop the other child's work.
+    for (const node of line) {
+      const children = line.filter((e) => e.goal.parentComment === node.commentId);
+      if (children.length > 1) throw new GoalError("refused", `The saves built on ${kept.url} branch again after revision ${node.goal.revision} (${children.map((e) => e.url).join(", ")}); keep one of those instead.`);
+    }
     const tipRev = Math.max(...line.map((e) => e.goal.revision));
-    const tips = line.filter((e) => e.goal.revision === tipRev);
-    if (tips.length > 1) throw new GoalError("refused", `The saves built on ${kept.url} branch again at revision ${tipRev} (${tips.map((e) => e.url).join(", ")}); keep one of those instead.`);
-    const tip = tips[0];
+    const tip = line.find((e) => e.goal.revision === tipRev)!;
     const goal = structuredClone(tip.goal);
     goal.resolvedForks = [...new Set([...(goal.resolvedForks ?? []), ...forked])].sort((a, b) => a - b);
     goal.events.push({ at: now.toISOString(), type: "fork-resolved", detail: `Kept ${kept.url} (revision ${kept.goal.revision})${tip === kept ? "" : ` and its descendants up to ${tip.url} (revision ${tipRev})`}; the other copies stay on the issue, unused.` });

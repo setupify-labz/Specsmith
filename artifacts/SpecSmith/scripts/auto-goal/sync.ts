@@ -15,7 +15,7 @@ const run = promisify(execFile);
 export interface Git {
   /** Full sha of a ref. */
   revParse(ref: string): Promise<string>;
-  /** True when the working tree and index match HEAD (untracked files ignored). */
+  /** True when the working tree and index match HEAD and nothing untracked (and not git-ignored) exists. */
   isClean(): Promise<boolean>;
   /** Commits reachable from `head` but not `base`, oldest first. */
   log(base: string, head: string): Promise<{ sha: string; subject: string; at: string }[]>;
@@ -26,7 +26,8 @@ export function localGit(cwd: string): Git {
   const git = async (...args: string[]) => (await run("git", args, { cwd, maxBuffer: 16 * 1024 * 1024 })).stdout;
   return {
     revParse: async (ref) => (await git("rev-parse", "--verify", `${ref}^{commit}`)).trim(),
-    isClean: async () => (await git("status", "--porcelain", "--untracked-files=no")).trim() === "",
+    // Untracked files count (a check could read them), ignored files (node_modules, dist, .auto-goal) do not.
+    isClean: async () => (await git("status", "--porcelain", "--untracked-files=normal")).trim() === "",
     log: async (base, head) => (await git("log", "--reverse", "--format=%H%x09%cI%x09%s", `${base}..${head}`)).split("\n").filter(Boolean).map((line) => {
       const [sha, at, ...subject] = line.split("\t");
       return { sha, at, subject: subject.join("\t") };
@@ -68,35 +69,41 @@ export async function syncGoal(goal: GoalRecord, github: GitHub, git: Git, now =
   const runs = await github.checkRuns(goal.repo, head);
   goal.ci = { sha: head, observedAt: now.toISOString(), runs: runs.map((r) => ({ name: r.name, status: r.status, conclusion: r.conclusion, url: r.html_url })) };
 
-  // Codex: settle pending rounds from what it actually posted.
-  const pending = goal.reviewRounds.filter((r) => r.verdict === "pending");
-  if (pending.length) {
+  // Codex: every verdict posted for a round's commit after its request counts. Two sessions can
+  // both ask for the same round (GitHub cannot serialise their comments), so a round may receive
+  // more than one review: its findings are the union, and a clean verdict never hides a later
+  // review's findings on the same commit.
+  const live = goal.reviewRounds.filter((r) => r.verdict !== "unavailable");
+  if (live.length) {
     const [comments, reviews, reviewComments] = await Promise.all([
       github.issueComments(goal.repo, goal.pr), github.reviews(goal.repo, goal.pr), github.reviewComments(goal.repo, goal.pr),
     ]);
     const verdicts = codexVerdicts(comments, reviews, reviewComments);
-    for (const round of pending) {
-      const v = verdictFor(verdicts, round.requestedSha, round.requestedAt);
-      if (!v) continue;
-      round.completedAt = v.at;
-      if (v.kind === "unavailable") {
-        round.verdict = "unavailable";
-        round.evidence = `${v.text} (${v.url})`;
-        addEvent(goal, "review-unavailable", `Round ${round.n}: Codex replied without reviewing: ${v.text.slice(0, 200)}`, now);
-        continue;
-      }
-      round.reviewedSha = round.requestedSha;
-      round.evidence = v.url;
-      if (v.kind === "clean") {
-        round.verdict = "clean";
-        addEvent(goal, "review-clean", `Round ${round.n}: Codex found no major issues on ${round.requestedSha.slice(0, 10)}.`, now);
-      } else {
-        round.verdict = "findings";
-        for (const f of v.findings) {
-          if (goal.findings.some((g) => g.id === f.id)) continue;
-          goal.findings.push({ ...f, round: round.n, status: "open", fixedIn: null, reason: null });
+    for (const round of live) {
+      const since = Date.parse(round.requestedAt);
+      const mine = verdicts.filter((v) => Date.parse(v.at) >= since && (v.kind === "unavailable" || round.requestedSha.startsWith(v.reviewedPrefix)));
+      if (round.verdict === "pending") {
+        const v = verdictFor(verdicts, round.requestedSha, round.requestedAt);
+        if (!v) continue;
+        round.completedAt = v.at;
+        if (v.kind === "unavailable") {
+          round.verdict = "unavailable";
+          round.evidence = `${v.text} (${v.url})`;
+          addEvent(goal, "review-unavailable", `Round ${round.n}: Codex replied without reviewing: ${v.text.slice(0, 200)}`, now);
+          continue;
         }
-        addEvent(goal, "review-findings", `Round ${round.n}: ${v.findings.length} finding(s): ${v.findings.map((f) => `${f.priority} ${f.title}`).join("; ") || "none listed"}.`, now);
+        round.reviewedSha = round.requestedSha;
+        round.evidence = v.url;
+        round.verdict = v.kind;
+        addEvent(goal, v.kind === "clean" ? "review-clean" : "review-findings", `Round ${round.n}: ${v.kind === "clean" ? `Codex found no major issues on ${round.requestedSha.slice(0, 10)}` : `${v.findings.length} finding(s): ${v.findings.map((f) => `${f.priority} ${f.title}`).join("; ") || "none listed"}`}.`, now);
+      }
+      for (const v of mine) {
+        if (v.kind !== "findings") continue;
+        const fresh = v.findings.filter((f) => !goal.findings.some((g) => g.id === f.id));
+        if (!fresh.length) continue;
+        for (const f of fresh) goal.findings.push({ ...f, round: round.n, status: "open", fixedIn: null, reason: null });
+        if (round.verdict === "clean") { round.verdict = "findings"; round.evidence = v.url; }
+        addEvent(goal, "review-findings", `Round ${round.n}: ${fresh.length} more finding(s) from ${v.url}: ${fresh.map((f) => `${f.priority} ${f.title}`).join("; ")}.`, now);
       }
     }
   }

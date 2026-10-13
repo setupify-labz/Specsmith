@@ -86,6 +86,7 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
     const criteria = JSON.parse(await readFile(resolve(a.need("--criteria-file")), "utf8")) as Criterion[];
     let goal = createGoal({ id, request, acceptanceCriteria: criteria, repo: a.one("--repo") ?? "setupify-labz/Specsmith", baseBranch: a.one("--base") ?? "main", branch: a.need("--branch"), requiredChecks: a.many("--required-check"), now });
     if (!issueArg && !a.has("--create-issue")) throw new GoalError("invalid", "start needs --issue <n> or --create-issue: the record must live on GitHub to survive the container (.auto-goal/ is only a local mirror).");
+    if (issueArg !== undefined && !/^[1-9]\d*$/.test(issueArg)) throw new GoalError("invalid", `--issue must be a positive issue number (got "${issueArg}").`);
     if (issueArg) goal.issue = Number(issueArg);
     else {
       const body = [
@@ -107,6 +108,7 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
 
   // Every other command works on the stored record.
   const local = await mirror.load(id).catch(() => null);
+  if (issueArg !== undefined && !/^[1-9]\d*$/.test(issueArg)) throw new GoalError("invalid", `--issue must be a positive issue number (got "${issueArg}").`);
   const issue = issueArg ? Number(issueArg) : local?.issue ?? null;
   const repo = a.one("--repo") ?? local?.repo ?? "setupify-labz/Specsmith";
   // Recovery from a fork must run before the (refusing) load below.
