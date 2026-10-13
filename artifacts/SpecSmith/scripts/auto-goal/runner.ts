@@ -190,7 +190,9 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   const session = a.need("--session");
   if (run.sessionId !== session) throw new GoalError("refused", `The open run ${run.n} belongs to session ${run.sessionId}, not ${session}; this session's run was closed and replaced.`);
   const criteria = trustedCriteria(goal);
-  const timeoutMs = (goal.caps.maxRunMinutes ?? DEFAULT_RUN_MINUTES) * 60_000;
+  // One budget for every check this run executes, across all criteria and phases.
+  const checkDeadline = Date.now() + (goal.caps.maxRunMinutes ?? DEFAULT_RUN_MINUTES) * 60_000;
+  const remaining = () => Math.max(1, checkDeadline - Date.now());
   const did: string[] = [];
 
   // 1. The session's code, if the work order asked for some.
@@ -206,7 +208,7 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
       did.push(`pushed ${head.slice(0, 10)}`);
       if (run.action === "reproduce") {
         for (const c of criteria) {
-          const r = await deps.check(c.check, timeoutMs);
+          const r = await deps.check(c.check, remaining());
           if (!r.executed) { did.push(`${c.id} before: not run (${r.tail})`); continue; }
           goal.checks.push({ criterionId: c.id, phase: "before", command: goal.acceptanceCriteria.find((x) => x.id === c.id)!.command, sha: head, exitCode: r.exitCode, summary: r.tail, at: deps.now().toISOString() });
           did.push(`${c.id} before: exit ${r.exitCode}${r.exitCode === 0 ? " (does not detect the defect)" : ""}`);
@@ -232,9 +234,16 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
     await syncGoal(goal, deps.github, deps.git, now);
     next = decide(goal, now);
     if (next.action === "verify") {
+      // Checks run on the local checkout; record them only if that checkout is exactly the goal's head.
+      const local = await deps.git.head();
+      if (local !== goal.head) {
+        did.push(`checks not run: the local checkout is ${local.slice(0, 10)}, the head is ${goal.head!.slice(0, 10)}`);
+        stalled = true;
+        break;
+      }
       for (const c of criteria) {
         if (!next.criteria.includes(c.id)) continue;
-        const r = await deps.check(c.check, timeoutMs);
+        const r = await deps.check(c.check, remaining());
         if (!r.executed) { did.push(`${c.id} after: not run (${r.tail})`); stalled = true; continue; }
         goal.checks.push({ criterionId: c.id, phase: "after", command: goal.acceptanceCriteria.find((x) => x.id === c.id)!.command, sha: goal.head!, exitCode: r.exitCode, summary: r.tail, at: deps.now().toISOString() });
         did.push(`${c.id} after on ${goal.head!.slice(0, 10)}: exit ${r.exitCode}`);
@@ -245,7 +254,14 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
     }
     if (next.action === "open-pr") {
       // Adopt a PR an earlier, interrupted attempt already opened for this branch; create one only if none exists.
-      const existing = (await deps.github.openPullsFor(goal.repo, goal.branch)).find((p) => p.draft && pullMismatch(p, goal) === null);
+      const open = (await deps.github.openPullsFor(goal.repo, goal.branch)).filter((p) => pullMismatch(p, goal) === null);
+      const active = open.find((p) => !p.draft);
+      if (active) {
+        // Someone else's ready PR already carries this branch: do not take it over, and GitHub refuses a duplicate.
+        next = { action: "blocked", why: `An open, non-draft PR (${active.html_url}) already exists for ${goal.branch}; the runner only works on its own draft PR.` };
+        break;
+      }
+      const existing = open.find((p) => p.draft);
       const pull = existing ? { number: existing.number, html_url: existing.html_url } : await deps.github.createDraftPull(goal.repo, goal.branch, goal.baseBranch, `Auto Goal ${goal.id}: ${goal.request.split("\n")[0].slice(0, 80)}`,
         `Opened by the unattended Auto Goal runner (run ${run.n}, session ${run.sessionId}).\n\nGoal record: #${goal.issue}. The request, acceptance checks and every run are recorded there.\n\nDraft; merging and deployment are off for this goal.${FOOTER}`);
       goal.pr = pull.number;

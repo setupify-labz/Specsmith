@@ -75,6 +75,9 @@ function harness() {
   let dirty = false;
   const results = new Map<string, number>();
   const missing = new Set<string>();
+  const timeouts: number[] = [];
+  let forcedLocal: string | null = null;
+  let staleAfterPush: string | null = null;
   const ran: string[] = [];
   const out: string[] = [];
   let clock = T0;
@@ -86,11 +89,12 @@ function harness() {
       isClean: async () => !dirty,
       log: async () => commits.filter((c) => c.sha !== sha(0)),
       fetch: async () => {},
-      head: async () => local ?? sha(0),
-      push: async () => { pushed = local; if (github.pullHead) github.pullHead = local; },
+      head: async () => forcedLocal ?? local ?? sha(0),
+      push: async () => { pushed = local; if (github.pullHead) github.pullHead = local; if (staleAfterPush) forcedLocal = staleAfterPush; },
       ensureBranch: async () => { local ??= sha(0); },
     },
-    check: async (spec) => {
+    check: async (spec, timeoutMs) => {
+      timeouts.push(timeoutMs);
       if (missing.has(JSON.stringify(spec))) return { exitCode: 127, tail: "file missing; nothing was run", executed: false };
       ran.push(describeCheck(spec)); const code = results.get(JSON.stringify(spec)) ?? 1; return { exitCode: code, tail: `exit ${code}`, executed: true };
     },
@@ -106,7 +110,7 @@ function harness() {
   const tick = (m: number) => { clock = new Date(T0.getTime() + m * 60_000); github.clock = clock; };
   /** advance's argv, as the session that owns the open run. */
   const adv = () => { const comments = github.comments.get(400) ?? []; const g = comments.length ? parseRecordComment(comments.at(-1)!.body, "aria-expanded")! : null; return [...argv, "--session", g?.runs?.find((r) => r.endedAt === null)?.sessionId ?? "none"]; };
-  return { github, deps, commit, pass, argv, adv, record, last, tick, ran, setDirty: (d: boolean) => { dirty = d; }, setMissing: (spec: CheckSpec, m: boolean) => { if (m) missing.add(JSON.stringify(spec)); else missing.delete(JSON.stringify(spec)); } };
+  return { github, deps, commit, pass, argv, adv, record, last, tick, ran, timeouts, staleAfterPush: (s: string | null) => { staleAfterPush = s; }, setDirty: (d: boolean) => { dirty = d; }, setMissing: (spec: CheckSpec, m: boolean) => { if (m) missing.add(JSON.stringify(spec)); else missing.delete(JSON.stringify(spec)); } };
 }
 
 async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
@@ -258,22 +262,50 @@ describe("the unattended runner", () => {
     expect(h.last()).toMatchObject({ action: "reproduce", why: expect.stringContaining("Replayed run 2") });
   });
 
-  it("schedules nothing when sync ends the goal mid-run, and never adopts a non-draft PR (Codex on af07bee)", async () => {
+  it("schedules nothing when sync ends the goal mid-run (Codex on af07bee)", async () => {
     const h = harness();
     await submit(h.github);
     await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
     h.commit(1, "checks"); await advance(h.adv(), h.deps);
     h.tick(2); await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
     h.commit(2, "fix"); h.pass(UNIT, 0); h.pass(BROWSER, 0);
-    h.github.pullHead = sha(2); h.github.prDraft = false;   // someone opened a normal, non-draft PR from the branch
     await advance(h.adv(), h.deps);
-    expect(h.github.created).toBe(1);   // it opened its own draft rather than taking over the active PR
     h.tick(10); await begin([...h.argv, "--session", "s3", "--started-by", "routine t3"], h.deps);
     h.github.closed = true;   // the PR is closed while run 3 works
     h.commit(3, "anything");
     await advance(h.adv(), h.deps);
     expect(h.last()).toMatchObject({ run: 3, rearmAt: null, nextPrompt: null });
     expect(h.record().outcome).toMatchObject({ status: "blocked", reason: expect.stringContaining("closed") });
+  });
+
+  it("blocks, instead of taking over or duplicating, when the branch already has a ready PR (Codex on 0e80e0e)", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    h.commit(1, "checks"); await advance(h.adv(), h.deps);
+    h.tick(2); await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
+    h.commit(2, "fix"); h.pass(UNIT, 0); h.pass(BROWSER, 0);
+    h.github.pullHead = sha(2); h.github.prDraft = false;
+    await advance(h.adv(), h.deps);
+    expect(h.github.created).toBe(0);
+    expect(h.record()).toMatchObject({ pr: null, outcome: { status: "blocked", reason: expect.stringContaining("non-draft PR") } });
+    expect(h.last()).toMatchObject({ rearmAt: null });
+  });
+
+  it("records no check unless the local checkout is exactly the head, and shares one budget across criteria (Codex on 0e80e0e)", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);
+    h.commit(1, "checks"); await advance(h.adv(), h.deps);
+    h.tick(2); await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
+    h.commit(2, "fix"); h.pass(UNIT, 0); h.pass(BROWSER, 0);
+    h.staleAfterPush(sha(1));   // the push lands, but afterwards this checkout is not at the head
+    await advance(h.adv(), h.deps);
+    expect(h.record().head).toBe(sha(2));
+    expect(h.record().checks.filter((c) => c.phase === "after")).toEqual([]);
+    expect(h.last()).toMatchObject({ did: expect.stringContaining("checks not run: the local checkout is"), next: "verify" });
+    expect(h.timeouts.every((t) => t <= 25 * 60_000)).toBe(true);
+    for (let i = 1; i < h.timeouts.length; i += 1) expect(h.timeouts[i]).toBeLessThanOrEqual(h.timeouts[i - 1]);
   });
 
   it("gives a check one time budget for all of its steps (Codex on af07bee)", async () => {
