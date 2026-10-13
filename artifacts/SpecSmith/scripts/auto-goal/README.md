@@ -163,3 +163,30 @@ A run that a session started but never finished is closed as abandoned by the ne
 | Claude Code GitHub Action (headless, allow-listed tools) | Yes, on a GitHub event | Not installed: it needs a `CLAUDE_CODE_OAUTH_TOKEN` (or a paid `ANTHROPIC_API_KEY`) repository secret |
 
 Until one of those last two paths is enabled, the runner can be exercised only by tests (`runner.test.ts`). It has not been demonstrated unattended.
+
+## The event-driven wake (`wake.mjs`, `auto-goal-wake.yml`) — experimental, not yet proven
+
+Nothing polls. The workflow `.github/workflows/auto-goal-wake.yml` runs when:
+- Codex posts or completes a review on a PR (an issue comment by `chatgpt-codex-connector[bot]`);
+- "Verify pull request" or a check suite completes;
+- the trusted login labels a goal issue `auto-goal`.
+
+`wake.mjs event` then fires the routine's API trigger only when all of these hold:
+- the PR is an open, unmerged draft from a same-repo `claude/` branch;
+- its title is `Auto Goal <id>: …` and its body says `Goal record: #<issue>.`;
+- the goal's latest trusted record names this PR and this exact head commit, and has no outcome;
+- the event is about that head commit (older commits are ignored);
+- no run is open (younger than 40 minutes);
+- for check events, every required check on that commit has finished;
+- no `auto-goal/wake` status was posted since the last run started (within 45 minutes).
+
+It writes that commit status before firing, so a redelivered or duplicate event does not start a second run, and a single concurrency group serialises decisions. A lost fire is retried by the next event after 45 minutes.
+
+The workflow runs only from the default branch, checks out only the default branch, never runs PR code, and passes the routine token only to the fire request (which logs just the HTTP status). The fire text is fixed (`wake goal=… issue=… pr=… sha=… reason=…`) and contains no review text. The routine treats it as a hint: its fixed prompt (`ROUTINE_PROMPT.md`) finds the goal with `wake.mjs guard` and never creates triggers.
+
+Limitation: with no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.
+
+One-time setup (account owner):
+1. Create a routine at claude.ai/code/routines. Attach the `setupify-labz/Specsmith` repo, use the Default environment and no connectors, paste `ROUTINE_PROMPT.md`, add an API trigger, and generate its token.
+2. Add the repo secrets `AUTO_GOAL_ROUTINE_FIRE_URL` (the trigger's `/fire` URL) and `AUTO_GOAL_ROUTINE_TOKEN`, the repo variable `AUTO_GOAL_TRUSTED_LOGIN`, and an `auto-goal` label.
+3. Merge this directory and the workflow to `main`: these triggers only run from the default branch.

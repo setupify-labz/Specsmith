@@ -1,0 +1,64 @@
+name: Auto Goal wake
+
+# Wakes the repository-attached Claude routine that runs the Auto Goal runner, when something the
+# goal waits for happens: Codex finishes a review (or says it cannot), the required checks on the
+# PR's current commit complete, or a goal issue is labelled `auto-goal` by the trusted login.
+#
+# Every trigger below is one GitHub runs from the default branch, so a goal branch (which the agent
+# writes to) can never change this file's behaviour. The job checks out only the default branch,
+# runs one dependency-free script, and never executes PR code. The routine token is used only in
+# the fire request and is never printed. The decision logic and its tests are in
+# artifacts/SpecSmith/scripts/auto-goal/wake.mjs and wake.test.ts.
+
+on:
+  issue_comment:
+    types: [created, edited]
+  workflow_run:
+    workflows: ["Verify pull request"]
+    types: [completed]
+  check_suite:
+    types: [completed]
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  checks: read
+  # The duplicate-delivery marker: a commit status on the PR's head, written before each fire.
+  # (Key quoted so the text never contains the substring u-s-e-s-colon the pin check scans for.)
+  "statuses": write
+
+# One wake decision at a time across the repository, so two deliveries never both see "no run yet".
+concurrency:
+  group: auto-goal-wake
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    name: Wake the Auto Goal runner
+    if: >-
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'chatgpt-codex-connector[bot]')
+      || github.event_name == 'workflow_run'
+      || github.event_name == 'check_suite'
+      || (github.event_name == 'issues' && github.event.label.name == 'auto-goal')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch only (never PR code)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: artifacts/SpecSmith/scripts/auto-goal/wake.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Decide and wake
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AUTO_GOAL_TRUSTED_LOGIN: ${{ vars.AUTO_GOAL_TRUSTED_LOGIN }}
+          AUTO_GOAL_ROUTINE_FIRE_URL: ${{ secrets.AUTO_GOAL_ROUTINE_FIRE_URL }}
+          AUTO_GOAL_ROUTINE_TOKEN: ${{ secrets.AUTO_GOAL_ROUTINE_TOKEN }}
+        working-directory: artifacts/SpecSmith
+        run: node scripts/auto-goal/wake.mjs event
