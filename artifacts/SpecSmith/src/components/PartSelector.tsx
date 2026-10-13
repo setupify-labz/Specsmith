@@ -267,6 +267,9 @@ export default function PartSelector({
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ff-text-3)' }} />
                   <input
                     type="text"
+                    // The placeholder is the only visible text, and it is the same in every
+                    // selector; the name says which part type this box filters.
+                    aria-label={`Search ${label}`}
                     placeholder="Search..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
