@@ -16,11 +16,23 @@
 //   connectorCompare  two cable ends face-on, one marked right, one wrong
 //   connectorInsert   side view: a plug pressed into its socket, its latch
 //                     hooking over the socket's tab
+//   frontPanelHeader  top view of a front-panel pin header (an example layout):
+//                     the case button's two-pin plug moved onto the PWR SW pins
+//   rearIo            the back of the PC: motherboard video ports up top, the
+//                     graphics card's ports lower down; a display cable moved
+//   monitorMenu       a monitor's on-screen input menu; the highlight moves to
+//                     the input that matches the cable (the screen stays dark)
+//
+// caseOpen can also draw a 24-pin main power socket (show24), a graphics card
+// power socket (showGpuPower), memory sticks with slot labels (ram), and the
+// CPU_FAN / CHA_FAN headers with a fan plug (fanPlug); powerButton can show a
+// message on the monitor (screenText). Each is drawn only when a cut asks for
+// it, so a cut that does not use them renders exactly as before.
 //
 // Shared helpers (text with a minimum size, label pills, the ILLUSTRATION band
 // and the caption band) come first. Nothing here knows about any one Short.
 
-export const SCENE_NAMES = ["powerButton", "psuRear", "caseOpen", "connectorCompare", "connectorInsert"] as const;
+export const SCENE_NAMES = ["powerButton", "psuRear", "caseOpen", "connectorCompare", "connectorInsert", "frontPanelHeader", "rearIo", "monitorMenu"] as const;
 export type SceneName = (typeof SCENE_NAMES)[number];
 
 export const PAGE_LIBRARY = String.raw`
@@ -102,12 +114,14 @@ function front(spin, lit, pressed) {
   ctx.beginPath(); ctx.arc(BTN.x, BTN.y + 4, 26, -Math.PI / 2 + 0.7, -Math.PI / 2 - 0.7 + Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(BTN.x, BTN.y - 30); ctx.lineTo(BTN.x, BTN.y + 2); ctx.stroke();
 }
-function monitor() {
+function monitor(screenText) {
   const M = { x: 470, y: 820, w: 580, h: 340 };
   rr(M.x + M.w / 2 - 30, M.y + M.h, 60, 110, 6, '#1C1C26', '#55556A', 3);
   rr(M.x + M.w / 2 - 130, M.y + M.h + 100, 260, 36, 12, '#1C1C26', '#55556A', 3);
   rr(M.x, M.y, M.w, M.h, 18, '#1C1C26', '#55556A', 4);
   rr(M.x + 18, M.y + 18, M.w - 36, M.h - 54, 8, '#050508');
+  // A stylized start-up message, drawn only when a cut asks for it.
+  if (screenText) sceneText(screenText, M.x + M.w / 2, M.y + (M.h - 36) / 2, M.w - 70, 48, '#F0F0FF', 'center', 700);
 }
 function finger(pressed, alpha) {
   if (alpha <= 0) return;
@@ -174,6 +188,64 @@ function board(t, p) {
   rr(190, 1110, 700, 230, 12, '#1B1B25', '#3A3A4A', 3);
   if (glow > 0) { ctx.save(); ctx.globalAlpha *= glow; rr(EPS.x - 16, EPS.y - 16, EPS.w + 32, EPS.h + 32, 12, null, AMBER, 6); ctx.restore(); }
   if (p.highlight === 'cpuSocket' && p.seatedFrom !== undefined && t >= p.seatedFrom) { ctx.save(); ctx.globalAlpha *= out((t - p.seatedFrom) / 0.25); rr(EPS.x - 16, EPS.y - 46, EPS.w + 32, EPS.h + 62, 12, null, GREEN, 6); ctx.restore(); }
+  // Optional parts, drawn only when a cut asks for them (the CPU cut's frames do not change).
+  if (p.show24) boardPart(ATX24, t, p, 'atx24', p.atx24FilledFrom, (f) => {
+    for (let r = 0; r < 12; r += 1) for (let c = 0; c < 2; c += 1) rr(ATX24.x + 6 + c * 16, ATX24.y + 8 + r * 24, 12, 16, 3, f ? '#C9A227' : '#2E2E3A');
+  }, [ATX24.x + ATX24.w + 30, ATX24.y + ATX24.h / 2, 1100, ATX24.y + ATX24.h / 2 + 60]);
+  if (p.ram) ramSticks(t, p);
+  if (p.fanPlug) fanHeaders(t, p);
+  if (p.showGpuPower) boardPart(GPUPWR, t, p, 'gpuPower', p.gpuPowerFilledFrom, (f) => {
+    for (let c = 0; c < 4; c += 1) rr(GPUPWR.x + 10 + c * 27, GPUPWR.y + 6, 18, 14, 3, f ? '#C9A227' : '#2E2E3A');
+  }, [GPUPWR.x + GPUPWR.w / 2, GPUPWR.y - 60, GPUPWR.x + 260, GPUPWR.y - 300]);
+}
+const SLOT_NAMES = ['A1', 'A2', 'B1', 'B2'];   // an example naming; the manual's "recommended memory configuration" decides
+/** Memory sticks: in p.ram.start's slots, moved over p.ram.move to p.ram.end's; the slots p.highlightSlots glow amber. */
+function ramSticks(t, p) {
+  const r = p.ram, k = r.move ? ease(span(t, r.move)) : 0;
+  // Slot names are drawn only when the camera is close enough for them to be readable (42 px or more on screen).
+  if (p.slotLabels && ctx.getTransform().a * 22 >= 42) SLOTS.forEach((x, i) => sceneText(SLOT_NAMES[i], x, SLOT_TOP - 52, 40, 22, (p.highlightSlots || []).includes(i) && t >= (p.highlightFrom ?? Infinity) ? AMBER : '#B8B8CC', 'center', 700));
+  if (p.highlightSlots && t >= (p.highlightFrom ?? Infinity)) for (const i of p.highlightSlots) { ctx.save(); ctx.globalAlpha *= 0.6 + 0.4 * Math.sin(t * 9); rr(SLOTS[i] - 20, SLOT_TOP - 16, 40, SLOT_BOTTOM - SLOT_TOP + 32, 8, null, AMBER, 5); ctx.restore(); }
+  r.start.forEach((from, n) => {
+    const to = (r.end || r.start)[n], x = lerp(SLOTS[from], SLOTS[to], k), lift = Math.sin(Math.PI * k) * 140;
+    rr(x - 12, SLOT_TOP - 4 - lift, 24, SLOT_BOTTOM - SLOT_TOP + 8, 4, '#2C5E46', k > 0.02 && k < 0.98 ? AMBER : '#7FBF9A', 3);
+    for (let c = 0; c < 6; c += 1) rr(x - 7, SLOT_TOP + 30 + c * 66 - lift, 14, 40, 2, '#16241D');
+  });
+  if (r.wrongAt !== undefined) cross(SLOTS[r.start[0]] - 70, SLOT_TOP + 200, 30, RED, out(span(t, [r.wrongAt, r.wrongAt + 0.2])) * (1 - span(t, r.move)));
+  if (r.rightAt !== undefined) tick(SLOTS[(r.end || r.start)[0]] - 70, SLOT_TOP + 200, 30, GREEN, out(span(t, [r.rightAt, r.rightAt + 0.2])));
+}
+const FAN_HDR = { cpu: { x: 520, y: 120, label: 'CPU_FAN' }, cha: { x: 250, y: 980, label: 'CHA_FAN' } };
+/** The two fan headers and the cooler's fan plug: on CHA_FAN (start 'cha') moved over move to CPU_FAN. */
+function fanHeaders(t, p) {
+  const f = p.fanPlug, k = f.move ? ease(span(t, f.move)) : (f.start === 'cpu' ? 1 : 0);
+  for (const key of ['cpu', 'cha']) {
+    const h = FAN_HDR[key], glow = key === 'cpu' && p.highlight === 'cpuFan' && t >= p.highlightFrom ? 0.6 + 0.4 * Math.sin(t * 9) : 0;
+    rr(h.x, h.y, 76, 30, 5, '#0B0B10', glow > 0 ? AMBER : '#6A6A80', glow > 0 ? 5 : 3);
+    for (let c = 0; c < 4; c += 1) rr(h.x + 8 + c * 16, h.y + 9, 10, 12, 2, '#C9A227');
+    sceneText(h.label, h.x + 38, key === 'cpu' ? h.y - 34 : h.y + 64, 320, 48, glow > 0 ? AMBER : '#B8B8CC', 'center', 700);
+  }
+  const a = FAN_HDR[f.start === 'cpu' ? 'cpu' : 'cha'], b = FAN_HDR.cpu;
+  const x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k) - Math.sin(Math.PI * k) * 120;
+  ctx.strokeStyle = '#2A2A36'; ctx.lineWidth = 14; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x + 38, y + 15); ctx.quadraticCurveTo(x + 38, y - 120, 470, 350); ctx.stroke();
+  rr(x - 6, y - 6, 88, 42, 6, '#2E2E3C', k > 0.02 && k < 0.98 ? AMBER : '#B8B8CC', 4);
+  if (f.wrongAt !== undefined) cross(a.x + 150, a.y + 15, 34, RED, out(span(t, [f.wrongAt, f.wrongAt + 0.2])) * (1 - span(t, f.move)));
+  if (p.highlight === 'cpuFan' && p.seatedFrom !== undefined && t >= p.seatedFrom) { ctx.save(); ctx.globalAlpha *= out((t - p.seatedFrom) / 0.25); rr(b.x - 20, b.y - 20, 116, 70, 10, null, GREEN, 6); ctx.restore(); }
+}
+const ATX24 = { x: 812, y: 200, w: 44, h: 300 };    // 24-pin main power: an example position, at the board's right edge
+const GPUPWR = { x: 690, y: 624, w: 120, h: 26 };   // graphics card power: an example position, on the card's top edge
+/** A socket on the board: empty or filled (plug and cable), amber glow when highlighted, green outline once seated. */
+function boardPart(R, t, p, name, filledFrom, pins, cable) {
+  const filled = t >= (filledFrom ?? Infinity);
+  const glow = p.highlight === name && t >= p.highlightFrom ? 0.6 + 0.4 * Math.sin(t * 9) : 0;
+  rr(R.x, R.y, R.w, R.h, 6, '#0B0B10', glow > 0 ? AMBER : '#6A6A80', glow > 0 ? 5 : 3);
+  pins(filled);
+  if (filled) {
+    ctx.strokeStyle = '#2A2A36'; ctx.lineWidth = 26; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(R.x + R.w / 2, R.y + R.h / 2); ctx.quadraticCurveTo(cable[0], cable[1], cable[2], cable[3]); ctx.stroke();
+    rr(R.x - 4, R.y - 4, R.w + 8, R.h + 8, 8, 'rgba(46,46,60,0.85)', '#8A8AA0', 3);
+  }
+  if (glow > 0) { ctx.save(); ctx.globalAlpha *= glow; rr(R.x - 16, R.y - 16, R.w + 32, R.h + 32, 12, null, AMBER, 6); ctx.restore(); }
+  if (p.highlight === name && p.seatedFrom !== undefined && t >= p.seatedFrom) { ctx.save(); ctx.globalAlpha *= out((t - p.seatedFrom) / 0.25); rr(R.x - 16, R.y - 16, R.w + 32, R.h + 32, 12, null, GREEN, 6); ctx.restore(); }
 }
 
 // ---- Cable ends, face-on: what the pins look like. ----
@@ -230,21 +302,121 @@ function insertArt(t, p) {
   if (thumbs > 0) { ctx.save(); ctx.globalAlpha *= thumbs; for (const x of [px + 110, px + pw - 110]) { const y = top - 200 + 30 * (1 - out(span(t, p.thumbsIn))); rr(x - 55, y, 110, 200, 52, '#D9D9E6', '#8A8AA0', 3); } ctx.restore(); }
 }
 
+// ---- A front-panel header from above: an EXAMPLE layout; boards differ, the manual decides. ----
+const FP = { x0: 300, dx: 120, top: 860, bottom: 990 };
+const FP_GROUPS = [{ name: 'PWR LED', row: 'top', col: 0 }, { name: 'PWR SW', row: 'top', col: 2 }, { name: 'HDD LED', row: 'bottom', col: 0 }, { name: 'RESET SW', row: 'bottom', col: 2 }];
+// A group is two adjacent pins; its centre sits between them.
+const fpCentre = (g) => [FP.x0 + (g.col + 1) * FP.dx, g.row === 'top' ? FP.top : FP.bottom];
+function headerArt(t, p) {
+  rr(80, 300, 920, 1150, 18, '#1B1B25', '#3A3A4A', 3);
+  rr(FP.x0 - 60, FP.top - 70, 5 * FP.dx + 60, FP.bottom - FP.top + 140, 12, '#14141C', '#44445A', 3);
+  for (let c = 0; c < 5; c += 1) for (const y of [FP.top, FP.bottom]) {
+    if (c === 4 && y === FP.bottom) continue;   // the keyed gap
+    rr(FP.x0 + c * FP.dx + FP.dx / 2 - 20, y - 20, 40, 40, 6, '#C9A227', '#8A7020', 2);
+  }
+  for (const g of FP_GROUPS) {
+    const [cx, cy] = fpCentre(g), above = g.row === 'top';
+    const lit = g.name === 'PWR SW' && p.highlightFrom !== undefined && t >= p.highlightFrom ? 0.6 + 0.4 * Math.sin(t * 9) : 0;
+    rr(cx - FP.dx + 12, cy - 34, 2 * FP.dx - 24, 68, 12, null, lit > 0 ? AMBER : '#55556A', lit > 0 ? 6 : 2);
+    sceneText(g.name, cx, above ? cy - 100 : cy + 100, 2 * FP.dx, 42, lit > 0 ? AMBER : '#B8B8CC', 'center', 700);
+  }
+  // The case button's two-pin plug: from a wrong pair (optional) to PWR SW, then pressed fully on.
+  const from = fpCentre(FP_GROUPS.find((g) => g.name === (p.startOn === 'reset' ? 'RESET SW' : 'PWR SW')));
+  const to = fpCentre(FP_GROUPS[1]);
+  const k = ease(span(t, p.move)), lift = Math.sin(Math.PI * k) * 120;
+  const px = lerp(from[0], to[0], k), py = lerp(from[1], to[1], k) - lift;
+  const hover = 1 - back(span(t, p.press));
+  const shown = p.plugFrom === undefined || t >= p.plugFrom;
+  if (shown) {
+    ctx.save(); ctx.globalAlpha *= p.plugFrom === undefined ? 1 : out((t - p.plugFrom) / 0.25);
+    ctx.strokeStyle = '#2A2A36'; ctx.lineWidth = 18; ctx.lineCap = 'round';
+    // The wires leave sideways, at the plug's height, so they never cross a pin label.
+    for (const dy of [-18, 18]) { ctx.beginPath(); ctx.moveTo(px + 100, py + dy - 30 * hover); ctx.bezierCurveTo(px + 300, py + dy, px + 380, py + dy + 80, 1060, py + dy + 160); ctx.stroke(); }
+    const sc = 1 + 0.12 * hover;
+    rr(px - 140 * sc, py - 50 * sc - 30 * hover, 280 * sc, 100 * sc, 12, '#2E2E3C', '#B8B8CC', 4);
+    sceneText('POWER SW', px, py - 30 * hover, 260, 44, '#F0F0FF', 'center', 700);
+    ctx.restore();
+  }
+  if (p.wrongAt !== undefined) cross(from[0] + 190, from[1], 56, RED, out(span(t, [p.wrongAt, p.wrongAt + 0.2])) * (1 - span(t, p.move)));
+  if (p.seatedFrom !== undefined && t >= p.seatedFrom) { ctx.save(); ctx.globalAlpha *= out((t - p.seatedFrom) / 0.25); rr(to[0] - FP.dx - 10, to[1] - 64, 2 * FP.dx + 20, 128, 16, null, GREEN, 7); ctx.restore(); }
+}
+
+// ---- The back of the PC: motherboard video ports high up, the graphics card's ports lower down. ----
+const IO = { boardPort: [372, 640], gpuPort: [664, 1110] };
+function rearIoArt(t, p) {
+  rr(170, 250, 740, 1330, 26, '#15151E', '#3A3A4A', 5);
+  // Motherboard I/O plate: USB, video and audio.
+  const boardBad = p.boardCrossAt !== undefined ? out(span(t, [p.boardCrossAt, p.boardCrossAt + 0.2])) : 0;
+  rr(240, 300, 260, 560, 12, '#1E1E28', '#55556A', 3);
+  for (let r = 0; r < 3; r += 1) for (let c = 0; c < 2; c += 1) rr(272 + c * 110, 340 + r * 70, 86, 40, 6, '#0B0B10', '#6A6A80', 2);
+  rr(322, 612, 100, 56, 10, '#0B0B10', '#8A8AA0', 3);   // the motherboard's video port
+  for (let i = 0; i < 3; i += 1) { ctx.beginPath(); ctx.arc(300 + i * 70, 780, 20, 0, Math.PI * 2); ctx.fillStyle = ['#2E9E5B', '#5B8BD9', '#D9A03B'][i]; ctx.fill(); }
+  sceneText('MOTHERBOARD', 370, 905, 420, 44, boardBad > 0 ? RED : '#B8B8CC', 'center', 700);
+  // Expansion slots and the graphics card's bracket.
+  for (let i = 0; i < 6; i += 1) rr(240, 960 + i * 64, 600, 44, 6, '#1B1B25', '#33333F', 2);
+  const gpuGlow = p.gpuHighlightFrom !== undefined && t >= p.gpuHighlightFrom ? 0.6 + 0.4 * Math.sin(t * 9) : 0;
+  rr(240, 1060, 600, 110, 10, '#24242F', gpuGlow > 0 ? AMBER : '#6A6A80', gpuGlow > 0 ? 6 : 3);
+  for (let i = 0; i < 4; i += 1) rr(300 + i * 120, 1084, 92, 52, 10, '#0B0B10', '#8A8AA0', 3);
+  sceneText('GRAPHICS CARD', 540, 1224, 520, 44, gpuGlow > 0 ? AMBER : '#B8B8CC', 'center', 700);
+  rr(240, 1300, 600, 230, 14, '#1B1B25', '#3A3A4A', 3);
+  ctx.beginPath(); ctx.arc(540, 1415, 90, 0, Math.PI * 2); ctx.strokeStyle = '#2E2E3A'; ctx.lineWidth = 5; ctx.stroke();
+  // The display cable: in the motherboard's port, lifted out, plugged into the card.
+  const k = p.move ? ease(span(t, p.move)) : (p.startIn === 'gpu' ? 1 : 0);
+  const a = IO.boardPort, b = IO.gpuPort, lift = Math.sin(Math.PI * k) * 160;
+  const x = lerp(a[0], b[0], k) + 30 * Math.sin(Math.PI * k), y = lerp(a[1], b[1], k) - lift * 0.3;
+  const moving = k > 0.01 && k < 0.99;
+  ctx.strokeStyle = '#2A2A36'; ctx.lineWidth = 36; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x + 60, y); ctx.bezierCurveTo(x + 260, y, 980, y + 200, 1100, y + 420); ctx.stroke();
+  rr(x - 50, y - 36, 120, 72, 12, '#3A3A4C', moving ? AMBER : '#B8B8CC', 4);
+  cross(IO.boardPort[0] - 100, IO.boardPort[1], 46, RED, boardBad * (1 - span(t, p.move)));
+  if (p.gpuTickAt !== undefined) tick(b[0] - 150, b[1] - 110, 52, GREEN, out(span(t, [p.gpuTickAt, p.gpuTickAt + 0.2])));
+}
+
+// ---- A monitor's on-screen menu: the input list. The screen behind stays dark. ----
+function menuArt(t, p) {
+  const M = { x: 70, y: 420, w: 940, h: 600 };
+  rr(M.x + M.w / 2 - 40, M.y + M.h, 80, 160, 8, '#1C1C26', '#55556A', 3);
+  rr(M.x + M.w / 2 - 200, M.y + M.h + 150, 400, 44, 14, '#1C1C26', '#55556A', 3);
+  rr(M.x, M.y, M.w, M.h, 22, '#1C1C26', '#55556A', 5);
+  rr(M.x + 24, M.y + 24, M.w - 48, M.h - 80, 10, '#050508');
+  // Bezel buttons, bottom right; a press shows as a brief ring.
+  for (let i = 0; i < 4; i += 1) { const bx = M.x + M.w - 80 - i * 70, by = M.y + M.h - 28; ctx.beginPath(); ctx.arc(bx, by, 14, 0, Math.PI * 2); ctx.fillStyle = '#44445A'; ctx.fill();
+    for (const at of p.presses || []) if (i === 0 && t >= at && t < at + 0.3) ring(bx, by, 22 + 40 * ((t - at) / 0.3), CYAN, 5, 1 - (t - at) / 0.3); }
+  const show = p.menuFrom !== undefined ? out(span(t, [p.menuFrom, p.menuFrom + 0.25])) : 0;
+  if (show <= 0) return;
+  ctx.save(); ctx.globalAlpha *= show;
+  const items = p.items || [], X = M.x + 120, Y = M.y + 70, rowH = 104;
+  rr(X - 40, Y - 30, 640, 120 + items.length * rowH, 16, '#13131A', '#8A8AA0', 3);
+  sceneText('INPUT SOURCE', X, Y + 34, 560, 50, '#B8B8CC', 'left', 700);
+  let sel = 0; for (const [at, index] of p.select || []) if (t >= at) sel = index;
+  items.forEach((item, i) => {
+    const y = Y + 120 + i * rowH;
+    if (i === sel) rr(X - 20, y - 44, 600, 88, 12, 'rgba(0,212,255,0.22)', CYAN, 4);
+    sceneText(item, X + 10, y, 420, 54, i === sel ? '#F0F0FF' : '#8888AA', 'left', 700);
+    if (p.confirmAt !== undefined && i === sel && t >= p.confirmAt) tick(X + 520, y, 34, GREEN, out(span(t, [p.confirmAt, p.confirmAt + 0.2])));
+  });
+  ctx.restore();
+}
+
 // ---- The scenes. ----
 function camMove(t, z) {
   if (!z) return [540, 700, 0.9];
   const k = ease(span(t, z.during));
   return [lerp(z.from[0], z.to[0], k), lerp(z.from[1], z.to[1], k), z.from[2] * Math.pow(z.to[2] / z.from[2], k)];
 }
+/** An optional camera move for the newer scenes; without p.zoom they draw at their own framing. */
+function optionalCam(t, p) { if (!p.zoom) return; const cam = camMove(t, p.zoom); ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(cam[2], cam[2]); ctx.translate(-cam[0], -cam[1]); }
 const SCENES = {
   powerButton(t, p) {
+    // Optional camera move (a cut that sets none draws exactly as before).
+    if (p.zoom) { const cam = camMove(t, p.zoom); ctx.translate(W / 2, STORY.y + STORY.height / 2); ctx.scale(cam[2], cam[2]); ctx.translate(-cam[0], -cam[1]); }
     const lit = p.lit ? (p.fansOff ? 1 - span(t, p.fansOff) : 1) : 0;
     const pressed = pressCurve(t, p.press);
     ctx.save(); ctx.translate(40, 565); ctx.scale(0.5, 0.5); ctx.translate(-CASE.x, -CASE.y); front(lit > 0 ? t : 0, lit, pressed);
     const pulse = p.pulseFrom !== undefined ? out((t - p.pulseFrom) / 0.3) : 0;
     if (pulse > 0) { ring(BTN.x, BTN.y, BTN.r + 34 + 16 * Math.sin(t * 6), AMBER, 18, pulse * (0.6 + 0.4 * Math.sin(t * 6))); ring(BTN.x, BTN.y, BTN.r + 6, AMBER, 10, pulse); }
     ctx.restore();
-    monitor();
+    monitor(p.screenTextFrom !== undefined && t >= p.screenTextFrom ? p.screenText : undefined);
     // The finger arrives, presses, and rests on the button until holdUntil (default: leaves right after the press).
     const leave = p.holdUntil ?? p.press + 0.45;
     if (p.press !== undefined) finger(pressed, t >= p.press - 0.3 && t < leave + 0.25 ? clamp((t - (p.press - 0.3)) / 0.12) * (1 - clamp((t - leave) / 0.2)) : 0);
@@ -267,6 +439,9 @@ const SCENES = {
     ctx.save(); ctx.globalAlpha *= inR; connectorFace(780, 900, p.right, p.rightOk, out(span(t, [p.verdictRight, p.verdictRight + 0.2]))); ctx.restore();
   },
   connectorInsert(t, p) { insertArt(t, p); },
+  frontPanelHeader(t, p) { optionalCam(t, p); headerArt(t, p); },
+  rearIo(t, p) { optionalCam(t, p); rearIoArt(t, p); },
+  monitorMenu(t, p) { optionalCam(t, p); menuArt(t, p); },
 };
 
 function story(t) {

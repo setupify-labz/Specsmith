@@ -1,0 +1,768 @@
+{
+  "kind": "daily-short-proposal",
+  "version": "daily-short-proposal-v2",
+  "generatedAt": "2026-10-13T17:47:21.927Z",
+  "status": "awaiting-fact-check",
+  "notPublished": true,
+  "noVoiceGenerated": true,
+  "notScheduled": true,
+  "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
+    "collectedAt": "2026-10-11T20:38:30Z",
+    "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
+    "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
+    "cost": {
+      "vidiqCreditsBefore": 135,
+      "vidiqCreditsAfter": 130,
+      "metricool": "no per-call cost reported"
+    }
+  },
+  "topic": {
+    "id": "cpu-fan-header",
+    "family": "boot-message",
+    "symptom": "The PC shows a CPU fan error message when it starts.",
+    "title": "\"CPU Fan Error\" at Startup? Check the CPU_FAN Header",
+    "animation": "cpu-fan-header",
+    "chosenBy": "data",
+    "dataPick": "cpu-fan-header"
+  },
+  "hook": {
+    "frameOne": "CPU FAN ERROR?"
+  },
+  "script": "\"CPU Fan Error\" at startup? Shut down and unplug it first. Find the CPU_FAN header in your manual. If the cooler's fan is on CHA_FAN, move it to CPU_FAN. Plug it back in. Then start the PC and check again.",
+  "storyboard": {
+    "platform": "youtube-shorts",
+    "targetDurationSeconds": 12.6,
+    "title": "\"CPU Fan Error\" at Startup? Check the CPU_FAN Header",
+    "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+    "beats": [
+      {
+        "startSecond": 0,
+        "endSecond": 1.8,
+        "purpose": "hook",
+        "narration": "\"CPU Fan Error\" at startup?",
+        "visualDirection": "The stylized PC lit; the monitor shows a stylized message, CPU Fan Error!",
+        "onScreenText": "CPU FAN ERROR?",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 1.8,
+        "endSecond": 3.6,
+        "purpose": "commitment",
+        "narration": "Shut down and unplug it first.",
+        "visualDirection": "At the back of the power supply, the power cord comes out of the inlet.",
+        "onScreenText": "UNPLUG FIRST",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 3.6,
+        "endSecond": 5.6,
+        "purpose": "evidence",
+        "narration": "Find the CPU_FAN header in your manual.",
+        "visualDirection": "The side panel slides off; the camera closes on the CPU_FAN header near the top of the board, in an example layout, glowing amber; EXAMPLE LAYOUT.",
+        "onScreenText": "CPU_FAN HEADER → EXAMPLE LAYOUT",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 5.6,
+        "endSecond": 7.4,
+        "purpose": "reversal",
+        "narration": "If the cooler's fan is on CHA_FAN,",
+        "visualDirection": "The camera moves down to CHA_FAN: the cooler's fan plug sits there, a red cross beside it; AIO? CHECK ITS MANUAL.",
+        "onScreenText": "WRONG HEADER → AIO? CHECK ITS MANUAL",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 7.4,
+        "endSecond": 9,
+        "purpose": "payoff",
+        "narration": "move it to CPU_FAN.",
+        "visualDirection": "The camera follows the plug from CHA_FAN up to CPU_FAN, where it lands, outlined green.",
+        "onScreenText": "ON CPU_FAN",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 9,
+        "endSecond": 10.8,
+        "purpose": "cta",
+        "narration": "Plug it back in.",
+        "visualDirection": "At the back, the power cord goes back into the power supply.",
+        "onScreenText": "POWER CORD BACK IN",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      },
+      {
+        "startSecond": 10.8,
+        "endSecond": 12.6,
+        "purpose": "cta",
+        "narration": "Then start the PC and check again.",
+        "visualDirection": "The unlit PC beside the dark monitor, its button pulsing amber. No start or message is shown.",
+        "onScreenText": "(no label: caption only)",
+        "factDependencies": [
+          "cpu-fan-header-unplug",
+          "fan-header",
+          "fan-detect",
+          "fan-aio"
+        ]
+      }
+    ],
+    "finalCta": "Then start the PC and check again.",
+    "factualGuardrails": [
+      "Never say: guaranteed cure for boot failures (It may not work; one check, never a guaranteed fix.)",
+      "Never say: disable the warning in BIOS settings instead (The cut does not advise switching the warning off.)",
+      "Never say: message disappears on the next start (The cut ends before anyone starts the PC; no result is shown.)"
+    ],
+    "persistentDisclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "storyBeats": [
+    {
+      "storyBeat": "problem",
+      "from": 0,
+      "to": 1.8
+    },
+    {
+      "storyBeat": "unplug",
+      "from": 1.8,
+      "to": 3.6
+    },
+    {
+      "storyBeat": "location",
+      "from": 3.6,
+      "to": 5.6
+    },
+    {
+      "storyBeat": "wrong-header",
+      "from": 5.6,
+      "to": 7.4
+    },
+    {
+      "storyBeat": "action",
+      "from": 7.4,
+      "to": 9
+    },
+    {
+      "storyBeat": "power-back",
+      "from": 9,
+      "to": 10.8
+    },
+    {
+      "storyBeat": "try-again",
+      "from": 10.8,
+      "to": 12.6
+    }
+  ],
+  "onScreenLabels": [
+    {
+      "text": "CPU FAN ERROR?",
+      "from": 0,
+      "to": 1.8
+    },
+    {
+      "text": "UNPLUG FIRST",
+      "from": 1.8,
+      "to": 3.6
+    },
+    {
+      "text": "CPU_FAN HEADER",
+      "from": 4.5,
+      "to": 5.6
+    },
+    {
+      "text": "EXAMPLE LAYOUT",
+      "from": 4.5,
+      "to": 5.6
+    },
+    {
+      "text": "WRONG HEADER",
+      "from": 5.7,
+      "to": 7.4
+    },
+    {
+      "text": "AIO? CHECK ITS MANUAL",
+      "from": 5.7,
+      "to": 7.4
+    },
+    {
+      "text": "ON CPU_FAN",
+      "from": 7.4,
+      "to": 9
+    },
+    {
+      "text": "POWER CORD BACK IN",
+      "from": 9.1,
+      "to": 10.8
+    }
+  ],
+  "soundCues": [
+    {
+      "kind": "plug",
+      "at": 2.44,
+      "seconds": 0.2,
+      "reason": "the cord leaves the power supply"
+    },
+    {
+      "kind": "tap",
+      "at": 8.28,
+      "seconds": 0.04,
+      "peakDbfs": -12,
+      "reason": "the fan plug lands on CPU_FAN (stylized)"
+    },
+    {
+      "kind": "plug",
+      "at": 9.59,
+      "seconds": 0.2,
+      "reason": "the cord goes back into the power supply"
+    }
+  ],
+  "evidence": {
+    "channelSignals": [
+      {
+        "id": "46uG78uXmHg",
+        "title": "PC Won't Turn On? Check These 2 Spots First",
+        "theme": "troubleshooting",
+        "families": [
+          "wont-turn-on"
+        ],
+        "ageDays": 1.66,
+        "viewsPerDay": 1174.6,
+        "averageViewPercentage": "unknown",
+        "engagedShare": "unknown",
+        "durationSeconds": 15,
+        "analyticsSampleOk": false
+      },
+      {
+        "id": "pw3xuL0zjho",
+        "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 2.86,
+        "viewsPerDay": 414.4,
+        "averageViewPercentage": 52.59,
+        "engagedShare": 0.373,
+        "durationSeconds": 25,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "648FsZLefnc",
+        "title": "20 Game Leads… Only 4 FPS Apart?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 5.19,
+        "viewsPerDay": 243.2,
+        "averageViewPercentage": 74.93,
+        "engagedShare": 0.34,
+        "durationSeconds": 19,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "cSDhjFC-CI8",
+        "title": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix",
+        "theme": "troubleshooting",
+        "families": [
+          "compatibility"
+        ],
+        "ageDays": 8.02,
+        "viewsPerDay": 237.5,
+        "averageViewPercentage": 87.65,
+        "engagedShare": 0.578,
+        "durationSeconds": 14,
+        "analyticsSampleOk": true
+      }
+    ],
+    "themeSummary": {
+      "troubleshooting": {
+        "videos": 2,
+        "medianViewsPerDay": 706.1,
+        "medianAverageViewPercentage": 87.7,
+        "medianEngagedShare": 57.8
+      },
+      "comparison": {
+        "videos": 2,
+        "medianViewsPerDay": 328.8,
+        "medianAverageViewPercentage": 63.8,
+        "medianEngagedShare": 35.7
+      }
+    },
+    "claims": [
+      {
+        "id": "cpu-fan-header-unplug",
+        "proposition": "unplug the power cable before working inside the PC",
+        "basis": "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "fan-header",
+        "proposition": "the cooler's fan belongs on the CPU_FAN header, not CHA_FAN; the message means the fan is not detected",
+        "basis": "ASUS, \"[Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064)\" (https://www.asus.com/support/faq/1006064/): \"Search-excerpt wording: \"CPU FAN Error\" in POST means the system doesn't detect the FAN; make sure the CPU FAN cable is securely installed to the CPU_FAN connector instead of the CHA_FAN.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "fan-detect",
+        "proposition": "check the CPU_FAN connection when the fan is not detected",
+        "basis": "ASUS, \"[Motherboard] Troubleshooting - An error \"CPU Over Temperature Error\" occurs after bootup (FAQ 1043819)\" (https://www.asus.com/us/support/faq/1043819/): \"Search-excerpt summary: if the cooler fan is not running or cannot be detected (speed N/A), confirm it is properly connected to the CPU_FAN header on the motherboard.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "fan-aio",
+        "proposition": "liquid coolers can be wired to other headers; their manual decides",
+        "basis": "ASUS ROG forum, \"Asus Strix Z790-H Gaming WiFi: CPU FAN ERROR when AIO pump… (forum thread 937761)\" (https://rog-forum.asus.com/t5/intel-700-600-series/asus-strix-z790-h-gaming-wifi-cpu-fan-error-when-aio-pump/td-p/937761): \"Search-excerpt summary: for AIO liquid coolers, replies suggest the pump on AIO_PUMP and fans on CPU_FAN, and to follow the cooler's own manual.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      }
+    ],
+    "riskyClaimsBlocked": [
+      {
+        "id": "fan-fixes-all",
+        "proposition": "guaranteed cure for boot failures",
+        "why": "It may not work; one check, never a guaranteed fix."
+      },
+      {
+        "id": "fan-ignore-setting",
+        "proposition": "disable the warning in BIOS settings instead",
+        "why": "The cut does not advise switching the warning off."
+      },
+      {
+        "id": "fan-message-gone",
+        "proposition": "message disappears on the next start",
+        "why": "The cut ends before anyone starts the PC; no result is shown."
+      }
+    ],
+    "sources": [
+      "Crucial, How to Install Memory in Your Desktop: https://www.crucial.com/support/install-memory-desktop",
+      "ASUS, [Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064): https://www.asus.com/support/faq/1006064/",
+      "ASUS, [Motherboard] Troubleshooting - An error \"CPU Over Temperature Error\" occurs after bootup (FAQ 1043819): https://www.asus.com/us/support/faq/1043819/",
+      "ASUS ROG forum, Asus Strix Z790-H Gaming WiFi: CPU FAN ERROR when AIO pump… (forum thread 937761): https://rog-forum.asus.com/t5/intel-700-600-series/asus-strix-z790-h-gaming-wifi-cpu-fan-error-when-aio-pump/td-p/937761"
+    ]
+  },
+  "metricsThatInfluencedTheChoice": [
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 1174.6,
+      "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 414.4,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 52.59,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 243.2,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 74.93,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 237.5,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 87.65,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the target length"
+    },
+    {
+      "metric": "theme medians (views/day, avg view %, engaged %)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":706.1,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":328.8,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
+    },
+    {
+      "metric": "fastest troubleshooting Short",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1174.6 views/day)",
+      "usedFor": "symptom family: wont-turn-on"
+    },
+    {
+      "metric": "best-retained Short's length",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s",
+      "usedFor": "target length 14 s (clamped to 10-15 s)"
+    },
+    {
+      "metric": "tiktok views by publish day (sum)",
+      "source": "tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542)",
+      "value": 1803,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "instagram views by publish day (sum)",
+      "source": "instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542)",
+      "value": 691,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "editorial prior (NOT data)",
+      "source": "dailyShortProposal/topics.ts",
+      "value": 0.55,
+      "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "animation template length (not data)",
+      "source": "dailyShortProposal/animations.ts (cpu-fan-header)",
+      "value": "12.6 s",
+      "usedFor": "the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched"
+    }
+  ],
+  "unknown": [
+    "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
+    "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.66 days: its views per day are an early figure and may fall as it ages.",
+    "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
+    "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 interactions: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
+  ],
+  "usedTopicLedger": {
+    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
+    "sha256": "8ebbd0ccdc6c02c9408ba709c3ec60074ee83026a7d32db1af4aef31d9820c6c",
+    "entries": [
+      {
+        "topicId": "cpu-power-cable",
+        "markedAt": "2026-10-13T17:45:17.776Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 1"
+      },
+      {
+        "topicId": "front-panel-power-pins",
+        "markedAt": "2026-10-13T17:45:49.159Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 2"
+      },
+      {
+        "topicId": "atx-24pin-cable",
+        "markedAt": "2026-10-13T17:46:21.224Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 3"
+      },
+      {
+        "topicId": "gpu-power-cable",
+        "markedAt": "2026-10-13T17:46:53.537Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 4"
+      },
+      {
+        "topicId": "monitor-input-source",
+        "markedAt": "2026-10-13T17:47:20.622Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 5"
+      }
+    ]
+  },
+  "topicsExcluded": [
+    {
+      "topicId": "ram-not-seated",
+      "why": "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)"
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "atx-24pin-cable",
+      "why": "already taken for review (marked 2026-10-13T17:46:21.224Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "gpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T17:46:53.537Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "monitor-input-source",
+      "why": "already taken for review (marked 2026-10-13T17:47:20.622Z by queue demo (isolated ledger))"
+    }
+  ],
+  "ranking": [
+    {
+      "topicId": "cpu-fan-header",
+      "familyMatch": false,
+      "editorialPrior": 0.55
+    },
+    {
+      "topicId": "ram-two-stick-slots",
+      "familyMatch": false,
+      "editorialPrior": 0.5
+    }
+  ],
+  "gates": {
+    "passed": true,
+    "findings": []
+  },
+  "factCheckRequired": [
+    {
+      "location": "title",
+      "line": "\"CPU Fan Error\" at Startup? Check the CPU_FAN Header",
+      "claimIds": [
+        "fan-header",
+        "fan-detect"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064)\" (https://www.asus.com/support/faq/1006064/): \"Search-excerpt wording: \"CPU FAN Error\" in POST means the system doesn't detect the FAN; make sure the CPU FAN cable is securely installed to the CPU_FAN connector instead of the CHA_FAN.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "ASUS, \"[Motherboard] Troubleshooting - An error \"CPU Over Temperature Error\" occurs after bootup (FAQ 1043819)\" (https://www.asus.com/us/support/faq/1043819/): \"Search-excerpt summary: if the cooler fan is not running or cannot be detected (speed N/A), confirm it is properly connected to the CPU_FAN header on the motherboard.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.narration",
+      "line": "Find the CPU_FAN header in your manual.",
+      "claimIds": [
+        "fan-header"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064)\" (https://www.asus.com/support/faq/1006064/): \"Search-excerpt wording: \"CPU FAN Error\" in POST means the system doesn't detect the FAN; make sure the CPU FAN cable is securely installed to the CPU_FAN connector instead of the CHA_FAN.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.onScreenText",
+      "line": "CPU_FAN HEADER → EXAMPLE LAYOUT",
+      "claimIds": [
+        "fan-header"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064)\" (https://www.asus.com/support/faq/1006064/): \"Search-excerpt wording: \"CPU FAN Error\" in POST means the system doesn't detect the FAN; make sure the CPU FAN cable is securely installed to the CPU_FAN connector instead of the CHA_FAN.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "If the cooler's fan is on CHA_FAN,",
+      "claimIds": [
+        "fan-header"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Why I see the error message CPU FAN Error in POST? (FAQ 1006064)\" (https://www.asus.com/support/faq/1006064/): \"Search-excerpt wording: \"CPU FAN Error\" in POST means the system doesn't detect the FAN; make sure the CPU FAN cable is securely installed to the CPU_FAN connector instead of the CHA_FAN.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    }
+  ],
+  "animatedCut": {
+    "silent": "cpu-fan-header-silent.mp4",
+    "sfx": "cpu-fan-header-sfx.mp4",
+    "silentSha256": "97bd89a1abbfcb3dbb276bcbe69246309c0fc60e6cdbcc8c895b1008d62d14f8",
+    "sfxSha256": "4cfb89fca6996d41b2c1019d24b867f980005a14003d3365cf99cf4369e2271d",
+    "durationSeconds": 12.6,
+    "fps": 30,
+    "disclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "verification": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "silent MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "silent MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "silent MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "sound-effects MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "sound-effects MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "sound-effects MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "every beat's artwork is drawn",
+        "passed": true,
+        "detail": "beat 1: 17.6%; beat 2: 49.7%; beat 3: 70.9%; beat 4: 68.9%; beat 5: 65.1%; beat 6: 50.7%; beat 7: 14.2% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 2 and 6, mean difference 2.8 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "the disclosure line is on every sampled frame",
+        "passed": true,
+        "detail": "lowest 2.9% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 2.9% of the caption band lit"
+      },
+      {
+        "check": "every cue sounds",
+        "passed": true,
+        "detail": "2.44s plug -23.0 dBFS; 8.28s tap -15.0 dBFS; 9.59s plug -23.0 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "2.440s plug +68.0 dB; 8.280s tap +76.0 dB; 9.590s plug +67.3 dB"
+      },
+      {
+        "check": "silence between cues (no stray sound, no boot sound at the end)",
+        "passed": true,
+        "detail": "0.02-2.41 s: -91.0 dBFS; 2.74-8.25 s: -91.0 dBFS; 8.42-9.56 s: -91.0 dBFS; 9.89-12.58 s: -91.0 dBFS"
+      },
+      {
+        "check": "\"tap\" is the clearest cue",
+        "passed": true,
+        "detail": "-15.0 dBFS vs next -23.0 dBFS"
+      },
+      {
+        "check": "the silent MP4 is silent",
+        "passed": true,
+        "detail": "-91.0 dBFS"
+      },
+      {
+        "check": "sound effects stay below a -16 LUFS narration",
+        "passed": true,
+        "detail": "-39.3 LUFS integrated, -15 dBFS peak"
+      }
+    ],
+    "cuePeaks": [
+      {
+        "kind": "plug",
+        "at": 2.44,
+        "reason": "the cord leaves the power supply",
+        "measuredFrom": 2.43,
+        "measuredTo": 2.7,
+        "peakDbfs": -23
+      },
+      {
+        "kind": "tap",
+        "at": 8.28,
+        "reason": "the fan plug lands on CPU_FAN (stylized)",
+        "measuredFrom": 8.27,
+        "measuredTo": 8.379999999999999,
+        "peakDbfs": -15
+      },
+      {
+        "kind": "plug",
+        "at": 9.59,
+        "reason": "the cord goes back into the power supply",
+        "measuredFrom": 9.58,
+        "measuredTo": 9.85,
+        "peakDbfs": -23
+      }
+    ],
+    "loudness": {
+      "integratedLufs": -39.3,
+      "peakDbfs": -15
+    },
+    "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-06/beats-phone.png",
+    "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-06/phone-every-0.25s.png"
+  },
+  "humanGates": {
+    "mechanism": {
+      "trustedApprovalAvailable": false,
+      "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+    },
+    "gates": [
+      {
+        "gate": "hook-on-phone",
+        "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "factual-takeaway",
+        "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "readable-at-size",
+        "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "pacing",
+        "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "style-fits-audience",
+        "question": "Does the style suit a beginner choosing a gaming PC?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "voice-and-mix",
+        "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "disclosures-in-context",
+        "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "rights-and-publication",
+        "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+        "status": "unresolved"
+      }
+    ]
+  }
+}

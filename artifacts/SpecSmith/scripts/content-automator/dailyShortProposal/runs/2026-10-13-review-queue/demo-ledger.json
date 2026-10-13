@@ -1,0 +1,48 @@
+{
+  "kind": "daily-short-used-topics",
+  "version": 1,
+  "entries": [
+    {
+      "topicId": "cpu-power-cable",
+      "markedAt": "2026-10-13T17:45:17.776Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 1"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "markedAt": "2026-10-13T17:45:49.159Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 2"
+    },
+    {
+      "topicId": "atx-24pin-cable",
+      "markedAt": "2026-10-13T17:46:21.224Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 3"
+    },
+    {
+      "topicId": "gpu-power-cable",
+      "markedAt": "2026-10-13T17:46:53.537Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 4"
+    },
+    {
+      "topicId": "monitor-input-source",
+      "markedAt": "2026-10-13T17:47:20.622Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 5"
+    },
+    {
+      "topicId": "cpu-fan-header",
+      "markedAt": "2026-10-13T17:47:52.575Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 6"
+    },
+    {
+      "topicId": "ram-two-stick-slots",
+      "markedAt": "2026-10-13T17:48:24.870Z",
+      "by": "queue demo (isolated ledger)",
+      "note": "demo step 7"
+    }
+  ]
+}

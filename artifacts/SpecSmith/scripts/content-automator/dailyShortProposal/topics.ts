@@ -9,15 +9,24 @@
 // Short goes further (the fact-check human gate never closes on its own).
 //
 // Only a topic with an `animation` (a template registered in animations.ts) is
-// ever proposed; the rest wait here until someone builds their animation.
+// ever proposed; the rest wait here until someone builds their animation. A topic
+// marked `automatic: false` is proposed only on an operator's --topic choice: the
+// automatic review queue holds only data-only specs on the shared scene library.
 //
 // `editorialPrior` is an editorial judgement of how often beginners hit the
 // symptom. It is NOT data, and the proposal record says so wherever it is used.
 
+import type { CutSpec } from "../animationScenes/spec.ts";
 import { CPU_POWER_CUT } from "../nextVideoCpuPower/cut.ts";
+import { ATX_24PIN_CUT } from "../reviewQueue/atx24Pin.ts";
+import { CPU_FAN_HEADER_CUT } from "../reviewQueue/cpuFanHeader.ts";
+import { FRONT_PANEL_PINS_CUT } from "../reviewQueue/frontPanelPins.ts";
+import { GPU_POWER_CABLE_CUT } from "../reviewQueue/gpuPowerCable.ts";
+import { MONITOR_INPUT_SOURCE_CUT } from "../reviewQueue/monitorInputSource.ts";
+import { RAM_SLOTS_CUT } from "../reviewQueue/ramSlots.ts";
 import { TEMPLATES } from "./animations.ts";
 
-export type Family = "wont-turn-on" | "on-no-picture" | "compatibility";
+export type Family = "wont-turn-on" | "on-no-picture" | "compatibility" | "boot-message" | "setup";
 
 export interface TopicBeat {
   readonly seconds: number;
@@ -43,6 +52,8 @@ export interface Topic {
   readonly editorialPrior: number;
   /** The registered animation template that renders this Short (animations.ts). Without one, the topic is never proposed. */
   readonly animation?: string;
+  /** false: never chosen automatically (an operator's --topic only). Default: in the automatic queue. */
+  readonly automatic?: false;
 }
 
 const CRUCIAL = "Crucial, How to Install Memory in Your Desktop (crucial.com/support/install-memory-desktop), checked 2026-10-11; the factual-takeaway gate re-checks it.";
@@ -50,12 +61,27 @@ const RAM_CUT = TEMPLATES["ram-seat"];
 const CPU_CUT = TEMPLATES["cpu-power"];
 const sourceOf = (url: string) => { const src = CPU_POWER_CUT.sources.find((s) => s.url === url)!; return `${src.publisher}, "${src.title}" (${src.url}): "${src.quote}" Checked ${CPU_POWER_CUT.sourcesChecked.on} via search excerpts; the factual-takeaway gate re-reads it.`; };
 
-const MANUAL = "Editorial knowledge of standard desktop assembly; to be checked against a motherboard or case manual (fact-check gate).";
+/** A claim's basis: the spec's own source, quoted as the search excerpt gave it. */
+const basis = (spec: CutSpec, url: string, index = 0) => {
+  const src = spec.sources.filter((s) => s.url === url)[index];
+  if (!src) throw new Error(`${spec.id} has no source ${url}`);
+  return `${src.publisher}, "${src.title}" (${src.url}): "${src.quote}" Checked ${spec.sourcesChecked.on} via search excerpts; the factual-takeaway gate re-reads it.`;
+};
+/** A spec-driven topic's hook and beats are the cut's own (frame one, captions, labels at their exact timing). */
+const fromCut = (spec: CutSpec) => {
+  const t = TEMPLATES[spec.id];
+  return { hook: t.beats[0].onScreenText, beats: t.beats.map((b) => ({ seconds: Math.round((b.to - b.from) * 100) / 100, onScreenText: b.onScreenText, narration: b.caption, visualDirection: b.visualDirection })), animation: spec.id };
+};
+const UNPLUG = (spec: CutSpec) => ({ id: `${spec.id}-unplug`, proposition: "unplug the power cable before working inside the PC", basis: basis(spec, "https://www.crucial.com/support/install-memory-desktop") });
+const NO_BOOT_SHOWN = (id: string) => ({ id: `${id}-boot-shown`, proposition: "successfully boots straight into Windows afterwards", why: "The cut ends before anyone presses the button; no boot is shown or promised." });
+const NOT_GUARANTEED = (id: string) => ({ id: `${id}-fixes-all`, proposition: "guaranteed cure for boot failures", why: "It may not work; one check, never a guaranteed fix." });
 
 export const TOPICS: readonly Topic[] = [
   {
-    // Rendered by the ram-seat template: beats, captions and labels are the cut's own.
+    // Rendered by the ram-seat template: beats, captions and labels are the cut's own. A hand-built cut from
+    // before the scene library: proposed only on an operator's --topic choice, not by the automatic queue.
     id: "ram-not-seated",
+    automatic: false,
     family: "on-no-picture",
     title: "Added RAM, Now It Won't Boot? Check It's Fully Seated",
     symptom: "After adding or moving memory, the PC powers on but does not boot to a picture.",
@@ -108,47 +134,125 @@ export const TOPICS: readonly Topic[] = [
     animation: "cpu-power",
   },
   {
-    id: "monitor-input-source",
-    family: "on-no-picture",
-    title: "PC On, Monitor Blank? Check the Input Setting",
-    symptom: "The PC is on and the monitor is on, but the monitor shows nothing from the PC.",
-    hook: "MONITOR ON, BUT BLANK?",
-    beats: [
-      { seconds: 2.0, onScreenText: "MONITOR ON, BUT BLANK?", narration: "Monitor on, but blank?", visualDirection: "Lit PC beside a monitor with a dark screen." },
-      { seconds: 3.5, onScreenText: "CHECK THE INPUT SETTING", narration: "Check the monitor's input setting.", visualDirection: "Close on the monitor's buttons; a stylized menu opens: HDMI 1, HDMI 2, DisplayPort." },
-      { seconds: 4.0, onScreenText: "MATCH THE PORT YOU USED", narration: "It has to match the port your cable is in.", visualDirection: "The highlight moves to DisplayPort, matching the cable shown at the back." },
-      { seconds: 3.0, onScreenText: "ONE CHECK, THEN THE NEXT", narration: "If that's set, check the cable next.", visualDirection: "The two spots from the two-checks Short, small, as 'next'." },
-    ],
-    finalCta: "Save this for your next build.",
-    coveredBy: [/\binput (source|setting)\b/i],
-    claims: [
-      { id: "input-setting", proposition: "monitors have an input setting that must match the port in use", basis: MANUAL },
-    ],
-    riskyClaims: [
-      { id: "input-fixes-all", proposition: "guaranteed cure for blank screens", why: "It may not work; one check, never a guaranteed fix." },
-    ],
-    editorialPrior: 0.8,
-  },
-  {
     id: "front-panel-power-pins",
     family: "wont-turn-on",
     title: "Power Button Does Nothing? Check the Front-Panel Pins",
     symptom: "Pressing the case power button does nothing at all.",
-    hook: "BUTTON DOES NOTHING?",
-    beats: [
-      { seconds: 2.0, onScreenText: "BUTTON DOES NOTHING?", narration: "Power button does nothing?", visualDirection: "A finger presses the stylized PC's button; nothing lights." },
-      { seconds: 3.5, onScreenText: "CHECK THE FRONT-PANEL PINS", narration: "Check the front-panel pins.", visualDirection: "Close on the bottom-right of the motherboard: a small header with two pins glowing amber." },
-      { seconds: 4.0, onScreenText: "POWER SW: TWO PINS", narration: "The button's two-pin plug goes on the power switch pins.", visualDirection: "The 'POWER SW' plug slides onto the two pins." },
-      { seconds: 3.5, onScreenText: "YOUR MANUAL HAS THE MAP", narration: "Your motherboard manual shows the layout.", visualDirection: "A manual page icon with a pin diagram, 'example only: check your board'." },
-    ],
-    finalCta: "Save this for your next build.",
-    coveredBy: [/\bfront[- ]panel\b/i, /\bpower sw\b/i],
+    ...fromCut(FRONT_PANEL_PINS_CUT),
+    finalCta: "Then try the button again.",
+    coveredBy: [/\bfront[- ]panel\b/i, /\bpwr[ _]?sw\b/i, /\bpower switch (pins|header)\b/i],
     claims: [
-      { id: "fp-two-pins", proposition: "the case power button connects to two pins on the motherboard's front-panel header", basis: MANUAL },
+      UNPLUG(FRONT_PANEL_PINS_CUT),
+      { id: "fp-wrong-pins", proposition: "a case power-switch plug on the wrong front-panel pins can stop the PC powering on", basis: basis(FRONT_PANEL_PINS_CUT, FRONT_PANEL_PINS_CUT.sources[1].url, 0) },
+      { id: "fp-pwr-sw", proposition: "the motherboard manual shows the front-panel layout, and the button's plug belongs on the PWR SW pins", basis: basis(FRONT_PANEL_PINS_CUT, FRONT_PANEL_PINS_CUT.sources[1].url, 1) },
     ],
     riskyClaims: [
-      { id: "fp-fixes-all", proposition: "guaranteed cure for dead power buttons", why: "It may not work; one check, never a guaranteed fix." },
+      NOT_GUARANTEED("fp"),
+      { id: "fp-same-layout", proposition: "identical pin order across all motherboards", why: "Layouts differ; the cut labels its header EXAMPLE LAYOUT and sends viewers to their manual." },
+      NO_BOOT_SHOWN("fp"),
     ],
     editorialPrior: 0.7,
+  },
+  {
+    id: "atx-24pin-cable",
+    family: "wont-turn-on",
+    title: "New Build Won't Turn On? Check the 24-Pin Cable",
+    symptom: "Pressing the power button on a newly built PC does nothing.",
+    ...fromCut(ATX_24PIN_CUT),
+    finalCta: "Then try booting again.",
+    coveredBy: [/\b24[- ]?pin\b/i, /\bmain power (cable|connector)\b/i, /\beatxpwr\b/i],
+    claims: [
+      UNPLUG(ATX_24PIN_CUT),
+      { id: "atx-needed", proposition: "the 24-pin main power connector is on the motherboard maker's no-power checklist", basis: basis(ATX_24PIN_CUT, ATX_24PIN_CUT.sources[1].url) },
+      { id: "atx-latch", proposition: "push the 24-pin plug fully in until its latch catches", basis: `${basis(ATX_24PIN_CUT, ATX_24PIN_CUT.sources[2].url)} Also: ${basis(ATX_24PIN_CUT, ATX_24PIN_CUT.sources[3].url)}` },
+    ],
+    riskyClaims: [
+      NOT_GUARANTEED("atx"),
+      { id: "atx-header-universal", proposition: "identical socket placement on all motherboards", why: "Positions vary; the layout is labelled POSITION VARIES." },
+      NO_BOOT_SHOWN("atx"),
+    ],
+    editorialPrior: 0.65,
+  },
+  {
+    id: "gpu-power-cable",
+    family: "on-no-picture",
+    title: "PC On, But No Picture? Check the Graphics Card's Power Cable",
+    symptom: "The PC turns on (fans spin) but the monitor shows nothing.",
+    ...fromCut(GPU_POWER_CABLE_CUT),
+    finalCta: "Then try booting again.",
+    coveredBy: [/\b(gpu|graphics card)\b.*\bpower (cable|connector|socket)/i, /\bpcie power\b/i],
+    claims: [
+      UNPLUG(GPU_POWER_CABLE_CUT),
+      { id: "gpu-own-cables", proposition: "a graphics card's power comes from its own cables from the power supply", basis: basis(GPU_POWER_CABLE_CUT, GPU_POWER_CABLE_CUT.sources[1].url) },
+      { id: "gpu-connectors", proposition: "check the card's power connectors are properly connected, all of them where a card has several", basis: `${basis(GPU_POWER_CABLE_CUT, GPU_POWER_CABLE_CUT.sources[2].url)} Also: ${basis(GPU_POWER_CABLE_CUT, GPU_POWER_CABLE_CUT.sources[3].url)}` },
+      { id: "gpu-no-picture", proposition: "a PC that is on with no picture can come down to the graphics card's power cables", basis: basis(GPU_POWER_CABLE_CUT, GPU_POWER_CABLE_CUT.sources[4].url) },
+      { id: "gpu-psu-own", proposition: "use the power supply's own cable", basis: basis(GPU_POWER_CABLE_CUT, "https://knowledge.seasonic.com/article/68-cable-compatibility") },
+    ],
+    riskyClaims: [
+      NOT_GUARANTEED("gpu"),
+      { id: "gpu-connector-type", proposition: "one universal connector type fits all graphics cards", why: "Cards use different connectors (6+2-pin, 12V-2x6 and others); the cut says CHECK YOUR CARD'S MANUAL." },
+      { id: "gpu-cable-swap", proposition: "any modular lead swaps freely between different PSU brands", why: "Modular cables can differ between brands, series and models." },
+      NO_BOOT_SHOWN("gpu"),
+    ],
+    editorialPrior: 0.75,
+  },
+  {
+    id: "monitor-input-source",
+    family: "on-no-picture",
+    title: "PC On, Monitor Blank? Check the Input Setting",
+    symptom: "The PC is on and the monitor is on, but the monitor shows nothing from the PC.",
+    ...fromCut(MONITOR_INPUT_SOURCE_CUT),
+    finalCta: "Then check the screen again.",
+    coveredBy: [/\binput (source|setting|menu)\b/i],
+    claims: [
+      { id: "input-match", proposition: "the monitor's input setting has to match the port the cable is in", basis: basis(MONITOR_INPUT_SOURCE_CUT, MONITOR_INPUT_SOURCE_CUT.sources[0].url) },
+      { id: "input-menu", proposition: "pick the matching input (or auto-detect) in the monitor's own menu", basis: basis(MONITOR_INPUT_SOURCE_CUT, MONITOR_INPUT_SOURCE_CUT.sources[1].url) },
+    ],
+    riskyClaims: [
+      { id: "input-fixes-all", proposition: "guaranteed cure for blank screens", why: "It may not work; one check, never a guaranteed fix." },
+      { id: "input-picture-shown", proposition: "picture instantly appears afterwards", why: "The cut ends on a dark screen; no picture is shown or promised." },
+    ],
+    editorialPrior: 0.6,
+  },
+  {
+    id: "cpu-fan-header",
+    family: "boot-message",
+    title: "\"CPU Fan Error\" at Startup? Check the CPU_FAN Header",
+    symptom: "The PC shows a CPU fan error message when it starts.",
+    ...fromCut(CPU_FAN_HEADER_CUT),
+    finalCta: "Then start the PC and check again.",
+    coveredBy: [/\bcpu[ _]fan\b/i, /\bfan error\b/i],
+    claims: [
+      UNPLUG(CPU_FAN_HEADER_CUT),
+      { id: "fan-header", proposition: "the cooler's fan belongs on the CPU_FAN header, not CHA_FAN; the message means the fan is not detected", basis: basis(CPU_FAN_HEADER_CUT, CPU_FAN_HEADER_CUT.sources[1].url) },
+      { id: "fan-detect", proposition: "check the CPU_FAN connection when the fan is not detected", basis: basis(CPU_FAN_HEADER_CUT, CPU_FAN_HEADER_CUT.sources[2].url) },
+      { id: "fan-aio", proposition: "liquid coolers can be wired to other headers; their manual decides", basis: basis(CPU_FAN_HEADER_CUT, CPU_FAN_HEADER_CUT.sources[3].url) },
+    ],
+    riskyClaims: [
+      NOT_GUARANTEED("fan"),
+      { id: "fan-ignore-setting", proposition: "disable the warning in BIOS settings instead", why: "The cut does not advise switching the warning off." },
+      { id: "fan-message-gone", proposition: "message disappears on the next start", why: "The cut ends before anyone starts the PC; no result is shown." },
+    ],
+    editorialPrior: 0.55,
+  },
+  {
+    id: "ram-two-stick-slots",
+    family: "setup",
+    title: "Using Two RAM Sticks? Check Which Slots",
+    symptom: "Two memory modules are installed side by side instead of in the slots the manual recommends.",
+    ...fromCut(RAM_SLOTS_CUT),
+    finalCta: "Then try booting again.",
+    coveredBy: [/\b(a2|b2)\b.*\b(a2|b2)\b/i, /\bdual[- ]channel\b/i, /\bwhich (ram|memory) slots?\b/i],
+    claims: [
+      UNPLUG(RAM_SLOTS_CUT),
+      { id: "slots-manual", proposition: "the manual lists which slots to use for two modules; on many ASUS boards, A2 and B2", basis: `${basis(RAM_SLOTS_CUT, RAM_SLOTS_CUT.sources[1].url)} Also: ${basis(RAM_SLOTS_CUT, RAM_SLOTS_CUT.sources[2].url)}` },
+      { id: "slots-vary", proposition: "not every board uses A2 and B2; the board's own manual decides", basis: basis(RAM_SLOTS_CUT, RAM_SLOTS_CUT.sources[3].url) },
+    ],
+    riskyClaims: [
+      { id: "slots-speed", proposition: "doubles memory speed and frame rates", why: "No speed or performance claim is made or measured." },
+      { id: "slots-universal", proposition: "identical slot pairs on all motherboards", why: "Slot pairs vary by board; the cut says ON MANY BOARDS and labels its layout EXAMPLE." },
+      NO_BOOT_SHOWN("slots"),
+    ],
+    editorialPrior: 0.5,
   },
 ];

@@ -1,0 +1,771 @@
+{
+  "kind": "daily-short-proposal",
+  "version": "daily-short-proposal-v2",
+  "generatedAt": "2026-10-13T17:45:50.410Z",
+  "status": "awaiting-fact-check",
+  "notPublished": true,
+  "noVoiceGenerated": true,
+  "notScheduled": true,
+  "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
+    "collectedAt": "2026-10-11T20:38:30Z",
+    "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
+    "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
+    "cost": {
+      "vidiqCreditsBefore": 135,
+      "vidiqCreditsAfter": 130,
+      "metricool": "no per-call cost reported"
+    }
+  },
+  "topic": {
+    "id": "atx-24pin-cable",
+    "family": "wont-turn-on",
+    "symptom": "Pressing the power button on a newly built PC does nothing.",
+    "title": "New Build Won't Turn On? Check the 24-Pin Cable",
+    "animation": "atx-24pin",
+    "chosenBy": "data",
+    "dataPick": "atx-24pin-cable"
+  },
+  "hook": {
+    "frameOne": "NEW BUILD WON'T TURN ON?"
+  },
+  "script": "New build won't turn on? Unplug it before opening the case. Find the 24-pin power socket. Push the 24-pin cable all the way in, until its latch catches. Plug it back in. Then try booting again.",
+  "storyboard": {
+    "platform": "youtube-shorts",
+    "targetDurationSeconds": 12.6,
+    "title": "New Build Won't Turn On? Check the 24-Pin Cable",
+    "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+    "beats": [
+      {
+        "startSecond": 0,
+        "endSecond": 1.6,
+        "purpose": "hook",
+        "narration": "New build won't turn on?",
+        "visualDirection": "A finger presses the stylized PC's power button and rests there; the monitor stays dark.",
+        "onScreenText": "NEW BUILD WON'T TURN ON?",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 1.6,
+        "endSecond": 3.4,
+        "purpose": "commitment",
+        "narration": "Unplug it before opening the case.",
+        "visualDirection": "At the back of the power supply, the power cord comes out of the inlet.",
+        "onScreenText": "UNPLUG FIRST",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 3.4,
+        "endSecond": 5.2,
+        "purpose": "evidence",
+        "narration": "Find the 24-pin power socket.",
+        "visualDirection": "The side panel slides off; the camera closes on a 24-pin socket at the board's edge in an example layout, outlined amber, marked POSITION VARIES.",
+        "onScreenText": "24-PIN POWER SOCKET → POSITION VARIES",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 5.2,
+        "endSecond": 7.1,
+        "purpose": "payoff",
+        "narration": "Push the 24-pin cable all the way in,",
+        "visualDirection": "Side view: the plug marked 24-PIN lowers onto the socket and thumbs press it home.",
+        "onScreenText": "PUSH IT ALL THE WAY IN",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 7.1,
+        "endSecond": 9,
+        "purpose": "payoff",
+        "narration": "until its latch catches.",
+        "visualDirection": "The latch hooks over the socket's tab; the plug is outlined green.",
+        "onScreenText": "FULLY IN",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 9,
+        "endSecond": 10.8,
+        "purpose": "cta",
+        "narration": "Plug it back in.",
+        "visualDirection": "The camera pulls back from the filled socket; the panel slides back on; at the back, the cord goes back in.",
+        "onScreenText": "POWER CORD BACK IN",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      },
+      {
+        "startSecond": 10.8,
+        "endSecond": 12.6,
+        "purpose": "cta",
+        "narration": "Then try booting again.",
+        "visualDirection": "The unlit PC beside the dark monitor, its power button pulsing amber. No one presses it; no boot is shown.",
+        "onScreenText": "(no label: caption only)",
+        "factDependencies": [
+          "atx-24pin-unplug",
+          "atx-needed",
+          "atx-latch"
+        ]
+      }
+    ],
+    "finalCta": "Then try booting again.",
+    "factualGuardrails": [
+      "Never say: guaranteed cure for boot failures (It may not work; one check, never a guaranteed fix.)",
+      "Never say: identical socket placement on all motherboards (Positions vary; the layout is labelled POSITION VARIES.)",
+      "Never say: successfully boots straight into Windows afterwards (The cut ends before anyone presses the button; no boot is shown or promised.)"
+    ],
+    "persistentDisclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "storyBeats": [
+    {
+      "storyBeat": "problem",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "storyBeat": "unplug",
+      "from": 1.6,
+      "to": 3.4
+    },
+    {
+      "storyBeat": "location",
+      "from": 3.4,
+      "to": 5.2
+    },
+    {
+      "storyBeat": "action",
+      "from": 5.2,
+      "to": 7.1
+    },
+    {
+      "storyBeat": "latch",
+      "from": 7.1,
+      "to": 9
+    },
+    {
+      "storyBeat": "power-back",
+      "from": 9,
+      "to": 10.8
+    },
+    {
+      "storyBeat": "try-again",
+      "from": 10.8,
+      "to": 12.6
+    }
+  ],
+  "onScreenLabels": [
+    {
+      "text": "NEW BUILD WON'T TURN ON?",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "text": "UNPLUG FIRST",
+      "from": 1.6,
+      "to": 3.4
+    },
+    {
+      "text": "24-PIN POWER SOCKET",
+      "from": 4.2,
+      "to": 5.2
+    },
+    {
+      "text": "POSITION VARIES",
+      "from": 4.35,
+      "to": 5.2
+    },
+    {
+      "text": "PUSH IT ALL THE WAY IN",
+      "from": 5.3,
+      "to": 7.1
+    },
+    {
+      "text": "FULLY IN",
+      "from": 7.1,
+      "to": 9
+    },
+    {
+      "text": "POWER CORD BACK IN",
+      "from": 9.45,
+      "to": 10.8
+    }
+  ],
+  "soundCues": [
+    {
+      "kind": "button",
+      "at": 0.3,
+      "seconds": 0.05,
+      "reason": "the power button is pressed (nothing happens on screen)"
+    },
+    {
+      "kind": "plug",
+      "at": 2.24,
+      "seconds": 0.2,
+      "reason": "the cord leaves the power supply"
+    },
+    {
+      "kind": "tap",
+      "at": 5.95,
+      "seconds": 0.04,
+      "reason": "the plug lands on the socket"
+    },
+    {
+      "kind": "snap",
+      "at": 6.53,
+      "seconds": 0.06,
+      "reason": "the plug's latch hooks over the socket's tab (stylized)"
+    },
+    {
+      "kind": "plug",
+      "at": 10.04,
+      "seconds": 0.2,
+      "reason": "the cord goes back into the power supply"
+    }
+  ],
+  "evidence": {
+    "channelSignals": [
+      {
+        "id": "46uG78uXmHg",
+        "title": "PC Won't Turn On? Check These 2 Spots First",
+        "theme": "troubleshooting",
+        "families": [
+          "wont-turn-on"
+        ],
+        "ageDays": 1.66,
+        "viewsPerDay": 1174.6,
+        "averageViewPercentage": "unknown",
+        "engagedShare": "unknown",
+        "durationSeconds": 15,
+        "analyticsSampleOk": false
+      },
+      {
+        "id": "pw3xuL0zjho",
+        "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 2.86,
+        "viewsPerDay": 414.4,
+        "averageViewPercentage": 52.59,
+        "engagedShare": 0.373,
+        "durationSeconds": 25,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "648FsZLefnc",
+        "title": "20 Game Leads… Only 4 FPS Apart?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 5.19,
+        "viewsPerDay": 243.2,
+        "averageViewPercentage": 74.93,
+        "engagedShare": 0.34,
+        "durationSeconds": 19,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "cSDhjFC-CI8",
+        "title": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix",
+        "theme": "troubleshooting",
+        "families": [
+          "compatibility"
+        ],
+        "ageDays": 8.02,
+        "viewsPerDay": 237.5,
+        "averageViewPercentage": 87.65,
+        "engagedShare": 0.578,
+        "durationSeconds": 14,
+        "analyticsSampleOk": true
+      }
+    ],
+    "themeSummary": {
+      "troubleshooting": {
+        "videos": 2,
+        "medianViewsPerDay": 706.1,
+        "medianAverageViewPercentage": 87.7,
+        "medianEngagedShare": 57.8
+      },
+      "comparison": {
+        "videos": 2,
+        "medianViewsPerDay": 328.8,
+        "medianAverageViewPercentage": 63.8,
+        "medianEngagedShare": 35.7
+      }
+    },
+    "claims": [
+      {
+        "id": "atx-24pin-unplug",
+        "proposition": "unplug the power cable before working inside the PC",
+        "basis": "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "atx-needed",
+        "proposition": "the 24-pin main power connector is on the motherboard maker's no-power checklist",
+        "basis": "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Some motherboard may contain 8-pin EATX12V_1, 4-pin EATX12V_2 and 24-pin EATXPWR, we suggest to connect all three connectors to the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "atx-latch",
+        "proposition": "push the 24-pin plug fully in until its latch catches",
+        "basis": "Corsair, \"PC Won't Turn On: What You Need to Try\" (https://www.corsair.com/us/en/explorer/diy-builder/blogs/pc-wont-turn-on-what-you-need-to-try/): \"Search-excerpt summary: start with the motherboard's 24-pin connector, making sure it is firmly seated and that its latch is fully engaged.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: Corsair, \"PSU: How to Avoid Current Overload/Connector Issues\" (https://help.corsair.com/hc/en-us/articles/10700487373197-PSU-How-to-Avoid-Current-Overload-Connector-Issues): \"Make sure connectors click fully into place.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      }
+    ],
+    "riskyClaimsBlocked": [
+      {
+        "id": "atx-fixes-all",
+        "proposition": "guaranteed cure for boot failures",
+        "why": "It may not work; one check, never a guaranteed fix."
+      },
+      {
+        "id": "atx-header-universal",
+        "proposition": "identical socket placement on all motherboards",
+        "why": "Positions vary; the layout is labelled POSITION VARIES."
+      },
+      {
+        "id": "atx-boot-shown",
+        "proposition": "successfully boots straight into Windows afterwards",
+        "why": "The cut ends before anyone presses the button; no boot is shown or promised."
+      }
+    ],
+    "sources": [
+      "Crucial, How to Install Memory in Your Desktop: https://www.crucial.com/support/install-memory-desktop",
+      "ASUS, [Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632): https://www.asus.com/us/support/faq/1042632/",
+      "Corsair, PC Won't Turn On: What You Need to Try: https://www.corsair.com/us/en/explorer/diy-builder/blogs/pc-wont-turn-on-what-you-need-to-try/",
+      "Corsair, PSU: How to Avoid Current Overload/Connector Issues: https://help.corsair.com/hc/en-us/articles/10700487373197-PSU-How-to-Avoid-Current-Overload-Connector-Issues"
+    ]
+  },
+  "metricsThatInfluencedTheChoice": [
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 1174.6,
+      "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 414.4,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 52.59,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 243.2,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 74.93,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 237.5,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 87.65,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the target length"
+    },
+    {
+      "metric": "theme medians (views/day, avg view %, engaged %)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":706.1,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":328.8,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
+    },
+    {
+      "metric": "fastest troubleshooting Short",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1174.6 views/day)",
+      "usedFor": "symptom family: wont-turn-on"
+    },
+    {
+      "metric": "best-retained Short's length",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s",
+      "usedFor": "target length 14 s (clamped to 10-15 s)"
+    },
+    {
+      "metric": "tiktok views by publish day (sum)",
+      "source": "tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542)",
+      "value": 1803,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "instagram views by publish day (sum)",
+      "source": "instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542)",
+      "value": 691,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "editorial prior (NOT data)",
+      "source": "dailyShortProposal/topics.ts",
+      "value": 0.65,
+      "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "animation template length (not data)",
+      "source": "dailyShortProposal/animations.ts (atx-24pin)",
+      "value": "12.6 s",
+      "usedFor": "the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched"
+    }
+  ],
+  "unknown": [
+    "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
+    "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.66 days: its views per day are an early figure and may fall as it ages.",
+    "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
+    "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 interactions: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
+  ],
+  "usedTopicLedger": {
+    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
+    "sha256": "8c1e32949953604ec69a0ce834f5c7907d56a5e2a65f59631917c803166e5c97",
+    "entries": [
+      {
+        "topicId": "cpu-power-cable",
+        "markedAt": "2026-10-13T17:45:17.776Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 1"
+      },
+      {
+        "topicId": "front-panel-power-pins",
+        "markedAt": "2026-10-13T17:45:49.159Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 2"
+      }
+    ]
+  },
+  "topicsExcluded": [
+    {
+      "topicId": "ram-not-seated",
+      "why": "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)"
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+    }
+  ],
+  "ranking": [
+    {
+      "topicId": "atx-24pin-cable",
+      "familyMatch": true,
+      "editorialPrior": 0.65
+    },
+    {
+      "topicId": "gpu-power-cable",
+      "familyMatch": false,
+      "editorialPrior": 0.75
+    },
+    {
+      "topicId": "monitor-input-source",
+      "familyMatch": false,
+      "editorialPrior": 0.6
+    },
+    {
+      "topicId": "cpu-fan-header",
+      "familyMatch": false,
+      "editorialPrior": 0.55
+    },
+    {
+      "topicId": "ram-two-stick-slots",
+      "familyMatch": false,
+      "editorialPrior": 0.5
+    }
+  ],
+  "gates": {
+    "passed": true,
+    "findings": []
+  },
+  "factCheckRequired": [
+    {
+      "location": "beat-2.narration",
+      "line": "Unplug it before opening the case.",
+      "claimIds": [
+        "atx-24pin-unplug"
+      ],
+      "bases": [
+        "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.narration",
+      "line": "Find the 24-pin power socket.",
+      "claimIds": [
+        "atx-needed"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Some motherboard may contain 8-pin EATX12V_1, 4-pin EATX12V_2 and 24-pin EATXPWR, we suggest to connect all three connectors to the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.onScreenText",
+      "line": "24-PIN POWER SOCKET → POSITION VARIES",
+      "claimIds": [
+        "atx-needed"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Some motherboard may contain 8-pin EATX12V_1, 4-pin EATX12V_2 and 24-pin EATXPWR, we suggest to connect all three connectors to the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "Push the 24-pin cable all the way in,",
+      "claimIds": [
+        "atx-latch"
+      ],
+      "bases": [
+        "Corsair, \"PC Won't Turn On: What You Need to Try\" (https://www.corsair.com/us/en/explorer/diy-builder/blogs/pc-wont-turn-on-what-you-need-to-try/): \"Search-excerpt summary: start with the motherboard's 24-pin connector, making sure it is firmly seated and that its latch is fully engaged.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: Corsair, \"PSU: How to Avoid Current Overload/Connector Issues\" (https://help.corsair.com/hc/en-us/articles/10700487373197-PSU-How-to-Avoid-Current-Overload-Connector-Issues): \"Make sure connectors click fully into place.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-5.narration",
+      "line": "until its latch catches.",
+      "claimIds": [
+        "atx-latch"
+      ],
+      "bases": [
+        "Corsair, \"PC Won't Turn On: What You Need to Try\" (https://www.corsair.com/us/en/explorer/diy-builder/blogs/pc-wont-turn-on-what-you-need-to-try/): \"Search-excerpt summary: start with the motherboard's 24-pin connector, making sure it is firmly seated and that its latch is fully engaged.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: Corsair, \"PSU: How to Avoid Current Overload/Connector Issues\" (https://help.corsair.com/hc/en-us/articles/10700487373197-PSU-How-to-Avoid-Current-Overload-Connector-Issues): \"Make sure connectors click fully into place.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    }
+  ],
+  "animatedCut": {
+    "silent": "atx-24pin-silent.mp4",
+    "sfx": "atx-24pin-sfx.mp4",
+    "silentSha256": "e1141b35de99f0c486b769a674099e3ad997ab92fcd841f977432c88c233faae",
+    "sfxSha256": "5b78bb46320e5364e971b037cafd2ba2bca609d091bd5eea98a7149e9a225367",
+    "durationSeconds": 12.6,
+    "fps": 30,
+    "disclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "verification": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "silent MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "silent MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "silent MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "sound-effects MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "sound-effects MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "sound-effects MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "every beat's artwork is drawn",
+        "passed": true,
+        "detail": "beat 1: 15.1%; beat 2: 49.7%; beat 3: 63.4%; beat 4: 25.7%; beat 5: 25.1%; beat 6: 50.7%; beat 7: 14.6% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 1 and 7, mean difference 2.3 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "the disclosure line is on every sampled frame",
+        "passed": true,
+        "detail": "lowest 3.1% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 2.9% of the caption band lit"
+      },
+      {
+        "check": "every cue sounds",
+        "passed": true,
+        "detail": "0.30s button -26.0 dBFS; 2.24s plug -23.1 dBFS; 5.95s tap -29.0 dBFS; 6.53s snap -12.4 dBFS; 10.04s plug -23.0 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "0.300s button +65.0 dB; 2.240s plug +67.9 dB; 5.950s tap +62.0 dB; 6.530s snap +78.6 dB; 10.040s plug +68.0 dB"
+      },
+      {
+        "check": "silence between cues (no stray sound, no boot sound at the end)",
+        "passed": true,
+        "detail": "0.02-0.27 s: -91.0 dBFS; 0.45-2.21 s: -91.0 dBFS; 2.54-5.92 s: -91.0 dBFS; 6.09-6.50 s: -91.0 dBFS; 6.69-10.01 s: -91.0 dBFS; 10.34-12.58 s: -91.0 dBFS"
+      },
+      {
+        "check": "\"snap\" is the clearest cue",
+        "passed": true,
+        "detail": "-12.4 dBFS vs next -23.0 dBFS"
+      },
+      {
+        "check": "the silent MP4 is silent",
+        "passed": true,
+        "detail": "-91.0 dBFS"
+      },
+      {
+        "check": "sound effects stay below a -16 LUFS narration",
+        "passed": true,
+        "detail": "-36.2 LUFS integrated, -12.4 dBFS peak"
+      }
+    ],
+    "cuePeaks": [
+      {
+        "kind": "button",
+        "at": 0.3,
+        "reason": "the power button is pressed (nothing happens on screen)",
+        "measuredFrom": 0.29,
+        "measuredTo": 0.41,
+        "peakDbfs": -26
+      },
+      {
+        "kind": "plug",
+        "at": 2.24,
+        "reason": "the cord leaves the power supply",
+        "measuredFrom": 2.2300000000000004,
+        "measuredTo": 2.5000000000000004,
+        "peakDbfs": -23.1
+      },
+      {
+        "kind": "tap",
+        "at": 5.95,
+        "reason": "the plug lands on the socket",
+        "measuredFrom": 5.94,
+        "measuredTo": 6.05,
+        "peakDbfs": -29
+      },
+      {
+        "kind": "snap",
+        "at": 6.53,
+        "reason": "the plug's latch hooks over the socket's tab (stylized)",
+        "measuredFrom": 6.5200000000000005,
+        "measuredTo": 6.6499999999999995,
+        "peakDbfs": -12.4
+      },
+      {
+        "kind": "plug",
+        "at": 10.04,
+        "reason": "the cord goes back into the power supply",
+        "measuredFrom": 10.03,
+        "measuredTo": 10.299999999999999,
+        "peakDbfs": -23
+      }
+    ],
+    "loudness": {
+      "integratedLufs": -36.2,
+      "peakDbfs": -12.4
+    },
+    "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-03/beats-phone.png",
+    "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-03/phone-every-0.25s.png"
+  },
+  "humanGates": {
+    "mechanism": {
+      "trustedApprovalAvailable": false,
+      "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+    },
+    "gates": [
+      {
+        "gate": "hook-on-phone",
+        "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "factual-takeaway",
+        "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "readable-at-size",
+        "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "pacing",
+        "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "style-fits-audience",
+        "question": "Does the style suit a beginner choosing a gaming PC?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "voice-and-mix",
+        "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "disclosures-in-context",
+        "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "rights-and-publication",
+        "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+        "status": "unresolved"
+      }
+    ]
+  }
+}

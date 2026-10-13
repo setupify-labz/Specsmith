@@ -23,6 +23,7 @@ import type { ChannelSnapshot, Metric, YouTubeVideo } from "./snapshot.ts";
 import { DailyProposalError } from "./snapshot.ts";
 import { TEMPLATES } from "./animations.ts";
 import { TOPICS, type Family, type Topic } from "./topics.ts";
+import type { UsedEntry } from "./usedTopics.ts";
 
 export const MIN_ANALYTICS_VIEWS = 300;
 // Titles are matched after normalizeTitle(): typographic apostrophes (’ ‘ ʼ) become ', so a pattern written with ' matches both.
@@ -108,6 +109,8 @@ export interface SelectOptions {
    * data, and the data's own pick is recorded next to it.
    */
   readonly topicId?: string;
+  /** Topics a person has already taken for review (usedTopics.ts): never proposed again, even on --topic. */
+  readonly used?: readonly UsedEntry[];
 }
 
 export function selectTopic(snapshot: ChannelSnapshot, options: SelectOptions = {}): Selection {
@@ -166,13 +169,17 @@ export function selectTopic(snapshot: ChannelSnapshot, options: SelectOptions = 
   // Topics: drop the ones the job cannot render and the covered ones, then rank.
   const titles = yt.videos.map((v) => normalizeTitle(v.title)).join("\n");
   const excluded: { topicId: string; why: string }[] = [];
+  const usedBy = new Map((options.used ?? []).map((e) => [e.topicId, e]));
   const open = topics.filter((topic) => {
+    const used = usedBy.get(topic.id);
+    if (used) { excluded.push({ topicId: topic.id, why: `already taken for review (marked ${used.markedAt} by ${used.by})` }); return false; }
     if (!topic.animation || !TEMPLATES[topic.animation]) { excluded.push({ topicId: topic.id, why: "no animation template yet (the job proposes only what it can render)" }); return false; }
+    if (topic.automatic === false && topic.id !== options.topicId) { excluded.push({ topicId: topic.id, why: "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)" }); return false; }
     const hit = topic.coveredBy.find((re) => re.test(titles));
     if (hit) excluded.push({ topicId: topic.id, why: `an existing title matches ${hit}` });
     return !hit;
   });
-  if (open.length === 0) throw new DailyProposalError("no-topic", `No producible topic is left: ${excluded.map((e) => `${e.topicId} (${e.why})`).join("; ")}. Build an animation template for an uncovered topic (animations.ts) before the next run.`);
+  if (open.length === 0) throw new DailyProposalError("no-topic", `No producible topic is left: ${excluded.map((e) => `${e.topicId} (${e.why})`).join("; ")}. Add a topic with a data-only cut to the review queue (reviewQueue/, topics.ts) before the next run.`);
   const ranking = open.map((topic, order) => ({ topic, order, familyMatch: families.has(topic.family) }))
     .sort((a, b) => Number(b.familyMatch) - Number(a.familyMatch) || b.topic.editorialPrior - a.topic.editorialPrior || a.order - b.order);
   influences.push({ metric: "editorial prior (NOT data)", source: "dailyShortProposal/topics.ts", value: ranking[0].topic.editorialPrior, usedFor: "tie-break among topics in the same family" });

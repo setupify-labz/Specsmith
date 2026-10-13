@@ -1,0 +1,122 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "silent MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "silent MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "silent MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "sound-effects MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "sound-effects MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "sound-effects MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "every beat's artwork is drawn",
+      "passed": true,
+      "detail": "beat 1: 17.6%; beat 2: 49.7%; beat 3: 70.9%; beat 4: 68.9%; beat 5: 65.1%; beat 6: 50.7%; beat 7: 14.2% of the art region not background (at least 5%)"
+    },
+    {
+      "check": "every beat's artwork differs from every other beat's",
+      "passed": true,
+      "detail": "closest pair: beats 2 and 6, mean difference 2.8 grey levels (at least 2)"
+    },
+    {
+      "check": "the ILLUSTRATION band is on every sampled frame",
+      "passed": true,
+      "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+    },
+    {
+      "check": "the disclosure line is on every sampled frame",
+      "passed": true,
+      "detail": "lowest 2.9% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+    },
+    {
+      "check": "every sampled frame has caption text",
+      "passed": true,
+      "detail": "lowest 2.9% of the caption band lit"
+    },
+    {
+      "check": "every cue sounds",
+      "passed": true,
+      "detail": "2.44s plug -23.0 dBFS; 8.28s tap -15.0 dBFS; 9.59s plug -23.0 dBFS"
+    },
+    {
+      "check": "every short cue has its own onset",
+      "passed": true,
+      "detail": "2.440s plug +68.0 dB; 8.280s tap +76.0 dB; 9.590s plug +67.3 dB"
+    },
+    {
+      "check": "silence between cues (no stray sound, no boot sound at the end)",
+      "passed": true,
+      "detail": "0.02-2.41 s: -91.0 dBFS; 2.74-8.25 s: -91.0 dBFS; 8.42-9.56 s: -91.0 dBFS; 9.89-12.58 s: -91.0 dBFS"
+    },
+    {
+      "check": "\"tap\" is the clearest cue",
+      "passed": true,
+      "detail": "-15.0 dBFS vs next -23.0 dBFS"
+    },
+    {
+      "check": "the silent MP4 is silent",
+      "passed": true,
+      "detail": "-91.0 dBFS"
+    },
+    {
+      "check": "sound effects stay below a -16 LUFS narration",
+      "passed": true,
+      "detail": "-39.3 LUFS integrated, -15 dBFS peak"
+    }
+  ],
+  "cuePeaks": [
+    {
+      "kind": "plug",
+      "at": 2.44,
+      "reason": "the cord leaves the power supply",
+      "measuredFrom": 2.43,
+      "measuredTo": 2.7,
+      "peakDbfs": -23
+    },
+    {
+      "kind": "tap",
+      "at": 8.28,
+      "reason": "the fan plug lands on CPU_FAN (stylized)",
+      "measuredFrom": 8.27,
+      "measuredTo": 8.379999999999999,
+      "peakDbfs": -15
+    },
+    {
+      "kind": "plug",
+      "at": 9.59,
+      "reason": "the cord goes back into the power supply",
+      "measuredFrom": 9.58,
+      "measuredTo": 9.85,
+      "peakDbfs": -23
+    }
+  ],
+  "loudness": {
+    "integratedLufs": -39.3,
+    "peakDbfs": -15
+  },
+  "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-06/beats-phone.png",
+  "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-06/phone-every-0.25s.png"
+}

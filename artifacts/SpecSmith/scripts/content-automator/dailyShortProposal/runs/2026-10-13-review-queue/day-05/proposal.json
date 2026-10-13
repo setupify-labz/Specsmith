@@ -1,0 +1,727 @@
+{
+  "kind": "daily-short-proposal",
+  "version": "daily-short-proposal-v2",
+  "generatedAt": "2026-10-13T17:46:54.960Z",
+  "status": "awaiting-fact-check",
+  "notPublished": true,
+  "noVoiceGenerated": true,
+  "notScheduled": true,
+  "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
+    "collectedAt": "2026-10-11T20:38:30Z",
+    "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
+    "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
+    "cost": {
+      "vidiqCreditsBefore": 135,
+      "vidiqCreditsAfter": 130,
+      "metricool": "no per-call cost reported"
+    }
+  },
+  "topic": {
+    "id": "monitor-input-source",
+    "family": "on-no-picture",
+    "symptom": "The PC is on and the monitor is on, but the monitor shows nothing from the PC.",
+    "title": "PC On, Monitor Blank? Check the Input Setting",
+    "animation": "monitor-input-source",
+    "chosenBy": "data",
+    "dataPick": "monitor-input-source"
+  },
+  "hook": {
+    "frameOne": "PC ON, MONITOR BLANK?"
+  },
+  "script": "PC on, monitor blank? Check which port your cable is in. Open the monitor's input menu. Pick the input that matches your cable. Then check the screen again.",
+  "storyboard": {
+    "platform": "youtube-shorts",
+    "targetDurationSeconds": 10,
+    "title": "PC On, Monitor Blank? Check the Input Setting",
+    "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+    "beats": [
+      {
+        "startSecond": 0,
+        "endSecond": 1.6,
+        "purpose": "hook",
+        "narration": "PC on, monitor blank?",
+        "visualDirection": "The stylized PC lit, its fans turning; the monitor beside it stays dark.",
+        "onScreenText": "PC ON, MONITOR BLANK?",
+        "factDependencies": [
+          "input-match",
+          "input-menu"
+        ]
+      },
+      {
+        "startSecond": 1.6,
+        "endSecond": 3.6,
+        "purpose": "evidence",
+        "narration": "Check which port your cable is in.",
+        "visualDirection": "The back of the PC: the display cable sits in the graphics card's ports, outlined amber; EXAMPLE: DISPLAYPORT.",
+        "onScreenText": "WHICH PORT? → EXAMPLE: DISPLAYPORT",
+        "factDependencies": [
+          "input-match",
+          "input-menu"
+        ]
+      },
+      {
+        "startSecond": 3.6,
+        "endSecond": 5.6,
+        "purpose": "evidence",
+        "narration": "Open the monitor's input menu.",
+        "visualDirection": "A large monitor, screen dark; a bezel button is pressed and an INPUT SOURCE menu opens with HDMI 1 selected.",
+        "onScreenText": "INPUT MENU → MENUS VARY BY MONITOR",
+        "factDependencies": [
+          "input-match",
+          "input-menu"
+        ]
+      },
+      {
+        "startSecond": 5.6,
+        "endSecond": 8,
+        "purpose": "payoff",
+        "narration": "Pick the input that matches your cable.",
+        "visualDirection": "Two presses move the selection to DisplayPort; a third confirms it with a green tick.",
+        "onScreenText": "MATCH YOUR CABLE",
+        "factDependencies": [
+          "input-match",
+          "input-menu"
+        ]
+      },
+      {
+        "startSecond": 8,
+        "endSecond": 10,
+        "purpose": "cta",
+        "narration": "Then check the screen again.",
+        "visualDirection": "The camera closes on the monitor beside the lit PC; the screen is still dark. No picture is shown or promised.",
+        "onScreenText": "(no label: caption only)",
+        "factDependencies": [
+          "input-match",
+          "input-menu"
+        ]
+      }
+    ],
+    "finalCta": "Then check the screen again.",
+    "factualGuardrails": [
+      "Never say: guaranteed cure for blank screens (It may not work; one check, never a guaranteed fix.)",
+      "Never say: picture instantly appears afterwards (The cut ends on a dark screen; no picture is shown or promised.)"
+    ],
+    "persistentDisclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "storyBeats": [
+    {
+      "storyBeat": "problem",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "storyBeat": "port",
+      "from": 1.6,
+      "to": 3.6
+    },
+    {
+      "storyBeat": "menu",
+      "from": 3.6,
+      "to": 5.6
+    },
+    {
+      "storyBeat": "action",
+      "from": 5.6,
+      "to": 8
+    },
+    {
+      "storyBeat": "try-again",
+      "from": 8,
+      "to": 10
+    }
+  ],
+  "onScreenLabels": [
+    {
+      "text": "PC ON, MONITOR BLANK?",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "text": "WHICH PORT?",
+      "from": 1.7,
+      "to": 3.6
+    },
+    {
+      "text": "EXAMPLE: DISPLAYPORT",
+      "from": 1.7,
+      "to": 3.6
+    },
+    {
+      "text": "INPUT MENU",
+      "from": 3.7,
+      "to": 5.6
+    },
+    {
+      "text": "MENUS VARY BY MONITOR",
+      "from": 3.7,
+      "to": 8
+    },
+    {
+      "text": "MATCH YOUR CABLE",
+      "from": 5.7,
+      "to": 8
+    }
+  ],
+  "soundCues": [
+    {
+      "kind": "tick",
+      "at": 3.85,
+      "seconds": 0.03,
+      "reason": "a bezel button opens the menu"
+    },
+    {
+      "kind": "tick",
+      "at": 5.9,
+      "seconds": 0.03,
+      "reason": "the selection moves down"
+    },
+    {
+      "kind": "tick",
+      "at": 6.4,
+      "seconds": 0.03,
+      "reason": "the selection moves down again"
+    },
+    {
+      "kind": "button",
+      "at": 7,
+      "seconds": 0.05,
+      "peakDbfs": -12,
+      "reason": "the matching input is confirmed (stylized)"
+    }
+  ],
+  "evidence": {
+    "channelSignals": [
+      {
+        "id": "46uG78uXmHg",
+        "title": "PC Won't Turn On? Check These 2 Spots First",
+        "theme": "troubleshooting",
+        "families": [
+          "wont-turn-on"
+        ],
+        "ageDays": 1.66,
+        "viewsPerDay": 1174.6,
+        "averageViewPercentage": "unknown",
+        "engagedShare": "unknown",
+        "durationSeconds": 15,
+        "analyticsSampleOk": false
+      },
+      {
+        "id": "pw3xuL0zjho",
+        "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 2.86,
+        "viewsPerDay": 414.4,
+        "averageViewPercentage": 52.59,
+        "engagedShare": 0.373,
+        "durationSeconds": 25,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "648FsZLefnc",
+        "title": "20 Game Leads… Only 4 FPS Apart?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 5.19,
+        "viewsPerDay": 243.2,
+        "averageViewPercentage": 74.93,
+        "engagedShare": 0.34,
+        "durationSeconds": 19,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "cSDhjFC-CI8",
+        "title": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix",
+        "theme": "troubleshooting",
+        "families": [
+          "compatibility"
+        ],
+        "ageDays": 8.02,
+        "viewsPerDay": 237.5,
+        "averageViewPercentage": 87.65,
+        "engagedShare": 0.578,
+        "durationSeconds": 14,
+        "analyticsSampleOk": true
+      }
+    ],
+    "themeSummary": {
+      "troubleshooting": {
+        "videos": 2,
+        "medianViewsPerDay": 706.1,
+        "medianAverageViewPercentage": 87.7,
+        "medianEngagedShare": 57.8
+      },
+      "comparison": {
+        "videos": 2,
+        "medianViewsPerDay": 328.8,
+        "medianAverageViewPercentage": 63.8,
+        "medianEngagedShare": 35.7
+      }
+    },
+    "claims": [
+      {
+        "id": "input-match",
+        "proposition": "the monitor's input setting has to match the port the cable is in",
+        "basis": "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "input-menu",
+        "proposition": "pick the matching input (or auto-detect) in the monitor's own menu",
+        "basis": "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: set the monitor's on-screen menu to auto-detect or to the input that matches your cable; monitors with several inputs of one type label them HDMI-1, HDMI-2.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      }
+    ],
+    "riskyClaimsBlocked": [
+      {
+        "id": "input-fixes-all",
+        "proposition": "guaranteed cure for blank screens",
+        "why": "It may not work; one check, never a guaranteed fix."
+      },
+      {
+        "id": "input-picture-shown",
+        "proposition": "picture instantly appears afterwards",
+        "why": "The cut ends on a dark screen; no picture is shown or promised."
+      }
+    ],
+    "sources": [
+      "ASUS, [Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632): https://www.asus.com/us/support/faq/1042632/",
+      "NZXT, PC Powers On But No Display: How to Fix It: https://nzxt.com/blogs/news/pc-powers-on-but-no-display"
+    ]
+  },
+  "metricsThatInfluencedTheChoice": [
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 1174.6,
+      "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 414.4,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 52.59,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 243.2,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 74.93,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 237.5,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 87.65,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the target length"
+    },
+    {
+      "metric": "theme medians (views/day, avg view %, engaged %)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":706.1,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":328.8,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
+    },
+    {
+      "metric": "fastest troubleshooting Short",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1174.6 views/day)",
+      "usedFor": "symptom family: wont-turn-on"
+    },
+    {
+      "metric": "best-retained Short's length",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s",
+      "usedFor": "target length 14 s (clamped to 10-15 s)"
+    },
+    {
+      "metric": "tiktok views by publish day (sum)",
+      "source": "tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542)",
+      "value": 1803,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "instagram views by publish day (sum)",
+      "source": "instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542)",
+      "value": 691,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "editorial prior (NOT data)",
+      "source": "dailyShortProposal/topics.ts",
+      "value": 0.6,
+      "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "animation template length (not data)",
+      "source": "dailyShortProposal/animations.ts (monitor-input-source)",
+      "value": "10 s",
+      "usedFor": "the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched"
+    }
+  ],
+  "unknown": [
+    "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
+    "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.66 days: its views per day are an early figure and may fall as it ages.",
+    "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
+    "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 interactions: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
+  ],
+  "usedTopicLedger": {
+    "path": "/tmp/claude-0/-home-user-Specsmith/f037faf3-8c23-51a9-9abe-e9fdb3867a26/scratchpad/demo-ledger.json",
+    "sha256": "906ee3b3ad641ef21f18ef108625cc1b643d3a524cca2c139285505616b978e3",
+    "entries": [
+      {
+        "topicId": "cpu-power-cable",
+        "markedAt": "2026-10-13T17:45:17.776Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 1"
+      },
+      {
+        "topicId": "front-panel-power-pins",
+        "markedAt": "2026-10-13T17:45:49.159Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 2"
+      },
+      {
+        "topicId": "atx-24pin-cable",
+        "markedAt": "2026-10-13T17:46:21.224Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 3"
+      },
+      {
+        "topicId": "gpu-power-cable",
+        "markedAt": "2026-10-13T17:46:53.537Z",
+        "by": "queue demo (isolated ledger)",
+        "note": "demo step 4"
+      }
+    ]
+  },
+  "topicsExcluded": [
+    {
+      "topicId": "ram-not-seated",
+      "why": "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)"
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "why": "already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "atx-24pin-cable",
+      "why": "already taken for review (marked 2026-10-13T17:46:21.224Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "gpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T17:46:53.537Z by queue demo (isolated ledger))"
+    }
+  ],
+  "ranking": [
+    {
+      "topicId": "monitor-input-source",
+      "familyMatch": false,
+      "editorialPrior": 0.6
+    },
+    {
+      "topicId": "cpu-fan-header",
+      "familyMatch": false,
+      "editorialPrior": 0.55
+    },
+    {
+      "topicId": "ram-two-stick-slots",
+      "familyMatch": false,
+      "editorialPrior": 0.5
+    }
+  ],
+  "gates": {
+    "passed": true,
+    "findings": []
+  },
+  "factCheckRequired": [
+    {
+      "location": "title",
+      "line": "PC On, Monitor Blank? Check the Input Setting",
+      "claimIds": [
+        "input-match",
+        "input-menu"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: set the monitor's on-screen menu to auto-detect or to the input that matches your cable; monitors with several inputs of one type label them HDMI-1, HDMI-2.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-2.narration",
+      "line": "Check which port your cable is in.",
+      "claimIds": [
+        "input-match"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.narration",
+      "line": "Open the monitor's input menu.",
+      "claimIds": [
+        "input-match",
+        "input-menu"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: set the monitor's on-screen menu to auto-detect or to the input that matches your cable; monitors with several inputs of one type label them HDMI-1, HDMI-2.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.onScreenText",
+      "line": "INPUT MENU → MENUS VARY BY MONITOR",
+      "claimIds": [
+        "input-match",
+        "input-menu"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: set the monitor's on-screen menu to auto-detect or to the input that matches your cable; monitors with several inputs of one type label them HDMI-1, HDMI-2.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "Pick the input that matches your cable.",
+      "claimIds": [
+        "input-match",
+        "input-menu"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: set the monitor's on-screen menu to auto-detect or to the input that matches your cable; monitors with several inputs of one type label them HDMI-1, HDMI-2.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.onScreenText",
+      "line": "MATCH YOUR CABLE",
+      "claimIds": [
+        "input-match"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: confirm the monitor's input source matches the port in use (for example, select DP when the PC is connected by DisplayPort).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    }
+  ],
+  "animatedCut": {
+    "silent": "monitor-input-source-silent.mp4",
+    "sfx": "monitor-input-source-sfx.mp4",
+    "silentSha256": "186c77f395cd2f9d8b9ac94a9bdf4d7329b0aefc6b8221e3f7a8fce21e92300a",
+    "sfxSha256": "7837a87ba8ead0345bf2b1fe47f717611240e180e32a917ffbf12b79353cf702",
+    "durationSeconds": 10,
+    "fps": 30,
+    "disclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "verification": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "silent MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "silent MP4 length",
+        "passed": true,
+        "detail": "10.000 s (expected 10 s)"
+      },
+      {
+        "check": "silent MP4 frame count",
+        "passed": true,
+        "detail": "300 frames (expected 300)"
+      },
+      {
+        "check": "sound-effects MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "sound-effects MP4 length",
+        "passed": true,
+        "detail": "10.000 s (expected 10 s)"
+      },
+      {
+        "check": "sound-effects MP4 frame count",
+        "passed": true,
+        "detail": "300 frames (expected 300)"
+      },
+      {
+        "check": "every beat's artwork is drawn",
+        "passed": true,
+        "detail": "beat 1: 16.6%; beat 2: 40.5%; beat 3: 25.1%; beat 4: 25.1%; beat 5: 17.1% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 3 and 4, mean difference 4.4 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "7 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "the disclosure line is on every sampled frame",
+        "passed": true,
+        "detail": "lowest 3.1% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 4.6% of the caption band lit"
+      },
+      {
+        "check": "every cue sounds",
+        "passed": true,
+        "detail": "3.85s tick -33.0 dBFS; 5.90s tick -32.9 dBFS; 6.40s tick -32.9 dBFS; 7.00s button -15.1 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "3.850s tick +58.0 dB; 5.900s tick +58.1 dB; 6.400s tick +58.1 dB; 7.000s button +75.9 dB"
+      },
+      {
+        "check": "silence between cues (no stray sound, no boot sound at the end)",
+        "passed": true,
+        "detail": "0.02-3.82 s: -91.0 dBFS; 3.98-5.87 s: -91.0 dBFS; 6.03-6.37 s: -91.0 dBFS; 6.53-6.97 s: -91.0 dBFS; 7.15-9.98 s: -91.0 dBFS"
+      },
+      {
+        "check": "\"button\" is the clearest cue",
+        "passed": true,
+        "detail": "-15.1 dBFS vs next -32.9 dBFS"
+      },
+      {
+        "check": "the silent MP4 is silent",
+        "passed": true,
+        "detail": "-91.0 dBFS"
+      },
+      {
+        "check": "sound effects stay below a -16 LUFS narration",
+        "passed": true,
+        "detail": "-40.6 LUFS integrated, -15.1 dBFS peak"
+      }
+    ],
+    "cuePeaks": [
+      {
+        "kind": "tick",
+        "at": 3.85,
+        "reason": "a bezel button opens the menu",
+        "measuredFrom": 3.8400000000000003,
+        "measuredTo": 3.94,
+        "peakDbfs": -33
+      },
+      {
+        "kind": "tick",
+        "at": 5.9,
+        "reason": "the selection moves down",
+        "measuredFrom": 5.890000000000001,
+        "measuredTo": 5.99,
+        "peakDbfs": -32.9
+      },
+      {
+        "kind": "tick",
+        "at": 6.4,
+        "reason": "the selection moves down again",
+        "measuredFrom": 6.390000000000001,
+        "measuredTo": 6.49,
+        "peakDbfs": -32.9
+      },
+      {
+        "kind": "button",
+        "at": 7,
+        "reason": "the matching input is confirmed (stylized)",
+        "measuredFrom": 6.99,
+        "measuredTo": 7.109999999999999,
+        "peakDbfs": -15.1
+      }
+    ],
+    "loudness": {
+      "integratedLufs": -40.6,
+      "peakDbfs": -15.1
+    },
+    "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-05/beats-phone.png",
+    "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-05/phone-every-0.25s.png"
+  },
+  "humanGates": {
+    "mechanism": {
+      "trustedApprovalAvailable": false,
+      "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+    },
+    "gates": [
+      {
+        "gate": "hook-on-phone",
+        "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "factual-takeaway",
+        "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "readable-at-size",
+        "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "pacing",
+        "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "style-fits-audience",
+        "question": "Does the style suit a beginner choosing a gaming PC?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "voice-and-mix",
+        "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "disclosures-in-context",
+        "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "rights-and-publication",
+        "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+        "status": "unresolved"
+      }
+    ]
+  }
+}

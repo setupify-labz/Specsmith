@@ -3,22 +3,41 @@
 Proposes **one** beginner PC troubleshooting Short and renders its animated cut as a draft, for a person to fact-check and review.
 
 **What it can and cannot do today.**
-- It renders **two known topics**, each from a hand-written description with sourced facts. It picks between them from the channel data.
-- In the 2026-10-11 demo, the data picks the CPU-power Short. The channel's fastest troubleshooting Short is "PC Won't Turn On?", and the CPU topic is filed as "won't turn on" (owner's decision, 2026-10-12). The RAM Short was rendered by an operator's `--topic` choice.
-- No third topic exists yet.
-- Every new topic still needs a written description and facts a person has approved.
-- This is progress toward automation, not an endless daily video maker.
+- It holds a **review queue of seven topics**. Each is a distinct beginner PC problem with sourced claims and a data-only animation spec on the shared scene library.
+- Each run proposes the next eligible topic **without `--topic`**: topics a person has taken for review (the used-topic ledger) or that a published title already covers are skipped. When none is left, the run refuses with `no-topic`; it never falls back to text cards.
+- Every proposal stops at **human fact-check and video review** (status `awaiting-fact-check`). The sources were read through search excerpts only, and a person must read each page once.
+- Every new topic still needs a written spec and claims a person approves. This is a queue of reviewed-to-be drafts, not an endless daily video maker.
 
 From one snapshot, the job writes the proposal, renders the proposal's animated cut (silent, plus a version with synced sound effects), and checks the exported files. It calls no paid provider, generates no voice (no ElevenLabs), schedules nothing and publishes nothing.
 
-**It proposes only topics it can render.** A topic needs a registered animation template (`animations.ts`). Two exist:
+**The review queue** (`reviewQueue/` and `nextVideoCpuPower/`), in the order the 2026-10-11 snapshot ranks it:
 
-| Template | Topic | How it is built |
-|---|---|---|
-| `cpu-power` | "New build won't turn on? Check the CPU power cable" (12.6 s) | A **spec** (`nextVideoCpuPower/cut.ts`): data only, rendered by the shared scene library |
-| `ram-seat` | "Added RAM, now it won't boot?" (12.4 s) | Hand-built (`nextVideoRamSeat/`), kept exactly as reviewed |
+| # | Topic | Family | Spec |
+|---|---|---|---|
+| 1 | New build won't turn on? Check the CPU power cable | won't turn on | `nextVideoCpuPower/cut.ts` |
+| 2 | Power button does nothing? Check the front-panel pins | won't turn on | `reviewQueue/frontPanelPins.ts` |
+| 3 | New build won't turn on? Check the 24-pin cable | won't turn on | `reviewQueue/atx24Pin.ts` |
+| 4 | PC on, no picture? Check the graphics card's power cable | on, no picture | `reviewQueue/gpuPowerCable.ts` |
+| 5 | PC on, monitor blank? Check the input setting | on, no picture | `reviewQueue/monitorInputSource.ts` |
+| 6 | "CPU Fan Error" at startup? Check the CPU_FAN header | boot message | `reviewQueue/cpuFanHeader.ts` |
+| 7 | Using two RAM sticks? Check which slots | setup | `reviewQueue/ramSlots.ts` |
 
-The other topics are recorded as "no animation template yet". When every producible topic is covered by a published title, the job refuses with `no-topic`. It never falls back to text cards.
+The won't-turn-on family comes first because the channel's fastest troubleshooting Short is in it; within a family, the editorial prior (not data) orders the topics.
+
+**Left out on purpose:** the power-supply switch and moving the monitor cable from the motherboard to the graphics card. The published Short "PC Won't Turn On? Check These 2 Spots First" (`46uG78uXmHg`, 2026-10-10) covers both, and its title names neither, so no coverage pattern could catch it.
+
+**The hand-built RAM cut** (`ram-seat`, "Added RAM, now it won't boot?") stays producible, but only on an operator's `--topic ram-not-seated`: it predates the scene library and is not a data-only spec.
+
+### Marking a topic used
+```
+pnpm exec tsx scripts/content-automator/dailyShortProposal/markUsed.ts --topic <topic id> --by <your name> [--note "<why>"]
+```
+This appends one entry to `used-topics.json`: who took the topic for review, and when. It records nothing else. It does not say the Short was fact-checked, approved, voiced, scheduled or published. The committed ledger starts empty. The run reads it (or `--used <path>`), skips the marked topics even on `--topic`, and records the ledger's path, hash and entries in `proposal.json` and `PROPOSAL.md`. The ledger refuses unknown topics, duplicates, a missing name and future dates, and is written atomically.
+
+**Demonstration** (`runs/2026-10-13-review-queue/`):
+- **Runs:** the job ran eight times with no `--topic`, marking each pick in a temporary copy of the ledger (`demo-ledger.json`, never the committed file).
+- **Results:** days 1–7 proposed the seven topics in the order above, each with a rendered silent cut passing 17/17 render checks. Day 8 refused with `no-topic`. `queue-demo.log` is the transcript.
+- **Snapshot age:** the snapshot was 45 h old, so those runs pass `--max-age-hours 72` explicitly.
 
 ### Adding a topic: a spec, not a renderer
 `animationScenes/` is the shared scene library, in the style of the recent PC Shorts:
@@ -30,6 +49,11 @@ The other topics are recorded as "no animation template yet". When every produci
 | `caseOpen` | The side panel off or on, a camera move, an outlined part |
 | `connectorCompare` | A right and a wrong cable end, face-on |
 | `connectorInsert` | A plug pressed home, its latch catching |
+| `frontPanelHeader` | A front-panel pin header (an example layout); the button's plug moved to PWR SW |
+| `rearIo` | The back of the PC: motherboard ports up top, the graphics card's lower down; a display cable |
+| `monitorMenu` | A monitor's input menu; the selection moves; the screen stays dark |
+
+`caseOpen` can also draw a 24-pin socket, a graphics card power socket, memory sticks in labelled slots, and the CPU_FAN / CHA_FAN headers with a fan plug. `powerButton` can show a stylized start-up message and take a camera move. Each extra is drawn only when a spec asks for it: the CPU cut renders byte-identical to before.
 
 A new Short is a `CutSpec`:
 - captions, beats, a timeline of those scenes, labels and sound cues;
@@ -107,7 +131,7 @@ A run takes about 30 s here: about 20 s to render, about 10 s to verify.
 - `run-report.json`: stage timings and spend.
 
 ## How the topic is chosen (`select.ts`)
-0. Topics without an animation template are dropped.
+0. Topics without an animation template are dropped, as are topics marked used in the ledger and (unless an operator names it) the hand-built RAM cut.
 1. The fastest troubleshooting Short (public views per day) sets the symptom family.
 2. The best-retained Short's length is recorded, using only analytics samples of at least 300 views (clamped to 10–15 s). The cut keeps its template's length; its timing is never stretched.
 3. Topics an existing title already covers are dropped.

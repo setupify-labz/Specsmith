@@ -65,7 +65,7 @@ export async function renderCut(spec: CutSpec, outputDir: string) {
     "-t", spec.durationSeconds.toFixed(3), "-movflags", "+faststart", silentPath]);
   await rm(framesDir, { recursive: true, force: true });
   const sfxPath = join(outputDir, `${spec.id}-sfx.mp4`);
-  await mixCues(spec.cues.map((c) => ({ recipe: RECIPES[c.kind], peakDbfs: PEAK_DBFS[c.kind], at: c.at })), spec.durationSeconds, silentPath, sfxPath, join(outputDir, `${spec.id}-sound-work`));
+  await mixCues(spec.cues.map((c) => ({ recipe: RECIPES[c.kind], peakDbfs: c.peakDbfs ?? PEAK_DBFS[c.kind], at: c.at })), spec.durationSeconds, silentPath, sfxPath, join(outputDir, `${spec.id}-sound-work`));
   const sha = async (path: string) => createHash("sha256").update(await readFile(path)).digest("hex");
   return { silentPath, sfxPath, silentSha256: await sha(silentPath), sfxSha256: await sha(sfxPath), minFinalPx: measured.minFinalPx, frames: count };
   } finally {

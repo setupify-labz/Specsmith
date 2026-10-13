@@ -5,6 +5,7 @@
 //   pnpm exec tsx scripts/content-automator/dailyShortProposal/run.ts \
 //     --snapshot scripts/content-automator/dailyShortProposal/snapshots/<date>.json [--out <dir>] [--max-age-hours 36]
 //     [--topic <topic id>]   an operator's choice instead of the data's pick (recorded as such)
+//     [--used <ledger.json>] topics already taken for review (default: used-topics.json); never proposed again
 //
 // It reads one channel-metrics snapshot (collected through the Metricool and
 // vidIQ connectors, see README.md), proposes ONE beginner PC troubleshooting
@@ -39,6 +40,8 @@ import { assertRendererAvailable, renderAndVerify, TEMPLATES, type Verification 
 import { buildStoryboard, humanGatesUnresolved, runGates } from "./proposal.ts";
 import { selectTopic } from "./select.ts";
 import { DailyProposalError, loadSnapshot } from "./snapshot.ts";
+import { TOPICS } from "./topics.ts";
+import { DEFAULT_USED_LEDGER, loadUsedLedger } from "./usedTopics.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_OUT_ROOT = resolve(here, "../../../render-output/daily-proposals");
@@ -90,7 +93,8 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
     if (maxAgeHours !== undefined && !(Number.isFinite(maxAgeHours) && maxAgeHours >= 0)) throw new DailyProposalError("bad-argument", `--max-age-hours must be a finite number of hours, 0 or more (got "${maxAgeArg}").`);
     const { snapshot, bytes } = await time("load-and-validate-snapshot", () => loadSnapshot(arg("--snapshot", argv), now, maxAgeHours));
     await time("check-renderer", () => assertRendererAvailable());
-    const selection = await time("select-topic", () => selectTopic(snapshot, { topicId: arg("--topic", argv) }));
+    const used = await time("load-used-ledger", () => loadUsedLedger(resolve(arg("--used", argv) ?? DEFAULT_USED_LEDGER), TOPICS.map((t) => t.id), now));
+    const selection = await time("select-topic", () => selectTopic(snapshot, { topicId: arg("--topic", argv), used: used.ledger.entries }));
     const template = TEMPLATES[selection.topic.animation!];
     const storyboard = buildStoryboard(selection.topic, selection.targetSeconds);
     const gates = await time("run-gates", () => runGates(storyboard, selection.topic, now));
@@ -132,6 +136,7 @@ export async function runDailyProposal(argv: readonly string[], now = new Date()
       },
       metricsThatInfluencedTheChoice: selection.influences,
       unknown: selection.unknowns,
+      usedTopicLedger: { path: used.path, sha256: used.sha256, entries: used.ledger.entries },
       topicsExcluded: selection.excluded, ranking: selection.ranking,
       gates: { passed: gates.passed, findings: gates.findings },
       factCheckRequired: gates.factCheck,
@@ -204,7 +209,9 @@ ${p.evidence.riskyClaimsBlocked.map((c: any) => `- ${c.proposition}: ${c.why}`).
 ${rows(p.metricsThatInfluencedTheChoice, ["metric", "source", "value", "usedFor"])}
 
 Topic ranking: ${p.ranking.map((r: any) => `${r.topicId} (family match ${r.familyMatch ? "yes" : "no"}, editorial prior ${r.editorialPrior})`).join("; ")}.
-Excluded as already covered: ${p.topicsExcluded.length ? p.topicsExcluded.map((e: any) => `${e.topicId} (${e.why})`).join("; ") : "none"}.
+Topics excluded: ${p.topicsExcluded.length ? p.topicsExcluded.map((e: any) => `${e.topicId} (${e.why})`).join("; ") : "none"}.
+
+Used-topic ledger: \`${p.usedTopicLedger.path}\` (sha256 \`${p.usedTopicLedger.sha256.slice(0, 16)}…\`), ${p.usedTopicLedger.entries.length} topic(s) taken for review: ${p.usedTopicLedger.entries.length ? p.usedTopicLedger.entries.map((e: any) => `${e.topicId} (${e.markedAt}, ${e.by})`).join("; ") : "none"}.
 
 ## Unknown
 ${p.unknown.length ? p.unknown.map((u: string) => `- ${u}`).join("\n") : "- nothing recorded as unknown"}

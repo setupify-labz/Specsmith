@@ -1,0 +1,17 @@
+# Review-queue demonstration, 2026-10-13T17:44:44Z. Job run without --topic; each pick marked used in an ISOLATED ledger copy (a temporary copy of used-topics.json (saved afterwards as demo-ledger.json), not the committed used-topics.json).
+# Snapshot snapshots/2026-10-11.json was collected 2026-10-11T20:38:30Z; --max-age-hours 72 is passed explicitly because it is older than the 36 h default (no fresh snapshot was collected: that would spend vidIQ credits).
+day 1: exit 0, picked cpu-power-cable (awaiting-fact-check data cpu-power-silent.mp4), render checks 17/17
+    Marked cpu-power-cable as taken for review by queue demo (isolated ledger). 1 topic(s) marked.
+day 2: exit 0, picked front-panel-power-pins (awaiting-fact-check data front-panel-pins-silent.mp4), render checks 17/17
+    Marked front-panel-power-pins as taken for review by queue demo (isolated ledger). 2 topic(s) marked.
+day 3: exit 0, picked atx-24pin-cable (awaiting-fact-check data atx-24pin-silent.mp4), render checks 17/17
+    Marked atx-24pin-cable as taken for review by queue demo (isolated ledger). 3 topic(s) marked.
+day 4: exit 0, picked gpu-power-cable (awaiting-fact-check data gpu-power-cable-silent.mp4), render checks 17/17
+    Marked gpu-power-cable as taken for review by queue demo (isolated ledger). 4 topic(s) marked.
+day 5: exit 0, picked monitor-input-source (awaiting-fact-check data monitor-input-source-silent.mp4), render checks 17/17
+    Marked monitor-input-source as taken for review by queue demo (isolated ledger). 5 topic(s) marked.
+day 6: exit 0, picked cpu-fan-header (awaiting-fact-check data cpu-fan-header-silent.mp4), render checks 17/17
+    Marked cpu-fan-header as taken for review by queue demo (isolated ledger). 6 topic(s) marked.
+day 7: exit 0, picked ram-two-stick-slots (awaiting-fact-check data ram-slots-silent.mp4), render checks 17/17
+    Marked ram-two-stick-slots as taken for review by queue demo (isolated ledger). 7 topic(s) marked.
+day 8: exit 1, no proposal: No producible topic is left: ram-not-seated (not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)); cpu-power-cable (already taken for review (marked 2026-10-13T17:45:17.776Z by queue demo (isolated ledger))); front-panel-power-pins (already taken for review (marked 2026-10-13T17:45:49.159Z by queue demo (isolated ledger))); atx-24pin-cable (already taken fo
