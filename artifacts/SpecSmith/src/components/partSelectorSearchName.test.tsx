@@ -4,8 +4,9 @@
 //
 // THE DEFECT. The search input had only a "Search..." placeholder and no
 // label. Screen readers announced every selector's box the same way, so on
-// /compare (GPU and CPU) and on the Builder (twelve categories) a keyboard or
-// screen-reader user could not tell which box filtered which part type.
+// /compare (GPU and CPU) and both Upgrade Calculators a screen-reader user
+// could not tell which box filtered which part type. (The Builder's catalogue
+// view has its own search box, already named "Search <category>".)
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Browser check: on the built site, every part-search box has an accessible name that says what it
+// Browser check: on the built site, every PartSelector search box has an accessible name that says what it
 // searches, and no two boxes on a page share a name. Reads Chromium's own accessibility tree.
 //
 //   pnpm build && node scripts/ui/checkPartSearchNames.mjs
@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist', 'public');
-const PAGES = ['/builder', '/compare', '/upgrade-calculator', '/upgrade-calculator-cpu'];
+// The pages that render PartSelector on load. /builder's catalogue view has its own, already-labelled search box.
+const PAGES = ['/compare', '/upgrade-calculator', '/upgrade-calculator-cpu'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.woff2': 'font/woff2' };
 
 if (!fs.existsSync(path.join(root, 'index.html'))) {
