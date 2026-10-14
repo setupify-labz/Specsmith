@@ -53,7 +53,7 @@ beforeEach(() => {
   const rev1 = validateGoal({ ...goal, issue: ISSUE, revision: 1, parentComment: null });
   const created = new Date(Date.now() - 10 * 60_000).toISOString();
   writeFileSync(statePath, JSON.stringify({
-    repo: REPO, nextId: 9000, fireFailures: 0, fireLost: 0, fireCalls: [], deliveries: [], fires: [],
+    repo: REPO, origin, nextId: 9000, fireFailures: 0, fireLost: 0, fireCalls: [], deliveries: [], fires: [],
     issues: [{ number: ISSUE, state: "open", labels: [{ name: "auto-goal" }], created_at: created }],
     comments: { [ISSUE]: [{ id: 1, user: { login: ME }, body: renderRecordComment(rev1), created_at: created, updated_at: created, html_url: "r1", issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}` }] },
     pulls: {}, checkRuns: {}, statuses: {},
@@ -234,6 +234,67 @@ describe("the same sequence with no forced ordering", { timeout: 90_000 }, () =>
     const revs = records().map((r: any) => r.revision);
     expect(new Set(revs).size).toBe(revs.length);
     for (const r of records()) for (const run of r.runs ?? []) expect(String(run.result ?? "")).not.toContain("Abandoned");
+  });
+});
+
+describe("an owner that dies before leaving any event, and the scheduled watchdog", { timeout: 90_000 }, () => {
+  it("waits while the claim is live, wakes once when it is stale, and the recovered session finishes the step with no person involved", async () => {
+    // A goal submitted two hours ago, so only the dead owner's claim is recent.
+    patch((s) => {
+      const c = s.comments[ISSUE][0];
+      const r = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(c.body)![1]);
+      const old = new Date(Date.now() - 120 * 60_000).toISOString();
+      c.body = renderRecordComment(validateGoal({ ...r, createdAt: old, updatedAt: old })); c.created_at = old;
+    });
+    const eventPath = join(dir, "event.json");
+    writeFileSync(eventPath, JSON.stringify({ action: "labeled", label: { name: "auto-goal" }, sender: { login: ME }, issue: { number: ISSUE } }));
+    expect((await wake(["event"], { GITHUB_EVENT_NAME: "issues", GITHUB_EVENT_PATH: eventPath })).code).toBe(0);
+    patch((s) => { s.comments[ISSUE].at(-1).created_at = new Date(Date.now() - 50 * 60_000).toISOString(); });   // that wake was 50 min ago
+    const s1 = session("s1", state().deliveries[0]);
+    expect((await s1.guard()).verdict).toMatchObject({ proceed: true });
+    expect((await s1.begin({ WAKE_HARNESS_DIE_AFTER_CLAIM: "1" })).code).not.toBe(0);   // dies holding the claim: no push, no comment, no event
+
+    const live = await wake(["watchdog"]);
+    expect(live.code).toBe(0);
+    expect(live.out).toContain("claimed by s1, live");
+    expect(state().deliveries).toHaveLength(1);
+
+    backdateClaim("claude/auto-goal-claims/beta/1-1", 41);
+    const recovered = await wake(["watchdog"]);
+    expect(recovered.out).toContain("recover: claim claude/auto-goal-claims/beta/1-1 by s1 went stale without opening run 1");
+    expect(state().deliveries).toHaveLength(2);
+    expect(state().comments[ISSUE].at(-1).body).toMatch(/reason=recovery state=fired attempts=1 recovers=r1-c1-1 -->/);
+    // The next passes do nothing more for the same stall.
+    expect((await wake(["watchdog"])).out).toContain("skip: last activity 0 min ago");
+    // Even once that recovery wake is old, the same stall never gets a second one.
+    patch((s) => { s.comments[ISSUE].at(-1).created_at = new Date(Date.now() - 50 * 60_000).toISOString(); });
+    expect((await wake(["watchdog"])).out).toContain("skip: this stall (r1-c1-1) already had its recovery wake");
+    expect(state().deliveries).toHaveLength(2);
+
+    const s2 = session("s2", state().deliveries[1]);
+    expect((await s2.guard()).verdict).toMatchObject({ proceed: true, goal: "beta" });
+    expect((await s2.begin()).code).toBe(0);
+    expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: "s2", claim: "claude/auto-goal-claims/beta/1-2" })]);
+    s2.commit();
+    expect((await s2.advance()).code).toBe(0);
+    expect(remoteLog()).toEqual(["work by s2"]);
+    const revs = records().map((r: any) => r.revision);
+    expect(new Set(revs).size).toBe(revs.length);
+    // Fresh activity: the watchdog leaves the goal to the session's own next step.
+    expect((await wake(["watchdog"])).out).toContain("skip: last activity");
+    expect(state().deliveries).toHaveLength(2);
+  });
+
+  it("never wakes a finished goal, however quiet", async () => {
+    patch((s) => {
+      const c = s.comments[ISSUE][0];
+      const r = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(c.body)![1]);
+      const old = new Date(Date.now() - 600 * 60_000).toISOString();
+      c.body = renderRecordComment(validateGoal({ ...r, updatedAt: old, outcome: { status: "complete", at: old, reason: "done", evidence: {} } }));
+    });
+    const r = await wake(["watchdog"]);
+    expect(r.out).toContain("skip: goal beta is already complete");
+    expect(state().deliveries).toEqual([]);
   });
 });
 

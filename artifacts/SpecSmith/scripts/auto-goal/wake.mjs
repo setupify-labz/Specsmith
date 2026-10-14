@@ -9,6 +9,7 @@
 //   node wake.mjs event              the workflow step: decide, write a wake ticket, fire
 //   node wake.mjs retry              the workflow's retry job: re-fire tickets whose call failed
 //   node wake.mjs guard --ticket N   the routine's first step: the goal ticket N was written for, or refuse
+//   node wake.mjs watchdog           the scheduled fallback: wake a goal whose owner died without leaving an event
 //
 // A wake ticket is a comment the workflow posts on the goal's issue before it calls the routine. The
 // routine is told only the ticket's comment id; the guard reads that comment back from GitHub,
@@ -29,7 +30,15 @@ export const WORKFLOW_LOGIN = "github-actions[bot]";
 export const MAX_FIRE_ATTEMPTS = 4;
 /** Calls per step, so the event step and one retry job each get a share. */
 export const FIRE_ATTEMPTS_PER_STEP = 2;
-const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted) state=(pending|fired|failed) attempts=(\d+) -->/;
+const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted|recovery) state=(pending|fired|failed) attempts=(\d+)(?: recovers=([a-z0-9-]+))? -->/;
+/** Run claims (claim.ts): branches the runner creates atomically before it opens a run. */
+export const CLAIM_PREFIX = "claude/auto-goal-claims";
+const MAX_CLAIM_ATTEMPTS = 3;
+const CLAIM_SUBJECT = /^auto-goal claim goal=([a-z0-9-]+) run=(\d+) attempt=(\d+) session=(\S+) at=(\S+)$/;
+/** Recovery wakes per goal, over its whole life. Past this a stalled goal waits for a person. */
+export const MAX_RECOVERIES = 3;
+/** After a run ends on one of these, the next wake comes from Codex or CI, not from the watchdog. */
+const WAITING_STEPS = new Set(["wait-review", "wait-ci"]);
 /** A wake not yet followed by a run start is treated as pending for this long, then retried. */
 export const WAKE_PENDING_MINUTES = 45;
 /** A run that has not finished within its run-time cap plus this margin is dead, not one to wait for (runner.ts uses the same window). */
@@ -118,12 +127,12 @@ export function parseTicket(comment) {
   const onIssue = /\/issues\/(\d+)$/.exec(String(comment.issue_url ?? ""));
   return {
     id: comment.id, goal: m[1], issue: Number(m[2]), pr: m[3] === "none" ? null : Number(m[3]), sha: m[4] === "none" ? null : m[4],
-    reason: m[5], state: m[6], attempts: Number(m[7]), createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
+    reason: m[5], state: m[6], attempts: Number(m[7]), recovers: m[8] ?? null, createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
   };
 }
 
 export function ticketBody(t) {
-  const marker = `<!-- specsmith-auto-goal-wake goal=${t.goal} issue=${t.issue} pr=${t.pr ?? "none"} sha=${t.sha ?? "none"} reason=${t.reason} state=${t.state} attempts=${t.attempts} -->`;
+  const marker = `<!-- specsmith-auto-goal-wake goal=${t.goal} issue=${t.issue} pr=${t.pr ?? "none"} sha=${t.sha ?? "none"} reason=${t.reason} state=${t.state} attempts=${t.attempts}${t.recovers ? ` recovers=${t.recovers}` : ""} -->`;
   const what = t.state === "fired" ? "Woke the Auto Goal runner" : t.state === "failed" ? `Could not wake the Auto Goal runner (${t.attempts}/${MAX_FIRE_ATTEMPTS} calls failed${t.attempts >= MAX_FIRE_ATTEMPTS ? "; giving up" : "; the retry job will try again"})` : "Waking the Auto Goal runner";
   return `${marker}\n${what} for goal \`${t.goal}\` (${t.reason}${t.sha ? ` on \`${t.sha.slice(0, 10)}\`` : ""}). Written by the auto-goal-wake workflow; a routine run only proceeds for the ticket it was woken with.`;
 }
@@ -134,7 +143,9 @@ const unconsumed = (comments, record) => comments.map(parseTicket)
   .filter((t) => t && t.goal === record.id && t.onIssue === record.issue && Date.parse(t.createdAt) > lastRunStart(record))
   .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id);
 /** Does the record still stand where the ticket says it did? */
-const stillCurrent = (t, record) => t.sha === null
+const stillCurrent = (t, record) => t.reason === "recovery"
+  ? (record.pr === t.pr && (record.head ?? null) === t.sha ? null : `goal ${record.id} has moved since recovery ticket ${t.id}`)
+  : t.sha === null
   ? (record.pr === null && (record.runs ?? []).length === 0 ? null : "the goal has started since this ticket")
   : (record.pr === t.pr && record.head === t.sha ? null : `goal ${record.id} is now at PR ${record.pr} / ${String(record.head).slice(0, 10)}, not the ticket's PR ${t.pr} / ${t.sha.slice(0, 10)}`);
 
@@ -174,6 +185,63 @@ export function retryTicket(comments, record, now) {
   const [newest] = unconsumed(comments, record);
   if (!newest || newest.state === "fired" || newest.attempts >= MAX_FIRE_ATTEMPTS) return null;
   return stillCurrent(newest, record) ? null : newest;
+}
+
+/** A run claim from its ref and commit subject (the format claim.ts writes), or null. */
+export function parseClaim(goal, ref, subject) {
+  const name = new RegExp(`^${CLAIM_PREFIX}/${goal}/(\\d+)-(\\d+)$`).exec(ref);
+  const m = CLAIM_SUBJECT.exec(String(subject ?? "").trim());
+  if (!name || !m || m[1] !== goal || m[2] !== name[1] || m[3] !== name[2] || Number.isNaN(Date.parse(m[5]))) return null;
+  return { ref, run: Number(m[2]), attempt: Number(m[3]), session: m[4], at: m[5] };
+}
+
+/**
+ * The scheduled fallback, decided. A goal is stalled only when nothing can still move it: no live
+ * run, no live claim, no wake in flight, its last step was not one that waits for Codex or CI, and
+ * nothing has been written for long enough that a live owner would have written. Each distinct
+ * stall gets one recovery wake (a failed call is retried), and a goal gets at most MAX_RECOVERIES.
+ * The woken session is checked again by the guard and by the runner's own claim, and the runner
+ * enforces the goal's caps (it records the goal blocked at the run or time cap).
+ * @param {{ comments: any[], claims: { ref: string, subject: string }[], trustedLogin: string, now: number }} ctx
+ */
+export function decideRecovery(ctx) {
+  const { comments, trustedLogin, now } = ctx;
+  const no = (why) => ({ wake: false, why });
+  const found = currentRecord(comments, null, trustedLogin);
+  if ("skip" in found) return no(found.skip);
+  const record = found.record;
+  if (record.outcome) return no(`goal ${record.id} is already ${record.outcome.status}`);
+  const stale = runStaleMinutes(record);
+  const claims = ctx.claims.map((c) => parseClaim(record.id, c.ref, c.subject)).filter(Boolean);
+  if (claims.length !== ctx.claims.length) return no("a claim ref could not be read; not guessing");
+  const runs = record.runs ?? [];
+  const open = runs.find((r) => r.endedAt === null);
+  const nextRun = runs.length + 1;
+  if (claims.some((c) => c.run > nextRun)) return no(`a claim exists beyond run ${nextRun}, ahead of the record; not guessing`);
+  const top = claims.filter((c) => c.run === nextRun).sort((a, b) => a.attempt - b.attempt).at(-1) ?? null;
+  const age = (at) => minutes(now - Date.parse(at));
+  if (open && age(open.startedAt) < stale) return no(`run ${open.n} by ${open.sessionId} is live (${Math.round(age(open.startedAt))} of ${stale} min)`);
+  if (top && age(top.at) < stale) return no(`run ${nextRun} is claimed by ${top.session}, live (${Math.round(age(top.at))} of ${stale} min)`);
+  if (top && top.attempt >= MAX_CLAIM_ATTEMPTS) return no(`run ${nextRun} was claimed ${MAX_CLAIM_ATTEMPTS} times and never opened; a person must look`);
+  if (!open && !top && WAITING_STEPS.has(record.step)) return no(`goal ${record.id} is at ${record.step}; Codex and CI events wake it`);
+  const tickets = comments.map(parseTicket).filter((t) => t && t.goal === record.id && t.onIssue === record.issue);
+  const lastWrite = Math.max(Date.parse(record.updatedAt ?? 0) || 0, ...tickets.map((t) => Date.parse(t.createdAt)), ...claims.map((c) => Date.parse(c.at)));
+  // A stale run or claim is already past its owner's lease; with neither, wait as long as a live owner could take.
+  const quiet = open || top ? RUN_STALE_MARGIN_MINUTES : stale;
+  if (minutes(now - lastWrite) < quiet) return no(`last activity ${Math.round(minutes(now - lastWrite))} min ago (needs ${quiet} min of quiet)`);
+  const flying = unconsumed(comments, record).find((t) => t.state !== "failed" && minutes(now - Date.parse(t.createdAt)) < WAKE_PENDING_MINUTES);
+  if (flying) return no(`wake ticket ${flying.id} is ${flying.state} and no run has started since`);
+
+  const key = `r${record.revision}${top ? `-c${top.run}-${top.attempt}` : open ? `-o${open.n}` : ""}`;
+  const what = top ? `claim ${top.ref} by ${top.session} went stale without opening run ${nextRun}` : open ? `run ${open.n} by ${open.sessionId} went stale without finishing` : `nothing happened for ${Math.round(minutes(now - lastWrite))} min after ${record.step}`;
+  const recoveries = tickets.filter((t) => t.reason === "recovery");
+  const same = recoveries.find((t) => t.recovers === key);
+  if (same) {
+    if (same.state === "failed" && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `retrying recovery ticket ${same.id}: ${what}` };
+    return no(`this stall (${key}) already had its recovery wake: ticket ${same.id}, ${same.state}`);
+  }
+  if (recoveries.length >= MAX_RECOVERIES) return no(`recovery cap reached (${MAX_RECOVERIES} per goal); a person must look: ${what}`);
+  return { wake: true, why: what, goal: record.id, issue: record.issue, pr: record.pr ?? null, sha: record.head ?? null, reason: "recovery", recovers: key };
 }
 
 /**
@@ -334,6 +402,45 @@ async function retryMain() {
   if (failed) process.exitCode = 1;
 }
 
+/** Every claim ref of a goal, with its commit subject. Throws if any cannot be read: the watchdog never acts on a partial view. */
+async function readClaims(repo, goal) {
+  const refs = await gh(`repos/${repo}/git/matching-refs/heads/${CLAIM_PREFIX}/${goal}/`);
+  const out = [];
+  for (const r of refs.slice(0, 60)) {
+    const commit = await gh(`repos/${repo}/git/commits/${r.object.sha}`);
+    out.push({ ref: r.ref.replace(/^refs\/heads\//, ""), subject: String(commit.message ?? "").split("\n")[0] });
+  }
+  return out;
+}
+
+async function watchdogMain() {
+  const repo = env("GITHUB_REPOSITORY"), trustedLogin = env("AUTO_GOAL_TRUSTED_LOGIN");
+  const issues = (await gh(`repos/${repo}/issues?labels=${GOAL_LABEL}&state=open&per_page=50`)).filter((i) => !i.pull_request);
+  let failed = 0;
+  for (const issue of issues) {
+    let d;
+    try {
+      const comments = await allComments(repo, issue.number);
+      const found = currentRecord(comments, null, trustedLogin);
+      const claims = "record" in found ? await readClaims(repo, found.record.id) : [];
+      d = decideRecovery({ comments, claims, trustedLogin, now: Date.now() });
+    } catch (error) {
+      console.log(`#${issue.number}: skip: could not read the goal's state (${error.message})`);
+      continue;
+    }
+    console.log(`#${issue.number}: ${d.wake ? "recover" : "skip"}: ${d.why}`);
+    if (!d.wake) continue;
+    let t = d.retry;
+    if (!t) {
+      const draft = { goal: d.goal, issue: d.issue, pr: d.pr, sha: d.sha, reason: "recovery", recovers: d.recovers, state: "pending", attempts: 0 };
+      const created = await gh(`repos/${repo}/issues/${d.issue}/comments`, { method: "POST", body: JSON.stringify({ body: ticketBody(draft) }) });
+      t = { ...draft, id: created.id };
+    }
+    if (!(await fireTicket(repo, t))) failed += 1;
+  }
+  if (failed) process.exitCode = 1;
+}
+
 /** The routine's first step: the goal named by a verified wake ticket, or exit 3. Reads GitHub through `gh api`. */
 async function guardMain(argv) {
   const repo = process.env.AUTO_GOAL_REPO ?? "setupify-labz/Specsmith", trustedLogin = process.env.AUTO_GOAL_TRUSTED_LOGIN ?? "setupify-labz";
@@ -358,7 +465,7 @@ async function guardMain(argv) {
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   const [mode, ...rest] = process.argv.slice(2);
-  const main = { event: eventMain, retry: retryMain, guard: () => guardMain(rest) }[mode];
-  (main ? main() : Promise.reject(new Error("usage: wake.mjs event | retry | guard --ticket <id>")))
+  const main = { event: eventMain, retry: retryMain, watchdog: watchdogMain, guard: () => guardMain(rest) }[mode];
+  (main ? main() : Promise.reject(new Error("usage: wake.mjs event | retry | watchdog | guard --ticket <id>")))
     .catch((error) => { console.error(String(error.message ?? error)); process.exitCode = 1; });
 }

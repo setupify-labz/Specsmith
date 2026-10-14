@@ -2,6 +2,7 @@
 // endpoint. State lives in the JSON file named by WAKE_HARNESS_STATE so that several processes
 // (the workflow steps and the routine's guard) see one world, as they would on GitHub.
 
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, rmdirSync, writeFileSync } from "node:fs";
 
 export const FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_HARNESS/fire";
@@ -67,6 +68,18 @@ function route(s, method, url, body, actor) {
     return { status: 200, body: page > 1 ? [] : s.issues.filter((i) => i.state === "open" && i.labels.some((l) => l.name === label)) };
   }
   if (method === "GET" && /^pulls\/\d+\/(reviews|comments)$/.test(p)) return { status: 200, body: [] };
+  // Branches and commits, read from the local bare repository standing in for origin (s.origin).
+  const realGit = (...a) => execFileSync(process.env.WAKE_HARNESS_REAL_GIT ?? "git", ["-C", s.origin, ...a], { encoding: "utf8" });
+  if (method === "GET" && (m = /^git\/matching-refs\/(heads\/.+)$/.exec(p))) {
+    if (!s.origin) return { status: 200, body: [] };
+    const prefix = `refs/${m[1]}`;
+    const lines = realGit("for-each-ref", "--format=%(refname) %(objectname)", "refs/heads/").split("\n").filter(Boolean);
+    return { status: 200, body: lines.map((l) => l.split(" ")).filter(([ref]) => ref.startsWith(prefix)).map(([ref, sha]) => ({ ref, object: { sha, type: "commit" } })) };
+  }
+  if (method === "GET" && (m = /^git\/commits\/([0-9a-f]{40})$/.exec(p))) {
+    if (!s.origin) return { status: 404, body: {} };
+    return { status: 200, body: { sha: m[1], message: realGit("log", "-1", "--format=%B", m[1]) } };
+  }
   if (method === "GET" && (m = /^commits\/([0-9a-f]+)\/check-runs$/.exec(p))) return { status: 200, body: { check_runs: s.checkRuns[m[1]] ?? [] } };
   if (method === "GET" && (m = /^commits\/([0-9a-f]+)\/statuses$/.exec(p))) return { status: 200, body: s.statuses[m[1]] ?? [] };
   if (method === "POST" && (m = /^statuses\/([0-9a-f]+)$/.exec(p))) {

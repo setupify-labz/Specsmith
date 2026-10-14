@@ -166,7 +166,7 @@ Until one of those last two paths is enabled, the runner can be exercised only b
 
 ## The event-driven wake (`wake.mjs`, `auto-goal-wake.yml`) — experimental, not yet proven
 
-Nothing polls. The workflow `.github/workflows/auto-goal-wake.yml` runs when:
+Handoffs are event-driven: nothing waits for a schedule between steps. The workflow `.github/workflows/auto-goal-wake.yml` runs when:
 - Codex posts or completes a review on a PR (an issue comment by `chatgpt-codex-connector[bot]`);
 - "Verify pull request" or a check suite completes;
 - the trusted login labels a goal issue `auto-goal`.
@@ -224,11 +224,39 @@ It then prints that goal. Without a valid ticket it refuses, so a wake for one g
 - Delivery is still at-least-once; the claim only makes duplicate sessions harmless.
 - The takeover window is a lease, so it assumes session clocks agree to within the 5-minute margin.
 - Sessions cannot delete branches through the proxy (refused for both `git push :ref` and the REST API). Claims stay until someone with delete rights removes them: at most `maxRuns × 3` per goal.
-- With no polling, a dead owner is replaced only when the next event wakes the routine (Codex, CI, or re-labelling). An owner that dies before pushing anything may leave no such event, and then the goal waits.
+- A dead owner that leaves no event is handled by the recovery watchdog below, not by any event.
 - Writes outside a run (`resolve-fork`, a person's edits) are not claimed, so a fork is still possible there.
 
+**Recovery watchdog: the one scheduled part.** An owner can die after claiming a run and before producing any GitHub event: no push, no comment, nothing for the event triggers to see. The same workflow's `watchdog` job (`wake.mjs watchdog`) catches that.
+- **Timing:** it runs on a cron every 15 minutes (`4,19,34,49 * * * *`). A dead owner's claim or run is stale after 40 minutes (25 + 15), so recovery starts 40–55 minutes after the death, plus GitHub's cron delay (not guaranteed, often a few minutes).
+- **Cost:** $0, because GitHub-hosted runners are free on this public repository. Each pass is a few REST reads (well inside `GITHUB_TOKEN` rate limits), and it starts a routine session only for a proven stall. If the repository were made private, each pass would bill about one Actions minute: roughly 2,900 minutes a month at this interval.
+- **GitHub caveats:** cron runs only from the default branch, and GitHub disables schedules in public repositories after 60 days without activity.
+
+It wakes a goal only when all of these hold, read fresh from GitHub on every pass:
+- the issue is open and labelled `auto-goal`;
+- the trusted record exists, is not forked and has no outcome (so complete or blocked goals are never woken);
+- every claim ref for the goal could be read, and none is ahead of the record;
+- no run is open within its 40-minute window, and no claim for the next run is inside that window;
+- the goal is not waiting on Codex or CI (`wait-review`, `wait-ci`);
+- nothing has been written recently: 15 minutes of quiet when a stale run or claim exists (its owner's lease has already run out), 40 minutes otherwise;
+- no wake ticket is pending or fired without a run having started since.
+
+**Bounds:**
+- Each distinct stall gets one recovery ticket (`reason=recovery recovers=<stall>`). A stall is the record revision plus the stale claim or open run, so the same stall is never woken twice; a failed call is retried up to the usual 4 calls.
+- A goal gets at most 3 recovery wakes in its life. A run gets at most 3 claim attempts.
+- The woken session's caps are the runner's own: at the run cap or the 24-hour cap, `begin` records the goal blocked instead of working.
+- The woken session still passes the guard (the recovery ticket must match the record's PR and head) and must win a fresh claim, which itself refuses while the old claim is live.
+
+`wake.test.ts` covers each rule. `wake.duplicate.test.ts` runs it end to end:
+1. a session dies right after claiming;
+2. the watchdog skips while the claim is live;
+3. once the claim is stale, it posts one recovery ticket and wakes the routine;
+4. later passes skip, including after that ticket is old;
+5. the recovered session wins attempt 2, commits and pushes, with no `resolve-fork` and no person involved;
+6. a quiet but complete goal is never woken.
+
 Limitations:
-- With no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.
+- The 90-minute Codex timeout and the 24-hour cap are recorded only when the next event (or a recovery wake) arrives. The watchdog does not wake goals waiting on Codex or CI, so a Codex that never answers still leaves its goal waiting.
 - `github-actions[bot]` is the login of every workflow's `GITHUB_TOKEN`, so another workflow with `issues: write` could post a comment in the ticket format. That alone starts nothing: only a holder of the routine token can start a run, and this workflow sends only the ids of tickets it wrote itself. The ticket check is what keeps a real wake from running the wrong goal; it does not replace keeping the token secret.
 - "No run has started since the ticket" compares GitHub's comment time with the session clock that stamped the run. A skew larger than the gap between a run's start and the next ticket could make the guard refuse a valid ticket, or miss that one was already taken. In the second case the open-run check and the record's stale-revision refusal still stop two runs from saving over each other.
 
