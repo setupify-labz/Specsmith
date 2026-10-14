@@ -249,7 +249,7 @@ describe("an owner that dies before leaving any event, and the scheduled watchdo
     const eventPath = join(dir, "event.json");
     writeFileSync(eventPath, JSON.stringify({ action: "labeled", label: { name: "auto-goal" }, sender: { login: ME }, issue: { number: ISSUE } }));
     expect((await wake(["event"], { GITHUB_EVENT_NAME: "issues", GITHUB_EVENT_PATH: eventPath })).code).toBe(0);
-    patch((s) => { s.comments[ISSUE].at(-1).created_at = new Date(Date.now() - 50 * 60_000).toISOString(); });   // that wake was 50 min ago
+    patch((s) => { const t = s.comments[ISSUE].at(-1); t.created_at = t.updated_at = new Date(Date.now() - 50 * 60_000).toISOString(); });   // that wake was 50 min ago
     const s1 = session("s1", state().deliveries[0]);
     expect((await s1.guard()).verdict).toMatchObject({ proceed: true });
     expect((await s1.begin({ WAKE_HARNESS_DIE_AFTER_CLAIM: "1" })).code).not.toBe(0);   // dies holding the claim: no push, no comment, no event
@@ -267,9 +267,12 @@ describe("an owner that dies before leaving any event, and the scheduled watchdo
     // The next passes do nothing more for the same stall.
     expect((await wake(["watchdog"])).out).toContain("skip: last activity 0 min ago");
     // Even once that recovery wake is old, the same stall never gets a second one.
-    patch((s) => { s.comments[ISSUE].at(-1).created_at = new Date(Date.now() - 50 * 60_000).toISOString(); });
-    expect((await wake(["watchdog"])).out).toContain("skip: this stall (r1-c1-1) already had its recovery wake");
-    expect(state().deliveries).toHaveLength(2);
+    // Long after, with no run having taken it up, it is called again (Codex P1 on bade58f), within the same attempt budget.
+    patch((s) => { const t = s.comments[ISSUE].at(-1); t.created_at = t.updated_at = new Date(Date.now() - 50 * 60_000).toISOString(); });
+    expect((await wake(["watchdog"])).out).toContain("recover: no run took up recovery ticket");
+    expect(state().comments[ISSUE].at(-1).body).toMatch(/state=fired attempts=2 recovers=r1-c1-1 -->/);
+    expect(state().deliveries).toHaveLength(3);
+    expect(new Set(state().deliveries.slice(1)).size).toBe(1);   // the same recovery ticket both times
 
     const s2 = session("s2", state().deliveries[1]);
     expect((await s2.guard()).verdict).toMatchObject({ proceed: true, goal: "beta" });
@@ -282,7 +285,7 @@ describe("an owner that dies before leaving any event, and the scheduled watchdo
     expect(new Set(revs).size).toBe(revs.length);
     // Fresh activity: the watchdog leaves the goal to the session's own next step.
     expect((await wake(["watchdog"])).out).toContain("skip: last activity");
-    expect(state().deliveries).toHaveLength(2);
+    expect(state().deliveries).toHaveLength(3);
   });
 
   it("never wakes a finished goal, however quiet", async () => {

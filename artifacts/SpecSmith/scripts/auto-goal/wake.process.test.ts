@@ -164,12 +164,12 @@ describe("the watchdog on a goal parked at wait-review or wait-ci", () => {
 
   it("a missed Codex event: wakes beta once, with the reason on its issue, and never alpha", () => {
     parked("wait-review", 30);
-    patch((s) => { s.comments[311] = [{ id: 50, user: { login: "chatgpt-codex-connector[bot]" }, body: "Codex Review: Didn't find any major issues.", created_at: ago(15), html_url: "https://github.com/x/pull/311#c50", issue_url: "x/issues/311" }]; });
+    patch((s) => { s.comments[311] = [{ id: 50, user: { login: "chatgpt-codex-connector[bot]" }, body: `Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${SHA.beta.slice(0, 10)}\``, created_at: ago(15), html_url: "https://github.com/x/pull/311#c50", issue_url: "x/issues/311" }]; });
     const r = run(["watchdog"]);
     expect(r.out).toContain("#301: recover: Codex answered review round 2");
     expect(state().fires).toHaveLength(1);
     const [t] = betaTickets();
-    expect(t.body).toMatch(/reason=recovery state=fired attempts=1 recovers=r5-missed-review -->/);
+    expect(t.body).toMatch(/reason=recovery state=fired attempts=1 recovers=missed-review-bbbbbbb-r2 -->/);
     expect(t.body).toMatch(/^Why: Codex answered review round 2 .* its event was missed$/m);
     expect(routineGuard(state().fires[0]).verdict).toMatchObject({ proceed: true, goal: "beta" });
     patch((s) => { s.comments[301].at(-1).created_at = ago(60); });   // even long after, the same stall is not woken again
@@ -200,7 +200,7 @@ describe("the watchdog on a goal parked at wait-review or wait-ci", () => {
     expect(state().fires).toEqual([]);
     patch((s) => { s.checkRuns[SHA.beta] = [{ name: "Tests, typecheck and production build", status: "completed", conclusion: "success", completed_at: ago(12) }]; });
     run(["watchdog"]);
-    expect(betaTickets().at(-1).body).toMatch(/recovers=r5-missed-ci -->/);
+    expect(betaTickets().at(-1).body).toMatch(/recovers=missed-ci-bbbbbbb-r2 -->/);
 
     parked("wait-ci", 70);
     patch((s) => { s.checkRuns[SHA.beta] = [{ name: "Tests, typecheck and production build", status: "queued", conclusion: null }]; });
@@ -217,7 +217,7 @@ describe("the watchdog on a goal parked at wait-review or wait-ci", () => {
     const notices = betaTickets().filter((c: any) => c.body.startsWith("<!-- specsmith-auto-goal-stall"));
     expect(notices).toHaveLength(1);
     expect(notices[0].body).toContain("**Auto Goal `beta` is stalled.** Codex has not answered review round 2");
-    expect(notices[0].body).toContain("could not be reached");
+    expect(notices[0].body).toContain("was sent 4 times and no run took it up");
     expect(state().fires).toEqual([]);
   });
 });

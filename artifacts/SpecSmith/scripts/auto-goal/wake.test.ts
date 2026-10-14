@@ -7,8 +7,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // @ts-expect-error plain JavaScript module without type declarations
-import { CODEX_LOGIN, currentRecord, decideRecovery, decideWake, MAX_FIRE_ATTEMPTS, MAX_RECOVERIES, normalizeEvent, parseClaim, retryTicket, ticketBody, verifyTicket, WORKFLOW_LOGIN } from "./wake.mjs";
+import { answerFor, CODEX_LOGIN, codexAnswers, currentRecord, decideRecovery, decideWake, MAX_FIRE_ATTEMPTS, MAX_RECOVERIES, normalizeEvent, parseClaim, retryTicket, ticketBody, verifyTicket, WORKFLOW_LOGIN } from "./wake.mjs";
 import { claimMessage, claimRef, parseClaim as parseClaimTs } from "./claim.ts";
+import { codexVerdicts, verdictFor } from "./codex.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO = "setupify-labz/Specsmith";
@@ -279,8 +280,8 @@ describe("the recovery watchdog", () => {
     const judge = (rec: any, l: any, extra: any[] = []) => decideRecovery({ comments: [recordComment(rec), ...extra], claims: [claim(1, 1, -130)], live: l, trustedLogin: ME, now: NOW });
 
     it("wakes once for a Codex answer that is already there but whose event was missed", () => {
-      expect(judge(waiting("wait-review"), live({ prComments: [codexComment(-15)] }))).toMatchObject({ wake: true, recovers: "r7-missed-review", why: expect.stringContaining("its event was missed") });
-      expect(judge(waiting("wait-review"), live({ reviews: [{ user: { login: CODEX_LOGIN }, submitted_at: at(-15), html_url: "rev" }] }))).toMatchObject({ wake: true, recovers: "r7-missed-review" });
+      expect(judge(waiting("wait-review"), live({ prComments: [codexComment(-15)] }))).toMatchObject({ wake: true, recovers: "missed-review-aaaaaaa-r2", why: expect.stringContaining("its event was missed") });
+      expect(judge(waiting("wait-review"), live({ reviews: [{ user: { login: CODEX_LOGIN }, commit_id: HEAD, submitted_at: at(-15), html_url: "rev" }] }))).toMatchObject({ wake: true, recovers: "missed-review-aaaaaaa-r2" });
       // An answer older than the request is the previous round's, not this one.
       expect(judge(waiting("wait-review"), live({ prComments: [codexComment(-40)] }))).toMatchObject({ wake: false, why: expect.stringContaining("not answered round 2 yet") });
       // Just arrived: its own event is probably still on the way.
@@ -288,8 +289,8 @@ describe("the recovery watchdog", () => {
     });
     it("wakes once for required checks that already finished without a wake", () => {
       const done = CHECKS.map((name) => ({ name, status: "completed", conclusion: "success", completed_at: at(-12) }));
-      expect(judge(waiting("wait-ci"), live({ checkRuns: done }))).toMatchObject({ wake: true, recovers: "r7-missed-ci" });
-      expect(judge(waiting("wait-ci"), live({ checkRuns: [{ ...done[0], conclusion: "failure" }, done[1]] }))).toMatchObject({ wake: true, recovers: "r7-missed-ci" });   // red is a result too
+      expect(judge(waiting("wait-ci"), live({ checkRuns: done }))).toMatchObject({ wake: true, recovers: "missed-ci-aaaaaaa-r2" });
+      expect(judge(waiting("wait-ci"), live({ checkRuns: [{ ...done[0], conclusion: "failure" }, done[1]] }))).toMatchObject({ wake: true, recovers: "missed-ci-aaaaaaa-r2" });   // red is a result too
     });
     it("leaves a genuinely pending result alone, without a notice", () => {
       const r1 = judge(waiting("wait-review"), live({ prComments: [{ ...codexComment(-5), body: "<!-- codex-pull-request-review-summary -->\n| 🔄 **Running** |" }] }));
@@ -300,24 +301,49 @@ describe("the recovery watchdog", () => {
     });
     it("wakes once at the Codex timeout so the runner records it blocked, and never asks for another review", () => {
       const d = judge(waiting("wait-review", -95), live());
-      expect(d).toMatchObject({ wake: true, recovers: "r7-review-timeout", why: expect.stringMatching(/after 95 min \(timeout 90 min\).*no new review is requested/) });
+      expect(d).toMatchObject({ wake: true, recovers: "review-timeout-aaaaaaa-r2", why: expect.stringMatching(/after 95 min \(timeout 90 min\).*no new review is requested/) });
     });
     it("wakes once at the CI timeout for a required check that cannot finish", () => {
       const d = judge(waiting("wait-ci", -65), live({ checkRuns: [{ name: CHECKS[0], status: "completed", conclusion: "success", completed_at: at(-50) }] }));
-      expect(d).toMatchObject({ wake: true, recovers: "r7-ci-timeout", why: expect.stringContaining(`${CHECKS[1]} have not finished`) });
+      expect(d).toMatchObject({ wake: true, recovers: "ci-timeout-aaaaaaa-r2", why: expect.stringContaining(`${CHECKS[1]} have not finished`) });
     });
     it("does not act on a PR whose head moved, or without a fresh read of GitHub", () => {
       expect(judge(waiting("wait-review"), live({ prHead: OLD }))).toMatchObject({ wake: false, why: expect.stringContaining("push event wakes the goal") });
       expect(judge(waiting("wait-review"), null)).toMatchObject({ wake: false, why: expect.stringContaining("was not read") });
     });
-    it("wakes each such stall once, and says so on the issue when the routine cannot be reached", () => {
+    it("wakes each such stall once, and calls again when no run took the wake up (Codex P1 on bade58f)", () => {
       const rec = waiting("wait-review", -95);
-      const t = (state: string, attempts: number) => ticket(-60, state, { reason: "recovery", recovers: "r7-review-timeout", attempts, pr: 191, sha: HEAD });
-      expect(judge(rec, live(), [t("fired", 1)])).toMatchObject({ wake: false, why: expect.stringContaining("already had its recovery wake") });
-      const gaveUp = judge(rec, live(), [t("failed", MAX_FIRE_ATTEMPTS)]);
-      expect(gaveUp).toMatchObject({ wake: false, notice: { key: "r7-review-timeout-unreachable", body: expect.stringContaining("could not be reached") } });
-      const again = judge(rec, live(), [t("failed", MAX_FIRE_ATTEMPTS), { user: { login: WORKFLOW_LOGIN }, body: gaveUp.notice!.body }]);
-      expect(again.notice).toBeNull();   // posted once
+      const key = "review-timeout-aaaaaaa-r2";
+      const t = (state: string, attempts: number, min = -60) => ({ ...ticket(min, state, { reason: "recovery", recovers: key, attempts, pr: 191, sha: HEAD }), updated_at: at(min) });
+      // Fired, and a run started after it: the wake was taken up, so the same stall is not woken again.
+      const taken = waiting("wait-review", -95);
+      (taken as any).runs = [run1, { ...run1, n: 2, sessionId: "s2", startedAt: at(-55), endedAt: at(-50) }];
+      expect(judge(taken, live(), [t("fired", 1)])).toMatchObject({ wake: false, why: expect.stringContaining("already had its recovery wake") });
+      // Fired recently and nobody has started yet: still in flight.
+      expect(judge(rec, live(), [t("fired", 1, -20)])).toMatchObject({ wake: false, why: expect.stringContaining("no run has started since") });
+      // Fired over 45 minutes ago and no run took it up (the session stopped before the guard): call again.
+      expect(judge(rec, live(), [t("fired", 1)])).toMatchObject({ wake: true, retry: expect.objectContaining({ recovers: key }), why: expect.stringContaining("no run took up recovery ticket") });
+      // Out of attempts: one visible notice, then silence.
+      const gaveUp = judge(rec, live(), [t("fired", MAX_FIRE_ATTEMPTS)]);
+      expect(gaveUp).toMatchObject({ wake: false, notice: { key: `${key}-unrecovered`, body: expect.stringContaining("no run took it up; a person must look") } });
+      expect(judge(rec, live(), [t("failed", MAX_FIRE_ATTEMPTS)])).toMatchObject({ notice: { key: `${key}-unrecovered` } });
+      const again = judge(rec, live(), [t("fired", MAX_FIRE_ATTEMPTS), { user: { login: WORKFLOW_LOGIN }, body: gaveUp.notice!.body }]);
+      expect(again.notice).toBeNull();
+    });
+    it("counts only an answer about the requested commit, as the runner does (Codex P2 on bade58f)", () => {
+      const older = { user: { login: CODEX_LOGIN }, body: `Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${OLD.slice(0, 10)}\``, created_at: at(-15), html_url: "old" };
+      const oldReview = { id: 9, user: { login: CODEX_LOGIN }, body: `### 💡 Codex Review\n\n**Reviewed commit:** \`${OLD.slice(0, 10)}\``, commit_id: OLD, submitted_at: at(-15), html_url: "oldrev" };
+      expect(judge(waiting("wait-review"), live({ prComments: [older], reviews: [oldReview] }))).toMatchObject({ wake: false, why: expect.stringContaining("not answered round 2 yet") });
+      const limit = { user: { login: CODEX_LOGIN }, body: "You have reached your Codex usage limits for code reviews.", created_at: at(-15), html_url: "limit" };
+      expect(judge(waiting("wait-review"), live({ prComments: [limit] }))).toMatchObject({ wake: true, recovers: "missed-review-aaaaaaa-r2" });   // the runner records it as unavailable
+      // Same answer as the runner's own parser, for every kind of Codex post.
+      const cs = [older, limit, codexComment(-12), { user: { login: CODEX_LOGIN }, body: "<!-- codex-pull-request-review-summary -->\n| ✅ **Completed** |", created_at: at(-11), html_url: "table" }];
+      const rs = [oldReview, { id: 10, user: { login: CODEX_LOGIN }, body: `**Reviewed commit:** \`${HEAD.slice(0, 10)}\``, commit_id: HEAD, submitted_at: at(-10), html_url: "rev" }];
+      for (const [comments, reviews] of [[cs, rs], [cs.slice(2), []], [[], rs], [[older], [oldReview]]] as const) {
+        const ours = answerFor(codexAnswers(comments, reviews), HEAD, at(-30));
+        const theirs = verdictFor(codexVerdicts(comments as any, reviews as any, []), HEAD, at(-30));
+        expect(ours?.url ?? null).toBe(theirs?.url ?? null);
+      }
     });
   });
   it("never wakes a finished, blocked or forked goal, or one whose claims it cannot read", () => {
@@ -330,7 +356,8 @@ describe("the recovery watchdog", () => {
     const rec = base({ runs: [run1] });
     const claims = [claim(2, 1, -41)];
     const recovery = (state: string, key: string, min = -30, attempts = 1) => ticket(min, state, { reason: "recovery", recovers: key, attempts, pr: 191, sha: HEAD });
-    expect(recover(rec, claims, [recovery("fired", "r7-c2-1", -100)])).toMatchObject({ wake: false, why: expect.stringContaining("already had its recovery wake") });
+    // Fired long ago and no run took it up: called again within its attempt budget (Codex P1 on bade58f).
+    expect(recover(rec, claims, [recovery("fired", "r7-c2-1", -100)])).toMatchObject({ wake: true, retry: expect.objectContaining({ recovers: "r7-c2-1" }) });
     expect(recover(rec, claims, [recovery("failed", "r7-c2-1", -100, 2)])).toMatchObject({ wake: true, retry: expect.objectContaining({ recovers: "r7-c2-1" }) });
     expect(recover(rec, claims, [recovery("failed", "r7-c2-1", -100, MAX_FIRE_ATTEMPTS)])).toMatchObject({ wake: false });
     // The recovered session died too: its own stale claim is a new stall, until the caps run out.

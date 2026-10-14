@@ -135,7 +135,7 @@ export function parseTicket(comment) {
   return {
     id: comment.id, goal: m[1], issue: Number(m[2]), pr: m[3] === "none" ? null : Number(m[3]), sha: m[4] === "none" ? null : m[4],
     reason: m[5], state: m[6], attempts: Number(m[7]), recovers: m[8] ?? null, note: (/^Why: (.+)$/m.exec(String(comment.body)) ?? [])[1] ?? null,
-    createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
+    createdAt: comment.created_at, updatedAt: comment.updated_at ?? comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
   };
 }
 
@@ -249,13 +249,17 @@ const tickets = (comments, record) => comments.map(parseTicket).filter((t) => t 
 
 /** One wake per stall, a failed call retried, MAX_RECOVERIES per goal; a stall it will not wake gets a visible notice. */
 function bounded(comments, record, mine, now, key, what) {
-  const flying = unconsumed(comments, record).find((t) => t.state !== "failed" && minutes(now - Date.parse(t.createdAt)) < WAKE_PENDING_MINUTES);
+  const flying = unconsumed(comments, record).find((t) => t.state !== "failed" && minutes(now - Date.parse(t.updatedAt)) < WAKE_PENDING_MINUTES);
   if (flying) return { wake: false, why: `wake ticket ${flying.id} is ${flying.state} and no run has started since` };
   const recoveries = mine.filter((t) => t.reason === "recovery");
   const same = recoveries.find((t) => t.recovers === key);
   if (same) {
-    if (same.state === "failed" && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `retrying recovery ticket ${same.id}: ${what}` };
-    if (same.state === "failed") return stuck(comments, record, `${key}-unreachable`, `${what}. The routine could not be reached for recovery ticket ${same.id} after ${same.attempts} calls; a person must look.`);
+    // A fired wake that no run took up within the pending window did not recover the stall (the
+    // session may have stopped before the guard): call again, within the same attempt budget.
+    const taken = lastRunStart(record) >= Date.parse(same.createdAt);
+    const unanswered = same.state === "failed" || (same.state === "fired" && !taken && minutes(now - Date.parse(same.updatedAt)) >= WAKE_PENDING_MINUTES);
+    if (unanswered && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `${same.state === "failed" ? "retrying" : "no run took up"} recovery ticket ${same.id}: ${what}` };
+    if (unanswered) return stuck(comments, record, `${key}-unrecovered`, `${what}. Recovery ticket ${same.id} was sent ${same.attempts} times and no run took it up; a person must look.`);
     return { wake: false, why: `this stall (${key}) already had its recovery wake: ticket ${same.id}, ${same.state}` };
   }
   if (recoveries.length >= MAX_RECOVERIES) return stuck(comments, record, `${key}-cap`, `${what}. The goal has used its ${MAX_RECOVERIES} recovery wakes, so the watchdog will not wake it again; a person must look.`);
@@ -272,16 +276,34 @@ export function noticeBody(goal, key, text) {
   return `<!-- specsmith-auto-goal-stall goal=${goal} key=${key} -->\n**Auto Goal \`${goal}\` is stalled.** ${text}\n\nPosted once by the auto-goal-wake watchdog.`;
 }
 
+const REVIEWED = /\*\*Reviewed commit:\*\*\s*`([0-9a-f]{7,40})`/;
+
 /**
- * Codex's answers on a PR, from its issue comments and reviews: every comment or review by Codex
- * except its status table while it is still running.
+ * Codex's verdicts on a PR, by the same rules as the runner's codex.ts (codexVerdicts), so the
+ * watchdog never wakes for an answer the runner would not accept: a clean comment or a review names
+ * the commit it reviewed; any other Codex comment (usage limits, an error) is "unavailable" and
+ * answers whatever was requested; the status table counts only when it reports a failure.
  */
 export function codexAnswers(prComments, reviews) {
-  const fromComments = (prComments ?? []).filter((c) => c.user?.login === CODEX_LOGIN)
-    .filter((c) => { const b = String(c.body ?? ""); return !b.startsWith(SUMMARY) || /✅\s*\*\*Completed\*\*/.test(b); })
-    .map((c) => ({ at: c.updated_at ?? c.created_at, url: c.html_url }));
-  const fromReviews = (reviews ?? []).filter((r) => r.user?.login === CODEX_LOGIN).map((r) => ({ at: r.submitted_at, url: r.html_url }));
-  return [...fromComments, ...fromReviews].filter((a) => a.at).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const out = [];
+  for (const c of prComments ?? []) {
+    if (c.user?.login !== CODEX_LOGIN) continue;
+    const body = String(c.body ?? "");
+    if (body.startsWith(SUMMARY)) { if (/\b(Failed|Error)\b|❌/.test(body)) out.push({ kind: "unavailable", at: c.created_at, prefix: null, url: c.html_url }); continue; }
+    const reviewed = REVIEWED.exec(body);
+    out.push(/Didn't find any major issues/i.test(body) && reviewed ? { kind: "clean", at: c.created_at, prefix: reviewed[1], url: c.html_url } : { kind: "unavailable", at: c.created_at, prefix: null, url: c.html_url });
+  }
+  for (const r of reviews ?? []) {
+    if (r.user?.login !== CODEX_LOGIN) continue;
+    out.push({ kind: "findings", at: r.submitted_at, prefix: REVIEWED.exec(String(r.body ?? ""))?.[1] ?? r.commit_id ?? null, url: r.html_url });
+  }
+  return out.filter((a) => a.at).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
+/** The first answer at or after the request that concerns the requested commit (codex.ts verdictFor). */
+export function answerFor(answers, requestedSha, requestedAt) {
+  const since = Date.parse(requestedAt);
+  return answers.find((a) => Date.parse(a.at) >= since && (a.kind === "unavailable" || (a.prefix && requestedSha.startsWith(a.prefix)))) ?? null;
 }
 
 /**
@@ -303,7 +325,7 @@ function waitingStall(ctx, record, mine, now) {
   const age = (t) => Math.round(minutes(now - t));
   let key, what;
   if (record.step === "wait-review") {
-    const answer = codexAnswers(live.prComments, live.reviews).find((a) => Date.parse(a.at) > since);
+    const answer = answerFor(codexAnswers(live.prComments, live.reviews), head, round.requestedAt);
     const limit = record.caps?.reviewTimeoutMinutes ?? 90;
     if (answer) {
       if (minutes(now - Date.parse(answer.at)) < EVENT_GRACE_MINUTES) return no(`Codex answered ${age(Date.parse(answer.at))} min ago; its event may still be arriving`);
@@ -328,7 +350,9 @@ function waitingStall(ctx, record, mine, now) {
       [key, what] = ["ci-timeout", `Required check(s) ${pending.join(", ")} have not finished on \`${short}\` after ${age(since)} min (timeout ${limit} min). Waking the runner to record the goal blocked`];
     }
   }
-  return bounded(ctx.comments, record, mine, now, `r${record.revision}-${key}`, what);
+  // Keyed by commit and round, not record revision: a woken run that saves without moving the goal on
+  // must not make the same stall look new.
+  return bounded(ctx.comments, record, mine, now, `${key}-${head.slice(0, 7)}-r${round.n}`, what);
 }
 
 /**
