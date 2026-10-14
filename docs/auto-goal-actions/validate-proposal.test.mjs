@@ -25,6 +25,17 @@ test('refuses modes, links, new files, binary patches, and mismatched paths', ()
   assert.throws(() => validatePatch(patch().replace('+++ b/artifacts/SpecSmith/src/components/PartSelector.tsx', '+++ b/artifacts/SpecSmith/src/components/Other.tsx')), /do not match/);
 });
 
+test('requires a regular index and matching paths in each diff section', () => {
+  const other = 'artifacts/SpecSmith/src/components/Other.tsx';
+  const first = patch();
+  const second = patch(other);
+  assert.deepEqual(validatePatch(first + second).paths, [other, 'artifacts/SpecSmith/src/components/PartSelector.tsx'].sort());
+  const missingIndex = first.replace(/^index [^\n]+\n/m, '');
+  const doubledIndex = second.replace(/^index [^\n]+\n/m, 'index 1111111..2222222 100644\nindex 1111111..2222222 100644\n');
+  assert.throws(() => validatePatch(missingIndex + doubledIndex), /mode or missing index/);
+  assert.throws(() => validatePatch(first + second.replace(`--- a/${other}`, '--- a/artifacts/SpecSmith/src/components/PartSelector.tsx')), /paths do not match/);
+});
+
 test('experimental workflow is not installed and has three gated jobs', () => {
   const workflow = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
   for (const name of ['implement:', 'check:', 'publish:']) assert.ok(workflow.includes(`  ${name}`));
@@ -56,6 +67,8 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.doesNotMatch(yaml, /uses: (?:anthropics\/claude-code-action|actions\/(?:upload|download)-artifact)@v\d/);
   assert.doesNotMatch(sections.publish, /secrets\.CLAUDE|pnpm|npm (?:run|test)|node_modules/);
   assert.match(sections.publish, /git apply --check/);
+  assert.match(sections.publish, /git ls-files --stage/);
+  assert.match(sections.publish, /test "\$mode" = '100644'/);
   assert.match(sections.publish, /git commit -m/);
   assert.match(sections.publish, /echo "sha=\$sha" >> "\$GITHUB_OUTPUT"/);
   assert.match(sections.check, /needs: publish/);

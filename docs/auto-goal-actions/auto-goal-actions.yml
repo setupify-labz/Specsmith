@@ -85,7 +85,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node docs/auto-goal-actions/validate-proposal.mjs "$RUNNER_TEMP/diff/proposal.patch"
+          node docs/auto-goal-actions/validate-proposal.mjs "$RUNNER_TEMP/diff/proposal.patch" > "$RUNNER_TEMP/diff/validated.json"
+          while IFS= read -r path; do
+            mode="$(git ls-files --stage -- "$path" | awk '{print $1}')"
+            test "$mode" = '100644'
+          done < <(jq -r '.paths[]' "$RUNNER_TEMP/diff/validated.json")
           git apply --check "$RUNNER_TEMP/diff/proposal.patch"
       # This job does not run the proposed application code. The commit is fixed before checks begin.
       - name: Publish an isolated draft branch
