@@ -37,8 +37,13 @@ const MAX_CLAIM_ATTEMPTS = 3;
 const CLAIM_SUBJECT = /^auto-goal claim goal=([a-z0-9-]+) run=(\d+) attempt=(\d+) session=(\S+) at=(\S+)$/;
 /** Recovery wakes per goal, over its whole life. Past this a stalled goal waits for a person. */
 export const MAX_RECOVERIES = 3;
-/** After a run ends on one of these, the next wake comes from Codex or CI, not from the watchdog. */
+/** After a run ends on one of these, the next wake normally comes from Codex or CI; the watchdog re-reads them. */
 const WAITING_STEPS = new Set(["wait-review", "wait-ci"]);
+/** A result this old with no wake after it is a missed event, not one still being delivered. */
+export const EVENT_GRACE_MINUTES = 10;
+/** decide.ts's default for caps.ciTimeoutMinutes. */
+const DEFAULT_CI_TIMEOUT_MINUTES = 60;
+const NOTICE = /^<!-- specsmith-auto-goal-stall goal=([a-z0-9-]+) key=([a-z0-9-]+) -->/;
 /** A wake not yet followed by a run start is treated as pending for this long, then retried. */
 export const WAKE_PENDING_MINUTES = 45;
 /** A run that has not finished within its run-time cap plus this margin is dead, not one to wait for (runner.ts uses the same window). */
@@ -47,6 +52,8 @@ const DEFAULT_RUN_MINUTES = 25;
 export const runStaleMinutes = (record) => (record.caps?.maxRunMinutes ?? DEFAULT_RUN_MINUTES) + RUN_STALE_MARGIN_MINUTES;
 const MARKER = /^<!-- specsmith-auto-goal id=([a-z0-9-]+)(?: rev=(\d+))? -->/;
 const SUMMARY = "<!-- codex-pull-request-review-summary -->";
+/** When GitHub says the record comment was posted (kept off the record's own fields). */
+const POSTED_AT = Symbol("postedAt");
 
 /**
  * The event, reduced to what the decision needs. Anything that is not a Codex verdict on a PR,
@@ -97,7 +104,7 @@ export function currentRecord(comments, goalId, trustedLogin) {
     if (!m || (goalId && m[1] !== goalId)) continue;
     const json = /```json\n([\s\S]*?)\n```/.exec(c.body);
     if (!json) continue;
-    try { entries.push(JSON.parse(json[1])); } catch { /* not a record */ }
+    try { entries.push(Object.defineProperty(JSON.parse(json[1]), POSTED_AT, { value: c.created_at, enumerable: false })); } catch { /* not a record */ }
   }
   if (!entries.length) return { skip: `no record for goal ${goalId ?? "(any)"} by ${trustedLogin}` };
   const top = Math.max(...entries.map((e) => e.revision));
@@ -127,14 +134,15 @@ export function parseTicket(comment) {
   const onIssue = /\/issues\/(\d+)$/.exec(String(comment.issue_url ?? ""));
   return {
     id: comment.id, goal: m[1], issue: Number(m[2]), pr: m[3] === "none" ? null : Number(m[3]), sha: m[4] === "none" ? null : m[4],
-    reason: m[5], state: m[6], attempts: Number(m[7]), recovers: m[8] ?? null, createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
+    reason: m[5], state: m[6], attempts: Number(m[7]), recovers: m[8] ?? null, note: (/^Why: (.+)$/m.exec(String(comment.body)) ?? [])[1] ?? null,
+    createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
   };
 }
 
 export function ticketBody(t) {
   const marker = `<!-- specsmith-auto-goal-wake goal=${t.goal} issue=${t.issue} pr=${t.pr ?? "none"} sha=${t.sha ?? "none"} reason=${t.reason} state=${t.state} attempts=${t.attempts}${t.recovers ? ` recovers=${t.recovers}` : ""} -->`;
   const what = t.state === "fired" ? "Woke the Auto Goal runner" : t.state === "failed" ? `Could not wake the Auto Goal runner (${t.attempts}/${MAX_FIRE_ATTEMPTS} calls failed${t.attempts >= MAX_FIRE_ATTEMPTS ? "; giving up" : "; the retry job will try again"})` : "Waking the Auto Goal runner";
-  return `${marker}\n${what} for goal \`${t.goal}\` (${t.reason}${t.sha ? ` on \`${t.sha.slice(0, 10)}\`` : ""}). Written by the auto-goal-wake workflow; a routine run only proceeds for the ticket it was woken with.`;
+  return `${marker}\n${what} for goal \`${t.goal}\` (${t.reason}${t.sha ? ` on \`${t.sha.slice(0, 10)}\`` : ""}). Written by the auto-goal-wake workflow; a routine run only proceeds for the ticket it was woken with.${t.note ? `\nWhy: ${t.note}` : ""}`;
 }
 
 const lastRunStart = (record) => Math.max(0, ...(record.runs ?? []).map((r) => Date.parse(r.startedAt)));
@@ -222,26 +230,105 @@ export function decideRecovery(ctx) {
   const age = (at) => minutes(now - Date.parse(at));
   if (open && age(open.startedAt) < stale) return no(`run ${open.n} by ${open.sessionId} is live (${Math.round(age(open.startedAt))} of ${stale} min)`);
   if (top && age(top.at) < stale) return no(`run ${nextRun} is claimed by ${top.session}, live (${Math.round(age(top.at))} of ${stale} min)`);
-  if (top && top.attempt >= MAX_CLAIM_ATTEMPTS) return no(`run ${nextRun} was claimed ${MAX_CLAIM_ATTEMPTS} times and never opened; a person must look`);
-  if (!open && !top && WAITING_STEPS.has(record.step)) return no(`goal ${record.id} is at ${record.step}; Codex and CI events wake it`);
-  const tickets = comments.map(parseTicket).filter((t) => t && t.goal === record.id && t.onIssue === record.issue);
-  const lastWrite = Math.max(Date.parse(record.updatedAt ?? 0) || 0, ...tickets.map((t) => Date.parse(t.createdAt)), ...claims.map((c) => Date.parse(c.at)));
+  if (top && top.attempt >= MAX_CLAIM_ATTEMPTS) return stuck(comments, record, `r${record.revision}-c${nextRun}-exhausted`, `Run ${nextRun} was claimed ${MAX_CLAIM_ATTEMPTS} times and never opened (last by ${top.session}), so no session can take it; a person must look.`);
+  if (!open && !top && WAITING_STEPS.has(record.step)) return waitingStall(ctx, record, tickets(comments, record), now);
+  const mine = tickets(comments, record);
+  // GitHub's own time for the record comment is always there; a missing or odd field must not make a goal look abandoned.
+  const times = [record[POSTED_AT], record.updatedAt, ...runs.flatMap((r) => [r.startedAt, r.endedAt]), ...mine.map((t) => t.createdAt), ...claims.map((c) => c.at)];
+  const lastWrite = Math.max(...times.map((t) => Date.parse(t ?? "")).filter((t) => !Number.isNaN(t)));
+  if (!Number.isFinite(lastWrite)) return no(`goal ${record.id} has no readable time of last activity; not guessing`);
   // A stale run or claim is already past its owner's lease; with neither, wait as long as a live owner could take.
   const quiet = open || top ? RUN_STALE_MARGIN_MINUTES : stale;
   if (minutes(now - lastWrite) < quiet) return no(`last activity ${Math.round(minutes(now - lastWrite))} min ago (needs ${quiet} min of quiet)`);
-  const flying = unconsumed(comments, record).find((t) => t.state !== "failed" && minutes(now - Date.parse(t.createdAt)) < WAKE_PENDING_MINUTES);
-  if (flying) return no(`wake ticket ${flying.id} is ${flying.state} and no run has started since`);
-
   const key = `r${record.revision}${top ? `-c${top.run}-${top.attempt}` : open ? `-o${open.n}` : ""}`;
   const what = top ? `claim ${top.ref} by ${top.session} went stale without opening run ${nextRun}` : open ? `run ${open.n} by ${open.sessionId} went stale without finishing` : `nothing happened for ${Math.round(minutes(now - lastWrite))} min after ${record.step}`;
-  const recoveries = tickets.filter((t) => t.reason === "recovery");
+  return bounded(comments, record, mine, now, key, what);
+}
+
+const tickets = (comments, record) => comments.map(parseTicket).filter((t) => t && t.goal === record.id && t.onIssue === record.issue);
+
+/** One wake per stall, a failed call retried, MAX_RECOVERIES per goal; a stall it will not wake gets a visible notice. */
+function bounded(comments, record, mine, now, key, what) {
+  const flying = unconsumed(comments, record).find((t) => t.state !== "failed" && minutes(now - Date.parse(t.createdAt)) < WAKE_PENDING_MINUTES);
+  if (flying) return { wake: false, why: `wake ticket ${flying.id} is ${flying.state} and no run has started since` };
+  const recoveries = mine.filter((t) => t.reason === "recovery");
   const same = recoveries.find((t) => t.recovers === key);
   if (same) {
     if (same.state === "failed" && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `retrying recovery ticket ${same.id}: ${what}` };
-    return no(`this stall (${key}) already had its recovery wake: ticket ${same.id}, ${same.state}`);
+    if (same.state === "failed") return stuck(comments, record, `${key}-unreachable`, `${what}. The routine could not be reached for recovery ticket ${same.id} after ${same.attempts} calls; a person must look.`);
+    return { wake: false, why: `this stall (${key}) already had its recovery wake: ticket ${same.id}, ${same.state}` };
   }
-  if (recoveries.length >= MAX_RECOVERIES) return no(`recovery cap reached (${MAX_RECOVERIES} per goal); a person must look: ${what}`);
+  if (recoveries.length >= MAX_RECOVERIES) return stuck(comments, record, `${key}-cap`, `${what}. The goal has used its ${MAX_RECOVERIES} recovery wakes, so the watchdog will not wake it again; a person must look.`);
   return { wake: true, why: what, goal: record.id, issue: record.issue, pr: record.pr ?? null, sha: record.head ?? null, reason: "recovery", recovers: key };
+}
+
+/** A stall the watchdog will not wake: say so once on the goal issue, not only in the Action log. */
+function stuck(comments, record, key, text) {
+  const posted = comments.some((c) => c.user?.login === WORKFLOW_LOGIN && (NOTICE.exec(String(c.body ?? "")) ?? [])[2] === key && NOTICE.exec(c.body)[1] === record.id);
+  return { wake: false, why: text, notice: posted ? null : { key, body: noticeBody(record.id, key, text) } };
+}
+
+export function noticeBody(goal, key, text) {
+  return `<!-- specsmith-auto-goal-stall goal=${goal} key=${key} -->\n**Auto Goal \`${goal}\` is stalled.** ${text}\n\nPosted once by the auto-goal-wake watchdog.`;
+}
+
+/**
+ * Codex's answers on a PR, from its issue comments and reviews: every comment or review by Codex
+ * except its status table while it is still running.
+ */
+export function codexAnswers(prComments, reviews) {
+  const fromComments = (prComments ?? []).filter((c) => c.user?.login === CODEX_LOGIN)
+    .filter((c) => { const b = String(c.body ?? ""); return !b.startsWith(SUMMARY) || /✅\s*\*\*Completed\*\*/.test(b); })
+    .map((c) => ({ at: c.updated_at ?? c.created_at, url: c.html_url }));
+  const fromReviews = (reviews ?? []).filter((r) => r.user?.login === CODEX_LOGIN).map((r) => ({ at: r.submitted_at, url: r.html_url }));
+  return [...fromComments, ...fromReviews].filter((a) => a.at).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
+/**
+ * A goal parked at wait-review or wait-ci. `ctx.live` is GitHub's state read on this pass: the PR's
+ * head, Codex's answers on the PR and the head's check runs. A result already there with no wake
+ * after it is a missed event: wake once. A timeout passed: wake once so the runner (the only writer
+ * of the record) records the specific blocked outcome; the ticket on the issue says why.
+ */
+function waitingStall(ctx, record, mine, now) {
+  const no = (why) => ({ wake: false, why });
+  const live = ctx.live;
+  if (!live) return no(`goal ${record.id} is at ${record.step} and GitHub's current state for PR ${record.pr} was not read`);
+  const head = record.head;
+  const short = String(head).slice(0, 10);
+  if (live.prHead !== head) return no(`PR #${record.pr}'s head is ${String(live.prHead).slice(0, 10)}, not the goal's ${short}; its push event wakes the goal`);
+  const round = (record.reviewRounds ?? []).filter((r) => r.requestedSha === head).at(-1);
+  if (!round) return no(`no review round for ${short}`);
+  const since = Date.parse(round.requestedAt);
+  const age = (t) => Math.round(minutes(now - t));
+  let key, what;
+  if (record.step === "wait-review") {
+    const answer = codexAnswers(live.prComments, live.reviews).find((a) => Date.parse(a.at) > since);
+    const limit = record.caps?.reviewTimeoutMinutes ?? 90;
+    if (answer) {
+      if (minutes(now - Date.parse(answer.at)) < EVENT_GRACE_MINUTES) return no(`Codex answered ${age(Date.parse(answer.at))} min ago; its event may still be arriving`);
+      [key, what] = ["missed-review", `Codex answered review round ${round.n} on \`${short}\` ${age(Date.parse(answer.at))} min ago (${answer.url}), but no run followed: its event was missed`];
+    } else if (minutes(now - since) <= limit) {
+      return no(`Codex has not answered round ${round.n} yet (${age(since)} of ${limit} min)`);
+    } else {
+      [key, what] = ["review-timeout", `Codex has not answered review round ${round.n} on \`${short}\` after ${age(since)} min (timeout ${limit} min). Waking the runner to record the goal blocked; no new review is requested`];
+    }
+  } else {
+    const required = record.requiredChecks ?? [];
+    const runs = live.checkRuns ?? [];
+    const pending = required.filter((name) => !runs.some((r) => r.name === name && r.status === "completed"));
+    const limit = record.caps?.ciTimeoutMinutes ?? DEFAULT_CI_TIMEOUT_MINUTES;
+    if (!pending.length) {
+      const done = Math.max(...required.map((name) => Date.parse(runs.find((r) => r.name === name && r.status === "completed").completed_at ?? 0) || 0));
+      if (minutes(now - done) < EVENT_GRACE_MINUTES) return no(`the required checks finished ${age(done)} min ago; their event may still be arriving`);
+      [key, what] = ["missed-ci", `The required checks on \`${short}\` finished ${age(done)} min ago, but no run followed: their event was missed`];
+    } else if (minutes(now - since) <= limit) {
+      return no(`required check(s) ${pending.join(", ")} still running on ${short} (${age(since)} of ${limit} min)`);
+    } else {
+      [key, what] = ["ci-timeout", `Required check(s) ${pending.join(", ")} have not finished on \`${short}\` after ${age(since)} min (timeout ${limit} min). Waking the runner to record the goal blocked`];
+    }
+  }
+  return bounded(ctx.comments, record, mine, now, `r${record.revision}-${key}`, what);
 }
 
 /**
@@ -413,6 +500,15 @@ async function readClaims(repo, goal) {
   return out;
 }
 
+/** GitHub's current state for a goal parked at wait-review or wait-ci: PR head, Codex's answers, the head's checks. */
+async function readLive(repo, record) {
+  const pr = await gh(`repos/${repo}/pulls/${record.pr}`);
+  const prComments = await allComments(repo, record.pr);
+  const reviews = await gh(`repos/${repo}/pulls/${record.pr}/reviews?per_page=100`);
+  const checkRuns = (await gh(`repos/${repo}/commits/${record.head}/check-runs?per_page=100`)).check_runs;
+  return { prHead: pr.head.sha, prComments, reviews, checkRuns };
+}
+
 async function watchdogMain() {
   const repo = env("GITHUB_REPOSITORY"), trustedLogin = env("AUTO_GOAL_TRUSTED_LOGIN");
   const issues = (await gh(`repos/${repo}/issues?labels=${GOAL_LABEL}&state=open&per_page=50`)).filter((i) => !i.pull_request);
@@ -422,17 +518,20 @@ async function watchdogMain() {
     try {
       const comments = await allComments(repo, issue.number);
       const found = currentRecord(comments, null, trustedLogin);
-      const claims = "record" in found ? await readClaims(repo, found.record.id) : [];
-      d = decideRecovery({ comments, claims, trustedLogin, now: Date.now() });
+      const record = "record" in found ? found.record : null;
+      const claims = record ? await readClaims(repo, record.id) : [];
+      const live = record && !record.outcome && WAITING_STEPS.has(record.step) && record.pr && record.head ? await readLive(repo, record) : null;
+      d = decideRecovery({ comments, claims, live, trustedLogin, now: Date.now() });
     } catch (error) {
       console.log(`#${issue.number}: skip: could not read the goal's state (${error.message})`);
       continue;
     }
     console.log(`#${issue.number}: ${d.wake ? "recover" : "skip"}: ${d.why}`);
+    if (d.notice) await gh(`repos/${repo}/issues/${issue.number}/comments`, { method: "POST", body: JSON.stringify({ body: d.notice.body }) });
     if (!d.wake) continue;
     let t = d.retry;
     if (!t) {
-      const draft = { goal: d.goal, issue: d.issue, pr: d.pr, sha: d.sha, reason: "recovery", recovers: d.recovers, state: "pending", attempts: 0 };
+      const draft = { goal: d.goal, issue: d.issue, pr: d.pr, sha: d.sha, reason: "recovery", recovers: d.recovers, note: d.why, state: "pending", attempts: 0 };
       const created = await gh(`repos/${repo}/issues/${d.issue}/comments`, { method: "POST", body: JSON.stringify({ body: ticketBody(draft) }) });
       t = { ...draft, id: created.id };
     }

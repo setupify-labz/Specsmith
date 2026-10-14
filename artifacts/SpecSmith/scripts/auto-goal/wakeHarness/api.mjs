@@ -67,7 +67,8 @@ function route(s, method, url, body, actor) {
     const label = u.searchParams.get("labels");
     return { status: 200, body: page > 1 ? [] : s.issues.filter((i) => i.state === "open" && i.labels.some((l) => l.name === label)) };
   }
-  if (method === "GET" && /^pulls\/\d+\/(reviews|comments)$/.test(p)) return { status: 200, body: [] };
+  if (method === "GET" && (m = /^pulls\/(\d+)\/reviews$/.exec(p))) return { status: 200, body: page > 1 ? [] : (s.reviews?.[m[1]] ?? []) };
+  if (method === "GET" && /^pulls\/\d+\/comments$/.test(p)) return { status: 200, body: [] };
   // Branches and commits, read from the local bare repository standing in for origin (s.origin).
   const realGit = (...a) => execFileSync(process.env.WAKE_HARNESS_REAL_GIT ?? "git", ["-C", s.origin, ...a], { encoding: "utf8" });
   if (method === "GET" && (m = /^git\/matching-refs\/(heads\/.+)$/.exec(p))) {

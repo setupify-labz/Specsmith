@@ -214,6 +214,52 @@ describe("run ownership (claim.ts)", () => {
   });
 });
 
+describe("timeouts the watchdog wakes the runner for", () => {
+  /** Drives a goal to wait-review on sha(2): checks reproduced, fix verified, draft PR, review round 1 requested at T0+2. */
+  async function atReview() {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "a", "--started-by", "routine"], h.deps); h.commit(1, "checks"); await advance(h.adv(), h.deps);
+    h.tick(2); await begin([...h.argv, "--session", "b", "--started-by", "routine"], h.deps);
+    h.commit(2, "fix"); h.pass(UNIT, 0); h.pass(BROWSER, 0); await advance(h.adv(), h.deps);
+    expect(h.last()).toMatchObject({ next: "wait-review" });
+    return h;
+  }
+  const reviewRequests = (h: ReturnType<typeof harness>) => (h.github.comments.get(77) ?? []).filter((c) => c.body.startsWith("@codex review")).length;
+
+  it("records a Codex timeout as a specific blocked outcome on the goal issue, without asking for another review", async () => {
+    const h = await atReview();
+    expect(reviewRequests(h)).toBe(1);
+    h.tick(2 + 60);
+    await begin([...h.argv, "--session", "early", "--started-by", "routine (recovery)"], h.deps);
+    expect(h.last()).toMatchObject({ action: "wait-review" });   // still inside the 90 minutes: nothing recorded
+    expect(h.record().outcome).toBeNull();
+    await advance(h.adv(), h.deps);
+    h.tick(2 + 95);
+    await begin([...h.argv, "--session", "late", "--started-by", "routine (recovery)"], h.deps);
+    expect(h.last()).toMatchObject({ action: "blocked", why: expect.stringContaining("Codex did not answer review round 1 within 90 min") });
+    expect(h.record().outcome).toMatchObject({ status: "blocked", reason: expect.stringContaining("within 90 min") });
+    expect(h.github.comments.get(400)!.at(-1)!.body).toContain("Outcome: **blocked**: Codex did not answer review round 1 within 90 min");
+    expect(reviewRequests(h)).toBe(1);
+  });
+
+  it("records a required check that cannot finish as a specific blocked outcome", async () => {
+    const h = await atReview();
+    h.tick(10);
+    h.github.comments.get(77)!.push(h.github.comment(`Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** \`${sha(2).slice(0, 10)}\``, CODEX_LOGIN));
+    h.github.checks.set(sha(2), [{ name: CHECK, status: "in_progress", conclusion: null, html_url: "ci" }]);
+    h.tick(30);
+    await begin([...h.argv, "--session", "c", "--started-by", "routine"], h.deps);
+    expect(h.last()).toMatchObject({ action: "wait-ci" });
+    await advance(h.adv(), h.deps);
+    h.tick(2 + 61);
+    await begin([...h.argv, "--session", "d", "--started-by", "routine (recovery)"], h.deps);
+    expect(h.last()).toMatchObject({ action: "blocked", why: `Required check(s) ${CHECK} did not finish on ${sha(2).slice(0, 10)} within 60 min of the push (waited 61 min).` });
+    expect(h.github.comments.get(400)!.at(-1)!.body).toContain(`Outcome: **blocked**: Required check(s) ${CHECK} did not finish`);
+    expect(reviewRequests(h)).toBe(1);
+  });
+});
+
 describe("the unattended runner", () => {
   it("drives a goal across separate runs: reproduce, implement, PR and review, findings applied, clean review, green CI, complete", async () => {
     const h = harness();

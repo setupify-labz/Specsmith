@@ -43,6 +43,8 @@ export function ciState(goal: GoalRecord, sha: string): { state: "unknown" | "pe
   return { state: "green", failing: [], missing: [] };
 }
 
+export const DEFAULT_CI_TIMEOUT_MINUTES = 60;
+
 export function decide(goal: GoalRecord, now = new Date()): Action {
   if (goal.outcome) return { action: "done", why: `Goal already ${goal.outcome.status}: ${goal.outcome.reason}` };
 
@@ -101,6 +103,14 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
   // (step 3): they were nits, or dismissed with a recorded reason. A fixed finding would have moved the head.
 
   // 8. CI must be green on the exact head.
+  if (ci.state !== "green") {
+    // CI starts when the head is pushed, which is when its review was requested. A required check
+    // that has not finished by the timeout never will without someone looking at it.
+    const limit = goal.caps.ciTimeoutMinutes ?? DEFAULT_CI_TIMEOUT_MINUTES;
+    const waited = (now.getTime() - Date.parse(latest.requestedAt)) / 60_000;
+    const unfinished = ci.missing.length ? ci.missing : goal.requiredChecks;
+    if (waited > limit) return { action: "blocked", why: `Required check(s) ${unfinished.join(", ")} did not finish on ${head.slice(0, 10)} within ${limit} min of the push (waited ${Math.round(waited)} min).` };
+  }
   if (ci.state !== "green") return { action: "wait-ci", why: ci.state === "unknown" ? `No CI observation for ${head.slice(0, 10)} yet.` : `CI still running on ${head.slice(0, 10)}${ci.missing.length ? ` (waiting for ${ci.missing.join(", ")})` : ""}.` };
 
   return { action: "complete", why: `Acceptance checks pass, CI is green and Codex found no major issues on ${head.slice(0, 10)}.` };

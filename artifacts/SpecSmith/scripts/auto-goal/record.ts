@@ -118,6 +118,8 @@ export interface Caps {
   readonly maxRuns?: number;
   /** Wall-clock limit for one runner session's checks, in minutes. */
   readonly maxRunMinutes?: number;
+  /** How long a required check may take to finish on the reviewed head before the goal is blocked (default 60). */
+  readonly ciTimeoutMinutes?: number;
 }
 
 /** What this goal may never do. Fixed to false: the orchestrator has no code for any of them. */
@@ -231,7 +233,7 @@ export function validateGoal(raw: unknown): GoalRecord {
   for (const k of ["maxReviewRounds", "maxFixAttempts", "reviewTimeoutMinutes", "maxHours"] as const) {
     if (!Number.isInteger(caps[k]) || caps[k] < 1) fail(`caps.${k} must be a positive integer`);
   }
-  for (const k of ["maxRuns", "maxRunMinutes"] as const) {
+  for (const k of ["maxRuns", "maxRunMinutes", "ciTimeoutMinutes"] as const) {
     if (caps[k] !== undefined && (!Number.isInteger(caps[k]) || caps[k]! < 1)) fail(`caps.${k} must be a positive integer`);
   }
   if (g.runs !== undefined && caps.maxRuns !== undefined && g.runs.length > caps.maxRuns) fail(`more runner sessions (${g.runs.length}) than the cap (${caps.maxRuns})`);

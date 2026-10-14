@@ -237,9 +237,20 @@ It wakes a goal only when all of these hold, read fresh from GitHub on every pas
 - the trusted record exists, is not forked and has no outcome (so complete or blocked goals are never woken);
 - every claim ref for the goal could be read, and none is ahead of the record;
 - no run is open within its 40-minute window, and no claim for the next run is inside that window;
-- the goal is not waiting on Codex or CI (`wait-review`, `wait-ci`);
-- nothing has been written recently: 15 minutes of quiet when a stale run or claim exists (its owner's lease has already run out), 40 minutes otherwise;
+- nothing has been written recently: 15 minutes of quiet when a stale run or claim exists (its owner's lease has already run out), 40 minutes otherwise. Last activity is taken from GitHub's own comment times, so a missing field cannot make a goal look abandoned;
 - no wake ticket is pending or fired without a run having started since.
+
+**Goals parked at `wait-review` or `wait-ci`** are judged on GitHub's current state, read on that pass: the PR's head, Codex's comments and reviews on it, and the head's check runs.
+- **A result is there but no run followed.** Codex answered after the round's request, or every required check completed (green or red), at least 10 minutes ago. That is a missed event, so the watchdog wakes once.
+- **The result is genuinely pending.** It does nothing and posts nothing.
+- **Codex passed `caps.reviewTimeoutMinutes` (90)** with no answer. It wakes once, and the runner records `blocked: Codex did not answer review round N within 90 min`. No new review is requested; `decide` never re-requests a round on the same head.
+- **A required check passed `caps.ciTimeoutMinutes`** (new, default 60, counted from the push, which is when the review was requested) without finishing. It wakes once, and the runner records `blocked: Required check(s) … did not finish on <sha> within 60 min of the push`.
+- **The PR's head moved, or GitHub could not be read.** It does nothing; the push's own event handles a moved head.
+
+Only the runner can write the goal record, because only the trusted login's comments count, so the watchdog never records an outcome itself.
+- Every wake it makes is a ticket comment on the goal issue, with a `Why:` line giving the reason.
+- A stall it will not wake gets one `**Auto Goal … is stalled.**` notice on the issue: the recovery cap, three dead claims, or the routine unreachable after 4 calls.
+- So no stall is visible only in the Action log.
 
 **Bounds:**
 - Each distinct stall gets one recovery ticket (`reason=recovery recovers=<stall>`). A stall is the record revision plus the stale claim or open run, so the same stall is never woken twice; a failed call is retried up to the usual 4 calls.
@@ -256,7 +267,7 @@ It wakes a goal only when all of these hold, read fresh from GitHub on every pas
 6. a quiet but complete goal is never woken.
 
 Limitations:
-- The 90-minute Codex timeout and the 24-hour cap are recorded only when the next event (or a recovery wake) arrives. The watchdog does not wake goals waiting on Codex or CI, so a Codex that never answers still leaves its goal waiting.
+- The 90-minute Codex timeout, the 60-minute CI timeout and the 24-hour cap are recorded when the next event or watchdog wake starts the runner, up to one watchdog interval late.
 - `github-actions[bot]` is the login of every workflow's `GITHUB_TOKEN`, so another workflow with `issues: write` could post a comment in the ticket format. That alone starts nothing: only a holder of the routine token can start a run, and this workflow sends only the ids of tickets it wrote itself. The ticket check is what keeps a real wake from running the wrong goal; it does not replace keeping the token secret.
 - "No run has started since the ticket" compares GitHub's comment time with the session clock that stamped the run. A skew larger than the gap between a run's start and the next ticket could make the guard refuse a valid ticket, or miss that one was already taken. In the second case the open-run check and the record's stale-revision refusal still stop two runs from saving over each other.
 
