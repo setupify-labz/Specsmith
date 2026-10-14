@@ -210,8 +210,10 @@ describe("the unattended runner", () => {
     const h = harness();
     await submit(h.github, { caps: { ...createGoal({ id: "x-x-x", request: "r", repo: REPO, baseBranch: "main", branch: "b", requiredChecks: [CHECK], acceptanceCriteria: [{ id: "a", text: "t", kind: "unit", command: describeCheck(UNIT), check: UNIT }] }).caps, maxRuns: 2 } });
     await begin([...h.argv, "--session", "s1", "--started-by", "routine t1"], h.deps);   // never advanced: the session died
+    h.tick(41);   // past the 25 + 15 minute window in which an open run may still be working
     await begin([...h.argv, "--session", "s2", "--started-by", "routine t2"], h.deps);
     expect(h.record().runs![0]).toMatchObject({ sessionId: "s1", result: expect.stringContaining("Abandoned") });
+    h.tick(82);
     await begin([...h.argv, "--session", "s3", "--started-by", "routine t3"], h.deps);
     expect(h.last()).toMatchObject({ action: "blocked", why: "Run cap reached (2/2 runner sessions).", rearm: null });
     expect(h.record().outcome).toMatchObject({ status: "blocked" });
@@ -242,7 +244,7 @@ describe("the unattended runner", () => {
     expect(h.record().pr).toBe(77);
     expect(h.record().events.some((e) => e.detail.includes("Adopted the already-open"))).toBe(true);
     // Someone closes the PR between runs: begin records the outcome and leaves no open run behind.
-    h.github.closed = true; h.tick(20);
+    h.github.closed = true; h.tick(130);
     await begin([...h.argv, "--session", "s3", "--started-by", "routine t3"], h.deps);
     expect(h.last()).toMatchObject({ action: "done", why: expect.stringContaining("closed") });
     expect(h.record().runs!.every((r) => r.endedAt !== null)).toBe(true);
@@ -253,7 +255,8 @@ describe("the unattended runner", () => {
     const h = harness();
     await submit(h.github);
     await begin([...h.argv, "--session", "old", "--started-by", "routine t1"], h.deps);
-    await begin([...h.argv, "--session", "new", "--started-by", "routine t2"], h.deps);   // closes "old" as abandoned
+    h.tick(41);
+    await begin([...h.argv, "--session", "new", "--started-by", "routine t2"], h.deps);   // closes "old" (silent past the live window) as abandoned
     h.commit(1, "late commit from the old session");
     expect((await refusal(advance([...h.argv, "--session", "old"], h.deps))).message).toContain("belongs to session new");
     // A retry by the same session after the time cap replays its stored action instead of a fresh "blocked".

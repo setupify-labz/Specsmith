@@ -1,9 +1,29 @@
 #!/usr/bin/env node
-// Test-only stand-in for `gh api <path>` (GET only), backed by the harness state.
+// Test-only stand-in for `gh api [-X METHOD] <path> [--input -]`, backed by the harness state. Calls
+// are made as WAKE_HARNESS_LOGIN (the session's own login).
+//
+// WAKE_HARNESS_HOLD=<path>: before posting an issue comment, write <path>.waiting.<pid> and wait for
+// <path>.release, so a test can line two sessions' saves up at the same moment.
+
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { handle } from "../api.mjs";
 
-const [cmd, path] = process.argv.slice(2);
-if (cmd !== "api" || !path) { console.error("harness gh: only `gh api <path>` is supported"); process.exit(2); }
-const { status, body } = handle("GET", `https://api.github.com/${path}`);
-if (status >= 400) { console.error(`gh: HTTP ${status}`); process.exit(1); }
-process.stdout.write(JSON.stringify(body));
+const args = process.argv.slice(2);
+if (args[0] !== "api") { console.error("harness gh: only `gh api` is supported"); process.exit(2); }
+let method = "GET", path = null, input = false;
+for (let i = 1; i < args.length; i += 1) {
+  if (args[i] === "-X" || args[i] === "--method") method = args[++i];
+  else if (args[i] === "--input") input = args[++i] === "-";
+  else path ??= args[i];
+}
+const body = input ? JSON.parse(readFileSync(0, "utf8")) : undefined;
+const hold = process.env.WAKE_HARNESS_HOLD;
+if (hold && method === "POST" && /\/issues\/\d+\/comments$/.test(path)) {
+  writeFileSync(`${hold}.waiting.${process.pid}`, "");
+  const until = Date.now() + 30_000;
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  while (!existsSync(`${hold}.release`) && Date.now() < until) Atomics.wait(nap, 0, 0, 20);
+}
+const { status, body: out } = handle(method, `https://api.github.com/${path}`, body, process.env.WAKE_HARNESS_LOGIN ?? "setupify-labz");
+if (status >= 400) { console.error(`gh: HTTP ${status}: ${JSON.stringify(out)}`); process.exit(1); }
+process.stdout.write(JSON.stringify(out));

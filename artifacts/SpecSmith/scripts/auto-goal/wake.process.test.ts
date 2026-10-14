@@ -45,7 +45,7 @@ function world(over: Record<string, unknown> = {}) {
   const alpha = record("alpha", 300, 310, SHA.alpha), beta = record("beta", 301, 311, SHA.beta);
   const issue = (number: number) => ({ number, state: "open", labels: [{ name: "auto-goal" }], created_at: ago(120 - number + 300) });
   writeFileSync(statePath, JSON.stringify({
-    repo: REPO, nextId: 9000, fireFailures: 0, fireCalls: [], fires: [],
+    repo: REPO, nextId: 9000, fireFailures: 0, fireLost: 0, fireCalls: [], deliveries: [], fires: [],
     issues: [issue(300), issue(301)],
     comments: { 300: [recordComment(1, alpha)], 301: [recordComment(2, beta)] },
     pulls: { 310: pull(310, "alpha", 300, SHA.alpha), 311: pull(311, "beta", 301, SHA.beta) },

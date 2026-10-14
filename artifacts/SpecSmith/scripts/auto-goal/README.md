@@ -199,7 +199,17 @@ It then prints that goal. Without a valid ticket it refuses, so a wake for one g
 - The event step makes up to 2 calls. If they all fail, the job fails, and the workflow's `retry` job (`needs: wake`, only on failure) waits 2 minutes, then calls again for the newest unconsumed `failed` or `pending` ticket of each goal.
 - Each ticket gets at most 4 calls. After that it stays `failed` with "giving up", and the failed workflow run is visible.
 - One concurrency group serialises every wake and retry.
-- If a call that looked failed actually reached the routine, the guard's "no run has started since the ticket" check stops a second session.
+
+**Duplicate sessions: delivery is at-least-once, not exactly-once.** The routine's `/fire` endpoint takes no idempotency key. A call whose response is lost (a timeout or a 5xx after Anthropic accepted it) may still have started a session, and the retry starts another, both holding the same ticket. Nothing here can prevent that, so the design makes duplicates harmless instead. `wake.duplicate.test.ts` runs the exact sequence as processes: two calls with lost responses, the retry job's third call, then three sessions running the guard, `begin`, a commit and `advance` against one fake GitHub and one local origin.
+
+| How the duplicates interleave | What happens |
+| --- | --- |
+| One session opens its run before the others reach the guard | The guard refuses the others: the ticket was already taken by run 1. |
+| Every guard passes before any run opens | The first `begin` opens the run. Later ones exit with "Run 1 by session … may still be working" and save nothing. They never mark the live run abandoned: another session's open run is live for the run-time cap plus 15 minutes, the same window the guard uses. A duplicate that ignored its refusal still cannot push: `advance` belongs to the run's session. |
+| Two `begin`s create the goal branch at once (first run) | The remote accepts one ref creation. The other gets "Another session created … at the same moment" and stops. |
+| Two `begin`s read the same record revision | Both save, both see the rival copy, and both stop. The record is forked, so a later `advance` from either refuses before pushing. The guard and the wake bridge then refuse the goal until a person runs `resolve-fork`. |
+
+In every case at most one session pushes, and only the one that owns the run on an unforked record. The cost is the last row: a simultaneous save leaves the goal paused for a person, because GitHub comments have no compare-and-swap (the open #184 P1).
 
 Limitations:
 - With no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.

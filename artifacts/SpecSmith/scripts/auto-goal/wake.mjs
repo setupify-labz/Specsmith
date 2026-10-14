@@ -32,8 +32,10 @@ export const FIRE_ATTEMPTS_PER_STEP = 2;
 const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted) state=(pending|fired|failed) attempts=(\d+) -->/;
 /** A wake not yet followed by a run start is treated as pending for this long, then retried. */
 export const WAKE_PENDING_MINUTES = 45;
-/** A run that has not finished within this long is treated as dead, not as one to wait for. */
-export const RUN_STALE_MINUTES = 40;
+/** A run that has not finished within its run-time cap plus this margin is dead, not one to wait for (runner.ts uses the same window). */
+export const RUN_STALE_MARGIN_MINUTES = 15;
+const DEFAULT_RUN_MINUTES = 25;
+export const runStaleMinutes = (record) => (record.caps?.maxRunMinutes ?? DEFAULT_RUN_MINUTES) + RUN_STALE_MARGIN_MINUTES;
 const MARKER = /^<!-- specsmith-auto-goal id=([a-z0-9-]+)(?: rev=(\d+))? -->/;
 const SUMMARY = "<!-- codex-pull-request-review-summary -->";
 
@@ -104,7 +106,7 @@ const minutes = (ms) => ms / 60_000;
 export function runBlocker(record, now) {
   if (record.outcome) return `goal is already ${record.outcome.status}: ${record.outcome.reason}`;
   const open = (record.runs ?? []).find((r) => r.endedAt === null);
-  if (open && minutes(now - Date.parse(open.startedAt)) < RUN_STALE_MINUTES) return `run ${open.n} (${open.sessionId}) is still in progress`;
+  if (open && minutes(now - Date.parse(open.startedAt)) < runStaleMinutes(record)) return `run ${open.n} (${open.sessionId}) is still in progress`;
   return null;
 }
 
