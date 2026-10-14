@@ -40,7 +40,7 @@ test('experimental workflow is not installed and has three gated jobs', () => {
   const workflow = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
   for (const name of ['implement:', 'check:', 'publish:']) assert.ok(workflow.includes(`  ${name}`));
   assert.match(workflow, /if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/);
-  assert.match(workflow, /permissions: \{\}/);
+  assert.match(workflow, /permissions: \{\}/); // Workflow default remains empty.
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /needs: publish/);
   assert.ok(!workflow.includes('pull_request_target:'));
@@ -57,7 +57,7 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.match(sections.implement, /index\("auto-goal"\)/);
   assert.match(sections.implement, /steps\.issue\.outputs\.issue_json/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
-  assert.match(sections.check, /permissions: \{\}/);
+  assert.match(sections.check, /permissions:\n      contents: read/);
   assert.match(sections.check, /timeout-minutes: 20/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
   assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
