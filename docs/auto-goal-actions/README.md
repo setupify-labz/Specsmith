@@ -4,7 +4,11 @@
 
 ## Boundaries in the proposed design
 
-- **Implement:** checks out trusted `main`, reads one open issue carrying the `auto-goal` label and passes its number, title and body as untrusted task data. It receives a Claude subscription token and a read-only GitHub token, and proposes edits. The intended Claude tool list has no shell or web tools. The hosted action, its project configuration and its dependencies have **not** been proven to honor that intended boundary.
+- **Read issue:** a separate job with an `issues: read` token and no checkout or secrets. It reads one open issue carrying the `auto-goal` label and outputs only its number, title, body and labels as JSON.
+- **Implement:** checks out trusted `main` with `persist-credentials: false`, under a `contents: read` job token. No GitHub token is mapped into any step, and the job has no `issues` or `id-token` scope.
+  - It runs the pinned Claude Code CLI (`@anthropic-ai/claude-code@2.1.42`) directly, with the issue JSON passed as data through an environment variable. The hosted Claude action is no longer used: at the pinned SHA it always configures Git with a GitHub token, either the `github_token` input or an app token minted through OIDC.
+  - `assert-no-git-auth.mjs` refuses to continue if any known Git authentication route is present. It runs in the same step, immediately before Claude starts, and again before the patch is exported.
+  - The intended Claude tool list has no shell or web tools. The CLI and the checked-out project configuration have **not** been proven to honor it.
 - **Publish:** validates the proposed patch using trusted code, applies it to the fixed base commit and creates a draft branch. It does not execute proposed application code. Its write token is broader than one branch; a branch ruleset and independent approval remain necessary. The draft PR is never merged by this template.
 - **Check:** starts after publish, checks out the exact draft commit by SHA in a fresh runner with `contents: read`, no explicitly passed secrets and `persist-credentials: false`. Read access is required for private-repository checkout; no repository write scope is granted. It then runs the tests and build. Proposed code can change its own working directory while tests run; this workflow cannot prove that every test executed the originally committed bytes. The result must be associated with the exact draft commit before any later automated decision. GitHub's `github.token` context still exists, so this is not proof of zero credentials or network isolation.
 
@@ -18,4 +22,4 @@ The preliminary findings and the specific blockers to enabling are in [SECURITY_
 
 The current #185 routine stays disabled. This template does not use its wake bridge or claim branches. Wiring those pieces into this design is separate work after the boundary is independently verified.
 
-Run the ordinary local checks with `node --test docs/auto-goal-actions/validate-proposal.test.mjs`.
+Run the ordinary local checks with `node --test docs/auto-goal-actions/*.test.mjs`.

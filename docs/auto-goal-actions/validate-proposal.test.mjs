@@ -50,12 +50,18 @@ test('template keeps credentials and write scope out of the code-running job', (
   const yaml = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
   const sections = Object.fromEntries([...yaml.matchAll(/^  (implement|check|publish):\n([\s\S]*?)(?=^  (?:implement|check|publish):|$(?![\s\S]))/gm)].map((m) => [m[1], m[2]]));
   assert.deepEqual(Object.keys(sections), ['implement', 'publish', 'check']);
-  assert.match(sections.implement, /permissions:\n      contents: read\n      issues: read/);
+  // The issue is read in its own job with an issues-only token; implement gets only its JSON.
+  const readIssue = /^  read-issue:\n([\s\S]*?)(?=^  implement:)/m.exec(yaml)?.[1] ?? '';
+  assert.match(readIssue, /permissions:\n      issues: read\n/);
+  assert.match(readIssue, /repos\/\$\{GITHUB_REPOSITORY\}\/issues\/\$\{ISSUE\}/);
+  assert.match(readIssue, /\.state == "open"/);
+  assert.match(readIssue, /index\("auto-goal"\)/);
+  assert.match(readIssue, /issue_json: \$\{\{ steps\.issue\.outputs\.issue_json \}\}/);
+  assert.doesNotMatch(readIssue, /secrets\./);
+  assert.match(sections.implement, /permissions:\n      contents: read\n    steps:/);
   assert.match(sections.implement, /secrets\.CLAUDE_CODE_OAUTH_TOKEN/);
-  assert.match(sections.implement, /repos\/\$\{GITHUB_REPOSITORY\}\/issues\/\$\{ISSUE\}/);
-  assert.match(sections.implement, /\.state == "open"/);
-  assert.match(sections.implement, /index\("auto-goal"\)/);
-  assert.match(sections.implement, /steps\.issue\.outputs\.issue_json/);
+  assert.match(sections.implement, /needs\.read-issue\.outputs\.issue_json/);
+  assert.doesNotMatch(sections.implement, /issues: read|github\.token|github_token/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
   assert.match(sections.check, /permissions:\n      contents: read/);
   assert.match(sections.check, /timeout-minutes: 20/);
