@@ -257,8 +257,9 @@ function bounded(comments, record, mine, now, key, what) {
     // A fired wake that no run took up within the pending window did not recover the stall (the
     // session may have stopped before the guard): call again, within the same attempt budget.
     const taken = lastRunStart(record) >= Date.parse(same.createdAt);
-    const unanswered = same.state === "failed" || (same.state === "fired" && !taken && minutes(now - Date.parse(same.updatedAt)) >= WAKE_PENDING_MINUTES);
-    if (unanswered && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `${same.state === "failed" ? "retrying" : "no run took up"} recovery ticket ${same.id}: ${what}` };
+    // A pending one is a watchdog that stopped between posting the ticket and calling (Codex P1 on 3cf0811).
+    const unanswered = same.state === "failed" || (!taken && minutes(now - Date.parse(same.updatedAt)) >= WAKE_PENDING_MINUTES);
+    if (unanswered && same.attempts < MAX_FIRE_ATTEMPTS) return { wake: true, retry: same, why: `${same.state === "fired" ? "no run took up" : "retrying"} recovery ticket ${same.id}: ${what}` };
     if (unanswered) return stuck(comments, record, `${key}-unrecovered`, `${what}. Recovery ticket ${same.id} was sent ${same.attempts} times and no run took it up; a person must look.`);
     return { wake: false, why: `this stall (${key}) already had its recovery wake: ticket ${same.id}, ${same.state}` };
   }

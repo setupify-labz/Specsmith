@@ -323,6 +323,9 @@ describe("the recovery watchdog", () => {
       expect(judge(rec, live(), [t("fired", 1, -20)])).toMatchObject({ wake: false, why: expect.stringContaining("no run has started since") });
       // Fired over 45 minutes ago and no run took it up (the session stopped before the guard): call again.
       expect(judge(rec, live(), [t("fired", 1)])).toMatchObject({ wake: true, retry: expect.objectContaining({ recovers: key }), why: expect.stringContaining("no run took up recovery ticket") });
+      // Posted but never called (the watchdog stopped in between), and long expired: called now (Codex P1 on 3cf0811).
+      expect(judge(rec, live(), [t("pending", 0)])).toMatchObject({ wake: true, retry: expect.objectContaining({ state: "pending", recovers: key }), why: expect.stringContaining("retrying recovery ticket") });
+      expect(judge(rec, live(), [t("pending", 0, -20)])).toMatchObject({ wake: false, why: expect.stringContaining("is pending and no run has started since") });
       // Out of attempts: one visible notice, then silence.
       const gaveUp = judge(rec, live(), [t("fired", MAX_FIRE_ATTEMPTS)]);
       expect(gaveUp).toMatchObject({ wake: false, notice: { key: `${key}-unrecovered`, body: expect.stringContaining("no run took it up; a person must look") } });
