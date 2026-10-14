@@ -6,8 +6,16 @@
 // uses is one GitHub runs from the default branch), with no checkout of PR code and no
 // dependencies. It never reads or forwards review text: the fire payload is a fixed line of ids.
 //
-//   node wake.mjs event    the workflow step: decide, mark, fire (needs GITHUB_* env + routine secrets)
-//   node wake.mjs guard    the routine's first step: name the active goal, or refuse an overlapping run
+//   node wake.mjs event              the workflow step: decide, write a wake ticket, fire
+//   node wake.mjs retry              the workflow's retry job: re-fire tickets whose call failed
+//   node wake.mjs guard --ticket N   the routine's first step: the goal ticket N was written for, or refuse
+//
+// A wake ticket is a comment the workflow posts on the goal's issue before it calls the routine. The
+// routine is told only the ticket's comment id; the guard reads that comment back from GitHub,
+// checks it was written by the workflow for a goal whose trusted record still matches, and prints
+// that goal. So a wake for one goal can never start another, and a failed call is a ticket in state
+// `failed` that the retry job (or a redelivered event) fires again, while a ticket in state
+// `pending` or `fired` keeps duplicate deliveries from starting a second run.
 //
 // Plain JavaScript on purpose: GitHub's runner has Node, and nothing has to be installed first.
 
@@ -15,7 +23,13 @@ import { readFileSync } from "node:fs";
 
 export const CODEX_LOGIN = "chatgpt-codex-connector[bot]";
 export const GOAL_LABEL = "auto-goal";
-export const WAKE_CONTEXT = "auto-goal/wake";
+/** The login GITHUB_TOKEN writes as; only its comments can be wake tickets. */
+export const WORKFLOW_LOGIN = "github-actions[bot]";
+/** Calls to the routine per ticket, across the event step and the retry job. */
+export const MAX_FIRE_ATTEMPTS = 4;
+/** Calls per step, so the event step and one retry job each get a share. */
+export const FIRE_ATTEMPTS_PER_STEP = 2;
+const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted) state=(pending|fired|failed) attempts=(\d+) -->/;
 /** A wake not yet followed by a run start is treated as pending for this long, then retried. */
 export const WAKE_PENDING_MINUTES = 45;
 /** A run that has not finished within this long is treated as dead, not as one to wait for. */
@@ -94,10 +108,76 @@ export function runBlocker(record, now) {
   return null;
 }
 
+/** A wake ticket, or null for any comment that is not one written by the workflow. */
+export function parseTicket(comment) {
+  if (comment?.user?.login !== WORKFLOW_LOGIN) return null;
+  const m = TICKET.exec(String(comment.body ?? ""));
+  if (!m) return null;
+  const onIssue = /\/issues\/(\d+)$/.exec(String(comment.issue_url ?? ""));
+  return {
+    id: comment.id, goal: m[1], issue: Number(m[2]), pr: m[3] === "none" ? null : Number(m[3]), sha: m[4] === "none" ? null : m[4],
+    reason: m[5], state: m[6], attempts: Number(m[7]), createdAt: comment.created_at, onIssue: onIssue ? Number(onIssue[1]) : null,
+  };
+}
+
+export function ticketBody(t) {
+  const marker = `<!-- specsmith-auto-goal-wake goal=${t.goal} issue=${t.issue} pr=${t.pr ?? "none"} sha=${t.sha ?? "none"} reason=${t.reason} state=${t.state} attempts=${t.attempts} -->`;
+  const what = t.state === "fired" ? "Woke the Auto Goal runner" : t.state === "failed" ? `Could not wake the Auto Goal runner (${t.attempts}/${MAX_FIRE_ATTEMPTS} calls failed${t.attempts >= MAX_FIRE_ATTEMPTS ? "; giving up" : "; the retry job will try again"})` : "Waking the Auto Goal runner";
+  return `${marker}\n${what} for goal \`${t.goal}\` (${t.reason}${t.sha ? ` on \`${t.sha.slice(0, 10)}\`` : ""}). Written by the auto-goal-wake workflow; a routine run only proceeds for the ticket it was woken with.`;
+}
+
+const lastRunStart = (record) => Math.max(0, ...(record.runs ?? []).map((r) => Date.parse(r.startedAt)));
+/** The goal's tickets that no run has started after, newest first. */
+const unconsumed = (comments, record) => comments.map(parseTicket)
+  .filter((t) => t && t.goal === record.id && t.onIssue === record.issue && Date.parse(t.createdAt) > lastRunStart(record))
+  .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id);
+/** Does the record still stand where the ticket says it did? */
+const stillCurrent = (t, record) => t.sha === null
+  ? (record.pr === null && (record.runs ?? []).length === 0 ? null : "the goal has started since this ticket")
+  : (record.pr === t.pr && record.head === t.sha ? null : `goal ${record.id} is now at PR ${record.pr} / ${String(record.head).slice(0, 10)}, not the ticket's PR ${t.pr} / ${t.sha.slice(0, 10)}`);
+
+/** A wake already in flight for this goal and commit: a ticket pending or fired that no run has picked up. */
+function inFlight(comments, record, sha, now) {
+  return unconsumed(comments, record).find((t) => t.sha === sha && t.state !== "failed" && minutes(now - Date.parse(t.createdAt)) < WAKE_PENDING_MINUTES) ?? null;
+}
+
+/**
+ * The routine's first step, decided: run the goal this ticket was written for, or refuse.
+ * @param {{ ticket: any, issue: any, comments: any[], trustedLogin: string, now: number }} ctx  ticket: the raw comment
+ */
+export function verifyTicket(ctx) {
+  const no = (why) => ({ proceed: false, why });
+  const t = parseTicket(ctx.ticket);
+  if (!t) return no("that comment is not a wake ticket written by the wake workflow");
+  if (t.onIssue !== t.issue) return no(`ticket ${t.id} names issue ${t.issue} but was posted on issue ${t.onIssue}`);
+  if (!ctx.issue || ctx.issue.number !== t.issue) return no(`issue ${t.issue} could not be read`);
+  if (ctx.issue.state !== "open" || !(ctx.issue.labels ?? []).some((l) => (l.name ?? l) === GOAL_LABEL)) return no(`issue ${t.issue} is not an open ${GOAL_LABEL} issue`);
+  if (ctx.trustedLogin === WORKFLOW_LOGIN) return no("the trusted login cannot be the workflow's own login");
+  const found = currentRecord(ctx.comments, t.goal, ctx.trustedLogin);
+  if ("skip" in found) return no(found.skip);
+  const record = found.record;
+  if (record.issue !== t.issue) return no(`goal ${t.goal}'s record lives on issue ${record.issue}, not ${t.issue}`);
+  const consumed = (record.runs ?? []).find((r) => Date.parse(r.startedAt) >= Date.parse(t.createdAt));
+  if (consumed) return no(`ticket ${t.id} was already taken by run ${consumed.n} (${consumed.sessionId})`);
+  const moved = stillCurrent(t, record);
+  if (moved) return no(moved);
+  const blocked = runBlocker(record, ctx.now);
+  if (blocked) return no(blocked);
+  return { proceed: true, goal: record.id, issue: record.issue, ticket: t.id };
+}
+
+/** The ticket the retry job should fire again for this goal, or null. Only the newest ticket counts. */
+export function retryTicket(comments, record, now) {
+  if (runBlocker(record, now)) return null;
+  const [newest] = unconsumed(comments, record);
+  if (!newest || newest.state === "fired" || newest.attempts >= MAX_FIRE_ATTEMPTS) return null;
+  return stillCurrent(newest, record) ? null : newest;
+}
+
 /**
  * The whole decision. Pure: everything it needs is passed in.
- * @param {{ event: any, pr?: any, comments: any[], checkRuns?: any[], statuses?: any[], trustedLogin: string, repo: string, now: number }} ctx
- * @returns {{ wake: false, why: string } | { wake: true, why: string, goal: string, issue: number, pr: number | null, sha: string | null, text: string }}
+ * @param {{ event: any, pr?: any, comments: any[], checkRuns?: any[], trustedLogin: string, repo: string, now: number }} ctx  comments: the goal issue's
+ * @returns {{ wake: false, why: string } | { wake: true, why: string, goal: string, issue: number, pr: number | null, sha: string | null, reason: string }}
  */
 export function decideWake(ctx) {
   const { event, pr, comments, trustedLogin, repo, now } = ctx;
@@ -110,7 +190,9 @@ export function decideWake(ctx) {
     const blocked = runBlocker(record, now);
     if (blocked) return no(blocked);
     if ((record.runs ?? []).length > 0 || record.pr !== null) return no("goal has already started; later runs are woken by its PR events");
-    return { wake: true, why: "goal submitted", goal: record.id, issue: record.issue, pr: null, sha: null, text: `wake goal=${record.id} issue=${record.issue} reason=goal-submitted` };
+    const sent = inFlight(comments, record, null, now);
+    if (sent) return no(`wake ticket ${sent.id} for this goal is ${sent.state} and no run has started since`);
+    return { wake: true, why: "goal submitted", goal: record.id, issue: record.issue, pr: null, sha: null, reason: "goal-submitted" };
   }
 
   // A PR event: only a draft, same-repository Auto Goal PR, on its current commit.
@@ -139,18 +221,19 @@ export function decideWake(ctx) {
     if (waiting.length) return no(`required checks still running on ${head.slice(0, 10)}: ${waiting.join(", ")}`);
   }
 
-  // Duplicate deliveries: a wake already sent for this commit that no run has picked up yet.
-  const lastRunStart = Math.max(0, ...(record.runs ?? []).map((r) => Date.parse(r.startedAt)));
-  const pending = (ctx.statuses ?? []).filter((s) => s.context === WAKE_CONTEXT)
-    .map((s) => Date.parse(s.created_at))
-    .filter((t) => t > lastRunStart && minutes(now - t) < WAKE_PENDING_MINUTES);
-  if (pending.length) return no(`a wake for ${head.slice(0, 10)} was sent ${Math.round(minutes(now - Math.max(...pending)))} min ago and no run has started since`);
+  // Duplicate deliveries: a wake already sent for this commit that no run has picked up yet. A ticket
+  // whose call failed does not count, so a redelivered event tries again.
+  const sent = inFlight(comments, record, head, now);
+  if (sent) return no(`wake ticket ${sent.id} for ${head.slice(0, 10)} is ${sent.state} (${Math.round(minutes(now - Date.parse(sent.createdAt)))} min ago) and no run has started since`);
 
   const reason = event.kind === "codex" ? "codex" : "checks";
-  return { wake: true, why: `${reason} on ${head.slice(0, 10)}`, goal: record.id, issue: record.issue, pr: pr.number, sha: head, text: `wake goal=${record.id} issue=${record.issue} pr=${pr.number} sha=${head} reason=${reason}` };
+  return { wake: true, why: `${reason} on ${head.slice(0, 10)}`, goal: record.id, issue: record.issue, pr: pr.number, sha: head, reason };
 }
 
-// ---- I/O (not unit-tested; the decision above is) -------------------------------------------
+// ---- I/O (exercised end to end by wake.process.test.ts against a fake GitHub) ----------------
+
+const env = (name) => { const v = process.env[name]; if (!v) throw new Error(`${name} is not set`); return v; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function gh(path, init = {}) {
   const res = await fetch(`https://api.github.com/${path}`, {
@@ -171,9 +254,8 @@ async function allComments(repo, issue) {
   return out;
 }
 
-async function fire(text) {
-  const url = process.env.AUTO_GOAL_ROUTINE_FIRE_URL, token = process.env.AUTO_GOAL_ROUTINE_TOKEN;
-  if (!url || !token) throw new Error("routine fire URL or token secret is not set");
+async function fireOnce(text) {
+  const url = env("AUTO_GOAL_ROUTINE_FIRE_URL"), token = env("AUTO_GOAL_ROUTINE_TOKEN");
   if (!/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/trig_[A-Za-z0-9]+\/fire$/.test(url)) throw new Error("routine fire URL is not an Anthropic routine /fire endpoint");
   const res = await fetch(url, {
     method: "POST",
@@ -181,13 +263,28 @@ async function fire(text) {
     body: JSON.stringify({ text }),
   });
   // Only the status is logged: the response names the session, and the request carries the token.
-  if (!res.ok) throw new Error(`routine fire: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+/** Call the routine for a ticket (up to this step's share of attempts) and record the outcome on the ticket. */
+async function fireTicket(repo, t) {
+  const budget = Math.min(FIRE_ATTEMPTS_PER_STEP, MAX_FIRE_ATTEMPTS - t.attempts);
+  const backoff = Number(process.env.AUTO_GOAL_FIRE_BACKOFF_MS ?? 15_000);
+  let attempts = t.attempts, ok = false;
+  for (let i = 0; i < budget && !ok; i += 1) {
+    if (i > 0) await sleep(backoff * i);
+    attempts += 1;
+    try { await fireOnce(`wake ticket=${t.id}`); ok = true; } catch (error) { console.log(`routine call ${attempts}/${MAX_FIRE_ATTEMPTS} for ticket ${t.id} failed: ${error.message}`); }
+  }
+  const next = { ...t, state: ok ? "fired" : "failed", attempts };
+  await gh(`repos/${repo}/issues/comments/${t.id}`, { method: "PATCH", body: JSON.stringify({ body: ticketBody(next) }) });
+  console.log(ok ? `fired the routine for ticket ${t.id}` : `ticket ${t.id} is failed after ${attempts} call(s)`);
+  return ok;
 }
 
 async function eventMain() {
-  const repo = process.env.GITHUB_REPOSITORY, trustedLogin = process.env.AUTO_GOAL_TRUSTED_LOGIN;
-  if (!trustedLogin) throw new Error("AUTO_GOAL_TRUSTED_LOGIN is not set");
-  const payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+  const repo = env("GITHUB_REPOSITORY"), trustedLogin = env("AUTO_GOAL_TRUSTED_LOGIN");
+  const payload = JSON.parse(readFileSync(env("GITHUB_EVENT_PATH"), "utf8"));
   const event = normalizeEvent(process.env.GITHUB_EVENT_NAME, payload, trustedLogin);
   if ("skip" in event) { console.log(`skip: ${event.skip}`); return; }
   const now = Date.now();
@@ -200,44 +297,66 @@ async function eventMain() {
       const issueRef = /Goal record: #(\d+)\./.exec(String(pr.body ?? ""));
       const comments = issueRef ? await allComments(repo, Number(issueRef[1])) : [];
       const checkRuns = (await gh(`repos/${repo}/commits/${pr.head.sha}/check-runs?per_page=100`)).check_runs;
-      const statuses = await gh(`repos/${repo}/commits/${pr.head.sha}/statuses?per_page=100`);
-      decisions.push(decideWake({ event, pr, comments, checkRuns, statuses, trustedLogin, repo, now }));
+      decisions.push(decideWake({ event, pr, comments, checkRuns, trustedLogin, repo, now }));
     }
     if (!decisions.length) console.log("skip: the event names no pull request in this repository");
   }
+  let failed = 0;
   for (const d of decisions) {
     console.log(`${d.wake ? "wake" : "skip"}: ${d.why}`);
     if (!d.wake) continue;
-    // Mark first, so a duplicate delivery arriving during the fire sees a pending wake.
-    if (d.sha) await gh(`repos/${repo}/statuses/${d.sha}`, { method: "POST", body: JSON.stringify({ state: "success", context: WAKE_CONTEXT, description: `Woke the Auto Goal runner (${d.why})`.slice(0, 140) }) });
-    await fire(d.text);
-    console.log("fired the routine");
+    // The ticket is written first, so a duplicate delivery arriving during the call sees it pending.
+    const draft = { goal: d.goal, issue: d.issue, pr: d.pr, sha: d.sha, reason: d.reason, state: "pending", attempts: 0 };
+    const created = await gh(`repos/${repo}/issues/${d.issue}/comments`, { method: "POST", body: JSON.stringify({ body: ticketBody(draft) }) });
+    if (!(await fireTicket(repo, { ...draft, id: created.id }))) failed += 1;
   }
+  // A failed call fails the job, which starts the workflow's retry job.
+  if (failed) process.exitCode = 1;
 }
 
-/** The routine's first step: the oldest active goal, or exit 3 when a run is already in progress. */
-async function guardMain() {
-  const repo = process.env.AUTO_GOAL_REPO ?? "setupify-labz/Specsmith", trustedLogin = process.env.AUTO_GOAL_TRUSTED_LOGIN ?? "setupify-labz";
-  const { execFileSync } = await import("node:child_process");
-  const api = (path) => JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
-  const issues = api(`repos/${repo}/issues?labels=${GOAL_LABEL}&state=open&sort=created&direction=asc&per_page=20`).filter((i) => !i.pull_request);
+async function retryMain() {
+  const repo = env("GITHUB_REPOSITORY"), trustedLogin = env("AUTO_GOAL_TRUSTED_LOGIN");
+  await sleep(Number(process.env.AUTO_GOAL_RETRY_DELAY_MS ?? 120_000));
+  const issues = (await gh(`repos/${repo}/issues?labels=${GOAL_LABEL}&state=open&per_page=50`)).filter((i) => !i.pull_request);
+  let failed = 0, tried = 0;
   for (const issue of issues) {
-    const comments = [];
-    for (let page = 1; page <= 20; page += 1) { const b = api(`repos/${repo}/issues/${issue.number}/comments?per_page=100&page=${page}`); comments.push(...b); if (b.length < 100) break; }
+    const comments = await allComments(repo, issue.number);
     const found = currentRecord(comments, null, trustedLogin);
     if ("skip" in found) continue;
-    if (found.record.outcome) continue;
-    const blocked = runBlocker(found.record, Date.now());
-    if (blocked) { console.log(JSON.stringify({ goal: found.record.id, issue: issue.number, proceed: false, why: blocked })); process.exitCode = 3; return; }
-    console.log(JSON.stringify({ goal: found.record.id, issue: issue.number, proceed: true }));
-    return;
+    const t = retryTicket(comments, found.record, Date.now());
+    if (!t) continue;
+    tried += 1;
+    if (!(await fireTicket(repo, t))) failed += 1;
   }
-  console.log(JSON.stringify({ proceed: false, why: "no active Auto Goal" }));
-  process.exitCode = 3;
+  console.log(tried ? `retried ${tried} ticket(s), ${failed} still failed` : "nothing to retry");
+  if (failed) process.exitCode = 1;
+}
+
+/** The routine's first step: the goal named by a verified wake ticket, or exit 3. Reads GitHub through `gh api`. */
+async function guardMain(argv) {
+  const repo = process.env.AUTO_GOAL_REPO ?? "setupify-labz/Specsmith", trustedLogin = process.env.AUTO_GOAL_TRUSTED_LOGIN ?? "setupify-labz";
+  const refuse = (why) => { console.log(JSON.stringify({ proceed: false, why })); process.exitCode = 3; };
+  const i = argv.indexOf("--ticket");
+  const id = i >= 0 ? argv[i + 1] : undefined;
+  if (!id || !/^\d{1,15}$/.test(id)) return refuse("no wake ticket id: this run cannot tell which goal it was woken for");
+  const { execFileSync } = await import("node:child_process");
+  const api = (path) => {
+    try { return JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] })); } catch { return null; }
+  };
+  const ticket = api(`repos/${repo}/issues/comments/${id}`);
+  if (!ticket) return refuse(`wake ticket ${id} could not be read`);
+  const t = parseTicket(ticket);
+  const issue = t ? api(`repos/${repo}/issues/${t.issue}`) : null;
+  const comments = [];
+  if (issue) for (let page = 1; page <= 20; page += 1) { const b = api(`repos/${repo}/issues/${t.issue}/comments?per_page=100&page=${page}`) ?? []; comments.push(...b); if (b.length < 100) break; }
+  const verdict = verifyTicket({ ticket, issue, comments, trustedLogin, now: Date.now() });
+  console.log(JSON.stringify(verdict));
+  if (!verdict.proceed) process.exitCode = 3;
 }
 
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
-  const mode = process.argv[2];
-  (mode === "event" ? eventMain() : mode === "guard" ? guardMain() : Promise.reject(new Error("usage: wake.mjs event|guard")))
+  const [mode, ...rest] = process.argv.slice(2);
+  const main = { event: eventMain, retry: retryMain, guard: () => guardMain(rest) }[mode];
+  (main ? main() : Promise.reject(new Error("usage: wake.mjs event | retry | guard --ticket <id>")))
     .catch((error) => { console.error(String(error.message ?? error)); process.exitCode = 1; });
 }

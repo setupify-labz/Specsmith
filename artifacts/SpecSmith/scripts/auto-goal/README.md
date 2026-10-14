@@ -178,13 +178,33 @@ Nothing polls. The workflow `.github/workflows/auto-goal-wake.yml` runs when:
 - the event is about that head commit (older commits are ignored);
 - no run is open (younger than 40 minutes);
 - for check events, every required check on that commit has finished;
-- no `auto-goal/wake` status was posted since the last run started (within 45 minutes).
+- no wake ticket for this goal and commit is pending or fired since the last run started (within 45 minutes).
 
-It writes that commit status before firing, so a redelivered or duplicate event does not start a second run, and a single concurrency group serialises decisions. A lost fire is retried by the next event after 45 minutes.
+**Wake tickets.** Before calling the routine, the job posts a ticket comment on the goal's issue:
+`<!-- specsmith-auto-goal-wake goal=… issue=… pr=… sha=… reason=… state=pending attempts=0 -->`. The routine is sent only `wake ticket=<comment id>`. After the call, the ticket is updated to `fired` or `failed`.
 
-The workflow runs only from the default branch, checks out only the default branch, never runs PR code, and passes the routine token only to the fire request (which logs just the HTTP status). The fire text is fixed (`wake goal=… issue=… pr=… sha=… reason=…`) and contains no review text. The routine treats it as a hint: its fixed prompt (`ROUTINE_PROMPT.md`) finds the goal with `wake.mjs guard` and never creates triggers.
+**Binding a run to its goal.** The routine's first step is `wake.mjs guard --ticket <id>`. It reads that comment back from GitHub and proceeds only if all of these hold:
+- the comment was written by `github-actions[bot]`, in the ticket format, on the issue it names;
+- the issue is open and labelled `auto-goal`;
+- the trusted record for the ticket's goal is on that issue;
+- no run has started since the ticket was written;
+- the record still names the ticket's PR and commit;
+- no run is open and the goal has no outcome.
 
-Limitation: with no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.
+It then prints that goal. Without a valid ticket it refuses, so a wake for one goal can never start another. The guard never chooses between active goals.
+
+**Duplicates and retries.**
+- A `pending` or `fired` ticket makes redelivered or duplicate events skip.
+- A `failed` ticket does not, so a redelivered event tries again.
+- The event step makes up to 2 calls. If they all fail, the job fails, and the workflow's `retry` job (`needs: wake`, only on failure) waits 2 minutes, then calls again for the newest unconsumed `failed` or `pending` ticket of each goal.
+- Each ticket gets at most 4 calls. After that it stays `failed` with "giving up", and the failed workflow run is visible.
+- One concurrency group serialises every wake and retry.
+- If a call that looked failed actually reached the routine, the guard's "no run has started since the ticket" check stops a second session.
+
+Limitations:
+- With no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.
+- `github-actions[bot]` is the login of every workflow's `GITHUB_TOKEN`, so another workflow with `issues: write` could post a comment in the ticket format. That alone starts nothing: only a holder of the routine token can start a run, and this workflow sends only the ids of tickets it wrote itself. The ticket check is what keeps a real wake from running the wrong goal; it does not replace keeping the token secret.
+- "No run has started since the ticket" compares GitHub's comment time with the session clock that stamped the run. A skew larger than the gap between a run's start and the next ticket could make the guard refuse a valid ticket, or miss that one was already taken. In the second case the open-run check and the record's stale-revision refusal still stop two runs from saving over each other.
 
 One-time setup (account owner):
 1. Create a routine at claude.ai/code/routines. Attach the `setupify-labz/Specsmith` repo, use the Default environment and no connectors, paste `ROUTINE_PROMPT.md`, add an API trigger, and generate its token.

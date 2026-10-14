@@ -7,7 +7,11 @@ name: Auto Goal wake
 # Every trigger below is one GitHub runs from the default branch, so a goal branch (which the agent
 # writes to) can never change this file's behaviour. The job checks out only the default branch,
 # runs one dependency-free script, and never executes PR code. The routine token is used only in
-# the fire request and is never printed. The decision logic and its tests are in
+# the fire request and is never printed.
+#
+# Before each call the job posts a wake ticket on the goal's issue and sends the routine only that
+# ticket's id; the routine's guard reads the ticket back and runs that goal and no other. If every
+# call fails, the job fails and the retry job below calls again for the same ticket. The decision logic and its tests are in
 # artifacts/SpecSmith/scripts/auto-goal/wake.mjs and wake.test.ts.
 
 on:
@@ -24,11 +28,9 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  issues: read
   checks: read
-  # The duplicate-delivery marker: a commit status on the PR's head, written before each fire.
-  # (Key quoted so the text never contains the substring u-s-e-s-colon the pin check scans for.)
-  "statuses": write
+  # Wake tickets: one comment per wake on the goal's issue, updated with the call's outcome.
+  issues: write
 
 # One wake decision at a time across the repository, so two deliveries never both see "no run yet".
 concurrency:
@@ -62,3 +64,27 @@ jobs:
           AUTO_GOAL_ROUTINE_TOKEN: ${{ secrets.AUTO_GOAL_ROUTINE_TOKEN }}
         working-directory: artifacts/SpecSmith
         run: node scripts/auto-goal/wake.mjs event
+
+  retry:
+    name: Retry a failed wake
+    needs: wake
+    if: ${{ always() && needs.wake.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out the default branch only (never PR code)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: artifacts/SpecSmith/scripts/auto-goal/wake.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Wait, then call again for tickets whose call failed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AUTO_GOAL_TRUSTED_LOGIN: ${{ vars.AUTO_GOAL_TRUSTED_LOGIN }}
+          AUTO_GOAL_ROUTINE_FIRE_URL: ${{ secrets.AUTO_GOAL_ROUTINE_FIRE_URL }}
+          AUTO_GOAL_ROUTINE_TOKEN: ${{ secrets.AUTO_GOAL_ROUTINE_TOKEN }}
+        working-directory: artifacts/SpecSmith
+        run: node scripts/auto-goal/wake.mjs retry

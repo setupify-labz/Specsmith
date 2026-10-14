@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+// Test-only stand-in for `gh api <path>` (GET only), backed by the harness state.
+import { handle } from "../api.mjs";
+
+const [cmd, path] = process.argv.slice(2);
+if (cmd !== "api" || !path) { console.error("harness gh: only `gh api <path>` is supported"); process.exit(2); }
+const { status, body } = handle("GET", `https://api.github.com/${path}`);
+if (status >= 400) { console.error(`gh: HTTP ${status}`); process.exit(1); }
+process.stdout.write(JSON.stringify(body));
