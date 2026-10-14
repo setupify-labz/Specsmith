@@ -31,26 +31,14 @@ test('experimental workflow is not installed and has three gated jobs', () => {
   assert.match(workflow, /if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/);
   assert.match(workflow, /permissions: \{\}/);
   assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /needs: check/);
+  assert.match(workflow, /needs: publish/);
   assert.ok(!workflow.includes('pull_request_target:'));
-});
-
-test('publisher refuses any different bytes or report paths', async () => {
-  const { verifyChecked } = await import('./verify-checked.mjs');
-  const { recordChecked } = await import('./record-checked.mjs');
-  const base = 'a'.repeat(40);
-  const original = patch();
-  const report = recordChecked(original, base);
-  assert.deepEqual(verifyChecked(original, report, base), report);
-  assert.throws(() => verifyChecked(patch(undefined, '+export const flag = false;'), report, base), /not the diff/);
-  assert.throws(() => verifyChecked(original, { ...report, paths: [] }, base), /not the diff/);
-  assert.throws(() => verifyChecked(original, report, 'b'.repeat(40)), /base differs/);
 });
 
 test('template keeps credentials and write scope out of the code-running job', () => {
   const yaml = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
   const sections = Object.fromEntries([...yaml.matchAll(/^  (implement|check|publish):\n([\s\S]*?)(?=^  (?:implement|check|publish):|$(?![\s\S]))/gm)].map((m) => [m[1], m[2]]));
-  assert.deepEqual(Object.keys(sections), ['implement', 'check', 'publish']);
+  assert.deepEqual(Object.keys(sections), ['implement', 'publish', 'check']);
   assert.match(sections.implement, /permissions:\n      contents: read\n      issues: read/);
   assert.match(sections.implement, /secrets\.CLAUDE_CODE_OAUTH_TOKEN/);
   assert.match(sections.implement, /repos\/\$\{GITHUB_REPOSITORY\}\/issues\/\$\{ISSUE\}/);
@@ -60,13 +48,17 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
   assert.match(sections.check, /permissions: \{\}/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
-  assert.match(sections.check, /cmp "\$RUNNER_TEMP\/actual\.patch" "\$RUNNER_TEMP\/fresh\/proposal\.patch"/);
-  assert.match(sections.check, /record-checked\.mjs "\$RUNNER_TEMP\/fresh\/proposal\.patch"/);
-  assert.match(sections.publish, /needs: check/);
+  assert.match(sections.publish, /needs: implement/);
   assert.match(sections.publish, /contents: write/);
-  assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 3);
+  assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 2);
   assert.doesNotMatch(yaml, /uses: (?:anthropics\/claude-code-action|actions\/(?:upload|download)-artifact)@v\d/);
   assert.doesNotMatch(sections.publish, /secrets\.CLAUDE|pnpm|npm (?:run|test)|node_modules/);
+  assert.match(sections.publish, /git apply --check/);
+  assert.match(sections.publish, /git commit -m/);
+  assert.match(sections.publish, /echo "sha=\$sha" >> "\$GITHUB_OUTPUT"/);
+  assert.match(sections.check, /needs: publish/);
+  assert.match(sections.check, /ref: \$\{\{ needs\.publish\.outputs\.proposal_sha \}\}/);
+  assert.match(sections.check, /test "\$\(git rev-parse HEAD\)" = "\$\{\{ needs\.publish\.outputs\.proposal_sha \}\}"/);
   for (const section of Object.values(sections)) assert.match(section, /if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/);
 });
 

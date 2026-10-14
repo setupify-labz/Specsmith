@@ -63,11 +63,15 @@ jobs:
             ${{ runner.temp }}/proposal.json
           if-no-files-found: error
 
-  check:
+  publish:
     if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
     needs: implement
     runs-on: ubuntu-latest
-    permissions: {}
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      proposal_sha: ${{ steps.proposal.outputs.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -77,71 +81,15 @@ jobs:
         with:
           name: proposed-diff
           path: ${{ runner.temp }}/diff
-      - name: Validate and apply the proposed diff
+      - name: Refuse out-of-scope changes before publishing a draft
         shell: bash
         run: |
           set -euo pipefail
           node docs/auto-goal-actions/validate-proposal.mjs "$RUNNER_TEMP/diff/proposal.patch"
           git apply --check "$RUNNER_TEMP/diff/proposal.patch"
-          git apply "$RUNNER_TEMP/diff/proposal.patch"
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: '22'
-          cache: pnpm
-      # The proposed code is executed only in this job. It has no added secrets or write scopes.
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm --dir artifacts/SpecSmith exec vitest run
-      - run: pnpm --dir artifacts/SpecSmith build
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
-        with:
-          name: proposed-diff
-          path: ${{ runner.temp }}/fresh
-      - name: Recheck the tested working tree against a fresh artifact download
-        # The tested checkout must still contain exactly the proposal; an application test or build
-        # may write files. This detects persistent changes, not a process that mutates and restores.
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --binary > "$RUNNER_TEMP/actual.patch"
-          cmp "$RUNNER_TEMP/actual.patch" "$RUNNER_TEMP/fresh/proposal.patch"
-          test -z "$(git ls-files --others --exclude-standard -- artifacts/SpecSmith/src)"
-          node docs/auto-goal-actions/record-checked.mjs "$RUNNER_TEMP/fresh/proposal.patch" "$(git rev-parse HEAD)" > "$RUNNER_TEMP/checked.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4 tag target on 2026-10-14
-        with:
-          name: checked-diff-hash
-          path: ${{ runner.temp }}/checked.json
-          if-no-files-found: error
-
-  publish:
-    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
-    needs: check
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
-        with:
-          name: proposed-diff
-          path: ${{ runner.temp }}/diff
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
-        with:
-          name: checked-diff-hash
-          path: ${{ runner.temp }}/checked
-      - name: Refuse if patch bytes differ from successful check
-        shell: bash
-        run: |
-          set -euo pipefail
-          node docs/auto-goal-actions/verify-checked.mjs "$RUNNER_TEMP/diff/proposal.patch" "$RUNNER_TEMP/checked/checked.json" "$(git rev-parse HEAD)"
-          git apply --check "$RUNNER_TEMP/diff/proposal.patch"
-      # No generated code is executed in this job. Branch rules must independently prevent merge.
+      # This job does not run the proposed application code. The commit is fixed before checks begin.
       - name: Publish an isolated draft branch
+        id: proposal
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ inputs.issue_number }}
@@ -154,5 +102,34 @@ jobs:
           git add -- artifacts/SpecSmith/src
           git commit -m "Draft Auto Goal proposal for issue #${ISSUE}"
           branch="claude/auto-goal-proposal-${GITHUB_RUN_ID}"
+          sha="$(git rev-parse HEAD)"
           git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin "HEAD:refs/heads/${branch}"
-          gh pr create --draft --base main --head "$branch" --title "Auto Goal proposal for #${ISSUE}" --body "Experimental proposal from issue #${ISSUE}. Tested diff bound to this workflow run. Human review required."
+          gh pr create --draft --base main --head "$branch" --title "Auto Goal proposal for #${ISSUE}" --body "Experimental proposal from issue #${ISSUE}. Checks will run on commit ${sha}. Human review required."
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  check:
+    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.publish.outputs.proposal_sha }}
+          persist-credentials: false
+      - name: Require the exact published commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ needs.publish.outputs.proposal_sha }}"
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      # The proposed code is executed only in this job, after the draft commit exists.
+      # This job has no added secrets or repository write scope.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --dir artifacts/SpecSmith exec vitest run
+      - run: pnpm --dir artifacts/SpecSmith build
