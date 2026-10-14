@@ -14,6 +14,8 @@ The patch validator accepts edits to existing `artifacts/SpecSmith/src/**/*.ts`,
 
 An independent security reviewer must check the exact pinned Claude action revision (the SHA is a tag target, not yet audited), trusted `main` checkout and project configuration, action setup behavior, job permissions, artifact provenance, branch rules, and the GitHub token available to each job. They must validate a hostile review comment and an altered build script in an isolated test repository. Those exercises were not performed here. Also test one normal goal end to end with no spending, deployment or automatic merge. A real executor must arrange reliable CI status on the published commit and bind subsequent review decisions to it; this disabled template has no wake loop.
 
+The preliminary findings and the specific blockers to enabling are in [SECURITY_REVIEW.md](./SECURITY_REVIEW.md).
+
 The current #185 routine stays disabled. This template does not use its wake bridge or claim branches. Wiring those pieces into this design is separate work after the boundary is independently verified.
 
 Run the ordinary local checks with `node --test docs/auto-goal-actions/validate-proposal.test.mjs`.

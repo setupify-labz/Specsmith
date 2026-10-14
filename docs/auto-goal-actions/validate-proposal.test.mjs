@@ -48,6 +48,7 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
   assert.match(sections.check, /permissions: \{\}/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
+  assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
   assert.match(sections.publish, /needs: implement/);
   assert.match(sections.publish, /contents: write/);
   assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 2);

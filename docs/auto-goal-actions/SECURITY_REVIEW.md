@@ -1,0 +1,25 @@
+# Security audit of the inactive Auto Goal template
+
+Reviewed the template at `41cd8a08ccb9d61185fa2c8badf139933cf368b2` against the pinned Claude action source, the repository's `.claude/settings.json`, and GitHub's Actions permission documentation. This is a preliminary review by the template author, **not** the independent security sign-off required before installation. No real credential, live workflow, or goal was used.
+
+## What the template establishes
+
+- It is outside `.github/workflows` and all jobs have a false condition.
+- The publisher runs the trusted patch validator, accepts changes only to existing source files of limited types, commits a draft before executing proposed code, and never runs the changed application.
+- The check job fetches the immutable draft commit by SHA on a fresh runner with no declared write permission or explicitly passed secret. The dependency cache is disabled so code under test cannot write a cache restored by a later job.
+- The workflow cannot merge, deploy, request Codex review, or resume a goal. Its check result is a job on the dispatch workflow; a later controller would need to bind that result to the draft SHA.
+
+## Blockers to enabling
+
+1. **Implementer token boundary is not proven.** The pinned Claude action receives `CLAUDE_CODE_OAUTH_TOKEN` and a read-only repository token. Its agent mode configures Git authentication and forwards the supplied `claude_args`. The repository's `.claude/settings.json` allows Bash commands including `git push origin main`, while the workflow's `--disallowedTools Bash` intends to override that. This is a tool policy, not an OS sandbox. An independent reviewer must inspect the pinned action and run a disposable-credential test before any real token is supplied. Do not infer token secrecy from the tool list.
+2. **The test job is not a sealed sandbox.** GitHub creates a token for every job and exposes it through `github.token`, even if not explicitly passed to a step. The job has `permissions: {}`, but proposed code has normal network and filesystem access and may change its own workspace during tests. The draft commit fixes what is proposed for review; passing tests do not prove every instruction executed those original bytes.
+3. **The publisher has repository-wide write permission.** Its trusted steps validate the patch and do not run proposed code, but the workflow token itself is not limited to `claude/` branches. Branch rules, Actions PR creation settings, and the exact pinned actions still require independent verification. GitHub may require approval for workflows on PRs created with `GITHUB_TOKEN`; the separate check job here does not constitute a PR-head status.
+4. **This is a narrow pilot template, not the unattended loop.** Only existing `artifacts/SpecSmith/src/**/*.ts`, `.tsx` and `.css` edits are admitted. It does not handle tests, new files, most large goals, Codex handoffs, retries, or completion records. A successful dry run of this template alone would not establish the user's Auto Goal outcome.
+
+## Evidence and remaining validation
+
+- Local ordinary fixtures: `node --test docs/auto-goal-actions/validate-proposal.test.mjs`; YAML parse; `git diff --check`. These test path refusals and structural job permissions. They are not adversarial isolation tests.
+- Source inspected: [pinned Claude action](https://github.com/anthropics/claude-code-action/blob/34968b5981d5d170904281aa3df6f3c0d4a28855/action.yml), its [agent mode](https://github.com/anthropics/claude-code-action/blob/34968b5981d5d170904281aa3df6f3c0d4a28855/src/modes/agent/index.ts), [GitHub's job token documentation](https://docs.github.com/en/actions/concepts/security/github_token), and [GitHub's Actions settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+- Still required: independent review of the pinned action and job permissions; verification of repository rules and Actions settings; an isolated test repository with disposable credentials and deliberately hostile issue content and build code; confirmation that the exact SHA is used through publication, checks and review. Do not turn on this workflow or add the real OAuth token before those pass.
+
+**Verdict:** keep PR #187 disabled. It is suitable for design review, not for a live pilot.
