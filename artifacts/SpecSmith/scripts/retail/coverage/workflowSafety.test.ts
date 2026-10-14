@@ -52,6 +52,7 @@ describe('the validation workflow exists and is wired to the right events', () =
     expect(all).toEqual([
       'audit-accepted-offers.yml',
       'audit-retailer-links.yml',
+      'auto-goal-wake.yml',
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
       'daily-short-proposal.yml',

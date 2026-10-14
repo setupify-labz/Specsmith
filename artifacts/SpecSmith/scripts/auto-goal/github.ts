@@ -35,6 +35,10 @@ export interface GitHub {
   reviewComments(repo: string, pr: number): Promise<GhReviewComment[]>;
   createIssue(repo: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
   createComment(repo: string, issue: number, body: string): Promise<GhIssueComment>;
+  /** Open PRs whose head is `branch` in `repo` (to adopt one a lost response already created). */
+  openPullsFor(repo: string, branch: string): Promise<GhPull[]>;
+  /** Opens a draft PR (never ready for review, never merged here). */
+  createDraftPull(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
 }
 
 async function gh<T>(args: string[], input?: string): Promise<T> {
@@ -71,4 +75,6 @@ export const ghCli: GitHub = {
   reviewComments: (repo, pr) => all(`repos/${repo}/pulls/${pr}/comments`),
   createIssue: (repo, title, body) => gh(["-X", "POST", `repos/${repo}/issues`, "--input", "-"], JSON.stringify({ title, body })),
   createComment: (repo, issue, body) => gh(["-X", "POST", `repos/${repo}/issues/${issue}/comments`, "--input", "-"], JSON.stringify({ body })),
+  openPullsFor: (repo, branch) => gh([`repos/${repo}/pulls?state=open&head=${encodeURIComponent(`${repo.split("/")[0]}:${branch}`)}&per_page=10`]),
+  createDraftPull: (repo, head, base, title, body) => gh(["-X", "POST", `repos/${repo}/pulls`, "--input", "-"], JSON.stringify({ head, base, title, body, draft: true })),
 };

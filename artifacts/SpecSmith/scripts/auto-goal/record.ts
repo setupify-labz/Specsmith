@@ -19,9 +19,33 @@ export interface Criterion {
   readonly id: string;
   /** What must be true, in words a person can check. */
   readonly text: string;
-  /** The command that checks it. It must fail before the fix and pass after. */
+  /** The command that checks it, as text. It must fail before the fix and pass after. For a goal
+   * with a trusted `check`, it is generated from that check and only describes it. */
   readonly command: string;
   readonly kind: "unit" | "browser" | "build";
+  /** A check from the trusted registry (checks.ts). The unattended runner runs only these. */
+  readonly check?: CheckSpec;
+}
+
+/** One unattended runner session, as it recorded itself. */
+export interface RunEntry {
+  readonly n: number;
+  /** The Claude Code session that ran it, and what started that session. */
+  readonly sessionId: string;
+  readonly startedBy: string;
+  readonly startedAt: string;
+  /** The action decide() gave at the start of the run. */
+  readonly action: string;
+  endedAt: string | null;
+  /** What the run did, in one line, and the head commit it left. */
+  result: string | null;
+  head: string | null;
+  /** The routine that will start the next run, if this run scheduled one. */
+  next: string | null;
+  /** For a fix-findings run: exactly the findings its work order assigned (only these can be marked fixed by it). */
+  findingIds?: string[];
+  /** The claim ref that made this session the run's owner (claim.ts); absent on runs from before claims. */
+  readonly claim?: string;
 }
 
 export interface CheckRun {
@@ -77,6 +101,8 @@ export interface CiObservation {
   readonly runs: readonly { readonly name: string; readonly status: string; readonly conclusion: string | null; readonly url: string }[];
 }
 
+import { describeCheck, type CheckSpec } from "./checks.ts";
+
 export interface Caps {
   /** Codex review rounds, including the first. */
   readonly maxReviewRounds: number;
@@ -88,6 +114,12 @@ export interface Caps {
   readonly maxHours: number;
   /** Paid API spend allowed. The pilot allows none, and no code path here calls a paid API. */
   readonly paidSpendUsd: 0;
+  /** Unattended runner sessions allowed for the whole goal (each is one fresh Claude Code session). */
+  readonly maxRuns?: number;
+  /** Wall-clock limit for one runner session's checks, in minutes. */
+  readonly maxRunMinutes?: number;
+  /** How long a required check may take to finish on the reviewed head before the goal is blocked (default 60). */
+  readonly ciTimeoutMinutes?: number;
 }
 
 /** What this goal may never do. Fixed to false: the orchestrator has no code for any of them. */
@@ -141,6 +173,8 @@ export interface GoalRecord {
   resolvedForks?: number[];
   /** The record comment this revision was built on (absent on revision 1 and on records from before parents were kept). */
   parentComment?: number | null;
+  /** Unattended runner sessions, in order (absent on goals driven from an interactive session). */
+  runs?: RunEntry[];
 }
 
 export const DEFAULT_CAPS: Caps = { maxReviewRounds: 3, maxFixAttempts: 3, reviewTimeoutMinutes: 90, maxHours: 24, paidSpendUsd: 0 };
@@ -158,7 +192,7 @@ const ID = /^[a-z0-9][a-z0-9-]{2,63}$/;
 
 export function createGoal(input: {
   id: string; request: string; acceptanceCriteria: readonly Criterion[]; repo: string; baseBranch: string; branch: string;
-  requiredChecks: readonly string[]; caps?: Partial<Omit<Caps, "paidSpendUsd">>; now?: Date;
+  requiredChecks: readonly string[]; caps?: Partial<Omit<Caps, "paidSpendUsd">>; now?: Date; runner?: boolean;
 }): GoalRecord {
   const at = (input.now ?? new Date()).toISOString();
   const goal: GoalRecord = {
@@ -167,6 +201,7 @@ export function createGoal(input: {
     issue: null, pr: null, requiredChecks: input.requiredChecks, caps: { ...DEFAULT_CAPS, ...input.caps, paidSpendUsd: 0 }, policy: POLICY,
     step: "reproduce", head: null, commits: [], checks: [], reviewRounds: [], findings: [], ci: null, fixCommits: [], fixAttempts: 0, outcome: null,
     events: [{ at, type: "started", detail: "Goal created from the request as given." }],
+    ...(input.runner ? { runs: [] } : {}),
   };
   return validateGoal(goal);
 }
@@ -184,6 +219,11 @@ export function validateGoal(raw: unknown): GoalRecord {
     if (!c || typeof c.id !== "string" || typeof c.text !== "string" || typeof c.command !== "string" || c.command.trim() === "") fail("each criterion needs an id, text and a command");
     if (!["unit", "browser", "build"].includes(c.kind)) fail(`criterion ${c.id} has an unknown kind`);
     if (ids.has(c.id)) fail(`criterion id ${c.id} is repeated`);
+    if (c.check !== undefined) {
+      let described = "";
+      try { described = describeCheck(c.check); } catch { fail(`criterion ${c.id} names a check outside the trusted registry`); }
+      if (c.command !== described) fail(`criterion ${c.id}'s command text does not match its trusted check`);
+    }
     ids.add(c.id);
   }
   if (!/^[\w.-]+\/[\w.-]+$/.test(g.repo)) fail("repo must be owner/name");
@@ -193,6 +233,10 @@ export function validateGoal(raw: unknown): GoalRecord {
   for (const k of ["maxReviewRounds", "maxFixAttempts", "reviewTimeoutMinutes", "maxHours"] as const) {
     if (!Number.isInteger(caps[k]) || caps[k] < 1) fail(`caps.${k} must be a positive integer`);
   }
+  for (const k of ["maxRuns", "maxRunMinutes", "ciTimeoutMinutes"] as const) {
+    if (caps[k] !== undefined && (!Number.isInteger(caps[k]) || caps[k]! < 1)) fail(`caps.${k} must be a positive integer`);
+  }
+  if (g.runs !== undefined && caps.maxRuns !== undefined && g.runs.length > caps.maxRuns) fail(`more runner sessions (${g.runs.length}) than the cap (${caps.maxRuns})`);
   if (!g.policy || Object.values(g.policy).some((v) => v !== false)) fail("merge, paid generation, scheduling and publishing must all stay off");
   if (!Number.isInteger(g.revision) || g.revision < 0) fail("revision must be a non-negative integer");
   if (g.head !== null && !SHA.test(g.head)) fail("head must be a full commit sha");
