@@ -16,9 +16,18 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
-import { findGitAuth } from "./assert-no-git-auth.mjs";
+import { CATEGORY, findGitAuth } from "./assert-no-git-auth.mjs";
 
 const PLACEHOLDER = "PLACEHOLDER_NOT_A_TOKEN";
+/** Mixed case, because Git lowercases config keys: a check for the exact string would miss a lowercased copy. */
+const MIXED = "PlaceHolder_Not_A_Token";
+const MESSAGES = new Set(Object.values(CATEGORY));
+
+/** The guard's output must be only fixed category lines, and contain the secret in no case. */
+function assertNoDisclosure(output, secret) {
+  assert.ok(!output.toLowerCase().includes(secret.toLowerCase()), "the guard printed the credential (in some letter case)");
+  for (const line of output.split("\n").filter((l) => l.startsWith("- "))) assert.ok(MESSAGES.has(line.slice(2)), `not a fixed category message: ${line.slice(0, 2)}…`);
+}
 const here = new URL(".", import.meta.url).pathname;
 
 /** The implement step's environment as the workflow declares it, with placeholders, plus a clean, empty Git setup. */
@@ -87,13 +96,13 @@ test("positive control: with checkout's persisted credential, the same Git does 
     const env = stepEnv(home);
     const header = `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${PLACEHOLDER}`).toString("base64")}`;
     assert.equal(spawnSync("git", ["config", `http.${server.url.replace(/owner\/repo\.git$/, "")}.extraheader`, header], { cwd: repo, env }).status, 0);
-    assert.ok(findGitAuth(repo, env).some((f) => f.includes("extraheader")));
+    assert.deepEqual(findGitAuth(repo, env), [CATEGORY.extraHeader]);
     await git(["ls-remote", "origin"], repo, env);
     assert.ok(server.seen.some((s) => s.authorization === "present"), "the injected header reached the server");
   } finally { await server.close(); rmSync(root, { recursive: true, force: true }); }
 });
 
-test("each known route is refused by name, and the value is never printed", () => {
+test("each known route is refused with a fixed category message, and nothing it read is printed", () => {
   const { root, home, repo } = checkout("https://github.com/owner/repo.git");
   const cli = join(here, "assert-no-git-auth.mjs");
   const refuse = (setup, expected) => {
@@ -102,21 +111,40 @@ test("each known route is refused by name, and the value is never printed", () =
     for (const [file, text] of setup.files ?? []) { mkdirSync(join(file, ".."), { recursive: true }); writeFileSync(file, text); }
     const r = spawnSync(process.execPath, [cli, repo], { env, encoding: "utf8" });
     assert.equal(r.status, 1, `${expected} must be refused`);
-    assert.match(r.stderr, new RegExp(expected));
-    assert.doesNotMatch(r.stdout + r.stderr, new RegExp(PLACEHOLDER));
+    assert.ok(r.stderr.includes(`- ${expected}`), `expected "${expected}"`);
+    assertNoDisclosure(r.stdout + r.stderr, MIXED);
     for (const args of setup.undo ?? []) spawnSync("git", args, { cwd: repo, env });
     for (const [file] of setup.files ?? []) rmSync(file, { force: true });
   };
   try {
     assert.equal(spawnSync(process.execPath, [cli, repo], { env: stepEnv(home), encoding: "utf8" }).status, 0);
-    for (const name of ["GH_TOKEN", "GITHUB_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "GIT_ASKPASS", "GIT_CONFIG_PARAMETERS"]) refuse({ env: { [name]: PLACEHOLDER } }, name);
-    refuse({ env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "http.extraheader", GIT_CONFIG_VALUE_0: PLACEHOLDER } }, "GIT_CONFIG_KEY_0");
-    refuse({ git: [["config", "http.https://github.com/.extraheader", `AUTHORIZATION: basic ${PLACEHOLDER}`]], undo: [["config", "--unset-all", "http.https://github.com/.extraheader"]] }, "extraheader");
-    refuse({ git: [["config", "credential.helper", "store"]], undo: [["config", "--unset-all", "credential.helper"]] }, "credential.helper");
-    refuse({ git: [["remote", "set-url", "origin", `https://x-access-token:${PLACEHOLDER}@github.com/owner/repo.git`]], undo: [["remote", "set-url", "origin", "https://github.com/owner/repo.git"]] }, "remote.origin.url carries credentials");
-    refuse({ git: [["config", `url.https://x:${PLACEHOLDER}@github.com/.insteadOf`, "https://github.com/"]], undo: [["config", "--remove-section", `url.https://x:${PLACEHOLDER}@github.com/`]] }, "rewrites to a URL with credentials");
-    refuse({ files: [[join(home, ".git-credentials"), `https://x:${PLACEHOLDER}@github.com\n`]] }, "\\.git-credentials");
-    refuse({ files: [[join(home, ".config", "gh", "hosts.yml"), `github.com:\n  oauth_token: ${PLACEHOLDER}\n`]] }, "hosts\\.yml");
+    for (const name of ["GH_TOKEN", "GITHUB_TOKEN"]) refuse({ env: { [name]: MIXED } }, CATEGORY.tokenVariable);
+    refuse({ env: { ACTIONS_ID_TOKEN_REQUEST_TOKEN: MIXED } }, CATEGORY.oidcVariable);
+    refuse({ env: { GIT_ASKPASS: MIXED } }, CATEGORY.askpassVariable);
+    refuse({ env: { GIT_CONFIG_PARAMETERS: `'http.extraheader=${MIXED}'` } }, CATEGORY.envConfig);
+    refuse({ env: { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "http.extraheader", GIT_CONFIG_VALUE_0: MIXED } }, CATEGORY.envConfig);
+    refuse({ git: [["config", "http.https://github.com/.extraheader", `AUTHORIZATION: basic ${MIXED}`]], undo: [["config", "--unset-all", "http.https://github.com/.extraheader"]] }, CATEGORY.extraHeader);
+    refuse({ git: [["config", "credential.helper", "store"]], undo: [["config", "--unset-all", "credential.helper"]] }, CATEGORY.credentialConfig);
+    refuse({ git: [["remote", "set-url", "origin", `https://x-access-token:${MIXED}@github.com/owner/repo.git`]], undo: [["remote", "set-url", "origin", "https://github.com/owner/repo.git"]] }, CATEGORY.remoteWithCredentials);
+    refuse({ git: [["config", `url.https://x:${MIXED}@github.com/.insteadOf`, "https://github.com/"]], undo: [["config", "--remove-section", `url.https://x:${MIXED}@github.com/`]] }, CATEGORY.rewriteWithCredentials);
+    refuse({ files: [[join(home, ".git-credentials"), `https://x:${MIXED}@github.com\n`]] }, CATEGORY.credentialFile);
+    refuse({ files: [[join(home, ".config", "gh", "hosts.yml"), `github.com:\n  oauth_token: ${MIXED}\n`]] }, CATEGORY.credentialFile);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("regression (inline finding on #187): a credential in a URL rewrite key is not printed in any case", () => {
+  // Git lowercases config section names, so the old guard printed `git config url.https://x:placeholder_not_a_token@…`.
+  const { root, home, repo } = checkout("https://github.com/owner/repo.git");
+  try {
+    const env = stepEnv(home);
+    assert.equal(spawnSync("git", ["config", `url.https://Oauth2:${MIXED}@GitHub.com/.InsteadOf`, "https://github.com/"], { cwd: repo, env }).status, 0);
+    assert.equal(spawnSync("git", ["config", `remote.origin.pushUrl`, `https://X-Access-Token:${MIXED}@GitHub.com/owner/repo.git`], { cwd: repo, env }).status, 0);
+    const found = findGitAuth(repo, env);
+    assert.deepEqual(found.sort(), [CATEGORY.remoteWithCredentials, CATEGORY.rewriteWithCredentials].sort());
+    const r = spawnSync(process.execPath, [join(here, "assert-no-git-auth.mjs"), repo], { env, encoding: "utf8" });
+    assert.equal(r.status, 1);
+    assertNoDisclosure(r.stdout + r.stderr, MIXED);
+    assert.ok(!(r.stdout + r.stderr).toLowerCase().includes("github.com"), "no URL from the config is printed");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

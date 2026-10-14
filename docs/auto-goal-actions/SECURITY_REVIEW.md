@@ -15,7 +15,7 @@ Reviewed the template in this document's commit against the pinned Claude action
 - **What it checks:**
   - With the implement step's declared environment and a checkout like the job's, Git sends no credential to a local server that demands one, and `ls-remote` and `push --dry-run` fail.
   - A positive control shows the same Git does send a credential once checkout's persisted header is present.
-  - Each known route is refused by name without printing its value: token variables, injected Git config, extra headers, credential helpers, URLs with credentials, askpass, and credential files.
+  - Each known route is refused with a fixed category message. The guard never prints a variable name, config key, URL, path or value, and a mixed-case regression test checks that no copy of the placeholder appears in any letter case. Git lowercases config keys, and an earlier version leaked a credential through a lowercased URL rewrite key. The routes covered: token variables, injected Git config, extra headers, credential helpers, URLs with credentials, askpass, and credential files.
   - The workflow shape: no GitHub token, OIDC scope or hosted action in `implement`, and the issue read in its own job.
 - **What it cannot show:**
   - **Hosted runner:** it does not run on a GitHub-hosted runner. Credential routes specific to the runner image or the Actions runtime (for example the runner's own files, or tokens provided to actions rather than steps) are not covered. GitHub still creates a `contents: read` token for the job; this test only shows it is not mapped into the step or Git.
