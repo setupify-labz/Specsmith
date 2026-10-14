@@ -14,7 +14,7 @@ permissions: {}
 
 jobs:
   implement:
-    if: ${{ false }} # Deliberately inert, even if copied into .github/workflows.
+    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert, even if copied into .github/workflows.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,11 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       # This is a proposed tool configuration, not a proven restriction of the hosted action.
       # The checked-out .claude/ configuration and action setup must be audited before enabling.
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@34968b5981d5d170904281aa3df6f3c0d4a28855 # v1 tag target on 2026-10-14; audit before enabling
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
@@ -39,7 +39,7 @@ jobs:
           test -z "$(git ls-files --others --exclude-standard)"
           git diff --binary > "$RUNNER_TEMP/proposal.patch"
           node docs/auto-goal-actions/validate-proposal.mjs "$RUNNER_TEMP/proposal.patch" > "$RUNNER_TEMP/proposal.json"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4 tag target on 2026-10-14
         with:
           name: proposed-diff
           path: |
@@ -48,16 +48,16 @@ jobs:
           if-no-files-found: error
 
   check:
-    if: ${{ false }} # Deliberately inert.
+    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
     needs: implement
     runs-on: ubuntu-latest
     permissions: {}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
         with:
           name: proposed-diff
           path: ${{ runner.temp }}/diff
@@ -82,15 +82,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node docs/auto-goal-actions/validate-proposal.mjs "$RUNNER_TEMP/diff/proposal.patch" > "$RUNNER_TEMP/checked.json"
-      - uses: actions/upload-artifact@v4
+          node docs/auto-goal-actions/record-checked.mjs "$RUNNER_TEMP/diff/proposal.patch" "$(git rev-parse HEAD)" > "$RUNNER_TEMP/checked.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4 tag target on 2026-10-14
         with:
           name: checked-diff-hash
           path: ${{ runner.temp }}/checked.json
           if-no-files-found: error
 
   publish:
-    if: ${{ false }} # Deliberately inert.
+    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
     needs: check
     runs-on: ubuntu-latest
     permissions:
@@ -99,13 +99,13 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
         with:
           name: proposed-diff
           path: ${{ runner.temp }}/diff
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4 tag target on 2026-10-14
         with:
           name: checked-diff-hash
           path: ${{ runner.temp }}/checked
@@ -113,7 +113,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node docs/auto-goal-actions/verify-checked.mjs "$RUNNER_TEMP/diff/proposal.patch" "$RUNNER_TEMP/checked/checked.json"
+          node docs/auto-goal-actions/verify-checked.mjs "$RUNNER_TEMP/diff/proposal.patch" "$RUNNER_TEMP/checked/checked.json" "$(git rev-parse HEAD)"
           git apply --check "$RUNNER_TEMP/diff/proposal.patch"
       # No generated code is executed in this job. Branch rules must independently prevent merge.
       - name: Publish an isolated draft branch
@@ -126,7 +126,7 @@ jobs:
           git apply "$RUNNER_TEMP/diff/proposal.patch"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- src
+          git add -- artifacts/SpecSmith/src
           git commit -m "Draft Auto Goal proposal for issue #${ISSUE}"
           branch="claude/auto-goal-proposal-${GITHUB_RUN_ID}"
           git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin "HEAD:refs/heads/${branch}"
