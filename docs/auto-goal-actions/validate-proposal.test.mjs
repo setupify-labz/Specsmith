@@ -53,9 +53,15 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.deepEqual(Object.keys(sections), ['implement', 'check', 'publish']);
   assert.match(sections.implement, /permissions:\n      contents: read\n      issues: read/);
   assert.match(sections.implement, /secrets\.CLAUDE_CODE_OAUTH_TOKEN/);
+  assert.match(sections.implement, /repos\/\$\{GITHUB_REPOSITORY\}\/issues\/\$\{ISSUE\}/);
+  assert.match(sections.implement, /\.state == "open"/);
+  assert.match(sections.implement, /index\("auto-goal"\)/);
+  assert.match(sections.implement, /steps\.issue\.outputs\.issue_json/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
   assert.match(sections.check, /permissions: \{\}/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
+  assert.match(sections.check, /cmp "\$RUNNER_TEMP\/actual\.patch" "\$RUNNER_TEMP\/fresh\/proposal\.patch"/);
+  assert.match(sections.check, /record-checked\.mjs "\$RUNNER_TEMP\/fresh\/proposal\.patch"/);
   assert.match(sections.publish, /needs: check/);
   assert.match(sections.publish, /contents: write/);
   assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 3);
