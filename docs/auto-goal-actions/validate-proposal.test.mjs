@@ -47,6 +47,7 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.match(sections.implement, /steps\.issue\.outputs\.issue_json/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
   assert.match(sections.check, /permissions: \{\}/);
+  assert.match(sections.check, /timeout-minutes: 20/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
   assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
   assert.match(sections.publish, /needs: implement/);

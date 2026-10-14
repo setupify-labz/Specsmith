@@ -1,12 +1,12 @@
 # Security audit of the inactive Auto Goal template
 
-Reviewed the template at `41cd8a08ccb9d61185fa2c8badf139933cf368b2` against the pinned Claude action source, the repository's `.claude/settings.json`, and GitHub's Actions permission documentation. This is a preliminary review by the template author, **not** the independent security sign-off required before installation. No real credential, live workflow, or goal was used.
+Reviewed the template in this document's commit against the pinned Claude action source, the repository's `.claude/settings.json`, and GitHub's Actions permission documentation. The template and review are in the same Git tree, including the cache removal. This is a preliminary review by the template author, **not** the independent security sign-off required before installation. No real credential, live workflow, or goal was used.
 
 ## What the template establishes
 
 - It is outside `.github/workflows` and all jobs have a false condition.
 - The publisher runs the trusted patch validator, accepts changes only to existing source files of limited types, commits a draft before executing proposed code, and never runs the changed application.
-- The check job fetches the immutable draft commit by SHA on a fresh runner with no declared write permission or explicitly passed secret. The dependency cache is disabled so code under test cannot write a cache restored by a later job.
+- The check job fetches the immutable draft commit by SHA on a fresh runner with no declared write permission or explicitly passed secret. It has a 20-minute job limit. The dependency cache is disabled so code under test cannot write a cache restored by a later job.
 - The workflow cannot merge, deploy, request Codex review, or resume a goal. Its check result is a job on the dispatch workflow; a later controller would need to bind that result to the draft SHA.
 
 ## Blockers to enabling
