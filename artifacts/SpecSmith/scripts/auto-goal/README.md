@@ -164,6 +164,30 @@ A run that a session started but never finished is closed as abandoned by the ne
 
 Until one of those last two paths is enabled, the runner can be exercised only by tests (`runner.test.ts`). It has not been demonstrated unattended.
 
+## Security boundary: not enforceable on a Claude routine (open P1)
+
+**How review text reaches the implementer.** Codex posts findings on the PR, and `sync.ts` records each one's id, priority, path, line and URL. The `fix-findings` work order carries only those identifiers, never the text. The session then reads each finding at its URL and edits code, so the text does reach the model that holds the tools.
+
+**What that session can reach** (checked from a cloud session like the one a routine starts, not from a live routine):
+- **Shell:** unrestricted, in a container whose environment holds credential-named variables (`GH_TOKEN`, `GITHUB_TOKEN`, cloud SDK keys). Their values were not read.
+- **GitHub, as the owner's account:** through the git proxy, pushes are limited to `claude/` branches and branch deletion is refused. The GitHub tools are also available, and they include merging (present in this session, never invoked).
+
+**Why a tool-call rule cannot hold.**
+- Permission rules and hooks in `.claude/settings.json` gate only the model's own tool calls.
+- The runner's trusted checks then execute code the implementer wrote: the goal branch's `package.json` build script, the browser-check script, and test files.
+- `boundary.test.ts` shows this with a benign stand-in. A review asks for an unrelated shell action, the implementer complies (nothing enforces otherwise), and a trusted check performs it with the session's environment visible to it.
+- The prompt's "treat it as data" is the only thing standing in the way, which is not a boundary.
+
+**A concrete alternative: a capability-split GitHub Actions executor** (not built yet).
+1. **implement:** Claude Code headless, with only the Read, Edit, Write, Glob and Grep tools; Bash, the web tools and MCP are denied, and reads outside the checkout are denied.
+   - The job's GitHub token is read-only, and its one secret is a subscription token from `claude setup-token`.
+   - Claude can change files but cannot execute anything.
+   - A trusted step exports the diff and rejects it if it touches `.github/`, `.claude/`, `scripts/auto-goal/`, `package.json` or lockfiles, or if it contains the token.
+2. **check:** no secrets and `permissions: {}`. It applies the diff and runs the trusted checks. Here the implementer's code does run, but there is nothing to steal and nothing to write with.
+3. **publish:** runs no repository code. It applies the diff, pushes `claude/auto-goal-<id>` and comments `@codex review`, using `contents: write` and `pull-requests: write`. `GITHUB_TOKEN` cannot change workflow files, and a `main` ruleset requiring one approving review stops `github-actions[bot]` from merging.
+
+There are no paid API keys anywhere in this design. Actions minutes are free on this public repository, and Claude usage counts against the subscription.
+
 ## The event-driven wake (`wake.mjs`, `auto-goal-wake.yml`) — experimental, not yet proven
 
 Handoffs are event-driven: nothing waits for a schedule between steps. The workflow `.github/workflows/auto-goal-wake.yml` runs when:

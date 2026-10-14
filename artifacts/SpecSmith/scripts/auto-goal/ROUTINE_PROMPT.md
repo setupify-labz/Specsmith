@@ -1,5 +1,7 @@
 # Auto Goal routine prompt
 
+**Do not use this for an unattended goal yet.** A routine session cannot be kept from acting on instructions inside review text: see "Security boundary" in README.md. It is kept for the record.
+
 Paste everything below the line into the routine's prompt, unchanged. The routine must have the
 `setupify-labz/Specsmith` repository attached, the Default environment, no connectors, and one API
 trigger. The `auto-goal-wake.yml` workflow fires that trigger; nothing fires it on a schedule.
