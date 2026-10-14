@@ -23,6 +23,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import { acquireRun, fence, parseClaim, type ClaimStore } from "./claim.ts";
 import { runCheck, type CheckSpec } from "./checks.ts";
 import { decide, openMaterialFindings, type Action } from "./decide.ts";
 import { ghCli, pullMismatch, type GitHub } from "./github.ts";
@@ -78,6 +79,8 @@ export interface RunnerDeps {
   github: GitHub;
   git: Git & { push(branch: string): Promise<void>; ensureBranch(branch: string, base: string): Promise<void>; head(): Promise<string> };
   check(spec: CheckSpec, timeoutMs: number): Promise<{ exitCode: number; tail: string; executed: boolean }>;
+  /** Atomic run ownership (claim.ts): a session opens a run only after creating its claim. */
+  claims: ClaimStore;
   /** The commit the runner itself runs from (rendered into the next run's prompt). */
   toolingSha(): Promise<string>;
   now(): Date;
@@ -130,24 +133,47 @@ async function load(deps: RunnerDeps, repo: string, issue: number, id: string) {
 export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<number> {
   const a = args(argv);
   const id = a.need("--goal"), issue = Number(a.need("--issue")), repo = a.one("--repo") ?? "setupify-labz/Specsmith";
+  const session = a.need("--session");
   const now = deps.now();
   let { store, goal } = await load(deps, repo, issue, id);
-  if (goal.outcome) { deps.out(JSON.stringify({ goal: id, action: "done", why: `Goal already ${goal.outcome.status}: ${goal.outcome.reason}`, rearm: null })); return 0; }
+  /** The checks every begin makes before it may write; null when this session may go on. */
+  const screen = (g: GoalRecord): number | null => {
+    if (g.outcome) { deps.out(JSON.stringify({ goal: id, action: "done", why: `Goal already ${g.outcome.status}: ${g.outcome.reason}`, rearm: null })); return 0; }
+    const open = (g.runs ?? []).find((r) => r.endedAt === null);
+    if (open && open.sessionId === session) {
+      // The same session asking again (a retry, or its output was lost): replay its work order, do not count a new run.
+      // Replay the action the run was opened with, not a fresh decision (which could differ, e.g. after a cap).
+      deps.out(JSON.stringify(workOrder(g, { action: open.action, why: `Replayed run ${open.n}'s work order.` } as Action, open), null, 2));
+      return 0;
+    }
+    if (open) {
+      // Another session holds the open run. While it can still be working, this session is a duplicate:
+      // stop before changing anything, so the record never calls a live run abandoned.
+      const age = (now.getTime() - Date.parse(open.startedAt)) / 60_000;
+      if (age < runStaleMinutes(g)) throw new GoalError("refused", `Run ${open.n} by session ${open.sessionId} started ${Math.max(0, Math.round(age))} min ago and may still be working (live for ${runStaleMinutes(g)} min); this session stops without changing the goal.`);
+    }
+    return null;
+  };
+  const early = screen(goal);
+  if (early !== null) return early;
+
+  // Ownership first: create the claim for the run this session would open. Of several sessions that
+  // read the same record, exactly one creates it; the rest stop here, having written nothing.
+  const n = (goal.runs ?? []).length + 1;
+  const got = await acquireRun(deps.claims, id, n, session, now, runStaleMinutes(goal));
+  if (!got.owned) throw new GoalError("refused", got.why);
+  // Re-read now that the run is ours, so every check below sees what the claim protects.
+  ({ store, goal } = await load(deps, repo, issue, id));
+  const again = screen(goal);
+  if (again !== null) return again;
+  if ((goal.runs ?? []).length + 1 !== n) throw new GoalError("refused", `The record moved to ${(goal.runs ?? []).length} runs while run ${n} was being claimed; this session stops.`);
+
   const runs = goal.runs ?? [];
   const open = runs.find((r) => r.endedAt === null);
   const max = goal.caps.maxRuns ?? DEFAULT_MAX_RUNS;
-  const save = async () => { goal = await store.save(goal, now); };
-  if (open && open.sessionId === a.need("--session")) {
-    // The same session asking again (a retry, or its output was lost): replay its work order, do not count a new run.
-    // Replay the action the run was opened with, not a fresh decision (which could differ, e.g. after a cap).
-    deps.out(JSON.stringify(workOrder(goal, { action: open.action, why: `Replayed run ${open.n}'s work order.` } as Action, open), null, 2));
-    return 0;
-  }
+  const lease = { n, claim: got.claim.ref, startedAt: now.toISOString(), sessionId: session };
+  const save = async () => { await fence(deps.claims, id, lease, deps.now(), runStaleMinutes(goal)); goal = await store.save(goal, now); };
   if (open) {
-    // Another session holds the open run. While it can still be working, this session is a duplicate:
-    // stop before changing anything, so the record never calls a live run abandoned.
-    const age = (now.getTime() - Date.parse(open.startedAt)) / 60_000;
-    if (age < runStaleMinutes(goal)) throw new GoalError("refused", `Run ${open.n} by session ${open.sessionId} started ${Math.max(0, Math.round(age))} min ago and may still be working (live for ${runStaleMinutes(goal)} min); this session stops without changing the goal.`);
     // A previous session stopped without finishing its run: close it as abandoned, then continue.
     open.endedAt = now.toISOString(); open.result = "Abandoned: the session ended before `advance` (its uncommitted work, if any, is lost)."; open.head = goal.head;
     addEvent(goal, "run-abandoned", `Run ${open.n} (${open.sessionId}) never finished.`, now);
@@ -172,7 +198,7 @@ export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<
   }
   const next = decide(goal, now);
   const run: RunEntry = {
-    n: runs.length + 1, sessionId: a.need("--session"), startedBy: a.need("--started-by"), startedAt: now.toISOString(), action: next.action, endedAt: null, result: null, head: goal.head, next: null,
+    n, sessionId: session, startedBy: a.need("--started-by"), startedAt: lease.startedAt, action: next.action, endedAt: null, result: null, head: goal.head, next: null, claim: got.claim.ref,
     ...(next.action === "fix-findings" ? { findingIds: next.findings.map((f) => f.id) } : {}),
   };
   goal.runs = [...runs, run];
@@ -195,11 +221,14 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   const id = a.need("--goal"), issue = Number(a.need("--issue")), repo = a.one("--repo") ?? "setupify-labz/Specsmith";
   const now = deps.now();
   let { store, goal } = await load(deps, repo, issue, id);
-  const save = async () => { goal = await store.save(goal, now); };
   const run = (goal.runs ?? []).find((r) => r.endedAt === null);
   if (!run) throw new GoalError("refused", `Goal ${id} has no open run; start one with \`begin\`.`);
   const session = a.need("--session");
   if (run.sessionId !== session) throw new GoalError("refused", `The open run ${run.n} belongs to session ${run.sessionId}, not ${session}; this session's run was closed and replaced.`);
+  // The owner writes only while it still holds the run (claim.ts): before every push and every save.
+  const held = () => fence(deps.claims, id, run, deps.now(), runStaleMinutes(goal));
+  await held();
+  const save = async () => { await held(); goal = await store.save(goal, now); };
   const criteria = trustedCriteria(goal);
   // One budget for every check this run executes, across all criteria and phases.
   const checkDeadline = Date.now() + (goal.caps.maxRunMinutes ?? DEFAULT_RUN_MINUTES) * 60_000;
@@ -213,6 +242,7 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
     if (head === run.head) {
       did.push(`no commit for ${run.action}`);
     } else {
+      await held();
       await deps.git.push(goal.branch);
       await syncGoal(goal, deps.github, deps.git, now);
       if (goal.head !== head) throw new GoalError("unavailable", `Pushed ${head.slice(0, 10)} but the goal head reads ${goal.head?.slice(0, 10)}; GitHub has not caught up. Run \`advance\` again.`);
@@ -346,6 +376,26 @@ export async function noteNext(argv: readonly string[], deps: RunnerDeps): Promi
   return 0;
 }
 
+/** Claims as branches on origin, created with a plain (never forced) push: the server lets one creator win. */
+function gitClaims(g: (...a: string[]) => Promise<string>): ClaimStore {
+  return {
+    list: async (goalId) => {
+      // A glob refspec that matches nothing is not an error, so a goal without claims lists none.
+      await g("fetch", "--quiet", "origin", `+refs/heads/claude/auto-goal-claims/${goalId}/*:refs/auto-goal-claims/${goalId}/*`);
+      const lines = (await g("for-each-ref", "--format=%(refname)%09%(contents:subject)", `refs/auto-goal-claims/${goalId}/`)).split("\n").filter(Boolean);
+      return lines.map((l) => { const [ref, subject] = l.split("\t"); return parseClaim(goalId, ref.replace(/^refs\/auto-goal-claims\//, `claude/auto-goal-claims/`), subject ?? ""); })
+        .filter((c): c is NonNullable<typeof c> => c !== null);
+    },
+    create: async (claim, message) => {
+      // Point at the default branch's commit and tree: the claim adds no code. `[skip ci]` keeps builds off.
+      await g("fetch", "--quiet", "origin", "HEAD");
+      const parent = await g("rev-parse", "FETCH_HEAD");
+      const commit = await g("commit-tree", `${parent}^{tree}`, "-p", parent, "-m", message);
+      await g("push", "--quiet", "origin", `${commit}:refs/heads/${claim.ref}`);
+    },
+  };
+}
+
 export function localRunnerDeps(repoRoot: string, toolingRoot: string): RunnerDeps {
   const git = localGit(repoRoot);
   const g = (...a: string[]) => exec("git", a, { cwd: repoRoot, maxBuffer: 16 * 1024 * 1024 }).then((r) => r.stdout.trim());
@@ -371,6 +421,7 @@ export function localRunnerDeps(repoRoot: string, toolingRoot: string): RunnerDe
       },
     },
     check: (spec, timeoutMs) => runCheck(repoRoot, spec, timeoutMs),
+    claims: gitClaims(g),
     toolingSha: () => exec("git", ["rev-parse", "HEAD"], { cwd: toolingRoot }).then((r) => r.stdout.trim()),
     now: () => new Date(),
     out: (l) => console.log(l),

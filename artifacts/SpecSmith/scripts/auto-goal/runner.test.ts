@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { parseClaim, type Claim, type ClaimStore } from "./claim.ts";
 import { checkFile, describeCheck, runCheck, stepsFor, type CheckSpec } from "./checks.ts";
 import { CODEX_LOGIN, type GhIssueComment, type GhReview, type GhReviewComment } from "./codex.ts";
 import type { GhCheckRun, GhPull, GitHub } from "./github.ts";
@@ -67,8 +68,16 @@ class FakeGitHub implements GitHub {
   headOf: (branch: string) => string = () => sha(0);
 }
 
+/** Claims as a remote would hold them: creating a ref that exists is refused, so one creator wins. */
+class FakeClaims implements ClaimStore {
+  refs = new Map<string, string>();
+  async list(goal: string): Promise<Claim[]> { return [...this.refs].map(([ref, msg]) => parseClaim(goal, ref, msg.split("\n")[0])).filter((c): c is Claim => c !== null); }
+  async create(claim: Claim, message: string) { if (this.refs.has(claim.ref)) throw new Error("! [rejected] (already exists)"); this.refs.set(claim.ref, message); }
+}
+
 function harness() {
   const github = new FakeGitHub();
+  const claims = new FakeClaims();
   const commits: { sha: string; subject: string; at: string }[] = [];
   let local: string | null = null;
   let pushed: string | null = null;
@@ -98,6 +107,7 @@ function harness() {
       if (missing.has(JSON.stringify(spec))) return { exitCode: 127, tail: "file missing; nothing was run", executed: false };
       ran.push(describeCheck(spec)); const code = results.get(JSON.stringify(spec)) ?? 1; return { exitCode: code, tail: `exit ${code}`, executed: true };
     },
+    claims,
     toolingSha: async () => "f".repeat(40),
     now: () => clock,
     out: (l) => out.push(l),
@@ -110,7 +120,7 @@ function harness() {
   const tick = (m: number) => { clock = new Date(T0.getTime() + m * 60_000); github.clock = clock; };
   /** advance's argv, as the session that owns the open run. */
   const adv = () => { const comments = github.comments.get(400) ?? []; const g = comments.length ? parseRecordComment(comments.at(-1)!.body, "aria-expanded")! : null; return [...argv, "--session", g?.runs?.find((r) => r.endedAt === null)?.sessionId ?? "none"]; };
-  return { github, deps, commit, pass, argv, adv, record, last, tick, ran, timeouts, staleAfterPush: (s: string | null) => { staleAfterPush = s; }, setDirty: (d: boolean) => { dirty = d; }, setMissing: (spec: CheckSpec, m: boolean) => { if (m) missing.add(JSON.stringify(spec)); else missing.delete(JSON.stringify(spec)); } };
+  return { github, claims, deps, commit, pass, argv, adv, record, last, tick, ran, timeouts, staleAfterPush: (s: string | null) => { staleAfterPush = s; }, setDirty: (d: boolean) => { dirty = d; }, setMissing: (spec: CheckSpec, m: boolean) => { if (m) missing.add(JSON.stringify(spec)); else missing.delete(JSON.stringify(spec)); } };
 }
 
 async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
@@ -125,6 +135,84 @@ async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
   });
   await new IssueCommentStore(github, REPO, 400, ME).save({ ...goal, issue: 400, ...over }, T0);
 }
+
+describe("run ownership (claim.ts)", () => {
+  const go = (h: ReturnType<typeof harness>, session: string) => begin([...h.argv, "--session", session, "--started-by", "routine (API trigger)"], h.deps);
+  const revisions = (h: ReturnType<typeof harness>) => h.github.comments.get(400)!.map((c) => parseRecordComment(c.body, "aria-expanded")!.revision);
+
+  it("two sessions that read the same revision: exactly one claims the run, the other saves nothing, the record never forks", async () => {
+    const h = harness();
+    await submit(h.github);
+    const results = await Promise.allSettled([go(h, "s1"), go(h, "s2")]);
+    const won = results.filter((r) => r.status === "fulfilled");
+    const lost = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(won).toHaveLength(1);
+    expect(lost).toHaveLength(1);
+    expect(String(lost[0].reason.message)).toMatch(/claimed run 1 first|is claimed by session/);
+    expect(new Set(revisions(h)).size).toBe(revisions(h).length);   // no revision saved twice
+    const owner = h.record().runs![0];
+    expect(owner).toMatchObject({ n: 1, claim: "claude/auto-goal-claims/aria-expanded/1-1" });
+    expect([...h.claims.refs.keys()]).toEqual(["claude/auto-goal-claims/aria-expanded/1-1"]);
+    // And the goal goes on: the owner's run ends, and a later session takes run 2 with no resolve-fork.
+    h.commit(1, "checks"); await advance([...h.argv, "--session", owner.sessionId], h.deps);
+    h.tick(2);
+    await go(h, "s3");
+    expect(h.record().runs!.map((r) => [r.n, r.sessionId])).toEqual([[1, owner.sessionId], [2, "s3"]]);
+  });
+
+  it("a claim whose push answer was lost still belongs to the session that pushed it", async () => {
+    const h = harness();
+    await submit(h.github);
+    const create = h.claims.create.bind(h.claims);
+    h.claims.create = async (c, m) => { await create(c, m); throw new Error("fatal: the remote end hung up unexpectedly"); };
+    await go(h, "s1");
+    expect(h.record().runs![0]).toMatchObject({ sessionId: "s1", claim: "claude/auto-goal-claims/aria-expanded/1-1" });
+  });
+
+  it("an owner that dies after claiming blocks the run only until its claim goes stale, then the next attempt takes it", async () => {
+    const h = harness();
+    await submit(h.github);
+    await h.claims.create({ ref: "claude/auto-goal-claims/aria-expanded/1-1", run: 1, attempt: 1, session: "dead", at: T0.toISOString() },
+      "auto-goal claim goal=aria-expanded run=1 attempt=1 session=dead at=" + T0.toISOString());
+    expect((await refusal(go(h, "s2"))).message).toContain("claimed by session dead");
+    expect(h.record().runs).toEqual([]);
+    h.tick(41);
+    await go(h, "s2");
+    expect(h.record().runs![0]).toMatchObject({ n: 1, sessionId: "s2", claim: "claude/auto-goal-claims/aria-expanded/1-2" });
+  });
+
+  it("a live owner stops writing when its lease ends, before anyone may take over", async () => {
+    const h = harness();
+    await submit(h.github);
+    await go(h, "s1");
+    h.commit(1, "slow work");
+    h.tick(36);   // lease ends at 25 + 15 - 5 = 35 min; take-over starts at 40
+    const before = revisions(h).length;
+    expect((await refusal(advance([...h.argv, "--session", "s1"], h.deps))).message).toContain("lease ends at 35 min");
+    expect(revisions(h)).toHaveLength(before);
+  });
+
+  it("an owner whose run was taken over cannot push or save", async () => {
+    const h = harness();
+    await submit(h.github);
+    await go(h, "s1");
+    await h.claims.create({ ref: "claude/auto-goal-claims/aria-expanded/2-1", run: 2, attempt: 1, session: "s9", at: T0.toISOString() },
+      "auto-goal claim goal=aria-expanded run=2 attempt=1 session=s9 at=" + T0.toISOString());
+    h.commit(1, "work");
+    const before = revisions(h).length;
+    expect((await refusal(advance([...h.argv, "--session", "s1"], h.deps))).message).toContain("was taken over");
+    expect(revisions(h)).toHaveLength(before);
+  });
+
+  it("stops claiming a run after three dead attempts", async () => {
+    const h = harness();
+    await submit(h.github);
+    for (const k of [1, 2, 3]) await h.claims.create({ ref: `claude/auto-goal-claims/aria-expanded/1-${k}`, run: 1, attempt: k, session: `dead${k}`, at: T0.toISOString() },
+      `auto-goal claim goal=aria-expanded run=1 attempt=${k} session=dead${k} at=${T0.toISOString()}`);
+    h.tick(41);
+    expect((await refusal(go(h, "s4"))).message).toContain("claimed 3 times and never opened");
+  });
+});
 
 describe("the unattended runner", () => {
   it("drives a goal across separate runs: reproduce, implement, PR and review, findings applied, clean review, green CI, complete", async () => {

@@ -26,6 +26,7 @@ const BIN = join(here, "wakeHarness", "bin");
 const FIRE_URL = "https://api.anthropic.com/v1/claude_code/routines/trig_HARNESS/fire";
 const TOKEN = "harness-routine-token-not-real";
 const REPO = "setupify-labz/Specsmith", ME = "setupify-labz", ISSUE = 301, BRANCH = "claude/auto-goal-beta";
+const REAL_GIT = execFileSync("which", ["git"], { encoding: "utf8" }).trim();
 const UNIT: CheckSpec = { kind: "vitest", file: "src/components/partSelectorExpanded.test.tsx" };
 
 let dir: string, statePath: string, origin: string, base: string;
@@ -63,7 +64,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 const state = () => JSON.parse(readFileSync(statePath, "utf8"));
 const patch = (fn: (s: any) => void) => { const s = state(); fn(s); writeFileSync(statePath, JSON.stringify(s)); };
 const env = (extra: Record<string, string> = {}) => ({
-  ...gitEnv(), PATH: `${BIN}${delimiter}${process.env.PATH}`, WAKE_HARNESS_STATE: statePath, WAKE_HARNESS_LOGIN: ME,
+  ...gitEnv(), PATH: `${BIN}${delimiter}${process.env.PATH}`, WAKE_HARNESS_STATE: statePath, WAKE_HARNESS_LOGIN: ME, WAKE_HARNESS_REAL_GIT: REAL_GIT,
   GITHUB_REPOSITORY: REPO, GITHUB_TOKEN: "ghs_harness", AUTO_GOAL_REPO: REPO, AUTO_GOAL_TRUSTED_LOGIN: ME,
   AUTO_GOAL_ROUTINE_FIRE_URL: FIRE_URL, AUTO_GOAL_ROUTINE_TOKEN: TOKEN, AUTO_GOAL_FIRE_BACKOFF_MS: "0", AUTO_GOAL_RETRY_DELAY_MS: "0", ...extra,
 });
@@ -100,8 +101,6 @@ const remoteLog = () => {
   const heads = git(origin, "for-each-ref", "--format=%(refname:short)", "refs/heads");
   return heads.split("\n").includes(BRANCH) ? git(origin, "log", "--format=%s", `${base}..${BRANCH}`).split("\n").filter(Boolean) : [];
 };
-/** A goal branch an earlier step already created, so begin takes the fetch path and the race is on the record alone. */
-const branchExists = () => git(origin, "branch", BRANCH, base);
 const records = () => state().comments[ISSUE].filter((c: any) => c.user.login === ME).map((c: any) => JSON.parse(/```json\n([\s\S]*?)\n```/.exec(c.body)![1]));
 const latest = () => records().at(-1);
 
@@ -159,65 +158,98 @@ describe("an ambiguous routine call starts duplicate sessions for one ticket", {
     expect(remoteLog()).toEqual(["work by s1"]);
   });
 
-  it("two begins read the same revision at once: both saves are kept as a fork, both sessions stop, nothing is pushed, and later wakes refuse", async () => {
-    branchExists();
-    const [s1, s2] = await ambiguousWake();
+  it("two begins read the same revision at once: one claims the run, the other exits, and the goal goes on without resolve-fork", async () => {
+    const [s1, s2, s3] = await ambiguousWake();
     for (const s of [s1, s2]) expect((await s.guard()).verdict).toMatchObject({ proceed: true });
     const hold = join(dir, "hold");
-    const racing = [s1.begin({ WAKE_HARNESS_HOLD: hold }), s2.begin({ WAKE_HARNESS_HOLD: hold })];
+    // Both sessions have read revision 1 and are about to push the same claim ref when they are released together.
+    const racing = [s1.begin({ WAKE_HARNESS_CLAIM_HOLD: hold }), s2.begin({ WAKE_HARNESS_CLAIM_HOLD: hold })];
     await waitFor(() => readdirSync(dir).filter((f) => f.startsWith("hold.waiting.")).length === 2);
     writeFileSync(`${hold}.release`, "");
     const results = await Promise.all(racing);
-    for (const r of results) { expect(r.code).not.toBe(0); expect(r.out).toMatch(/Another session saved goal beta at the same time/); }
+    const winner = results.findIndex((r) => r.code === 0);
+    expect(results.filter((r) => r.code === 0)).toHaveLength(1);
+    const loser = results[1 - winner];
+    expect(loser.out).toMatch(/REFUSED: session s[12] claimed run 1 first/);
+    const [owner, other] = winner === 0 ? [s1, s2] : [s2, s1];
+    expect(claimsOnOrigin()).toEqual([`claude/auto-goal-claims/beta/1-1 ${owner.name}`]);
     const revs = records().map((r: any) => r.revision);
-    expect(revs.filter((n: number) => n === 2)).toHaveLength(2);   // both claims are on the issue, neither dropped
-    for (const s of [s1, s2]) { s.commit(); const r = await s.advance(); expect(r.code).not.toBe(0); expect(r.out).toContain("diverging saves"); }
-    expect(remoteLog()).toEqual([]);
-    // The goal waits for a person: the guard and the wake bridge both refuse a forked record.
-    expect((await s1.guard()).verdict).toMatchObject({ proceed: false, why: expect.stringContaining("diverging saves") });
+    expect(new Set(revs).size).toBe(revs.length);   // no fork
+    expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: owner.name, claim: "claude/auto-goal-claims/beta/1-1" })]);
+    // The loser cannot write even if it ignores its refusal.
+    other.commit();
+    expect((await other.advance()).code).not.toBe(0);
+    owner.commit();
+    expect((await owner.advance()).code).toBe(0);
+    expect(remoteLog()).toEqual([`work by ${owner.name}`]);
+    // The goal continues: a fresh session claims run 2 on the same, unforked record.
+    expect((await s3.begin()).code).toBe(0);
+    expect(latest().runs.map((r: any) => [r.n, r.sessionId])).toEqual([[1, owner.name], [2, "s3"]]);
   });
 
-  it("one begin saves before the other posts: the late one stops, the early one is stopped at advance, nothing is pushed", async () => {
-    branchExists();
+  it("a claim push whose answer is lost: the pushing session still owns the run, the duplicate exits", async () => {
     const [s1, s2] = await ambiguousWake();
-    for (const s of [s1, s2]) expect((await s.guard()).verdict).toMatchObject({ proceed: true });
-    const hold = join(dir, "hold");
-    const late = s2.begin({ WAKE_HARNESS_HOLD: hold });   // s2 has read revision 1 and is about to post
-    await waitFor(() => readdirSync(dir).some((f) => f.startsWith("hold.waiting.")));
-    expect((await s1.begin()).code).toBe(0);              // s1 reads revision 1, posts 2, sees no rival yet
-    writeFileSync(`${hold}.release`, "");
-    const r2 = await late;
+    expect((await s1.begin({ WAKE_HARNESS_LOSE_CLAIM_ANSWER: "1" })).code).toBe(0);
+    const r2 = await s2.begin();
     expect(r2.code).not.toBe(0);
-    expect(r2.out).toMatch(/Another session saved goal beta at the same time/);
-    s1.commit();
-    const r1 = await s1.advance();
-    expect(r1.code).not.toBe(0);
-    expect(r1.out).toContain("diverging saves");
-    expect(remoteLog()).toEqual([]);
+    expect(r2.out).toMatch(/Run 1 by session s1 .* may still be working|claimed by session s1/);
+    expect(latest().runs.map((r: any) => r.sessionId)).toEqual(["s1"]);
+  });
+
+  it("the owner dies right after claiming: others exit while its claim is live, then one takes over on a later attempt, with no resolve-fork", async () => {
+    const [s1, s2, s3] = await ambiguousWake();
+    const died = await s1.begin({ WAKE_HARNESS_DIE_AFTER_CLAIM: "1" });
+    expect(died.code).not.toBe(0);
+    expect(claimsOnOrigin()).toEqual(["claude/auto-goal-claims/beta/1-1 s1"]);
+    expect(latest().runs).toEqual([]);                    // it died before saving anything
+    const early = await s2.begin();
+    expect(early.code).not.toBe(0);
+    expect(early.out).toContain("run 1 is claimed by session s1");
+    backdateClaim("claude/auto-goal-claims/beta/1-1", 41); // its lease has run out
+    const [a, b] = await Promise.all([s2.begin(), s3.begin()]);   // two recoverers race for attempt 2
+    expect([a, b].filter((r) => r.code === 0)).toHaveLength(1);
+    const taker = a.code === 0 ? s2 : s3;
+    expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: taker.name, claim: "claude/auto-goal-claims/beta/1-2" })]);
+    taker.commit();
+    expect((await taker.advance()).code).toBe(0);
+    expect(remoteLog()).toEqual([`work by ${taker.name}`]);
+    const revs = records().map((r: any) => r.revision);
+    expect(new Set(revs).size).toBe(revs.length);
   });
 });
 
 describe("the same sequence with no forced ordering", { timeout: 90_000 }, () => {
-  it("three sessions racing from scratch: at most one pushes, and only one that owns the run on an unforked record", async () => {
+  it("three sessions racing from scratch: exactly one owns run 1 and pushes, the record never forks", async () => {
     const sessions = await ambiguousWake();
     for (const s of sessions) expect((await s.guard()).verdict).toMatchObject({ proceed: true });
     const begun = await Promise.all(sessions.map((s) => s.begin()));
-    // Whatever order the processes ran in, every loser stopped with a stated reason, never a crash.
-    for (const r of begun) if (r.code !== 0) expect(r.out).toMatch(/^(REFUSED|CONFLICT): /m);
+    expect(begun.filter((r) => r.code === 0)).toHaveLength(1);
+    for (const r of begun) if (r.code !== 0) expect(r.out).toMatch(/^REFUSED: /m);
     for (const s of sessions) s.commit();
     const advanced = await Promise.all(sessions.map((s) => s.advance()));
-    const pushed = remoteLog();
-    expect(pushed.length).toBeLessThanOrEqual(1);
     const winners = sessions.filter((_, i) => advanced[i].code === 0).map((s) => s.name);
-    expect(winners.length).toBeLessThanOrEqual(1);
-    if (winners.length) {
-      expect(pushed).toEqual([`work by ${winners[0]}`]);
-      expect(latest().runs.map((r: any) => r.sessionId)).toEqual([winners[0]]);
-    }
-    // No record ever calls a live run abandoned.
+    expect(winners).toHaveLength(1);
+    expect(remoteLog()).toEqual([`work by ${winners[0]}`]);
+    expect(latest().runs.map((r: any) => r.sessionId)).toEqual([winners[0]]);
+    const revs = records().map((r: any) => r.revision);
+    expect(new Set(revs).size).toBe(revs.length);
     for (const r of records()) for (const run of r.runs ?? []) expect(String(run.result ?? "")).not.toContain("Abandoned");
   });
 });
+
+/** Claims on origin as "ref session". */
+function claimsOnOrigin(): string[] {
+  const out = git(origin, "for-each-ref", "--format=%(refname:short) %(contents:subject)", "refs/heads/claude/auto-goal-claims/");
+  return out.split("\n").filter(Boolean).map((l) => { const [ref, ...subject] = l.split(" "); return `${ref} ${/session=(\S+)/.exec(subject.join(" "))![1]}`; });
+}
+
+/** Rewrites a claim on origin as if it had been made `minutes` ago (the test's stand-in for waiting out the lease). */
+function backdateClaim(ref: string, minutes: number) {
+  const sha = git(origin, "rev-parse", `refs/heads/${ref}`);
+  const message = git(origin, "log", "-1", "--format=%B", sha).replace(/at=\S+/, `at=${new Date(Date.now() - minutes * 60_000).toISOString()}`);
+  const commit = execFileSync("git", ["commit-tree", `${sha}^{tree}`, "-p", `${sha}^`, "-m", message], { cwd: origin, encoding: "utf8", env: gitEnv() }).trim();
+  git(origin, "update-ref", `refs/heads/${ref}`, commit, sha);
+}
 
 async function waitFor(ok: () => boolean, ms = 20_000) {
   const until = Date.now() + ms;

@@ -44,6 +44,8 @@ export interface RunEntry {
   next: string | null;
   /** For a fix-findings run: exactly the findings its work order assigned (only these can be marked fixed by it). */
   findingIds?: string[];
+  /** The claim ref that made this session the run's owner (claim.ts); absent on runs from before claims. */
+  readonly claim?: string;
 }
 
 export interface CheckRun {

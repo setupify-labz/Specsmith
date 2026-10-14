@@ -200,16 +200,32 @@ It then prints that goal. Without a valid ticket it refuses, so a wake for one g
 - Each ticket gets at most 4 calls. After that it stays `failed` with "giving up", and the failed workflow run is visible.
 - One concurrency group serialises every wake and retry.
 
-**Duplicate sessions: delivery is at-least-once, not exactly-once.** The routine's `/fire` endpoint takes no idempotency key. A call whose response is lost (a timeout or a 5xx after Anthropic accepted it) may still have started a session, and the retry starts another, both holding the same ticket. Nothing here can prevent that, so the design makes duplicates harmless instead. `wake.duplicate.test.ts` runs the exact sequence as processes: two calls with lost responses, the retry job's third call, then three sessions running the guard, `begin`, a commit and `advance` against one fake GitHub and one local origin.
+**Duplicate sessions: delivery is at-least-once, not exactly-once.** The routine's `/fire` endpoint takes no idempotency key. A call whose response is lost (a timeout or a 5xx after Anthropic accepted it) may still have started a session, and the retry starts another, both holding the same ticket. Nothing here can prevent that, so the design makes duplicates harmless instead.
+
+**Run ownership is an atomic claim, taken before anything is saved** (`claim.ts`). Before it opens run *n*, `begin` must create the branch `claude/auto-goal-claims/<goal>/<n>-<attempt>` with a plain, never-forced push.
+- GitHub's ref update is a compare-and-swap. Of two sessions creating the same ref, exactly one succeeds.
+- This was checked against GitHub through the session proxy: five pairs of simultaneous pushes, one winner each, and the ref always held the winner's commit.
+- The commit message names the owning session and the time. The commit points at the default branch's commit (no code) and carries `[skip ci]`; Cloudflare Workers Builds reported the probe as skipped.
+- Every other session stops before writing. Only the owner of the open run writes the record, so duplicate sessions no longer fork it, and nobody needs `resolve-fork` for them.
+- A claim push whose answer was lost still counts for the session that made it: it re-lists the claims and finds its own name.
 
 | How the duplicates interleave | What happens |
 | --- | --- |
 | One session opens its run before the others reach the guard | The guard refuses the others: the ticket was already taken by run 1. |
-| Every guard passes before any run opens | The first `begin` opens the run. Later ones exit with "Run 1 by session … may still be working" and save nothing. They never mark the live run abandoned: another session's open run is live for the run-time cap plus 15 minutes, the same window the guard uses. A duplicate that ignored its refusal still cannot push: `advance` belongs to the run's session. |
-| Two `begin`s create the goal branch at once (first run) | The remote accepts one ref creation. The other gets "Another session created … at the same moment" and stops. |
-| Two `begin`s read the same record revision | Both save, both see the rival copy, and both stop. The record is forked, so a later `advance` from either refuses before pushing. The guard and the wake bridge then refuse the goal until a person runs `resolve-fork`. |
+| Every guard passes, then the `begin`s run one after another | The first claims and opens the run. The rest stop at "Run 1 by session … may still be working", having written nothing. |
+| Two `begin`s read the same revision and push the same claim at once | One push wins. The other gets "session … claimed run 1 first" and stops. The record has one revision 2, and the goal continues normally. |
+| The owner dies after claiming, before saving | Others stop while the claim is live: the run-time cap plus 15 minutes, the guard's window. After that the next session claims attempt 2 of the same run (at most 3 attempts). Two recoverers race for that attempt the same way, and one wins. |
+| The owner dies with its run open | After the same window, the next session claims run *n*+1 and marks run *n* abandoned. |
+| The old owner is alive but slow | It fences itself: before every push and save it stops if its run is older than the window minus 5 minutes, or if a later claim exists. So it stops writing before anyone may take over. |
 
-In every case at most one session pushes, and only the one that owns the run on an unforked record. The cost is the last row: a simultaneous save leaves the goal paused for a person, because GitHub comments have no compare-and-swap (the open #184 P1).
+`wake.duplicate.test.ts` runs these as processes: the real `wake.mjs` and `runner.ts`, real git against a local bare origin, and a git wrapper that can hold, lose the answer to, or kill the session after a claim push. `runner.test.ts` covers the same rules with a fake clock.
+
+**What the claim does not cover:**
+- Delivery is still at-least-once; the claim only makes duplicate sessions harmless.
+- The takeover window is a lease, so it assumes session clocks agree to within the 5-minute margin.
+- Sessions cannot delete branches through the proxy (refused for both `git push :ref` and the REST API). Claims stay until someone with delete rights removes them: at most `maxRuns × 3` per goal.
+- With no polling, a dead owner is replaced only when the next event wakes the routine (Codex, CI, or re-labelling). An owner that dies before pushing anything may leave no such event, and then the goal waits.
+- Writes outside a run (`resolve-fork`, a person's edits) are not claimed, so a fork is still possible there.
 
 Limitations:
 - With no polling, the 90-minute Codex timeout and the 24-hour cap are recorded only when the next event arrives.
