@@ -90,9 +90,9 @@ test("workflow: inline settings reinstate the project's Read denials and turn of
 test("workflow: the Claude step's environment, guard order and job gate are unchanged", () => {
   const step = /- name: Propose edits with no GitHub credential configured or passed\n([\s\S]*?)(?=\n      - )/.exec(implement)?.[1] ?? "";
   const envKeys = [...(/        env:\n((?:          [A-Z_]+: .*\n)+)/.exec(step)?.[1] ?? "").matchAll(/          ([A-Z_]+):/g)].map((m) => m[1]);
-  assert.deepEqual(envKeys, ["CLAUDE_CODE_OAUTH_TOKEN", "ISSUE_JSON", "GIT_TERMINAL_PROMPT"]);
+  assert.deepEqual(envKeys, ["CLAUDE_CODE_OAUTH_TOKEN", "TASK_JSON", "GIT_TERMINAL_PROMPT"]);
   assert.ok(step.indexOf("assert-no-git-auth.mjs") < step.indexOf("claude -p"));
-  for (const job of ["read-issue", "implement", "publish", "check"]) {
+  for (const job of ["read-dispatch", "implement", "publish", "gate-checks", "check", "record-check"]) {
     assert.match(new RegExp(`^  ${job}:\\n    if: \\$\\{\\{ false && github\\.ref == 'refs/heads/main' \\}\\}`, "m").exec(yaml)?.[0] ?? "", /false/, job);
   }
 });

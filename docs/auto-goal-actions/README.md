@@ -1,6 +1,28 @@
 # Auto Goal Actions executor — inactive proposal
 
-`auto-goal-actions.yml` is deliberately stored here, outside `.github/workflows`, and all three jobs also have `if: ${{ false }}`. GitHub cannot start it. No OAuth token, rule or live goal was added. This is a reviewable design, not a working unattended executor.
+`auto-goal-actions.yml` is deliberately stored here, outside `.github/workflows`, and every job also has `if: ${{ false }}`. GitHub cannot start it. No OAuth token, rule or live goal was added. This is a reviewable design, not a working unattended executor.
+
+## Version 1 pilot path (offline only)
+
+The workflow now implements version 1 of [PILOT_HANDOFF_CONTRACT.md](PILOT_HANDOFF_CONTRACT.md) §1A. The Auto Goal runner dispatches it once per phase (reproduce, then implement) with `{goal, issue, nonce}`. Its six jobs are all gated off:
+
+- **`read-dispatch`:** validates the dispatch against the goal record.
+- **`implement`:** the restricted CLI on the dispatch base.
+- **`publish`:** guard, then a compare-and-swap push to `claude/auto-goal-<goal>`, then a re-read and the draft PR.
+- **`gate-checks`:** re-reads the record before any proposed code runs.
+- **`check`:** one job per trusted check, named `check <phase> <id> <sha>`.
+- **`record-check`:** writes an informational status.
+
+New trusted scripts:
+
+- **`dispatch-guard.mjs`:** the record and branch checks of §1A.5.
+- **`run-check.mts`:** maps a check ID onto `checks.ts` and succeeds only when the phase's expectation is met.
+
+`validate-proposal.mjs` takes `--phase` and `--criterion`.
+
+The whole path is exercised offline in `artifacts/SpecSmith/scripts/auto-goal/executorPilot.test.ts`: fake GitHub, mock Claude, real git, and real checks on a fixture. Nothing here has run on GitHub.
+
+The section below describes the design history up to `f68add4`; where it differs, the version 1 path above applies.
 
 ## Boundaries in the proposed design
 

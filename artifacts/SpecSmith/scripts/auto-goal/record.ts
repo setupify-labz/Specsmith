@@ -9,7 +9,8 @@
 // finalize() or block(), never edited afterwards.
 
 export const RECORD_KIND = "specsmith-auto-goal";
-export const RECORD_VERSION = 1;
+/** 2 adds the executor-mode fields (executorSha, dispatches, CheckRun.source); version 1 records still load. */
+export const RECORD_VERSION = 2;
 
 /** Codex marks findings P0-P3. P3 is a nit; anything else, or an unbadged finding, is material. */
 export type Priority = "P0" | "P1" | "P2" | "P3" | "unbadged";
@@ -48,6 +49,29 @@ export interface RunEntry {
   readonly claim?: string;
 }
 
+/** The executor run and job a check result came from (executor mode, PILOT_HANDOFF_CONTRACT.md §3). */
+export interface CheckSource { readonly runId: number; readonly jobId: number; readonly conclusion: string; readonly url: string }
+
+/**
+ * One request to the disabled Actions executor (contract §1A). Version 1 sends each dispatch once:
+ * a dispatch that is not seen, fails, or times out blocks the goal instead of being retried.
+ */
+export interface Dispatch {
+  readonly k: number;
+  /** `<goal id>.d<k>`; the executor's run name carries it. */
+  readonly nonce: string;
+  readonly phase: "reproduce" | "implement";
+  /** The commit the executor must start from: main for reproduce, the reproduce commit for implement. */
+  readonly baseSha: string;
+  readonly createdAt: string;
+  /** When the dispatch API call returned; null while it is saved but not confirmed sent. */
+  sentAt: string | null;
+  runId: number | null;
+  state: "pending" | "bound" | "succeeded" | "failed";
+  /** The commit the executor published for it. */
+  result: string | null;
+}
+
 export interface CheckRun {
   readonly criterionId: string | null;
   /** "before": run to prove the defect (must fail). "after": run on a commit to prove the fix. "suite": a broader run. */
@@ -55,9 +79,12 @@ export interface CheckRun {
   readonly command: string;
   /** The commit the command ran against (the working tree must have been clean). */
   readonly sha: string;
-  readonly exitCode: number;
+  /** The command's exit code; absent only for executor results, which report whether the phase's expectation was met (`source`). */
+  readonly exitCode?: number;
   readonly summary: string;
   readonly at: string;
+  /** Executor mode: the bound Actions job that produced this result. */
+  readonly source?: CheckSource;
 }
 
 export interface Commit { readonly sha: string; readonly subject: string; readonly at: string }
@@ -120,6 +147,10 @@ export interface Caps {
   readonly maxRunMinutes?: number;
   /** How long a required check may take to finish on the reviewed head before the goal is blocked (default 60). */
   readonly ciTimeoutMinutes?: number;
+  /** Executor mode: how long a sent dispatch may go without a visible run before the goal is blocked (default 15). */
+  readonly dispatchGraceMinutes?: number;
+  /** Executor mode: how long an executor run may take before the goal is blocked (default 60). */
+  readonly executorTimeoutMinutes?: number;
 }
 
 /** What this goal may never do. Fixed to false: the orchestrator has no code for any of them. */
@@ -175,7 +206,19 @@ export interface GoalRecord {
   parentComment?: number | null;
   /** Unattended runner sessions, in order (absent on goals driven from an interactive session). */
   runs?: RunEntry[];
+  /** Executor mode (contract §1A): the reviewed executor's main commit. Its presence turns executor mode on. */
+  readonly executorSha?: string;
+  /** Executor mode: the dispatches sent to the executor, in order. */
+  dispatches?: Dispatch[];
 }
+
+export const EXECUTOR_REQUIRED_CHECKS = ["typecheck"] as const;
+export const DEFAULT_DISPATCH_GRACE_MINUTES = 15;
+export const DEFAULT_EXECUTOR_TIMEOUT_MINUTES = 60;
+export const isExecutorMode = (goal: Pick<GoalRecord, "executorSha">): boolean => typeof goal.executorSha === "string";
+export const nonceFor = (goalId: string, k: number) => `${goalId}.d${k}`;
+/** The one dispatch that may still produce a run (version 1 allows at most one). */
+export const liveDispatch = (goal: GoalRecord): Dispatch | undefined => (goal.dispatches ?? []).find((d) => d.state === "pending" || d.state === "bound");
 
 export const DEFAULT_CAPS: Caps = { maxReviewRounds: 3, maxFixAttempts: 3, reviewTimeoutMinutes: 90, maxHours: 24, paidSpendUsd: 0 };
 export const POLICY: Policy = { merge: false, paidGeneration: false, scheduling: false, publishing: false };
@@ -192,7 +235,7 @@ const ID = /^[a-z0-9][a-z0-9-]{2,63}$/;
 
 export function createGoal(input: {
   id: string; request: string; acceptanceCriteria: readonly Criterion[]; repo: string; baseBranch: string; branch: string;
-  requiredChecks: readonly string[]; caps?: Partial<Omit<Caps, "paidSpendUsd">>; now?: Date; runner?: boolean;
+  requiredChecks: readonly string[]; caps?: Partial<Omit<Caps, "paidSpendUsd">>; now?: Date; runner?: boolean; executorSha?: string;
 }): GoalRecord {
   const at = (input.now ?? new Date()).toISOString();
   const goal: GoalRecord = {
@@ -202,6 +245,7 @@ export function createGoal(input: {
     step: "reproduce", head: null, commits: [], checks: [], reviewRounds: [], findings: [], ci: null, fixCommits: [], fixAttempts: 0, outcome: null,
     events: [{ at, type: "started", detail: "Goal created from the request as given." }],
     ...(input.runner ? { runs: [] } : {}),
+    ...(input.executorSha !== undefined ? { executorSha: input.executorSha, dispatches: [] } : {}),
   };
   return validateGoal(goal);
 }
@@ -210,7 +254,7 @@ export function createGoal(input: {
 export function validateGoal(raw: unknown): GoalRecord {
   const g = raw as GoalRecord;
   const fail = (why: string): never => { throw new GoalError("invalid", `Goal record invalid: ${why}.`); };
-  if (!g || typeof g !== "object" || g.kind !== RECORD_KIND || g.version !== RECORD_VERSION) fail(`expected kind "${RECORD_KIND}" version ${RECORD_VERSION}`);
+  if (!g || typeof g !== "object" || g.kind !== RECORD_KIND || ((g.version as number) !== RECORD_VERSION && (g.version as number) !== 1)) fail(`expected kind "${RECORD_KIND}" version 1 or ${RECORD_VERSION}`);
   if (typeof g.id !== "string" || !ID.test(g.id)) fail("id must be 3-64 lowercase letters, digits or hyphens");
   if (typeof g.request !== "string" || g.request.trim() === "") fail("the original request is missing");
   if (!Array.isArray(g.acceptanceCriteria) || g.acceptanceCriteria.length === 0) fail("at least one acceptance criterion is required");
@@ -233,7 +277,7 @@ export function validateGoal(raw: unknown): GoalRecord {
   for (const k of ["maxReviewRounds", "maxFixAttempts", "reviewTimeoutMinutes", "maxHours"] as const) {
     if (!Number.isInteger(caps[k]) || caps[k] < 1) fail(`caps.${k} must be a positive integer`);
   }
-  for (const k of ["maxRuns", "maxRunMinutes", "ciTimeoutMinutes"] as const) {
+  for (const k of ["maxRuns", "maxRunMinutes", "ciTimeoutMinutes", "dispatchGraceMinutes", "executorTimeoutMinutes"] as const) {
     if (caps[k] !== undefined && (!Number.isInteger(caps[k]) || caps[k]! < 1)) fail(`caps.${k} must be a positive integer`);
   }
   if (g.runs !== undefined && caps.maxRuns !== undefined && g.runs.length > caps.maxRuns) fail(`more runner sessions (${g.runs.length}) than the cap (${caps.maxRuns})`);
@@ -242,7 +286,8 @@ export function validateGoal(raw: unknown): GoalRecord {
   if (g.head !== null && !SHA.test(g.head)) fail("head must be a full commit sha");
   for (const c of g.checks) {
     if (!SHA.test(c.sha)) fail(`check "${c.command}" has no full commit sha`);
-    if (!Number.isInteger(c.exitCode)) fail(`check "${c.command}" has no exit code`);
+    if (c.source === undefined ? !Number.isInteger(c.exitCode) : (c.exitCode !== undefined && !Number.isInteger(c.exitCode))) fail(`check "${c.command}" has no exit code`);
+    if (c.source !== undefined && (!Number.isInteger(c.source.runId) || !Number.isInteger(c.source.jobId) || typeof c.source.conclusion !== "string")) fail(`check "${c.command}" has an incomplete executor source`);
     if (c.criterionId !== null && !ids.has(c.criterionId)) fail(`check "${c.command}" names unknown criterion ${c.criterionId}`);
   }
   for (const f of g.findings) {
@@ -252,7 +297,31 @@ export function validateGoal(raw: unknown): GoalRecord {
   if (!Array.isArray(g.fixCommits) || g.fixAttempts !== new Set(g.fixCommits).size || g.fixAttempts !== g.fixCommits.length) fail("fixAttempts must equal the number of distinct fix commits");
   if (g.reviewRounds.length > caps.maxReviewRounds) fail(`more review rounds (${g.reviewRounds.length}) than the cap (${caps.maxReviewRounds})`);
   if (g.outcome && !["complete", "blocked"].includes(g.outcome.status)) fail("outcome must be complete or blocked");
+  if (g.executorSha !== undefined || g.dispatches !== undefined) validateExecutorMode(g, fail);
   return g;
+}
+
+/** Executor mode, version 1 (contract §1A.1, §1A.4 change 1). */
+function validateExecutorMode(g: GoalRecord, fail: (why: string) => never): void {
+  if ((g.version as number) !== RECORD_VERSION) fail(`executor mode needs record version ${RECORD_VERSION}`);
+  if (typeof g.executorSha !== "string" || !SHA.test(g.executorSha)) fail("executorSha must be a full commit sha");
+  if (g.branch !== `claude/auto-goal-${g.id}`) fail(`an executor-mode goal's branch must be claude/auto-goal-${g.id}`);
+  if (g.acceptanceCriteria.length !== 1 || g.acceptanceCriteria[0].check?.kind !== "vitest") fail("version 1 takes exactly one acceptance criterion, a vitest check");
+  if (g.requiredChecks.length !== EXECUTOR_REQUIRED_CHECKS.length || g.requiredChecks.some((c, i) => c !== EXECUTOR_REQUIRED_CHECKS[i])) fail(`an executor-mode goal requires exactly ${EXECUTOR_REQUIRED_CHECKS.join(", ")}`);
+  const ds = g.dispatches;
+  if (!Array.isArray(ds)) fail("an executor-mode goal needs a dispatches list");
+  if (ds.length > 2) fail("version 1 has at most two dispatches");
+  ds.forEach((d, i) => {
+    if (d.k !== i + 1 || d.nonce !== nonceFor(g.id, i + 1)) fail(`dispatch ${i + 1} must be ${nonceFor(g.id, i + 1)}`);
+    if (d.phase !== (i === 0 ? "reproduce" : "implement")) fail(`dispatch ${d.nonce} must be ${i === 0 ? "reproduce" : "implement"}`);
+    if (!SHA.test(d.baseSha)) fail(`dispatch ${d.nonce} has no full base sha`);
+    if (!["pending", "bound", "succeeded", "failed"].includes(d.state)) fail(`dispatch ${d.nonce} has an unknown state`);
+    if (d.result !== null && !SHA.test(d.result)) fail(`dispatch ${d.nonce}'s result must be a full commit sha`);
+    if (d.state === "succeeded" && d.result === null) fail(`dispatch ${d.nonce} succeeded without a published commit`);
+    if (d.runId !== null && !Number.isInteger(d.runId)) fail(`dispatch ${d.nonce} has an invalid run id`);
+    if (i > 0 && ds[i - 1].state !== "succeeded") fail(`dispatch ${d.nonce} follows one that did not succeed`);
+  });
+  if (ds.filter((d) => d.state === "pending" || d.state === "bound").length > 1) fail("at most one dispatch may be live");
 }
 
 export function addEvent(goal: GoalRecord, type: string, detail: string, now = new Date()): void {

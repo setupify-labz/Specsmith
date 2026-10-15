@@ -26,11 +26,14 @@ export const CODEX_LOGIN = "chatgpt-codex-connector[bot]";
 export const GOAL_LABEL = "auto-goal";
 /** The login GITHUB_TOKEN writes as; only its comments can be wake tickets. */
 export const WORKFLOW_LOGIN = "github-actions[bot]";
+/** The disabled Actions executor (PILOT_HANDOFF_CONTRACT.md §1A): its run name carries the goal and dispatch nonce. */
+export const EXECUTOR_WORKFLOW_PATH = ".github/workflows/auto-goal-actions.yml";
+const EXECUTOR_RUN_NAME = /^Auto Goal ([a-z0-9][a-z0-9-]{2,63}) (\1\.d[1-9]\d*)$/;
 /** Calls to the routine per ticket, across the event step and the retry job. */
 export const MAX_FIRE_ATTEMPTS = 4;
 /** Calls per step, so the event step and one retry job each get a share. */
 export const FIRE_ATTEMPTS_PER_STEP = 2;
-const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted|recovery) state=(pending|fired|failed) attempts=(\d+)(?: recovers=([a-z0-9-]+))? -->/;
+const TICKET = /^<!-- specsmith-auto-goal-wake goal=([a-z0-9-]+) issue=(\d+) pr=(\d+|none) sha=([0-9a-f]{40}|none) reason=(codex|checks|goal-submitted|recovery|executor) state=(pending|fired|failed) attempts=(\d+)(?: recovers=([a-z0-9-]+))? -->/;
 /** Run claims (claim.ts): branches the runner creates atomically before it opens a run. */
 export const CLAIM_PREFIX = "claude/auto-goal-claims";
 const MAX_CLAIM_ATTEMPTS = 3;
@@ -74,6 +77,12 @@ export function normalizeEvent(eventName, payload, trustedLogin) {
     case "workflow_run": {
       const run = payload.workflow_run;
       if (payload.action !== "completed" || !run) return { skip: "workflow run not completed" };
+      if (run.path === EXECUTOR_WORKFLOW_PATH) {
+        // A dispatched run names no pull request; its run name names the goal and dispatch (contract §2).
+        const m = EXECUTOR_RUN_NAME.exec(String(run.name ?? ""));
+        if (!m || run.event !== "workflow_dispatch") return { skip: "executor run without an Auto Goal dispatch name" };
+        return { kind: "executor", goal: m[1], nonce: m[2], sha: null, prs: [], issue: null };
+      }
       return { kind: "checks", sha: run.head_sha, prs: (run.pull_requests ?? []).map((p) => p.number), issue: null };
     }
     case "check_suite": {
@@ -151,7 +160,7 @@ const unconsumed = (comments, record) => comments.map(parseTicket)
   .filter((t) => t && t.goal === record.id && t.onIssue === record.issue && Date.parse(t.createdAt) > lastRunStart(record))
   .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id - a.id);
 /** Does the record still stand where the ticket says it did? */
-const stillCurrent = (t, record) => t.reason === "recovery"
+const stillCurrent = (t, record) => t.reason === "recovery" || t.reason === "executor"
   ? (record.pr === t.pr && (record.head ?? null) === t.sha ? null : `goal ${record.id} has moved since recovery ticket ${t.id}`)
   : t.sha === null
   ? (record.pr === null && (record.runs ?? []).length === 0 ? null : "the goal has started since this ticket")
@@ -377,6 +386,21 @@ export function decideWake(ctx) {
     return { wake: true, why: "goal submitted", goal: record.id, issue: record.issue, pr: null, sha: null, reason: "goal-submitted" };
   }
 
+  if (event.kind === "executor") {
+    const found = currentRecord(comments, event.goal, trustedLogin);
+    if ("skip" in found) return no(found.skip);
+    const record = found.record;
+    const blocked = runBlocker(record, now);
+    if (blocked) return no(blocked);
+    const dispatch = (record.dispatches ?? []).find((d) => d.nonce === event.nonce);
+    if (!dispatch) return no(`goal ${record.id} has no dispatch ${event.nonce}`);
+    if (dispatch.state !== "pending" && dispatch.state !== "bound") return no(`dispatch ${event.nonce} is already ${dispatch.state}`);
+    const sent = inFlight(comments, record, record.head ?? null, now);
+    if (sent) return no(`wake ticket ${sent.id} for this goal is ${sent.state} and no run has started since`);
+    // The ticket is bound to the goal's PR and head as the record has them, like a recovery ticket.
+    return { wake: true, why: `executor run finished for ${event.nonce}`, goal: record.id, issue: record.issue, pr: record.pr ?? null, sha: record.head ?? null, reason: "executor" };
+  }
+
   // A PR event: only a draft, same-repository Auto Goal PR, on its current commit.
   if (!pr) return no("no pull request for this event");
   if (pr.state !== "open" || pr.merged) return no(`PR #${pr.number} is not open`);
@@ -473,6 +497,14 @@ async function eventMain() {
   const decisions = [];
   if (event.kind === "goal-submitted") {
     decisions.push(decideWake({ event, comments: await allComments(repo, event.issue), trustedLogin, repo, now }));
+  } else if (event.kind === "executor") {
+    // The goal's record issue, found the way the watchdog finds goals: open issues labelled auto-goal.
+    const issues = (await gh(`repos/${repo}/issues?labels=${GOAL_LABEL}&state=open&per_page=50`)).filter((i) => !i.pull_request);
+    for (const issue of issues) {
+      const comments = await allComments(repo, issue.number);
+      if ("record" in currentRecord(comments, event.goal, trustedLogin)) { decisions.push(decideWake({ event, comments, trustedLogin, repo, now })); break; }
+    }
+    if (!decisions.length) console.log(`skip: no open goal issue holds a record for ${event.goal}`);
   } else {
     for (const number of event.prs.slice(0, 5)) {
       const pr = await gh(`repos/${repo}/pulls/${number}`);

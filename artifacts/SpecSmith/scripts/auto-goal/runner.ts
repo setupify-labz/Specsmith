@@ -26,8 +26,8 @@ import { promisify } from "node:util";
 import { acquireRun, fence, parseClaim, type ClaimStore } from "./claim.ts";
 import { runCheck, type CheckSpec } from "./checks.ts";
 import { decide, openMaterialFindings, type Action } from "./decide.ts";
-import { ghCli, pullMismatch, type GitHub } from "./github.ts";
-import { addEvent, GoalError, type GoalRecord, type RunEntry } from "./record.ts";
+import { ghCli, isExecutorGitHub, pullMismatch, type GitHub } from "./github.ts";
+import { addEvent, GoalError, isExecutorMode, nonceFor, type Dispatch, type GoalRecord, type RunEntry } from "./record.ts";
 import { IssueCommentStore } from "./store.ts";
 import { localGit, syncGoal, type Git } from "./sync.ts";
 
@@ -50,7 +50,7 @@ export const NEXT_RUN_MINUTES = { code: 2, wait: 8 } as const;
  * (rendered here from the goal id, issue and the tooling commit), so no session writes or edits
  * the instructions the next session follows.
  */
-export function runnerPrompt(p: { goal: string; issue: number; repo: string; toolingSha: string }): string {
+export function runnerPrompt(p: { goal: string; issue: number; repo: string; toolingSha: string; executor?: boolean }): string {
   const R = "/tmp/ag-tooling/artifacts/SpecSmith/node_modules/.bin/tsx /tmp/ag-tooling/artifacts/SpecSmith/scripts/auto-goal/runner.ts";
   const common = `--goal ${p.goal} --issue ${p.issue} --repo ${p.repo} --worktree /tmp/ag-goal`;
   return [
@@ -66,7 +66,10 @@ export function runnerPrompt(p: { goal: string; issue: number; repo: string; too
     "   Get this session's id with the claude-code-remote get_session tool (no session_id). Note the routine (trigger id) that started you from your context, if shown.",
     `2. ${R} begin ${common} --session <this session id> --started-by "routine <trigger id>"`,
     "   It prints a JSON work order. If its action is done or blocked, stop here.",
-    "3. If the action is reproduce, implement, fix-findings or fix-ci: make exactly the change its `todo` asks for, in /tmp/ag-goal on the branch `begin` checked out, and commit it (do not push; the runner pushes). Keep it small and in scope. For any other action, change nothing.",
+    // Executor mode (PILOT_HANDOFF_CONTRACT.md §1A): the executor makes every change; this session edits nothing.
+    p.executor
+      ? "3. Change nothing in any repository: the Actions executor makes every code change for this goal."
+      : "3. If the action is reproduce, implement, fix-findings or fix-ci: make exactly the change its `todo` asks for, in /tmp/ag-goal on the branch `begin` checked out, and commit it (do not push; the runner pushes). Keep it small and in scope. For any other action, change nothing.",
     `4. ${R} advance ${common} --session <this session id>`,
     "   It prints JSON with `rearmAt`, `nextName` and `nextPrompt`.",
     "5. If `rearmAt` is not null: call the claude-code-remote create_trigger tool with name = `nextName`, run_once_at = `rearmAt`, create_new_session_on_fire = true, initiation = \"human_schedule\", notifications = {}, and prompt = `nextPrompt` exactly as printed. Then run:",
@@ -105,6 +108,8 @@ function trustedCriteria(goal: GoalRecord): { id: string; check: CheckSpec }[] {
 function workOrder(goal: GoalRecord, next: Action, run: RunEntry): Record<string, unknown> {
   const base = { goal: goal.id, run: run.n, of: goal.caps.maxRuns ?? DEFAULT_MAX_RUNS, action: next.action, why: next.why, branch: goal.branch, head: goal.head, pr: goal.pr };
   const criteria = goal.acceptanceCriteria.map((c) => ({ id: c.id, text: c.text, check: c.check }));
+  // Executor mode: the executor does the code; the session's only job is `advance`.
+  if (isExecutorMode(goal)) return { ...base, todo: "No code is due. Run `advance`." };
   switch (next.action) {
     case "reproduce":
       return { ...base, criteria, todo: "Write the acceptance checks so each one FAILS on the current code: create exactly the test or script file each criterion's check names, asserting the behaviour its text describes. Do not fix the defect in this commit. Commit on the goal branch, then run `advance`." };
@@ -186,7 +191,8 @@ export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<
     return 0;
   }
   trustedCriteria(goal);
-  await deps.git.ensureBranch(goal.branch, goal.baseBranch);
+  // Executor mode: the executor creates the goal branch (contract §1A.4 change 5).
+  if (!isExecutorMode(goal)) await deps.git.ensureBranch(goal.branch, goal.baseBranch);
   await syncGoal(goal, deps.github, deps.git, now);
   // syncGoal can set the outcome (TypeScript still holds the earlier null check, hence the explicit read).
   const ended = goal.outcome as GoalRecord["outcome"];
@@ -235,8 +241,8 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   const remaining = () => Math.max(1, checkDeadline - Date.now());
   const did: string[] = [];
 
-  // 1. The session's code, if the work order asked for some.
-  if (CODE_ACTIONS.has(run.action)) {
+  // 1. The session's code, if the work order asked for some. Executor mode has none: it dispatches instead (step 2).
+  if (CODE_ACTIONS.has(run.action) && !isExecutorMode(goal)) {
     if (!(await deps.git.isClean())) throw new GoalError("refused", "Uncommitted changes: commit the work (or discard it) before `advance`.");
     const head = await deps.git.head();
     if (head === run.head) {
@@ -274,6 +280,12 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   for (let step = 0; step < 6 && !stalled; step += 1) {
     await syncGoal(goal, deps.github, deps.git, now);
     next = decide(goal, now);
+    if (isExecutorMode(goal) && (next.action === "reproduce" || next.action === "implement")) {
+      // Contract §1A.4 change 5: save the dispatch, then send it once, then record that it was sent.
+      did.push(await dispatchToExecutor(() => goal, next.action, issue, deps, now, save));
+      if (goal.outcome) { next = { action: "done", why: goal.outcome.reason }; break; }
+      continue;
+    }
     if (next.action === "verify") {
       // Checks run on the local checkout; record them only if that checkout is exactly the goal's head.
       const local = await deps.git.head();
@@ -346,7 +358,7 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
     addEvent(goal, "blocked", next.why, now);
   } else if (next.action === "done") {
     // Sync ended the goal during this run (for example, the PR was closed): nothing to schedule.
-  } else if (next.action === "wait-review" || next.action === "wait-ci") rearmMinutes = NEXT_RUN_MINUTES.wait;
+  } else if (next.action === "wait-review" || next.action === "wait-ci" || next.action === "wait-executor") rearmMinutes = NEXT_RUN_MINUTES.wait;
   else rearmMinutes = NEXT_RUN_MINUTES.code;
   // Saves replace the record object, so close the run on the current copy, not the one loaded above.
   const current = goal.runs!.find((r) => r.n === run.n)!;
@@ -357,9 +369,45 @@ export async function advance(argv: readonly string[], deps: RunnerDeps): Promis
   addEvent(goal, "run-end", `Run ${run.n}: ${current.result}. Next: ${goal.outcome ? goal.outcome.status : `${next.action} (${next.why})`}.`, now);
   await save();
   const rearmAt = rearmMinutes === null ? null : new Date(now.getTime() + rearmMinutes * 60_000).toISOString().replace(/\.\d+Z$/, "Z");
-  const nextPrompt = rearmAt === null ? null : runnerPrompt({ goal: goal.id, issue, repo, toolingSha: await deps.toolingSha() });
+  const nextPrompt = rearmAt === null ? null : runnerPrompt({ goal: goal.id, issue, repo, toolingSha: await deps.toolingSha(), executor: isExecutorMode(goal) });
   deps.out(JSON.stringify({ goal: id, run: run.n, did: current.result, next: next.action, why: next.why, outcome: goal.outcome?.status ?? null, rearmAt, nextName: rearmAt ? `Auto Goal runner: ${goal.id} (run ${run.n + 1})` : null, nextPrompt }, null, 2));
   return 0;
+}
+
+/**
+ * Executor mode: one dispatch, sent once (contract §1A.1). It is saved before the API call, so a
+ * session that dies mid-send leaves a pending dispatch that sync blocks on after the grace period;
+ * version 1 never resends.
+ */
+async function dispatchToExecutor(current: () => GoalRecord, phase: "reproduce" | "implement", issue: number, deps: RunnerDeps, now: Date, save: () => Promise<void>): Promise<string> {
+  const github = deps.github;
+  let goal = current();
+  if (!isExecutorGitHub(github)) throw new GoalError("invalid", "Executor mode needs a GitHub client that can dispatch the executor.");
+  const k = (goal.dispatches ?? []).length + 1;
+  let baseSha: string | null;
+  if (phase === "reproduce") {
+    if (await github.branchHead(goal.repo, goal.branch)) {
+      goal.outcome = { status: "blocked", at: now.toISOString(), reason: `Foreign head on ${goal.branch}: the branch exists before the reproduce dispatch.`, evidence: { branch: goal.branch } };
+      addEvent(goal, "blocked", goal.outcome.reason, now);
+      await save();
+      return `refused to dispatch: ${goal.branch} already exists`;
+    }
+    baseSha = await github.branchHead(goal.repo, goal.baseBranch);
+  } else {
+    baseSha = goal.dispatches![0].result;
+  }
+  if (!baseSha) throw new GoalError("unavailable", `Could not read the base commit for the ${phase} dispatch.`);
+  const d: Dispatch = { k, nonce: nonceFor(goal.id, k), phase, baseSha, createdAt: now.toISOString(), sentAt: null, runId: null, state: "pending", result: null };
+  goal.dispatches = [...(goal.dispatches ?? []), d];
+  addEvent(goal, "dispatch-saved", `${d.nonce}: ${phase} from ${baseSha.slice(0, 10)}.`, now);
+  await save();
+  await github.dispatchExecutor(goal.repo, goal.baseBranch, { goal: goal.id, issue: String(issue), nonce: d.nonce });
+  // Saves replace the record object: mark the copy that is current now.
+  goal = current();
+  goal.dispatches!.find((x) => x.nonce === d.nonce)!.sentAt = deps.now().toISOString();
+  addEvent(goal, "dispatch-sent", `${d.nonce} sent to the executor.`, now);
+  await save();
+  return `dispatched ${d.nonce} (${phase} from ${baseSha.slice(0, 10)})`;
 }
 
 export async function noteNext(argv: readonly string[], deps: RunnerDeps): Promise<number> {

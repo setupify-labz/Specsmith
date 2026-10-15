@@ -551,9 +551,16 @@ describe("the loop, end to end, against a fake GitHub that replays Codex's real 
 describe("what the orchestrator can never do", () => {
   it("has no code path that merges, schedules, publishes or calls a paid API", () => {
     const sources = ["cli.ts", "github.ts", "sync.ts", "store.ts", "decide.ts", "codex.ts", "record.ts"].map((f) => readFileSync(join(here, f), "utf8")).join("\n");
-    for (const forbidden of [/\/merge\b/, /auto_merge|enable_pr_auto_merge/, /\/dispatches\b/, /workflow_dispatch/, /elevenlabs|vidiq|metricool/i, /\/releases\b/, /send_later|create_trigger|cron/i]) {
+    for (const forbidden of [/\/merge\b/, /auto_merge|enable_pr_auto_merge/, /elevenlabs|vidiq|metricool/i, /\/releases\b/, /send_later|create_trigger|cron/i]) {
       expect(sources, String(forbidden)).not.toMatch(forbidden);
     }
+    // Executor mode (PILOT_HANDOFF_CONTRACT.md §1A) dispatches exactly one workflow, the disabled
+    // executor, from one line in github.ts with the file name fixed there. No other dispatch exists.
+    const dispatches = sources.split("\n").filter((l) => /\/dispatches\b/.test(l));
+    expect(dispatches).toEqual([expect.stringContaining("`repos/${repo}/actions/workflows/auto-goal-actions.yml/dispatches`")]);
+    expect(sources).not.toMatch(/repository_dispatch|\/actions\/workflows\/\$\{/);
+    // "workflow_dispatch" appears only where the coordinator reads and verifies the executor's runs.
+    for (const line of sources.split("\n").filter((l) => /workflow_dispatch/.test(l))) expect(line).toMatch(/event=workflow_dispatch|run\.event !== "workflow_dispatch"|not workflow_dispatch|workflow_dispatch runs of/);
   });
 });
 

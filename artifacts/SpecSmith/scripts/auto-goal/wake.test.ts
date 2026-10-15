@@ -201,6 +201,11 @@ describe("the workflow", () => {
     const script = readFileSync(join(here, "wake.mjs"), "utf8");
     expect(script).not.toMatch(/console\.(log|error)\([^)]*(token|AUTO_GOAL_ROUTINE_TOKEN)/i);
   });
+  it("keeps every job gated off until the pilot is separately approved", () => {
+    const ifs = [...code.matchAll(/^    if: (>-\n\s+)?(.*)$/gm)].map((m) => m[2]);
+    expect(ifs).toHaveLength(3);
+    for (const cond of ifs) expect(cond).toMatch(/^(\$\{\{ )?false && /);
+  });
   it("runs one decision at a time, read-only apart from the wake marker", () => {
     expect(code).toMatch(/concurrency:\n\s+group: auto-goal-wake\n\s+cancel-in-progress: false/);
     expect(code).not.toMatch(/contents: write|pull-requests: write|statuses: write|actions: write/);
@@ -208,13 +213,13 @@ describe("the workflow", () => {
   });
   it("runs the watchdog only on its schedule, every 15 minutes off the hour, and the event jobs never on it", () => {
     expect(code).toMatch(/schedule:\n\s+- cron: '4,19,34,49 \* \* \* \*'/);
-    expect(code).toMatch(/watchdog:\n\s+name: [^\n]+\n\s+if: github\.event_name == 'schedule'/);
+    expect(code).toMatch(/watchdog:\n\s+name: [^\n]+\n\s+if: false && github\.event_name == 'schedule'/);
     expect(code).toMatch(/run: node scripts\/auto-goal\/wake\.mjs watchdog/);
     const wakeIf = /wake:\n\s+name: [^\n]+\n\s+if: >-\n([\s\S]*?)\n\s+runs-on/.exec(code)![1];
     expect(wakeIf).not.toContain("schedule");
   });
   it("retries only after the wake job failed, in the same serialised group", () => {
-    expect(code).toMatch(/retry:\n\s+name: [^\n]+\n\s+needs: wake\n\s+if: \$\{\{ always\(\) && needs\.wake\.result == 'failure' \}\}/);
+    expect(code).toMatch(/retry:\n\s+name: [^\n]+\n\s+needs: wake\n\s+if: \$\{\{ false && always\(\) && needs\.wake\.result == 'failure' \}\}/);
     expect(code).toMatch(/run: node scripts\/auto-goal\/wake\.mjs retry/);
   });
 });

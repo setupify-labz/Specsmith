@@ -6,6 +6,7 @@
 // Commands (each loads the record, acts, saves it back with a revision check):
 //   start            --goal <id> --request-file <f> --criteria-file <f> --branch <b> [--base main]
 //                    --required-check <name> [...] (--issue <n> | --create-issue --title <t>)
+//                    or, for the executor pilot: --executor-sha <sha> instead of --branch/--base/--required-check
 //   resume           sync, then print the next action as JSON (what a check-in or a PR event runs)
 //   sync             read the PR head, CI on that commit, and Codex verdicts into the record
 //   next             print the next action as JSON
@@ -31,7 +32,7 @@ import { resolve } from "node:path";
 
 import { decide } from "./decide.ts";
 import { ghCli, pullMismatch, type GitHub } from "./github.ts";
-import { addEvent, createGoal, GoalError, type Criterion, type GoalRecord } from "./record.ts";
+import { addEvent, createGoal, EXECUTOR_REQUIRED_CHECKS, GoalError, type Criterion, type GoalRecord } from "./record.ts";
 import { FileStore, IssueCommentStore, renderRecordComment, type GoalStore } from "./store.ts";
 import { localGit, syncGoal, type Git } from "./sync.ts";
 
@@ -84,7 +85,13 @@ export async function main(argv: readonly string[], deps: Deps): Promise<number>
   if (command === "start") {
     const request = (await readFile(resolve(a.need("--request-file")), "utf8")).trim();
     const criteria = JSON.parse(await readFile(resolve(a.need("--criteria-file")), "utf8")) as Criterion[];
-    let goal = createGoal({ id, request, acceptanceCriteria: criteria, repo: a.one("--repo") ?? "setupify-labz/Specsmith", baseBranch: a.one("--base") ?? "main", branch: a.need("--branch"), requiredChecks: a.many("--required-check"), now });
+    // Executor mode (PILOT_HANDOFF_CONTRACT.md §1A): the branch is derived, the one required check is the
+    // executor's typecheck guard, and one Codex round; validateGoal refuses anything outside version 1.
+    const executorSha = a.one("--executor-sha");
+    if (executorSha !== undefined && (a.one("--branch") !== undefined || a.many("--required-check").length)) throw new GoalError("invalid", "--executor-sha derives the branch and required check; do not pass --branch or --required-check with it.");
+    let goal = executorSha !== undefined
+      ? createGoal({ id, request, acceptanceCriteria: criteria, repo: a.one("--repo") ?? "setupify-labz/Specsmith", baseBranch: "main", branch: `claude/auto-goal-${id}`, requiredChecks: [...EXECUTOR_REQUIRED_CHECKS], caps: { maxReviewRounds: 1 }, runner: true, executorSha, now })
+      : createGoal({ id, request, acceptanceCriteria: criteria, repo: a.one("--repo") ?? "setupify-labz/Specsmith", baseBranch: a.one("--base") ?? "main", branch: a.need("--branch"), requiredChecks: a.many("--required-check"), now });
     if (!issueArg && !a.has("--create-issue")) throw new GoalError("invalid", "start needs --issue <n> or --create-issue: the record must live on GitHub to survive the container (.auto-goal/ is only a local mirror).");
     if (issueArg !== undefined && !/^[1-9]\d*$/.test(issueArg)) throw new GoalError("invalid", `--issue must be a positive issue number (got "${issueArg}").`);
     if (issueArg) goal.issue = Number(issueArg);

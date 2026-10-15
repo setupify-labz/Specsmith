@@ -22,7 +22,7 @@ on:
   issue_comment:
     types: [created, edited]
   workflow_run:
-    workflows: ["Verify pull request"]
+    workflows: ["Verify pull request", "Auto Goal Actions executor (disabled design)"]
     types: [completed]
   check_suite:
     types: [completed]
@@ -50,11 +50,13 @@ concurrency:
 jobs:
   wake:
     name: Wake the Auto Goal runner
+    # Deliberately inert (`false &&`) until the Auto Goal pilot is separately approved and enabled.
     if: >-
+      false && (
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login == 'chatgpt-codex-connector[bot]')
       || github.event_name == 'workflow_run'
       || github.event_name == 'check_suite'
-      || (github.event_name == 'issues' && github.event.label.name == 'auto-goal')
+      || (github.event_name == 'issues' && github.event.label.name == 'auto-goal'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -78,7 +80,7 @@ jobs:
   retry:
     name: Retry a failed wake
     needs: wake
-    if: ${{ always() && needs.wake.result == 'failure' }}
+    if: ${{ false && always() && needs.wake.result == 'failure' }} # Deliberately inert.
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -101,7 +103,7 @@ jobs:
 
   watchdog:
     name: Recover a stalled goal
-    if: github.event_name == 'schedule'
+    if: false && github.event_name == 'schedule' # Deliberately inert.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

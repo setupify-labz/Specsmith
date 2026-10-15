@@ -23,7 +23,7 @@ const UNTRUSTED = "Untrusted_PR_Text_5b2d";
 const REPO = "setupify-labz/Specsmith";
 const SHA = "a".repeat(40);
 const NEW_SHA = "b".repeat(40);
-const BRANCH = "claude/auto-goal-proposal-12345";
+const BRANCH = "claude/auto-goal-pilot-1";
 const NUMBER = 42;
 
 /** The PR as GitHub would return it for a correct proposal, with untrusted text in every free field. */
@@ -75,7 +75,7 @@ async function record(fake, env = {}) {
     const childEnv = {
       PATH: process.env.PATH, GH_TOKEN: TOKEN, GITHUB_API_URL: `http://127.0.0.1:${fake.server.address().port}`,
       GITHUB_REPOSITORY: REPO, GITHUB_SERVER_URL: "https://github.com", GITHUB_RUN_ID: "12345",
-      CHECK_RESULT: "success", PR_NUMBER: String(NUMBER), PROPOSAL_SHA: SHA, PROPOSAL_BRANCH: BRANCH, ...env,
+      CHECK_RESULT: "success", PR_NUMBER: String(NUMBER), PROPOSAL_SHA: SHA, PROPOSAL_BRANCH: BRANCH, CHECK_PHASE: "after", ...env,
     };
     for (const [k, v] of Object.entries(childEnv)) if (v === undefined) delete childEnv[k];
     return await new Promise((resolve) => {
@@ -105,13 +105,22 @@ test("success: the PR is re-read and success is written only on the proposal SHA
   const fake = fakeGitHub();
   const r = await record(fake);
   assert.equal(r.code, 0);
-  assert.equal(r.out, "Recorded auto-goal/check success on the exact draft commit that was checked.\n");
+  assert.equal(r.out, "Recorded the Auto Goal check success on the exact draft commit that was checked.\n");
   const posts = fake.posts();
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, `/repos/${REPO}/statuses/${SHA}`);
   assert.deepEqual(JSON.parse(posts[0].body), { state: "success", context: "auto-goal/check", description: "Auto Goal check passed on this exact commit", target_url: `https://github.com/${REPO}/actions/runs/12345` });
   assert.deepEqual(fake.requests.map((q) => q.method), ["GET", "POST", "GET"], "read, write, read again");
   assert.ok(fake.requests.every((q) => q.auth === `Bearer ${TOKEN}`));
+});
+
+test("version 1: a before-fix pass writes auto-goal/before, and an unknown phase writes nothing", async () => {
+  const fake = fakeGitHub();
+  const r = await record(fake, { CHECK_PHASE: "before" });
+  assert.equal(r.code, 0);
+  assert.equal(JSON.parse(fake.posts()[0].body).context, "auto-goal/before");
+  const none = fakeGitHub();
+  refused(await record(none, { CHECK_PHASE: "sideways" }), none, /check phase is not valid/);
 });
 
 test("stale head: a PR whose head moved after the check gets no status", async () => {
@@ -137,7 +146,7 @@ test("wrong PR: another number, repository, fork, base or branch gets no status"
     [goodPr({ head: { ...goodPr().head, repo: { full_name: "someone/Specsmith" } } }), /not between branches of this repository/],
     [goodPr({ head: { ...goodPr().head, repo: null } }), /not between branches of this repository/],
     [goodPr({ base: { ...goodPr().base, ref: "release" } }), /does not target main/],
-    [goodPr({ head: { ...goodPr().head, ref: "claude/auto-goal-proposal-99999" } }), /not from the proposal branch/],
+    [goodPr({ head: { ...goodPr().head, ref: "claude/auto-goal-other-goal" } }), /not from the proposal branch/],
   ]) {
     const fake = fakeGitHub({ prs: [pr] });
     refused(await record(fake), fake, reason);
@@ -208,7 +217,7 @@ test("workflow: record-check is gated, runs after check, and has only PR read an
   const rc = job("record-check");
   assert.ok(rc);
   assert.match(rc, /^    if: \$\{\{ false && github\.ref == 'refs\/heads\/main' \}\}/);
-  assert.match(rc, /^    needs: \[publish, check\]$/m);
+  assert.match(rc, /^    needs: \[read-dispatch, publish, check\]$/m);
   assert.match(rc, /^    permissions:\n      pull-requests: read\n      statuses: write\n    steps:/m);
   // No checkout, no action, no install, nothing from the proposal is executed.
   assert.doesNotMatch(rc, /\buses:|checkout|pnpm|npm |npx|git |download-artifact|node_modules|secrets\./);
@@ -220,6 +229,7 @@ test("workflow: record-check is gated, runs after check, and has only PR read an
     ["PR_NUMBER", "${{ needs.publish.outputs.pr_number }}"],
     ["PROPOSAL_SHA", "${{ needs.publish.outputs.proposal_sha }}"],
     ["PROPOSAL_BRANCH", "${{ needs.publish.outputs.proposal_branch }}"],
+    ["CHECK_PHASE", "${{ fromJSON(needs.read-dispatch.outputs.packet).check_phase }}"],
   ]);
   assert.doesNotMatch(rc.slice(rc.indexOf("run: |")), /\$\{\{/, "no expression is interpolated into the script");
   // The script logs only fixed strings.
@@ -229,11 +239,11 @@ test("workflow: record-check is gated, runs after check, and has only PR read an
 
 test("workflow: publish outputs the PR number and branch, and every job stays disabled", () => {
   const pub = job("publish");
-  assert.match(pub, /pr_number: \$\{\{ steps\.proposal\.outputs\.pr_number \}\}/);
-  assert.match(pub, /proposal_branch: \$\{\{ steps\.proposal\.outputs\.branch \}\}/);
+  assert.match(pub, /pr_number: \$\{\{ steps\.pr\.outputs\.pr_number \}\}/);
+  assert.match(pub, /proposal_branch: \$\{\{ steps\.commit\.outputs\.branch \}\}/);
   assert.match(pub, /\[\[ "\$pr_number" =~ \^\[1-9\]\[0-9\]\{0,9\}\$ \]\]/);
   const names = [...code.matchAll(/^  ([a-z-]+):\n/gm)].map((m) => m[1]);
-  assert.deepEqual(names, ["read-issue", "implement", "publish", "check", "record-check"]);
+  assert.deepEqual(names, ["read-dispatch", "implement", "publish", "gate-checks", "check", "record-check"]);
   for (const n of names) assert.match(job(n), /^    if: \$\{\{ false && /, n);
   assert.match(yaml, /^permissions: \{\}$/m);
   assert.match(yaml, /^on:\n  workflow_dispatch:\n/m);

@@ -41,12 +41,40 @@ export interface GitHub {
   createDraftPull(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; html_url: string }>;
 }
 
+/** Executor mode (contract §1A.4 change 4): the Actions and commit reads the coordinator binds results with. */
+export interface GhWorkflowRun {
+  readonly id: number; readonly name: string; readonly path: string; readonly event: string; readonly head_branch: string; readonly head_sha: string;
+  readonly status: string; readonly conclusion: string | null; readonly html_url: string; readonly created_at: string;
+}
+export interface GhJob { readonly id: number; readonly name: string; readonly status: string; readonly conclusion: string | null; readonly html_url: string }
+export interface GhCommit { readonly sha: string; readonly parents: readonly { readonly sha: string }[]; readonly commit: { readonly message: string } }
+
+export interface ExecutorGitHub extends GitHub {
+  /** Starts the executor workflow, and only that workflow, on `ref` (GitHub returns no run id). */
+  dispatchExecutor(repo: string, ref: string, inputs: { goal: string; issue: string; nonce: string }): Promise<void>;
+  /** workflow_dispatch runs of the executor workflow created at or after `createdSince`. */
+  executorRuns(repo: string, createdSince: string): Promise<GhWorkflowRun[]>;
+  run(repo: string, id: number): Promise<GhWorkflowRun>;
+  runJobs(repo: string, id: number): Promise<GhJob[]>;
+  /** File names changed between two commits (GET compare/base...head). */
+  compareFiles(repo: string, base: string, head: string): Promise<string[]>;
+  commit(repo: string, sha: string): Promise<GhCommit>;
+  /** The branch's commit, or null when the branch does not exist. */
+  branchHead(repo: string, branch: string): Promise<string | null>;
+}
+
+export function isExecutorGitHub(github: GitHub): github is ExecutorGitHub {
+  const g = github as Partial<ExecutorGitHub>;
+  return [g.dispatchExecutor, g.executorRuns, g.run, g.runJobs, g.compareFiles, g.commit, g.branchHead].every((f) => typeof f === "function");
+}
+
 async function gh<T>(args: string[], input?: string): Promise<T> {
   try {
     const child = run("gh", ["api", ...args], { maxBuffer: 64 * 1024 * 1024 });
     if (input !== undefined) { child.child.stdin?.write(input); child.child.stdin?.end(); }
     const { stdout } = await child;
-    return JSON.parse(stdout) as T;
+    // A 204 (the dispatch endpoint) has no body.
+    return (stdout.trim() === "" ? undefined : JSON.parse(stdout)) as T;
   } catch (error) {
     const e = error as { code?: string; stderr?: string; message?: string };
     if (e.code === "ENOENT") throw new GoalError("unavailable", "GitHub is unreachable: no `gh` command on this machine.");
@@ -66,7 +94,7 @@ async function all<T>(path: string): Promise<T[]> {
   return out;
 }
 
-export const ghCli: GitHub = {
+export const ghCli: ExecutorGitHub = {
   whoami: async () => (await gh<{ login: string }>(["user"])).login,
   pull: (repo, pr) => gh([`repos/${repo}/pulls/${pr}`]),
   checkRuns: async (repo, sha) => (await gh<{ check_runs: GhCheckRun[] }>([`repos/${repo}/commits/${sha}/check-runs?per_page=100`])).check_runs,
@@ -77,4 +105,17 @@ export const ghCli: GitHub = {
   createComment: (repo, issue, body) => gh(["-X", "POST", `repos/${repo}/issues/${issue}/comments`, "--input", "-"], JSON.stringify({ body })),
   openPullsFor: (repo, branch) => gh([`repos/${repo}/pulls?state=open&head=${encodeURIComponent(`${repo.split("/")[0]}:${branch}`)}&per_page=10`]),
   createDraftPull: (repo, head, base, title, body) => gh(["-X", "POST", `repos/${repo}/pulls`, "--input", "-"], JSON.stringify({ head, base, title, body, draft: true })),
+  // The one dispatch the coordinator can make: the executor workflow file is fixed here, not passed in.
+  dispatchExecutor: async (repo, ref, inputs) => { await gh(["-X", "POST", `repos/${repo}/actions/workflows/auto-goal-actions.yml/dispatches`, "--input", "-"], JSON.stringify({ ref, inputs })); },
+  executorRuns: async (repo, since) => (await gh<{ workflow_runs: GhWorkflowRun[] }>([`repos/${repo}/actions/workflows/auto-goal-actions.yml/runs?event=workflow_dispatch&created=${encodeURIComponent(`>=${since}`)}&per_page=100`])).workflow_runs,
+  run: (repo, id) => gh([`repos/${repo}/actions/runs/${id}`]),
+  runJobs: async (repo, id) => (await gh<{ jobs: GhJob[] }>([`repos/${repo}/actions/runs/${id}/jobs?per_page=100`])).jobs,
+  compareFiles: async (repo, base, head) => ((await gh<{ files?: { filename: string }[] }>([`repos/${repo}/compare/${base}...${head}`])).files ?? []).map((f) => f.filename),
+  commit: (repo, sha) => gh([`repos/${repo}/commits/${sha}`]),
+  branchHead: async (repo, branch) => {
+    try { return (await gh<{ object: { sha: string } }>([`repos/${repo}/git/ref/heads/${branch}`])).object.sha; } catch (error) {
+      if (error instanceof GoalError && /\b404\b|Not Found/.test(error.message)) return null;
+      throw error;
+    }
+  },
 };

@@ -3,7 +3,7 @@
 // say it is. Whoever drives the loop (the Claude Code session subscribed to the PR) performs the
 // action, records what happened, and asks again.
 
-import { isMaterial, type Finding, type GoalRecord } from "./record.ts";
+import { isExecutorMode, isMaterial, liveDispatch, type Finding, type GoalRecord } from "./record.ts";
 
 export type Action =
   | { readonly action: "complete"; readonly why: string }
@@ -17,7 +17,9 @@ export type Action =
   | { readonly action: "open-pr"; readonly why: string }
   | { readonly action: "request-review"; readonly why: string }
   | { readonly action: "wait-review"; readonly why: string; readonly until: string }
-  | { readonly action: "wait-ci"; readonly why: string };
+  | { readonly action: "wait-ci"; readonly why: string }
+  /** Executor mode: a dispatch is live; the executor owns the next step. */
+  | { readonly action: "wait-executor"; readonly why: string; readonly nonce: string };
 
 const OK_CONCLUSIONS = new Set(["success", "neutral", "skipped"]);
 
@@ -28,7 +30,8 @@ export function openMaterialFindings(goal: GoalRecord): Finding[] {
 /** The latest result for each criterion on one commit (a later run replaces an earlier one). */
 export function criteriaResults(goal: GoalRecord, sha: string): Map<string, number> {
   const out = new Map<string, number>();
-  for (const c of goal.checks) if (c.criterionId && c.sha === sha && c.phase === "after") out.set(c.criterionId, c.exitCode);
+  // Executor results carry no raw exit code (they report whether the expectation was met); decideExecutor reads those.
+  for (const c of goal.checks) if (c.criterionId && c.sha === sha && c.phase === "after" && c.exitCode !== undefined) out.set(c.criterionId, c.exitCode);
   return out;
 }
 
@@ -50,6 +53,7 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
 
   const ageHours = (now.getTime() - Date.parse(goal.createdAt)) / 3_600_000;
   if (ageHours > goal.caps.maxHours) return { action: "blocked", why: `Time cap reached: ${ageHours.toFixed(1)} h since the goal started (cap ${goal.caps.maxHours} h).` };
+  if (isExecutorMode(goal)) return decideExecutor(goal, now);
 
   // 1. The defect must be shown before anything is changed: every criterion's check has to have failed once.
   const unproven = goal.acceptanceCriteria.filter((c) => !goal.checks.some((r) => r.criterionId === c.id && r.phase === "before" && r.exitCode !== 0));
@@ -85,6 +89,43 @@ export function decide(goal: GoalRecord, now = new Date()): Action {
   // 6. Review happens on a PR.
   if (goal.pr === null) return { action: "open-pr", why: "The change is verified locally; open a draft PR for review and CI." };
 
+  return reviewThenCi(goal, head, ci, now);
+}
+
+/** The executor's bound result for one check on one commit and phase (contract §3): success means the expectation was met. */
+export function executorResult(goal: GoalRecord, phase: "before" | "after", sha: string, criterionId: string | null, command: string) {
+  return goal.checks.find((c) => c.source && c.phase === phase && c.sha === sha && c.criterionId === criterionId && c.command === command);
+}
+
+/**
+ * Executor mode, version 1 (PILOT_HANDOFF_CONTRACT.md §1A): reproduce → implement → review → complete,
+ * each code step done by the executor. syncGoal records every executor failure as the goal's outcome;
+ * the checks here are the decide-level blockers of §1A.3 and a defensive restatement of the rest.
+ */
+function decideExecutor(goal: GoalRecord, now: Date): Action {
+  const blocked = (why: string): Action => ({ action: "blocked", why });
+  const live = liveDispatch(goal);
+  if (live) return { action: "wait-executor", why: `Waiting for the executor run for ${live.nonce} (${live.phase} from ${live.baseSha.slice(0, 10)}).`, nonce: live.nonce };
+  const [d1, d2] = goal.dispatches ?? [];
+  const criterion = goal.acceptanceCriteria[0];
+  if (!d1) return { action: "reproduce", why: "No reproduce dispatch yet: the executor must first make the acceptance test fail on the current code.", criteria: [criterion.id] };
+  if (d1.state !== "succeeded" || !d1.result) return blocked(`Reproduce dispatch ${d1.nonce} did not succeed.`);
+  if (executorResult(goal, "before", d1.result, criterion.id, criterion.command)?.source?.conclusion !== "success") return blocked(`Reproduce did not prove the defect on ${d1.result.slice(0, 10)}: no passing before-fix result for ${criterion.id}.`);
+  if (!d2) return { action: "implement", why: `The defect is reproduced on ${d1.result.slice(0, 10)}; the executor must now make ${criterion.id} pass.` };
+  if (d2.state !== "succeeded" || !d2.result) return blocked(`Implement dispatch ${d2.nonce} did not succeed.`);
+  const head = goal.head;
+  if (head !== d2.result) return blocked(`Foreign head ${head ?? "none"} on ${goal.branch}: the executor published ${d2.result}.`);
+  if (executorResult(goal, "after", head, criterion.id, criterion.command)?.source?.conclusion !== "success") return blocked(`Fix did not pass on ${head.slice(0, 10)}: ${criterion.id} has no passing after-fix result.`);
+  // Version 1 fixes no findings: a material one stops the goal for a person to read.
+  const open = openMaterialFindings(goal);
+  if (open.length) return blocked(`Codex found ${open.length} material finding(s) on ${head.slice(0, 10)}; version 1 does not fix findings: ${open.map((f) => `${f.priority} ${f.title}`).join("; ")}.`);
+  const ci = ciState(goal, head);
+  if (ci.state === "red") return blocked(`Fix did not pass on ${head.slice(0, 10)}: ${ci.failing.join(", ")} failed.`);
+  return reviewThenCi(goal, head, ci, now);
+}
+
+/** Steps 7 and 8, shared by both modes: Codex on the exact head, then the required checks on it. */
+function reviewThenCi(goal: GoalRecord, head: string, ci: ReturnType<typeof ciState>, now: Date): Action {
   // 7. Codex must have reviewed the exact head.
   const latest = goal.reviewRounds.at(-1);
   // A round saved but not confirmed posted (the session stopped in between) is finished, not repeated.
