@@ -77,8 +77,8 @@ export function normalizeEvent(eventName, payload, trustedLogin) {
     case "workflow_run": {
       const run = payload.workflow_run;
       if (payload.action !== "completed" || !run) return { skip: "workflow run not completed" };
-      // GitHub reports `path` with an optional ref suffix (".github/workflows/x.yml@main") and the custom
-      // run-name as `display_title`; `name` is the workflow's own name.
+      // The custom run-name is read from `display_title` (the observed run also had it in `name`). The
+      // observed `path` had no ref suffix; a suffix (".github/workflows/x.yml@main") is handled, unobserved.
       const [file, ref, ...rest] = String(run.path ?? "").split("@");
       if (file === EXECUTOR_WORKFLOW_PATH) {
         // A dispatched run names no pull request; its run-name names the goal and dispatch (contract §2).

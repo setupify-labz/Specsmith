@@ -1,0 +1,27 @@
+# Disposable smoke test, isolation repository only. It checks how GitHub reports a custom run-name in
+# the Auto Goal format. It has no secrets, no checkout and no permissions, and prints one fixed line.
+# The file name matches the SpecSmith executor's, so the coordinator's path check applies unchanged.
+name: Auto Goal run-name smoke test
+run-name: Auto Goal ${{ inputs.goal }} ${{ inputs.nonce }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: Goal id in the Auto Goal format
+        required: true
+        type: string
+      nonce:
+        description: Dispatch nonce in the Auto Goal format (<goal>.d<k>)
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Print a fixed message
+        run: echo "Auto Goal run-name smoke test. Nothing else happens."

@@ -43,9 +43,10 @@ export interface GitHub {
 
 /** Executor mode (contract §1A.4 change 4): the Actions and commit reads the coordinator binds results with. */
 /**
- * A workflow run as GitHub's REST API and workflow_run webhook return it. `name` is the workflow's
- * name; a custom `run-name` arrives as `display_title`. `path` may carry a ref suffix
- * (".github/workflows/x.yml@main"). `workflow_id` identifies the workflow independently of both.
+ * A workflow run as GitHub's REST API and workflow_run webhook return it. For a dispatched run
+ * with a custom `run-name`, the observed isolation run reported that run-name in both `name` and
+ * `display_title`, and `path` without a ref suffix. A ref suffix (".github/workflows/x.yml@main") is
+ * handled but was not observed. `workflow_id` identifies the workflow independently of both.
  */
 export interface GhWorkflowRun {
   readonly id: number; readonly name: string; readonly display_title: string; readonly path: string; readonly workflow_id: number;

@@ -43,11 +43,11 @@ const UNTRUSTED = "Untrusted_Marker_9d1c";
 const MOCK_TOKEN = "PlaceHolder_Not_A_Token_44e0";
 const CRITERION_FILE = "src/lib/clamp.test.ts";
 const TYPECHECK = describeCheck({ kind: "typecheck" });
-// What GitHub reports for an executor run: the workflow's name in `name`, the run-name in
-// `display_title`, a ref suffix on `path`, and the workflow's id (see executorRunBinding.test.ts).
+// What GitHub reported for a run-name'd workflow_dispatch run in the isolation repo (run 38806500325,
+// fixtures/isolation-smoke-38806500325): the run-name in both `name` and `display_title`, and `path`
+// with no ref suffix. The workflow id here is a placeholder; executorRunBinding.test.ts uses the real one.
 const WORKFLOW_ID = 162_000_111;
-const WORKFLOW_NAME = "Auto Goal Actions executor (disabled design)";
-const runShape = (nonce: string, e: string) => ({ name: WORKFLOW_NAME, display_title: executorRunName(ID, nonce), path: `${EXECUTOR_WORKFLOW_PATH}@main`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_branch: "main", head_sha: e });
+const runShape = (nonce: string, e: string) => ({ name: executorRunName(ID, nonce), display_title: executorRunName(ID, nonce), path: EXECUTOR_WORKFLOW_PATH, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_branch: "main", head_sha: e });
 
 // ---- The fixture project: a real defect, a real test, real checks ---------------------------------
 
@@ -732,7 +732,7 @@ describe("cli start --executor-sha", () => {
 describe("wake bridge: executor runs wake the goal they belong to", () => {
   const recordComment = (record: object, id = 1) => ({ id, user: { login: ME }, created_at: T0.toISOString(), body: `<!-- specsmith-auto-goal id=${ID} rev=3 -->\n\n\`\`\`json\n${JSON.stringify(record)}\n\`\`\`` });
   const live = { kind: "specsmith-auto-goal", version: 2, id: ID, revision: 3, issue: ISSUE, pr: 50, head: "c".repeat(40), outcome: null, runs: [], caps: {}, requiredChecks: ["typecheck"], dispatches: [{ k: 1, nonce: `${ID}.d1`, state: "bound" }] };
-  const runEvent = (over: object = {}) => ({ action: "completed", workflow_run: { path: ".github/workflows/auto-goal-actions.yml@main", name: WORKFLOW_NAME, display_title: `Auto Goal ${ID} ${ID}.d1`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_sha: "a".repeat(40), pull_requests: [], ...over } });
+  const runEvent = (over: object = {}) => ({ action: "completed", workflow_run: { path: ".github/workflows/auto-goal-actions.yml", name: `Auto Goal ${ID} ${ID}.d1`, display_title: `Auto Goal ${ID} ${ID}.d1`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_sha: "a".repeat(40), pull_requests: [], ...over } });
 
   it("maps a completed executor run to its goal by its run-name (display_title), and only an Auto Goal dispatch title", () => {
     expect(normalizeEvent("workflow_run", runEvent(), ME)).toEqual({ kind: "executor", goal: ID, nonce: `${ID}.d1`, sha: null, prs: [], issue: null });

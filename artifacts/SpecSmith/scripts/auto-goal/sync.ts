@@ -146,7 +146,10 @@ export function workflowPath(path: string): { file: string; ref: string | null }
   return { file: parts[0], ref: parts[1] ?? null };
 }
 
-/** The dispatch a run was for: its custom run-name, which GitHub reports as `display_title` (never `name`, the workflow's name). */
+/**
+ * The dispatch a run was for: its custom run-name, read from `display_title`. In the observed isolation
+ * run `name` carried the same run-name, but `display_title` is the field documented for it.
+ */
 export const isRunFor = (run: GhWorkflowRun, goalId: string, nonce: string) => run.display_title === executorRunName(goalId, nonce);
 
 /**
