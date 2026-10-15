@@ -17,6 +17,12 @@ It does not build a second runner: every decision stays in `decide.ts`, and ever
 
 §9 traces one crash for every recovery path.
 
+**Revision 3:**
+
+- **§3.1 corrected again:** `pull_request` events caused by `GITHUB_TOKEN` can create workflow runs that wait for approval. The official documentation is linked.
+- **New §1A:** a minimal **first-pilot path (version 1)**. Every failure becomes a visible blocker, with no automatic recovery, and §1A lists the exact code changes it needs.
+- **Phase 2:** the full recovery design (§5.1 lifecycle, `finish-publish`, check-only dispatches, fix loops, §9 traces) is kept unchanged as the later phase.
+
 ## 1. Principles
 
 1. **One writer per artifact.**
@@ -28,6 +34,163 @@ It does not build a second runner: every decision stays in `decide.ts`, and ever
 4. **Exactly one commit per base.** Every branch update is a compare-and-swap from a recorded base. However many executor runs race, at most one commit can follow a given base.
 5. **Untrusted text has one destination.** Issue text and Codex finding text reach only the restricted implementer (#188 flags), as data. The coordinator's work orders carry IDs, SHAs, and URLs, never review text. That is already true of `runner.ts` `workOrder()`.
 6. **Fail closed.** Any mismatch, missing evidence, or exhausted cap gives `blocked` with the exact reason. Nothing is guessed.
+
+## 1A. First pilot path (version 1): straight line, every failure a visible blocker
+
+Version 1 is the smallest path that can complete one goal:
+
+> one goal → a test reproduces the bug → Claude fixes it → the checks pass → Codex reviews → the goal completes.
+
+It uses the identifiers, binding rules and trusted check IDs of §2–§3. It has **no automatic recovery**:
+
+- no resend, no cancel, no supersede;
+- no `finish-publish` or check-only dispatch;
+- no fix loop for red checks or Codex findings.
+
+Every failure records `goal.outcome = blocked` with an exact reason and links, and stops. The existing `renderRecordComment` shows that outcome as the "Outcome" line of the current record comment on the goal issue, which is the visible blocker. `advance()` already schedules no next run after a blocked outcome. A person reads the blocker and decides what happens next. Everything in §5.1, the recovery parts of §5.2 and §9 is **Phase 2**.
+
+### 1A.1 Scope
+
+- **One goal**, created by Aaron with `cli.ts start`. One acceptance criterion, a `vitest:` check on an **existing** test file at `B`, plus the `typecheck` guard after the fix. No `suite`, no `browser`.
+- **Two dispatches only:** `pilot-1.d1` (`reproduce`, base `B`) and `pilot-1.d2` (`implement`, base `T`). Each is sent **once**.
+- **Codex rounds:** one review round. Findings are not fixed automatically; they block.
+- **Draft PR:** created by the executor in d1, updated by d2, never marked ready and never merged.
+- **Repository CI** is not part of the decision (§3.1).
+
+### 1A.2 States
+
+| # | State | Entered when | Next (`decide`) |
+| :- | :- | :- | :- |
+| V0 | Created | record revision 1, no dispatches | `reproduce`: save d1, then send it |
+| V1 | Reproducing | d1 live | `wait-executor` |
+| V2 | Reproduced | d1's run succeeded: branch = `T` (parent `B`, trailer `pilot-1.d1`), PR `P` open draft from `goal.branch`, before-fix rule (§3) holds on `T` | `implement`: save d2, then send it |
+| V3 | Fixing | d2 live | `wait-executor` |
+| V4 | Verified | d2's run succeeded: head = `F` (parent `T`, trailer `pilot-1.d2`), after-fix rule holds on `F` for the criterion and `typecheck` | `request-review` on `F` (existing code) |
+| V5 | Reviewing | round 1 requested on `F`, confirmed posted | `wait-review` (existing) |
+| V6 | **Complete** | round 1 clean on `F`, no open material findings, PR head still `F`, still an open draft | `complete` (existing outcome code) |
+| VB | **Blocked** | any row of §1A.3 | none |
+
+### 1A.3 Visible blockers
+
+Every blocker writes `outcome.reason` exactly as below, filling in the placeholders, with `outcome.evidence` holding the links named.
+
+| Situation | Detected by | Blocker reason (evidence) |
+| :- | :- | :- |
+| **Missing executor run**: no run named `N` within `dispatchGraceMinutes` (15) after `sentAt`, or the dispatch was saved but `sentAt` never recorded (the session died mid-send) | `syncGoal` | "Executor run for `N` was not seen; no automatic resend in version 1." (dispatch record) |
+| Executor run still queued or in progress after `executorTimeoutMinutes` (60) | `syncGoal` | "Executor run `<id>` for `N` did not finish within 60 min." (run URL) |
+| More than one bound run named `N` | `syncGoal` | "Duplicate executor runs for `N`." (run URLs) |
+| Run fails binding (§2), or `E` changed | `syncGoal` | "Executor run `<id>` is not the reviewed executor at `E`." (run URL) |
+| **Failed publish**: the run's `implement` or `publish` job concluded anything but `success`. This covers a crash before the push and a crash after the push, before the PR. | `syncGoal` | "Publish failed for `N` (job `<name>`: `<conclusion>`); branch head `<sha or absent>`, PR `<#n or none>`." (job URL, branch head) |
+| Publish succeeded but the branch head, parent, trailer or PR doesn't match | `syncGoal` | "Published commit for `N` does not match the dispatch." (commit, PR) |
+| **Incomplete check**: an expected `check <phase> <id> <sha>` job is missing, or concluded `cancelled`, `skipped` or without a conclusion | `syncGoal` | "Check `<id>` did not complete on `<sha>` (`<conclusion>`)." (run URL) |
+| Before-fix rule fails: the check passed on `T`, or `B…T` touched files other than the criterion file | `syncGoal` | "Reproduce did not prove the defect on `T`: `<which rule>`." (job URL, compare URL) |
+| After-fix rule fails: a check failed on `F`, or `T…F` changed the criterion file | `syncGoal` | "Fix did not pass on `F`: `<id>` `<conclusion>`." (job URL) |
+| Codex returned material findings on `F` | `decide` | "Codex found `<n>` material finding(s) on `F`; version 1 does not fix findings." (round URL) |
+| Codex unavailable, or no answer within `reviewTimeoutMinutes` | `decide` (existing) | existing reasons |
+| PR closed, merged, not a draft, wrong base, or a foreign head | `syncGoal` (existing `pullMismatch`, plus the trailer check) | existing reasons, plus "Foreign head `<sha>` on `goal.branch`." |
+| Caps: runs, hours | `decide` / `begin` (existing) | existing reasons |
+
+**A late executor run after a blocker is refused.** The executor's dispatch check (H4) requires `goal.outcome == null` as well as the current live dispatch. A run that starts after the goal blocked therefore stops before Claude runs.
+
+### 1A.4 Exact code changes for version 1
+
+These are the changes **this version needs**. The fuller list in §6 is for Phase 2.
+
+**Runner (coordinator), against #185 `4715d07`:**
+
+1. **`record.ts`**
+   - `RECORD_VERSION` becomes 2.
+   - `GoalRecord` gets `executorSha?: string`. Its presence turns on executor mode, and goals without it behave exactly as now.
+   - `GoalRecord` gets `dispatches?: Dispatch[]`, with `Dispatch = {k, nonce, phase: "reproduce" | "implement", baseSha, createdAt, sentAt: string | null, runId: number | null, state: "pending" | "bound" | "succeeded" | "failed", result: string | null}`.
+   - `CheckRun` gets an optional `source: {runId, jobId}`, and `exitCode` becomes optional only when `source` is present. The executor reports "expectation met or not", not a raw exit code (see change 13).
+   - `Caps` gets `dispatchGraceMinutes` (default 15) and `executorTimeoutMinutes` (default 60).
+   - `createGoal()` accepts `executorSha`.
+   - `validateGoal()` enforces, in executor mode:
+     - exactly one criterion, of kind `vitest`;
+     - at most one live dispatch;
+     - nonce format `<id>.d<k>`;
+     - phases in order;
+     - `branch == claude/auto-goal-<id>`.
+2. **`decide.ts`**
+   - New `Action` member `wait-executor`.
+   - In `decide()`, executor mode: the V0–V6 order of §1A.2, and the `decide`-detected rows of §1A.3. Material findings give **blocked**, not `fix-findings`. A failed check gives **blocked**, not `fix-ci` or `implement`. `open-pr` and `verify` are never returned.
+   - Steps 7 (review) and the `complete` return stay as they are.
+   - Step 8 (CI) treats the executor's `typecheck` job as the only required check (see change 3).
+3. **`sync.ts`**
+   - In `syncGoal()`, executor mode:
+     - if `goal.pr` is null, read it from `openPullsFor(goal.branch)` (read only; it never creates one);
+     - run new `syncDispatch()` before the existing PR, head and Codex sync;
+     - set `goal.ci` from the bound executor guard job instead of `checkRuns`, as `{sha, runs: [{name: "typecheck", status, conclusion, url}]}`, so the unchanged `ciState()` works with `requiredChecks = ["typecheck"]`.
+   - New `syncDispatch(goal, github, now)` applies the `syncGoal` rows of §1A.3:
+     - binds the run (§2);
+     - sets the dispatch state;
+     - on success, ingests `check <phase> <id> <sha>` jobs as `goal.checks` entries with `source`;
+     - verifies the head commit's parent, trailer and compare file list;
+     - writes `goal.outcome` for any blocker row.
+   - New pure helper `bindExecutorRun(run, goal)`.
+4. **`github.ts`**: add to the `GitHub` interface and `ghCli`:
+   - `dispatchWorkflow(repo, file, ref, inputs)`, using `POST /actions/workflows/{file}/dispatches`;
+   - `workflowRuns(repo, file, createdSince)`;
+   - `run(repo, id)`;
+   - `runJobs(repo, id)`;
+   - `compareFiles(repo, base, head)`;
+   - `commit(repo, sha)`.
+
+   It adds no cancel and no branch write.
+5. **`runner.ts`**
+   - In `advance()`, executor mode, for the `reproduce` and `implement` actions:
+     - instead of the code-action block (no `git.isClean`, `git.push` or `deps.check`), save the dispatch (`fence`, then `store.save`);
+     - call `dispatchWorkflow` with `{goal, issue, nonce}`;
+     - save `sentAt`.
+
+     `wait-executor` re-arms with `NEXT_RUN_MINUTES.wait`.
+   - In `begin()`, executor mode, skip `ensureBranch`.
+   - In `workOrder()`, executor mode, every action's `todo` is "No code is due. Run `advance`."
+   - `runnerPrompt()`: drop step 3 for executor-mode goals.
+6. **`wake.mjs`**
+   - `normalizeEvent("workflow_run")`: when the run name matches `Auto Goal <goal> <goal>.d<k>`, return `{kind: "checks", goal, sha: null, prs: []}`.
+   - `decideWake()`: accept a `checks` wake identified by goal rather than PR.
+   - `auto-goal-wake.yml`: add the executor workflow's name to `workflow_run.workflows`. That is a workflow file change and stays disabled.
+7. **`cli.ts`**: `start` takes `--executor-sha <sha>`, derives `--branch` as `claude/auto-goal-<id>`, and refuses non-`vitest` criteria in executor mode.
+
+**Executor, against `f68add4`:**
+
+8. **`on.workflow_dispatch.inputs`**: `goal`, `issue` and `nonce`, replacing `issue_number`. Add top-level `run-name: Auto Goal ${{ inputs.goal }} ${{ inputs.nonce }}`.
+9. **`read-issue` becomes `read-dispatch`**
+   - Permissions: `issues: read` and `contents: read`.
+   - Check out `github.sha`, which must equal `E` because `E` is pinned in the record, sparsely, for `artifacts/SpecSmith/scripts/auto-goal/`.
+   - Read the record with `parseRecordComment` from the trusted login. Refuse unless:
+     - `outcome == null`;
+     - `nonce` is the live dispatch;
+     - `github.sha == executorSha`;
+     - for `reproduce`, `goal.branch` is absent; for `implement`, its head is `baseSha` (checked with `git ls-remote`).
+   - Output phase, `baseSha`, criterion file, request text (as data) and branch.
+10. **`implement`**
+    - Check out `baseSha` instead of `github.sha`.
+    - Use a phase-specific fixed prompt: reproduce is "edit only `<criterion file>` so its test fails on the current code"; implement is "make `<criterion file>` pass without editing it".
+    - The #188 CLI flags are unchanged.
+11. **`validate-proposal.mjs`**: new `--phase reproduce|implement --criterion <file>`. For reproduce, the changed paths must be exactly `{criterion}`; for implement, the criterion must not be among them. The existing rules are unchanged.
+12. **`publish`**
+    - Check out `baseSha`, apply the patch, and commit with the `Auto-Goal-Dispatch` and `Auto-Goal-Run` trailers.
+    - Push `X:refs/heads/claude/auto-goal-<goal>` with `--force-with-lease=refs/heads/<branch>:<baseSha, or empty for reproduce>`.
+    - Reproduce: create the draft PR. Implement: require that the existing draft PR from the branch is open.
+    - Output `sha` and `pr_number`. The run-id branch name is removed.
+13. **`check`**
+    - A matrix over `[criterion, "typecheck" (implement only)]`, named `check ${{ needs.read-dispatch.outputs.phase }} ${{ matrix.id }} ${{ needs.publish.outputs.proposal_sha }}`.
+    - Check out `X`, and separately `E`, to run a new trusted script, `docs/auto-goal-actions/run-check.mjs`. It maps a check ID through `checks.ts` `stepsFor()` and runs the argv without a shell.
+    - The job **succeeds only when the expectation is met**: for `before`, the check executed and exited non-zero; for `after`, it exited 0.
+14. **`record-check`**
+    - The status context depends on the phase: `auto-goal/before` or `auto-goal/check`.
+    - The branch pattern becomes `^claude/auto-goal-[a-z0-9-]+$`.
+    - The other refusals are unchanged.
+
+**Tests for version 1** (offline, fake GitHub API plus mock Claude, no credential):
+
+- the full V0 → V6 path;
+- one test per row of §1A.3, checking the exact blocker reason and that no further dispatch, push or comment happens;
+- a late executor run refused after a blocker;
+- a stale or unknown nonce refused before Claude runs;
+- token and untrusted-text markers absent from all logs.
 
 ## 2. Identifiers and pinned commits
 
@@ -91,29 +254,48 @@ Acceptance and guard checks are named only by IDs that map one-to-one onto the e
 
 **Job names carry the evidence.** Each executor check job is a matrix leg named exactly `check <phase> <criterion-or-guard-id> <sha>`; the coordinator reads `GET /actions/runs/{id}/jobs`. `jobs.<id>.name` may use `needs` and `matrix`, so the SHA comes from `needs.publish.outputs.proposal_sha`. The coordinator stores `{runId, jobId, conclusion}` in the new `CheckRun.source` field, which makes ingestion idempotent.
 
-### 3.1 Repository CI on the executor's PR (corrected)
+### 3.1 Repository CI on the executor's PR (corrected in revision 3)
 
-Revision 1 said the repository's CI "does not run" on a PR created with `GITHUB_TOKEN`. That is too broad.
+Revisions 1 and 2 said, or implied, that a PR opened or updated with `GITHUB_TOKEN` gets no repository CI. **That is wrong.**
 
-**What GitHub documents.** As recalled, and not re-checked in this session because docs.github.com was unreachable from it: events caused by the repository's `GITHUB_TOKEN` do not create new workflow runs, **except** `workflow_dispatch` and `repository_dispatch`. Workflows started by a GitHub App installation token or a personal access token are not subject to this rule.
+**What GitHub documents.** Events caused by `GITHUB_TOKEN` generally don't start new workflow runs, to prevent accidental recursion. The documented exceptions are:
+
+- `workflow_dispatch` and `repository_dispatch`;
+- `pull_request` events of type `opened`, `synchronize` and `reopened` caused by `GITHUB_TOKEN`. These **do create workflow runs, held for approval**: someone with write access must approve them on the PR before they run.
+
+Runs started by a GitHub App installation token or a personal access token don't need that approval. GitHub's June 2026 changelog describes the same approval flow for PRs created by `github-actions[bot]`.
+
+Sources:
+
+- [Triggering a workflow](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow);
+- [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows);
+- [`GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token);
+- [Changelog, 2026-06-11: bot-created pull requests can run workflows if approved](https://github.blog/changelog/2026-06-11-bot-created-pull-requests-can-run-workflows-if-approved/).
+
+docs.github.com could not be fetched from the session that wrote this revision. These statements come from search results that quote those pages, so a reviewer should confirm the wording against the pages themselves.
 
 **What that means here:**
 
-- **No automatic `Verify pull request` run:** the executor's own push and PR creation use `GITHUB_TOKEN`. They will not start `verify-pr.yml` through its `pull_request` trigger (on `main`, it runs on `pull_request` to `main` and on `workflow_dispatch`).
-- **Other ways it can still run on the PR head:**
-  - a person or credential other than `GITHUB_TOKEN` causes a `pull_request` event: pushing to the branch, or closing and reopening the PR;
-  - anyone dispatches `verify-pr.yml` on `goal.branch` through `workflow_dispatch`, including from a workflow using `GITHUB_TOKEN`, which is the documented exception;
-  - the executor publishes with an App token instead of `GITHUB_TOKEN`.
+- **Approval-held CI runs:** the executor opens the PR (`opened`) and pushes later commits (`synchronize`) with `GITHUB_TOKEN`. Each of these can create a `Verify pull request` run that **waits for approval**; on `main`, `verify-pr.yml` runs on `pull_request` to `main` and on `workflow_dispatch`.
+- **Approving one runs proposed code:** a person who approves such a run lets that workflow run the PR's proposed code with `verify-pr.yml`'s permissions. That is a decision for a person; the coordinator never approves runs.
 - **Already visible to the coordinator:** the existing wake bridge listens for `workflow_run` completions of "Verify pull request", and `syncGoal` already reads check runs on the head.
 
 **Pilot rule:**
 
 - **Required:** the executor's own check jobs (§3) on the exact head.
-- **Not waited on:** repository CI. The coordinator does not dispatch it, and its absence never blocks or delays the goal.
-- **Red repository CI still counts:** if any check run is reported on the exact head and has failed, the existing `ciState` treats the head as red. The goal goes to `fix-ci` within caps, or blocks. Results on any other commit are ignored (existing behaviour).
+- **Repository CI is left out of the decision.** In executor mode the coordinator does not feed repository check runs into `ciState`.
+
+  The reason: a run waiting for approval reports either as not completed, which the existing `ciState` reads as "pending" and would wait on until the CI timeout blocks the goal, or as `action_required`, which `ciState` would read as red. Either would turn an unapproved run into a false failure or a stall.
+- **The coordinator never approves a run.** If a person approves one, its result is visible on the PR for the human reviewer, but it does not change the goal's outcome in the pilot.
 - **Pushes by others:** a push by anyone else is a foreign head and blocks the goal (H9).
 
-Making repository CI part of completion would mean dispatching `verify-pr.yml` on the exact head and binding its run like the executor's. That is out of scope for the pilot.
+Making repository CI part of completion would need three things:
+
+- a person, or a separately approved App token, to start `verify-pr.yml` on the exact head;
+- binding that run the way the executor's runs are bound;
+- treating "waiting for approval" as its own state rather than red or pending.
+
+That is out of scope for the pilot.
 
 ## 4. State map
 
@@ -129,7 +311,7 @@ States are predicates on the record. `decide()` stays the only function that com
 | S4 | Implement dispatched | current dispatch `phase=implement`, `baseSha = head = T` | `wait-executor` | executor |
 | S5 | Implement published | head = `F` (parent `T`), trailer of an implement or fix dispatch | `wait-executor` | executor |
 | S6 | Verified | after-fix rule holds on `F == head` | `request-review` | coordinator |
-| S6x | After-fix failed | any criterion or guard failed on `F`, or repository CI red on `F` | dispatch `phase=fix` with `baseSha=F`, within `maxFixAttempts`; otherwise blocked | coordinator |
+| S6x | After-fix failed | any criterion or guard failed on `F` | dispatch `phase=fix` with `baseSha=F`, within `maxFixAttempts`; otherwise blocked | coordinator |
 | S7 | Review requested | round k: `requestedSha = F = head`, request comment confirmed | `wait-review` | Codex |
 | S8a | Review clean | round k clean on `F`, no open material findings | `complete` (if S6 still holds on `F`) | coordinator |
 | S8b | Findings | material findings open from round k | dispatch `phase=fix` with `baseSha=F` and finding IDs, within caps → S5 with new head `F'` | coordinator |
@@ -155,7 +337,9 @@ States are predicates on the record. `decide()` stays the only function that com
 
 ## 5. Handoffs
 
-### 5.1 Dispatch lifecycle (fixes the revision-1 H3/H4 gap)
+**Phase 2.** The resend, cancel, supersede, `finish-publish` and check-only parts of this section are **not** in the first pilot. Version 1 (§1A) uses H1–H12 as the straight-line path and replaces every recovery step with the visible blockers of §1A.3.
+
+### 5.1 Dispatch lifecycle, Phase 2 (fixes the revision-1 H3/H4 gap)
 
 In revision 1 the nonce named a coordinator run (`r<n>`), and H4 required that run to still be open. A coordinator session that crashed after dispatching was closed as abandoned by the next session, which made a merely *delayed* executor run invalid and invited a duplicate. Now dispatches live on the goal, independent of coordinator runs.
 
@@ -329,7 +513,9 @@ Each row gives the input, output, owner and exact commit, and what happens after
 
 **The draft PR is never marked ready and never merged by either side.**
 
-## 6. Runner functions: keep, change, or retire
+## 6. Runner functions: keep, change, or retire (Phase 2, full design)
+
+The exact changes for the first pilot are listed in §1A.4. This section covers the full design.
 
 **Keep unchanged**
 
@@ -338,7 +524,7 @@ Each row gives the input, output, owner and exact commit, and what happens after
 - `codex.ts`: `codexVerdicts`, `verdictFor`, `parseFinding`.
 - `checks.ts`: `stepsFor`, `describeCheck`, `checkFile`. The executor `check` job uses them as the trusted argv source.
 - `github.ts`: `pullMismatch`, and the existing `GitHub` methods `pull`, `checkRuns`, `issueComments`, `reviews`, `reviewComments`, `createComment`, `whoami`. `openPullsFor` and `createDraftPull` are no longer called by the coordinator.
-- `decide.ts`: `ciState()`, still applied to repository check runs on the head (§3.1).
+- `decide.ts`: `ciState()`, fed from the executor's guard jobs only; repository check runs are excluded (§3.1).
 - `record.ts`: `addEvent`, `GoalError`.
 - `runner.ts`:
   - `begin()`'s `screen()`, claim and abandon logic. Abandoning a run no longer affects dispatches.
@@ -429,12 +615,20 @@ Each row gives the input, output, owner and exact commit, and what happens after
 
 ## 8. Before any implementation
 
-1. Independent review of this contract, including whether the coordinator/executor split is worth the changes in §6 compared with dropping one design.
+1. Independent review of this contract, starting with the version 1 path (§1A), including whether the coordinator/executor split is worth the changes in §6 compared with dropping one design.
 2. Aaron's decisions: residual routine-session risk; the disposable credentials; one pilot goal and its one to three existing `vitest:` criteria.
-3. Implement the §6 changes on separate branches, with offline tests using a fake GitHub API and a mock Claude response for every handoff in §5 and every trace in §9. Then run the checks against GitHub on the disposable repository.
+3. Implement the §1A.4 changes on separate branches, with the version 1 offline tests listed there. Then run the GitHub checks of §7 on the disposable repository. Phase 2 (§5.1, §6, §9) follows only after version 1 has completed a goal.
 4. A separate explicit approval to install, enable and dispatch. Nothing in this contract grants it.
 
-## 9. Crash traces: one per recovery path
+## 9. Crash traces: one per recovery path (Phase 2)
+
+In version 1, each trace below ends at the blocker of §1A.3 for its first failure, instead of recovering:
+
+- **C1, C2 (variant) and C3:** "missing executor run", "duplicate executor runs" or "did not finish";
+- **C4, C5 and C6:** "publish failed";
+- **C7:** "incomplete check";
+- **C8, C9 and C10:** unchanged, because those are existing runner behaviour;
+- **C11:** "foreign head".
 
 The traces use placeholder commits: `B = b0…`, `T = 7a…`, `F1 = f1…`, `F2 = f2…`. Times are minutes after the dispatch is saved. Unless a trace says so, the coordinator sessions are separate wakes, each owning its run through the claim.
 
