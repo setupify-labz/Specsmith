@@ -169,7 +169,8 @@ test("workflow: the implement job has no GitHub token, and the issue is read in 
   assert.match(step, /ISSUE_JSON: \$\{\{ needs\.read-issue\.outputs\.issue_json \}\}/);
   assert.ok(step.indexOf("assert-no-git-auth.mjs") > 0 && step.indexOf("assert-no-git-auth.mjs") < step.indexOf("claude -p"));
   assert.doesNotMatch(step.slice(step.indexOf("run: |")), /\$\{\{/);   // issue text reaches the script only through the environment
-  assert.match(step, /--disallowedTools "Bash,WebFetch,WebSearch"/);
+  assert.match(step, /--restricted/);
+  assert.match(step, /--disallowedTools "Bash,PowerShell,WebFetch,WebSearch,Write,NotebookEdit,Agent,mcp__\*"/);
   // The export step re-checks, and the validator and gates are unchanged.
   assert.match(impl, /- name: Export a narrow, text-only patch\n[\s\S]*assert-no-git-auth\.mjs[\s\S]*validate-proposal\.mjs/);
   for (const name of ["read-issue", "implement", "publish", "check"]) assert.match(job(name), /if: \$\{\{ false && github\.ref == 'refs\/heads\/main' \}\}/);
