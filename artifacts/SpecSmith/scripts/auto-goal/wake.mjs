@@ -77,10 +77,15 @@ export function normalizeEvent(eventName, payload, trustedLogin) {
     case "workflow_run": {
       const run = payload.workflow_run;
       if (payload.action !== "completed" || !run) return { skip: "workflow run not completed" };
-      if (run.path === EXECUTOR_WORKFLOW_PATH) {
-        // A dispatched run names no pull request; its run name names the goal and dispatch (contract §2).
-        const m = EXECUTOR_RUN_NAME.exec(String(run.name ?? ""));
-        if (!m || run.event !== "workflow_dispatch") return { skip: "executor run without an Auto Goal dispatch name" };
+      // GitHub reports `path` with an optional ref suffix (".github/workflows/x.yml@main") and the custom
+      // run-name as `display_title`; `name` is the workflow's own name.
+      const [file, ref, ...rest] = String(run.path ?? "").split("@");
+      if (file === EXECUTOR_WORKFLOW_PATH) {
+        // A dispatched run names no pull request; its run-name names the goal and dispatch (contract §2).
+        const base = payload.repository?.default_branch ?? "main";
+        if (rest.length || (ref !== undefined && ref !== base && ref !== `refs/heads/${base}`)) return { skip: "executor run from a ref other than the default branch" };
+        const m = EXECUTOR_RUN_NAME.exec(String(run.display_title ?? ""));
+        if (!m || run.event !== "workflow_dispatch") return { skip: "executor run without an Auto Goal dispatch title" };
         return { kind: "executor", goal: m[1], nonce: m[2], sha: null, prs: [], issue: null };
       }
       return { kind: "checks", sha: run.head_sha, prs: (run.pull_requests ?? []).map((p) => p.number), issue: null };

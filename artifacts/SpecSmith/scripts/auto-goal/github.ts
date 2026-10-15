@@ -42,8 +42,14 @@ export interface GitHub {
 }
 
 /** Executor mode (contract §1A.4 change 4): the Actions and commit reads the coordinator binds results with. */
+/**
+ * A workflow run as GitHub's REST API and workflow_run webhook return it. `name` is the workflow's
+ * name; a custom `run-name` arrives as `display_title`. `path` may carry a ref suffix
+ * (".github/workflows/x.yml@main"). `workflow_id` identifies the workflow independently of both.
+ */
 export interface GhWorkflowRun {
-  readonly id: number; readonly name: string; readonly path: string; readonly event: string; readonly head_branch: string; readonly head_sha: string;
+  readonly id: number; readonly name: string; readonly display_title: string; readonly path: string; readonly workflow_id: number;
+  readonly event: string; readonly head_branch: string; readonly head_sha: string;
   readonly status: string; readonly conclusion: string | null; readonly html_url: string; readonly created_at: string;
 }
 export interface GhJob { readonly id: number; readonly name: string; readonly status: string; readonly conclusion: string | null; readonly html_url: string }
@@ -54,6 +60,8 @@ export interface ExecutorGitHub extends GitHub {
   dispatchExecutor(repo: string, ref: string, inputs: { goal: string; issue: string; nonce: string }): Promise<void>;
   /** workflow_dispatch runs of the executor workflow created at or after `createdSince`. */
   executorRuns(repo: string, createdSince: string): Promise<GhWorkflowRun[]>;
+  /** The executor workflow's id (GET .../actions/workflows/auto-goal-actions.yml), which every executor run must carry. */
+  executorWorkflowId(repo: string): Promise<number>;
   run(repo: string, id: number): Promise<GhWorkflowRun>;
   runJobs(repo: string, id: number): Promise<GhJob[]>;
   /** File names changed between two commits (GET compare/base...head). */
@@ -65,7 +73,7 @@ export interface ExecutorGitHub extends GitHub {
 
 export function isExecutorGitHub(github: GitHub): github is ExecutorGitHub {
   const g = github as Partial<ExecutorGitHub>;
-  return [g.dispatchExecutor, g.executorRuns, g.run, g.runJobs, g.compareFiles, g.commit, g.branchHead].every((f) => typeof f === "function");
+  return [g.dispatchExecutor, g.executorRuns, g.executorWorkflowId, g.run, g.runJobs, g.compareFiles, g.commit, g.branchHead].every((f) => typeof f === "function");
 }
 
 async function gh<T>(args: string[], input?: string): Promise<T> {
@@ -108,6 +116,7 @@ export const ghCli: ExecutorGitHub = {
   // The one dispatch the coordinator can make: the executor workflow file is fixed here, not passed in.
   dispatchExecutor: async (repo, ref, inputs) => { await gh(["-X", "POST", `repos/${repo}/actions/workflows/auto-goal-actions.yml/dispatches`, "--input", "-"], JSON.stringify({ ref, inputs })); },
   executorRuns: async (repo, since) => (await gh<{ workflow_runs: GhWorkflowRun[] }>([`repos/${repo}/actions/workflows/auto-goal-actions.yml/runs?event=workflow_dispatch&created=${encodeURIComponent(`>=${since}`)}&per_page=100`])).workflow_runs,
+  executorWorkflowId: async (repo) => (await gh<{ id: number }>([`repos/${repo}/actions/workflows/auto-goal-actions.yml`])).id,
   run: (repo, id) => gh([`repos/${repo}/actions/runs/${id}`]),
   runJobs: async (repo, id) => (await gh<{ jobs: GhJob[] }>([`repos/${repo}/actions/runs/${id}/jobs?per_page=100`])).jobs,
   compareFiles: async (repo, base, head) => ((await gh<{ files?: { filename: string }[] }>([`repos/${repo}/compare/${base}...${head}`])).files ?? []).map((f) => f.filename),

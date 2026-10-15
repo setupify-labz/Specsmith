@@ -43,6 +43,11 @@ const UNTRUSTED = "Untrusted_Marker_9d1c";
 const MOCK_TOKEN = "PlaceHolder_Not_A_Token_44e0";
 const CRITERION_FILE = "src/lib/clamp.test.ts";
 const TYPECHECK = describeCheck({ kind: "typecheck" });
+// What GitHub reports for an executor run: the workflow's name in `name`, the run-name in
+// `display_title`, a ref suffix on `path`, and the workflow's id (see executorRunBinding.test.ts).
+const WORKFLOW_ID = 162_000_111;
+const WORKFLOW_NAME = "Auto Goal Actions executor (disabled design)";
+const runShape = (nonce: string, e: string) => ({ name: WORKFLOW_NAME, display_title: executorRunName(ID, nonce), path: `${EXECUTOR_WORKFLOW_PATH}@main`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_branch: "main", head_sha: e });
 
 // ---- The fixture project: a real defect, a real test, real checks ---------------------------------
 
@@ -117,6 +122,7 @@ class FakeGitHub implements ExecutorGitHub {
     this.dispatched.push({ ref, inputs });
   }
   async executorRuns(_r: string, since: string) { return this.runs.filter((r) => Date.parse(r.created_at) >= Date.parse(since)).map(({ jobs: _j, ...r }) => r); }
+  async executorWorkflowId() { return WORKFLOW_ID; }
   async run(_r: string, id: number) { const { jobs: _j, ...r } = this.runs.find((x) => x.id === id)!; return r; }
   async runJobs(_r: string, id: number) { return structuredClone(this.runs.find((x) => x.id === id)!.jobs); }
   async compareFiles(_r: string, base: string, head: string) { return git(this.origin, "diff", "--name-only", base, head).split("\n").filter(Boolean); }
@@ -164,7 +170,7 @@ function makeExecutor(gh: FakeGitHub, origin: string, e: string) {
     const runId = gh.next();
     const job = (name: string, conclusion: string): GhJob => ({ id: gh.next(), name, status: "completed", conclusion, html_url: `https://github.com/${REPO}/actions/runs/${runId}/job/${name.replaceAll(" ", "-")}` });
     const entry: GhWorkflowRun & { jobs: GhJob[] } = {
-      id: runId, name: executorRunName(ID, nonce), path: EXECUTOR_WORKFLOW_PATH, event: "workflow_dispatch", head_branch: "main", head_sha: h.headSha ?? e,
+      id: runId, ...runShape(nonce, h.headSha ?? e),
       status: "in_progress", conclusion: null, html_url: `https://github.com/${REPO}/actions/runs/${runId}`, created_at: gh.clock.toISOString(), jobs: [],
     };
     gh.runs.push(entry);
@@ -440,7 +446,7 @@ describe("version 1 blockers: every failure stops the goal visibly, with no auto
   it("an executor run that does not finish within the timeout", { timeout: 60_000 }, async () => {
     const h = await upTo("d1-sent");
     h.tick(2);
-    h.gh.runs.push({ id: 1, name: executorRunName(ID, `${ID}.d1`), path: EXECUTOR_WORKFLOW_PATH, event: "workflow_dispatch", head_branch: "main", head_sha: h.base, status: "in_progress", conclusion: null, html_url: "run1", created_at: h.gh.clock.toISOString(), jobs: [] });
+    h.gh.runs.push({ id: 1, ...runShape(`${ID}.d1`, h.base), status: "in_progress", conclusion: null, html_url: "run1", created_at: h.gh.clock.toISOString(), jobs: [] });
     h.tick(30);
     expect((await h.turn()).adv.next).toBe("wait-executor");
     h.tick(31);
@@ -449,7 +455,7 @@ describe("version 1 blockers: every failure stops the goal visibly, with no auto
 
   it("duplicate executor runs for one dispatch", { timeout: 60_000 }, async () => {
     const h = await upTo("d1-sent");
-    for (const id of [1, 2]) h.gh.runs.push({ id, name: executorRunName(ID, `${ID}.d1`), path: EXECUTOR_WORKFLOW_PATH, event: "workflow_dispatch", head_branch: "main", head_sha: h.base, status: "queued", conclusion: null, html_url: `run${id}`, created_at: h.gh.clock.toISOString(), jobs: [] });
+    for (const id of [1, 2]) h.gh.runs.push({ id, ...runShape(`${ID}.d1`, h.base), status: "queued", conclusion: null, html_url: `run${id}`, created_at: h.gh.clock.toISOString(), jobs: [] });
     await blockedWith(h, /^Duplicate executor runs for pilot-1\.d1\.$/);
   });
 
@@ -726,13 +732,13 @@ describe("cli start --executor-sha", () => {
 describe("wake bridge: executor runs wake the goal they belong to", () => {
   const recordComment = (record: object, id = 1) => ({ id, user: { login: ME }, created_at: T0.toISOString(), body: `<!-- specsmith-auto-goal id=${ID} rev=3 -->\n\n\`\`\`json\n${JSON.stringify(record)}\n\`\`\`` });
   const live = { kind: "specsmith-auto-goal", version: 2, id: ID, revision: 3, issue: ISSUE, pr: 50, head: "c".repeat(40), outcome: null, runs: [], caps: {}, requiredChecks: ["typecheck"], dispatches: [{ k: 1, nonce: `${ID}.d1`, state: "bound" }] };
-  const runEvent = (over: object = {}) => ({ action: "completed", workflow_run: { path: ".github/workflows/auto-goal-actions.yml", name: `Auto Goal ${ID} ${ID}.d1`, event: "workflow_dispatch", head_sha: "a".repeat(40), pull_requests: [], ...over } });
+  const runEvent = (over: object = {}) => ({ action: "completed", workflow_run: { path: ".github/workflows/auto-goal-actions.yml@main", name: WORKFLOW_NAME, display_title: `Auto Goal ${ID} ${ID}.d1`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_sha: "a".repeat(40), pull_requests: [], ...over } });
 
-  it("maps a completed executor run to its goal by run name, and only an Auto Goal dispatch name", () => {
+  it("maps a completed executor run to its goal by its run-name (display_title), and only an Auto Goal dispatch title", () => {
     expect(normalizeEvent("workflow_run", runEvent(), ME)).toEqual({ kind: "executor", goal: ID, nonce: `${ID}.d1`, sha: null, prs: [], issue: null });
-    expect(normalizeEvent("workflow_run", runEvent({ name: `Auto Goal ${ID} other-goal.d1` }), ME)).toHaveProperty("skip");
+    expect(normalizeEvent("workflow_run", runEvent({ display_title: `Auto Goal ${ID} other-goal.d1` }), ME)).toHaveProperty("skip");
     expect(normalizeEvent("workflow_run", runEvent({ event: "push" }), ME)).toHaveProperty("skip");
-    expect(normalizeEvent("workflow_run", runEvent({ path: ".github/workflows/verify-pr.yml", pull_requests: [{ number: 50 }] }), ME)).toMatchObject({ kind: "checks", prs: [50] });
+    expect(normalizeEvent("workflow_run", runEvent({ path: ".github/workflows/verify-pr.yml", name: "Verify pull request", display_title: "A PR title", event: "pull_request", pull_requests: [{ number: 50 }] }), ME)).toMatchObject({ kind: "checks", prs: [50] });
   });
 
   it("wakes only while that dispatch is live and the goal is open; the ticket is bound to the record's PR and head", () => {

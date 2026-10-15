@@ -136,12 +136,31 @@ export const EXECUTOR_WORKFLOW_PATH = `.github/workflows/${EXECUTOR_WORKFLOW_FIL
 export const executorRunName = (goalId: string, nonce: string) => `Auto Goal ${goalId} ${nonce}`;
 const TYPECHECK = describeCheck({ kind: "typecheck" });
 
-/** Contract §2: a run counts as the executor's only if it is the reviewed workflow at E, dispatched, for this nonce. */
-export function bindExecutorRun(run: GhWorkflowRun, goal: GoalRecord, nonce: string): string | null {
-  if (run.path !== EXECUTOR_WORKFLOW_PATH) return "is not the executor workflow";
+/**
+ * A run's `path`, split from its optional ref suffix: ".github/workflows/x.yml@main" gives
+ * { file: ".github/workflows/x.yml", ref: "main" }; no "@" gives ref null. More than one "@" is not a path.
+ */
+export function workflowPath(path: string): { file: string; ref: string | null } | null {
+  const parts = path.split("@");
+  if (parts.length > 2 || parts.some((p) => p === "")) return null;
+  return { file: parts[0], ref: parts[1] ?? null };
+}
+
+/** The dispatch a run was for: its custom run-name, which GitHub reports as `display_title` (never `name`, the workflow's name). */
+export const isRunFor = (run: GhWorkflowRun, goalId: string, nonce: string) => run.display_title === executorRunName(goalId, nonce);
+
+/**
+ * Contract §2: a run counts as the executor's only if it is the executor workflow (by id, and by path
+ * with no ref suffix or the base branch's), dispatched, on the base branch at the pinned commit E, and
+ * titled for this nonce.
+ */
+export function bindExecutorRun(run: GhWorkflowRun, goal: GoalRecord, nonce: string, workflowId: number): string | null {
+  const path = workflowPath(String(run.path ?? ""));
+  if (run.workflow_id !== workflowId || !path || path.file !== EXECUTOR_WORKFLOW_PATH) return "is not the executor workflow";
+  if (path.ref !== null && path.ref !== goal.baseBranch && path.ref !== `refs/heads/${goal.baseBranch}`) return `is not the executor workflow at ${goal.baseBranch}`;
   if (run.event !== "workflow_dispatch") return `was started by ${run.event}, not workflow_dispatch`;
   if (run.head_branch !== goal.baseBranch || run.head_sha !== goal.executorSha) return `ran ${run.head_branch}@${run.head_sha.slice(0, 10)}, not the reviewed executor at ${goal.executorSha!.slice(0, 10)}`;
-  if (run.name !== executorRunName(goal.id, nonce)) return `is named for another dispatch`;
+  if (!isRunFor(run, goal.id, nonce)) return "is titled for another dispatch";
   return null;
 }
 
@@ -189,9 +208,10 @@ export async function syncDispatch(goal: GoalRecord, github: ExecutorGitHub, now
   const fail = (reason: string, evidence: Record<string, unknown>) => { d.state = "failed"; block(goal, now, reason, { dispatch: d.nonce, ...evidence }); };
   const minutes = (since: string) => (now.getTime() - Date.parse(since)) / 60_000;
   const since = new Date(Date.parse(d.createdAt) - 60_000).toISOString();
-  const named = (await github.executorRuns(goal.repo, since)).filter((r) => r.name === executorRunName(goal.id, d.nonce));
+  const named = (await github.executorRuns(goal.repo, since)).filter((r) => isRunFor(r, goal.id, d.nonce));
+  const workflowId = named.length ? await github.executorWorkflowId(goal.repo) : 0;
   for (const r of named) {
-    const why = bindExecutorRun(r, goal, d.nonce);
+    const why = bindExecutorRun(r, goal, d.nonce, workflowId);
     if (why) return fail(`Executor run ${r.id} is not the reviewed executor at ${goal.executorSha}: it ${why}.`, { run: r.html_url });
   }
   if (named.length > 1) return fail(`Duplicate executor runs for ${d.nonce}.`, { runs: named.map((r) => r.html_url) });
