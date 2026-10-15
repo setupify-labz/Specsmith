@@ -17,6 +17,8 @@ It does not build a second runner: every decision stays in `decide.ts`, and ever
 
 §9 traces one crash for every recovery path.
 
+**Revision 4** adds the publish-time guard (§1A.5), the coordinator-blocks-mid-run race trace (§1A.6), and freezes version 1 (§1A.7).
+
 **Revision 3:**
 
 - **§3.1 corrected again:** `pull_request` events caused by `GITHUB_TOKEN` can create workflow runs that wait for approval. The official documentation is linked.
@@ -172,11 +174,14 @@ These are the changes **this version needs**. The fuller list in §6 is for Phas
 11. **`validate-proposal.mjs`**: new `--phase reproduce|implement --criterion <file>`. For reproduce, the changed paths must be exactly `{criterion}`; for implement, the criterion must not be among them. The existing rules are unchanged.
 12. **`publish`**
     - Check out `baseSha`, apply the patch, and commit with the `Auto-Goal-Dispatch` and `Auto-Goal-Run` trailers.
+    - Run the **publish-time guard** (§1A.5) immediately before the push. If it refuses, push nothing and fail the job.
     - Push `X:refs/heads/claude/auto-goal-<goal>` with `--force-with-lease=refs/heads/<branch>:<baseSha, or empty for reproduce>`.
-    - Reproduce: create the draft PR. Implement: require that the existing draft PR from the branch is open.
+    - Run the post-push re-read (§1A.5). If the goal blocked in the meantime, create no PR, post the fixed PR note if a PR exists, and fail the job.
+    - Otherwise: for reproduce, create the draft PR; for implement, require that the existing draft PR from the branch is open.
     - Output `sha` and `pr_number`. The run-id branch name is removed.
 13. **`check`**
     - A matrix over `[criterion, "typecheck" (implement only)]`, named `check ${{ needs.read-dispatch.outputs.phase }} ${{ matrix.id }} ${{ needs.publish.outputs.proposal_sha }}`.
+    - First step, before any checkout of `X`: re-read the record (the §1A.5 read). Stop with a failed job, running no proposed code, if `outcome != null` or `N` is no longer the live dispatch.
     - Check out `X`, and separately `E`, to run a new trusted script, `docs/auto-goal-actions/run-check.mjs`. It maps a check ID through `checks.ts` `stepsFor()` and runs the argv without a shell.
     - The job **succeeds only when the expectation is met**: for `before`, the check executed and exited non-zero; for `after`, it exited 0.
 14. **`record-check`**
@@ -190,7 +195,93 @@ These are the changes **this version needs**. The fuller list in §6 is for Phas
 - one test per row of §1A.3, checking the exact blocker reason and that no further dispatch, push or comment happens;
 - a late executor run refused after a blocker;
 - a stale or unknown nonce refused before Claude runs;
-- token and untrusted-text markers absent from all logs.
+- token and untrusted-text markers absent from all logs;
+- the §1A.5 guard: a refused push when `outcome != null` or `N` is not current; the post-push re-read; the check job's pre-read;
+- the three §1A.6 interleavings, driven step by step against the fake GitHub API.
+
+### 1A.5 Publish-time guard (immediately before any branch push)
+
+The guard is trusted code from `E` (a new `docs/auto-goal-actions/publish-guard.mjs`, run with the `publish` job's own read access). It runs as the **last step before `git push`**, with no other step between it and the push. Its inputs are the dispatch inputs `{goal, issue, nonce}` and the commit `X` the job is about to push.
+
+It does the following, in order, with fresh API reads (no value cached from earlier jobs):
+
+1. **Read the current record.** `GET /repos/{repo}/issues/{issue}/comments`, all pages. Take the highest-revision record comment by the trusted login with the existing `parseRecordComment`. If two copies of the top revision exist (a fork), refuse.
+2. **Require `goal.outcome == null`.** A blocked or completed goal gets no push.
+3. **Require that `N` is the current dispatch:** exactly one live dispatch, with `nonce == N`, the phase the job was given, and `executorSha == github.sha`.
+4. **Require the branch to be unchanged.** Check `git ls-remote origin refs/heads/<goal.branch>`: absent for reproduce, equal to `dispatch.baseSha` for implement.
+5. **Require `X`'s parent to be `dispatch.baseSha`, with trailers naming `N` and this run.**
+
+If every check passes, the push runs immediately, with the lease of change 12. **Immediately after the push**, the job repeats steps 1–3. If the goal is no longer open, or `N` is no longer current:
+
+- **Reproduce:** create no PR.
+- **Implement:** the PR already follows the branch. Post one fixed PR comment, which carries no record text, review text or model output:
+
+  > Auto Goal: this commit was published after the goal stopped; it was not checked and must not be used.
+- **Either phase:** fail the job.
+
+The guard prints only fixed messages (§1 principle 5); it never prints record contents.
+
+**The remaining non-atomic gap, stated plainly.**
+
+- **No atomic check-and-push:** steps 1–3 read an issue comment, and the push updates a git ref. GitHub has no operation that checks one and updates the other atomically.
+- **The window:** the coordinator can save a blocked outcome **after** step 3 and **before** the push lands. That window lasts from the guard's last read to the push completing, typically seconds, and it cannot be closed with the tools version 1 uses.
+- **What the lease does and doesn't cover:** it makes the push atomic against **branch** movement only, not against the record.
+- **Consequence:** a commit can appear on `goal.branch` after the goal blocked. For implement it also becomes the draft PR's head.
+
+What bounds the damage:
+
+- at most one such commit per dispatch, because the lease is from a single base and version 1 never resends;
+- it carries the dispatch trailers;
+- the post-push re-read finds the block and labels the PR;
+- the check job's pre-read stops before running it;
+- the PR stays a draft that nothing merges;
+- the blocked outcome is final, and no coordinator action follows it.
+
+What remains wrong:
+
+- the record's blocker reason doesn't mention the late commit;
+- if the executor job dies between the push and the post-push re-read, no PR note is written and the late commit is visible only through its trailers and the failed run;
+- the check job's pre-read has the same kind of gap, so in a narrow race the checks can still run on the late commit. Their results are never ingested, because the goal is already final.
+
+**A Phase 2 option, not in version 1, to close the gap.** Keep a goal-state ref, `refs/heads/claude/auto-goal-state/<goal>`, that the coordinator moves when it blocks or completes. The executor then pushes the goal branch **and** that state ref with `git push --atomic`, each with its own lease, so a block that has already landed makes the whole push fail. This would need a coordinator change and a check of `--atomic` behaviour on GitHub.
+
+### 1A.6 Race trace: the coordinator blocks while the executor is working
+
+Setup: d2 (`pilot-1.d2`, implement, base `T`) was sent at t = 0. Its run starts at t = 2 min, and the implement job (Claude) takes a long time. At t = 61 min, a coordinator session's sync sees the run still `in_progress` past `executorTimeoutMinutes` (60). It saves `outcome = blocked`, reason "Executor run `<id>` for `pilot-1.d2` did not finish within 60 min", and schedules nothing more. The same interleavings apply to any blocker written while d2 is in flight, such as a person running `cli.ts block`.
+
+**(a) Executor reaches the guard after the block is saved** (the expected case)
+
+1. At t = 63, implement finishes and publish starts. The guard's step 2 reads `outcome = blocked` and refuses.
+2. Nothing is pushed. The job fails with a fixed message.
+3. The `workflow_run` wake starts a coordinator session; `begin` returns `done`.
+4. Final state: branch at `T`, PR head `T`, goal blocked with the timeout reason. Consistent.
+
+**(b) The block lands inside the gap**
+
+1. At t = 60:59, the guard passes all five checks.
+2. At t = 61:00, the coordinator saves the block.
+3. At t = 61:01, the push lands: the branch and the PR head are now `F` (parent `T`, trailer `pilot-1.d2`). The lease succeeds, because the branch was still at `T`.
+4. The post-push re-read sees `outcome = blocked`. It posts the fixed note on PR `P` and fails the job.
+5. The check job's pre-read sees the block and stops, so no proposed code runs.
+6. A coordinator wake returns `done`.
+7. Final state: PR head `F`, labelled "published after the goal stopped", unchecked. Goal blocked with the timeout reason, which doesn't mention `F`. That is the gap described in §1A.5.
+
+**(c) Same as (b), but the executor job dies right after the push**
+
+1. The push of `F` lands, then the runner is lost before the re-read.
+2. No PR note is written, and no check runs, because the check job needs `publish` to succeed.
+3. Final state: PR head `F`, unlabelled. The commit's trailers and the failed run are the only trace. The goal stays blocked.
+4. A person reviewing the blocked goal must compare the PR head with the last head in the record (`T`). The record comment shows the head it last saw, so the mismatch is visible to them, but nothing flags it automatically.
+
+**Reproduce variant of (b) and (c)** (d1, base `B`)
+
+1. A push in the gap creates `goal.branch` at `T` with no PR, because the post-push re-read creates none.
+2. The branch exists with no PR and no checks.
+3. Nothing reads it, because the goal is final.
+
+### 1A.7 Contract status
+
+**The contract is frozen at this revision for version 1.** Implementation of §1A.4 proceeds offline, on separate branches, against fakes. Any change found to be necessary during implementation goes into a new, reviewed revision, not into code silently.
 
 ## 2. Identifiers and pinned commits
 
