@@ -257,12 +257,15 @@ export async function syncDispatch(goal: GoalRecord, github: ExecutorGitHub, now
     goal.pr = pulls[0].number;
     addEvent(goal, "pr", `The executor opened draft ${pulls[0].html_url}.`, now);
   }
-  // Scope of the change (contract §3): reproduce touches only the criterion's file; implement never touches it.
+  // Scope of the change (contract §3): reproduce touches only the criterion's file; implement touches no
+  // test file at all (the acceptance test or any other src .test.ts/.test.tsx), matching validate-proposal.mjs.
   const criterion = goal.acceptanceCriteria[0];
   const file = `artifacts/SpecSmith/${(criterion.check as { file: string }).file}`;
   const changed = await github.compareFiles(goal.repo, d.baseSha, x);
   if (d.phase === "reproduce" && (changed.length !== 1 || changed[0] !== file)) return fail(`Reproduce did not prove the defect on ${x}: it changed ${changed.join(", ") || "nothing"}, not only ${file}.`, { commit: x });
   if (d.phase === "implement" && changed.includes(file)) return fail(`Fix did not pass on ${x}: it changed the acceptance test ${file}.`, { commit: x });
+  const tests = changed.filter((p) => /^artifacts\/SpecSmith\/src\/.*\.test\.tsx?$/.test(p));
+  if (d.phase === "implement" && tests.length) return fail(`Fix did not pass on ${x}: it changed test files ${tests.join(", ")}.`, { commit: x });
   // The check jobs, by their exact names; success means the phase's expectation was met.
   const phase = d.phase === "reproduce" ? "before" : "after";
   const expected: { id: string | null; label: string; command: string }[] = [{ id: criterion.id, label: criterion.id, command: criterion.command }];

@@ -54,6 +54,9 @@ const runShape = (nonce: string, e: string) => ({ name: executorRunName(ID, nonc
 const BUGGY = "export const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi + 1);\n";
 const FIXED = "export const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);\n";
 const TEST_BEFORE = 'import { expect, it } from "vitest";\nimport { clamp } from "./clamp.ts";\nit("keeps low values at the bound", () => { expect(clamp(-1, 0, 3)).toBe(0); });\n';
+// Another test in the fixture, not the acceptance test: an implement commit may not touch it either.
+const OTHER_TEST_FILE = "src/lib/clamp.edges.test.ts";
+const OTHER_TEST = 'import { expect, it } from "vitest";\nimport { clamp } from "./clamp.ts";\nit("keeps a value inside the range", () => { expect(clamp(1, 0, 3)).toBe(1); });\n';
 const TEST_REPRO = TEST_BEFORE + 'it("keeps high values at the bound", () => { expect(clamp(5, 0, 3)).toBe(3); });\n';
 
 let root: string;
@@ -70,6 +73,7 @@ function makeOrigin(): { origin: string; base: string } {
   writeFileSync(join(app, "tsconfig.json"), '{"compilerOptions":{"strict":true,"module":"esnext","moduleResolution":"bundler","target":"es2022","noEmit":true,"types":[],"allowImportingTsExtensions":true},"include":["src"]}\n');
   writeFileSync(join(app, "src/lib/clamp.ts"), BUGGY);
   writeFileSync(join(app, CRITERION_FILE), TEST_BEFORE);
+  writeFileSync(join(app, OTHER_TEST_FILE), OTHER_TEST);
   git(dir, "init", "-q", "-b", "main");
   git(dir, "add", ".");
   git(dir, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "base");
@@ -511,6 +515,16 @@ describe("version 1 blockers: every failure stops the goal visibly, with no auto
     await h.executor(`${ID}.d2`, { skipValidate: true, claude: (p, work) => { mockClaude(p, work); writeFileSync(join(work, "artifacts/SpecSmith", CRITERION_FILE), TEST_BEFORE); } });
     const F = h.gh.headOf(BRANCH)!;
     await blockedWith(h, new RegExp(`^Fix did not pass on ${F}: it changed the acceptance test ${esc("artifacts/SpecSmith/src/lib/clamp.test.ts.")}$`));
+  });
+
+  it("the coordinator independently refuses an implement commit that edits another test file, though every executor job succeeded", { timeout: 90_000 }, async () => {
+    const h = await upTo("d2-sent");
+    h.tick(2);
+    // The fix itself is right and the checks pass; the commit also weakens a different test.
+    await h.executor(`${ID}.d2`, { skipValidate: true, claude: (p, work) => { mockClaude(p, work); writeFileSync(join(work, "artifacts/SpecSmith", OTHER_TEST_FILE), OTHER_TEST.replace("toBe(1)", "toBeDefined()")); } });
+    expect(h.gh.runs.at(-1)!.jobs.every((j) => j.conclusion === "success"), JSON.stringify(h.gh.runs.at(-1)!.jobs)).toBe(true);
+    const F = h.gh.headOf(BRANCH)!;
+    await blockedWith(h, new RegExp(`^Fix did not pass on ${F}: it changed test files ${esc("artifacts/SpecSmith/src/lib/clamp.edges.test.ts.")}$`));
   });
 
   it("the coordinator independently refuses a published commit whose trailer names another run", { timeout: 60_000 }, async () => {
