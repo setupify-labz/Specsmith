@@ -17,6 +17,17 @@ import { prepareOutDir, runDailyProposal } from "./run.ts";
 import { selectTopic } from "./select.ts";
 import { DAY_ROW_FIELDS, DailyProposalError, metricProblem, parseSnapshot } from "./snapshot.ts";
 import { TOPICS } from "./topics.ts";
+import { emptyLedger, loadUsedLedger, markTopicUsed, parseUsedLedger, type UsedEntry } from "./usedTopics.ts";
+import { main as markUsedMain } from "./markUsed.ts";
+import { specProblems } from "../animationScenes/spec.ts";
+import { SCENE_NAMES } from "../animationScenes/library.ts";
+import { CPU_POWER_CUT } from "../nextVideoCpuPower/cut.ts";
+import { ATX_24PIN_CUT } from "../reviewQueue/atx24Pin.ts";
+import { CPU_FAN_HEADER_CUT } from "../reviewQueue/cpuFanHeader.ts";
+import { FRONT_PANEL_PINS_CUT } from "../reviewQueue/frontPanelPins.ts";
+import { GPU_POWER_CABLE_CUT } from "../reviewQueue/gpuPowerCable.ts";
+import { MONITOR_INPUT_SOURCE_CUT } from "../reviewQueue/monitorInputSource.ts";
+import { RAM_SLOTS_CUT } from "../reviewQueue/ramSlots.ts";
 
 const here = import.meta.dirname;
 const SNAPSHOT_PATH = join(here, "snapshots", "2026-10-11.json");
@@ -103,13 +114,18 @@ describe("the pick records what influenced it and what was unknown", () => {
     expect(selection.chosenBy).toBe("data");
     expect(selection.targetSeconds).toBe(TEMPLATES["cpu-power"].durationSeconds);
     expect(selection.dataTargetSeconds).toBe(14);
+    // The won't-turn-on family first (the channel's fastest troubleshooting Short), then by editorial prior.
     expect(selection.ranking).toEqual([
       { topicId: "cpu-power-cable", familyMatch: true, editorialPrior: 0.8 },
-      { topicId: "ram-not-seated", familyMatch: false, editorialPrior: 0.9 },
+      { topicId: "front-panel-power-pins", familyMatch: true, editorialPrior: 0.7 },
+      { topicId: "atx-24pin-cable", familyMatch: true, editorialPrior: 0.65 },
+      { topicId: "gpu-power-cable", familyMatch: false, editorialPrior: 0.75 },
+      { topicId: "monitor-input-source", familyMatch: false, editorialPrior: 0.6 },
+      { topicId: "cpu-fan-header", familyMatch: false, editorialPrior: 0.55 },
+      { topicId: "ram-two-stick-slots", familyMatch: false, editorialPrior: 0.5 },
     ]);
-    for (const id of ["monitor-input-source", "front-panel-power-pins"]) {
-      expect(selection.excluded).toContainEqual({ topicId: id, why: expect.stringContaining("no animation template yet") });
-    }
+    // The hand-built RAM cut is not in the automatic queue; an operator can still choose it.
+    expect(selection.excluded).toContainEqual({ topicId: "ram-not-seated", why: expect.stringContaining("not in the automatic queue") });
   });
   it("measures each video's age to the snapshot's collection time, so a later run of the same snapshot ranks the same", () => {
     // parseSnapshot accepts a snapshot up to its max age; selection must not depend on when within that window it runs.
@@ -127,9 +143,23 @@ describe("the pick records what influenced it and what was unknown", () => {
     expect(forced).toMatchObject({ chosenBy: "operator", dataPick: "cpu-power-cable", targetSeconds: TEMPLATES["ram-seat"].durationSeconds });
     expect(forced.topic.id).toBe("ram-not-seated");
     expect(forced.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.metric).toContain("NOT data");
-    const error = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "front-panel-power-pins" }));
-    expect(error.code).toBe("no-topic");
-    expect(error.message).toContain("no animation template yet");
+    const unknown = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "no-such-topic" }));
+    expect(unknown).toMatchObject({ code: "no-topic", message: expect.stringContaining("not in the topic library") });
+    // A topic already taken for review is refused even when an operator names it.
+    const used = refusal(() => selectTopic(parseSnapshot(raw(), NOW), { topicId: "cpu-power-cable", used: [{ topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "test" }] }));
+    expect(used).toMatchObject({ code: "no-topic", message: expect.stringContaining("already taken for review") });
+  });
+  it("never reports an operator-only topic as the data's pick, even when it is the only one left (Codex P2)", () => {
+    const forced = selectTopic(parseSnapshot(raw(), NOW), { topicId: "ram-not-seated" });
+    expect(forced.ranking.map((r) => r.topicId)).not.toContain("ram-not-seated");
+    // Every automatic topic taken: a run without --topic refuses, and an operator's --topic proposes the
+    // hand-built cut with no data pick, instead of recording it as the data's own choice.
+    const used = TOPICS.filter((t) => t.automatic !== false).map((t) => ({ topicId: t.id, markedAt: NOW.toISOString(), by: "test" }));
+    expect(refusal(() => selectTopic(parseSnapshot(raw(), NOW), { used })).code).toBe("no-topic");
+    const last = selectTopic(parseSnapshot(raw(), NOW), { used, topicId: "ram-not-seated" });
+    expect(last).toMatchObject({ chosenBy: "operator", dataPick: null, ranking: [] });
+    expect(last.topic.id).toBe("ram-not-seated");
+    expect(last.influences.find((i) => i.metric.startsWith("operator's topic choice"))?.usedFor).toContain("none (no automatic topic is left)");
   });
   it("labels the editorial prior and the template length as not data, and keeps cross-platform rows as context only", () => {
     expect(selection.influences.find((i) => i.metric.includes("editorial prior"))?.metric).toContain("NOT data");
@@ -157,19 +187,31 @@ describe("the pick records what influenced it and what was unknown", () => {
     for (const title of ["Your GPU's 8-pin PCIe cable, explained", "RTX 5070: 8-pin or 12V-2x6?", "6+2 vs 8-pin PCIe power"]) expect(covers(title)).toBe(false);
     for (const title of ["CPU 8-pin cable: is yours plugged in?", "8-pin CPU power: one or two?", "EPS12V vs PCIe cables", "4+4 pin CPU connector", "No CPU power? Check this"]) expect(covers(title)).toBe(true);
   });
-  it("moves to the next producible topic once one is covered, and refuses with no-topic when none is left (no text-card fallback)", () => {
-    const doc = raw(); doc.sources.youtube.videos[0].title = "Added RAM, now it won't boot? Reseat the RAM";
-    expect(selectTopic(parseSnapshot(doc, NOW)).topic.id).toBe("cpu-power-cable");
-    doc.sources.youtube.videos[1].title = "New build won't boot? Check the CPU power cable";
-    const error = refusal(() => selectTopic(parseSnapshot(doc, NOW)));
+  it("moves to the next eligible topic once one is covered by a published title", () => {
+    const doc = raw(); doc.sources.youtube.videos[1].title = "New build won't boot? Check the CPU power cable";
+    const next = selectTopic(parseSnapshot(doc, NOW));
+    expect(next.topic.id).toBe("front-panel-power-pins");
+    expect(next.excluded).toContainEqual({ topicId: "cpu-power-cable", why: expect.stringContaining("an existing title matches") });
+  });
+  it("walks the whole queue as topics are marked used, without --topic, and then refuses (no text-card fallback)", () => {
+    const snapshot = parseSnapshot(raw(), NOW);
+    const used: UsedEntry[] = [];
+    const picks: string[] = [];
+    for (let day = 0; day < 7; day += 1) {
+      const pick = selectTopic(snapshot, { used });
+      expect(pick.chosenBy).toBe("data");
+      picks.push(pick.topic.id);
+      used.push({ topicId: pick.topic.id, markedAt: new Date(NOW.getTime() + day * 60_000).toISOString(), by: "test" });
+    }
+    expect(picks).toEqual(["cpu-power-cable", "front-panel-power-pins", "atx-24pin-cable", "gpu-power-cable", "monitor-input-source", "cpu-fan-header", "ram-two-stick-slots"]);
+    const error = refusal(() => selectTopic(snapshot, { used }));
     expect(error.code).toBe("no-topic");
-    expect(error.message).toContain("ram-not-seated (an existing title matches");
-    expect(error.message).toContain("cpu-power-cable (an existing title matches");
-    expect(error.message).toContain("animation template");
+    expect(error.message).toContain("already taken for review");
+    expect(error.message).toContain("ram-not-seated (not in the automatic queue");
   });
 });
 
-describe.each([["ram-not-seated", "ram-seat"], ["cpu-power-cable", "cpu-power"]])("the storyboard of %s is the cut's own", (topicId, templateId) => {
+describe.each(TOPICS.filter((t) => t.animation).map((t) => [t.id, t.animation!]))("the storyboard of %s is the cut's own", (topicId, templateId) => {
   const topic = TOPICS.find((t) => t.id === topicId)!;
   const template = TEMPLATES[templateId];
   const storyboard = buildStoryboard(topic, 14);
@@ -180,16 +222,19 @@ describe.each([["ram-not-seated", "ram-seat"], ["cpu-power-cable", "cpu-power"]]
     expect(storyboard.beats.at(-1)!.endSecond).toBe(template.durationSeconds);
     expect(storyboard.persistentDisclosures).toEqual(["ILLUSTRATION", "Stylized example · not a fix for every PC"]);
   });
-  it("unplugs before the case opens, and plugs back in before the try-again line", () => {
-    const unplug = template.beats.find((b) => /unplug/i.test(b.caption))!, opens = template.beats.find((b) => b.storyBeat === "location")!;
-    expect(unplug.to).toBeLessThanOrEqual(opens.from);
-    expect(template.labels.find((l) => l.text === "POWER CORD BACK IN")!.from).toBeLessThan(template.beats.find((b) => b.caption === "Then try booting again.")!.from);
-    expect(storyboard.beats.at(-1)!.narration).toBe("Then try booting again.");
+  it("unplugs before any work inside the case, plugs back in before the last line, and ends on an instruction", () => {
+    const inside = template.beats.find((b) => b.storyBeat === "location");   // every cut that works inside the case has a "location" beat
+    const unplug = template.beats.find((b) => /unplug/i.test(b.caption));
+    if (inside) { expect(unplug, "a cut that works inside the case unplugs first").toBeDefined(); expect(unplug!.to).toBeLessThanOrEqual(inside.from); }
+    const back = template.labels.find((l) => l.text === "POWER CORD BACK IN");
+    if (unplug) expect(back!.from).toBeLessThan(template.beats.at(-1)!.from);
+    // The last line asks the viewer to try again; it never claims a result.
+    expect(storyboard.beats.at(-1)!.narration).toMatch(/^Then (try|start|check)\b/);
+    expect(storyboard.beats.at(-1)!.narration).toBe(topic.finalCta);
   });
-  it("has every claim sourced to a named page, and the snap as the clearest cue", () => {
+  it("has every claim sourced to a named page, and its clearest cue actually sounds", () => {
     for (const claim of topic.claims) expect(claim.basis).toMatch(/https?:\/\/|crucial\.com\/support/);
-    expect(template.clearestCue).toBe("snap");
-    expect(template.cues.some((c) => c.kind === "snap")).toBe(true);
+    expect(template.cues.some((c) => c.kind === template.clearestCue)).toBe(true);
   });
   it("gives every label at least 1 s per 20 characters of its own on-screen span", () => {
     for (const label of template.labels) expect(label.text.length / (label.to - label.from)).toBeLessThanOrEqual(20);
@@ -384,4 +429,104 @@ describe("the render check reads the exported files (committed 2026-10-11 run)",
     const failed = (await verifyRender(TEMPLATES["ram-seat"], { silentPath: files.sfxPath, sfxPath: files.sfxPath }, scratch())).checks.filter((c) => !c.passed).map((c) => c.check);
     expect(failed).toContain("the silent MP4 is silent");
   }, 60_000);
+});
+
+describe("the review queue: seven distinct topics, each a data-only cut on the shared scenes", () => {
+  const SPECS = [CPU_POWER_CUT, FRONT_PANEL_PINS_CUT, ATX_24PIN_CUT, GPU_POWER_CABLE_CUT, MONITOR_INPUT_SOURCE_CUT, CPU_FAN_HEADER_CUT, RAM_SLOTS_CUT];
+  const queue = TOPICS.filter((t) => t.automatic !== false && t.animation);
+  it("holds exactly seven automatic topics, each rendered from its own spec", () => {
+    expect(queue).toHaveLength(7);
+    for (const topic of queue) {
+      const spec = SPECS.find((s) => s.id === topic.animation);
+      expect(spec, topic.id).toBeDefined();
+      expect(specProblems(spec!), topic.id).toEqual([]);
+      for (const shot of spec!.shots) expect(SCENE_NAMES).toContain(shot.scene);
+    }
+  });
+  it("covers distinct problems: unique ids, titles and cuts (two may share a symptom: one symptom, two different checks)", () => {
+    for (const key of ["id", "title", "animation"] as const) expect(new Set(queue.map((t) => t[key])).size).toBe(queue.length);
+  });
+  it("rests every claim on a cited source, never on unsourced editorial knowledge", () => {
+    for (const topic of queue) {
+      expect(topic.claims.length, topic.id).toBeGreaterThanOrEqual(2);
+      for (const claim of topic.claims) expect(claim.basis, `${topic.id} ${claim.id}`).toMatch(/https:\/\/\S+/);
+      const spec = SPECS.find((s) => s.id === topic.animation)!;
+      for (const src of spec.sources) { expect(src.url).toMatch(/^https:\/\//); expect(src.quote.length).toBeGreaterThan(20); }
+      expect(spec.sourcesChecked.method).toContain("search excerpts");
+    }
+  });
+  it("leaves out the two checks the published two-spots Short already covers (PSU switch, motherboard video port)", () => {
+    for (const topic of TOPICS) expect(topic.title.toLowerCase()).not.toMatch(/power supply switch|psu switch|motherboard (video )?port/);
+  });
+});
+
+describe("the used-topic ledger", () => {
+  const ids = TOPICS.map((t) => t.id);
+  it("is committed empty: nothing has been taken for review yet", async () => {
+    const { ledger } = await loadUsedLedger(join(here, "used-topics.json"), ids, NOW);
+    expect(ledger.entries).toEqual([]);
+  });
+  it("refuses duplicates, unknown topics, a missing person and dates in the future", () => {
+    const entry = { topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "a" };
+    const bad = (entries: unknown[]) => refusal(() => parseUsedLedger({ ...emptyLedger(), entries }, ids, NOW));
+    expect(bad([entry, entry]).message).toContain("marked used twice");
+    expect(bad([{ ...entry, topicId: "nope" }]).message).toContain("not in the topic library");
+    expect(bad([{ ...entry, by: " " }]).message).toContain("does not say who");
+    expect(bad([{ ...entry, markedAt: "2099-01-01T00:00:00Z" }]).message).toContain("in the future");
+    expect(refusal(() => parseUsedLedger({ kind: "something-else", version: 1, entries: [] }, ids, NOW)).code).toBe("ledger-invalid");
+  });
+  it("marks a topic in the ledger it is given (a temporary copy here), and the next pick moves on", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester"], NOW)).toBe(0);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester"], NOW)).toBe(1);
+      const { ledger } = await loadUsedLedger(path, ids, NOW);
+      expect(ledger.entries.map((e) => [e.topicId, e.by])).toEqual([["cpu-power-cable", "tester"]]);
+      expect(selectTopic(parseSnapshot(raw(), NOW), { used: ledger.entries }).topic.id).toBe("front-panel-power-pins");
+      expect(readdirSync(dir)).toEqual(["used.json"]);   // the atomic write leaves no temporary file behind
+      await expect(markTopicUsed(path, { topicId: "nope", by: "x" }, ids, NOW)).rejects.toMatchObject({ code: "ledger-invalid" });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("holds only the topic, who took it and when: a note or any other field is refused (Codex P2)", async () => {
+    const entry = { topicId: "cpu-power-cable", markedAt: NOW.toISOString(), by: "a" };
+    for (const extra of [{ note: "approved for publishing" }, { approved: true }, { status: "published" }]) {
+      const error = refusal(() => parseUsedLedger({ ...emptyLedger(), entries: [{ ...entry, ...extra }] }, ids, NOW));
+      expect(error).toMatchObject({ code: "ledger-invalid", message: expect.stringContaining(Object.keys(extra)[0]) });
+    }
+    expect(refusal(() => parseUsedLedger({ ...emptyLedger(), reviewedBy: "x" }, ids, NOW)).code).toBe("ledger-invalid");
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester", "--note", "approved"], NOW)).toBe(1);
+      expect((await loadUsedLedger(path, ids, NOW)).ledger.entries).toEqual([]);
+      expect(await markUsedMain(["--ledger", path, "--topic", "cpu-power-cable", "--by", "tester"], NOW)).toBe(0);
+      expect(Object.keys((await loadUsedLedger(path, ids, NOW)).ledger.entries[0]).sort()).toEqual(["by", "markedAt", "topicId"]);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("keeps every entry when people mark different topics at the same time (Codex P2: no lost update)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      const automatic = TOPICS.filter((t) => t.automatic !== false).map((t) => t.id);
+      await Promise.all(automatic.map((topicId, i) => markTopicUsed(path, { topicId, by: `reviewer ${i}` }, ids, NOW)));
+      const { ledger } = await loadUsedLedger(path, ids, NOW);
+      expect(ledger.entries.map((e) => e.topicId).sort()).toEqual([...automatic].sort());
+      expect(readdirSync(dir)).toEqual(["used.json"]);   // the lock and temporary files are gone afterwards
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("refuses, rather than overwrites, while another process holds the ledger lock", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "used-ledger-"));
+    try {
+      const path = join(dir, "used.json");
+      writeFileSync(path, `${JSON.stringify(emptyLedger())}\n`);
+      writeFileSync(`${path}.lock`, "12345 2026-10-11T20:59:00Z\n");
+      await expect(markTopicUsed(path, { topicId: "cpu-power-cable", by: "x" }, ids, NOW, 50)).rejects.toMatchObject({ code: "ledger-busy", message: expect.stringContaining("used.json.lock") });
+      expect((await loadUsedLedger(path, ids, NOW)).ledger.entries).toEqual([]);
+      expect(readdirSync(dir).sort()).toEqual(["used.json", "used.json.lock"]);   // someone else's lock is left alone
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
 });

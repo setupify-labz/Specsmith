@@ -1,0 +1,810 @@
+{
+  "kind": "daily-short-proposal",
+  "version": "daily-short-proposal-v2",
+  "generatedAt": "2026-10-13T18:23:33.192Z",
+  "status": "awaiting-fact-check",
+  "notPublished": true,
+  "noVoiceGenerated": true,
+  "notScheduled": true,
+  "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
+    "collectedAt": "2026-10-11T20:38:30Z",
+    "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
+    "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
+    "cost": {
+      "vidiqCreditsBefore": 135,
+      "vidiqCreditsAfter": 130,
+      "metricool": "no per-call cost reported"
+    }
+  },
+  "topic": {
+    "id": "gpu-power-cable",
+    "family": "on-no-picture",
+    "symptom": "The PC turns on (fans spin) but the monitor shows nothing.",
+    "title": "PC On, But No Picture? Check the Graphics Card's Power Cable",
+    "animation": "gpu-power-cable",
+    "chosenBy": "data",
+    "dataPick": "gpu-power-cable"
+  },
+  "hook": {
+    "frameOne": "PC ON, NO PICTURE?"
+  },
+  "script": "PC on, but no picture? Shut down and unplug it first. Find the power socket on the graphics card. Plug in its power cable from your PSU. If it has more than one, connect them all. Plug it back in. Then try booting again.",
+  "storyboard": {
+    "platform": "youtube-shorts",
+    "targetDurationSeconds": 12.6,
+    "title": "PC On, But No Picture? Check the Graphics Card's Power Cable",
+    "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+    "beats": [
+      {
+        "startSecond": 0,
+        "endSecond": 1.6,
+        "purpose": "hook",
+        "narration": "PC on, but no picture?",
+        "visualDirection": "The stylized PC lit, its fans turning; the camera pushes in on the monitor beside it, which stays dark.",
+        "onScreenText": "PC ON, NO PICTURE?",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 1.6,
+        "endSecond": 3.4,
+        "purpose": "commitment",
+        "narration": "Shut down and unplug it first.",
+        "visualDirection": "At the back of the power supply, the power cord comes out of the inlet.",
+        "onScreenText": "UNPLUG FIRST",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 3.4,
+        "endSecond": 5.2,
+        "purpose": "evidence",
+        "narration": "Find the power socket on the graphics card.",
+        "visualDirection": "The side panel slides off; the camera closes on an empty power socket on the graphics card's top edge in an example position, outlined amber, marked POSITION VARIES.",
+        "onScreenText": "GPU POWER SOCKET → POSITION VARIES",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 5.2,
+        "endSecond": 7.1,
+        "purpose": "payoff",
+        "narration": "Plug in its power cable from your PSU.",
+        "visualDirection": "Side view: the plug marked GPU lowers onto the socket, thumbs press it home, its latch hooks over the tab.",
+        "onScreenText": "YOUR PSU'S OWN CABLE",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 7.1,
+        "endSecond": 9,
+        "purpose": "payoff",
+        "narration": "If it has more than one, connect them all.",
+        "visualDirection": "The plug outlined green; CHECK YOUR CARD'S MANUAL below.",
+        "onScreenText": "FULLY IN → CHECK YOUR CARD'S MANUAL",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 9,
+        "endSecond": 10.8,
+        "purpose": "cta",
+        "narration": "Plug it back in.",
+        "visualDirection": "The camera pulls back from the filled socket; the panel slides back on; at the back, the cord goes back in.",
+        "onScreenText": "POWER CORD BACK IN",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      },
+      {
+        "startSecond": 10.8,
+        "endSecond": 12.6,
+        "purpose": "cta",
+        "narration": "Then try booting again.",
+        "visualDirection": "The unlit PC beside the dark monitor, its power button pulsing amber. No one presses it; no boot is shown.",
+        "onScreenText": "(no label: caption only)",
+        "factDependencies": [
+          "gpu-power-cable-unplug",
+          "gpu-own-cables",
+          "gpu-connectors",
+          "gpu-no-picture",
+          "gpu-psu-own"
+        ]
+      }
+    ],
+    "finalCta": "Then try booting again.",
+    "factualGuardrails": [
+      "Never say: guaranteed cure for boot failures (It may not work; one check, never a guaranteed fix.)",
+      "Never say: one universal connector type fits all graphics cards (Cards use different connectors (6+2-pin, 12V-2x6 and others); the cut says CHECK YOUR CARD'S MANUAL.)",
+      "Never say: any modular lead swaps freely between different PSU brands (Modular cables can differ between brands, series and models.)",
+      "Never say: successfully boots straight into Windows afterwards (The cut ends before anyone presses the button; no boot is shown or promised.)"
+    ],
+    "persistentDisclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "storyBeats": [
+    {
+      "storyBeat": "problem",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "storyBeat": "unplug",
+      "from": 1.6,
+      "to": 3.4
+    },
+    {
+      "storyBeat": "location",
+      "from": 3.4,
+      "to": 5.2
+    },
+    {
+      "storyBeat": "action",
+      "from": 5.2,
+      "to": 7.1
+    },
+    {
+      "storyBeat": "more-than-one",
+      "from": 7.1,
+      "to": 9
+    },
+    {
+      "storyBeat": "power-back",
+      "from": 9,
+      "to": 10.8
+    },
+    {
+      "storyBeat": "try-again",
+      "from": 10.8,
+      "to": 12.6
+    }
+  ],
+  "onScreenLabels": [
+    {
+      "text": "PC ON, NO PICTURE?",
+      "from": 0,
+      "to": 1.6
+    },
+    {
+      "text": "UNPLUG FIRST",
+      "from": 1.6,
+      "to": 3.4
+    },
+    {
+      "text": "GPU POWER SOCKET",
+      "from": 4.3,
+      "to": 5.2
+    },
+    {
+      "text": "POSITION VARIES",
+      "from": 4.35,
+      "to": 5.2
+    },
+    {
+      "text": "YOUR PSU'S OWN CABLE",
+      "from": 5.3,
+      "to": 7.1
+    },
+    {
+      "text": "FULLY IN",
+      "from": 7.1,
+      "to": 9
+    },
+    {
+      "text": "CHECK YOUR CARD'S MANUAL",
+      "from": 7.2,
+      "to": 9
+    },
+    {
+      "text": "POWER CORD BACK IN",
+      "from": 9.45,
+      "to": 10.8
+    }
+  ],
+  "soundCues": [
+    {
+      "kind": "plug",
+      "at": 2.24,
+      "seconds": 0.2,
+      "reason": "the cord leaves the power supply"
+    },
+    {
+      "kind": "tap",
+      "at": 5.95,
+      "seconds": 0.04,
+      "reason": "the plug lands on the card's socket"
+    },
+    {
+      "kind": "snap",
+      "at": 6.53,
+      "seconds": 0.06,
+      "reason": "the plug's latch hooks over the socket's tab (stylized)"
+    },
+    {
+      "kind": "plug",
+      "at": 10.04,
+      "seconds": 0.2,
+      "reason": "the cord goes back into the power supply"
+    }
+  ],
+  "evidence": {
+    "channelSignals": [
+      {
+        "id": "46uG78uXmHg",
+        "title": "PC Won't Turn On? Check These 2 Spots First",
+        "theme": "troubleshooting",
+        "families": [
+          "wont-turn-on"
+        ],
+        "ageDays": 1.66,
+        "viewsPerDay": 1174.6,
+        "averageViewPercentage": "unknown",
+        "engagedShare": "unknown",
+        "durationSeconds": 15,
+        "analyticsSampleOk": false
+      },
+      {
+        "id": "pw3xuL0zjho",
+        "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 2.86,
+        "viewsPerDay": 414.4,
+        "averageViewPercentage": 52.59,
+        "engagedShare": 0.373,
+        "durationSeconds": 25,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "648FsZLefnc",
+        "title": "20 Game Leads… Only 4 FPS Apart?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 5.19,
+        "viewsPerDay": 243.2,
+        "averageViewPercentage": 74.93,
+        "engagedShare": 0.34,
+        "durationSeconds": 19,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "cSDhjFC-CI8",
+        "title": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix",
+        "theme": "troubleshooting",
+        "families": [
+          "compatibility"
+        ],
+        "ageDays": 8.02,
+        "viewsPerDay": 237.5,
+        "averageViewPercentage": 87.65,
+        "engagedShare": 0.578,
+        "durationSeconds": 14,
+        "analyticsSampleOk": true
+      }
+    ],
+    "themeSummary": {
+      "troubleshooting": {
+        "videos": 2,
+        "medianViewsPerDay": 706.1,
+        "medianAverageViewPercentage": 87.7,
+        "medianEngagedShare": 57.8
+      },
+      "comparison": {
+        "videos": 2,
+        "medianViewsPerDay": 328.8,
+        "medianAverageViewPercentage": 63.8,
+        "medianEngagedShare": 35.7
+      }
+    },
+    "claims": [
+      {
+        "id": "gpu-power-cable-unplug",
+        "proposition": "unplug the power cable before working inside the PC",
+        "basis": "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "gpu-own-cables",
+        "proposition": "a graphics card's power comes from its own cables from the power supply",
+        "basis": "Corsair, \"Can I use a PCI-e cable in the 8-pin motherboard plug?\" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): \"The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "gpu-connectors",
+        "proposition": "check the card's power connectors are properly connected, all of them where a card has several",
+        "basis": "Intel, \"Intel Arc A750 not working (Intel Community support thread)\" (https://community.intel.com/t5/Intel-ARC-Graphics/Intel-Arc-A750-Not-Working/m-p/1484315): \"Search-excerpt summary: Intel's support reply says to ensure the power connectors are properly connected to the power supply and the graphics card.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: for a discrete graphics card with a power connector, make sure the connector is firmly seated; reseat the card and the display cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "gpu-no-picture",
+        "proposition": "a PC that is on with no picture can come down to the graphics card's power cables",
+        "basis": "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: if the screen stays black, reseat the graphics card and its PCIe power cables at both the card and the PSU.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "gpu-psu-own",
+        "proposition": "use the power supply's own cable",
+        "basis": "Seasonic, \"Which cables are compatible with my Power Supply? (Knowledge Base 68)\" (https://knowledge.seasonic.com/article/68-cable-compatibility): \"Cables are often not compatible between brands, and even within a brand, modular cables may differ between series and models. Seasonic recommends using the DC cables supplied with the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      }
+    ],
+    "riskyClaimsBlocked": [
+      {
+        "id": "gpu-fixes-all",
+        "proposition": "guaranteed cure for boot failures",
+        "why": "It may not work; one check, never a guaranteed fix."
+      },
+      {
+        "id": "gpu-connector-type",
+        "proposition": "one universal connector type fits all graphics cards",
+        "why": "Cards use different connectors (6+2-pin, 12V-2x6 and others); the cut says CHECK YOUR CARD'S MANUAL."
+      },
+      {
+        "id": "gpu-cable-swap",
+        "proposition": "any modular lead swaps freely between different PSU brands",
+        "why": "Modular cables can differ between brands, series and models."
+      },
+      {
+        "id": "gpu-boot-shown",
+        "proposition": "successfully boots straight into Windows afterwards",
+        "why": "The cut ends before anyone presses the button; no boot is shown or promised."
+      }
+    ],
+    "sources": [
+      "Crucial, How to Install Memory in Your Desktop: https://www.crucial.com/support/install-memory-desktop",
+      "Corsair, Can I use a PCI-e cable in the 8-pin motherboard plug?: https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/",
+      "Intel, Intel Arc A750 not working (Intel Community support thread): https://community.intel.com/t5/Intel-ARC-Graphics/Intel-Arc-A750-Not-Working/m-p/1484315",
+      "ASUS, [Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632): https://www.asus.com/us/support/faq/1042632/",
+      "NZXT, PC Powers On But No Display: How to Fix It: https://nzxt.com/blogs/news/pc-powers-on-but-no-display",
+      "Seasonic, Which cables are compatible with my Power Supply? (Knowledge Base 68): https://knowledge.seasonic.com/article/68-cable-compatibility"
+    ]
+  },
+  "metricsThatInfluencedTheChoice": [
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 1174.6,
+      "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 414.4,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 52.59,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 243.2,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 74.93,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 237.5,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 87.65,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the target length"
+    },
+    {
+      "metric": "theme medians (views/day, avg view %, engaged %)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":706.1,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":328.8,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
+    },
+    {
+      "metric": "fastest troubleshooting Short",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1174.6 views/day)",
+      "usedFor": "symptom family: wont-turn-on"
+    },
+    {
+      "metric": "best-retained Short's length",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s",
+      "usedFor": "target length 14 s (clamped to 10-15 s)"
+    },
+    {
+      "metric": "tiktok views by publish day (sum)",
+      "source": "tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542)",
+      "value": 1803,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "instagram views by publish day (sum)",
+      "source": "instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542)",
+      "value": 691,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "editorial prior (NOT data)",
+      "source": "dailyShortProposal/topics.ts",
+      "value": 0.75,
+      "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "animation template length (not data)",
+      "source": "dailyShortProposal/animations.ts (gpu-power-cable)",
+      "value": "12.6 s",
+      "usedFor": "the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched"
+    }
+  ],
+  "unknown": [
+    "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
+    "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.66 days: its views per day are an early figure and may fall as it ages.",
+    "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
+    "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 interactions: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
+  ],
+  "usedTopicLedger": {
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "7860883ca9ab91cc8677c51e312683f72c4477bd1c651b81f7a6489f859c147b",
+    "entries": [
+      {
+        "topicId": "cpu-power-cable",
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "front-panel-power-pins",
+        "markedAt": "2026-10-13T18:22:58.712Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "atx-24pin-cable",
+        "markedAt": "2026-10-13T18:23:31.850Z",
+        "by": "queue demo (isolated ledger)"
+      }
+    ]
+  },
+  "topicsExcluded": [
+    {
+      "topicId": "ram-not-seated",
+      "why": "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)"
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "why": "already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "atx-24pin-cable",
+      "why": "already taken for review (marked 2026-10-13T18:23:31.850Z by queue demo (isolated ledger))"
+    }
+  ],
+  "ranking": [
+    {
+      "topicId": "gpu-power-cable",
+      "familyMatch": false,
+      "editorialPrior": 0.75
+    },
+    {
+      "topicId": "monitor-input-source",
+      "familyMatch": false,
+      "editorialPrior": 0.6
+    },
+    {
+      "topicId": "cpu-fan-header",
+      "familyMatch": false,
+      "editorialPrior": 0.55
+    },
+    {
+      "topicId": "ram-two-stick-slots",
+      "familyMatch": false,
+      "editorialPrior": 0.5
+    }
+  ],
+  "gates": {
+    "passed": true,
+    "findings": []
+  },
+  "factCheckRequired": [
+    {
+      "location": "title",
+      "line": "PC On, But No Picture? Check the Graphics Card's Power Cable",
+      "claimIds": [
+        "gpu-power-cable-unplug",
+        "gpu-own-cables",
+        "gpu-connectors",
+        "gpu-no-picture",
+        "gpu-psu-own"
+      ],
+      "bases": [
+        "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "Corsair, \"Can I use a PCI-e cable in the 8-pin motherboard plug?\" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): \"The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "Intel, \"Intel Arc A750 not working (Intel Community support thread)\" (https://community.intel.com/t5/Intel-ARC-Graphics/Intel-Arc-A750-Not-Working/m-p/1484315): \"Search-excerpt summary: Intel's support reply says to ensure the power connectors are properly connected to the power supply and the graphics card.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: for a discrete graphics card with a power connector, make sure the connector is firmly seated; reseat the card and the display cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: if the screen stays black, reseat the graphics card and its PCIe power cables at both the card and the PSU.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "Seasonic, \"Which cables are compatible with my Power Supply? (Knowledge Base 68)\" (https://knowledge.seasonic.com/article/68-cable-compatibility): \"Cables are often not compatible between brands, and even within a brand, modular cables may differ between series and models. Seasonic recommends using the DC cables supplied with the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.narration",
+      "line": "Find the power socket on the graphics card.",
+      "claimIds": [
+        "gpu-own-cables",
+        "gpu-no-picture"
+      ],
+      "bases": [
+        "Corsair, \"Can I use a PCI-e cable in the 8-pin motherboard plug?\" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): \"The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "NZXT, \"PC Powers On But No Display: How to Fix It\" (https://nzxt.com/blogs/news/pc-powers-on-but-no-display): \"Search-excerpt summary: if the screen stays black, reseat the graphics card and its PCIe power cables at both the card and the PSU.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "Plug in its power cable from your PSU.",
+      "claimIds": [
+        "gpu-power-cable-unplug",
+        "gpu-own-cables",
+        "gpu-psu-own"
+      ],
+      "bases": [
+        "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "Corsair, \"Can I use a PCI-e cable in the 8-pin motherboard plug?\" (https://www.corsair.com/us/en/explorer/diy-builder/power-supply-units/can-i-use-a-pci-e-cable-in-the-8-pin-motherboard-plug/): \"The connectors are either labelled as PCIe or CPU. The PCIe cables go to your graphics card, and the cable marked CPU will mount in your motherboards 8-pin header.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it.",
+        "Seasonic, \"Which cables are compatible with my Power Supply? (Knowledge Base 68)\" (https://knowledge.seasonic.com/article/68-cable-compatibility): \"Cables are often not compatible between brands, and even within a brand, modular cables may differ between series and models. Seasonic recommends using the DC cables supplied with the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.onScreenText",
+      "line": "YOUR PSU'S OWN CABLE",
+      "claimIds": [
+        "gpu-psu-own"
+      ],
+      "bases": [
+        "Seasonic, \"Which cables are compatible with my Power Supply? (Knowledge Base 68)\" (https://knowledge.seasonic.com/article/68-cable-compatibility): \"Cables are often not compatible between brands, and even within a brand, modular cables may differ between series and models. Seasonic recommends using the DC cables supplied with the power supply.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-5.narration",
+      "line": "If it has more than one, connect them all.",
+      "claimIds": [
+        "gpu-connectors"
+      ],
+      "bases": [
+        "Intel, \"Intel Arc A750 not working (Intel Community support thread)\" (https://community.intel.com/t5/Intel-ARC-Graphics/Intel-Arc-A750-Not-Working/m-p/1484315): \"Search-excerpt summary: Intel's support reply says to ensure the power connectors are properly connected to the power supply and the graphics card.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"[Motherboard] Troubleshooting - No Power/No Boot/No Display (FAQ 1042632)\" (https://www.asus.com/us/support/faq/1042632/): \"Search-excerpt summary: for a discrete graphics card with a power connector, make sure the connector is firmly seated; reseat the card and the display cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    }
+  ],
+  "animatedCut": {
+    "silent": "gpu-power-cable-silent.mp4",
+    "sfx": "gpu-power-cable-sfx.mp4",
+    "silentSha256": "1abbff293f475387f1e4bf0f9f03946a4d3e8b3faf55e485c86700213d0b1009",
+    "sfxSha256": "240317ab7bc19e04053b2f29ef1f98dd1cfab840096cc4d49f374653c042dfc8",
+    "durationSeconds": 12.6,
+    "fps": 30,
+    "disclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "verification": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "silent MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "silent MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "silent MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "sound-effects MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "sound-effects MP4 length",
+        "passed": true,
+        "detail": "12.600 s (expected 12.6 s)"
+      },
+      {
+        "check": "sound-effects MP4 frame count",
+        "passed": true,
+        "detail": "378 frames (expected 378)"
+      },
+      {
+        "check": "every beat's artwork is drawn",
+        "passed": true,
+        "detail": "beat 1: 17.5%; beat 2: 49.7%; beat 3: 78.2%; beat 4: 25.7%; beat 5: 25.1%; beat 6: 50.7%; beat 7: 14.2% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 2 and 6, mean difference 2.9 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "the disclosure line is on every sampled frame",
+        "passed": true,
+        "detail": "lowest 3.1% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 2.9% of the caption band lit"
+      },
+      {
+        "check": "every cue sounds",
+        "passed": true,
+        "detail": "2.24s plug -23.0 dBFS; 5.95s tap -29.0 dBFS; 6.53s snap -12.4 dBFS; 10.04s plug -23.0 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "2.240s plug +68.0 dB; 5.950s tap +62.0 dB; 6.530s snap +78.6 dB; 10.040s plug +68.0 dB"
+      },
+      {
+        "check": "silence between cues (no stray sound, no boot sound at the end)",
+        "passed": true,
+        "detail": "0.02-2.21 s: -91.0 dBFS; 2.54-5.92 s: -91.0 dBFS; 6.09-6.50 s: -91.0 dBFS; 6.69-10.01 s: -91.0 dBFS; 10.34-12.58 s: -91.0 dBFS"
+      },
+      {
+        "check": "\"snap\" is the clearest cue",
+        "passed": true,
+        "detail": "-12.4 dBFS vs next -23.0 dBFS"
+      },
+      {
+        "check": "the silent MP4 is silent",
+        "passed": true,
+        "detail": "-91.0 dBFS"
+      },
+      {
+        "check": "sound effects stay below a -16 LUFS narration",
+        "passed": true,
+        "detail": "-35.1 LUFS integrated, -12.4 dBFS peak"
+      }
+    ],
+    "cuePeaks": [
+      {
+        "kind": "plug",
+        "at": 2.24,
+        "reason": "the cord leaves the power supply",
+        "measuredFrom": 2.2300000000000004,
+        "measuredTo": 2.5000000000000004,
+        "peakDbfs": -23
+      },
+      {
+        "kind": "tap",
+        "at": 5.95,
+        "reason": "the plug lands on the card's socket",
+        "measuredFrom": 5.94,
+        "measuredTo": 6.05,
+        "peakDbfs": -29
+      },
+      {
+        "kind": "snap",
+        "at": 6.53,
+        "reason": "the plug's latch hooks over the socket's tab (stylized)",
+        "measuredFrom": 6.5200000000000005,
+        "measuredTo": 6.6499999999999995,
+        "peakDbfs": -12.4
+      },
+      {
+        "kind": "plug",
+        "at": 10.04,
+        "reason": "the cord goes back into the power supply",
+        "measuredFrom": 10.03,
+        "measuredTo": 10.299999999999999,
+        "peakDbfs": -23
+      }
+    ],
+    "loudness": {
+      "integratedLufs": -35.1,
+      "peakDbfs": -12.4
+    },
+    "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-04/beats-phone.png",
+    "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-04/phone-every-0.25s.png"
+  },
+  "humanGates": {
+    "mechanism": {
+      "trustedApprovalAvailable": false,
+      "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+    },
+    "gates": [
+      {
+        "gate": "hook-on-phone",
+        "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "factual-takeaway",
+        "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "readable-at-size",
+        "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "pacing",
+        "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "style-fits-audience",
+        "question": "Does the style suit a beginner choosing a gaming PC?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "voice-and-mix",
+        "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "disclosures-in-context",
+        "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "rights-and-publication",
+        "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+        "status": "unresolved"
+      }
+    ]
+  }
+}

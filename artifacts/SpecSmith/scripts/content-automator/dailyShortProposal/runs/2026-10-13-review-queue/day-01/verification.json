@@ -1,0 +1,138 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "silent MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "silent MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "silent MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "sound-effects MP4 is 1080x1920",
+      "passed": true,
+      "detail": "1080x1920"
+    },
+    {
+      "check": "sound-effects MP4 length",
+      "passed": true,
+      "detail": "12.600 s (expected 12.6 s)"
+    },
+    {
+      "check": "sound-effects MP4 frame count",
+      "passed": true,
+      "detail": "378 frames (expected 378)"
+    },
+    {
+      "check": "every beat's artwork is drawn",
+      "passed": true,
+      "detail": "beat 1: 15.1%; beat 2: 49.7%; beat 3: 86.5%; beat 4: 29.4%; beat 5: 25.8%; beat 6: 50.7%; beat 7: 14.2% of the art region not background (at least 5%)"
+    },
+    {
+      "check": "every beat's artwork differs from every other beat's",
+      "passed": true,
+      "detail": "closest pair: beats 1 and 7, mean difference 2.2 grey levels (at least 2)"
+    },
+    {
+      "check": "the ILLUSTRATION band is on every sampled frame",
+      "passed": true,
+      "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+    },
+    {
+      "check": "the disclosure line is on every sampled frame",
+      "passed": true,
+      "detail": "lowest 3.1% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+    },
+    {
+      "check": "every sampled frame has caption text",
+      "passed": true,
+      "detail": "lowest 2.9% of the caption band lit"
+    },
+    {
+      "check": "every cue sounds",
+      "passed": true,
+      "detail": "0.30s button -26.0 dBFS; 2.24s plug -23.1 dBFS; 7.80s tap -29.0 dBFS; 8.38s snap -12.5 dBFS; 10.04s plug -23.0 dBFS"
+    },
+    {
+      "check": "every short cue has its own onset",
+      "passed": true,
+      "detail": "0.300s button +65.0 dB; 2.240s plug +67.9 dB; 7.800s tap +62.0 dB; 8.380s snap +78.5 dB; 10.040s plug +68.0 dB"
+    },
+    {
+      "check": "silence between cues (no stray sound, no boot sound at the end)",
+      "passed": true,
+      "detail": "0.02-0.27 s: -91.0 dBFS; 0.45-2.21 s: -91.0 dBFS; 2.54-7.77 s: -91.0 dBFS; 7.94-8.35 s: -91.0 dBFS; 8.54-10.01 s: -91.0 dBFS; 10.34-12.58 s: -91.0 dBFS"
+    },
+    {
+      "check": "\"snap\" is the clearest cue",
+      "passed": true,
+      "detail": "-12.5 dBFS vs next -23.0 dBFS"
+    },
+    {
+      "check": "the silent MP4 is silent",
+      "passed": true,
+      "detail": "-91.0 dBFS"
+    },
+    {
+      "check": "sound effects stay below a -16 LUFS narration",
+      "passed": true,
+      "detail": "-36.3 LUFS integrated, -12.5 dBFS peak"
+    }
+  ],
+  "cuePeaks": [
+    {
+      "kind": "button",
+      "at": 0.3,
+      "reason": "the power button is pressed (nothing happens on screen)",
+      "measuredFrom": 0.29,
+      "measuredTo": 0.41,
+      "peakDbfs": -26
+    },
+    {
+      "kind": "plug",
+      "at": 2.24,
+      "reason": "the cord leaves the power supply",
+      "measuredFrom": 2.2300000000000004,
+      "measuredTo": 2.5000000000000004,
+      "peakDbfs": -23.1
+    },
+    {
+      "kind": "tap",
+      "at": 7.8,
+      "reason": "the plug lands on the socket",
+      "measuredFrom": 7.79,
+      "measuredTo": 7.8999999999999995,
+      "peakDbfs": -29
+    },
+    {
+      "kind": "snap",
+      "at": 8.38,
+      "reason": "the plug's latch hooks over the socket's tab (stylized)",
+      "measuredFrom": 8.370000000000001,
+      "measuredTo": 8.500000000000002,
+      "peakDbfs": -12.5
+    },
+    {
+      "kind": "plug",
+      "at": 10.04,
+      "reason": "the cord goes back into the power supply",
+      "measuredFrom": 10.03,
+      "measuredTo": 10.299999999999999,
+      "peakDbfs": -23
+    }
+  ],
+  "loudness": {
+    "integratedLufs": -36.3,
+    "peakDbfs": -12.5
+  },
+  "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-01/beats-phone.png",
+  "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-01/phone-every-0.25s.png"
+}

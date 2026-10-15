@@ -1,0 +1,36 @@
+{
+  "status": "awaiting-fact-check",
+  "exitCode": 0,
+  "outDir": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-01",
+  "files": [
+    "PROPOSAL.md",
+    "beats-phone.png",
+    "cpu-power-sfx.mp4",
+    "cpu-power-silent.mp4",
+    "phone-every-0.25s.png",
+    "proposal.json",
+    "run-report.json",
+    "verification.json"
+  ],
+  "totalMs": 28054,
+  "stagesMs": {
+    "load-and-validate-snapshot": 6,
+    "check-renderer": 115,
+    "load-used-ledger": 1,
+    "select-topic": 2,
+    "run-gates": 20,
+    "render-and-verify": 27898
+  },
+  "spend": {
+    "elevenLabs": "not called (no voice)",
+    "publishing": "not called",
+    "scheduling": "not called",
+    "metricool": "not called by the job (snapshot input)",
+    "vidiq": "not called by the job (snapshot input)"
+  },
+  "snapshotCost": {
+    "vidiqCreditsBefore": 135,
+    "vidiqCreditsAfter": 130,
+    "metricool": "no per-call cost reported"
+  }
+}

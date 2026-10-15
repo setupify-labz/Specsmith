@@ -24,6 +24,12 @@ import { cues as ramCues, renderWithSound as renderRam } from "../nextVideoRamSe
 import { renderCut } from "../animationScenes/renderCut.ts";
 import type { CutSpec } from "../animationScenes/spec.ts";
 import { CPU_POWER_CUT } from "../nextVideoCpuPower/cut.ts";
+import { ATX_24PIN_CUT } from "../reviewQueue/atx24Pin.ts";
+import { CPU_FAN_HEADER_CUT } from "../reviewQueue/cpuFanHeader.ts";
+import { FRONT_PANEL_PINS_CUT } from "../reviewQueue/frontPanelPins.ts";
+import { GPU_POWER_CABLE_CUT } from "../reviewQueue/gpuPowerCable.ts";
+import { MONITOR_INPUT_SOURCE_CUT } from "../reviewQueue/monitorInputSource.ts";
+import { RAM_SLOTS_CUT } from "../reviewQueue/ramSlots.ts";
 import { DailyProposalError } from "./snapshot.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,6 +95,13 @@ export function templateFromSpec(spec: CutSpec): AnimationTemplate {
 export const TEMPLATES: Readonly<Record<string, AnimationTemplate>> = {
   // Spec-driven: the shared scene library and renderer.
   "cpu-power": templateFromSpec(CPU_POWER_CUT),
+  // The review queue (reviewQueue/): data-only specs on the same scene library.
+  "front-panel-pins": templateFromSpec(FRONT_PANEL_PINS_CUT),
+  "atx-24pin": templateFromSpec(ATX_24PIN_CUT),
+  "gpu-power-cable": templateFromSpec(GPU_POWER_CABLE_CUT),
+  "monitor-input-source": templateFromSpec(MONITOR_INPUT_SOURCE_CUT),
+  "cpu-fan-header": templateFromSpec(CPU_FAN_HEADER_CUT),
+  "ram-slots": templateFromSpec(RAM_SLOTS_CUT),
   // Hand-built before the scene library existed (nextVideoRamSeat/silentCut.ts); kept as reviewed.
   "ram-seat": {
     id: "ram-seat",

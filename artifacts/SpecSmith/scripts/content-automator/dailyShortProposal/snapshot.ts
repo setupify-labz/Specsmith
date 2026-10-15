@@ -20,7 +20,7 @@
 import { readFile } from "node:fs/promises";
 
 export class DailyProposalError extends Error {
-  constructor(readonly code: "snapshot-missing" | "snapshot-invalid" | "snapshot-stale" | "source-unavailable" | "renderer-unavailable" | "no-topic" | "bad-argument" | "output-not-empty", message: string) {
+  constructor(readonly code: "snapshot-missing" | "snapshot-invalid" | "snapshot-stale" | "source-unavailable" | "renderer-unavailable" | "no-topic" | "bad-argument" | "output-not-empty" | "ledger-invalid" | "ledger-busy", message: string) {
     super(message);
     this.name = "DailyProposalError";
   }

@@ -1,0 +1,772 @@
+{
+  "kind": "daily-short-proposal",
+  "version": "daily-short-proposal-v2",
+  "generatedAt": "2026-10-13T18:25:07.631Z",
+  "status": "awaiting-fact-check",
+  "notPublished": true,
+  "noVoiceGenerated": true,
+  "notScheduled": true,
+  "snapshot": {
+    "brand": "specsmithpc",
+    "youtubeChannelId": "UC1DBOCQ4F0y-BP9he39b3Kg",
+    "collectedAt": "2026-10-11T20:38:30Z",
+    "collectedBy": "Claude Code session with the owner's Metricool and vidIQ connectors (read-only calls)",
+    "sha256": "bf5242672917f6f4d95e0dbbf7af642eb945cd296fd371867b6a7d03e588e222",
+    "cost": {
+      "vidiqCreditsBefore": 135,
+      "vidiqCreditsAfter": 130,
+      "metricool": "no per-call cost reported"
+    }
+  },
+  "topic": {
+    "id": "ram-two-stick-slots",
+    "family": "setup",
+    "symptom": "Two memory modules are installed side by side instead of in the slots the manual recommends.",
+    "title": "Using Two RAM Sticks? Check Which Slots",
+    "animation": "ram-slots",
+    "chosenBy": "data",
+    "dataPick": "ram-two-stick-slots"
+  },
+  "hook": {
+    "frameOne": "TWO RAM STICKS?"
+  },
+  "script": "Using two RAM sticks? Unplug it before opening the case. Your manual lists which slots to use for two. On many boards, it's A2 and B2, not side by side. Your board's manual decides, not this example. Plug it back in. Then try booting again.",
+  "storyboard": {
+    "platform": "youtube-shorts",
+    "targetDurationSeconds": 13,
+    "title": "Using Two RAM Sticks? Check Which Slots",
+    "narrationStyle": "Calm, conversational, one check. The captions are burned into the cut; no voice generated.",
+    "beats": [
+      {
+        "startSecond": 0,
+        "endSecond": 1.8,
+        "purpose": "hook",
+        "narration": "Using two RAM sticks?",
+        "visualDirection": "Close on the board's four memory slots: two sticks in the first two, side by side.",
+        "onScreenText": "TWO RAM STICKS?",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 1.8,
+        "endSecond": 3.6,
+        "purpose": "commitment",
+        "narration": "Unplug it before opening the case.",
+        "visualDirection": "At the back of the power supply, the power cord comes out of the inlet.",
+        "onScreenText": "UNPLUG FIRST",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 3.6,
+        "endSecond": 5.6,
+        "purpose": "evidence",
+        "narration": "Your manual lists which slots to use for two.",
+        "visualDirection": "Closer: the slots labelled A1 A2 B1 B2 (EXAMPLE LAYOUT); A2 and B2 glow amber.",
+        "onScreenText": "CHECK YOUR MANUAL → EXAMPLE LAYOUT",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 5.6,
+        "endSecond": 7.6,
+        "purpose": "payoff",
+        "narration": "On many boards, it's A2 and B2, not side by side.",
+        "visualDirection": "A red cross beside the side-by-side pair; both sticks lift and move to A2 and B2; a green tick.",
+        "onScreenText": "SIDE BY SIDE? → A2 + B2",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 7.6,
+        "endSecond": 9.4,
+        "purpose": "evidence",
+        "narration": "Your board's manual decides, not this example.",
+        "visualDirection": "The sticks in A2 and B2; YOUR MANUAL DECIDES; EXAMPLE LAYOUT stays on screen.",
+        "onScreenText": "YOUR MANUAL DECIDES",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 9.4,
+        "endSecond": 11.2,
+        "purpose": "cta",
+        "narration": "Plug it back in.",
+        "visualDirection": "At the back, the power cord goes back into the power supply.",
+        "onScreenText": "POWER CORD BACK IN",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      },
+      {
+        "startSecond": 11.2,
+        "endSecond": 13,
+        "purpose": "cta",
+        "narration": "Then try booting again.",
+        "visualDirection": "The unlit PC beside the dark monitor, its power button pulsing amber. No one presses it; no boot is shown.",
+        "onScreenText": "(no label: caption only)",
+        "factDependencies": [
+          "ram-slots-unplug",
+          "slots-manual",
+          "slots-vary"
+        ]
+      }
+    ],
+    "finalCta": "Then try booting again.",
+    "factualGuardrails": [
+      "Never say: doubles memory speed and frame rates (No speed or performance claim is made or measured.)",
+      "Never say: identical slot pairs on all motherboards (Slot pairs vary by board; the cut says ON MANY BOARDS and labels its layout EXAMPLE.)",
+      "Never say: successfully boots straight into Windows afterwards (The cut ends before anyone presses the button; no boot is shown or promised.)"
+    ],
+    "persistentDisclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "storyBeats": [
+    {
+      "storyBeat": "problem",
+      "from": 0,
+      "to": 1.8
+    },
+    {
+      "storyBeat": "unplug",
+      "from": 1.8,
+      "to": 3.6
+    },
+    {
+      "storyBeat": "location",
+      "from": 3.6,
+      "to": 5.6
+    },
+    {
+      "storyBeat": "action",
+      "from": 5.6,
+      "to": 7.6
+    },
+    {
+      "storyBeat": "manual",
+      "from": 7.6,
+      "to": 9.4
+    },
+    {
+      "storyBeat": "power-back",
+      "from": 9.4,
+      "to": 11.2
+    },
+    {
+      "storyBeat": "try-again",
+      "from": 11.2,
+      "to": 13
+    }
+  ],
+  "onScreenLabels": [
+    {
+      "text": "TWO RAM STICKS?",
+      "from": 0,
+      "to": 1.8
+    },
+    {
+      "text": "UNPLUG FIRST",
+      "from": 1.8,
+      "to": 3.6
+    },
+    {
+      "text": "CHECK YOUR MANUAL",
+      "from": 3.7,
+      "to": 5.6
+    },
+    {
+      "text": "EXAMPLE LAYOUT",
+      "from": 3.7,
+      "to": 9.4
+    },
+    {
+      "text": "SIDE BY SIDE?",
+      "from": 5.7,
+      "to": 6.8
+    },
+    {
+      "text": "A2 + B2",
+      "from": 6.8,
+      "to": 7.6
+    },
+    {
+      "text": "YOUR MANUAL DECIDES",
+      "from": 7.6,
+      "to": 9.4
+    },
+    {
+      "text": "POWER CORD BACK IN",
+      "from": 9.5,
+      "to": 11.2
+    }
+  ],
+  "soundCues": [
+    {
+      "kind": "plug",
+      "at": 2.44,
+      "seconds": 0.2,
+      "reason": "the cord leaves the power supply"
+    },
+    {
+      "kind": "snap",
+      "at": 6.85,
+      "seconds": 0.06,
+      "reason": "the sticks' clips close in A2 and B2 (stylized)"
+    },
+    {
+      "kind": "plug",
+      "at": 9.99,
+      "seconds": 0.2,
+      "reason": "the cord goes back into the power supply"
+    }
+  ],
+  "evidence": {
+    "channelSignals": [
+      {
+        "id": "46uG78uXmHg",
+        "title": "PC Won't Turn On? Check These 2 Spots First",
+        "theme": "troubleshooting",
+        "families": [
+          "wont-turn-on"
+        ],
+        "ageDays": 1.66,
+        "viewsPerDay": 1174.6,
+        "averageViewPercentage": "unknown",
+        "engagedShare": "unknown",
+        "durationSeconds": 15,
+        "analyticsSampleOk": false
+      },
+      {
+        "id": "pw3xuL0zjho",
+        "title": "RTX 4060 → RTX 5070: Which Game Gains More?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 2.86,
+        "viewsPerDay": 414.4,
+        "averageViewPercentage": 52.59,
+        "engagedShare": 0.373,
+        "durationSeconds": 25,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "648FsZLefnc",
+        "title": "20 Game Leads… Only 4 FPS Apart?",
+        "theme": "comparison",
+        "families": [],
+        "ageDays": 5.19,
+        "viewsPerDay": 243.2,
+        "averageViewPercentage": 74.93,
+        "engagedShare": 0.34,
+        "durationSeconds": 19,
+        "analyticsSampleOk": true
+      },
+      {
+        "id": "cSDhjFC-CI8",
+        "title": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix",
+        "theme": "troubleshooting",
+        "families": [
+          "compatibility"
+        ],
+        "ageDays": 8.02,
+        "viewsPerDay": 237.5,
+        "averageViewPercentage": 87.65,
+        "engagedShare": 0.578,
+        "durationSeconds": 14,
+        "analyticsSampleOk": true
+      }
+    ],
+    "themeSummary": {
+      "troubleshooting": {
+        "videos": 2,
+        "medianViewsPerDay": 706.1,
+        "medianAverageViewPercentage": 87.7,
+        "medianEngagedShare": 57.8
+      },
+      "comparison": {
+        "videos": 2,
+        "medianViewsPerDay": 328.8,
+        "medianAverageViewPercentage": 63.8,
+        "medianEngagedShare": 35.7
+      }
+    },
+    "claims": [
+      {
+        "id": "ram-slots-unplug",
+        "proposition": "unplug the power cable before working inside the PC",
+        "basis": "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "slots-manual",
+        "proposition": "the manual lists which slots to use for two modules; on many ASUS boards, A2 and B2",
+        "basis": "ASUS, \"[Motherboard] How to install DRAM (Memory) on Motherboard? (FAQ 1047257)\" (https://www.asus.com/support/faq/1047257/): \"Search-excerpt wording: If two DRAMs, please install to DIMM_A2 and DIMM_B2 slots; the manual's \"Recommended memory configuration\" section lists the slots for one, two or four modules.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"M5A97 R2.0 user manual\" (https://dlcdnet.asus.com/pub/ASUS/mb/SocketAM3+/M5A97_R2.0/E7438_M5A97_R20_Manual_web_hi-res.pdf): \"Installing the modules into slots A2 and B2 is suggested for better compatibility.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      },
+      {
+        "id": "slots-vary",
+        "proposition": "not every board uses A2 and B2; the board's own manual decides",
+        "basis": "ASUS, \"ROG RAMPAGE VI EXTREME OMEGA DRAM QVL (8 DIMM slots)\" (https://dlcdnets.asus.com/pub/ASUS/mb/LGA2066/ROG_RAMPAGE_VI_EXTREME_OMEGA/ROG_RAMPAGE_VI_EXTREME_OMEGA_DRAM_QVL_V4.0.pdf): \"Search-excerpt summary: this board uses different slots for two modules (B1 and D1).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      }
+    ],
+    "riskyClaimsBlocked": [
+      {
+        "id": "slots-speed",
+        "proposition": "doubles memory speed and frame rates",
+        "why": "No speed or performance claim is made or measured."
+      },
+      {
+        "id": "slots-universal",
+        "proposition": "identical slot pairs on all motherboards",
+        "why": "Slot pairs vary by board; the cut says ON MANY BOARDS and labels its layout EXAMPLE."
+      },
+      {
+        "id": "slots-boot-shown",
+        "proposition": "successfully boots straight into Windows afterwards",
+        "why": "The cut ends before anyone presses the button; no boot is shown or promised."
+      }
+    ],
+    "sources": [
+      "Crucial, How to Install Memory in Your Desktop: https://www.crucial.com/support/install-memory-desktop",
+      "ASUS, [Motherboard] How to install DRAM (Memory) on Motherboard? (FAQ 1047257): https://www.asus.com/support/faq/1047257/",
+      "ASUS, M5A97 R2.0 user manual: https://dlcdnet.asus.com/pub/ASUS/mb/SocketAM3+/M5A97_R2.0/E7438_M5A97_R20_Manual_web_hi-res.pdf",
+      "ASUS, ROG RAMPAGE VI EXTREME OMEGA DRAM QVL (8 DIMM slots): https://dlcdnets.asus.com/pub/ASUS/mb/LGA2066/ROG_RAMPAGE_VI_EXTREME_OMEGA/ROG_RAMPAGE_VI_EXTREME_OMEGA_DRAM_QVL_V4.0.pdf"
+    ]
+  },
+  "metricsThatInfluencedTheChoice": [
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 1174.6,
+      "usedFor": "ranking \"PC Won't Turn On? Check These 2 Spots First\" for the family choice"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 414.4,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 52.59,
+      "usedFor": "ranking \"RTX 4060 → RTX 5070: Which Game Gains More?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 243.2,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 74.93,
+      "usedFor": "ranking \"20 Game Leads… Only 4 FPS Apart?\" for the target length"
+    },
+    {
+      "metric": "views per day (public views / days live)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": 237.5,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the family choice"
+    },
+    {
+      "metric": "average view percentage",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": 87.65,
+      "usedFor": "ranking \"DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix\" for the target length"
+    },
+    {
+      "metric": "theme medians (views/day, avg view %, engaged %)",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "{\"troubleshooting\":{\"videos\":2,\"medianViewsPerDay\":706.1,\"medianAverageViewPercentage\":87.7,\"medianEngagedShare\":57.8},\"comparison\":{\"videos\":2,\"medianViewsPerDay\":328.8,\"medianAverageViewPercentage\":63.8,\"medianEngagedShare\":35.7}}",
+      "usedFor": "recorded: whether the data favours troubleshooting Shorts at all (the job proposes troubleshooting either way, as asked)"
+    },
+    {
+      "metric": "fastest troubleshooting Short",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics)",
+      "value": "PC Won't Turn On? Check These 2 Spots First (1174.6 views/day)",
+      "usedFor": "symptom family: wont-turn-on"
+    },
+    {
+      "metric": "best-retained Short's length",
+      "source": "YouTube via vidIQ (vidiq_user_videos for public counts; vidiq_channel_analytics top_videos for YouTube Analytics) (YouTube Analytics)",
+      "value": "DDR4 RAM Won't Fit a DDR5 Motherboard — Here's the Fix: 87.65% at 14 s",
+      "usedFor": "target length 14 s (clamped to 10-15 s)"
+    },
+    {
+      "metric": "tiktok views by publish day (sum)",
+      "source": "tiktok via Metricool (getAnalyticsDataByMetrics, TikTok Evolution TKEV01/02/03/04/05/07, brand 6769542)",
+      "value": 1803,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "instagram views by publish day (sum)",
+      "source": "instagram via Metricool (getAnalyticsDataByMetrics, Instagram Evolution IGEV01/22/23/25/26, brand 6769542)",
+      "value": 691,
+      "usedFor": "context only: Metricool rows are per day, not per video, so no Short can be credited; not used in the pick"
+    },
+    {
+      "metric": "editorial prior (NOT data)",
+      "source": "dailyShortProposal/topics.ts",
+      "value": 0.5,
+      "usedFor": "tie-break among topics in the same family"
+    },
+    {
+      "metric": "animation template length (not data)",
+      "source": "dailyShortProposal/animations.ts (ram-slots)",
+      "value": "13 s",
+      "usedFor": "the Short's length; the data pointed to 14 s, recorded only, since the cut's timing is not stretched"
+    }
+  ],
+  "unknown": [
+    "Retention for \"PC Won't Turn On? Check These 2 Spots First\": analytics sample under 300 views (or unknown), excluded rather than trusted.",
+    "YouTube subscriber total: unknown (not collected; per-video subscribers gained is in the snapshot).",
+    "\"PC Won't Turn On? Check These 2 Spots First\" has been live 1.66 days: its views per day are an early figure and may fall as it ages.",
+    "Symptom families are inferred from video titles only (tags and descriptions are not in the snapshot).",
+    "instagram 2026-10-06 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-06 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 interactions: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-08 shares: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 saves: unknown (not returned by Metricool).",
+    "instagram 2026-10-10 shares: unknown (not returned by Metricool)."
+  ],
+  "usedTopicLedger": {
+    "path": "/tmp/rq-demo-cygrbu0o/used.json",
+    "sha256": "fa000079b2e1df61ebfdd05785621c69fdbc90cfc7f73b63ea3b22ef7797ff42",
+    "entries": [
+      {
+        "topicId": "cpu-power-cable",
+        "markedAt": "2026-10-13T18:22:29.074Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "front-panel-power-pins",
+        "markedAt": "2026-10-13T18:22:58.712Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "atx-24pin-cable",
+        "markedAt": "2026-10-13T18:23:31.850Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "gpu-power-cable",
+        "markedAt": "2026-10-13T18:24:05.670Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "monitor-input-source",
+        "markedAt": "2026-10-13T18:24:33.009Z",
+        "by": "queue demo (isolated ledger)"
+      },
+      {
+        "topicId": "cpu-fan-header",
+        "markedAt": "2026-10-13T18:25:06.367Z",
+        "by": "queue demo (isolated ledger)"
+      }
+    ]
+  },
+  "topicsExcluded": [
+    {
+      "topicId": "ram-not-seated",
+      "why": "not in the automatic queue (a hand-built cut: proposed only on an operator's --topic choice)"
+    },
+    {
+      "topicId": "cpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T18:22:29.074Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "front-panel-power-pins",
+      "why": "already taken for review (marked 2026-10-13T18:22:58.712Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "atx-24pin-cable",
+      "why": "already taken for review (marked 2026-10-13T18:23:31.850Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "gpu-power-cable",
+      "why": "already taken for review (marked 2026-10-13T18:24:05.670Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "monitor-input-source",
+      "why": "already taken for review (marked 2026-10-13T18:24:33.009Z by queue demo (isolated ledger))"
+    },
+    {
+      "topicId": "cpu-fan-header",
+      "why": "already taken for review (marked 2026-10-13T18:25:06.367Z by queue demo (isolated ledger))"
+    }
+  ],
+  "ranking": [
+    {
+      "topicId": "ram-two-stick-slots",
+      "familyMatch": false,
+      "editorialPrior": 0.5
+    }
+  ],
+  "gates": {
+    "passed": true,
+    "findings": []
+  },
+  "factCheckRequired": [
+    {
+      "location": "title",
+      "line": "Using Two RAM Sticks? Check Which Slots",
+      "claimIds": [
+        "slots-manual"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] How to install DRAM (Memory) on Motherboard? (FAQ 1047257)\" (https://www.asus.com/support/faq/1047257/): \"Search-excerpt wording: If two DRAMs, please install to DIMM_A2 and DIMM_B2 slots; the manual's \"Recommended memory configuration\" section lists the slots for one, two or four modules.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"M5A97 R2.0 user manual\" (https://dlcdnet.asus.com/pub/ASUS/mb/SocketAM3+/M5A97_R2.0/E7438_M5A97_R20_Manual_web_hi-res.pdf): \"Installing the modules into slots A2 and B2 is suggested for better compatibility.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-2.narration",
+      "line": "Unplug it before opening the case.",
+      "claimIds": [
+        "ram-slots-unplug"
+      ],
+      "bases": [
+        "Crucial, \"How to Install Memory in Your Desktop\" (https://www.crucial.com/support/install-memory-desktop): \"Shut down your system. Once your system has been powered off, unplug the power cable.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-3.narration",
+      "line": "Your manual lists which slots to use for two.",
+      "claimIds": [
+        "slots-manual"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] How to install DRAM (Memory) on Motherboard? (FAQ 1047257)\" (https://www.asus.com/support/faq/1047257/): \"Search-excerpt wording: If two DRAMs, please install to DIMM_A2 and DIMM_B2 slots; the manual's \"Recommended memory configuration\" section lists the slots for one, two or four modules.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"M5A97 R2.0 user manual\" (https://dlcdnet.asus.com/pub/ASUS/mb/SocketAM3+/M5A97_R2.0/E7438_M5A97_R20_Manual_web_hi-res.pdf): \"Installing the modules into slots A2 and B2 is suggested for better compatibility.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-4.narration",
+      "line": "On many boards, it's A2 and B2, not side by side.",
+      "claimIds": [
+        "slots-manual"
+      ],
+      "bases": [
+        "ASUS, \"[Motherboard] How to install DRAM (Memory) on Motherboard? (FAQ 1047257)\" (https://www.asus.com/support/faq/1047257/): \"Search-excerpt wording: If two DRAMs, please install to DIMM_A2 and DIMM_B2 slots; the manual's \"Recommended memory configuration\" section lists the slots for one, two or four modules.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it. Also: ASUS, \"M5A97 R2.0 user manual\" (https://dlcdnet.asus.com/pub/ASUS/mb/SocketAM3+/M5A97_R2.0/E7438_M5A97_R20_Manual_web_hi-res.pdf): \"Installing the modules into slots A2 and B2 is suggested for better compatibility.\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-5.narration",
+      "line": "Your board's manual decides, not this example.",
+      "claimIds": [
+        "slots-vary"
+      ],
+      "bases": [
+        "ASUS, \"ROG RAMPAGE VI EXTREME OMEGA DRAM QVL (8 DIMM slots)\" (https://dlcdnets.asus.com/pub/ASUS/mb/LGA2066/ROG_RAMPAGE_VI_EXTREME_OMEGA/ROG_RAMPAGE_VI_EXTREME_OMEGA_DRAM_QVL_V4.0.pdf): \"Search-excerpt summary: this board uses different slots for two modules (B1 and D1).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    },
+    {
+      "location": "beat-5.onScreenText",
+      "line": "YOUR MANUAL DECIDES",
+      "claimIds": [
+        "slots-vary"
+      ],
+      "bases": [
+        "ASUS, \"ROG RAMPAGE VI EXTREME OMEGA DRAM QVL (8 DIMM slots)\" (https://dlcdnets.asus.com/pub/ASUS/mb/LGA2066/ROG_RAMPAGE_VI_EXTREME_OMEGA/ROG_RAMPAGE_VI_EXTREME_OMEGA_DRAM_QVL_V4.0.pdf): \"Search-excerpt summary: this board uses different slots for two modules (B1 and D1).\" Checked 2026-10-12 via search excerpts; the factual-takeaway gate re-reads it."
+      ]
+    }
+  ],
+  "animatedCut": {
+    "silent": "ram-slots-silent.mp4",
+    "sfx": "ram-slots-sfx.mp4",
+    "silentSha256": "dc03bdf970812aaf1256f6ea5d5f2dbb455bcb93f1ce7638c4a5c38af0f927c0",
+    "sfxSha256": "3a791d33ff0c322f966b4572c52f4f7a2a22103bdf80a5bae7a23583d07670fe",
+    "durationSeconds": 13,
+    "fps": 30,
+    "disclosures": [
+      "ILLUSTRATION",
+      "Stylized example · not a fix for every PC"
+    ]
+  },
+  "verification": {
+    "passed": true,
+    "checks": [
+      {
+        "check": "silent MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "silent MP4 length",
+        "passed": true,
+        "detail": "13.000 s (expected 13 s)"
+      },
+      {
+        "check": "silent MP4 frame count",
+        "passed": true,
+        "detail": "390 frames (expected 390)"
+      },
+      {
+        "check": "sound-effects MP4 is 1080x1920",
+        "passed": true,
+        "detail": "1080x1920"
+      },
+      {
+        "check": "sound-effects MP4 length",
+        "passed": true,
+        "detail": "13.000 s (expected 13 s)"
+      },
+      {
+        "check": "sound-effects MP4 frame count",
+        "passed": true,
+        "detail": "390 frames (expected 390)"
+      },
+      {
+        "check": "every beat's artwork is drawn",
+        "passed": true,
+        "detail": "beat 1: 74.3%; beat 2: 49.7%; beat 3: 76.9%; beat 4: 76.0%; beat 5: 76.0%; beat 6: 50.7%; beat 7: 14.7% of the art region not background (at least 5%)"
+      },
+      {
+        "check": "every beat's artwork differs from every other beat's",
+        "passed": true,
+        "detail": "closest pair: beats 2 and 6, mean difference 2.8 grey levels (at least 2)"
+      },
+      {
+        "check": "the ILLUSTRATION band is on every sampled frame",
+        "passed": true,
+        "detail": "9 frames; amber badge 6.8%+ of the band; largest change 0.09 levels"
+      },
+      {
+        "check": "the disclosure line is on every sampled frame",
+        "passed": true,
+        "detail": "lowest 3.1% of the disclosure line's area lit (at least 1.5%; a drawn line measures about 3%, a missing one about 0%)"
+      },
+      {
+        "check": "every sampled frame has caption text",
+        "passed": true,
+        "detail": "lowest 2.9% of the caption band lit"
+      },
+      {
+        "check": "every cue sounds",
+        "passed": true,
+        "detail": "2.44s plug -23.0 dBFS; 6.85s snap -12.4 dBFS; 9.99s plug -23.0 dBFS"
+      },
+      {
+        "check": "every short cue has its own onset",
+        "passed": true,
+        "detail": "2.440s plug +68.0 dB; 6.850s snap +78.6 dB; 9.990s plug +68.0 dB"
+      },
+      {
+        "check": "silence between cues (no stray sound, no boot sound at the end)",
+        "passed": true,
+        "detail": "0.02-2.41 s: -91.0 dBFS; 2.74-6.82 s: -91.0 dBFS; 7.01-9.96 s: -91.0 dBFS; 10.29-12.98 s: -91.0 dBFS"
+      },
+      {
+        "check": "\"snap\" is the clearest cue",
+        "passed": true,
+        "detail": "-12.4 dBFS vs next -23.0 dBFS"
+      },
+      {
+        "check": "the silent MP4 is silent",
+        "passed": true,
+        "detail": "-91.0 dBFS"
+      },
+      {
+        "check": "sound effects stay below a -16 LUFS narration",
+        "passed": true,
+        "detail": "-35.4 LUFS integrated, -12.4 dBFS peak"
+      }
+    ],
+    "cuePeaks": [
+      {
+        "kind": "plug",
+        "at": 2.44,
+        "reason": "the cord leaves the power supply",
+        "measuredFrom": 2.43,
+        "measuredTo": 2.7,
+        "peakDbfs": -23
+      },
+      {
+        "kind": "snap",
+        "at": 6.85,
+        "reason": "the sticks' clips close in A2 and B2 (stylized)",
+        "measuredFrom": 6.84,
+        "measuredTo": 6.969999999999999,
+        "peakDbfs": -12.4
+      },
+      {
+        "kind": "plug",
+        "at": 9.99,
+        "reason": "the cord goes back into the power supply",
+        "measuredFrom": 9.98,
+        "measuredTo": 10.25,
+        "peakDbfs": -23
+      }
+    ],
+    "loudness": {
+      "integratedLufs": -35.4,
+      "peakDbfs": -12.4
+    },
+    "beatSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-07/beats-phone.png",
+    "phoneSheet": "/home/user/rq-wt/artifacts/SpecSmith/scripts/content-automator/dailyShortProposal/runs/2026-10-13-review-queue/day-07/phone-every-0.25s.png"
+  },
+  "humanGates": {
+    "mechanism": {
+      "trustedApprovalAvailable": false,
+      "why": "no trusted approval record exists in this repository: a caller-supplied reviewer name and time is recorded, but does not prove anyone watched or listened, so it cannot close the gate. A decision is recorded with the bytes and cut it names; an approval never closes a gate, and a recorded rejection always blocks."
+    },
+    "gates": [
+      {
+        "gate": "hook-on-phone",
+        "question": "Watched on a phone at real size: is the hook understood within the first two seconds?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "factual-takeaway",
+        "question": "Is the factual takeaway understood correctly, with no misleading emphasis, after one watch?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "readable-at-size",
+        "question": "Are all text, numbers and game names readable at real size, inside the visible area?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "pacing",
+        "question": "Is the pacing intentional: no rushed line, no dead air, and every cut lands on its line?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "style-fits-audience",
+        "question": "Does the style suit a beginner choosing a gaming PC?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "voice-and-mix",
+        "question": "After a full listen: is every word pronounced correctly, and is the mix clear?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "disclosures-in-context",
+        "question": "Is each disclosure understandable in context, while the claim it qualifies is on screen?",
+        "status": "unresolved"
+      },
+      {
+        "gate": "rights-and-publication",
+        "question": "Are the rights to every asset signed off, and is publication of this exact cut authorised?",
+        "status": "unresolved"
+      }
+    ]
+  }
+}

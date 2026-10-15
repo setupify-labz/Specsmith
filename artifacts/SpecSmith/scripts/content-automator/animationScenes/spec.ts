@@ -22,7 +22,11 @@ export interface SpecCaption { readonly from: number; readonly to: number; reado
 export interface SpecBeat { readonly storyBeat: string; readonly purpose: Purpose; readonly visualDirection: string }
 export interface SpecShot { readonly scene: SceneName; readonly from: number; readonly to: number; readonly fadeIn?: number; readonly fadeOut?: number; readonly params?: Readonly<Record<string, unknown>> }
 export interface SpecLabel { readonly text: string; readonly from: number; readonly to: number; readonly colour: "red" | "amber" | "purple" | "cyan" | "green"; readonly at: "head" | "foot"; readonly size?: number }
-export interface SpecCue { readonly kind: CueKind; readonly at: number; readonly seconds: number; readonly reason: string }
+export interface SpecCue {
+  readonly kind: CueKind; readonly at: number; readonly seconds: number; readonly reason: string;
+  /** Optional target peak (dBFS) instead of the kind's default (sound.ts PEAK_DBFS): lets the key moment of a cut with no latch be its clearest cue. */
+  readonly peakDbfs?: number;
+}
 export interface SpecSource { readonly publisher: string; readonly title: string; readonly url: string; readonly quote: string; readonly supports: string }
 
 export interface CutSpec {
@@ -86,6 +90,7 @@ export function specProblems(spec: CutSpec): string[] {
   for (const cue of spec.cues) {
     if (cue.at < 0 || cue.at + cue.seconds > d) problems.push(`cue ${cue.kind} at ${cue.at} s is outside the cut`);
     if (!(cue.seconds > 0)) problems.push(`cue ${cue.kind} at ${cue.at} s has no length`);
+    if (cue.peakDbfs !== undefined && !(cue.peakDbfs >= -40 && cue.peakDbfs <= -6)) problems.push(`cue ${cue.kind} at ${cue.at} s has a peak of ${cue.peakDbfs} dBFS; it must be between -40 and -6`);
   }
   if (!spec.cues.some((c) => c.kind === spec.clearestCue)) problems.push(`the clearest cue "${spec.clearestCue}" never sounds`);
   // The standard disclosure itself ("not a fix for every PC") is exempt from the universal-claim pattern it negates; any other band text is scanned.
