@@ -79,6 +79,37 @@ Mutation checks were run by hand, each against a temporary edit of the workflow.
 - **Local evidence only.** The CLI tests ran on one Linux machine against a mock, not on a GitHub-hosted runner with a real model. CLAUDE.md requires reproducible CI or approved hosted evidence for a large integration. The CLI tests skip unless the pinned binary is supplied, so the repository's CI does not run them today.
 - **The version is pinned, not the bytes.** `npm install` pins the version but not a tarball checksum or lockfile, so a compromised registry or package is not covered. A later release could change these semantics; the pin and the version test keep that from happening silently.
 
+## Recording the check result
+
+The `record-check` job turns a passing check into a commit status on the exact commit that was checked.
+
+- **When it runs:** only if `publish` and `check` both succeed (`needs: [publish, check]`, no `always()`). It is gated off like every other job. The script also refuses unless `needs.check.result` is `success`.
+- **Permissions:** `pull-requests: read` to read the PR, and `statuses: write` to write one status. It has no `contents` scope, no checkout, no `uses:` step, and installs and runs nothing from the repository or the proposal. The script is inline in the trusted workflow. Its inputs are the publish job's outputs (PR number, proposal SHA and branch), the check job's result and `github.token`, all passed through the environment rather than interpolated into code. It validates each input's format before making any request.
+- **What it verifies:** it reads `GET /repos/{repo}/pulls/{number}` again. It refuses if GitHub returns another number, or the base or head repository isn't this one (which rejects forks). It also refuses if the PR is closed or merged, isn't a draft, doesn't target `main`, isn't from the proposal branch, or its head SHA isn't the checked commit.
+- **What it writes:** only then does it write `state: success, context: auto-goal/check` to `/statuses/{proposal SHA}`. The description is fixed and the target URL is this run. It then reads the PR again: if the head moved in between, the job fails. The success stays only on the tested commit, and the new head has no `auto-goal/check` status.
+- **Logs:** they show one fixed line, never the token, a PR field, a response body or an input value.
+
+`node --test docs/auto-goal-actions/record-check.test.mjs` runs the workflow's actual inline script against a fake GitHub API in the test process, with a placeholder token. It covers:
+
+- the success case: one write, on the proposal SHA only, with read, write, read;
+- a stale head;
+- a push after the write: the new SHA gets no status;
+- a different number, base repository, fork head, base branch or head branch;
+- closed, merged and non-draft PRs;
+- a 404, 403, 500 or non-object response, and a rejected write;
+- every check result other than `success`, which makes no request at all;
+- malformed inputs, which also make no request.
+
+Every case checks that neither the token nor a marker placed in every PR field and error body appears in the output, in any letter case. Mutation checks were run by hand, each against a temporary edit of the workflow. Removing the head, draft, check-result or fork check, the re-read after writing, or the fixed messages, or adding `contents: write`, each fails a test.
+
+What this does not establish:
+
+- **The status is not unforgeable.** Anyone with repository write access, or any other workflow granted `statuses: write`, can write an `auto-goal/check` status, and statuses written with `GITHUB_TOKEN` all show `github-actions[bot]` as creator. A consumer, such as a branch rule or a later automated step, must treat the status as a signal from this workflow only if it also verifies the creator and the linked run. That binding is not built here.
+- **"Success" means the check commands exited zero.** The check job runs proposed code, which can affect its own tests. The status records that this job passed on this SHA, not that the code is correct or reviewed.
+- **The race is reported, not prevented.** A push between the PR read and the status write leaves a true status on the old SHA and fails the job. Nothing can make GitHub's check and write atomic.
+- **GitHub behaviour is simulated.** The tests use a fake API. That GitHub accepts `pull-requests: read` plus `statuses: write` for these calls on a private repository, and returns these fields, is from GitHub's documentation and has not been checked on a hosted run. The publish step's parsing of the PR number from `gh pr create` output is not covered by a local test.
+- **Not built yet:** Codex review handling and any automated decision based on this status.
+
 ## Blockers to enabling
 
 1. **Implementer token boundary is not proven.**

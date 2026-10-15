@@ -48,7 +48,7 @@ test('experimental workflow is not installed and has three gated jobs', () => {
 
 test('template keeps credentials and write scope out of the code-running job', () => {
   const yaml = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
-  const sections = Object.fromEntries([...yaml.matchAll(/^  (implement|check|publish):\n([\s\S]*?)(?=^  (?:implement|check|publish):|$(?![\s\S]))/gm)].map((m) => [m[1], m[2]]));
+  const sections = Object.fromEntries([...yaml.matchAll(/^  (implement|check|publish):\n([\s\S]*?)(?=^  (?:implement|check|publish|record-check):|$(?![\s\S]))/gm)].map((m) => [m[1], m[2]]));
   assert.deepEqual(Object.keys(sections), ['implement', 'publish', 'check']);
   // The issue is read in its own job with an issues-only token; implement gets only its JSON.
   const readIssue = /^  read-issue:\n([\s\S]*?)(?=^  implement:)/m.exec(yaml)?.[1] ?? '';
@@ -66,6 +66,7 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.match(sections.check, /permissions:\n      contents: read/);
   assert.match(sections.check, /timeout-minutes: 20/);
   assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
+  assert.doesNotMatch(sections.check, /statuses: |github\.token|GH_TOKEN/); // the code-running job cannot record its own result
   assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
   assert.match(sections.publish, /needs: implement/);
   assert.match(sections.publish, /contents: write/);

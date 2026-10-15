@@ -110,6 +110,8 @@ jobs:
       pull-requests: write
     outputs:
       proposal_sha: ${{ steps.proposal.outputs.sha }}
+      proposal_branch: ${{ steps.proposal.outputs.branch }}
+      pr_number: ${{ steps.proposal.outputs.pr_number }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -146,8 +148,12 @@ jobs:
           branch="claude/auto-goal-proposal-${GITHUB_RUN_ID}"
           sha="$(git rev-parse HEAD)"
           git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" push origin "HEAD:refs/heads/${branch}"
-          gh pr create --draft --base main --head "$branch" --title "Auto Goal proposal for #${ISSUE}" --body "Experimental proposal from issue #${ISSUE}. Checks will run on commit ${sha}. Human review required."
+          pr_url="$(gh pr create --draft --base main --head "$branch" --title "Auto Goal proposal for #${ISSUE}" --body "Experimental proposal from issue #${ISSUE}. Checks will run on commit ${sha}. Human review required.")"
+          pr_number="${pr_url##*/}"
+          [[ "$pr_number" =~ ^[1-9][0-9]{0,9}$ ]]
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
 
   check:
     if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert.
@@ -177,3 +183,80 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm --dir artifacts/SpecSmith exec vitest run
       - run: pnpm --dir artifacts/SpecSmith build
+
+  # Records a passing check against the exact draft commit it tested. Trusted code only: no checkout,
+  # no action, no proposed code. It reads the PR again and writes the auto-goal/check commit status on
+  # the proposal SHA, and only if the PR is still this run's open draft against main at that SHA.
+  # Commit statuses belong to one SHA, so a later push to the branch starts without this success.
+  record-check:
+    if: ${{ false && github.ref == 'refs/heads/main' }} # Deliberately inert. Runs only if publish and check both succeed.
+    needs: [publish, check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Record the check on the exact draft commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_RESULT: ${{ needs.check.result }}
+          PR_NUMBER: ${{ needs.publish.outputs.pr_number }}
+          PROPOSAL_SHA: ${{ needs.publish.outputs.proposal_sha }}
+          PROPOSAL_BRANCH: ${{ needs.publish.outputs.proposal_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          // BEGIN TRUSTED CHECK RECORDER
+          // Prints only fixed messages: never the token, a PR field, a response body or an input value.
+          const CONTEXT = 'auto-goal/check';
+          const env = process.env;
+          const refuse = (message) => { console.error(`Refusing to record the check: ${message}.`); process.exit(1); };
+          if (env.CHECK_RESULT !== 'success') refuse('the check job did not succeed');
+          const repo = env.GITHUB_REPOSITORY ?? '';
+          const api = env.GITHUB_API_URL ?? '';
+          const number = env.PR_NUMBER ?? '';
+          const sha = env.PROPOSAL_SHA ?? '';
+          const branch = env.PROPOSAL_BRANCH ?? '';
+          if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || !/^https?:\/\/[^\s]+$/.test(api)) refuse('the runner context is missing');
+          if (!/^[1-9][0-9]{0,9}$/.test(number)) refuse('the PR number is not valid');
+          if (!/^[0-9a-f]{40}$/.test(sha)) refuse('the proposal SHA is not valid');
+          if (!/^claude\/auto-goal-proposal-[0-9]{1,20}$/.test(branch)) refuse('the proposal branch is not valid');
+          if (!env.GH_TOKEN) refuse('no token is available');
+          const headers = { accept: 'application/vnd.github+json', authorization: `Bearer ${env.GH_TOKEN}`, 'x-github-api-version': '2022-11-28' };
+          async function call(method, path, body) {
+            try {
+              const res = await fetch(`${api}${path}`, { method, headers, body: body && JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(20000) });
+              const text = await res.text();
+              let json = null;
+              try { json = JSON.parse(text); } catch { /* not JSON */ }
+              return { status: res.status, json };
+            } catch { return { status: 0, json: null }; }
+          }
+          async function verifiedPr() {
+            const r = await call('GET', `/repos/${repo}/pulls/${number}`);
+            if (r.status === 404) refuse('the PR does not exist');
+            if (r.status !== 200 || !r.json || typeof r.json !== 'object' || Array.isArray(r.json)) refuse('the PR could not be read');
+            const pr = r.json;
+            if (pr.number !== Number(number)) refuse('GitHub returned a different PR');
+            if (pr.base?.repo?.full_name !== repo || pr.head?.repo?.full_name !== repo) refuse('the PR is not between branches of this repository');
+            if (pr.state !== 'open' || pr.merged === true) refuse('the PR is not open');
+            if (pr.draft !== true) refuse('the PR is not a draft');
+            if (pr.base?.ref !== 'main') refuse('the PR does not target main');
+            if (pr.head?.ref !== branch) refuse('the PR is not from the proposal branch');
+            if (pr.head?.sha !== sha) refuse('the PR head is not the commit that was checked');
+          }
+          await verifiedPr();
+          const runUrl = `${env.GITHUB_SERVER_URL}/${repo}/actions/runs/${env.GITHUB_RUN_ID}`;
+          const w = await call('POST', `/repos/${repo}/statuses/${sha}`, {
+            state: 'success', context: CONTEXT,
+            description: 'Auto Goal check passed on this exact commit',
+            target_url: /^[0-9]{1,20}$/.test(env.GITHUB_RUN_ID ?? '') && /^https:\/\/[^\s]+$/.test(env.GITHUB_SERVER_URL ?? '') ? runUrl : undefined,
+          });
+          if (w.status !== 201 || w.json?.state !== 'success' || w.json?.context !== CONTEXT) refuse('GitHub did not accept the status');
+          // A push between the read and the write leaves the success on the tested SHA only. Report it.
+          await verifiedPr();
+          console.log('Recorded auto-goal/check success on the exact draft commit that was checked.');
+          // END TRUSTED CHECK RECORDER
+          NODE
