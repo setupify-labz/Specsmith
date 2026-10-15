@@ -14,6 +14,7 @@ const allowed = 'artifacts/SpecSmith/src/components/PartSelector.tsx';
 const other = 'artifacts/SpecSmith/src/components/Other.tsx';
 const link = 'artifacts/SpecSmith/src/components/Link.tsx';
 const criterion = 'artifacts/SpecSmith/src/components/PartSelector.test.tsx';
+const otherTest = 'artifacts/SpecSmith/src/components/Other.test.ts';
 
 function run(cmd, args, cwd, env = {}) {
   return spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
@@ -24,10 +25,11 @@ function run(cmd, args, cwd, env = {}) {
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'specsmith-boundary-'));
   const dir = join(root, 'work');
-  for (const path of [allowed, other, link, criterion]) mkdirSync(dirname(join(dir, path)), { recursive: true });
+  for (const path of [allowed, other, link, criterion, otherTest]) mkdirSync(dirname(join(dir, path)), { recursive: true });
   writeFileSync(join(dir, allowed), 'export const value = 1;\n');
   writeFileSync(join(dir, other), 'export const other = 1;\n');
   writeFileSync(join(dir, criterion), 'export {};\n');
+  writeFileSync(join(dir, otherTest), 'export {};\n');
   symlinkSync('PartSelector.tsx', join(dir, link));
   mkdirSync(join(root, 'trusted/docs/auto-goal-actions'), { recursive: true });
   cpSync(join(source, 'validate-proposal.mjs'), join(root, 'trusted/docs/auto-goal-actions/validate-proposal.mjs'));
@@ -103,6 +105,28 @@ test('publisher gate applies the version 1 phase rules and refuses a checkout th
     assert.notEqual(validate(f, 'reproduce').status, 0, 'reproduce may not change application source');
     assert.equal(validate(f, 'implement').status, 0);
     assert.notEqual(validate(f, 'implement', 'f'.repeat(40)).status, 0, 'the checkout must be the dispatch base');
+    assert.equal(run('git', ['diff', '--exit-code'], f.dir).status, 0);
+  } finally { f.cleanup(); }
+});
+
+test('publisher gate refuses an implement patch that edits another test file; the source edit alone still passes', () => {
+  const f = fixture();
+  try {
+    writeFileSync(join(f.dir, allowed), 'export const value = 2;\n');
+    const sourceOnly = run('git', ['diff', '--', allowed], f.dir).stdout;
+    writeFileSync(join(f.dir, otherTest), 'export {};\n// weakened\n');
+    const withTest = run('git', ['diff', '--', allowed, otherTest], f.dir).stdout;
+    const testOnly = run('git', ['diff', '--', otherTest], f.dir).stdout;
+    assert.equal(run('git', ['checkout', '--', '.'], f.dir).status, 0);
+    for (const [patch, label] of [[withTest, 'source plus another test'], [testOnly, 'another test alone']]) {
+      writeFileSync(f.patch, patch);
+      const r = validate(f, 'implement');
+      assert.notEqual(r.status, 0, label);
+      assert.match(r.stderr, /may not change any test file/, label);
+      assert.notEqual(validate(f, 'reproduce').status, 0, `reproduce: ${label}`);
+    }
+    writeFileSync(f.patch, sourceOnly);
+    assert.equal(validate(f, 'implement').status, 0);
     assert.equal(run('git', ['diff', '--exit-code'], f.dir).status, 0);
   } finally { f.cleanup(); }
 });

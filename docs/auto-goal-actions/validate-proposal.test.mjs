@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validatePatch } from './validate-proposal.mjs';
+import { checkPhase, validatePatch } from './validate-proposal.mjs';
 
 const patch = (path = 'artifacts/SpecSmith/src/components/PartSelector.tsx', body = '+export const flag = true;') => `diff --git a/${path} b/${path}\nindex 1111111..2222222 100644\n--- a/${path}\n+++ b/${path}\n@@ -1 +1,2 @@\n old\n${body}\n`;
 
@@ -108,4 +108,24 @@ test('rejects malformed UTF-8 and an existing symlink mode', () => {
   assert.throws(() => validatePatch(Buffer.concat([first, Buffer.from([0xff])])), /UTF-8/);
   assert.throws(() => validatePatch(patch().replace('100644', '120000')), /mode/);
   assert.throws(() => validatePatch(patch().replace('100644', '160000')), /mode/);
+});
+
+test('phase rules: implement refuses every test file, reproduce stays on the one acceptance test', () => {
+  const criterion = 'artifacts/SpecSmith/src/lib/clamp.test.ts';
+  const source = 'artifacts/SpecSmith/src/lib/clamp.ts';
+  const phase = (paths, p) => checkPhase(validatePatch(paths.map((x) => patch(x)).join('')), { phase: p, criterion });
+  // An application source edit passes implement, alone or across several source files.
+  assert.deepEqual(phase([source], 'implement').paths, [source]);
+  assert.deepEqual(phase([source, 'artifacts/SpecSmith/src/components/PartSelector.tsx'], 'implement').paths.length, 2);
+  // Any other test file is refused during implement, alone or next to an allowed source edit.
+  for (const other of ['artifacts/SpecSmith/src/lib/other.test.ts', 'artifacts/SpecSmith/src/components/PartSelector.test.tsx']) {
+    assert.throws(() => phase([other], 'implement'), /may not change any test file/);
+    assert.throws(() => phase([source, other], 'implement'), /may not change any test file/);
+  }
+  assert.throws(() => phase([criterion], 'implement'), /acceptance test file/);
+  // Reproduce: only the chosen acceptance test, never another test or source.
+  assert.deepEqual(phase([criterion], 'reproduce').paths, [criterion]);
+  for (const paths of [['artifacts/SpecSmith/src/lib/other.test.ts'], [criterion, 'artifacts/SpecSmith/src/lib/other.test.ts'], [source], [criterion, source]]) {
+    assert.throws(() => phase(paths, 'reproduce'), /only the acceptance test file/);
+  }
 });

@@ -34,16 +34,22 @@ export function validatePatch(input) {
   return { sha256: createHash('sha256').update(bytes).digest('hex'), paths: [...seen].sort() };
 }
 
+// Every allowed path is under artifacts/SpecSmith/src, so this is any src .test.ts or .test.tsx file.
+const isTestFile = (name) => /\.test\.tsx?$/.test(name);
+
 /**
  * Version 1 phase rules (PILOT_HANDOFF_CONTRACT.md §1A.4 change 11), on top of validatePatch:
- * a reproduce patch changes exactly the acceptance test's file; an implement patch never touches it.
+ * a reproduce patch changes exactly the acceptance test's file; an implement patch changes no test
+ * file at all, so it cannot weaken the acceptance test or any other test to pass.
  */
+
 export function checkPhase(result, { phase, criterion }) {
   if (!allowedPath(criterion ?? '')) throw new Error('The criterion file is not an allowed source path');
   if (phase === 'reproduce') {
     if (result.paths.length !== 1 || result.paths[0] !== criterion) throw new Error('A reproduce patch may change only the acceptance test file');
   } else if (phase === 'implement') {
     if (result.paths.includes(criterion)) throw new Error('An implement patch may not change the acceptance test file');
+    if (result.paths.some(isTestFile)) throw new Error('An implement patch may not change any test file');
   } else {
     throw new Error('Unknown phase');
   }
