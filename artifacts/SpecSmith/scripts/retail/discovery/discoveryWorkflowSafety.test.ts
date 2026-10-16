@@ -16,13 +16,10 @@ const body = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'discov
   .join('\n');
 
 describe('part discovery workflow safety', () => {
-  it('runs on a schedule or by hand, never on pull requests; a push only on its own branch', () => {
+  it('runs only on a schedule or by hand, never on a push or pull request', () => {
     expect(body).toMatch(/^\s*schedule:/m);
     expect(body).toContain('workflow_dispatch:');
-    expect(body).not.toMatch(/^\s*(pull_request|pull_request_target):/m);
-    // The temporary pre-merge evidence trigger is scoped to exactly one branch.
-    const push = body.match(/^\s*push:\s*\n\s*branches:\s*\n((?:\s*-\s*\S+\s*\n)+)/m);
-    if (push) expect(push[1].trim().split(/\n/).map((l) => l.replace(/^\s*-\s*/, '').trim())).toEqual(['claude/part-discovery-staging']);
+    expect(body).not.toMatch(/^\s*(push|pull_request|pull_request_target):/m);
   });
 
   it('is read-only and never persists checkout credentials', () => {

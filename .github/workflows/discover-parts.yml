@@ -16,16 +16,6 @@ on:
     # Mondays 04:40 UTC: off the hour, and clear of the 03:20 price refresh.
     - cron: '40 4 * * 1'
   workflow_dispatch:
-  # TEMPORARY, for pre-merge evidence only: GitHub cannot dispatch a workflow
-  # that is not yet on the default branch, so a push to this one branch runs
-  # the read-only live check the founder asked for (the same pattern as
-  # validate-retail-snapshot.yml). Remove before merge.
-  push:
-    branches:
-      - claude/part-discovery-staging
-    paths:
-      - '.github/workflows/discover-parts.yml'
-      - 'artifacts/SpecSmith/scripts/retail/discovery/**'
 
 permissions:
   contents: read
