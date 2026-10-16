@@ -275,3 +275,16 @@ describe('ordinary office builds use integrated graphics', () => {
     expect(creative.gpu).not.toBeNull();
   });
 });
+
+describe('builds made by someone else (gallery staff picks, user submissions, shared links)', () => {
+  it('offer a Buy link only for eligible parts, and keep the part visible with its label otherwise', async () => {
+    const { buildPartRows } = await import('./buildPartRows');
+    const rows = buildPartRows({ gpu: 'rtx5070', cooler: 'cmh212', motherboard: 'not-a-part', cpu: null });
+    const byCategory = Object.fromEntries(rows.map((row) => [row.category, row]));
+    expect(byCategory.gpu.buyQuery).toBeTruthy();
+    expect(byCategory.cooler).toMatchObject({ buyQuery: null, label: 'Exact variant unconfirmed' });
+    expect(byCategory.motherboard.buyQuery).toBeNull(); // unknown id fails closed
+    expect(byCategory.cpu).toBeUndefined();
+    for (const row of rows) if (row.buyQuery) expect(isRecommendable(row.id), row.id).toBe(true);
+  });
+});
