@@ -125,6 +125,15 @@ describe('the published catalogue is untouched by a run', () => {
     expect(await main(['--out', path.join(appRoot, 'public', 'data', 'staged.json')], () => fixtureDeps())).toBe(1);
     expect(fs.existsSync(path.join(appRoot, 'public', 'data', 'staged.json'))).toBe(false);
   });
+
+  it('refuses a path outside the repository that a symlink points back into it', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'discovery-link-'));
+    const link = path.join(dir, 'data-link');
+    fs.symlinkSync(path.join(appRoot, 'public', 'data'), link, 'dir');
+    expect(await main(['--out', path.join(link, 'staged-via-link.json')], () => fixtureDeps())).toBe(1);
+    expect(fs.existsSync(path.join(appRoot, 'public', 'data', 'staged-via-link.json'))).toBe(false);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
 
 describe('helpers', () => {
@@ -158,5 +167,20 @@ describe('staging report for CI logs', () => {
     expect(report).toContain('upc:444555666777');
     expect(report).not.toMatch(/https?:\/\//);
     expect(report).not.toMatch(/linksynergy|REDACTED/);
+  });
+
+  it('strips URLs and control characters that a feed title or SKU might carry', async () => {
+    const { summarizeStaging } = await import('./summarize-staging');
+    const staging = await runDiscovery(fixtureDeps(), SEARCHES);
+    const hostile = 'Card https://click.linksynergy.com/x?id=SECRET&murl=y www.example.com\n::add-mask::z';
+    for (const c of staging.candidates) {
+      c.title = hostile;
+      for (const l of c.listings) { l.title = hostile; l.retailerSku = 'sku murl=abc'; }
+    }
+    staging.ambiguous = [{ ...staging.candidates[0], listings: staging.candidates[0].listings } as never];
+    const report = summarizeStaging(staging);
+    expect(report).not.toMatch(/https?:\/\/|www\.|linksynergy|murl=|SECRET/);
+    expect(report.split('\n').some((line) => line.startsWith('::'))).toBe(false);
+    expect(report).toContain('[link removed]');
   });
 });

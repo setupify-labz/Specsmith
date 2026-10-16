@@ -13,6 +13,18 @@ import { fileURLToPath } from 'node:url';
 
 import type { StagingFile } from './discoverParts';
 
+/**
+ * Feed text is untrusted. Remove anything URL-like and every control
+ * character (a newline could start a fresh log line, including a GitHub
+ * workflow command), so the report stays URL-free whatever the feed sends.
+ */
+export function logSafe(value: string): string {
+  return value
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, ' ')
+    .replace(/\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S*/gi, '[link removed]')
+    .replace(/\S*(?:linksynergy|click\.linksynergy|murl=|offerid=|subid=)\S*/gi, '[link removed]');
+}
+
 export function summarizeStaging(staging: StagingFile): string {
   const lines: string[] = [];
   lines.push(`Staging report (generated ${staging.generatedAt}, publication: ${staging.publication})`);
@@ -35,20 +47,20 @@ export function summarizeStaging(staging: StagingFile): string {
     const canonical = c.canonical.status === 'proposed'
       ? `-> ${c.canonical.canonicalId}`
       : c.canonical.status === 'ambiguous' ? `ambiguous(${c.canonical.candidates.join('/')})` : 'none';
-    lines.push(`  ${c.generation.tier.padEnd(12)} ${c.category.padEnd(11)} ${c.dedupeKey.padEnd(22)} x${c.listings.length} ${canonical.padEnd(22)} ${c.title}`);
+    lines.push(`  ${c.generation.tier.padEnd(12)} ${c.category.padEnd(11)} ${logSafe(c.dedupeKey).padEnd(22)} x${c.listings.length} ${canonical.padEnd(22)} ${logSafe(c.title)}`);
   }
 
   lines.push('');
   lines.push('Merged duplicates (same UPC, agreeing titles):');
   for (const c of merged) {
-    lines.push(`  ${c.dedupeKey}: ${c.listings.map((l) => `${l.retailerSku} "${l.title}"`).join(' | ')}`);
+    lines.push(`  ${logSafe(c.dedupeKey)}: ${c.listings.map((l) => `${logSafe(l.retailerSku)} "${logSafe(l.title)}"`).join(' | ')}`);
   }
   if (merged.length === 0) lines.push('  none');
 
   lines.push('');
   lines.push('Ambiguous UPC groups (not merged; need a person):');
   for (const g of staging.ambiguous) {
-    lines.push(`  ${g.dedupeKey}: ${g.listings.map((l) => `${l.retailerSku} "${l.title}"`).join(' | ')}`);
+    lines.push(`  ${logSafe(g.dedupeKey)}: ${g.listings.map((l) => `${logSafe(l.retailerSku)} "${logSafe(l.title)}"`).join(' | ')}`);
   }
   if (staging.ambiguous.length === 0) lines.push('  none');
   return lines.join('\n');

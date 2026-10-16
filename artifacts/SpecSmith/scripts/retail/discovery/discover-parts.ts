@@ -87,9 +87,21 @@ export async function runDiscovery(
   };
 }
 
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
+
 export function parseArgs(argv: readonly string[]): { out: string } {
   if (argv.length !== 2 || argv[0] !== '--out' || !argv[1]) throw new Error('usage: --out <path outside the repository>');
-  return { out: resolveCatalogOutputPath(argv[1]) };
+  return { out: resolveCatalogOutputPath(argv[1], repoRoot) };
+}
+
+/**
+ * The lexical check in parseArgs can be fooled by a symlinked directory that
+ * points into the checkout. Re-check the real directory the file would land
+ * in; the write itself uses O_EXCL ('wx'), so the file cannot be a symlink.
+ */
+export function resolveRealOutputPath(out: string, root: string = repoRoot): string {
+  const realDir = fs.realpathSync(path.dirname(out));
+  return resolveCatalogOutputPath(path.join(realDir, path.basename(out)), fs.realpathSync(root));
 }
 
 export function writeStagingFile(out: string, staging: StagingFile): void {
@@ -123,6 +135,7 @@ export async function main(argv: readonly string[], deps: () => DiscoveryDeps = 
   try {
     ({ out } = parseArgs(argv));
     if (!fs.existsSync(path.dirname(out))) throw new Error('output directory missing');
+    out = resolveRealOutputPath(out);
   } catch (cause) {
     console.error(`Part discovery refused: ${(cause as Error).message}. Nothing was written.`);
     return 1;
