@@ -21,6 +21,8 @@ interface SummaryPart {
   price: SummaryPrice;
   affiliateUrl?: string;
   customId?: string;
+  /** False hides retailer links for this row (catalog audit eligibility). */
+  retailLinks?: boolean;
 }
 
 export interface CustomPart {
@@ -187,7 +189,7 @@ export default function BuildSummary({
                         style={{ color: 'var(--ff-red)' }}>
                         Remove
                       </button>
-                    ) : (
+                    ) : (p.affiliateUrl || p.retailLinks !== false) && (
                       <>
                         {!p.affiliateUrl && (
                           <a href={getAffiliateUrl(buildPartQuery(p.name, undefined, p.label.toLowerCase()))} target="_blank" rel="noopener noreferrer sponsored"

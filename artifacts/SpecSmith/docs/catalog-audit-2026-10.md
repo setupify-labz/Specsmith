@@ -107,6 +107,24 @@ The $250 GPU cap was reverted. The "Everyday Office" and "Power Multitasker" tie
 
 **Follow-up after deploy:** resubmit the sitemap and check Search Console for the three redirected URLs. This needs founder access.
 
+## Curated build substitutions (provisional)
+
+Every curated prebuilt contained at least one ineligible, ambiguous-variant part, so each was swapped for a like-for-like eligible part (Codex review, PR #191):
+
+| Build | Was | Now |
+|---|---|---|
+| budget-beast | `crm750` Corsair RM750x | `msiaga850` MSI MAG A850GL |
+| budget-beast | `cmh212` Hyper 212 | `thrpa120se` Peerless Assassin 120 SE (155 mm, fits the H510's 165 mm) |
+| 1080p-champion | `gr32ddr4` Ripjaws 32GB DDR4-3600 | `cv32ddr4` Vengeance 32GB DDR4-3600 |
+| 1440p-sweetspot | `corh100i` H100i Elite (240 mm) | `nzxtx53` Kraken X53 (240 mm) |
+| 4k-monster | `x670ecross` Crosshair X670E | `x670emeg` MEG X670E ACE |
+| 4k-monster, ultimate-rig | `corh150i` H150i Elite (360 mm) | `thrfs360` Frozen Notte 360 (360 mm) |
+
+**Status: provisionally accepted by Aaron (2026-10-16), pending exact-product compatibility and retailer-price validation.** These are **not verified shopping offers**:
+- The prices shown are SpecSmith catalogue estimates, and are labelled as estimates.
+- The retailer links are searches, not verified listings.
+- Radiator and mount fit in the chosen cases has not been checked against manufacturer specs. The case records carry no radiator data.
+
 ## Duplicates
 
 - **Canonical catalog:** no duplicate ids or names. A test enforces this.

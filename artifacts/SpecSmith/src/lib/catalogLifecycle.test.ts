@@ -288,3 +288,40 @@ describe('builds made by someone else (gallery staff picks, user submissions, sh
     for (const row of rows) if (row.buyQuery) expect(isRecommendable(row.id), row.id).toBe(true);
   });
 });
+
+describe('Build Crate pulls (presented as buildable PCs)', () => {
+  it('refuses to roll until eligibility is loaded (fails closed)', async () => {
+    const crate = await import('./buildCrate');
+    crate.setCrateEligibility(null);
+    expect(() => crate.rollGpu()).toThrow(/eligibility/);
+    expect(() => crate.getGpuPool()).toThrow(/eligibility/);
+  });
+
+  it('every pool, and every part a seeded pull can produce, is eligible', async () => {
+    const crate = await import('./buildCrate');
+    crate.setCrateEligibility(isRecommendable);
+    const pools = [
+      crate.getMotherboardPool(), crate.getGpuPool(), crate.getStoragePool(),
+      crate.getCasePool(), crate.getCoolerPool(), crate.getPsuPool(),
+      ...crate.SOCKETS.map((socket) => crate.getCpuPool(socket)),
+      ...['DDR4', 'DDR5'].map((type) => crate.getRamPool(type)),
+    ];
+    for (const pool of pools) for (const part of pool) expectRecommendableInCrate(part.id);
+    expect(crate.getGpuPool().map((g) => g.id)).not.toContain('rtx4050');
+    expect(crate.getMotherboardPool().map((m) => m.id)).not.toContain('x670ecross');
+    expect(crate.getCoolerPool().map((c) => c.id)).not.toContain('cmh212');
+    crate.setCrateRng(crate.seededRng(7));
+    for (let i = 0; i < 50; i += 1) {
+      const mb = crate.rollMotherboard();
+      for (const part of [mb.part, crate.rollCpu(mb.socket).part, crate.rollGpu().part, crate.rollStorage().part, crate.rollCase().part, crate.rollCooler().part, crate.rollPsu().part]) {
+        expectRecommendableInCrate(part.id);
+      }
+    }
+    crate.setCrateRng(null);
+    crate.setCrateEligibility(null);
+  });
+});
+
+function expectRecommendableInCrate(id: string) {
+  expect(isRecommendable(id), `crate pool contains ${id}`).toBe(true);
+}

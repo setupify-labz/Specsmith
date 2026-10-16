@@ -30,6 +30,11 @@ import {
   setCrateRng,
 } from "../../../src/lib/buildCrate.ts";
 import { cpuPeakPower } from "../../../src/lib/cpuPower.ts";
+import { setCrateEligibility } from "../../../src/lib/buildCrate.ts";
+import { isRecommendable } from "../../../src/lib/catalogLifecycle.ts";
+
+// Predicted crates use the same eligible-only pools the page rolls from.
+setCrateEligibility(isRecommendable);
 
 export interface PredictedCrate {
   seed: number;

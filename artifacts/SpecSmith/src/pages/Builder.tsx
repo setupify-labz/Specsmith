@@ -516,26 +516,32 @@ export default function Builder() {
   const monitorWarningCount = warnings.filter(w => w.id.startsWith('monitor-')).length;
 
   const corePartsList = [
-    selectedGpu     && { label: 'GPU',         name: selectedGpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.gpu(selectedGpu) } as SummaryPrice, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
-    selectedCpu     && { label: 'CPU',         name: selectedCpu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cpu(selectedCpu) } as SummaryPrice, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
-    selectedMb      && { label: 'Motherboard', name: selectedMb.name,      price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.motherboard(selectedMb) } as SummaryPrice, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
-    selectedRam     && { label: 'RAM',         name: selectedRam.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.ram(selectedRam) } as SummaryPrice, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
-    selectedStorage && { label: 'Storage',     name: selectedStorage.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.storage(selectedStorage) } as SummaryPrice, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
-    selectedPsu     && { label: 'PSU',         name: selectedPsu.name,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.psu(selectedPsu) } as SummaryPrice, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
-    selectedCase    && { label: 'Case',        name: selectedCase.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.case(selectedCase) } as SummaryPrice, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
-    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cooler(selectedCooler) } as SummaryPrice, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
+    selectedGpu     && { label: 'GPU',         name: selectedGpu.name, id: selectedGpu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.gpu(selectedGpu) } as SummaryPrice, affiliateUrl: selectedGpu.affiliateUrl as string | undefined },
+    selectedCpu     && { label: 'CPU',         name: selectedCpu.name, id: selectedCpu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cpu(selectedCpu) } as SummaryPrice, affiliateUrl: selectedCpu.affiliateUrl as string | undefined },
+    selectedMb      && { label: 'Motherboard', name: selectedMb.name, id: selectedMb.id as string,      price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.motherboard(selectedMb) } as SummaryPrice, affiliateUrl: selectedMb.affiliateUrl as string | undefined },
+    selectedRam     && { label: 'RAM',         name: selectedRam.name, id: selectedRam.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.ram(selectedRam) } as SummaryPrice, affiliateUrl: selectedRam.affiliateUrl as string | undefined },
+    selectedStorage && { label: 'Storage',     name: selectedStorage.name, id: selectedStorage.id as string, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.storage(selectedStorage) } as SummaryPrice, affiliateUrl: selectedStorage.affiliateUrl as string | undefined },
+    selectedPsu     && { label: 'PSU',         name: selectedPsu.name, id: selectedPsu.id as string,     price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.psu(selectedPsu) } as SummaryPrice, affiliateUrl: selectedPsu.affiliateUrl as string | undefined },
+    selectedCase    && { label: 'Case',        name: selectedCase.name, id: selectedCase.id as string,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.case(selectedCase) } as SummaryPrice, affiliateUrl: selectedCase.affiliateUrl as string | undefined },
+    selectedCooler  && { label: 'Cooler',      name: selectedCooler.name, id: selectedCooler.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.cooler(selectedCooler) } as SummaryPrice, affiliateUrl: selectedCooler.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; id: string; price: SummaryPrice; affiliateUrl?: string }[];
 
   const peripheralPartsList = [
-    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.monitor(selectedMonitor) } as SummaryPrice, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
-    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.keyboard(selectedKeyboard) } as SummaryPrice, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
-    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.mouse(selectedMouse) } as SummaryPrice, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
-    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.headset(selectedHeadset) } as SummaryPrice, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
-  ].filter(Boolean) as { label: string; name: string; price: SummaryPrice; affiliateUrl?: string }[];
+    selectedMonitor  && { label: 'Monitor',  name: selectedMonitor.name, id: selectedMonitor.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.monitor(selectedMonitor) } as SummaryPrice, affiliateUrl: selectedMonitor.affiliateUrl as string | undefined },
+    selectedKeyboard && { label: 'Keyboard', name: selectedKeyboard.name, id: selectedKeyboard.id as string, price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.keyboard(selectedKeyboard) } as SummaryPrice, affiliateUrl: selectedKeyboard.affiliateUrl as string | undefined },
+    selectedMouse    && { label: 'Mouse',    name: selectedMouse.name, id: selectedMouse.id as string,    price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.mouse(selectedMouse) } as SummaryPrice, affiliateUrl: selectedMouse.affiliateUrl as string | undefined },
+    selectedHeadset  && { label: 'Headset',  name: selectedHeadset.name, id: selectedHeadset.id as string,  price: { kind: 'catalogue', price: CATALOGUE_ESTIMATE.headset(selectedHeadset) } as SummaryPrice, affiliateUrl: selectedHeadset.affiliateUrl as string | undefined },
+  ].filter(Boolean) as { label: string; name: string; id: string; price: SummaryPrice; affiliateUrl?: string }[];
 
+  // Retailer links in the summary follow the catalog audit: a verified listing
+  // keeps its link, a catalogue part gets one only once listed as eligible.
+  const withRetailLinks = <T extends { id: string; affiliateUrl?: string }>(part: T) => ({
+    ...part,
+    retailLinks: Boolean(part.affiliateUrl) || (catalogLifecycle?.isRecommendable(part.id) ?? false),
+  });
   const summaryParts = [
-    ...corePartsList,
-    ...peripheralPartsList,
+    ...corePartsList.map(withRetailLinks),
+    ...peripheralPartsList.map(withRetailLinks),
     ...customParts.map(cp => ({ label: 'Custom', name: cp.name, price: { kind: 'user-entered', amount: cp.price } as SummaryPrice, customId: cp.id })),
   ];
   // The same summary the panel shows, so the saved figure and the displayed

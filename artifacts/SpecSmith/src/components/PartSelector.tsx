@@ -338,6 +338,9 @@ export default function PartSelector({
                       }
                       specs={getSpecs(part)}
                       catalogNotice={lifecycle?.catalogLabelText(part.id) ?? null}
+                      // A verified retailer listing keeps its link; a catalogue
+                      // part gets one only once the audit lists it as eligible.
+                      retailLinks={Boolean(part.affiliateUrl) || (lifecycle?.isRecommendable(part.id) ?? false)}
                       tier={part.tier}
                       showShopping={showShopping}
                       onSelect={(id) => onSelect(id === selectedId ? null : id)}
