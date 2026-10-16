@@ -136,6 +136,15 @@ async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
   await new IssueCommentStore(github, REPO, 400, ME).save({ ...goal, issue: 400, ...over }, T0);
 }
 
+describe("the work order names the goal's mode", () => {
+  it("a goal without an executor commit gets executor: false, so the executor-only routine prompt stops", async () => {
+    const h = harness();
+    await submit(h.github);
+    await begin([...h.argv, "--session", "s1", "--started-by", "routine (API trigger)"], h.deps);
+    expect(h.last()).toMatchObject({ executor: false, action: "reproduce" });
+  });
+});
+
 describe("run ownership (claim.ts)", () => {
   const go = (h: ReturnType<typeof harness>, session: string) => begin([...h.argv, "--session", session, "--started-by", "routine (API trigger)"], h.deps);
   const revisions = (h: ReturnType<typeof harness>) => h.github.comments.get(400)!.map((c) => parseRecordComment(c.body, "aria-expanded")!.revision);

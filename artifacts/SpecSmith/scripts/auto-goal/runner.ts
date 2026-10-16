@@ -106,7 +106,8 @@ function trustedCriteria(goal: GoalRecord): { id: string; check: CheckSpec }[] {
 }
 
 function workOrder(goal: GoalRecord, next: Action, run: RunEntry): Record<string, unknown> {
-  const base = { goal: goal.id, run: run.n, of: goal.caps.maxRuns ?? DEFAULT_MAX_RUNS, action: next.action, why: next.why, branch: goal.branch, head: goal.head, pr: goal.pr };
+  // `executor` tells the routine (ROUTINE_PROMPT.md) whether the Actions executor owns this goal's code; it runs only executor goals.
+  const base = { goal: goal.id, run: run.n, of: goal.caps.maxRuns ?? DEFAULT_MAX_RUNS, executor: isExecutorMode(goal), action: next.action, why: next.why, branch: goal.branch, head: goal.head, pr: goal.pr };
   const criteria = goal.acceptanceCriteria.map((c) => ({ id: c.id, text: c.text, check: c.check }));
   // Executor mode: the executor does the code; the session's only job is `advance`.
   if (isExecutorMode(goal)) return { ...base, todo: "No code is due. Run `advance`." };

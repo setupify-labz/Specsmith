@@ -79,7 +79,11 @@ function proc(cmd: string, args: string[], extra: Record<string, string> = {}): 
 }
 const wake = (args: string[], extra: Record<string, string> = {}) => proc(process.execPath, ["--import", FETCH, WAKE, ...args], extra);
 
-/** One routine session, doing exactly what ROUTINE_PROMPT.md tells it to. */
+/**
+ * One routine session following the pre-executor flow (guard, begin, commit, advance). The goal here has
+ * no executor commit, so the executor-only ROUTINE_PROMPT.md would stop at `begin`; these tests cover
+ * the guard and the run claim, which the executor-only prompt still relies on.
+ */
 function session(name: string, text: string) {
   const work = join(dir, name);
   execFileSync("git", ["clone", "-q", origin, work], { env: gitEnv() });

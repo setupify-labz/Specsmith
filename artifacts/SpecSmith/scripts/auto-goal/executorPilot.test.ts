@@ -322,6 +322,7 @@ describe("version 1, end to end: issue → reproduce → fix → checks → Code
     // V0 → V1: the first session dispatches the reproduce step once, from main.
     let t = await h.turn();
     expect(t.order.action).toBe("reproduce");
+    expect(t.order.executor).toBe(true); // ROUTINE_PROMPT.md runs only work orders with executor: true
     expect(t.adv.next).toBe("wait-executor");
     expect(h.gh.dispatched).toEqual([{ ref: "main", inputs: { goal: ID, issue: String(ISSUE), nonce: `${ID}.d1` } }]);
     let rec = await h.record();
