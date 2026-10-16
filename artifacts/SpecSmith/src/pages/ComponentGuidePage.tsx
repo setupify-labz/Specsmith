@@ -7,6 +7,7 @@ import { useSeo } from '../hooks/useSeo';
 import { SITE_URL } from '../lib/seo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
+import CatalogLabelNote from '../components/CatalogLabelNote';
 
 export default function ComponentGuidePage({ category }: { category: GuideCategory }) {
   const guide = getComponentGuide(category);
@@ -75,6 +76,7 @@ export default function ComponentGuidePage({ category }: { category: GuideCatego
             <div key={p.label} className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
               <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{p.emoji} {p.label}</p>
               <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent-text)' }}>{p.item.name}</p>
+              <CatalogLabelNote id={p.item.id} className="mb-1" />
               <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.detail}</p>
               <div className="flex items-center gap-3 text-xs">
                 <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.item.price_usd}</span>

@@ -1,3 +1,5 @@
+import { cpuPeakPower, type CpuPowerSpec } from './cpuPower';
+
 export interface CompatibilityWarning {
   id: string;
   type: 'error' | 'warning';
@@ -78,7 +80,7 @@ export function describeSkippedChecks(skipped: readonly SkippedCheck[]): string 
 
 export function checkCompatibility(parts: {
   gpu?: { tdp_watts: number; name: string; length_mm?: number } | null;
-  cpu?: { tdp_watts: number; socket: string; supported_ram: string[]; name: string } | null;
+  cpu?: (CpuPowerSpec & { socket: string; supported_ram: string[]; name: string }) | null;
   motherboard?: { socket: string; supported_ram: string[]; name: string; form_factor?: string } | null;
   ram?: { type: string; name: string } | null;
   psu?: { wattage: number; name: string } | null;
@@ -168,7 +170,7 @@ export function checkCompatibility(parts: {
   // at all, and the build gets no power verdict rather than a reassuring one.
   const powerDrawUnknown =
     (parts.gpu != null && typeof parts.gpu.tdp_watts !== 'number') ||
-    (parts.cpu != null && typeof parts.cpu.tdp_watts !== 'number');
+    (parts.cpu != null && cpuPeakPower(parts.cpu) === null);
   if (parts.psu && typeof parts.psu.wattage === 'number' && powerDrawUnknown) {
     // SAYS SO, rather than going quiet. A power supply is selected and the
     // question plainly applies; the build simply cannot be assessed for it.
@@ -179,16 +181,20 @@ export function checkCompatibility(parts: {
     });
   }
   if (parts.psu && typeof parts.psu.wattage === 'number' && !powerDrawUnknown &&
-      (typeof parts.gpu?.tdp_watts === 'number' || typeof parts.cpu?.tdp_watts === 'number')) {
+      (typeof parts.gpu?.tdp_watts === 'number' || parts.cpu != null)) {
     const gpuTdp = typeof parts.gpu?.tdp_watts === 'number' ? parts.gpu.tdp_watts : 0;
-    const cpuTdp = typeof parts.cpu?.tdp_watts === 'number' ? parts.cpu.tdp_watts : 0;
+    // Peak draw: Intel's Maximum Turbo Power where published, else the rated
+    // TDP (AMD publishes no per-model maximum). See cpuPower.ts.
+    const cpuDraw = parts.cpu ? cpuPeakPower(parts.cpu) : null;
+    const cpuTdp = cpuDraw?.watts ?? 0;
+    const cpuLabel = cpuDraw?.basis === 'max-turbo' ? 'CPU max turbo' : 'CPU rated TDP';
     const required = gpuTdp + cpuTdp + 100;
     if (parts.psu.wattage < required) {
       warnings.push({
         id: 'psu-insufficient',
         type: 'error',
         title: 'Power supply is too weak for this build',
-        detail: `GPU (${gpuTdp}W) + CPU (${cpuTdp}W) + ~100W for everything else needs about ${required}W, but ${parts.psu.name} delivers ${parts.psu.wattage}W. Under gaming load this risks shutdowns, crashes, or the system refusing to boot.`,
+        detail: `GPU (${gpuTdp}W) + ${cpuLabel} (${cpuTdp}W) + ~100W for everything else needs about ${required}W, but ${parts.psu.name} delivers ${parts.psu.wattage}W. Under gaming load this risks shutdowns, crashes, or the system refusing to boot.`,
         fix: `Choose a PSU of at least ${Math.ceil((required * 1.15) / 50) * 50}W for comfortable headroom.`,
         confidence: 'certain',
       });
@@ -289,14 +295,15 @@ export function checkCompatibility(parts: {
   }
 
   // Cooler capacity vs CPU heat
-  if (typeof parts.cooler?.max_tdp_watts === 'number' && parts.cpu && typeof parts.cpu.tdp_watts === 'number') {
-    if (parts.cpu.tdp_watts > parts.cooler.max_tdp_watts) {
+  const coolerCpuDraw = parts.cpu ? cpuPeakPower(parts.cpu) : null;
+  if (typeof parts.cooler?.max_tdp_watts === 'number' && parts.cpu && coolerCpuDraw) {
+    if (coolerCpuDraw.watts > parts.cooler.max_tdp_watts) {
       warnings.push({
         id: 'cooler-undersized',
         type: 'warning',
         title: 'Cooler may struggle with this CPU',
-        detail: `${parts.cpu.name} can draw up to ${parts.cpu.tdp_watts}W, above the ~${parts.cooler.max_tdp_watts}W ${parts.cooler.name} is rated for. The CPU will still work, but it will run hot and lose performance under sustained load (thermal throttling).`,
-        fix: `Pick a cooler rated for at least ${parts.cpu.tdp_watts}W for full performance.`,
+        detail: `${parts.cpu.name} can draw up to ${coolerCpuDraw.watts}W (${coolerCpuDraw.basis === 'max-turbo' ? 'maximum turbo power' : 'rated TDP'}), above the ~${parts.cooler.max_tdp_watts}W ${parts.cooler.name} is rated for. The CPU will still work, but it will run hot and lose performance under sustained load (thermal throttling).`,
+        fix: `Pick a cooler rated for at least ${coolerCpuDraw.watts}W for full performance.`,
         confidence: 'likely',
       });
     } else {

@@ -44,7 +44,7 @@ import {
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 import { trackProductEvent } from '../lib/productAnalytics';
-import { recommendable } from '../lib/catalogLifecycle';
+import { useCatalogLifecycle } from '../hooks/useCatalogLifecycle';
 
 const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
 const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
@@ -84,7 +84,7 @@ const CATALOGUE_ESTIMATE = {
 } as const;
 
 interface GPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; vram_gb: number; tdp_watts: number; architecture: string; release_year: number; benchmark_score: number; gpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
-interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; tdp_watts: number; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
+interface CPU { id: string; name: string; brand: string; series: string; price_usd: number; tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number; base_power_watts: number; max_turbo_power_watts: number | null; socket: string; supported_ram: string[]; release_year: number; benchmark_score: number; cpu_multiplier: number; sponsored?: boolean; [key: string]: unknown; }
 interface Motherboard { id: string; name: string; brand: string; price_usd: number; socket: string; supported_ram: string[]; form_factor: string; sponsored?: boolean; [key: string]: unknown; }
 interface RAM { id: string; name: string; brand: string; price_usd: number; type: string; capacity_gb: number; speed_mhz: number; sponsored?: boolean; [key: string]: unknown; }
 interface Storage { id: string; name: string; brand: string; price_usd: number; type: string; capacity_tb: number; speed_mbs: number; sponsored?: boolean; [key: string]: unknown; }
@@ -148,6 +148,9 @@ export default function Builder() {
   const [peripheralsOpen, setPeripheralsOpen] = useState(false);
   const { view: affiliateCatalog, retry: retryCatalog } = useAffiliatePartCatalog();
   const processedImages = useProductImageManifest();
+  // Recommended highlights only ever name eligible parts; none until loaded.
+  const catalogLifecycle = useCatalogLifecycle();
+  const recommendable = <T extends { id: string }>(parts: T[]): T[] => catalogLifecycle?.recommendable(parts) ?? [];
 
   const retailByCategory = useMemo(() => {
     const grouped = new Map<RetailPartCategory, AffiliatePart[]>();

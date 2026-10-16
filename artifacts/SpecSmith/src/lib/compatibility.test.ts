@@ -25,7 +25,7 @@ describe('compatibility checks with retailer-only catalog entries', () => {
 
   it('runs a check only when both facts needed for that check are present', () => {
     const result = checkCompatibility({
-      cpu: { name: 'Verified CPU', socket: 'AM5', supported_ram: ['DDR5'], tdp_watts: 65 },
+      cpu: { name: 'Verified CPU', socket: 'AM5', supported_ram: ['DDR5'], base_power_watts: 65, max_turbo_power_watts: null },
       motherboard: { name: 'Retailer board' } as never,
       ram: { name: 'Retailer memory' } as never,
     });

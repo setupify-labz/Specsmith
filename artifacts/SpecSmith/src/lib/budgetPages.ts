@@ -58,9 +58,9 @@ export interface BudgetPick {
   detail: string;
 }
 
-// Picks are buying recommendations: only parts the catalog audit marks
-// recommendable. The full ranked table (getPartsUnderBudget) still lists every
-// tracked part, legacy ones labelled as such.
+// Picks are buying recommendations: only parts the catalog audit lists as
+// eligible. The full ranked table (getPartsUnderBudget) still lists every
+// tracked part, with its catalog label.
 export function getBudgetPicks(category: 'gpu' | 'cpu', tier: BudgetTier): BudgetPick[] {
   const parts = recommendable(getPartsUnderBudget(category, tier.maxPrice));
   if (parts.length === 0) return [];

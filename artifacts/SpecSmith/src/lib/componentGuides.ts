@@ -59,8 +59,8 @@ const ramEnriched = ram.map(r => ({ ...r, cost_per_gb: Math.round((r.price_usd /
 const storageEnriched = storage.map(s => ({ ...s, cost_per_tb: Math.round((s.price_usd / s.capacity_tb) * 100) / 100 }));
 
 // Picks are buying recommendations, so they come only from parts the catalog
-// audit marks recommendable (not legacy, not ambiguous). The comparison tables
-// below still list every tracked part.
+// audit lists as eligible. The comparison tables below still list every
+// tracked part.
 const ramPicks = recommendable(ramEnriched);
 const storagePicks = recommendable(storageEnriched);
 const psuPicks = recommendable(psus);

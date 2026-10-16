@@ -29,6 +29,7 @@ import {
   seededRng,
   setCrateRng,
 } from "../../../src/lib/buildCrate.ts";
+import { cpuPeakPower } from "../../../src/lib/cpuPower.ts";
 
 export interface PredictedCrate {
   seed: number;
@@ -47,8 +48,8 @@ export function predictCrate(seed: number): PredictedCrate {
     const gpu = rollGpu(false);
     const storage = rollStorage();
     const kase = rollCase(motherboard.part.form_factor, gpu.part.length_mm);
-    const cooler = rollCooler(kase.part.cooler_clearance_mm, cpu.part.tdp_watts, cpu.part.socket);
-    const psu = rollPsu(gpu.part.tdp_watts, cpu.part.tdp_watts);
+    const cooler = rollCooler(kase.part.cooler_clearance_mm, cpuPeakPower(cpu.part)?.watts, cpu.part.socket);
+    const psu = rollPsu(gpu.part.tdp_watts, cpuPeakPower(cpu.part)?.watts);
 
     const bySlot: Record<string, string> = {
       motherboard: motherboard.part.name,

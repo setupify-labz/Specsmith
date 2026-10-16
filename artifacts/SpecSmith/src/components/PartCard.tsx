@@ -19,7 +19,7 @@ interface PartCardProps {
   sponsored?: boolean;
   recommended?: boolean;
   badge?: 'best-value' | 'best-performance';
-  /** Why the catalog audit does not recommend this part (legacy, invalid…). */
+  /** Catalog audit label, e.g. "Older generation" or "Exact variant unconfirmed". */
   catalogNotice?: string | null;
   specs: { label: string; value: string }[];
   tier?: number;

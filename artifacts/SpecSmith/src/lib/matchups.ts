@@ -106,7 +106,6 @@ export const MATCHUPS: Matchup[] = [
   { slug: 'rx-7900-xtx-vs-rx-7900-xt', gpuA: 'rx7900xtx', gpuB: 'rx7900xt' },
   { slug: 'rtx-5080-vs-rtx-4080', gpuA: 'rtx5080', gpuB: 'rtx4080' },
   { slug: 'rx-6600-vs-arc-a580', gpuA: 'rx6600', gpuB: 'arca580' },
-  { slug: 'rtx-4050-vs-arc-b570', gpuA: 'rtx4050', gpuB: 'arcb570' },
   { slug: 'rtx-4060-ti-vs-rx-9060-xt', gpuA: 'rtx4060ti', gpuB: 'rx9060xt16' },
   { slug: 'rtx-3080-ti-vs-rx-9070-xt', gpuA: 'rtx3080ti', gpuB: 'rx9070xt' },
   { slug: 'rtx-4070-ti-vs-rtx-3090-ti', gpuA: 'rtx4070ti', gpuB: 'rtx3090ti' },
@@ -157,7 +156,6 @@ export const MATCHUPS: Matchup[] = [
   { slug: 'rtx-3080-12gb-vs-rx-6800-xt', gpuA: 'rtx308012', gpuB: 'rx6800xt' },
   { slug: 'rtx-3090-ti-vs-rx-9070-xt', gpuA: 'rtx3090ti', gpuB: 'rx9070xt' },
   { slug: 'rtx-4080-super-vs-rx-7900-xt', gpuA: 'rtx4080s', gpuB: 'rx7900xt' },
-  { slug: 'rtx-5050-vs-rtx-4050', gpuA: 'rtx5050', gpuB: 'rtx4050' },
   { slug: 'rx-7700-xt-vs-rx-6750-xt', gpuA: 'rx7700xt', gpuB: 'rx6750xt' },
   { slug: 'rx-9070-vs-rx-7800-xt', gpuA: 'rx9070', gpuB: 'rx7800xt' },
   { slug: 'rtx-5070-ti-vs-rtx-3080-ti', gpuA: 'rtx5070ti', gpuB: 'rtx3080ti' },
@@ -175,7 +173,8 @@ export interface MatchupCpu {
   threads: number;
   base_ghz: number;
   boost_ghz: number;
-  tdp_watts: number;
+  base_power_watts: number;
+  max_turbo_power_watts: number | null;
   socket: string;
   price_usd: number;
   release_year: number;

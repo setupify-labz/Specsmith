@@ -5,6 +5,7 @@ import { getUseCase, getTierPicks, getTierComparisons, getUseCasePageMeta, useCa
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
+import CatalogLabelNote from '../components/CatalogLabelNote';
 
 export default function UseCaseBuildPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -66,20 +67,31 @@ export default function UseCaseBuildPage() {
               </div>
 
               <div className="mb-3 pb-3" style={{ borderBottom: '1px solid var(--ff-border)' }}>
-                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>GPU</p>
-                <p className="font-bold" style={{ color: 'var(--ff-text)' }}>{p.gpu.name}</p>
-                <div className="flex items-center gap-2 text-xs mt-1">
-                  <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.gpu.price_usd}</span>
-                  <a href={getAffiliateUrl(buildPartQuery(p.gpu.name, p.gpu.brand, 'gpu'))} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
-                    Amazon <ExternalLink size={9} />
-                  </a>
-                </div>
+                <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>{p.gpu ? 'GPU' : 'Graphics'}</p>
+                {p.gpu ? (
+                  <>
+                    <p className="font-bold" style={{ color: 'var(--ff-text)' }}>{p.gpu.name}</p>
+                    <CatalogLabelNote id={p.gpu.id} />
+                    <div className="flex items-center gap-2 text-xs mt-1">
+                      <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.gpu.price_usd}</span>
+                      <a href={getAffiliateUrl(buildPartQuery(p.gpu.name, p.gpu.brand, 'gpu'))} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:opacity-80" style={{ color: 'var(--ff-accent-text)' }}>
+                        Amazon <ExternalLink size={9} />
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-bold" style={{ color: 'var(--ff-text)' }}>Built into the CPU</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--ff-text-2)' }}>{p.cpu.integrated_graphics ?? 'Integrated graphics'}. No graphics card needed.</p>
+                  </>
+                )}
               </div>
 
               <div>
                 <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: 'var(--ff-text-3)' }}>CPU</p>
                 <p className="font-bold" style={{ color: 'var(--ff-text)' }}>{p.cpu.name}</p>
+                <CatalogLabelNote id={p.cpu.id} />
                 <div className="flex items-center gap-2 text-xs mt-1">
                   <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.cpu.price_usd}</span>
                   <a href={getAffiliateUrl(buildPartQuery(p.cpu.name, p.cpu.brand, 'cpu'))} target="_blank" rel="noopener noreferrer"
@@ -89,7 +101,7 @@ export default function UseCaseBuildPage() {
                 </div>
               </div>
 
-              <Link to={`/builder?gpu=${p.gpu.id}&cpu=${p.cpu.id}`}
+              <Link to={p.gpu ? `/builder?gpu=${p.gpu.id}&cpu=${p.cpu.id}` : `/builder?cpu=${p.cpu.id}`}
                 className="mt-4 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg hover:opacity-80"
                 style={{ backgroundColor: 'var(--ff-card)', color: 'var(--ff-text)' }}>
                 Load in Builder <ChevronRight size={12} />

@@ -26,6 +26,7 @@ import { getRouteMeta } from '../lib/seo';
 import CompatibilityBanner from '../components/CompatibilityBanner';
 import CratePullsFeed from '../components/CratePullsFeed';
 import PageGlow from '../components/PageGlow';
+import { cpuPeakPower } from '../lib/cpuPower';
 
 // How dramatic the landing effect gets, escalating per rarity tier.
 const RARITY_INTENSITY: Record<CrateRarity, { particles: number; distance: number; shake: number; rays: boolean }> = {
@@ -323,10 +324,10 @@ export default function BuildCrate() {
       const r = rollCase(revealed.motherboard!.part.form_factor, revealed.gpu!.part.length_mm);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.case = r; } });
     } else if (key === 'cooler') {
-      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, revealed.cpu!.part.tdp_watts, revealed.cpu!.part.socket);
+      const r = rollCooler(revealed.case!.part.cooler_clearance_mm, cpuPeakPower(revealed.cpu!.part)?.watts, revealed.cpu!.part.socket);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.cooler = r; } });
     } else {
-      const r = rollPsu(revealed.gpu!.part.tdp_watts, revealed.cpu!.part.tdp_watts);
+      const r = rollPsu(revealed.gpu!.part.tdp_watts, cpuPeakPower(revealed.cpu!.part)?.watts);
       setPending({ key, part: r.part, rarity: r.rarity, apply: u => { u.psu = r; } });
     }
   };

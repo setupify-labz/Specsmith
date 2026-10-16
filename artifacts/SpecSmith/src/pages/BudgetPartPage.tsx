@@ -9,7 +9,8 @@ import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
-import { notRecommendedLabel } from '../lib/catalogLifecycle';
+import { catalogLabelText } from '../lib/catalogLifecycle';
+import CatalogLabelNote from '../components/CatalogLabelNote';
 
 export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }) {
   const { slug } = useParams<{ slug: string }>();
@@ -48,16 +49,16 @@ export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }
   const partCategory = category === 'gpu' ? 'gpu' : 'cpu';
 
   // The FAQ answer is a recommendation, so it names the audited Best
-  // Performance pick, never a legacy or invalid part that merely scores higher.
+  // Performance pick, never an ineligible part that merely scores higher.
   const topPick = picks.find(p => p.label === 'Best Performance')?.part;
 
   const faqs = [
     {
       title: `What's the best ${kind} ${tier.label.toLowerCase()}?`,
       content: topPick
-        ? `The ${topPick.name} at $${topPick.price_usd} — it has the highest benchmark score (${topPick.benchmark_score}) of the ${kind}s we track ${tier.label.toLowerCase()} that are still a sensible new purchase. Every part on this page is ranked the same way: by raw benchmark performance within the price cap, not a subjective pick. Older parts are listed for comparison and marked as legacy.`
+        ? `The ${topPick.name} at $${topPick.price_usd} — it has the highest benchmark score (${topPick.benchmark_score}) of the ${kind}s we track ${tier.label.toLowerCase()} that are eligible for recommendation. Every part on this page is ranked the same way: by raw benchmark performance within the price cap, not a subjective pick. Older-generation parts are labelled so you know what you are buying.`
         : parts.length > 0
-          ? `None of the ${kind}s we track ${tier.label.toLowerCase()} are current enough to recommend for a new build. The parts listed below are older models kept for comparison.`
+          ? `None of the ${kind}s we track ${tier.label.toLowerCase()} are eligible for recommendation. The parts listed below are kept for comparison only.`
           : `We don't currently track a ${kind} under this price point.`,
     },
     {
@@ -106,6 +107,7 @@ export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }
               <div key={p.label} className="rounded-2xl p-5" style={{ backgroundColor: 'var(--ff-surface)', border: '1px solid var(--ff-border)' }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: 'var(--ff-text-2)' }}>{p.emoji} {p.label}</p>
                 <p className="text-lg font-black mb-1" style={{ color: 'var(--ff-accent-text)' }}>{p.part.name}</p>
+                <CatalogLabelNote id={p.part.id} className="mb-1" />
                 <p className="text-xs leading-relaxed mb-2" style={{ color: 'var(--ff-text-3)' }}>{p.detail}</p>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="font-bold" style={{ color: 'var(--ff-text)' }}>${p.part.price_usd}</span>
@@ -142,9 +144,9 @@ export default function BudgetPartPage({ category }: { category: 'gpu' | 'cpu' }
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--ff-border)' }}>
                     <td className="py-2 pr-4 font-medium" style={{ color: pickIds.has(p.id) ? 'var(--ff-accent-text)' : 'var(--ff-text)' }}>
                       {p.name}
-                      {notRecommendedLabel(p.id) && (
+                      {catalogLabelText(p.id) && (
                         <span className="block text-[11px] font-normal" style={{ color: 'var(--ff-text-3)' }}>
-                          {notRecommendedLabel(p.id)}
+                          {catalogLabelText(p.id)}
                         </span>
                       )}
                     </td>

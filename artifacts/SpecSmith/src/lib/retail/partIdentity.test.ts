@@ -152,7 +152,7 @@ describe('an unknown power draw does not become a zero-watt GPU', () => {
     // for one that is selected: a 1000 W pairing passes on a 450 W unit.
     const result = checkCompatibility({
       gpu: compatibilityView(CANONICAL_RTX5070 as never, 'canonical'),
-      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', tdp_watts: 105 } as never,
+      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', base_power_watts: 105, max_turbo_power_watts: null } as never,
       psu: { id: 'fixture-psu', name: 'Fixture 450W', wattage: 450 } as never,
     });
     expect(result.passed).not.toContain('PSU wattage');
@@ -164,7 +164,7 @@ describe('an unknown power draw does not become a zero-watt GPU', () => {
     // The zero default stays correct for an ABSENT part. A CPU-only build is
     // still told its power supply is too small.
     const result = checkCompatibility({
-      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', tdp_watts: 105 } as never,
+      cpu: { id: 'fixture-cpu', name: 'Fixture CPU', base_power_watts: 105, max_turbo_power_watts: null } as never,
       psu: { id: 'fixture-psu', name: 'Fixture 150W', wattage: 150 } as never,
     });
     expect(result.warnings.map((warning) => warning.id)).toContain('psu-insufficient');
@@ -257,7 +257,7 @@ describe('every surface that shows a compatibility panel obeys the same rule', (
 
     const build = finalizeCrateBuild({
       gpu: gpu as never,
-      cpu: { id: 'c', name: 'C', price_usd: 1, tier: 5, tdp_watts: 105, cpu_multiplier: 1, socket: 'AM5', supported_ram: ['DDR5'] } as never,
+      cpu: { id: 'c', name: 'C', price_usd: 1, tier: 5, base_power_watts: 105, max_turbo_power_watts: null, cpu_multiplier: 1, socket: 'AM5', supported_ram: ['DDR5'] } as never,
       motherboard: { id: 'm', name: 'M', price_usd: 1, socket: 'AM5', supported_ram: ['DDR5'], form_factor: 'ATX' } as never,
       ram: { id: 'r', name: 'R', price_usd: 1, type: 'DDR5' } as never,
       storage: { id: 's', name: 'S', price_usd: 1 } as never,

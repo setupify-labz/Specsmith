@@ -1,7 +1,10 @@
 import gpuData from '../data/gpus.json';
 import { fpsPer100, type MatchupGpu } from './matchups';
+import { catalogLabel } from './catalogLifecycle';
 
-const gpus = gpuData as MatchupGpu[];
+// A tier list is a buying guide, so parts the catalog audit marks invalid
+// (e.g. the laptop-only "RTX 4050") are left out. Older parts stay, labelled.
+const gpus = (gpuData as MatchupGpu[]).filter((gpu) => catalogLabel(gpu.id) !== 'invalid');
 
 export type TierId = 'S' | 'A' | 'B' | 'C' | 'D';
 

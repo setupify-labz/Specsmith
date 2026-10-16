@@ -5,13 +5,15 @@ import { getSffPicks, getSffPageMeta, sffItemListJsonLd, sffFaqs, sffFaqJsonLd }
 import { getAffiliateUrl, getNeweggUrl, buildPartQuery } from '../lib/fps';
 import { useSeo } from '../hooks/useSeo';
 import PageGlow from '../components/PageGlow';
+import CatalogLabelNote from '../components/CatalogLabelNote';
 
-function PartRow({ label, name, price, category, brand }: { label: string; name: string; price: number; category: string; brand: string }) {
+function PartRow({ id, label, name, price, category, brand }: { id: string; label: string; name: string; price: number; category: string; brand: string }) {
   return (
     <div className="flex items-center justify-between gap-2 py-1.5" style={{ borderBottom: '1px solid var(--ff-border)' }}>
       <span className="text-[10px] uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--ff-text-3)' }}>{label}</span>
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs font-medium truncate" style={{ color: 'var(--ff-text)' }}>{name}</span>
+        <CatalogLabelNote id={id} className="flex-shrink-0" />
         <span className="text-xs font-bold flex-shrink-0" style={{ color: 'var(--ff-text)' }}>${price.toLocaleString()}</span>
         <a href={getAffiliateUrl(buildPartQuery(name, brand, category))} target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-0.5 text-[10px] font-semibold hover:opacity-80 flex-shrink-0"
@@ -55,11 +57,11 @@ export default function SffBuildPage() {
                 {p.case.name} — {p.case.gpu_clearance_mm}mm GPU clearance, {p.case.cooler_clearance_mm}mm cooler clearance
               </p>
               <div className="space-y-0.5">
-                <PartRow label="Case" name={p.case.name} price={p.case.price_usd} category="case" brand="" />
-                <PartRow label="Motherboard" name={p.motherboard.name} price={p.motherboard.price_usd} category="motherboard" brand={p.motherboard.name.split(' ')[0]} />
-                <PartRow label="CPU" name={p.cpu.name} price={p.cpu.price_usd} category="cpu" brand={p.cpu.brand} />
-                <PartRow label="Cooler" name={p.cooler.name} price={p.cooler.price_usd} category="cooler" brand="Noctua" />
-                <PartRow label="GPU" name={p.gpu.name} price={p.gpu.price_usd} category="gpu" brand={p.gpu.brand} />
+                <PartRow id={p.case.id} label="Case" name={p.case.name} price={p.case.price_usd} category="case" brand="" />
+                <PartRow id={p.motherboard.id} label="Motherboard" name={p.motherboard.name} price={p.motherboard.price_usd} category="motherboard" brand={p.motherboard.name.split(' ')[0]} />
+                <PartRow id={p.cpu.id} label="CPU" name={p.cpu.name} price={p.cpu.price_usd} category="cpu" brand={p.cpu.brand} />
+                <PartRow id={p.cooler.id} label="Cooler" name={p.cooler.name} price={p.cooler.price_usd} category="cooler" brand="Noctua" />
+                <PartRow id={p.gpu.id} label="GPU" name={p.gpu.name} price={p.gpu.price_usd} category="gpu" brand={p.gpu.brand} />
               </div>
               <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid var(--ff-border)' }}>
                 <span className="text-xs font-semibold" style={{ color: 'var(--ff-text-2)' }}>Total</span>

@@ -2,6 +2,7 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import gamesData from '../data/games.json';
 import { estimateFpsForBuild } from './fps';
+import { catalogLabel } from './catalogLifecycle';
 
 export interface UpgradeGpu {
   id: string;
@@ -20,7 +21,10 @@ interface Game {
   [key: string]: unknown;
 }
 
-const gpus = gpuData as UpgradeGpu[];
+// Upgrade targets must be cards a shopper can actually buy, so parts the
+// catalog audit marks invalid (the laptop-only "RTX 4050") are left out.
+// Older cards stay: age alone never removes one.
+const gpus = (gpuData as UpgradeGpu[]).filter((gpu) => catalogLabel(gpu.id) !== 'invalid');
 const games = gamesData as Game[];
 
 // Fixed reference CPU, same one the /vs GPU matchup pages use, so a GPU's
@@ -61,7 +65,7 @@ export function averageFps(gpu: UpgradeGpu, resolution = '1440p', preset = 'high
  * must instead be selected and ordered only by the performance model.
  *
  * So this returns the COMPLETE set — no per-tier filter, no limit — ordered by
- * modelled difference. The list is longer for a low-end card (56 rows from an
+ * modelled difference. The list is longer for a low-end card (55 rows from an
  * RX 6400) and shorter for a fast one, which is the honest shape of the
  * question. Nothing is selected on the reader's behalf.
  */

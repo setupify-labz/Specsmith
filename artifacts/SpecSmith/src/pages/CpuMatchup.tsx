@@ -12,6 +12,7 @@ import {
 import { useSeo } from '../hooks/useSeo';
 import { PRICES_UPDATED } from '../lib/prices';
 import PageGlow from '../components/PageGlow';
+import { formatCpuPower } from '../lib/cpuPower';
 
 interface Game {
   id: string; name: string; genre: string;
@@ -105,7 +106,7 @@ export default function CpuMatchup() {
     { label: `FPS per $100 (${resLabels[resolution]} avg)`, a: valueA, b: valueB },
     { label: 'Cores / Threads', a: `${cpuA.cores} / ${cpuA.threads}`, b: `${cpuB.cores} / ${cpuB.threads}` },
     { label: 'Boost Clock', a: `${cpuA.boost_ghz} GHz`, b: `${cpuB.boost_ghz} GHz` },
-    { label: 'TDP', a: `${cpuA.tdp_watts} W`, b: `${cpuB.tdp_watts} W` },
+    { label: 'Power', a: formatCpuPower(cpuA), b: formatCpuPower(cpuB) },
     { label: 'Socket', a: cpuA.socket, b: cpuB.socket },
     { label: 'Release Year', a: cpuA.release_year, b: cpuB.release_year },
     { label: 'Benchmark Score', a: cpuA.benchmark_score, b: cpuB.benchmark_score },

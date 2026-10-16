@@ -708,8 +708,7 @@
       "motherboard_support": [
         "E-ATX",
         "ATX",
-        "mATX",
-        "ITX"
+        "mATX"
       ],
       "sponsored": false,
       "gpu_clearance_mm": 420,

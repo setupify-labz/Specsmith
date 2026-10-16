@@ -8,7 +8,7 @@ import { compatibilityView } from './retail/partIdentity';
 
 interface Part { id: string; name: string; price_usd: number; brand?: string; [key: string]: unknown; }
 export interface CrateGpu extends Part, BuildFpsGpu { tier: number; tdp_watts: number; length_mm?: number; }
-export interface CrateCpu extends Part, BuildFpsCpu { tier: number; tdp_watts: number; socket: string; supported_ram: string[]; }
+export interface CrateCpu extends Part, BuildFpsCpu { tier: number; base_power_watts: number; max_turbo_power_watts: number | null; socket: string; supported_ram: string[]; }
 export interface CrateMotherboard extends Part { socket: string; supported_ram: string[]; form_factor?: string; }
 export interface CrateRam extends Part { type: string; }
 export interface CrateStorage extends Part { }

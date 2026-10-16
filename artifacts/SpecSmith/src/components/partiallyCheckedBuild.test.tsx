@@ -19,7 +19,7 @@ import { checkCompatibility, describeSkippedChecks, type SkippedCheck } from '..
 import { compatibilityView } from '../lib/retail/partIdentity';
 import { CANONICAL_RTX5070, CASE_295MM } from '../lib/retail/__fixtures__/catalogFixture';
 
-const CPU = { id: 'c', name: 'Fixture CPU', socket: 'AM5', supported_ram: ['DDR5'], tdp_watts: 105 };
+const CPU = { id: 'c', name: 'Fixture CPU', socket: 'AM5', supported_ram: ['DDR5'], base_power_watts: 105, max_turbo_power_watts: null };
 const PSU = { id: 'p', name: 'Fixture 750W', wattage: 750 };
 const MOBO = { id: 'm', name: 'Fixture Board', socket: 'AM5', supported_ram: ['DDR5'], form_factor: 'ATX' };
 

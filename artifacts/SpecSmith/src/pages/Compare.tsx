@@ -25,7 +25,7 @@ interface GPU {
 interface CPU {
   id: string; name: string; brand: string; series: string; price_usd: number;
   tier: number; cores: number; threads: number; base_ghz: number; boost_ghz: number;
-  tdp_watts: number; socket: string; supported_ram: string[]; release_year: number;
+  base_power_watts: number; max_turbo_power_watts: number | null; socket: string; supported_ram: string[]; release_year: number;
   benchmark_score: number; cpu_multiplier: number; sponsored?: boolean;
   [key: string]: unknown;
 }

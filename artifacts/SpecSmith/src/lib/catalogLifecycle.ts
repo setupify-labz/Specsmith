@@ -1,46 +1,29 @@
 // Which canonical parts in src/data/ may be RECOMMENDED for purchase.
 //
 // The catalog audit ledger (src/data/catalogAudit.json) records, per part id,
-// whether the record describes a real product correctly (validity) and whether
-// it is still a sensible thing to buy for a new build (lifecycle), with the
-// reason for each. Parts are never deleted for being old: legacy GPUs/CPUs
-// keep their ids so benchmark records, matchup pages, upgrade calculators and
-// saved builds still resolve. They are only kept out of anything that
-// recommends a purchase.
+// its validity, its lifecycle and whether it is eligible for recommendations,
+// with the reason and sources for each. Two rules:
 //
-// The app imports only catalogLifecycle.json — the ids that must not be
-// recommended and why — so the ledger's notes never ship in the client bundle.
-// catalogLifecycle.test.ts keeps it in step with the ledger and fails if any
-// listed part is missing from the audit.
+// - FAIL CLOSED. Only ids on the eligible list are recommendable. An unknown,
+//   unaudited or newly added part is ineligible until the ledger says otherwise.
+// - AGE IS A LABEL, NOT A VERDICT. Older ("legacy") parts stay eligible and are
+//   labelled; a part is ineligible only for a recorded concrete reason
+//   (invalid, ambiguous variant, or unsuitable for the job).
+//
+// The app reads only catalogLifecycle.json (eligible ids + labels) so the
+// ledger's notes never ship in the client bundle. catalogLifecycle.test.ts
+// keeps it in step with the ledger. This module imports it statically, for
+// prerendered guide pages; the Builder loads it lazily through
+// hooks/useCatalogLifecycle.ts to keep it out of the Builder's initial bundle.
 
-import exclusions from '../data/catalogLifecycle.json';
+import lifecycleData from '../data/catalogLifecycle.json';
+import { createCatalogLifecycle } from './catalogLifecycleCore';
 
-export type NotRecommendedReason = 'invalid' | 'legacy' | 'needs-review';
+export type { CatalogLabel } from './catalogLifecycleCore';
 
-const excluded = exclusions as Record<string, NotRecommendedReason>;
+const lifecycle = createCatalogLifecycle(lifecycleData);
 
-export function notRecommendedReason(id: string): NotRecommendedReason | null {
-  return excluded[id] ?? null;
-}
-
-/** True unless the catalog audit excludes this part from recommendations. */
-export function isRecommendable(id: string): boolean {
-  return notRecommendedReason(id) === null;
-}
-
-/** The subset of `parts` that may appear in a recommendation. */
-export function recommendable<T extends { id: string }>(parts: readonly T[]): T[] {
-  return parts.filter((part) => isRecommendable(part.id));
-}
-
-const LABELS: Record<NotRecommendedReason, string> = {
-  invalid: 'Not a retail desktop part',
-  legacy: 'Legacy — not recommended for new builds',
-  'needs-review': 'Exact variant unconfirmed',
-};
-
-/** Short user-facing label for why a part is not recommended, or null. */
-export function notRecommendedLabel(id: string): string | null {
-  const reason = notRecommendedReason(id);
-  return reason ? LABELS[reason] : null;
-}
+export const isRecommendable = lifecycle.isRecommendable;
+export const recommendable = lifecycle.recommendable;
+export const catalogLabel = lifecycle.catalogLabel;
+export const catalogLabelText = lifecycle.catalogLabelText;
