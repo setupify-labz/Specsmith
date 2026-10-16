@@ -13,6 +13,12 @@ import { USE_CASES, getTierPicks, getUseCase } from './useCaseBuilds';
 import { GPU_BUDGET_TIERS, CPU_BUDGET_TIERS, getBudgetPicks } from './budgetPages';
 import { COMPONENT_GUIDES } from './componentGuides';
 import { getSffPicks } from './sffBuilds';
+import { prebuilts } from './prebuilts';
+import { getMotherboardPicks } from './motherboardPages';
+import { getGpuTiers } from './gpuTierList';
+import { getCpuTiers } from './cpuTierList';
+import { CPU_MATCHUPS } from './matchups';
+import { createCatalogLifecycle, eligibleRecommendations } from './catalogLifecycleCore';
 
 interface AuditEntry {
   category: string;
@@ -184,6 +190,35 @@ describe('recommenders only recommend eligible parts', () => {
 
   it('component guide picks', () => {
     for (const guide of COMPONENT_GUIDES) for (const p of guide.picks) expectRecommendable(p.item.id, guide.slug);
+  });
+
+  it('curated prebuilt builds', () => {
+    for (const build of prebuilts) {
+      for (const [slot, id] of Object.entries(build.parts)) if (id) expectRecommendable(id as string, `prebuilt ${build.id}.${slot}`);
+    }
+  });
+
+  it('motherboard guide picks for every socket', () => {
+    for (const socket of new Set(components.motherboards.map((m) => m.socket))) {
+      for (const pick of getMotherboardPicks(socket)) expectRecommendable(pick.motherboard.id, `motherboards ${socket}`);
+    }
+  });
+
+  it('tier-list best-value badges', () => {
+    for (const tier of getGpuTiers()) for (const g of tier.gpus) if (g.isBestValueInTier) expectRecommendable(g.gpu.id, `gpu tier ${tier.id}`);
+    for (const tier of getCpuTiers()) for (const c of tier.cpus) if (c.isBestValueInTier) expectRecommendable(c.cpu.id, `cpu tier ${tier.id}`);
+  });
+
+  it('matchup "Build with" calls to action (either side can win)', () => {
+    for (const m of MATCHUPS) for (const id of [m.gpuA, m.gpuB]) expectRecommendable(id, `vs ${m.slug}`);
+    for (const m of CPU_MATCHUPS) for (const id of [m.cpuA, m.cpuB]) expectRecommendable(id, `vs ${m.slug}`);
+  });
+
+  it('builder imported plans: only eligible parts, and none before the list loads', () => {
+    const plan = [{ canonicalId: 'rtx5070' }, { canonicalId: 'cmh212' }, { canonicalId: 'unknown-part' }];
+    expect(eligibleRecommendations(plan, null)).toEqual([]);
+    const lifecycle = createCatalogLifecycle(lifecycleMap);
+    expect(eligibleRecommendations(plan, lifecycle).map((r) => r.canonicalId)).toEqual(['rtx5070']);
   });
 
   it('small-form-factor build picks', () => {

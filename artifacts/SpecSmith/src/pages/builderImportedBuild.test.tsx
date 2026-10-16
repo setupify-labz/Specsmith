@@ -11,7 +11,7 @@
 //
 // Every test here drives the real page through a real entry point, because the
 // bug lived in the seam between them.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -23,6 +23,10 @@ import { encodeBuild } from '../lib/sharing';
 import { PRICES_UPDATED } from '../lib/prices';
 import { EMPTY_FILTERS, filterAndSort } from '../lib/retail/retailShopping';
 import Builder from './Builder';
+import { preloadCatalogLifecycle } from '../hooks/useCatalogLifecycle';
+
+// Recommendations wait for the eligibility list (fail closed); load it first.
+beforeAll(() => preloadCatalogLifecycle());
 
 const published = publishedCatalog as any;
 const parts = (published.parts ?? published) as any[];
@@ -279,7 +283,9 @@ describe('on a phone', () => {
 
 const PERIPHERALS = {
   monitor: 'lg-27gp850',
-  keyboard: 'logi-gprox',
+  // An eligible keyboard. 'logi-gprox' was used before the catalog audit
+  // (#190) marked it needs-review; ineligible parts are no longer recommended.
+  keyboard: 'corsair-k100',
   mouse: 'logi-g502xplus',
   headset: 'steelseries-arctis-nova-pro',
 } as const;
@@ -294,6 +300,13 @@ describe('peripherals are imported too', () => {
     for (const category of Object.keys(PERIPHERALS)) {
       expect(screen.getByTestId(`planned-row-${category}`)).toBeTruthy();
     }
+  }, 30000);
+
+  it('never presents an ineligible part as a recommended model', async () => {
+    // cmh212 (Hyper 212) is an ambiguous variant in the catalog audit (#190).
+    await openAt(`/builder?${queryFor({ ...PERIPHERALS, cooler: 'cmh212' })}`);
+    await waitFor(() => expect(recommendations()).toHaveLength(4));
+    expect(screen.queryByTestId('planned-row-cooler')).toBeNull();
   }, 30000);
 
   it('shows all twelve when a build carries the lot', async () => {

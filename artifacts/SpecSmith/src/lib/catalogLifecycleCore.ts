@@ -42,3 +42,14 @@ export function createCatalogLifecycle(data: CatalogLifecycleData): CatalogLifec
     },
   };
 }
+
+/**
+ * Keeps only recommendations for eligible canonical parts. With no lifecycle
+ * loaded yet (null) nothing is eligible, so nothing is recommended.
+ */
+export function eligibleRecommendations<T extends { canonicalId: string }>(
+  items: readonly T[],
+  lifecycle: CatalogLifecycle | null,
+): T[] {
+  return lifecycle ? items.filter((item) => lifecycle.isRecommendable(item.canonicalId)) : [];
+}

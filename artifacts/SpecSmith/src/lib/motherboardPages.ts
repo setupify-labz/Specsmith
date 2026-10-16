@@ -1,6 +1,7 @@
 import componentData from '../data/components.json';
 import cpuData from '../data/cpus.json';
 import type { RouteMeta } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 export interface PageMotherboard {
   id: string;
@@ -116,7 +117,9 @@ export interface MotherboardPick {
  * "best value" here means budget / mid-range / high-end by price, same
  * honest framing as everywhere else on the site (no invented scores). */
 export function getMotherboardPicks(socket: string): MotherboardPick[] {
-  const boards = getMotherboardsForSocket(socket);
+  // Picks are buying recommendations: only boards the catalog audit lists as
+  // eligible. The page's full table still lists every tracked board.
+  const boards = recommendable(getMotherboardsForSocket(socket));
   if (boards.length === 0) return [];
 
   const picks: MotherboardPick[] = [];

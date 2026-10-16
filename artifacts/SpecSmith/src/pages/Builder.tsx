@@ -45,6 +45,7 @@ import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 import { trackProductEvent } from '../lib/productAnalytics';
 import { useCatalogLifecycle } from '../hooks/useCatalogLifecycle';
+import { eligibleRecommendations } from '../lib/catalogLifecycleCore';
 
 const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
 const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
@@ -353,9 +354,11 @@ export default function Builder() {
    * SKUs at different prices, and choosing one on the shopper's behalf would
    * invent a purchase decision — see importedBuild.ts.
    */
+  // Only eligible parts may be presented as recommended models, and none at
+  // all until the eligibility list has loaded (fail closed).
   const imported = useMemo(
-    () => importedRecommendations(build, retailIds, canonicalById),
-    [build, retailIds, canonicalById],
+    () => eligibleRecommendations(importedRecommendations(build, retailIds, canonicalById), catalogLifecycle),
+    [build, retailIds, canonicalById, catalogLifecycle],
   );
 
   /**

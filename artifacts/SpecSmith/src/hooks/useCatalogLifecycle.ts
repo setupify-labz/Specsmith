@@ -10,6 +10,15 @@ import { createCatalogLifecycle, type CatalogLifecycle } from '../lib/catalogLif
 let pending: Promise<CatalogLifecycle> | null = null;
 let loaded: CatalogLifecycle | null = null;
 
+/**
+ * Starts (or reuses) the load. Once it resolves, every later mount of the hook
+ * starts with the list already in hand, so it renders synchronously. Tests
+ * await this before rendering the Builder.
+ */
+export function preloadCatalogLifecycle(): Promise<CatalogLifecycle> {
+  return load();
+}
+
 function load(): Promise<CatalogLifecycle> {
   pending ??= import('../data/catalogLifecycle.json').then((module) => {
     loaded = createCatalogLifecycle(module.default);
