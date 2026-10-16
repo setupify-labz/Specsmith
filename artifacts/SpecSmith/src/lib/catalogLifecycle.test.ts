@@ -19,6 +19,10 @@ import { getGpuTiers } from './gpuTierList';
 import { getCpuTiers } from './cpuTierList';
 import { CPU_MATCHUPS } from './matchups';
 import { createCatalogLifecycle, eligibleRecommendations } from './catalogLifecycleCore';
+import { GAME_PAGES, getGamePicks, getPageGame } from './gamePages';
+import { CPU_GAME_PAGES, getCpuGamePicks } from './cpuGamePages';
+import fs from 'node:fs';
+import path from 'node:path';
 
 interface AuditEntry {
   category: string;
@@ -219,6 +223,32 @@ describe('recommenders only recommend eligible parts', () => {
     expect(eligibleRecommendations(plan, null)).toEqual([]);
     const lifecycle = createCatalogLifecycle(lifecycleMap);
     expect(eligibleRecommendations(plan, lifecycle).map((r) => r.canonicalId)).toEqual(['rtx5070']);
+  });
+
+  it('per-game GPU and CPU buying picks', () => {
+    for (const page of GAME_PAGES) {
+      const game = getPageGame(page.gameId)!;
+      const picks = getGamePicks(game);
+      expect(picks.length, page.gameId).toBeGreaterThan(0);
+      for (const p of picks) expectRecommendable(p.gpu.id, `best gpu for ${page.gameId} (${p.label})`);
+    }
+    for (const page of CPU_GAME_PAGES) {
+      const game = getPageGame(page.gameId)!;
+      for (const p of getCpuGamePicks(game)) expectRecommendable(p.cpu.id, `best cpu for ${page.gameId} (${p.label})`);
+    }
+  });
+
+  it('every exported get*Picks recommender in src/lib is covered by this suite', () => {
+    // A new recommender must be added here (with an eligibility assertion
+    // above) before it can ship; this stops a buying pick from bypassing the
+    // catalog audit unnoticed.
+    const COVERED = new Set(['getTierPicks', 'getCpuGamePicks', 'getSffPicks', 'getBudgetPicks', 'getMotherboardPicks', 'getGamePicks']);
+    const libDir = path.dirname(new URL(import.meta.url).pathname);
+    const found = fs.readdirSync(libDir)
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+      .flatMap((file) => [...fs.readFileSync(path.join(libDir, file), 'utf-8').matchAll(/export function (get\w*Picks)\b/g)].map((m) => m[1]));
+    for (const name of found) expect(COVERED.has(name), `${name} is not covered by the eligibility suite`).toBe(true);
+    expect(found.length).toBe(COVERED.size);
   });
 
   it('small-form-factor build picks', () => {

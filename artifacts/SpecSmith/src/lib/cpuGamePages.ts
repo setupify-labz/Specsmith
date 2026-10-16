@@ -2,6 +2,7 @@ import { estimateFpsForBuild } from './fps';
 import { getMatchupCpuById, getMatchupFixedGpu, fpsPer100, type MatchupCpu } from './matchups';
 import { GAME_PAGES, getPageGame, type PageGame, type GamePage } from './gamePages';
 import type { RouteMeta } from './seo';
+import { isRecommendable } from './catalogLifecycle';
 
 // "Best CPU for <game>" SEO landing pages at /best-cpu/<slug>. Reuses the
 // same 20-game list as the GPU game pages so every title has a matching pair.
@@ -63,7 +64,10 @@ export interface CpuGamePick {
  * chip is fastest.
  */
 export function getCpuGamePicks(game: PageGame): CpuGamePick[] {
-  const rows = getGameCpuRows(game);
+  // Picks are buying recommendations: only CPUs the catalog audit lists as
+  // eligible. The page's comparison table still shows every row.
+  const rows = getGameCpuRows(game).filter(r => isRecommendable(r.cpu.id));
+  if (rows.length === 0) return [];
   const picks: CpuGamePick[] = [];
 
   const king = rows.reduce((best, r) => (r.fps1080 > best.fps1080 ? r : best), rows[0]);
