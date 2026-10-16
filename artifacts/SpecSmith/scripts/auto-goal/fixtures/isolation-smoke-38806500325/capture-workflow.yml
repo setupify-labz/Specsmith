@@ -1,0 +1,27 @@
+# Disposable smoke test, isolation repository only. It records the workflow_run event GitHub delivers
+# when the run-name smoke test completes. The event payload holds run metadata, not secrets. No
+# checkout, no secrets, no permissions beyond the defaults needed to upload an artifact.
+name: Capture workflow_run payload
+
+on:
+  workflow_run:
+    workflows: ["Auto Goal run-name smoke test"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Print the run fields the coordinator binds on
+        shell: bash
+        run: |
+          jq -c '{action, workflow_run: (.workflow_run | {id, name, display_title, path, workflow_id, event, head_branch, head_sha, status, conclusion, run_number, pull_requests}), workflow: (.workflow | {id, name, path}), repository: {full_name: .repository.full_name, default_branch: .repository.default_branch}}' "$GITHUB_EVENT_PATH"
+      - name: Keep the whole event payload as an artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: workflow-run-event
+          path: ${{ github.event_path }}
+          if-no-files-found: error

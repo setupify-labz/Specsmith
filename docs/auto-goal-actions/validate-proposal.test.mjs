@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { validatePatch } from './validate-proposal.mjs';
+import { checkPhase, validatePatch } from './validate-proposal.mjs';
 
 const patch = (path = 'artifacts/SpecSmith/src/components/PartSelector.tsx', body = '+export const flag = true;') => `diff --git a/${path} b/${path}\nindex 1111111..2222222 100644\n--- a/${path}\n+++ b/${path}\n@@ -1 +1,2 @@\n old\n${body}\n`;
 
@@ -36,57 +36,109 @@ test('requires a regular index and matching paths in each diff section', () => {
   assert.throws(() => validatePatch(first + second.replace(`--- a/${other}`, '--- a/artifacts/SpecSmith/src/components/PartSelector.tsx')), /paths do not match/);
 });
 
-test('experimental workflow is not installed and has three gated jobs', () => {
+test('experimental workflow is not installed and every job is gated', () => {
   const workflow = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
-  for (const name of ['implement:', 'check:', 'publish:']) assert.ok(workflow.includes(`  ${name}`));
-  assert.match(workflow, /if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/);
+  for (const name of ['read-dispatch:', 'implement:', 'publish:', 'gate-checks:', 'check:', 'record-check:']) assert.ok(workflow.includes(`  ${name}`));
+  assert.equal((workflow.match(/^    if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/gm) ?? []).length, 6);
   assert.match(workflow, /permissions: \{\}/); // Workflow default remains empty.
   assert.match(workflow, /persist-credentials: false/);
-  assert.match(workflow, /needs: publish/);
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n/m);
   assert.ok(!workflow.includes('pull_request_target:'));
 });
 
 test('template keeps credentials and write scope out of the code-running job', () => {
   const yaml = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
-  const sections = Object.fromEntries([...yaml.matchAll(/^  (implement|check|publish):\n([\s\S]*?)(?=^  (?:implement|check|publish):|$(?![\s\S]))/gm)].map((m) => [m[1], m[2]]));
-  assert.deepEqual(Object.keys(sections), ['implement', 'publish', 'check']);
-  // The issue is read in its own job with an issues-only token; implement gets only its JSON.
-  const readIssue = /^  read-issue:\n([\s\S]*?)(?=^  implement:)/m.exec(yaml)?.[1] ?? '';
-  assert.match(readIssue, /permissions:\n      issues: read\n/);
-  assert.match(readIssue, /repos\/\$\{GITHUB_REPOSITORY\}\/issues\/\$\{ISSUE\}/);
-  assert.match(readIssue, /\.state == "open"/);
-  assert.match(readIssue, /index\("auto-goal"\)/);
-  assert.match(readIssue, /issue_json: \$\{\{ steps\.issue\.outputs\.issue_json \}\}/);
-  assert.doesNotMatch(readIssue, /secrets\./);
+  const JOBS = 'read-dispatch|implement|publish|gate-checks|check|record-check';
+  const sections = Object.fromEntries([...yaml.matchAll(new RegExp(`^  (${JOBS}):\n([\\s\\S]*?)(?=^  (?:${JOBS}):|$(?![\\s\\S]))`, 'gm'))].map((m) => [m[1], m[2]]));
+  assert.deepEqual(Object.keys(sections), ['read-dispatch', 'implement', 'publish', 'gate-checks', 'check', 'record-check']);
+  // The record is read in its own job (issues read, plus contents read for the trusted executor checkout); implement gets only the packet.
+  const read = sections['read-dispatch'];
+  assert.match(read, /permissions:\n      issues: read\n      contents: read\n/);
+  assert.match(read, /packet: \$\{\{ steps\.dispatch\.outputs\.packet \}\}/);
+  assert.match(read, /dispatch-guard\.mjs read/);
+  assert.doesNotMatch(read, /secrets\./);
   assert.match(sections.implement, /permissions:\n      contents: read\n    steps:/);
   assert.match(sections.implement, /secrets\.CLAUDE_CODE_OAUTH_TOKEN/);
-  assert.match(sections.implement, /needs\.read-issue\.outputs\.issue_json/);
+  assert.match(sections.implement, /needs\.read-dispatch\.outputs\.packet/);
   assert.doesNotMatch(sections.implement, /issues: read|github\.token|github_token/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
-  assert.match(sections.check, /permissions:\n      contents: read/);
+  // The code-running job: read-only scopes, and issues: read only for the guard step (Codex P2 on #189).
+  assert.match(sections.check, /permissions:\n      contents: read\n      issues: read\n    strategy:/);
   assert.match(sections.check, /timeout-minutes: 20/);
-  assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write/);
+  assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write|issues: write/);
+  assert.doesNotMatch(sections.check, /statuses: /); // the code-running job cannot record its own result
+  // The guard re-reads the record as the last step before proposed code first runs (the proposal's install
+  // scripts), and it is the only step that receives a token.
+  const checkSteps = sections.check.split(/\n(?=      - )/).slice(1);
+  const guardAt = checkSteps.findIndex((st) => st.includes('dispatch-guard.mjs pre-check'));
+  assert.ok(guardAt > 0, 'the check job re-checks the goal');
+  assert.match(checkSteps[guardAt], /^      - name: Re-check the goal immediately before proposed code runs\n/);
+  assert.match(checkSteps[guardAt + 1], /^      - run: pnpm install --frozen-lockfile\n        working-directory: proposal$/);
+  assert.equal([...sections.check.matchAll(/github\.token/g)].length, 1);
+  assert.match(checkSteps[guardAt], /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  for (const st of checkSteps.slice(guardAt + 1)) assert.doesNotMatch(st, /GH_TOKEN|github\.token/);
+  // Nothing before the guard runs proposed code: only checkouts, the exact-commit check, tool setup and the trusted install.
+  for (const st of checkSteps.slice(0, guardAt)) assert.doesNotMatch(st, /working-directory: proposal\n?$|--tree proposal|run-check/);
   assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
-  assert.match(sections.publish, /needs: implement/);
+  // The record re-read before the checks has its own job, so the code-running job gets no issues scope.
+  assert.match(sections['gate-checks'], /permissions:\n      issues: read\n      contents: read\n/);
+  assert.match(sections['gate-checks'], /dispatch-guard\.mjs pre-check/);
+  assert.match(sections.check, /needs: \[read-dispatch, publish, gate-checks\]/);
+  assert.match(sections.publish, /needs: \[read-dispatch, implement\]/);
   assert.match(sections.publish, /contents: write/);
-  assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 2);
+  // Trusted code is always the executor commit: every trusted checkout is github.sha.
+  assert.equal((yaml.match(/ref: \$\{\{ github.sha \}\}/g) ?? []).length, 5);
   assert.doesNotMatch(yaml, /uses: (?:anthropics\/claude-code-action|actions\/(?:upload|download)-artifact)@v\d/);
   assert.doesNotMatch(sections.publish, /secrets\.CLAUDE|pnpm|npm (?:run|test)|node_modules/);
   assert.match(sections.publish, /git apply --check/);
   assert.match(sections.publish, /git ls-files --stage/);
   assert.match(sections.publish, /test "\$mode" = '100644'/);
   assert.match(sections.publish, /git commit -m/);
-  assert.match(sections.publish, /echo "sha=\$sha" >> "\$GITHUB_OUTPUT"/);
-  assert.match(sections.check, /needs: publish/);
+  assert.match(sections.publish, /echo "sha=\$\(git rev-parse HEAD\)" >> "\$GITHUB_OUTPUT"/);
   assert.match(sections.check, /ref: \$\{\{ needs\.publish\.outputs\.proposal_sha \}\}/);
-  assert.match(sections.check, /test "\$\(git rev-parse HEAD\)" = "\$\{\{ needs\.publish\.outputs\.proposal_sha \}\}"/);
+  assert.match(sections.check, /test "\$\(git rev-parse HEAD\)" = "\$PROPOSAL_SHA"/);
   for (const section of Object.values(sections)) assert.match(section, /if: \$\{\{ false && github.ref == 'refs\/heads\/main' \}\}/);
 });
 
+test('publish: the guard is the step immediately before the push, and the push is a lease from the dispatch base', () => {
+  const yaml = readFileSync(new URL('./auto-goal-actions.yml', import.meta.url), 'utf8');
+  const step = /      - name: Guard and push \(compare-and-swap from the dispatch base\)\n([\s\S]*?)(?=\n      - name: )/.exec(yaml)?.[1] ?? '';
+  const lines = step.slice(step.indexOf('run: |')).split('\n').map((l) => l.trim()).filter((l) => l && l !== 'run: |' && l !== 'set -euo pipefail');
+  assert.equal(lines[0], 'node ../trusted/docs/auto-goal-actions/dispatch-guard.mjs pre-push');
+  const push = lines.findIndex((l) => l.includes(' push '));
+  assert.ok(push > 0 && lines.slice(1, push).every((l) => /^(branch|if |expect)=?/.test(l) || l.startsWith('if [')), 'only variable setup between the guard and the push');
+  assert.match(lines[push], /push --force-with-lease="refs\/heads\/\$\{branch\}:\$\{expect\}" origin "\$\{PROPOSAL_SHA\}:refs\/heads\/\$\{branch\}"/);
+  assert.equal(push, lines.length - 1, 'the push is the step\'s last command');
+  // The commit carries both trailers; the PR step re-reads the record before it opens or confirms a PR.
+  assert.match(yaml, /git commit -m "Auto Goal \$\{GOAL\}: .*" -m "Auto-Goal-Dispatch: \$\{NONCE\}" -m "Auto-Goal-Run: \$\{GITHUB_RUN_ID\}"/);
+  const pr = /      - name: Re-read the record, then open or confirm the draft PR\n([\s\S]*?)(?=\n\n  )/.exec(yaml)?.[1] ?? '';
+  assert.ok(pr.indexOf('dispatch-guard.mjs post-push') > 0 && pr.indexOf('dispatch-guard.mjs post-push') < pr.indexOf('gh pr create'));
+  assert.match(pr, /published after the goal stopped; it was not checked and must not be used\./);
+});
 
 test('rejects malformed UTF-8 and an existing symlink mode', () => {
   const first = Buffer.from(patch());
   assert.throws(() => validatePatch(Buffer.concat([first, Buffer.from([0xff])])), /UTF-8/);
   assert.throws(() => validatePatch(patch().replace('100644', '120000')), /mode/);
   assert.throws(() => validatePatch(patch().replace('100644', '160000')), /mode/);
+});
+
+test('phase rules: implement refuses every test file, reproduce stays on the one acceptance test', () => {
+  const criterion = 'artifacts/SpecSmith/src/lib/clamp.test.ts';
+  const source = 'artifacts/SpecSmith/src/lib/clamp.ts';
+  const phase = (paths, p) => checkPhase(validatePatch(paths.map((x) => patch(x)).join('')), { phase: p, criterion });
+  // An application source edit passes implement, alone or across several source files.
+  assert.deepEqual(phase([source], 'implement').paths, [source]);
+  assert.deepEqual(phase([source, 'artifacts/SpecSmith/src/components/PartSelector.tsx'], 'implement').paths.length, 2);
+  // Any other test file is refused during implement, alone or next to an allowed source edit.
+  for (const other of ['artifacts/SpecSmith/src/lib/other.test.ts', 'artifacts/SpecSmith/src/components/PartSelector.test.tsx']) {
+    assert.throws(() => phase([other], 'implement'), /may not change any test file/);
+    assert.throws(() => phase([source, other], 'implement'), /may not change any test file/);
+  }
+  assert.throws(() => phase([criterion], 'implement'), /acceptance test file/);
+  // Reproduce: only the chosen acceptance test, never another test or source.
+  assert.deepEqual(phase([criterion], 'reproduce').paths, [criterion]);
+  for (const paths of [['artifacts/SpecSmith/src/lib/other.test.ts'], [criterion, 'artifacts/SpecSmith/src/lib/other.test.ts'], [source], [criterion, source]]) {
+    assert.throws(() => phase(paths, 'reproduce'), /only the acceptance test file/);
+  }
 });

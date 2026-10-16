@@ -148,31 +148,36 @@ test("regression (inline finding on #187): a credential in a URL rewrite key is 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("workflow: the implement job has no GitHub token, and the issue is read in a separate job", () => {
+test("workflow: the implement job has no GitHub token, and the goal record is read in a separate job", () => {
   const yaml = readFileSync(join(here, "auto-goal-actions.yml"), "utf8");
   const code = yaml.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
   const job = (name) => new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z-]+:\\n|(?![\\s\\S]))`, "m").exec(code)?.[1] ?? "";
-  const read = job("read-issue"), impl = job("implement");
+  const read = job("read-dispatch"), impl = job("implement");
   assert.ok(read && impl);
-  // Issue reading: its own job, issues-only token, no checkout, no secrets, no Claude.
-  assert.match(read, /permissions:\n      issues: read\n    outputs:/);
-  assert.doesNotMatch(read, /actions\/checkout|secrets\.|claude/i);
+  // Dispatch reading (version 1): its own job, issues read plus contents read for the trusted executor
+  // checkout (sparse, by github.sha), no secrets, no Claude, no write scope.
+  assert.match(read, /permissions:\n      issues: read\n      contents: read\n    outputs:/);
+  assert.match(read, /ref: \$\{\{ github\.sha \}\}\n          persist-credentials: false\n          sparse-checkout:/);
+  assert.match(read, /dispatch-guard\.mjs read/);
+  assert.doesNotMatch(read, /secrets\.|claude|write/i);
   // Implement: contents read only, no GitHub token anywhere, no OIDC, no hosted action.
-  assert.match(impl, /needs: read-issue/);
+  assert.match(impl, /needs: read-dispatch/);
   assert.match(impl, /permissions:\n      contents: read\n    steps:/);
   assert.doesNotMatch(impl, /github\.token|GH_TOKEN|GITHUB_TOKEN|github_token|id-token|issues: |claude-code-action/);
   assert.match(impl, /persist-credentials: false/);
   // The Claude step: exactly these variables, the issue only as data from the other job, the check first.
   const step = /- name: Propose edits with no GitHub credential configured or passed\n([\s\S]*?)(?=\n      - )/.exec(impl)?.[1] ?? "";
   const envKeys = [...(/        env:\n((?:          [A-Z_]+: .*\n)+)/.exec(step)?.[1] ?? "").matchAll(/          ([A-Z_]+):/g)].map((m) => m[1]);
-  assert.deepEqual(envKeys, ["CLAUDE_CODE_OAUTH_TOKEN", "ISSUE_JSON", "GIT_TERMINAL_PROMPT"]);
-  assert.match(step, /ISSUE_JSON: \$\{\{ needs\.read-issue\.outputs\.issue_json \}\}/);
+  assert.deepEqual(envKeys, ["CLAUDE_CODE_OAUTH_TOKEN", "TASK_JSON", "GIT_TERMINAL_PROMPT"]);
+  assert.match(step, /TASK_JSON: \$\{\{ needs\.read-dispatch\.outputs\.packet \}\}/);
+  // Trusted scripts come from the executor checkout, never from the proposal's tree.
+  assert.match(step, /node \.\.\/trusted\/docs\/auto-goal-actions\/assert-no-git-auth\.mjs \./);
   assert.ok(step.indexOf("assert-no-git-auth.mjs") > 0 && step.indexOf("assert-no-git-auth.mjs") < step.indexOf("claude -p"));
   assert.doesNotMatch(step.slice(step.indexOf("run: |")), /\$\{\{/);   // issue text reaches the script only through the environment
   assert.match(step, /--restricted/);
   assert.match(step, /--disallowedTools "Bash,PowerShell,WebFetch,WebSearch,Write,NotebookEdit,Agent,mcp__\*"/);
   // The export step re-checks, and the validator and gates are unchanged.
   assert.match(impl, /- name: Export a narrow, text-only patch\n[\s\S]*assert-no-git-auth\.mjs[\s\S]*validate-proposal\.mjs/);
-  for (const name of ["read-issue", "implement", "publish", "check"]) assert.match(job(name), /if: \$\{\{ false && github\.ref == 'refs\/heads\/main' \}\}/);
-  assert.match(job("publish"), /needs: implement/);
+  for (const name of ["read-dispatch", "implement", "publish", "gate-checks", "check", "record-check"]) assert.match(job(name), /if: \$\{\{ false && github\.ref == 'refs\/heads\/main' \}\}/);
+  assert.match(job("publish"), /needs: \[read-dispatch, implement\]/);
 });

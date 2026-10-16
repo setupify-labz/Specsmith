@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+// Test-only wrapper around the real git (WAKE_HARNESS_REAL_GIT). Everything passes straight through,
+// except a push of an Auto Goal claim ref, which a test can shape:
+//   WAKE_HARNESS_CLAIM_HOLD=<path>    write <path>.waiting.<pid>, wait for <path>.release, then push
+//   WAKE_HARNESS_LOSE_CLAIM_ANSWER=1  push, then report a dropped connection as if it failed
+//   WAKE_HARNESS_DIE_AFTER_CLAIM=1    push, then kill the session process that asked for it
+
+import { spawnSync } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const real = process.env.WAKE_HARNESS_REAL_GIT;
+if (!real) { console.error("harness git: WAKE_HARNESS_REAL_GIT is not set"); process.exit(2); }
+const claimPush = args[0] === "push" && args.some((a) => a.includes("auto-goal-claims"));
+const hold = process.env.WAKE_HARNESS_CLAIM_HOLD;
+if (claimPush && hold) {
+  writeFileSync(`${hold}.waiting.${process.pid}`, "");
+  const until = Date.now() + 30_000, nap = new Int32Array(new SharedArrayBuffer(4));
+  while (!existsSync(`${hold}.release`) && Date.now() < until) Atomics.wait(nap, 0, 0, 10);
+}
+const r = spawnSync(real, args, { stdio: "inherit" });
+if (claimPush && r.status === 0) {
+  if (process.env.WAKE_HARNESS_DIE_AFTER_CLAIM) process.kill(process.ppid, "SIGKILL");
+  if (process.env.WAKE_HARNESS_LOSE_CLAIM_ANSWER) { console.error("fatal: the remote end hung up unexpectedly"); process.exit(128); }
+}
+process.exit(r.status ?? 1);

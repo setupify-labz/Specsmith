@@ -68,6 +68,11 @@ interface PartSelectorProps {
    * sorted or ranked by price.
    */
   getPrice?: (part: Part) => PartPrice;
+  /**
+   * The search box's accessible name. Defaults to "Search <label>"; a page that shows two
+   * selectors with the same label (Compare's Build A and Build B) passes one that tells them apart.
+   */
+  searchLabel?: string;
 }
 
 /**
@@ -81,7 +86,7 @@ const SCROLL_ATTEMPT_FRAMES = 30;
 
 export default function PartSelector({
   category, label, parts, selectedId, onSelect, getSpecs,
-  defaultOpen = false, recommendedIds = [], openSignal, showShopping = true, getPrice,
+  defaultOpen = false, recommendedIds = [], openSignal, showShopping = true, getPrice, searchLabel,
 }: PartSelectorProps) {
   const priceOf = (part: Part): PartPrice | undefined => (showShopping && getPrice ? getPrice(part) : undefined);
   const amountOf = (part: Part): number | null => comparablePriceAmount(priceOf(part));
@@ -267,6 +272,9 @@ export default function PartSelector({
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--ff-text-3)' }} />
                   <input
                     type="text"
+                    // The placeholder is the only visible text, and it is the same in every
+                    // selector; the name says which part type this box filters.
+                    aria-label={searchLabel ?? `Search ${label}`}
                     placeholder="Search..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
