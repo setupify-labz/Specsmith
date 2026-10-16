@@ -16,6 +16,16 @@ on:
     # Mondays 04:40 UTC: off the hour, and clear of the 03:20 price refresh.
     - cron: '40 4 * * 1'
   workflow_dispatch:
+  # TEMPORARY, for pre-merge evidence only: GitHub cannot dispatch a workflow
+  # that is not yet on the default branch, so a push to this one branch runs
+  # the read-only live check the founder asked for (the same pattern as
+  # validate-retail-snapshot.yml). Remove before merge.
+  push:
+    branches:
+      - claude/part-discovery-staging
+    paths:
+      - '.github/workflows/discover-parts.yml'
+      - 'artifacts/SpecSmith/scripts/retail/discovery/**'
 
 permissions:
   contents: read
@@ -72,6 +82,14 @@ jobs:
           export RAKUTEN_API_ACCESS_TOKEN
           pnpm exec tsx scripts/retail/discovery/discover-parts.ts \
             --out "${RUNNER_TEMP}/part-discovery/staged-parts.json"
+
+      # No credential here. Prints counts, titles, dedupe keys and canonical
+      # proposals to the log for review; never URLs or affiliate ids.
+      - name: Summarise the staging file
+        working-directory: artifacts/SpecSmith
+        run: |
+          set -euo pipefail
+          pnpm exec tsx scripts/retail/discovery/summarize-staging.ts "${RUNNER_TEMP}/part-discovery/staged-parts.json"
 
       - name: Upload the staging file for review
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

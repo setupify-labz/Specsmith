@@ -148,3 +148,15 @@ describe('helpers', () => {
     expect(classifyGeneration('headset', 'Any headset')).toMatchObject({ tier: 'unclassified' });
   });
 });
+
+describe('staging report for CI logs', () => {
+  it('summarises counts, duplicates and ambiguity without printing any URL', async () => {
+    const { summarizeStaging } = await import('./summarize-staging');
+    const report = summarizeStaging(await runDiscovery(fixtureDeps(), SEARCHES));
+    expect(report).toContain('merged duplicate groups');
+    expect(report).toContain('upc:111222333');
+    expect(report).toContain('upc:444555666777');
+    expect(report).not.toMatch(/https?:\/\//);
+    expect(report).not.toMatch(/linksynergy|REDACTED/);
+  });
+});
