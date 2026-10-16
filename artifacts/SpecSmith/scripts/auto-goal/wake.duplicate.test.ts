@@ -46,7 +46,7 @@ beforeEach(() => {
   base = git(seed, "rev-parse", "HEAD");
 
   const goal = createGoal({
-    id: "beta", request: "A small site bug.", repo: REPO, baseBranch: "main", branch: BRANCH, requiredChecks: ["Tests, typecheck and production build"], runner: true,
+    id: "beta", request: "A small site bug.", repo: REPO, baseBranch: "main", branch: BRANCH, requiredChecks: ["typecheck"], runner: true, executorSha: base,
     acceptanceCriteria: [{ id: "unit", text: "the toggle says whether it is open", kind: "unit", check: UNIT, command: describeCheck(UNIT) }],
     caps: { maxRuns: 10, maxRunMinutes: 25 },
   });
@@ -56,7 +56,7 @@ beforeEach(() => {
     repo: REPO, origin, nextId: 9000, fireFailures: 0, fireLost: 0, fireCalls: [], deliveries: [], fires: [],
     issues: [{ number: ISSUE, state: "open", labels: [{ name: "auto-goal" }], created_at: created }],
     comments: { [ISSUE]: [{ id: 1, user: { login: ME }, body: renderRecordComment(rev1), created_at: created, updated_at: created, html_url: "r1", issue_url: `https://api.github.com/repos/${REPO}/issues/${ISSUE}` }] },
-    pulls: {}, checkRuns: {}, statuses: {},
+    pulls: {}, checkRuns: {}, statuses: {}, dispatches: [],
   }));
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -80,9 +80,8 @@ function proc(cmd: string, args: string[], extra: Record<string, string> = {}): 
 const wake = (args: string[], extra: Record<string, string> = {}) => proc(process.execPath, ["--import", FETCH, WAKE, ...args], extra);
 
 /**
- * One routine session following the pre-executor flow (guard, begin, commit, advance). The goal here has
- * no executor commit, so the executor-only ROUTINE_PROMPT.md would stop at `begin`; these tests cover
- * the guard and the run claim, which the executor-only prompt still relies on.
+ * One routine session doing exactly what the executor-only ROUTINE_PROMPT.md tells it to: the guard,
+ * then begin and advance. It never commits or pushes; advance sends the step to the Actions executor.
  */
 function session(name: string, text: string) {
   const work = join(dir, name);
@@ -96,14 +95,21 @@ function session(name: string, text: string) {
       return { ...r, verdict: JSON.parse(r.out.trim().split("\n").filter((l) => l.startsWith("{")).at(-1) ?? "{}") };
     },
     begin: (extra: Record<string, string> = {}) => proc(TSX, [RUNNER, "begin", ...goalArgs, "--started-by", "routine (API trigger)"], extra),
-    commit() { writeFileSync(join(work, `${name}.txt`), `${name}\n`); git(work, "add", "-A"); git(work, "commit", "-q", "-m", `work by ${name}`); },
     advance: () => proc(TSX, [RUNNER, "advance", ...goalArgs]),
   };
 }
 
-const remoteLog = () => {
-  const heads = git(origin, "for-each-ref", "--format=%(refname:short)", "refs/heads");
-  return heads.split("\n").includes(BRANCH) ? git(origin, "log", "--format=%s", `${base}..${BRANCH}`).split("\n").filter(Boolean) : [];
+/** Branches on origin: the coordinator never creates the goal branch (the executor does). */
+const remoteBranches = () => git(origin, "for-each-ref", "--format=%(refname:short)", "refs/heads").split("\n").filter(Boolean);
+/** Executor dispatches the harness received; the reproduce step of goal beta is the only one a first run sends. */
+const dispatched = () => state().dispatches;
+const REPRODUCE = { ref: "main", inputs: { goal: "beta", issue: String(ISSUE), nonce: "beta.d1" }, actor: ME };
+/** The run's own session sent the one dispatch: its run holds it, and nothing else reached the executor or origin. */
+const onlyDispatchBy = (name: string) => {
+  expect(dispatched()).toEqual([REPRODUCE]);
+  expect(latest().dispatches).toMatchObject([{ nonce: "beta.d1", phase: "reproduce", baseSha: base, state: "pending" }]);
+  expect(latest().runs.find((r: any) => r.n === latest().runs.at(-1).n).sessionId).toBe(name);
+  expect(remoteBranches().filter((b) => !b.startsWith("claude/auto-goal-claims/"))).toEqual(["main"]);
 };
 const records = () => state().comments[ISSUE].filter((c: any) => c.user.login === ME).map((c: any) => JSON.parse(/```json\n([\s\S]*?)\n```/.exec(c.body)![1]));
 const latest = () => records().at(-1);
@@ -127,19 +133,40 @@ async function ambiguousWake() {
   return ["s1", "s2", "s3"].map((n) => session(n, s.deliveries[0]));
 }
 
+describe("a goal without a pinned executor, through the real guard and runner processes (Codex P1 on #189)", { timeout: 60_000 }, () => {
+  it("the guard refuses it, and a session that skipped the guard is refused by begin and advance: nothing is saved, claimed, dispatched or pushed", async () => {
+    patch((s) => {
+      const c = s.comments[ISSUE][0];
+      const { executorSha: _, dispatches: __, ...r } = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(c.body)![1]);
+      c.body = renderRecordComment(validateGoal(r));
+    });
+    const [s1] = await ambiguousWake();
+    expect((await s1.guard()).verdict).toEqual({ proceed: false, why: "goal beta has no pinned executor commit; the routine runs executor-mode goals only" });
+    const before = records().length;
+    for (const step of [() => s1.begin(), () => s1.advance()]) {
+      const r = await step();
+      expect(r.code).toBe(2);
+      expect(r.out).toContain("REFUSED: Goal beta has no pinned executor commit; the unattended runner runs executor-mode goals only.");
+    }
+    expect(records()).toHaveLength(before);
+    expect(claimsOnOrigin()).toEqual([]);
+    expect(dispatched()).toEqual([]);
+    expect(remoteBranches()).toEqual(["main"]);
+  });
+});
+
 describe("an ambiguous routine call starts duplicate sessions for one ticket", { timeout: 60_000 }, () => {
   it("staggered sessions: the first opens the run; the guard turns the later ones away", async () => {
     const [s1, s2, s3] = await ambiguousWake();
     expect((await s1.guard()).verdict).toMatchObject({ proceed: true, goal: "beta" });
     expect((await s1.begin()).code).toBe(0);
     for (const s of [s2, s3]) expect((await s.guard()).verdict).toMatchObject({ proceed: false, why: expect.stringContaining("already taken by run 1") });
-    s1.commit();
     expect((await s1.advance()).code).toBe(0);
-    expect(remoteLog()).toEqual(["work by s1"]);
+    onlyDispatchBy("s1");
     expect(latest().runs.map((r: any) => r.sessionId)).toEqual(["s1"]);
   });
 
-  it("all guards pass before any run opens: the first begin wins, later begins change nothing, only the winner pushes", async () => {
+  it("all guards pass before any run opens: the first begin wins, later begins change nothing, only the winner dispatches", async () => {
     const sessions = await ambiguousWake();
     for (const s of sessions) expect((await s.guard()).verdict).toMatchObject({ proceed: true, goal: "beta" });
     const [s1, s2, s3] = sessions;
@@ -152,14 +179,12 @@ describe("an ambiguous routine call starts duplicate sessions for one ticket", {
     }
     expect(records()).toHaveLength(afterWinner);   // the duplicates saved nothing
     expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: "s1", endedAt: null })]);   // and never called the live run abandoned
-    // Even a duplicate that ignored its refusal cannot push: advance belongs to the run's own session.
-    s2.commit();
+    // Even a duplicate that ignored its refusal cannot dispatch: advance belongs to the run's own session.
     const rogue = await s2.advance();
     expect(rogue.code).not.toBe(0);
     expect(rogue.out).toContain("belongs to session s1");
-    s1.commit();
     expect((await s1.advance()).code).toBe(0);
-    expect(remoteLog()).toEqual(["work by s1"]);
+    onlyDispatchBy("s1");
   });
 
   it("two begins read the same revision at once: one claims the run, the other exits, and the goal goes on without resolve-fork", async () => {
@@ -181,11 +206,9 @@ describe("an ambiguous routine call starts duplicate sessions for one ticket", {
     expect(new Set(revs).size).toBe(revs.length);   // no fork
     expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: owner.name, claim: "claude/auto-goal-claims/beta/1-1" })]);
     // The loser cannot write even if it ignores its refusal.
-    other.commit();
     expect((await other.advance()).code).not.toBe(0);
-    owner.commit();
     expect((await owner.advance()).code).toBe(0);
-    expect(remoteLog()).toEqual([`work by ${owner.name}`]);
+    onlyDispatchBy(owner.name);
     // The goal continues: a fresh session claims run 2 on the same, unforked record.
     expect((await s3.begin()).code).toBe(0);
     expect(latest().runs.map((r: any) => [r.n, r.sessionId])).toEqual([[1, owner.name], [2, "s3"]]);
@@ -214,26 +237,24 @@ describe("an ambiguous routine call starts duplicate sessions for one ticket", {
     expect([a, b].filter((r) => r.code === 0)).toHaveLength(1);
     const taker = a.code === 0 ? s2 : s3;
     expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: taker.name, claim: "claude/auto-goal-claims/beta/1-2" })]);
-    taker.commit();
     expect((await taker.advance()).code).toBe(0);
-    expect(remoteLog()).toEqual([`work by ${taker.name}`]);
+    onlyDispatchBy(taker.name);
     const revs = records().map((r: any) => r.revision);
     expect(new Set(revs).size).toBe(revs.length);
   });
 });
 
 describe("the same sequence with no forced ordering", { timeout: 90_000 }, () => {
-  it("three sessions racing from scratch: exactly one owns run 1 and pushes, the record never forks", async () => {
+  it("three sessions racing from scratch: exactly one owns run 1 and dispatches, the record never forks", async () => {
     const sessions = await ambiguousWake();
     for (const s of sessions) expect((await s.guard()).verdict).toMatchObject({ proceed: true });
     const begun = await Promise.all(sessions.map((s) => s.begin()));
     expect(begun.filter((r) => r.code === 0)).toHaveLength(1);
     for (const r of begun) if (r.code !== 0) expect(r.out).toMatch(/^REFUSED: /m);
-    for (const s of sessions) s.commit();
     const advanced = await Promise.all(sessions.map((s) => s.advance()));
     const winners = sessions.filter((_, i) => advanced[i].code === 0).map((s) => s.name);
     expect(winners).toHaveLength(1);
-    expect(remoteLog()).toEqual([`work by ${winners[0]}`]);
+    onlyDispatchBy(winners[0]);
     expect(latest().runs.map((r: any) => r.sessionId)).toEqual([winners[0]]);
     const revs = records().map((r: any) => r.revision);
     expect(new Set(revs).size).toBe(revs.length);
@@ -282,9 +303,8 @@ describe("an owner that dies before leaving any event, and the scheduled watchdo
     expect((await s2.guard()).verdict).toMatchObject({ proceed: true, goal: "beta" });
     expect((await s2.begin()).code).toBe(0);
     expect(latest().runs).toEqual([expect.objectContaining({ n: 1, sessionId: "s2", claim: "claude/auto-goal-claims/beta/1-2" })]);
-    s2.commit();
     expect((await s2.advance()).code).toBe(0);
-    expect(remoteLog()).toEqual(["work by s2"]);
+    onlyDispatchBy("s2");
     const revs = records().map((r: any) => r.revision);
     expect(new Set(revs).size).toBe(revs.length);
     // Fresh activity: the watchdog leaves the goal to the session's own next step.

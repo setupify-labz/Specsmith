@@ -10,7 +10,7 @@ import { checkFile, describeCheck, runCheck, stepsFor, type CheckSpec } from "./
 import { CODEX_LOGIN, type GhIssueComment, type GhReview, type GhReviewComment } from "./codex.ts";
 import type { GhCheckRun, GhPull, GitHub } from "./github.ts";
 import { createGoal, GoalError, type GoalRecord } from "./record.ts";
-import { advance, begin, noteNext, runnerPrompt, type RunnerDeps } from "./runner.ts";
+import { advance, begin, localRunnerDeps, noteNext, runnerPrompt, type RunnerDeps } from "./runner.ts";
 import { IssueCommentStore, parseRecordComment, renderRecordComment } from "./store.ts";
 
 const T0 = new Date("2026-10-13T20:00:00Z");
@@ -111,6 +111,8 @@ function harness() {
     toolingSha: async () => "f".repeat(40),
     now: () => clock,
     out: (l) => out.push(l),
+    // This harness tests the claim, cap and replay logic on the pre-executor flow; production never sets it.
+    allowGoalsWithoutExecutor: true,
   };
   const commit = (n: number, subject: string) => { local = sha(n); commits.push({ sha: sha(n), subject, at: T0.toISOString() }); };
   const pass = (spec: CheckSpec, code: number) => results.set(JSON.stringify(spec), code);
@@ -136,8 +138,44 @@ async function submit(github: FakeGitHub, over: Partial<GoalRecord> = {}) {
   await new IssueCommentStore(github, REPO, 400, ME).save({ ...goal, issue: 400, ...over }, T0);
 }
 
-describe("the work order names the goal's mode", () => {
-  it("a goal without an executor commit gets executor: false, so the executor-only routine prompt stops", async () => {
+describe("the unattended runner refuses every goal without a pinned executor (Codex P1 on #189)", () => {
+  /** The harness's dependencies as production builds them: without the in-process test opt-in. */
+  const production = (h: ReturnType<typeof harness>): RunnerDeps => { const { allowGoalsWithoutExecutor: _, ...deps } = h.deps; return deps; };
+  const refusal = /^Goal aria-expanded has no pinned executor commit; the unattended runner runs executor-mode goals only\.$/;
+
+  it("begin, advance and note-next all refuse before saving, checking, pushing or claiming anything", async () => {
+    const h = harness();
+    await submit(h.github);
+    const before = h.github.comments.get(400)!.length;
+    const deps = production(h);
+    for (const run of [
+      () => begin([...h.argv, "--session", "s1", "--started-by", "routine (API trigger)"], deps),
+      () => advance([...h.argv, "--session", "s1"], deps),
+      () => noteNext([...h.argv, "--session", "s1", "--next", "trig_x at 2026-10-16T10:00:00Z"], deps),
+    ]) {
+      const e = await run().then(() => null, (error: unknown) => error);
+      expect(e).toBeInstanceOf(GoalError);
+      expect((e as GoalError).code).toBe("refused");
+      expect((e as GoalError).message).toMatch(refusal);
+    }
+    expect(h.github.comments.get(400)!.length).toBe(before);   // nothing saved
+    expect(h.ran).toEqual([]);                                  // no check ran
+    expect(h.claims.refs.size).toBe(0);                         // no run claimed
+    expect(h.github.created).toBe(0);                           // no PR opened
+  });
+
+  it("refuses even a goal whose record carries runner: true and every other unattended field", async () => {
+    const h = harness();
+    await submit(h.github, { runner: true });
+    await expect(begin([...h.argv, "--session", "s1", "--started-by", "routine"], production(h))).rejects.toThrow(refusal);
+  });
+
+  it("the command-line dependencies never opt in, so a routine (a process) always refuses", () => {
+    const deps = localRunnerDeps(process.cwd(), process.cwd());
+    expect("allowGoalsWithoutExecutor" in deps).toBe(false);
+  });
+
+  it("with the in-process test opt-in, the work order says executor: false (the executor-only prompt would also stop)", async () => {
     const h = harness();
     await submit(h.github);
     await begin([...h.argv, "--session", "s1", "--started-by", "routine (API trigger)"], h.deps);

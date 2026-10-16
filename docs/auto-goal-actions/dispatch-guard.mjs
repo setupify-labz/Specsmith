@@ -7,21 +7,23 @@
 //   node docs/auto-goal-actions/dispatch-guard.mjs post-push   publish job, right after the push
 //   node docs/auto-goal-actions/dispatch-guard.mjs pre-check   check job, before checking out the proposal
 //
-// Every mode reads the goal record fresh from the issue (the wake bridge's currentRecord: the highest
-// revision by the trusted login, refusing forked saves) and refuses unless the goal is still open and
-// the dispatch is its one live dispatch. pre-push also requires the branch to be at the dispatch base
+// Every mode reads the goal record fresh from the issue and validates every revision by the trusted
+// login the way the coordinator's store does (record-guard.mjs: validateGoal, marker revisions, fields
+// pinned to the first revision, executor mode, no unresolved fork) before it uses the record's branch
+// or dispatch fields. It refuses unless the goal is still open and the dispatch is its one live dispatch. pre-push also requires the branch to be at the dispatch base
 // and the commit to carry the dispatch's parent and trailers. The record and the branch are separate
 // GitHub objects, so these checks are not atomic with the push (contract §1A.5).
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 
-import { currentRecord } from "../../artifacts/SpecSmith/scripts/auto-goal/wake.mjs";
+import { RECORD_PROBLEM, validatedRecord } from "./record-guard.mjs";
 
 /** Every refusal the guard can print. Nothing read from GitHub, the record or git is ever printed. */
 export const REFUSAL = Object.freeze({
   input: "the dispatch inputs are malformed",
   noRecord: "no single current goal record by the trusted login",
+  invalidRecord: "the goal record is not a valid executor-mode record",
   wrongIssue: "the record does not live on the dispatched issue",
   stopped: "the goal is no longer open (outcome recorded)",
   executorMoved: "this run is not the executor commit the goal pinned",
@@ -35,10 +37,20 @@ export const REFUSAL = Object.freeze({
 const GOAL = /^[a-z0-9][a-z0-9-]{2,63}$/;
 const SHA = /^[0-9a-f]{40}$/;
 
-/** The record, or null: currentRecord refuses records by anyone else and forked saves. */
+/**
+ * The validated current record, or the refusal that applies: records by anyone else are ignored; no
+ * record or an unresolved fork is noRecord; any revision that fails validation is invalidRecord.
+ */
+export function readRecord(comments, goalId, trustedLogin) {
+  const v = validatedRecord(comments, goalId, trustedLogin);
+  if ("record" in v) return { record: v.record };
+  return { why: v.problem === RECORD_PROBLEM.none || v.problem === RECORD_PROBLEM.forked ? REFUSAL.noRecord : REFUSAL.invalidRecord };
+}
+
+/** The validated current record, or null. */
 export function readCurrent(comments, goalId, trustedLogin) {
-  const found = currentRecord(comments, goalId, trustedLogin);
-  return "record" in found ? found.record : null;
+  const r = readRecord(comments, goalId, trustedLogin);
+  return "record" in r ? r.record : null;
 }
 
 /**
@@ -116,11 +128,12 @@ async function main(mode) {
   const issue = Number(env.ISSUE);
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo) || !GOAL.test(goal) || !new RegExp(`^${goal}\\.d[1-9]\\d{0,2}$`).test(nonce)) refuse(REFUSAL.input);
   if (!SHA.test(env.GITHUB_SHA ?? "") || !env.AUTO_GOAL_TRUSTED_LOGIN || !env.GH_TOKEN || !/^https?:\/\/\S+$/.test(env.GITHUB_API_URL ?? "")) refuse(REFUSAL.input);
-  let record, head;
-  try {
-    record = readCurrent(await comments(repo, issue), goal, env.AUTO_GOAL_TRUSTED_LOGIN);
-    head = record ? await branchHead(repo, record.branch) : null;
-  } catch { refuse(REFUSAL.unavailable); }
+  let read, head;
+  try { read = readRecord(await comments(repo, issue), goal, env.AUTO_GOAL_TRUSTED_LOGIN); } catch { refuse(REFUSAL.unavailable); }
+  // Nothing below reads the record's branch or dispatch fields unless every revision validated.
+  if (!("record" in read)) refuse(read.why);
+  const record = read.record;
+  try { head = await branchHead(repo, record.branch); } catch { refuse(REFUSAL.unavailable); }
   if (mode === "post-push" || mode === "pre-check") {
     // After the push the branch is at the new commit, so only the record half is re-checked here.
     const r = checkDispatch({ record, issue, nonce, githubSha: env.GITHUB_SHA, branchHead: undefined });

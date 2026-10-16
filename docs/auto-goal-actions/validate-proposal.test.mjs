@@ -62,10 +62,23 @@ test('template keeps credentials and write scope out of the code-running job', (
   assert.match(sections.implement, /needs\.read-dispatch\.outputs\.packet/);
   assert.doesNotMatch(sections.implement, /issues: read|github\.token|github_token/);
   assert.doesNotMatch(sections.implement, /contents: write|pull-requests: write/);
-  assert.match(sections.check, /permissions:\n      contents: read\n    strategy:/);
+  // The code-running job: read-only scopes, and issues: read only for the guard step (Codex P2 on #189).
+  assert.match(sections.check, /permissions:\n      contents: read\n      issues: read\n    strategy:/);
   assert.match(sections.check, /timeout-minutes: 20/);
-  assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write|issues: /);
-  assert.doesNotMatch(sections.check, /statuses: |github\.token|GH_TOKEN/); // the code-running job cannot record its own result
+  assert.doesNotMatch(sections.check, /secrets\.|contents: write|pull-requests: write|issues: write/);
+  assert.doesNotMatch(sections.check, /statuses: /); // the code-running job cannot record its own result
+  // The guard re-reads the record as the last step before proposed code first runs (the proposal's install
+  // scripts), and it is the only step that receives a token.
+  const checkSteps = sections.check.split(/\n(?=      - )/).slice(1);
+  const guardAt = checkSteps.findIndex((st) => st.includes('dispatch-guard.mjs pre-check'));
+  assert.ok(guardAt > 0, 'the check job re-checks the goal');
+  assert.match(checkSteps[guardAt], /^      - name: Re-check the goal immediately before proposed code runs\n/);
+  assert.match(checkSteps[guardAt + 1], /^      - run: pnpm install --frozen-lockfile\n        working-directory: proposal$/);
+  assert.equal([...sections.check.matchAll(/github\.token/g)].length, 1);
+  assert.match(checkSteps[guardAt], /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  for (const st of checkSteps.slice(guardAt + 1)) assert.doesNotMatch(st, /GH_TOKEN|github\.token/);
+  // Nothing before the guard runs proposed code: only checkouts, the exact-commit check, tool setup and the trusted install.
+  for (const st of checkSteps.slice(0, guardAt)) assert.doesNotMatch(st, /working-directory: proposal\n?$|--tree proposal|run-check/);
   assert.doesNotMatch(sections.check, /cache: pnpm|actions\/cache@/);
   // The record re-read before the checks has its own job, so the code-running job gets no issues scope.
   assert.match(sections['gate-checks'], /permissions:\n      issues: read\n      contents: read\n/);

@@ -20,7 +20,7 @@ const CHECKS = ["Tests, typecheck and production build", "Workers Builds: specsm
 const at = (min: number) => new Date(NOW + min * 60_000).toISOString();
 
 const record = (over: Record<string, unknown> = {}) => ({
-  kind: "specsmith-auto-goal", version: 1, id: "toggle-expanded", revision: 7, issue: 190, pr: 191, head: HEAD,
+  kind: "specsmith-auto-goal", version: 2, id: "toggle-expanded", revision: 7, issue: 190, pr: 191, head: HEAD, executorSha: "e".repeat(40),
   requiredChecks: CHECKS, outcome: null,
   runs: [{ n: 1, sessionId: "s1", startedBy: "routine", startedAt: at(-30), endedAt: at(-25), result: "ok", head: HEAD, next: null }],
   ...over,
@@ -165,6 +165,15 @@ describe("the routine's guard binds the run to its ticket", () => {
     expect(verify(ticket(-40))).toMatchObject({ proceed: false, why: expect.stringContaining("already taken by run 1") });
     expect(verify(ticket(-2, "fired", { sha: OLD }))).toMatchObject({ proceed: false, why: expect.stringContaining("not the ticket's") });
     expect(verify(ticket(-2), { trustedLogin: WORKFLOW_LOGIN })).toMatchObject({ proceed: false });
+  });
+  it("refuses a goal without a pinned executor commit, before the routine installs or runs anything (Codex P1 on #189)", () => {
+    const why = "goal toggle-expanded has no pinned executor commit; the routine runs executor-mode goals only";
+    for (const executorSha of [undefined, null, "", "e".repeat(39), "E".repeat(40), 42]) {
+      const t = ticket(-2);
+      const rec = record({ executorSha });
+      if (executorSha === undefined) delete (rec as Record<string, unknown>).executorSha;
+      expect(verify(t, { comments: [recordComment(rec), t] }), String(executorSha)).toEqual({ proceed: false, why });
+    }
   });
 });
 

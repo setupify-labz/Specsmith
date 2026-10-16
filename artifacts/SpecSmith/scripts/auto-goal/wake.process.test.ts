@@ -26,7 +26,7 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 function record(id: string, issue: number, pr: number, head: string) {
   return {
-    kind: "specsmith-auto-goal", version: 1, id, revision: 5, issue, pr, head, requiredChecks: [], outcome: null,
+    kind: "specsmith-auto-goal", version: 2, id, revision: 5, issue, pr, head, executorSha: "e".repeat(40), requiredChecks: [], outcome: null,
     runs: [{ n: 1, sessionId: `s-${id}`, startedBy: "routine", startedAt: ago(30), endedAt: ago(25), result: "ok", head, next: null }],
   };
 }

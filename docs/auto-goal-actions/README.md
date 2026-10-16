@@ -9,13 +9,13 @@ The workflow now implements version 1 of [PILOT_HANDOFF_CONTRACT.md](PILOT_HANDO
 - **`read-dispatch`:** validates the dispatch against the goal record.
 - **`implement`:** the restricted CLI on the dispatch base.
 - **`publish`:** guard, then a compare-and-swap push to `claude/auto-goal-<goal>`, then a re-read and the draft PR.
-- **`gate-checks`:** re-reads the record before any proposed code runs.
+- **`gate-checks`:** re-reads the record before any check job starts. Each `check` job reads it again in the step just before proposed code first runs (the proposal's `pnpm install`); that step alone gets a token, with `issues: read`.
 - **`check`:** one job per trusted check, named `check <phase> <id> <sha>`.
 - **`record-check`:** writes an informational status.
 
 New trusted scripts:
 
-- **`dispatch-guard.mjs`:** the record and branch checks of §1A.5.
+- **`dispatch-guard.mjs`:** the record and branch checks of §1A.5. It validates every revision of the record with `record-guard.mjs` (the coordinator's `validateGoal` and revision pinning, in plain JavaScript) before it uses the record's branch or dispatch fields.
 - **`run-check.mts`:** maps a check ID onto `checks.ts` and succeeds only when the phase's expectation is met.
 
 `validate-proposal.mjs` takes `--phase` and `--criterion`.

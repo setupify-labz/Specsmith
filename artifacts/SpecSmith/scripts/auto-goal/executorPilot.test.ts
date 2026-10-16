@@ -746,7 +746,7 @@ describe("cli start --executor-sha", () => {
 
 describe("wake bridge: executor runs wake the goal they belong to", () => {
   const recordComment = (record: object, id = 1) => ({ id, user: { login: ME }, created_at: T0.toISOString(), body: `<!-- specsmith-auto-goal id=${ID} rev=3 -->\n\n\`\`\`json\n${JSON.stringify(record)}\n\`\`\`` });
-  const live = { kind: "specsmith-auto-goal", version: 2, id: ID, revision: 3, issue: ISSUE, pr: 50, head: "c".repeat(40), outcome: null, runs: [], caps: {}, requiredChecks: ["typecheck"], dispatches: [{ k: 1, nonce: `${ID}.d1`, state: "bound" }] };
+  const live = { kind: "specsmith-auto-goal", version: 2, id: ID, revision: 3, issue: ISSUE, pr: 50, head: "c".repeat(40), outcome: null, runs: [], caps: {}, requiredChecks: ["typecheck"], executorSha: "e".repeat(40), dispatches: [{ k: 1, nonce: `${ID}.d1`, state: "bound" }] };
   const runEvent = (over: object = {}) => ({ action: "completed", workflow_run: { path: ".github/workflows/auto-goal-actions.yml", name: `Auto Goal ${ID} ${ID}.d1`, display_title: `Auto Goal ${ID} ${ID}.d1`, workflow_id: WORKFLOW_ID, event: "workflow_dispatch", head_sha: "a".repeat(40), pull_requests: [], ...over } });
 
   it("maps a completed executor run to its goal by its run-name (display_title), and only an Auto Goal dispatch title", () => {

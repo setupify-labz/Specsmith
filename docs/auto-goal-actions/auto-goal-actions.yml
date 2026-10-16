@@ -276,8 +276,10 @@ jobs:
     name: check ${{ fromJSON(needs.read-dispatch.outputs.packet).check_phase }} ${{ matrix.label }} ${{ needs.publish.outputs.proposal_sha }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # issues: read is only for the guard step below, which re-reads the goal record; no write scope.
     permissions:
       contents: read
+      issues: read
     strategy:
       fail-fast: false
       matrix:
@@ -310,6 +312,18 @@ jobs:
       # This job has no added secrets or repository write scope.
       - run: pnpm install --frozen-lockfile
         working-directory: trusted
+      # The last step before proposed code first runs (its install scripts): a goal that stopped, or a
+      # dispatch that was superseded, while this matrix job waited in the queue gets no checks. The token
+      # is mapped into this step only; no later step receives it.
+      - name: Re-check the goal immediately before proposed code runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTO_GOAL_TRUSTED_LOGIN: ${{ vars.AUTO_GOAL_TRUSTED_LOGIN }}
+          GOAL: ${{ inputs.goal }}
+          ISSUE: ${{ inputs.issue }}
+          NONCE: ${{ inputs.nonce }}
+        shell: bash
+        run: node trusted/docs/auto-goal-actions/dispatch-guard.mjs pre-check
       - run: pnpm install --frozen-lockfile
         working-directory: proposal
       - name: Run the trusted check

@@ -87,5 +87,17 @@ function route(s, method, url, body, actor) {
     (s.statuses[m[1]] ??= []).unshift({ ...body, created_at: new Date().toISOString(), creator: { login: "github-actions[bot]" } });
     return { status: 201, body: {} };
   }
+  // The executor workflow (PILOT_HANDOFF_CONTRACT.md §1A): the coordinator only reads its id and runs and
+  // sends dispatches; the harness records each dispatch and never starts a run.
+  if (method === "GET" && p === "actions/workflows/auto-goal-actions.yml") return { status: 200, body: { id: 777, path: ".github/workflows/auto-goal-actions.yml", state: "active" } };
+  if (method === "POST" && p === "actions/workflows/auto-goal-actions.yml/dispatches") {
+    (s.dispatches ??= []).push({ ref: body?.ref, inputs: body?.inputs, actor });
+    return { status: 204, body: {} };
+  }
+  if (method === "GET" && p === "actions/workflows/auto-goal-actions.yml/runs") return { status: 200, body: { total_count: 0, workflow_runs: [] } };
+  if (method === "GET" && (m = /^git\/ref\/heads\/(.+)$/.exec(p))) {
+    if (!s.origin) return { status: 404, body: {} };
+    try { return { status: 200, body: { ref: `refs/heads/${m[1]}`, object: { sha: realGit("rev-parse", "--verify", "-q", `refs/heads/${m[1]}`).trim(), type: "commit" } } }; } catch { return { status: 404, body: { message: "Not Found" } }; }
+  }
   return { status: 404, body: { message: `harness has no route ${method} ${p}` } };
 }

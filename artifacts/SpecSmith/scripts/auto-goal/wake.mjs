@@ -192,6 +192,9 @@ export function verifyTicket(ctx) {
   if ("skip" in found) return no(found.skip);
   const record = found.record;
   if (record.issue !== t.issue) return no(`goal ${t.goal}'s record lives on issue ${record.issue}, not ${t.issue}`);
+  // The routine runs executor-mode goals only: the restricted Actions executor owns their code. A goal
+  // without a pinned executor commit would have the runner run its checks in the routine's session.
+  if (typeof record.executorSha !== "string" || !/^[0-9a-f]{40}$/.test(record.executorSha)) return no(`goal ${t.goal} has no pinned executor commit; the routine runs executor-mode goals only`);
   const consumed = (record.runs ?? []).find((r) => Date.parse(r.startedAt) >= Date.parse(t.createdAt));
   if (consumed) return no(`ticket ${t.id} was already taken by run ${consumed.n} (${consumed.sessionId})`);
   const moved = stillCurrent(t, record);

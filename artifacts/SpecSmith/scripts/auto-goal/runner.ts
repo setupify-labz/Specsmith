@@ -88,6 +88,13 @@ export interface RunnerDeps {
   toolingSha(): Promise<string>;
   now(): Date;
   out(line: string): void;
+  /**
+   * In-process test harnesses only (runner.test.ts), to keep testing the claim, cap and replay logic
+   * on the pre-executor flow. The command-line entry point builds its dependencies with
+   * `localRunnerDeps`, which never sets this, so a routine always refuses a goal without a pinned
+   * executor. No argument, environment variable or record field can turn it on.
+   */
+  readonly allowGoalsWithoutExecutor?: true;
 }
 
 const CODE_ACTIONS = new Set(["reproduce", "implement", "fix-findings", "fix-ci"]);
@@ -131,9 +138,17 @@ function workOrder(goal: GoalRecord, next: Action, run: RunEntry): Record<string
   }
 }
 
+/**
+ * Loads a goal for the unattended runner, which runs executor-mode goals only. Without a pinned executor
+ * commit, `advance` would run the goal branch's checks (and the code they import) in this session, which
+ * holds the owner's credentials and unrestricted network access. That work belongs to the restricted
+ * Actions executor (PILOT_HANDOFF_CONTRACT.md §1A), so any other goal is refused before anything runs.
+ */
 async function load(deps: RunnerDeps, repo: string, issue: number, id: string) {
   const store = new IssueCommentStore(deps.github, repo, issue, await deps.github.whoami());
-  return { store, goal: await store.load(id) };
+  const goal = await store.load(id);
+  if (!isExecutorMode(goal) && deps.allowGoalsWithoutExecutor !== true) throw new GoalError("refused", `Goal ${id} has no pinned executor commit; the unattended runner runs executor-mode goals only.`);
+  return { store, goal };
 }
 
 export async function begin(argv: readonly string[], deps: RunnerDeps): Promise<number> {
