@@ -213,6 +213,8 @@ export interface GoalRecord {
 }
 
 export const EXECUTOR_REQUIRED_CHECKS = ["typecheck"] as const;
+/** The only branch the pilot dispatches the executor workflow at, and the only base its goals target. */
+export const EXECUTOR_BASE_BRANCH = "main";
 export const DEFAULT_DISPATCH_GRACE_MINUTES = 15;
 export const DEFAULT_EXECUTOR_TIMEOUT_MINUTES = 60;
 export const isExecutorMode = (goal: Pick<GoalRecord, "executorSha">): boolean => typeof goal.executorSha === "string";
@@ -306,6 +308,7 @@ function validateExecutorMode(g: GoalRecord, fail: (why: string) => never): void
   if ((g.version as number) !== RECORD_VERSION) fail(`executor mode needs record version ${RECORD_VERSION}`);
   if (typeof g.executorSha !== "string" || !SHA.test(g.executorSha)) fail("executorSha must be a full commit sha");
   if (g.branch !== `claude/auto-goal-${g.id}`) fail(`an executor-mode goal's branch must be claude/auto-goal-${g.id}`);
+  if (g.baseBranch !== EXECUTOR_BASE_BRANCH) fail(`an executor-mode goal's base branch must be ${EXECUTOR_BASE_BRANCH}`);
   if (g.acceptanceCriteria.length !== 1 || g.acceptanceCriteria[0].check?.kind !== "vitest") fail("version 1 takes exactly one acceptance criterion, a vitest check");
   if (g.requiredChecks.length !== EXECUTOR_REQUIRED_CHECKS.length || g.requiredChecks.some((c, i) => c !== EXECUTOR_REQUIRED_CHECKS[i])) fail(`an executor-mode goal requires exactly ${EXECUTOR_REQUIRED_CHECKS.join(", ")}`);
   const ds = g.dispatches;

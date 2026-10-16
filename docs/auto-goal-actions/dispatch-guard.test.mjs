@@ -185,6 +185,30 @@ test("pre-push refuses a forged later revision that retargets the push to main, 
   } finally { rmSync(repo, { recursive: true, force: true }); }
 });
 
+test("refuses a later revision that moves baseBranch and executorSha together, before reading any branch (Codex P1 on #189)", async () => {
+  // The forged revision names another workflow branch and that branch's commit, so a run dispatched there
+  // would pass the guard's executor check (GITHUB_SHA equals the record's executorSha) if the record were used.
+  const F = "f".repeat(40);
+  const genuine = record({ revision: 4 });
+  const moved = record({ revision: 5, baseBranch: "attacker-workflow", executorSha: F });
+  const cases = [
+    ["both fields moved at a later revision", [comment(genuine, 1), comment(moved, 2)]],
+    ["only executorSha moved at a later revision", [comment(genuine, 1), comment(record({ revision: 5, executorSha: F }), 2)]],
+    ["base branch is not main at the first revision", [comment(record({ baseBranch: "attacker-workflow" }), 1)]],
+  ];
+  for (const [name, comments] of cases) {
+    for (const mode of ["read", "pre-check", "pre-push"]) {
+      const f = fake({ comments, main: B, branch: B });
+      const r = await guard(mode, f, { GITHUB_SHA: F, PROPOSAL_SHA: T });
+      refused(r, REFUSAL.invalidRecord);
+      assert.deepEqual(refRequests(f), [], `${name} (${mode}): no branch was read`);
+    }
+  }
+  // Control: the unmoved record at the same executor commit is accepted, so the refusal above is the pin.
+  const ok = await guard("read", fake({ comments: [comment(genuine, 1), comment(record({ revision: 5, step: "wait-executor" }), 2)] }));
+  assert.equal(ok.code, 0, ok.text);
+});
+
 test("every revision is validated: corrupt JSON, wrong marker revision or goal, unpinned fields, bad dispatches, non-executor", async () => {
   const live = record();
   const cases = [

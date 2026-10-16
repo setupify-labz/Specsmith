@@ -5,11 +5,11 @@
 import { describe, expect, it } from "vitest";
 
 // @ts-expect-error: a plain .mjs module without type declarations.
-import { goalProblem, RECORD_PROBLEM, validatedRecord } from "../../../../docs/auto-goal-actions/record-guard.mjs";
+import { goalProblem, PINNED_FIELDS as GUARD_PINNED_FIELDS, RECORD_PROBLEM, validatedRecord } from "../../../../docs/auto-goal-actions/record-guard.mjs";
 import { describeCheck, type CheckSpec } from "./checks.ts";
 import type { GitHub } from "./github.ts";
 import { createGoal, validateGoal, type GoalRecord } from "./record.ts";
-import { IssueCommentStore, renderRecordComment } from "./store.ts";
+import { IssueCommentStore, PINNED_FIELDS, renderRecordComment } from "./store.ts";
 
 const ME = "setupify-labz", REPO = "setupify-labz/Specsmith", ISSUE = 400;
 const SHA = (c: string) => c.repeat(40);
@@ -41,6 +41,9 @@ const MUTATIONS: [string, Record<string, unknown>][] = [
   ["branch main", { branch: "main" }],
   ["branch for another goal", { branch: "claude/auto-goal-other" }],
   ["branch with a suffix", { branch: "claude/auto-goal-pilot-1-x" }],
+  ["base branch not main", { baseBranch: "attacker-workflow" }],
+  ["base branch and executorSha moved together", { baseBranch: "attacker-workflow", executorSha: SHA("f") }],
+  ["another valid executorSha", { executorSha: SHA("f") }],
   ["kind", { kind: "other" }],
   ["version 1 with executor fields", { version: 1 }],
   ["version 3", { version: 3 }],
@@ -113,11 +116,22 @@ describe("record-guard.mjs validatedRecord matches IssueCommentStore on revision
     ["later revision changes the request", [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, request: "Something else." }))]],
     ["later revision changes the branch to main", [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, branch: "main" }))]],
     ["later revision changes the criterion file", [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, acceptanceCriteria: crit({ check: { kind: "vitest", file: "src/lib/other.test.ts" }, command: "(cd artifacts/SpecSmith && pnpm exec vitest run src/lib/other.test.ts)" }) }))]],
+    ["later revision moves baseBranch and executorSha together", [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, baseBranch: "attacker-workflow", executorSha: SHA("f") }))]],
+    ["later revision moves executorSha alone", [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, executorSha: SHA("f") }))]],
     ["an earlier revision is invalid", [comment(1, goal({ revision: 1, policy: { merge: true } })), comment(2, goal({ revision: 3 }))]],
     ["marker revision mismatch", [raw(1, 9, JSON.stringify(goal()))]],
     ["corrupt JSON", [comment(1, goal({ revision: 1 })), raw(2, 3, "{ nope")]],
     ["someone else's forged revision is ignored", [comment(1, goal()), comment(2, goal({ revision: 9, branch: "main" }), "someone-else")]],
   ];
+  it("pins the same fields as the store", () => {
+    expect(GUARD_PINNED_FIELDS).toEqual(PINNED_FIELDS);
+  });
+
+  it("refuses a later revision that moves the executor anchors, as pinned", () => {
+    const comments = [comment(1, goal({ revision: 1 })), comment(2, goal({ revision: 3, executorSha: SHA("f") }))];
+    expect(validatedRecord(comments, "pilot-1", ME)).toEqual({ problem: RECORD_PROBLEM.pinned });
+  });
+
   it.each(cases)("%s", async (_name, comments) => {
     const v = validatedRecord(comments, "pilot-1", ME);
     expect("record" in v).toBe(await storeLoads(comments));

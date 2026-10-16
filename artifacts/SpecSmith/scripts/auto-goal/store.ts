@@ -10,7 +10,8 @@
 // refuses the fork until `resolve-fork` records which copy to keep. Nothing is silently dropped.
 // Only comments by the orchestrator's own login count as records (anyone else who can comment on
 // the issue could otherwise post a "higher revision" with a different check command), and the
-// request and acceptance criteria are pinned to revision 1: no later revision may change them.
+// request, acceptance criteria, repo, branch, base branch and executor commit are pinned to the first
+// revision: no later revision may change them (PINNED_FIELDS).
 // A local file mirrors the latest revision for offline reads and tests.
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -56,6 +57,15 @@ export class FileStore implements GoalStore {
     await rename(tmp, this.path(goal.id));
   }
 }
+
+/**
+ * The fields fixed at a goal's first trusted revision. The executor's dispatch guard pins the same list
+ * (docs/auto-goal-actions/record-guard.mjs); recordGuard.test.ts keeps the two in step. baseBranch and
+ * executorSha are the executor's anchors: the runner dispatches the workflow at baseBranch and accepts
+ * only a run at executorSha, so a later revision that moved both would run another workflow commit.
+ */
+export const PINNED_FIELDS = ["request", "acceptanceCriteria", "repo", "branch", "baseBranch", "executorSha"] as const;
+const pinnedFields = (g: GoalRecord) => JSON.stringify(PINNED_FIELDS.map((k) => g[k] ?? null));
 
 const MARKER = (id: string, revision: number) => `<!-- specsmith-auto-goal id=${id} rev=${revision} -->`;
 const MARKER_RE = /^<!-- specsmith-auto-goal id=([a-z0-9-]+)(?: rev=(\d+))? -->/;
@@ -111,10 +121,10 @@ export class IssueCommentStore implements GoalStore {
       if (goal) out.push({ commentId: c.id, url: c.html_url, goal });
     }
     const first = out.find((e) => e.goal.revision === Math.min(...out.map((x) => x.goal.revision)));
-    const pinned = first && JSON.stringify([first.goal.request, first.goal.acceptanceCriteria, first.goal.repo, first.goal.branch]);
+    const pinned = first && pinnedFields(first.goal);
     for (const e of out) {
-      if (JSON.stringify([e.goal.request, e.goal.acceptanceCriteria, e.goal.repo, e.goal.branch]) !== pinned) {
-        throw new GoalError("invalid", `Goal ${id}'s record ${e.url} changes the request, acceptance criteria, repo or branch fixed at revision ${first!.goal.revision}; refusing it.`);
+      if (pinnedFields(e.goal) !== pinned) {
+        throw new GoalError("invalid", `Goal ${id}'s record ${e.url} changes the request, acceptance criteria, repo, branch, base branch or executor commit fixed at revision ${first!.goal.revision}; refusing it.`);
       }
     }
     return out;

@@ -22,7 +22,7 @@ import type { ExecutorGitHub, GhCommit, GhJob, GhPull, GhWorkflowRun } from "./g
 import { main as cliMain, type Deps as CliDeps } from "./cli.ts";
 import { createGoal, nonceFor, validateGoal, type GoalRecord } from "./record.ts";
 import { advance, begin, type RunnerDeps } from "./runner.ts";
-import { IssueCommentStore } from "./store.ts";
+import { IssueCommentStore, PINNED_FIELDS, renderRecordComment } from "./store.ts";
 import { EXECUTOR_WORKFLOW_PATH, executorRunName } from "./sync.ts";
 // @ts-expect-error: plain JavaScript module without type declarations.
 import { decideWake, normalizeEvent, ticketBody, verifyTicket } from "./wake.mjs";
@@ -725,6 +725,39 @@ describe("record validation in executor mode (version 1 scope)", () => {
     const plain = createGoal({ id: "plain-goal", request: "r", acceptanceCriteria: [crit], repo: REPO, baseBranch: "main", branch: "claude/x", requiredChecks: ["CI"], now: T0 });
     expect(plain.executorSha).toBeUndefined();
     expect(validateGoal({ ...plain, version: 1 }).version).toBe(1);
+  });
+});
+
+describe("the executor's anchors are pinned: baseBranch and executorSha (Codex P1 on #189)", () => {
+  it("validateGoal requires the executor base branch to be main", () => {
+    expect(() => exec1({ baseBranch: "attacker-workflow" })).toThrow(/base branch must be main/);
+    expect(() => validateGoal({ ...structuredClone(exec1()), baseBranch: "release" })).toThrow(/base branch must be main/);
+    expect(PINNED_FIELDS).toEqual(["request", "acceptanceCriteria", "repo", "branch", "baseBranch", "executorSha"]);
+  });
+
+  const forgedCases: [string, Partial<GoalRecord>][] = [
+    ["moves baseBranch and executorSha together", { baseBranch: "attacker-workflow", executorSha: "f".repeat(40) }],
+    ["moves executorSha alone (a record validateGoal accepts on its own)", { executorSha: "f".repeat(40) }],
+  ];
+  it.each(forgedCases)("a later trusted revision that %s is refused before any dispatch or branch read", { timeout: 60_000 }, async (_name, over) => {
+    const h = harness();
+    await h.start();
+    const genuine = await h.record();
+    // The trusted login posts the next revision with the executor's anchors moved (a corrupted or injected save).
+    const forged = { ...structuredClone(genuine), ...over, revision: genuine.revision + 1 } as GoalRecord;
+    await h.gh.createComment(REPO, ISSUE, renderRecordComment(forged, T0));
+    let branchReads = 0;
+    const branchHead = h.gh.branchHead.bind(h.gh);
+    h.gh.branchHead = async (r, b) => { branchReads++; return branchHead(r, b); };
+    const writes = h.gh.writes.length;
+    const argv = ["--goal", ID, "--issue", String(ISSUE), "--repo", REPO, "--session", "session_x"];
+    for (const run of [() => begin([...argv, "--started-by", "test"], h.deps), () => advance(argv, h.deps)]) {
+      const e = await run().then(() => null, (error: unknown) => error as Error);
+      expect(e?.message).toMatch(/base branch must be main\.$|changes the request, acceptance criteria, repo, branch, base branch or executor commit fixed at revision 1/);
+    }
+    expect(h.gh.dispatched).toEqual([]);
+    expect(branchReads).toBe(0);
+    expect(h.gh.writes.slice(writes)).toEqual([]);   // nothing saved, claimed, dispatched or commented
   });
 });
 

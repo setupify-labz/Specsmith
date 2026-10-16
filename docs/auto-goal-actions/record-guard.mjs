@@ -2,10 +2,14 @@
 //
 // The guard used to take the highest revision by the trusted login as raw JSON. A corrupted or
 // prompt-injected revision could then set `branch: main` and a live dispatch whose base is main's head,
-// and the publish job would push the proposal straight to main. This module applies the same rules the
-// coordinator's store applies (store.ts IssueCommentStore and record.ts validateGoal) to every revision,
-// in plain JavaScript, because the executor runs it with plain `node` and record.ts cannot be loaded that
-// way. record-guard.test.ts (vitest) checks that both validators accept and refuse the same records.
+// and the publish job would push the proposal straight to main. A later revision could also move
+// `baseBranch` and `executorSha` together, so the runner would dispatch, and accept a run of, an
+// unreviewed workflow commit; both are now pinned to the first revision, and the base must be main.
+//
+// This module applies the same rules the coordinator's store applies (store.ts IssueCommentStore and
+// record.ts validateGoal) to every revision, in plain JavaScript, because the executor runs it with plain
+// `node` and record.ts cannot be loaded that way. recordGuard.test.ts (vitest) checks that both
+// validators accept and refuse the same records.
 //
 // It never prints or returns record text: callers get the record, or one fixed reason.
 
@@ -15,6 +19,9 @@ const ID = /^[a-z0-9][a-z0-9-]{2,63}$/;
 const RECORD_KIND = "specsmith-auto-goal";
 const RECORD_VERSION = 2;
 const EXECUTOR_REQUIRED_CHECKS = ["typecheck"];
+const EXECUTOR_BASE_BRANCH = "main";
+/** store.ts PINNED_FIELDS: fixed at the first trusted revision. */
+export const PINNED_FIELDS = Object.freeze(["request", "acceptanceCriteria", "repo", "branch", "baseBranch", "executorSha"]);
 const APP = "artifacts/SpecSmith";
 const VITEST_FILE = /^src\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_.-]+\.test\.tsx?$/;
 const BROWSER_SCRIPT = /^scripts\/ui\/[A-Za-z0-9_-]+\.mjs$/;
@@ -26,7 +33,7 @@ export const RECORD_PROBLEM = Object.freeze({
   invalid: "a revision of the goal record is not a valid goal record",
   revision: "a record comment's marker names a different revision than it holds",
   identity: "a record comment holds a different goal than its marker names",
-  pinned: "a later revision changes the request, criteria, repo or branch fixed at the first revision",
+  pinned: "a later revision changes the request, criteria, repo, branch, base branch or executor commit fixed at the first revision",
   notExecutor: "the goal record is not an executor-mode record",
   forked: "the record has diverging saves",
 });
@@ -102,6 +109,7 @@ function executorProblem(g) {
   if (g.version !== RECORD_VERSION) return "executor version";
   if (typeof g.executorSha !== "string" || !SHA.test(g.executorSha)) return "executorSha";
   if (g.branch !== `claude/auto-goal-${g.id}`) return "executor branch";
+  if (g.baseBranch !== EXECUTOR_BASE_BRANCH) return "executor base branch";
   if (g.acceptanceCriteria.length !== 1 || g.acceptanceCriteria[0].check?.kind !== "vitest") return "executor criterion";
   if (g.requiredChecks.length !== EXECUTOR_REQUIRED_CHECKS.length || g.requiredChecks.some((c, i) => c !== EXECUTOR_REQUIRED_CHECKS[i])) return "executor required checks";
   const ds = g.dispatches;
@@ -126,7 +134,8 @@ function executorProblem(g) {
  * current one. Returns `{ record }` or `{ problem }` (a RECORD_PROBLEM value). Refuses unless:
  * - every marked comment by the trusted login has a readable JSON block holding that goal;
  * - every revision passes goalProblem (validateGoal) and its marker revision, if given, matches;
- * - every revision keeps the request, criteria, repo and branch of the earliest one (store.ts pinning);
+ * - every revision keeps the PINNED_FIELDS of the earliest one: request, criteria, repo, branch, base
+ *   branch and executor commit (store.ts pinning);
  * - the current revision is in executor mode, with exactly one top revision (or a resolved fork).
  */
 export function validatedRecord(comments, goalId, trustedLogin) {
@@ -145,7 +154,7 @@ export function validatedRecord(comments, goalId, trustedLogin) {
     entries.push(g);
   }
   if (!entries.length) return { problem: RECORD_PROBLEM.none };
-  const pin = (g) => JSON.stringify([g.request, g.acceptanceCriteria, g.repo, g.branch]);
+  const pin = (g) => JSON.stringify(PINNED_FIELDS.map((k) => g[k] ?? null));
   const first = entries.find((g) => g.revision === Math.min(...entries.map((x) => x.revision)));
   if (entries.some((g) => pin(g) !== pin(first))) return { problem: RECORD_PROBLEM.pinned };
   const top = Math.max(...entries.map((g) => g.revision));
