@@ -8,6 +8,7 @@ import {
 import PartCard from './PartCard';
 import { buildPartQuery } from '../lib/fps';
 import { comparablePriceAmount, describePartPrice, type PartPrice } from '../lib/partPrice';
+import { notRecommendedLabel } from '../lib/catalogLifecycle';
 
 type SortKey = 'price' | 'performance' | 'value';
 
@@ -177,7 +178,10 @@ export default function PartSelector({
       .map((p) => ({ part: p, amount: amountOf(p) }))
       .filter((entry): entry is { part: Part & { benchmark_score: number }; amount: number } =>
         typeof entry.part.benchmark_score === 'number' && entry.amount !== null && entry.amount > 0,
-      );
+      )
+      // Accolades are recommendations: never award one to a legacy, invalid
+      // or ambiguous part from the catalog audit.
+      .filter((entry) => notRecommendedLabel(entry.part.id) === null);
     if (withScores.length === 0) return { bestValueId: null, bestPerformanceId: null };
     const bestValue = withScores.reduce((best, entry) =>
       (entry.part.benchmark_score / entry.amount) > (best.part.benchmark_score / best.amount) ? entry : best
@@ -331,6 +335,7 @@ export default function PartSelector({
                         undefined
                       }
                       specs={getSpecs(part)}
+                      catalogNotice={notRecommendedLabel(part.id)}
                       tier={part.tier}
                       showShopping={showShopping}
                       onSelect={(id) => onSelect(id === selectedId ? null : id)}

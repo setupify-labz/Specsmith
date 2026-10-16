@@ -1,0 +1,1595 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-10-16",
+  "method": "Manual review of every canonical record against manufacturer-published specifications. \"valid\" means no defect was found in this review; it is NOT live retailer or manufacturer verification and does not change any part's specsVerified flag. Lifecycle reflects availability for new builds as of the audit date and is a recommendation input, not a claim of current stock.",
+  "states": {
+    "validity": {
+      "valid": "Reviewed; no defect found.",
+      "corrected": "A defect was found and repaired in this audit (see validityNote).",
+      "needs-review": "Record is ambiguous or uses an inconsistent convention; excluded from recommendations until resolved.",
+      "invalid": "Not a real purchasable product as described; excluded from recommendations, kept for identity/benchmark references."
+    },
+    "lifecycle": {
+      "current": "Current generation; eligible for recommendations.",
+      "previous-generation": "Superseded but still sold new; eligible for recommendations.",
+      "legacy": "Obsolete for new builds; kept for benchmarks, upgrade comparisons and saved builds, never auto-recommended."
+    }
+  },
+  "inventory": {
+    "cpu": {
+      "source": "src/data/cpus.json",
+      "count": 51
+    },
+    "gpu": {
+      "source": "src/data/gpus.json",
+      "count": 57
+    },
+    "motherboard": {
+      "source": "src/data/components.json#motherboards",
+      "count": 24
+    },
+    "ram": {
+      "source": "src/data/components.json#ram",
+      "count": 16
+    },
+    "storage": {
+      "source": "src/data/components.json#storage",
+      "count": 12
+    },
+    "psu": {
+      "source": "src/data/components.json#psus",
+      "count": 12
+    },
+    "case": {
+      "source": "src/data/components.json#cases",
+      "count": 12
+    },
+    "cooler": {
+      "source": "src/data/components.json#coolers",
+      "count": 14
+    },
+    "monitor": {
+      "source": "src/data/peripherals.json#monitors",
+      "count": 14
+    },
+    "keyboard": {
+      "source": "src/data/peripherals.json#keyboards",
+      "count": 12
+    },
+    "mouse": {
+      "source": "src/data/peripherals.json#mice",
+      "count": 12
+    },
+    "headset": {
+      "source": "src/data/peripherals.json#headsets",
+      "count": 10
+    }
+  },
+  "entries": {
+    "cu9-285k": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000).",
+      "validityNote": "tdp_watts stores 125W base power while 14th-gen records store maximum turbo power (250W for this part). Needs one agreed power convention before correcting."
+    },
+    "cu7-265k": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000).",
+      "validityNote": "tdp_watts stores 125W base power while 14th-gen records store maximum turbo power (250W for this part). Needs one agreed power convention before correcting."
+    },
+    "cu5-245k": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000).",
+      "validityNote": "tdp_watts stores 125W base power while 14th-gen records store maximum turbo power (159W for this part). Needs one agreed power convention before correcting."
+    },
+    "i9-14900ks": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i9-14900k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i9-14900kf": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i7-14700k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i7-14700kf": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i5-14600k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i5-14600kf": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i5-14500": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i5-14400f": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700."
+    },
+    "i3-14100f": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Intel 14th gen: superseded by Core Ultra 200S but still sold new for LGA1700.",
+      "validityNote": "tdp_watts stores 58W base power while other Intel records store maximum turbo power (110W). Needs one agreed power convention before correcting."
+    },
+    "i9-13900ks": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Superseded on the same socket by the 14th-gen refresh; kept for benchmarks and upgrade comparisons."
+    },
+    "i9-13900k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Superseded on the same socket by the 14th-gen refresh; kept for benchmarks and upgrade comparisons."
+    },
+    "i7-13700k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Superseded on the same socket by the 14th-gen refresh; kept for benchmarks and upgrade comparisons."
+    },
+    "i5-13600k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Superseded on the same socket by the 14th-gen refresh; kept for benchmarks and upgrade comparisons."
+    },
+    "i5-13400f": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget LGA1700 part still sold new as a low-cost option."
+    },
+    "i3-13100f": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget LGA1700 part still sold new as a low-cost option.",
+      "validityNote": "tdp_watts stores 58W base power while other Intel records store maximum turbo power (89W). Needs one agreed power convention before correcting."
+    },
+    "i9-12900k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Two LGA1700 generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "i7-12700k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Two LGA1700 generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "i5-12600k": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Two LGA1700 generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "i5-12400f": {
+      "category": "cpu",
+      "validity": "needs-review",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget LGA1700 part still sold new as a low-cost option.",
+      "validityNote": "tdp_watts stores 65W base power while other Intel records store maximum turbo power (117W for this part). Needs one agreed power convention before correcting."
+    },
+    "r9-9950x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r9-9900x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r7-9800x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r7-9850x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r9-9950x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r9-9900x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r7-9700x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r5-9600x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (Core Ultra 200S / Ryzen 9000)."
+    },
+    "r9-7950x3d": {
+      "category": "cpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new.",
+      "validityNote": "tdp_watts 162 -> 120 (162W is PPT; every other AMD record stores rated TDP)."
+    },
+    "r9-7950x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r9-7900x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r9-7900x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r7-7800x3d": {
+      "category": "cpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new.",
+      "validityNote": "base_ghz 4.5 -> 4.2 (AMD-published base clock)."
+    },
+    "r7-7700x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r7-7700": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r5-7600x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r5-7600": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Ryzen 7000: superseded by Ryzen 9000 on the same AM5 platform but still sold new."
+    },
+    "r9-5950x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "AM4 part that is discontinued or superseded by cheaper AM4 SKUs; kept for benchmarks and upgrade comparisons."
+    },
+    "r9-5900x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "AM4 part that is discontinued or superseded by cheaper AM4 SKUs; kept for benchmarks and upgrade comparisons."
+    },
+    "r7-5800x3d": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "AM4 part that is discontinued or superseded by cheaper AM4 SKUs; kept for benchmarks and upgrade comparisons."
+    },
+    "r7-5800x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "AM4 part that is discontinued or superseded by cheaper AM4 SKUs; kept for benchmarks and upgrade comparisons."
+    },
+    "r7-5700x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget AM4 part still sold new as a low-cost DDR4 option."
+    },
+    "r5-5600x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "AM4 part that is discontinued or superseded by cheaper AM4 SKUs; kept for benchmarks and upgrade comparisons."
+    },
+    "r5-5600": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget AM4 part still sold new as a low-cost DDR4 option."
+    },
+    "r5-5500": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Budget AM4 part still sold new as a low-cost DDR4 option."
+    },
+    "r9-3900x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Zen 2 (2019); kept for benchmarks and upgrade comparisons."
+    },
+    "r7-3700x": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Zen 2 (2019); kept for benchmarks and upgrade comparisons."
+    },
+    "r5-3600": {
+      "category": "cpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Zen 2 (2019); kept for benchmarks and upgrade comparisons."
+    },
+    "rtx5090": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5080": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5070ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5070": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5060ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5060": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx5050": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rtx4090": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4080s": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4080": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4070tis": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4070ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4070s": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4070": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4060ti16": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4060ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4060": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RTX 40: superseded by RTX 50; remaining stock can still be a valid purchase."
+    },
+    "rtx4050": {
+      "category": "gpu",
+      "validity": "invalid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "No desktop RTX 4050 exists; kept only so existing benchmark/page identities still resolve.",
+      "validityNote": "NVIDIA never released a desktop RTX 4050 (it exists only as a laptop GPU). The record is not a purchasable product; kept so matchup/upgrade page identities and any benchmark references still resolve."
+    },
+    "rtx3090ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3090": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3080ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx308012": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3080": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3070ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3070": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3060ti": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3060": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rtx3050": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RTX 30 (Ampere): two generations old; kept for benchmarks and upgrade comparisons."
+    },
+    "rx9070xt": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rx9070": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rx9060xt16": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rx9060xt8": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "rx7900xtx": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7900xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7900gre": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7800xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7700xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7600xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx7600": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "RX 7000: superseded by RX 9000; remaining stock can still be a valid purchase.",
+      "validityNote": "architecture \"RDNA3\" -> \"RDNA 3\" to match the RDNA 4 naming."
+    },
+    "rx6950xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6900xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6800xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6800": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6750xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6700xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6700": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6650xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6600xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6600": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6500xt": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "rx6400": {
+      "category": "gpu",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "RX 6000 (RDNA 2): two generations old; kept for benchmarks and upgrade comparisons.",
+      "validityNote": "architecture \"RDNA2\" -> \"RDNA 2\" to match the RDNA 4 naming."
+    },
+    "arca770-16": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Arc A (Alchemist): superseded by Arc B; kept for benchmarks and upgrade comparisons."
+    },
+    "arca770-8": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Arc A (Alchemist): superseded by Arc B; kept for benchmarks and upgrade comparisons."
+    },
+    "arca750": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Arc A (Alchemist): superseded by Arc B; kept for benchmarks and upgrade comparisons."
+    },
+    "arca580": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Arc A (Alchemist): superseded by Arc B; kept for benchmarks and upgrade comparisons."
+    },
+    "arcb570": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "arcb580": {
+      "category": "gpu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current desktop generation (RTX 50 / RX 9000 / Arc B)."
+    },
+    "z890hero": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b860tom": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "z790e": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs."
+    },
+    "z790mag": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs."
+    },
+    "b760mds3h": {
+      "category": "motherboard",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs.",
+      "validityNote": "Name now says \"DDR4\": the plain B760M DS3H is the DDR5 board, so the old name pointed at the wrong variant."
+    },
+    "b660mpro": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "B660 was replaced by B760; kept for compatibility lookups."
+    },
+    "x670ecross": {
+      "category": "motherboard",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5).",
+      "validityNote": "\"ROG Crosshair X670E\" covers Hero, Extreme and Gene boards with different prices and form factors."
+    },
+    "x670emeg": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b650aorus": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b650mrig": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b550f": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "AM4 board still sold new for budget Ryzen 5000 builds."
+    },
+    "b550tom": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "AM4 board still sold new for budget Ryzen 5000 builds."
+    },
+    "b860prors": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "z890aorus": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b760mawifi": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs."
+    },
+    "z790aorusax": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs."
+    },
+    "h610mhdv": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "LGA1700 board still sold new for 12th–14th gen Intel CPUs."
+    },
+    "a620mhdv": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b650pwifi": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b850aorus": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "b550mvdh": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "AM4 board still sold new for budget Ryzen 5000 builds."
+    },
+    "a520mhvs": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "AM4 board still sold new for budget Ryzen 5000 builds."
+    },
+    "x570aorus": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "X570 is discontinued; kept for compatibility lookups."
+    },
+    "asusb650ei": {
+      "category": "motherboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Current-socket chipset (LGA1851 800-series / AM5)."
+    },
+    "cv16ddr4": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "DDR4: only for AM4 and DDR4 LGA1700 boards."
+    },
+    "gr32ddr4": {
+      "category": "ram",
+      "validity": "needs-review",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "DDR4: only for AM4 and DDR4 LGA1700 boards.",
+      "validityNote": "\"Ripjaws 32GB DDR4-3600\" does not identify Ripjaws V vs 4, kit configuration or CAS latency."
+    },
+    "kf16ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "cd32ddr5": {
+      "category": "ram",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms.",
+      "validityNote": "\"Dominator 32GB DDR5-5600\" does not identify Platinum RGB vs Titanium or the CAS latency."
+    },
+    "gz32ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "cr16ddr4": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "DDR4: only for AM4 and DDR4 LGA1700 boards."
+    },
+    "tg32ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "gz64ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "kf8ddr4": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "8GB is below the minimum we would recommend for a new gaming build."
+    },
+    "cv32ddr4": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "DDR4: only for AM4 and DDR4 LGA1700 boards."
+    },
+    "tf16ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "kf32ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "gz32ddr5b": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "cdt32ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "gz64ddr5b": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "cv96ddr5": {
+      "category": "ram",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "DDR5: memory standard for current platforms."
+    },
+    "s870evo": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "wdblack1": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "s990pro2": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "sgbar2": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "cp3p1": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "wdblack2": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "knv2500": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Kingston NV2 has been succeeded by NV3; 500GB is small for a new gaming build."
+    },
+    "cmx500": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "s990pro4": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "wdblack4": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "ct700g5": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "sgbc4": {
+      "category": "storage",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "crm750": {
+      "category": "psu",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "\"RM750x\" covers several model years (2018, 2021, Shift) with different connectors."
+    },
+    "evga850": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model line; may still be found new."
+    },
+    "sea1000": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "bqdp1000": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corhx1200": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model line; may still be found new."
+    },
+    "tt1650": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "evga600br": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "EVGA PSU line with limited remaining supply; not recommended for new builds."
+    },
+    "corcv650": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "msiaga850": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corsf750": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "seatx850": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "evga1300g": {
+      "category": "psu",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "EVGA PSU line with limited remaining supply; not recommended for new builds."
+    },
+    "fdpopair": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "lio11": {
+      "category": "case",
+      "validity": "corrected",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Original O11 Dynamic is discontinued; replaced by the O11 Dynamic EVO.",
+      "validityNote": "motherboard_support adds E-ATX and ITX (manufacturer support list)."
+    },
+    "nzxth510": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Discontinued; replaced by the NZXT H5 series."
+    },
+    "cor4000d": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "fdtorrent": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "bqdbp900": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Discontinued; replaced by the Dark Base Pro 901."
+    },
+    "cmq300l": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "nzxth1v2": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "phanxtpro": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "cor5000d": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "hytey60": {
+      "category": "case",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "gpu_clearance_mm 400 -> 375 (manufacturer maximum GPU length)."
+    },
+    "lio11evoxl": {
+      "category": "case",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "cmh212": {
+      "category": "cooler",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "\"Hyper 212\" covers several variants (Black, EVO V2, Spectrum, LED) with different heights and ratings."
+    },
+    "noctd15": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Succeeded by the NH-D15 G2 but still sold."
+    },
+    "bqdrp4": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Discontinued; replaced by the Dark Rock Pro 5."
+    },
+    "corh100i": {
+      "category": "cooler",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "\"H100i Elite\" covers Elite Capellix, Elite Capellix XT and Elite LCD variants."
+    },
+    "nzxtx63": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Discontinued Kraken X-series; replaced by the current Kraken line."
+    },
+    "corh150i": {
+      "category": "cooler",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "\"H150i Elite\" covers Elite Capellix, Elite Capellix XT and Elite LCD variants."
+    },
+    "idse224xt": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "thrpa120se": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "noctu12a": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corh60x": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "nzxtx53": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Discontinued Kraken X-series; replaced by the current Kraken line."
+    },
+    "thrfs360": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "noctl9i17xx": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "noctl9aam5": {
+      "category": "cooler",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "lg-27gp850": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "samsung-og7-32": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "asus-pg279qm": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "lg-27gp950": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "samsung-neog9": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "benq-ex2710q": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "aoc-24g2": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "alienware-aw2523hf": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "lg-45gr95qe": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "asus-pg27aqdm": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "acer-sb220q": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "75Hz office panel; not a gaming monitor recommendation."
+    },
+    "lg-27gr93u": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "dell-s2721qs": {
+      "category": "monitor",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; may still be sold new but newer models exist."
+    },
+    "lg-34gp63a": {
+      "category": "monitor",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "resolution 1440p -> 3440x1440p and panel_type IPS -> VA (34-inch 21:9 VA panel)."
+    },
+    "logi-gprox": {
+      "category": "keyboard",
+      "validity": "needs-review",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist.",
+      "validityNote": "Name says \"Pro X TKL\" (2022, wireless) but the specs (wired, 2020, swappable GX switches) describe the original Pro X keyboard."
+    },
+    "razer-bwv4pro": {
+      "category": "keyboard",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "wireless true -> false (the BlackWidow V4 Pro is a wired keyboard)."
+    },
+    "corsair-k70mk2": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Replaced by the K70 RGB Pro / K70 Core."
+    },
+    "steelseries-apex-pro": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist."
+    },
+    "keychron-q2pro": {
+      "category": "keyboard",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "form_factor 75% -> 65% (Q2 is Keychron's 65% layout; Q1 is 75%)."
+    },
+    "logi-mxkeys": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist."
+    },
+    "ducky-one3": {
+      "category": "keyboard",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "Ducky One 3 is sold in Full, TKL, SF and Mini layouts and many colours; no exact SKU is recorded."
+    },
+    "asus-rog-azoth": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "redragon-k552": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "redragon-k616": {
+      "category": "keyboard",
+      "validity": "needs-review",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "Unable to confirm switch type/connectivity for this exact model name; needs manufacturer SKU."
+    },
+    "keychron-k8pro": {
+      "category": "keyboard",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corsair-k100": {
+      "category": "keyboard",
+      "validity": "corrected",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist.",
+      "validityNote": "form_factor \"Full-size\" -> \"Full\" to match the category vocabulary."
+    },
+    "logi-g502xplus": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "razer-deathadderv3pro": {
+      "category": "mouse",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "weight_grams 88 -> 63 (88g is the older DeathAdder V2 Pro)."
+    },
+    "steelseries-aerox5": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "logi-gprox-sl2": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corsair-m75air": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "razer-viperv3pro": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "asus-harpe-ace": {
+      "category": "mouse",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "weight_grams 54 -> 47 and release_year 2023 -> 2024 (54g/2023 is the Aim Lab Edition; this record is the Extreme)."
+    },
+    "glorious-model-o2": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "logi-g203": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "razer-basiliskv3x": {
+      "category": "mouse",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "buttons 6 -> 9 (manufacturer lists 9 programmable buttons)."
+    },
+    "logi-mxmaster3s": {
+      "category": "mouse",
+      "validity": "corrected",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new.",
+      "validityNote": "release_year 2023 -> 2022."
+    },
+    "pulsar-x2": {
+      "category": "mouse",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "steelseries-arctis-nova-pro": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "razer-blackshark-v2pro": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "logi-gprox2": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "hyperx-cloud3w": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "corsair-hs80": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist."
+    },
+    "asus-rog-delta-s": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist."
+    },
+    "hyperx-cloudstinger": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "legacy",
+      "lifecycleReason": "Original Cloud Stinger replaced by the Cloud Stinger 2."
+    },
+    "corsair-hs65w": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    },
+    "beyer-mmx300": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "previous-generation",
+      "lifecycleReason": "Older model; newer revisions exist."
+    },
+    "sony-inzoneh9": {
+      "category": "headset",
+      "validity": "valid",
+      "lifecycle": "current",
+      "lifecycleReason": "Model currently sold new."
+    }
+  }
+}

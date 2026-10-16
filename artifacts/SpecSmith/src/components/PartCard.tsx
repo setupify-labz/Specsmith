@@ -19,6 +19,8 @@ interface PartCardProps {
   sponsored?: boolean;
   recommended?: boolean;
   badge?: 'best-value' | 'best-performance';
+  /** Why the catalog audit does not recommend this part (legacy, invalid…). */
+  catalogNotice?: string | null;
   specs: { label: string; value: string }[];
   tier?: number;
   showShopping?: boolean;
@@ -60,7 +62,7 @@ const badgeStyles: Record<'best-value' | 'best-performance', { label: string; ba
 };
 
 export default function PartCard({
-  id, name, image, searchQuery, price, affiliateUrl, selected, sponsored, recommended, badge, specs, tier,
+  id, name, image, searchQuery, price, affiliateUrl, selected, sponsored, recommended, badge, catalogNotice, specs, tier,
   showShopping = true, onSelect
 }: PartCardProps) {
   const query = searchQuery ?? name;
@@ -131,6 +133,12 @@ export default function PartCard({
               {badgeStyles[badge].label}
             </span>
           </div>
+        )}
+
+        {catalogNotice && (
+          <p className="mb-2 text-[10px] font-semibold" style={{ color: 'var(--ff-text-2)' }}>
+            {catalogNotice}
+          </p>
         )}
 
         {/* Header */}

@@ -681,7 +681,7 @@
     "threads": 32,
     "base_ghz": 4.2,
     "boost_ghz": 5.7,
-    "tdp_watts": 162,
+    "tdp_watts": 120,
     "socket": "AM5",
     "supported_ram": [
       "DDR5"
@@ -763,7 +763,7 @@
     "tier": 9,
     "cores": 8,
     "threads": 16,
-    "base_ghz": 4.5,
+    "base_ghz": 4.2,
     "boost_ghz": 5,
     "tdp_watts": 120,
     "socket": "AM5",

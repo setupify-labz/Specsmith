@@ -2,12 +2,15 @@ import gpuData from '../data/gpus.json';
 import cpuData from '../data/cpus.json';
 import type { RouteMeta } from './seo';
 import { SITE_URL } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; vram_gb: number; benchmark_score: number; }
 interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; }
 
-const gpus = gpuData as Gpu[];
-const cpus = cpuData as Cpu[];
+// These are purchase recommendations, so legacy/invalid/ambiguous parts from
+// the catalog audit never enter the pick pools.
+const gpus = recommendable(gpuData as Gpu[]);
+const cpus = recommendable(cpuData as Cpu[]);
 
 export interface UseCaseTier {
   label: string;
@@ -129,7 +132,9 @@ export const USE_CASES: UseCase[] = [
     intro: 'Spreadsheets, video calls, browser tabs, and document editing barely touch the GPU at all — even the cheapest discrete card we track drives multiple high-resolution monitors without breaking a sweat, far beyond what integrated graphics alone can do. That means the smart move for a productivity build is to spend as little as possible on GPU and put the budget into CPU cores instead, since core count is what actually determines how many apps you can run smoothly at once.',
     criteria: 'GPU picked as the cheapest card in budget — raw gaming performance is irrelevant here, so there\'s no reason to pay more than the entry price. CPU picked by highest core count in budget (ties broken by benchmark score), since multitasking headroom is what matters for office work.',
     tiers: [
-      { label: 'Everyday Office', maxGpuPrice: 200, maxCpuPrice: 200 },
+      // $250, not $200: every GPU under $200 we track is legacy in the catalog
+      // audit, and recommendations never pick legacy parts.
+      { label: 'Everyday Office', maxGpuPrice: 250, maxCpuPrice: 200 },
       { label: 'Power Multitasker', maxGpuPrice: 250, maxCpuPrice: 400 },
       { label: 'Hybrid Work + Light Creative', maxGpuPrice: 350, maxCpuPrice: 600 },
     ],

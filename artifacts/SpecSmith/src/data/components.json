@@ -50,7 +50,7 @@
     },
     {
       "id": "b760mds3h",
-      "name": "Gigabyte B760M DS3H",
+      "name": "Gigabyte B760M DS3H DDR4",
       "brand": "Gigabyte",
       "price_usd": 109,
       "socket": "LGA1700",
@@ -706,8 +706,10 @@
       "price_usd": 139,
       "form_factor": "Mid Tower",
       "motherboard_support": [
+        "E-ATX",
         "ATX",
-        "mATX"
+        "mATX",
+        "ITX"
       ],
       "sponsored": false,
       "gpu_clearance_mm": 420,
@@ -843,7 +845,7 @@
         "ITX"
       ],
       "sponsored": false,
-      "gpu_clearance_mm": 400,
+      "gpu_clearance_mm": 375,
       "cooler_clearance_mm": 155
     },
     {

@@ -44,6 +44,7 @@ import {
 import CatalogFailureNotice from '../components/builder/CatalogFailureNotice';
 import type { AffiliatePart, RetailPartCategory } from '../lib/retail/partCatalog';
 import { trackProductEvent } from '../lib/productAnalytics';
+import { recommendable } from '../lib/catalogLifecycle';
 
 const FpsEstimator = lazy(() => import('../components/FpsEstimator'));
 const VerifiedBenchmarkPanel = lazy(() => import('../components/VerifiedBenchmarkPanel'));
@@ -569,7 +570,7 @@ export default function Builder() {
     // Highlight top GPUs
     if (selectedCpu) {
       const top3 = typeof selectedCpu.benchmark_score === 'number'
-        ? gpus.filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id)
+        ? recommendable(gpus).filter(g => g.benchmark_score >= selectedCpu.benchmark_score * 0.72).slice(0, 3).map(g => g.id)
         : [];
       setRecommendedIds(top3);
       setTimeout(() => setRecommendedIds([]), 3500);
@@ -578,7 +579,7 @@ export default function Builder() {
   const handleScrollToCpu = () => {
     cpuSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (selectedGpu) {
-      const top3 = cpus.filter(c => c.benchmark_score >= selectedGpu.benchmark_score / 1.4).slice(0, 3).map(c => c.id);
+      const top3 = recommendable(cpus).filter(c => c.benchmark_score >= selectedGpu.benchmark_score / 1.4).slice(0, 3).map(c => c.id);
       setRecommendedIds(top3);
       setTimeout(() => setRecommendedIds([]), 3500);
     }

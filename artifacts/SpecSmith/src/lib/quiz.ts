@@ -4,6 +4,7 @@ import gamesData from '../data/games.json';
 import { getUseCase, getTierPicks } from './useCaseBuilds';
 import { estimateFpsForBuild } from './fps';
 import type { RouteMeta } from './seo';
+import { recommendable } from './catalogLifecycle';
 
 interface Gpu { id: string; name: string; brand: string; price_usd: number; vram_gb: number; benchmark_score: number; }
 interface Cpu { id: string; name: string; brand: string; price_usd: number; cores: number; threads: number; benchmark_score: number; }
@@ -100,8 +101,8 @@ export function getQuizResult(useCaseSlug: string, tierIndex: number): QuizResul
   if (useCaseSlug === 'gaming') {
     const tier = GAMING_TIERS[tierIndex];
     if (!tier) return null;
-    const gpu = bestByScore(gpus.filter((g) => g.price_usd <= tier.maxGpuPrice));
-    const cpu = bestByScore(cpus.filter((c) => c.price_usd <= tier.maxCpuPrice));
+    const gpu = bestByScore(recommendable(gpus).filter((g) => g.price_usd <= tier.maxGpuPrice));
+    const cpu = bestByScore(recommendable(cpus).filter((c) => c.price_usd <= tier.maxCpuPrice));
     if (!gpu || !cpu) return null;
     return { useCase, tierLabel: tier.label, gpu, cpu, avgFps: averageGamingFps(gpu, cpu) };
   }
