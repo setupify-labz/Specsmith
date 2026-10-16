@@ -1,0 +1,88 @@
+# Weekly part discovery (issue #192): find new and relevant parts on the
+# Newegg feed and stage them for human review.
+#
+# THIS JOB CANNOT PUBLISH. It has `contents: read`, never persists a checkout
+# credential, writes only under RUNNER_TEMP, and uploads the staging file as a
+# short-lived artifact. Promoting a staged part into src/data is a separate,
+# reviewed human step. The last step proves the checkout is unmodified.
+#
+# Credentials are the same three Rakuten secrets the price refresh already
+# uses, confined to one step that mints a short-lived token and removes it.
+
+name: Discover new parts (staging only)
+
+on:
+  schedule:
+    # Mondays 04:40 UTC: off the hour, and clear of the 03:20 price refresh.
+    - cron: '40 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discover-parts
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run discovery and adapter tests
+        run: |
+          set -euo pipefail
+          pnpm typecheck
+          cd artifacts/SpecSmith
+          pnpm exec vitest run scripts/retail/discovery scripts/retail/rakuten scripts/retail/catalog
+
+      - name: Mint an access token and stage discovered parts
+        working-directory: artifacts/SpecSmith
+        env:
+          RAKUTEN_CLIENT_ID: ${{ secrets.RAKUTEN_CLIENT_ID }}
+          RAKUTEN_CLIENT_SECRET: ${{ secrets.RAKUTEN_CLIENT_SECRET }}
+          RAKUTEN_PUBLISHER_SID: ${{ secrets.RAKUTEN_PUBLISHER_SID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/part-discovery"
+          token_file="$(mktemp "${RUNNER_TEMP}/rakuten-access-token.XXXXXXXX")"
+          trap 'rm -f "${token_file}"' EXIT
+          pnpm exec tsx scripts/retail/rakuten/request-access-token.ts --out "${token_file}"
+          RAKUTEN_API_ACCESS_TOKEN="$(cat "${token_file}")"
+          rm -f "${token_file}"
+          export RAKUTEN_API_ACCESS_TOKEN
+          pnpm exec tsx scripts/retail/discovery/discover-parts.ts \
+            --out "${RUNNER_TEMP}/part-discovery/staged-parts.json"
+
+      - name: Upload the staging file for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: staged-parts-${{ github.run_id }}
+          path: ${{ runner.temp }}/part-discovery/staged-parts.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Confirm the repository was not modified
+        if: always()
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"

@@ -55,6 +55,7 @@ describe('the validation workflow exists and is wired to the right events', () =
       'build-retail-affiliate-catalog.yml',
       'content-e2e-offline.yml',
       'daily-short-proposal.yml',
+      'discover-parts.yml',
       'dry-run-retail-catalog.yml',
       'elevenlabs-voice-sample.yml',
       'measured-tests-ci.yml',

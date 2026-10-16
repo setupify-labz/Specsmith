@@ -1,0 +1,73 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented Rakuten Product Search response shape for the part-discovery tests (issue #192). Product names, SKUs and UPCs are FIXTURE VALUES, not captured listings, and must never be published. Prices are zeroed on purpose: discovery does not read them. Three cooling-leaf listings: one case-fan pack, one CPU cooler, one fan hub. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <TotalMatches>3</TotalMatches>
+  <TotalPages>1</TotalPages>
+  <PageNumber>1</PageNumber>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREFAN0001</sku>
+    <productname>FIXTURE ARCTIC P12 PWM PST 120mm Case Fan 5-Pack</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Computer System Cooling Parts</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>555666777888</upccode>
+    <description>
+      <short>120mm case fans.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREFAN0001</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREFAN0001.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREFAN0002</sku>
+    <productname>FIXTURE Thermalright Peerless Assassin 120 SE CPU Cooler</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Computer System Cooling Parts</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>666777888999</upccode>
+    <description>
+      <short>Dual tower CPU cooler.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREFAN0002</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREFAN0002.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREFAN0003</sku>
+    <productname>FIXTURE 10-Port PWM Fan Hub Splitter</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Computer System Cooling Parts</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>121212121212</upccode>
+    <description>
+      <short>Fan hub.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREFAN0003</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREFAN0003.jpg</imageurl>
+  </item>
+</result>

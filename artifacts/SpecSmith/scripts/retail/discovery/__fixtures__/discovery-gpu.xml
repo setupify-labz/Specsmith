@@ -1,0 +1,205 @@
+<!-- PROVENANCE: synthetic. Hand-written to the documented Rakuten Product Search response shape for the part-discovery tests (issue #192). Product names, SKUs and UPCs are FIXTURE VALUES, not captured listings, and must never be published. Prices are zeroed on purpose: discovery does not read them. Nine GPU-search listings covering merge, conflict, malformed UPC and every rejection reason. -->
+<?xml version="1.0" encoding="UTF-8"?>
+<result>
+  <TotalMatches>9</TotalMatches>
+  <TotalPages>1</TotalPages>
+  <PageNumber>1</PageNumber>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0001</sku>
+    <productname>FIXTURE MSI GeForce RTX 5070 VENTUS 2X OC Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>000111222333</upccode>
+    <description>
+      <short>RTX 5070 12GB GDDR7 graphics card.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0001</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0001.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0002</sku>
+    <productname>FIXTURE MSI GeForce RTX 5070 VENTUS 2X OC 12GB Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>0000111222333</upccode>
+    <description>
+      <short>RTX 5070 12GB GDDR7 graphics card.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0002</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0002.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0003</sku>
+    <productname>FIXTURE ASUS TUF GeForce RTX 5070 Ti Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>444555666777</upccode>
+    <description>
+      <short>RTX 5070 Ti 16GB.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0003</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0003.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0004</sku>
+    <productname>FIXTURE ASUS TUF GeForce RTX 5070 Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>444555666777</upccode>
+    <description>
+      <short>RTX 5070 12GB.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0004</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0004.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0005</sku>
+    <productname>FIXTURE XFX Radeon RX 6600 Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>N/A</upccode>
+    <description>
+      <short>RX 6600 8GB GDDR6.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0005</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0005.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0006</sku>
+    <productname>FIXTURE Refurbished GeForce RTX 4070 Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>888999000111</upccode>
+    <description>
+      <short>RTX 4070 12GB.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0006</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0006.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0007</sku>
+    <productname>FIXTURE Graphics Card GPU Support Bracket Holder</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>222333444555</upccode>
+    <description>
+      <short>Anti-sag bracket.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0007</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0007.jpg</imageurl>
+  </item>
+  <item>
+    <mid>99999</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0008</sku>
+    <productname>FIXTURE GeForce RTX 5080 Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Video Cards &amp; Adapters</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>333444555666</upccode>
+    <description>
+      <short>RTX 5080 16GB.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0008</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0008.jpg</imageurl>
+  </item>
+  <item>
+    <mid>44583</mid>
+    <merchantname>Newegg</merchantname>
+    <linkid>REDACTED_LINK_ID</linkid>
+    <createdon>2026-10-01/00:00:00</createdon>
+    <sku>FIXTUREGPU0009</sku>
+    <productname>FIXTURE GeForce RTX 5080 Graphics Card</productname>
+    <category>
+      <primary>Computers</primary>
+      <secondary>Components~~Motherboards</secondary>
+    </category>
+    <price currency="USD">0.00</price>
+    <saleprice currency="USD">0.00</saleprice>
+    <upccode>777888999000</upccode>
+    <description>
+      <short>RTX 5080 16GB.</short>
+      <long>Long description.</long>
+    </description>
+    <keywords>fixture</keywords>
+    <linkurl>https://click.linksynergy.com/link?id=REDACTED_SITE_ID&amp;offerid=REDACTED_OFFER_ID&amp;murl=https%3A%2F%2Fwww.newegg.com%2Fp%2FFIXTUREGPU0009</linkurl>
+    <imageurl>https://c1.neweggimages.com/productimage/nb640/fixture-FIXTUREGPU0009.jpg</imageurl>
+  </item>
+</result>
